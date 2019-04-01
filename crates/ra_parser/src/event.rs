@@ -116,12 +116,12 @@ pub(super) fn process(sink: &mut dyn TreeSink, mut events: Vec<Event>) {
                 }
 
                 for kind in forward_parents.drain(..).rev() {
-                    sink.start_branch(kind);
+                    sink.start_node(kind);
                 }
             }
-            Event::Finish => sink.finish_branch(),
+            Event::Finish => sink.finish_node(),
             Event::Token { kind, n_raw_tokens } => {
-                sink.leaf(kind, n_raw_tokens);
+                sink.token(kind, n_raw_tokens);
             }
             Event::Error { msg } => sink.error(msg),
         }

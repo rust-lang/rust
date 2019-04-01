@@ -106,8 +106,10 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     single_use_tree: &ast::UseTree,
 ) -> Option<TextEdit> {
     let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree.path()?.segment()?.syntax().first_child()?.kind() == SyntaxKind::SELF_KW {
-        let start = use_tree_list_node.prev_sibling()?.range().start();
+    if single_use_tree.path()?.segment()?.syntax().first_child_or_token()?.kind()
+        == SyntaxKind::SELF_KW
+    {
+        let start = use_tree_list_node.prev_sibling_or_token()?.range().start();
         let end = use_tree_list_node.range().end();
         let range = TextRange::from_to(start, end);
         let mut edit_builder = TextEditBuilder::default();

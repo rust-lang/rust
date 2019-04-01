@@ -1,15 +1,15 @@
 use crate::{
-    ast::{self, AstNode, AstToken},
     string_lexing::{self, StringComponentKind},
     SyntaxError,
     SyntaxErrorKind::*,
+    SyntaxToken,
 };
 
 use super::byte;
 
-pub(crate) fn validate_byte_string_node(node: &ast::ByteString, errors: &mut Vec<SyntaxError>) {
+pub(crate) fn validate_byte_string_node(node: SyntaxToken, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
-    let literal_range = node.syntax().range();
+    let literal_range = node.range();
     let mut components = string_lexing::parse_byte_string_literal(literal_text);
     for component in &mut components {
         let range = component.range + literal_range.start();

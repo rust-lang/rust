@@ -62,15 +62,15 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
     let name_ref = path.segment()?.name_ref()?;
 
     // Make sure it is actually a dbg-macro call, dbg followed by !
-    let excl = path.syntax().next_sibling()?;
+    let excl = path.syntax().next_sibling_or_token()?;
 
     if name_ref.text() != macro_name || excl.kind() != EXCL {
         return None;
     }
 
     let node = macro_call.token_tree()?.syntax();
-    let first_child = node.first_child()?;
-    let last_child = node.last_child()?;
+    let first_child = node.first_child_or_token()?;
+    let last_child = node.last_child_or_token()?;
 
     match (first_child.kind(), last_child.kind()) {
         (L_PAREN, R_PAREN) | (L_BRACK, R_BRACK) | (L_CURLY, R_CURLY) => Some(true),

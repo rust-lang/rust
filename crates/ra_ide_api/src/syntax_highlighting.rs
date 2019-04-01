@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 
-use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind::*};
+use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind::*, SyntaxElement};
 use ra_db::SourceDatabase;
 
 use crate::{FileId, db::RootDatabase};
@@ -15,9 +15,9 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
     let source_file = db.parse(file_id);
 
     // Visited nodes to handle highlighting priorities
-    let mut highlighted = FxHashSet::default();
+    let mut highlighted: FxHashSet<SyntaxElement> = FxHashSet::default();
     let mut res = Vec::new();
-    for node in source_file.syntax().descendants() {
+    for node in source_file.syntax().descendants_with_tokens() {
         if highlighted.contains(&node) {
             continue;
         }
@@ -31,14 +31,14 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             LIFETIME => "parameter",
             k if k.is_keyword() => "keyword",
             _ => {
-                if let Some(macro_call) = ast::MacroCall::cast(node) {
+                if let Some(macro_call) = node.as_node().and_then(ast::MacroCall::cast) {
                     if let Some(path) = macro_call.path() {
                         if let Some(segment) = path.segment() {
                             if let Some(name_ref) = segment.name_ref() {
-                                highlighted.insert(name_ref.syntax());
+                                highlighted.insert(name_ref.syntax().into());
                                 let range_start = name_ref.syntax().range().start();
                                 let mut range_end = name_ref.syntax().range().end();
-                                for sibling in path.syntax().siblings(Direction::Next) {
+                                for sibling in path.syntax().siblings_with_tokens(Direction::Next) {
                                     match sibling.kind() {
                                         EXCL | IDENT => range_end = sibling.range().end(),
                                         _ => (),

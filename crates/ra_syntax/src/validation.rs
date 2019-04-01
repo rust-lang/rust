@@ -6,7 +6,7 @@ mod block;
 
 use crate::{
     SourceFile, SyntaxError, AstNode, SyntaxNode,
-    SyntaxKind::{L_CURLY, R_CURLY},
+    SyntaxKind::{L_CURLY, R_CURLY, BYTE, BYTE_STRING, STRING, CHAR},
     ast,
     algo::visit::{visitor_ctx, VisitorCtx},
 };
@@ -15,14 +15,22 @@ pub(crate) fn validate(file: &SourceFile) -> Vec<SyntaxError> {
     let mut errors = Vec::new();
     for node in file.syntax().descendants() {
         let _ = visitor_ctx(&mut errors)
-            .visit::<ast::Byte, _>(byte::validate_byte_node)
-            .visit::<ast::ByteString, _>(byte_string::validate_byte_string_node)
-            .visit::<ast::Char, _>(char::validate_char_node)
-            .visit::<ast::String, _>(string::validate_string_node)
+            .visit::<ast::Literal, _>(validate_literal)
             .visit::<ast::Block, _>(block::validate_block_node)
             .accept(node);
     }
     errors
+}
+
+// FIXME: kill duplication
+fn validate_literal(literal: &ast::Literal, acc: &mut Vec<SyntaxError>) {
+    match literal.token().kind() {
+        BYTE => byte::validate_byte_node(literal.token(), acc),
+        BYTE_STRING => byte_string::validate_byte_string_node(literal.token(), acc),
+        STRING => string::validate_string_node(literal.token(), acc),
+        CHAR => char::validate_char_node(literal.token(), acc),
+        _ => (),
+    }
 }
 
 pub(crate) fn validate_block_structure(root: &SyntaxNode) {

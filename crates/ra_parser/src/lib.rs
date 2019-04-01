@@ -40,15 +40,15 @@ pub trait TokenSource {
 
 /// `TreeSink` abstracts details of a particular syntax tree implementation.
 pub trait TreeSink {
-    /// Adds new leaf to the current branch.
-    fn leaf(&mut self, kind: SyntaxKind, n_tokens: u8);
+    /// Adds new token to the current branch.
+    fn token(&mut self, kind: SyntaxKind, n_tokens: u8);
 
     /// Start new branch and make it current.
-    fn start_branch(&mut self, kind: SyntaxKind);
+    fn start_node(&mut self, kind: SyntaxKind);
 
     /// Finish current branch and restore previous
     /// branch as current.
-    fn finish_branch(&mut self);
+    fn finish_node(&mut self);
 
     fn error(&mut self, error: ParseError);
 }

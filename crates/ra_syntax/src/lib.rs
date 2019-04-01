@@ -38,7 +38,7 @@ pub use crate::{
     ast::AstNode,
     syntax_error::{SyntaxError, SyntaxErrorKind, Location},
     syntax_text::SyntaxText,
-    syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc, SyntaxTreeBuilder},
+    syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc, SyntaxTreeBuilder, SyntaxElement, SyntaxToken},
     ptr::{SyntaxNodePtr, AstPtr},
     parsing::{tokenize, Token},
 };
@@ -70,7 +70,7 @@ impl SourceFile {
 
     pub fn incremental_reparse(&self, edit: &AtomTextEdit) -> Option<TreeArc<SourceFile>> {
         parsing::incremental_reparse(self.syntax(), edit, self.errors())
-            .map(|(green_node, errors)| SourceFile::new(green_node, errors))
+            .map(|(green_node, errors, _reparsed_range)| SourceFile::new(green_node, errors))
     }
 
     fn full_reparse(&self, edit: &AtomTextEdit) -> TreeArc<SourceFile> {
@@ -179,15 +179,23 @@ fn api_walkthrough() {
 
     // There's a bunch of traversal methods on `SyntaxNode`:
     assert_eq!(expr_syntax.parent(), Some(block.syntax()));
-    assert_eq!(block.syntax().first_child().map(|it| it.kind()), Some(SyntaxKind::L_CURLY));
-    assert_eq!(expr_syntax.next_sibling().map(|it| it.kind()), Some(SyntaxKind::WHITESPACE));
+    assert_eq!(
+        block.syntax().first_child_or_token().map(|it| it.kind()),
+        Some(SyntaxKind::L_CURLY)
+    );
+    assert_eq!(
+        expr_syntax.next_sibling_or_token().map(|it| it.kind()),
+        Some(SyntaxKind::WHITESPACE)
+    );
 
     // As well as some iterator helpers:
     let f = expr_syntax.ancestors().find_map(ast::FnDef::cast);
     assert_eq!(f, Some(&*func));
-    assert!(expr_syntax.siblings(Direction::Next).any(|it| it.kind() == SyntaxKind::R_CURLY));
+    assert!(expr_syntax
+        .siblings_with_tokens(Direction::Next)
+        .any(|it| it.kind() == SyntaxKind::R_CURLY));
     assert_eq!(
-        expr_syntax.descendants().count(),
+        expr_syntax.descendants_with_tokens().count(),
         8, // 5 tokens `1`, ` `, `+`, ` `, `!`
            // 2 child literal expressions: `1`, `1`
            // 1 the node itself: `1 + 1`
@@ -196,16 +204,14 @@ fn api_walkthrough() {
     // There's also a `preorder` method with a more fine-grained iteration control:
     let mut buf = String::new();
     let mut indent = 0;
-    for event in expr_syntax.preorder() {
+    for event in expr_syntax.preorder_with_tokens() {
         match event {
             WalkEvent::Enter(node) => {
-                buf += &format!(
-                    "{:indent$}{:?} {:?}\n",
-                    " ",
-                    node.text(),
-                    node.kind(),
-                    indent = indent
-                );
+                let text = match node {
+                    SyntaxElement::Node(it) => it.text().to_string(),
+                    SyntaxElement::Token(it) => it.text().to_string(),
+                };
+                buf += &format!("{:indent$}{:?} {:?}\n", " ", text, node.kind(), indent = indent);
                 indent += 2;
             }
             WalkEvent::Leave(_) => indent -= 2,

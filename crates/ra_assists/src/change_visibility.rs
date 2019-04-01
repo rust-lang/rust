@@ -15,13 +15,13 @@ pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
 }
 
 fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let item_keyword = ctx.leaf_at_offset().find(|leaf| match leaf.kind() {
+    let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
         FN_KW | MOD_KW | STRUCT_KW | ENUM_KW | TRAIT_KW => true,
         _ => false,
     });
 
     let (offset, target) = if let Some(keyword) = item_keyword {
-        let parent = keyword.parent()?;
+        let parent = keyword.parent();
         let def_kws = vec![FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF];
         // Parent is not a definition, can't add visibility
         if !def_kws.iter().any(|&def_kw| def_kw == parent.kind()) {
@@ -33,8 +33,8 @@ fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         }
         (vis_offset(parent), keyword.range())
     } else {
-        let ident = ctx.leaf_at_offset().find(|leaf| leaf.kind() == IDENT)?;
-        let field = ident.ancestors().find_map(ast::NamedFieldDef::cast)?;
+        let ident = ctx.token_at_offset().find(|leaf| leaf.kind() == IDENT)?;
+        let field = ident.parent().ancestors().find_map(ast::NamedFieldDef::cast)?;
         if field.name()?.syntax().range() != ident.range() && field.visibility().is_some() {
             return None;
         }
@@ -51,7 +51,7 @@ fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 }
 
 fn vis_offset(node: &SyntaxNode) -> TextUnit {
-    node.children()
+    node.children_with_tokens()
         .skip_while(|it| match it.kind() {
             WHITESPACE | COMMENT | ATTR => true,
             _ => false,

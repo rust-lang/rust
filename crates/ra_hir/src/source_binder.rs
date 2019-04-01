@@ -9,7 +9,7 @@ use ra_db::{FileId, FilePosition};
 use ra_syntax::{
     SyntaxNode,
     ast::{self, AstNode, NameOwner},
-    algo::{find_node_at_offset, find_leaf_at_offset},
+    algo::{find_node_at_offset, find_token_at_offset},
 };
 
 use crate::{
@@ -155,9 +155,9 @@ pub fn trait_from_module(
 pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver {
     let file_id = position.file_id;
     let file = db.parse(file_id);
-    find_leaf_at_offset(file.syntax(), position.offset)
-        .find_map(|node| {
-            node.ancestors().find_map(|node| {
+    find_token_at_offset(file.syntax(), position.offset)
+        .find_map(|token| {
+            token.parent().ancestors().find_map(|node| {
                 if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
                     if let Some(func) = function_from_child_node(db, file_id, node) {
                         let scopes = func.scopes(db);

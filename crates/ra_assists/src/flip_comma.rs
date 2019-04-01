@@ -8,13 +8,13 @@ use ra_syntax::{
 use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let comma = ctx.leaf_at_offset().find(|leaf| leaf.kind() == COMMA)?;
-    let prev = non_trivia_sibling(comma, Direction::Prev)?;
-    let next = non_trivia_sibling(comma, Direction::Next)?;
+    let comma = ctx.token_at_offset().find(|leaf| leaf.kind() == COMMA)?;
+    let prev = non_trivia_sibling(comma.into(), Direction::Prev)?;
+    let next = non_trivia_sibling(comma.into(), Direction::Next)?;
     ctx.add_action(AssistId("flip_comma"), "flip comma", |edit| {
         edit.target(comma.range());
-        edit.replace(prev.range(), next.text());
-        edit.replace(next.range(), prev.text());
+        edit.replace(prev.range(), next.to_string());
+        edit.replace(next.range(), prev.to_string());
     });
 
     ctx.build()

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, time::Instant};
 
 use ra_db::SourceDatabase;
 use ra_batch::BatchDatabase;
@@ -8,8 +8,10 @@ use ra_syntax::AstNode;
 use crate::Result;
 
 pub fn run(verbose: bool) -> Result<()> {
+    let db_load_time = Instant::now();
     let (db, roots) = BatchDatabase::load_cargo(".")?;
-    println!("Database loaded, {} roots", roots.len());
+    println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
+    let analysis_time = Instant::now();
     let mut num_crates = 0;
     let mut visited_modules = HashSet::new();
     let mut visit_queue = Vec::new();
@@ -96,5 +98,6 @@ pub fn run(verbose: bool) -> Result<()> {
         num_exprs_partially_unknown,
         (num_exprs_partially_unknown * 100 / num_exprs)
     );
+    println!("Analysis: {:?}", analysis_time.elapsed());
     Ok(())
 }

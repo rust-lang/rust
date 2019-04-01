@@ -2,7 +2,7 @@ use ra_syntax::{
     algo::visit::{visitor, Visitor},
     AstNode,
     ast::{self, LoopBodyOwner},
-    SyntaxKind::*, SyntaxNode,
+    SyntaxKind::*, SyntaxToken,
 };
 
 use crate::completion::{CompletionContext, CompletionItem, Completions, CompletionKind, CompletionItemKind};
@@ -62,7 +62,7 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
         acc.add(keyword(ctx, "else", "else {$0}"));
         acc.add(keyword(ctx, "else if", "else if $0 {}"));
     }
-    if is_in_loop_body(ctx.leaf) {
+    if is_in_loop_body(ctx.token) {
         if ctx.can_be_stmt {
             acc.add(keyword(ctx, "continue", "continue;"));
             acc.add(keyword(ctx, "break", "break;"));
@@ -74,8 +74,8 @@ pub(super) fn complete_expr_keyword(acc: &mut Completions, ctx: &CompletionConte
     acc.add_all(complete_return(ctx, fn_def, ctx.can_be_stmt));
 }
 
-fn is_in_loop_body(leaf: &SyntaxNode) -> bool {
-    for node in leaf.ancestors() {
+fn is_in_loop_body(leaf: SyntaxToken) -> bool {
+    for node in leaf.parent().ancestors() {
         if node.kind() == FN_DEF || node.kind() == LAMBDA_EXPR {
             break;
         }

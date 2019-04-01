@@ -2,9 +2,8 @@ use test_utils::tested_by;
 use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
-    SyntaxKind::{
-        WHITESPACE, MATCH_ARM, LAMBDA_EXPR, PATH_EXPR, BREAK_EXPR, LOOP_EXPR, RETURN_EXPR, COMMENT
-    }, SyntaxNode, TextUnit,
+    SyntaxNode, TextUnit,
+    SyntaxKind::{WHITESPACE, MATCH_ARM, LAMBDA_EXPR, PATH_EXPR, BREAK_EXPR, LOOP_EXPR, RETURN_EXPR, COMMENT},
 };
 
 use crate::{AssistCtx, Assist, AssistId};
@@ -13,14 +12,14 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
     if ctx.frange.range.is_empty() {
         return None;
     }
-    let node = ctx.covering_node();
+    let node = ctx.covering_element();
     if node.kind() == COMMENT {
         tested_by!(introduce_var_in_comment_is_not_applicable);
         return None;
     }
     let expr = node.ancestors().find_map(valid_target_expr)?;
     let (anchor_stmt, wrap_in_block) = anchor_stmt(expr)?;
-    let indent = anchor_stmt.prev_sibling()?;
+    let indent = anchor_stmt.prev_sibling_or_token()?.as_token()?;
     if indent.kind() != WHITESPACE {
         return None;
     }
@@ -54,16 +53,15 @@ pub(crate) fn introduce_variable(mut ctx: AssistCtx<impl HirDatabase>) -> Option
             // We want to maintain the indent level,
             // but we do not want to duplicate possible
             // extra newlines in the indent block
-            for chunk in indent.text().chunks() {
-                if chunk.starts_with("\r\n") {
-                    buf.push_str("\r\n");
-                    buf.push_str(chunk.trim_start_matches("\r\n"));
-                } else if chunk.starts_with("\n") {
-                    buf.push_str("\n");
-                    buf.push_str(chunk.trim_start_matches("\n"));
-                } else {
-                    buf.push_str(chunk);
-                }
+            let text = indent.text();
+            if text.starts_with("\r\n") {
+                buf.push_str("\r\n");
+                buf.push_str(text.trim_start_matches("\r\n"));
+            } else if text.starts_with("\n") {
+                buf.push_str("\n");
+                buf.push_str(text.trim_start_matches("\n"));
+            } else {
+                buf.push_str(text);
             }
 
             edit.target(expr.syntax().range());

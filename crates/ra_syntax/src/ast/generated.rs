@@ -376,64 +376,6 @@ impl BreakExpr {
     }
 }
 
-// Byte
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct Byte {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for Byte {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for Byte {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            BYTE => Some(Byte::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Byte {
-    type Owned = TreeArc<Byte>;
-    fn to_owned(&self) -> TreeArc<Byte> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for Byte {}
-impl Byte {}
-
-// ByteString
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct ByteString {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for ByteString {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for ByteString {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            BYTE_STRING => Some(ByteString::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for ByteString {
-    type Owned = TreeArc<ByteString>;
-    fn to_owned(&self) -> TreeArc<ByteString> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for ByteString {}
-impl ByteString {}
-
 // CallExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -502,64 +444,6 @@ impl CastExpr {
         super::child_opt(self)
     }
 }
-
-// Char
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct Char {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for Char {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for Char {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            CHAR => Some(Char::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Char {
-    type Owned = TreeArc<Char>;
-    fn to_owned(&self) -> TreeArc<Char> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for Char {}
-impl Char {}
-
-// Comment
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct Comment {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for Comment {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for Comment {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            COMMENT => Some(Comment::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Comment {
-    type Owned = TreeArc<Comment>;
-    fn to_owned(&self) -> TreeArc<Comment> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for Comment {}
-impl Comment {}
 
 // Condition
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1115,35 +999,6 @@ impl ExternCrateItem {
     }
 }
 
-// FalseKw
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct FalseKw {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for FalseKw {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for FalseKw {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            FALSE_KW => Some(FalseKw::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for FalseKw {
-    type Owned = TreeArc<FalseKw>;
-    fn to_owned(&self) -> TreeArc<FalseKw> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for FalseKw {}
-impl FalseKw {}
-
 // FieldExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -1248,35 +1103,6 @@ impl FieldPatList {
         super::children(self)
     }
 }
-
-// FloatNumber
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct FloatNumber {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for FloatNumber {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for FloatNumber {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            FLOAT_NUMBER => Some(FloatNumber::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for FloatNumber {
-    type Owned = TreeArc<FloatNumber>;
-    fn to_owned(&self) -> TreeArc<FloatNumber> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for FloatNumber {}
-impl FloatNumber {}
 
 // FnDef
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1613,35 +1439,6 @@ impl ToOwned for IndexExpr {
 
 impl IndexExpr {}
 
-// IntNumber
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct IntNumber {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for IntNumber {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for IntNumber {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            INT_NUMBER => Some(IntNumber::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for IntNumber {
-    type Owned = TreeArc<IntNumber>;
-    fn to_owned(&self) -> TreeArc<IntNumber> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for IntNumber {}
-impl IntNumber {}
-
 // ItemList
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -1777,35 +1574,6 @@ impl LetStmt {
     }
 }
 
-// Lifetime
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct Lifetime {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for Lifetime {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for Lifetime {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            LIFETIME => Some(Lifetime::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for Lifetime {
-    type Owned = TreeArc<Lifetime>;
-    fn to_owned(&self) -> TreeArc<Lifetime> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for Lifetime {}
-impl Lifetime {}
-
 // LifetimeArg
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -1832,11 +1600,7 @@ impl ToOwned for LifetimeArg {
 }
 
 
-impl LifetimeArg {
-    pub fn lifetime(&self) -> Option<&Lifetime> {
-        super::child_opt(self)
-    }
-}
+impl LifetimeArg {}
 
 // LifetimeParam
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1865,11 +1629,7 @@ impl ToOwned for LifetimeParam {
 
 
 impl ast::AttrsOwner for LifetimeParam {}
-impl LifetimeParam {
-    pub fn lifetime(&self) -> Option<&Lifetime> {
-        super::child_opt(self)
-    }
-}
+impl LifetimeParam {}
 
 // Literal
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -1897,130 +1657,7 @@ impl ToOwned for Literal {
 }
 
 
-impl Literal {
-    pub fn literal_expr(&self) -> Option<&LiteralExpr> {
-        super::child_opt(self)
-    }
-}
-
-// LiteralExpr
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct LiteralExpr {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for LiteralExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LiteralExprKind<'a> {
-    String(&'a String),
-    ByteString(&'a ByteString),
-    RawString(&'a RawString),
-    RawByteString(&'a RawByteString),
-    Char(&'a Char),
-    Byte(&'a Byte),
-    IntNumber(&'a IntNumber),
-    FloatNumber(&'a FloatNumber),
-    TrueKw(&'a TrueKw),
-    FalseKw(&'a FalseKw),
-}
-impl<'a> From<&'a String> for &'a LiteralExpr {
-    fn from(n: &'a String) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a ByteString> for &'a LiteralExpr {
-    fn from(n: &'a ByteString) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a RawString> for &'a LiteralExpr {
-    fn from(n: &'a RawString) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a RawByteString> for &'a LiteralExpr {
-    fn from(n: &'a RawByteString) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a Char> for &'a LiteralExpr {
-    fn from(n: &'a Char) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a Byte> for &'a LiteralExpr {
-    fn from(n: &'a Byte) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a IntNumber> for &'a LiteralExpr {
-    fn from(n: &'a IntNumber) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a FloatNumber> for &'a LiteralExpr {
-    fn from(n: &'a FloatNumber) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a TrueKw> for &'a LiteralExpr {
-    fn from(n: &'a TrueKw) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-impl<'a> From<&'a FalseKw> for &'a LiteralExpr {
-    fn from(n: &'a FalseKw) -> &'a LiteralExpr {
-        LiteralExpr::cast(&n.syntax).unwrap()
-    }
-}
-
-
-impl AstNode for LiteralExpr {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            | STRING
-            | BYTE_STRING
-            | RAW_STRING
-            | RAW_BYTE_STRING
-            | CHAR
-            | BYTE
-            | INT_NUMBER
-            | FLOAT_NUMBER
-            | TRUE_KW
-            | FALSE_KW => Some(LiteralExpr::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for LiteralExpr {
-    type Owned = TreeArc<LiteralExpr>;
-    fn to_owned(&self) -> TreeArc<LiteralExpr> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-impl LiteralExpr {
-    pub fn kind(&self) -> LiteralExprKind {
-        match self.syntax.kind() {
-            STRING => LiteralExprKind::String(String::cast(&self.syntax).unwrap()),
-            BYTE_STRING => LiteralExprKind::ByteString(ByteString::cast(&self.syntax).unwrap()),
-            RAW_STRING => LiteralExprKind::RawString(RawString::cast(&self.syntax).unwrap()),
-            RAW_BYTE_STRING => LiteralExprKind::RawByteString(RawByteString::cast(&self.syntax).unwrap()),
-            CHAR => LiteralExprKind::Char(Char::cast(&self.syntax).unwrap()),
-            BYTE => LiteralExprKind::Byte(Byte::cast(&self.syntax).unwrap()),
-            INT_NUMBER => LiteralExprKind::IntNumber(IntNumber::cast(&self.syntax).unwrap()),
-            FLOAT_NUMBER => LiteralExprKind::FloatNumber(FloatNumber::cast(&self.syntax).unwrap()),
-            TRUE_KW => LiteralExprKind::TrueKw(TrueKw::cast(&self.syntax).unwrap()),
-            FALSE_KW => LiteralExprKind::FalseKw(FalseKw::cast(&self.syntax).unwrap()),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl LiteralExpr {}
+impl Literal {}
 
 // LiteralPat
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -3404,64 +3041,6 @@ impl ToOwned for RangePat {
 
 impl RangePat {}
 
-// RawByteString
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct RawByteString {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for RawByteString {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for RawByteString {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            RAW_BYTE_STRING => Some(RawByteString::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for RawByteString {
-    type Owned = TreeArc<RawByteString>;
-    fn to_owned(&self) -> TreeArc<RawByteString> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for RawByteString {}
-impl RawByteString {}
-
-// RawString
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct RawString {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for RawString {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for RawString {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            RAW_STRING => Some(RawString::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for RawString {
-    type Owned = TreeArc<RawString>;
-    fn to_owned(&self) -> TreeArc<RawString> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for RawString {}
-impl RawString {}
-
 // RefExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -3622,34 +3201,6 @@ impl ReturnExpr {
     }
 }
 
-// SelfKw
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct SelfKw {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for SelfKw {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for SelfKw {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            SELF_KW => Some(SelfKw::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for SelfKw {
-    type Owned = TreeArc<SelfKw>;
-    fn to_owned(&self) -> TreeArc<SelfKw> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl SelfKw {}
-
 // SelfParam
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -3677,11 +3228,7 @@ impl ToOwned for SelfParam {
 
 
 impl ast::TypeAscriptionOwner for SelfParam {}
-impl SelfParam {
-    pub fn self_kw(&self) -> Option<&SelfKw> {
-        super::child_opt(self)
-    }
-}
+impl SelfParam {}
 
 // SlicePat
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -3866,35 +3413,6 @@ impl Stmt {
 
 impl Stmt {}
 
-// String
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct String {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for String {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for String {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            STRING => Some(String::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for String {
-    type Owned = TreeArc<String>;
-    fn to_owned(&self) -> TreeArc<String> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for String {}
-impl String {}
-
 // StructDef
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]
@@ -4069,35 +3587,6 @@ impl TraitDef {
         super::child_opt(self)
     }
 }
-
-// TrueKw
-#[derive(Debug, PartialEq, Eq, Hash)]
-#[repr(transparent)]
-pub struct TrueKw {
-    pub(crate) syntax: SyntaxNode,
-}
-unsafe impl TransparentNewType for TrueKw {
-    type Repr = rowan::SyntaxNode<RaTypes>;
-}
-
-impl AstNode for TrueKw {
-    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
-        match syntax.kind() {
-            TRUE_KW => Some(TrueKw::from_repr(syntax.into_repr())),
-            _ => None,
-        }
-    }
-    fn syntax(&self) -> &SyntaxNode { &self.syntax }
-}
-
-impl ToOwned for TrueKw {
-    type Owned = TreeArc<TrueKw>;
-    fn to_owned(&self) -> TreeArc<TrueKw> { TreeArc::cast(self.syntax.to_owned()) }
-}
-
-
-impl ast::AstToken for TrueKw {}
-impl TrueKw {}
 
 // TryExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -4401,10 +3890,6 @@ impl ToOwned for TypeBound {
 
 impl TypeBound {
     pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
-    }
-
-    pub fn lifetime(&self) -> Option<&Lifetime> {
         super::child_opt(self)
     }
 }
@@ -4845,10 +4330,6 @@ impl ToOwned for WherePred {
 impl ast::TypeBoundsOwner for WherePred {}
 impl WherePred {
     pub fn type_ref(&self) -> Option<&TypeRef> {
-        super::child_opt(self)
-    }
-
-    pub fn lifetime(&self) -> Option<&Lifetime> {
         super::child_opt(self)
     }
 }

@@ -1,17 +1,17 @@
 //! Validation of byte literals
 
 use crate::{
-    ast::{self, AstNode, AstToken},
     string_lexing::{self, StringComponentKind},
     TextRange,
     validation::char,
     SyntaxError,
     SyntaxErrorKind::*,
+    SyntaxToken,
 };
 
-pub(super) fn validate_byte_node(node: &ast::Byte, errors: &mut Vec<SyntaxError>) {
+pub(super) fn validate_byte_node(node: SyntaxToken, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
-    let literal_range = node.syntax().range();
+    let literal_range = node.range();
     let mut components = string_lexing::parse_byte_literal(literal_text);
     let mut len = 0;
     for component in &mut components {
