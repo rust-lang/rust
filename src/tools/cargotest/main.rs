@@ -30,7 +30,7 @@ const TEST_REPOS: &'static [Test] = &[
     },
     Test {
         name: "tokei",
-        repo: "https://github.com/Aaronepower/tokei",
+        repo: "https://github.com/XAMPPRocky/tokei",
         sha: "5e11c4852fe4aa086b0e4fe5885822fbe57ba928",
         lock: None,
         packages: &[],

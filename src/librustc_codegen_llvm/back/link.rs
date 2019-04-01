@@ -18,7 +18,7 @@ use rustc::session::Session;
 use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
 use rustc_codegen_ssa::CodegenResults;
-use rustc::util::common::time;
+use rustc::util::common::{time, time_ext};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc::hir::def_id::CrateNum;
 use tempfile::{Builder as TempFileBuilder, TempDir};
@@ -1319,7 +1319,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         let name = cratepath.file_name().unwrap().to_str().unwrap();
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
-        time(sess, &format!("altering {}.rlib", name), || {
+        time_ext(sess.time_extended(), Some(sess), &format!("altering {}.rlib", name), || {
             let cfg = archive_config(sess, &dst, Some(cratepath));
             let mut archive = ArchiveBuilder::new(cfg);
             archive.update_symbols();

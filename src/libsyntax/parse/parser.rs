@@ -6722,6 +6722,22 @@ impl<'a> Parser<'a> {
             self.expect(&token::OpenDelim(token::Brace))?;
             let mut trait_items = vec![];
             while !self.eat(&token::CloseDelim(token::Brace)) {
+                if let token::DocComment(_) = self.token {
+                    if self.look_ahead(1,
+                    |tok| tok == &token::Token::CloseDelim(token::Brace)) {
+                        let mut err = self.diagnostic().struct_span_err_with_code(
+                            self.span,
+                            "found a documentation comment that doesn't document anything",
+                            DiagnosticId::Error("E0584".into()),
+                        );
+                        err.help("doc comments must come before what they document, maybe a \
+                            comment was intended with `//`?",
+                        );
+                        err.emit();
+                        self.bump();
+                        continue;
+                    }
+                }
                 let mut at_end = false;
                 match self.parse_trait_item(&mut at_end) {
                     Ok(item) => trait_items.push(item),

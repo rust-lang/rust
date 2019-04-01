@@ -1,6 +1,7 @@
 //! Error Reporting for Anonymous Region Lifetime Errors
 //! where one region is named and the other is anonymous.
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
+use crate::hir::{FunctionRetTy, TyKind};
 use crate::ty;
 use errors::{Applicability, DiagnosticBuilder};
 
@@ -11,9 +12,10 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         let (span, sub, sup) = self.get_regions();
 
         debug!(
-            "try_report_named_anon_conflict(sub={:?}, sup={:?})",
+            "try_report_named_anon_conflict(sub={:?}, sup={:?}, error={:?})",
             sub,
-            sup
+            sup,
+            self.error,
         );
 
         // Determine whether the sub and sup consist of one named region ('a)
@@ -84,6 +86,13 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             {
                 return None;
             }
+            if let FunctionRetTy::Return(ty) = &fndecl.output {
+                if let (TyKind::Def(_, _), ty::ReStatic) = (&ty.node, sub) {
+                    // This is an impl Trait return that evaluates de need of 'static.
+                    // We handle this case better in `static_impl_trait`.
+                    return None;
+                }
+            }
         }
 
         let (error_var, span_label_var) = if let Some(simple_ident) = arg.pat.simple_ident() {
@@ -103,13 +112,13 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
             error_var
         );
 
+        diag.span_label(span, format!("lifetime `{}` required", named));
         diag.span_suggestion(
-                new_ty_span,
-                &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-                new_ty.to_string(),
-                Applicability::Unspecified,
-            )
-            .span_label(span, format!("lifetime `{}` required", named));
+            new_ty_span,
+            &format!("add explicit lifetime `{}` to {}", named, span_label_var),
+            new_ty.to_string(),
+            Applicability::Unspecified,
+        );
 
         Some(diag)
     }

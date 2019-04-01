@@ -125,7 +125,7 @@ impl ModuleConfig {
         self.verify_llvm_ir = sess.verify_llvm_ir();
         self.no_prepopulate_passes = sess.opts.cg.no_prepopulate_passes;
         self.no_builtins = no_builtins || sess.target.target.options.no_builtins;
-        self.time_passes = sess.time_passes();
+        self.time_passes = sess.time_extended();
         self.inline_threshold = sess.opts.cg.inline_threshold;
         self.obj_is_bitcode = sess.target.target.options.obj_is_bitcode ||
                               sess.opts.cg.linker_plugin_lto.enabled();
@@ -1091,7 +1091,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
         opts: Arc::new(sess.opts.clone()),
-        time_passes: sess.time_passes(),
+        time_passes: sess.time_extended(),
         profiler: sess.self_profiling.clone(),
         exported_symbols,
         plugin_passes: sess.plugin_llvm_passes.borrow().clone(),

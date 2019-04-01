@@ -12,7 +12,7 @@ use crate::session::{CrateDisambiguator, Session};
 use crate::ty;
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
-use crate::util::common::time;
+use crate::util::common::{time, time_ext};
 
 use errors::Diagnostic;
 use rustc_data_structures::fx::FxHashMap;
@@ -1080,23 +1080,22 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let desc = &format!("encode_query_results for {}",
         unsafe { ::std::intrinsics::type_name::<Q>() });
 
-    time(tcx.sess, desc, || {
+    time_ext(tcx.sess.time_extended(), Some(tcx.sess), desc, || {
+        let map = Q::query_cache(tcx).borrow();
+        assert!(map.active.is_empty());
+        for (key, entry) in map.results.iter() {
+            if Q::cache_on_disk(tcx, key.clone()) {
+                let dep_node = SerializedDepNodeIndex::new(entry.index.index());
 
-    let map = Q::query_cache(tcx).borrow();
-    assert!(map.active.is_empty());
-    for (key, entry) in map.results.iter() {
-        if Q::cache_on_disk(tcx, key.clone()) {
-            let dep_node = SerializedDepNodeIndex::new(entry.index.index());
+                // Record position of the cache entry
+                query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
-            // Record position of the cache entry
-            query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
-
-            // Encode the type check tables with the SerializedDepNodeIndex
-            // as tag.
-            encoder.encode_tagged(dep_node, &entry.value)?;
+                // Encode the type check tables with the SerializedDepNodeIndex
+                // as tag.
+                encoder.encode_tagged(dep_node, &entry.value)?;
+            }
         }
-    }
 
-    Ok(())
+        Ok(())
     })
 }
