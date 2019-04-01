@@ -95,7 +95,7 @@ impl<T: Serialize, U> S<T, U> {
         s.len() + t.capacity()
     }
 
-    fn bar(_t: T // Ok, since `&T: Serialize` too
+    fn bar(_t: T, // Ok, since `&T: Serialize` too
     ) {
     }
 
