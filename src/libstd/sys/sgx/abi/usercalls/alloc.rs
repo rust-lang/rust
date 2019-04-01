@@ -190,11 +190,15 @@ impl<T: ?Sized> User<T> where T: UserSafe {
         unsafe {
             // Mustn't call alloc with size 0.
             let ptr = if size > 0 {
-                super::alloc(size, T::align_of()).expect("User memory allocation failed") as _
+                rtunwrap!(Ok, super::alloc(size, T::align_of())) as _
             } else {
                 T::align_of() as _ // dangling pointer ok for size 0
             };
-            User(NonNull::new_userref(T::from_raw_sized(ptr, size)))
+            if let Ok(v) = crate::panic::catch_unwind(|| T::from_raw_sized(ptr, size)) {
+                User(NonNull::new_userref(v))
+            } else {
+                rtabort!("Got invalid pointer from alloc() usercall")
+            }
         }
     }
 

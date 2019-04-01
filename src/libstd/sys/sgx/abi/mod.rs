@@ -69,9 +69,9 @@ extern "C" fn entry(p1: u64, p2: u64, p3: u64, secondary: bool, p4: u64, p5: u64
         }
 
         // check entry is being called according to ABI
-        assert_eq!(p3, 0);
-        assert_eq!(p4, 0);
-        assert_eq!(p5, 0);
+        rtassert!(p3 == 0);
+        rtassert!(p4 == 0);
+        rtassert!(p5 == 0);
 
         unsafe {
             // The actual types of these arguments are `p1: *const Arg, p2:
