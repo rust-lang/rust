@@ -189,7 +189,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             // (e.g. MyType<fn() -> u8, fn() -> u8>
             //
             // We only care about avoiding recursing
-            // directly back to the type we're currentlu
+            // directly back to the type we're currently
             // processing
             visited.remove(t);
         },
