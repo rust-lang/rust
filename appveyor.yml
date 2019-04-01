@@ -128,21 +128,23 @@ for:
       DEPLOY_ALT: 1
 
 # Try builder
-# -
-#   branches:
-#     only:
-#       - try
-#   environment:
-#     matrix:
-#     - CI_JOB_NAME: dist-x86_64-msvc-parallel
-#       RUST_CONFIGURE_ARGS: >
-#         --build=x86_64-pc-windows-msvc
-#         --enable-full-tools
-#         --enable-profiler
-#       SCRIPT: python x.py dist
-#       DIST_REQUIRE_ALL_TOOLS: 1
-#       DIST_PARALLEL_COMPILER: 1
-#       DEPLOY: 1
+-
+  branches:
+    only:
+      - try
+  environment:
+    matrix:
+    - CI_JOB_NAME: dist-x86_64-msvc-parallel
+      RUST_CONFIGURE_ARGS: >
+        --build=x86_64-pc-windows-msvc
+        --enable-full-tools
+        --enable-profiler
+      SCRIPT: python x.py dist
+      DIST_REQUIRE_ALL_TOOLS: 1
+      DIST_PARALLEL_COMPILER: 1
+      DEPLOY: 1
+  only_commits:
+    message: /parallel-compiler/
 
 # Skip builds on all other branches
 -
