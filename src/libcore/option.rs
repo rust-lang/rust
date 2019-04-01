@@ -136,7 +136,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
-use {hint, mem, ops::{self, Deref}};
+use {hint, mem, ops::{self, Deref, DerefMut}};
 use pin::Pin;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
@@ -997,6 +997,17 @@ impl<T: Deref> Option<T> {
     /// inner type's `Deref::Target` type.
     pub fn as_deref(&self) -> Option<&T::Target> {
         self.as_ref().map(|t| t.deref())
+    }
+}
+
+#[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
+impl<T: DerefMut> Option<T> {
+    /// Converts from `Option<T>` (or `&mut Option<T>`) to `Option<&mut T::Target>`.
+    ///
+    /// Leaves the original `Option` in-place, creating a new one containing a mutable reference to
+    /// the inner type's `Deref::Target` type.
+    pub fn as_deref_mut(&mut self) -> Option<&mut T::Target> {
+        self.as_mut().map(|t| t.deref_mut())
     }
 }
 
