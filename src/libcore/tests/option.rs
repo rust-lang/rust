@@ -310,20 +310,20 @@ fn test_try() {
 }
 
 #[test]
-fn test_option_deref() {
+fn test_option_as_deref() {
     // Some: &Option<T: Deref>::Some(T) -> Option<&T::Deref::Target>::Some(&*T)
     let ref_option = &Some(&42);
-    assert_eq!(ref_option.deref(), Some(&42));
+    assert_eq!(ref_option.as_deref(), Some(&42));
 
     let ref_option = &Some(String::from("a result"));
-    assert_eq!(ref_option.deref(), Some("a result"));
+    assert_eq!(ref_option.as_deref(), Some("a result"));
 
     let ref_option = &Some(vec![1, 2, 3, 4, 5]);
-    assert_eq!(ref_option.deref(), Some(&[1, 2, 3, 4, 5][..]));
+    assert_eq!(ref_option.as_deref(), Some(&[1, 2, 3, 4, 5][..]));
 
     // None: &Option<T: Deref>>::None -> None
     let ref_option: &Option<&i32> = &None;
-    assert_eq!(ref_option.deref(), None);
+    assert_eq!(ref_option.as_deref(), None);
 }
 
 #[test]
