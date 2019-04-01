@@ -3,10 +3,10 @@ use ops::{Deref, Range};
 
 /// Borrowed `Haystack`.
 ///
-/// Every [`Haystack`] type can be borrowed as references to `Hay` types. This
-/// allows multiple similar types to share the same implementation (e.g. the
-/// haystacks `&[T]` and `&mut [T]` both have the same corresponding hay type
-/// `[T]`).
+/// Every [`Haystack`](trait.Haystack.html) type can be borrowed as references
+/// to `Hay` types. This allows multiple similar types to share the same
+/// implementation (e.g. the haystacks `&[T]` and `&mut [T]` both have the same
+/// corresponding hay type `[T]`).
 ///
 /// In the other words, a `Haystack` is a generalized reference to `Hay`.
 /// `Hay`s are typically implemented on unsized slice types like `str` and `[T]`.
@@ -141,9 +141,9 @@ pub unsafe trait Hay {
 ///
 /// A `Haystack` is implemented for reference and collection types such as
 /// `&str`, `&mut [T]` and `Vec<T>`. Every haystack can be borrowed as an
-/// underlying representation called a [`Hay`]. Multiple haystacks may share the
-/// same hay type, and thus share the same implementation of string search
-/// algorithms.
+/// underlying representation called a [`Hay`](trait.Hay.html).
+/// Multiple haystacks may share the same hay type, and thus share the same
+/// implementation of string search algorithms.
 ///
 /// In the other words, a `Haystack` is a generalized reference to `Hay`.
 ///
@@ -212,8 +212,9 @@ pub unsafe trait Haystack: Deref + Sized where Self::Target: Hay {
     /// (original.start + parent.start)..(original.start + parent.end)
     /// ```
     ///
-    /// If this haystack is a [`SharedHaystack`], this method should never be
-    /// called, and calling it would cause an unreachable panic.
+    /// If this haystack is a [`SharedHaystack`](trait.SharedHaystack.html),
+    /// this method should never be called, and calling it would cause an
+    /// unreachable panic.
     ///
     /// # Safety
     ///
@@ -257,7 +258,8 @@ pub unsafe trait Haystack: Deref + Sized where Self::Target: Hay {
     ) -> Range<<Self::Target as Hay>::Index>;
 }
 
-/// A [`Haystack`] which can be shared and cheaply cloned (e.g. `&H`, `Rc<H>`).
+/// A [`Haystack`](trait.Haystack.html) which can be shared and cheaply cloned
+/// (e.g. `&H`, `Rc<H>`).
 ///
 /// If a haystack implements this marker trait, during internal operations the
 /// original haystack will be retained in full and cloned, rather than being

@@ -315,10 +315,10 @@ where
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the function [`matches`].
+        /// Created with the function [`matches`](fn.matches.html).
         struct Matches;
     reverse:
-        /// Created with the function [`rmatches`].
+        /// Created with the function [`rmatches`](fn.rmatches.html).
         struct RMatches;
     stability:
     internal:
@@ -412,10 +412,10 @@ where
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the function [`match_indices`].
+        /// Created with the function [`match_indices`](fn.match_indices.html).
         struct MatchIndices;
     reverse:
-        /// Created with the function [`rmatch_indices`].
+        /// Created with the function [`rmatch_indices`](fn.rmatch_indices.html).
         struct RMatchIndices;
     stability:
     internal:
@@ -530,10 +530,10 @@ where
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the function [`match_ranges`].
+        /// Created with the function [`match_ranges`](fn.match_ranges.html).
         struct MatchRanges;
     reverse:
-        /// Created with the function [`rmatch_ranges`].
+        /// Created with the function [`rmatch_ranges`](fn.rmatch_ranges.html).
         struct RMatchRanges;
     stability:
     internal:
@@ -685,10 +685,10 @@ where
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the function [`split`].
+        /// Created with the function [`split`](fn.split.html).
         struct Split;
     reverse:
-        /// Created with the function [`rsplit`].
+        /// Created with the function [`rsplit`](fn.rsplit.html).
         struct RSplit;
     stability:
     internal:
@@ -698,10 +698,10 @@ generate_pattern_iterators! {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the function [`split_terminator`].
+        /// Created with the function [`split_terminator`](fn.split_terminator.html).
         struct SplitTerminator;
     reverse:
-        /// Created with the function [`rsplit_terminator`].
+        /// Created with the function [`rsplit_terminator`](fn.rsplit_terminator.html).
         struct RSplitTerminator;
     stability:
     internal:
@@ -743,7 +743,7 @@ where
 
 /// An iterator over slices of the haystack, separated by parts matched by the needle.
 ///
-/// Equivalent to [`split`], except that the trailing slice is skipped if empty.
+/// Equivalent to [`split`](fn.split.html), except that the trailing slice is skipped if empty.
 ///
 /// This method can be used for haystack data that is *terminated*,
 /// rather than *separated* by a needle.
@@ -764,7 +764,7 @@ where
 /// An iterator over slices of the haystack, separated by parts matched by the needle
 /// and yielded in reverse order.
 ///
-/// Equivalent to [`rsplit`], except that the trailing slice is skipped if empty.
+/// Equivalent to [`rsplit`](fn.rsplit.html), except that the trailing slice is skipped if empty.
 ///
 /// This method can be used for haystack data that is *terminated*,
 /// rather than *separated* by a needle.
@@ -868,10 +868,10 @@ where
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the function [`splitn`].
+        /// Created with the function [`splitn`](fn.splitn.html).
         struct SplitN;
     reverse:
-        /// Created with the function [`rsplitn`].
+        /// Created with the function [`rsplitn`](fn.rsplitn.html).
         struct RSplitN;
     stability:
     internal:

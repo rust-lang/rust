@@ -2,7 +2,8 @@ use super::haystack::{Haystack, Hay, Span};
 
 use ops::Range;
 
-/// A searcher, for searching a [`Needle`] from a [`Hay`].
+/// A searcher, for searching a [`Needle`](trait.Needle.html) from a
+/// [`Hay`](trait.Hay.html).
 ///
 /// This trait provides methods for searching for non-overlapping matches of a
 /// needle starting from the front (left) of a hay.
@@ -90,23 +91,22 @@ pub unsafe trait Searcher<A: Hay + ?Sized> {
     ///
     /// This method is used to support the following standard algorithms:
     ///
-    /// * [`matches`](std::needle::ext::matches)
-    /// * [`contains`](std::needle::ext::contains)
-    /// * [`match_indices`](std::needle::ext::match_indices)
-    /// * [`find`](std::needle::ext::find)
-    /// * [`match_ranges`](std::needle::ext::match_ranges)
-    /// * [`find_range`](std::needle::ext::find_range)
-    /// * [`split`](std::needle::ext::split)
-    /// * [`split_terminator`](std::needle::ext::split_terminator)
-    /// * [`splitn`](std::needle::ext::splitn)
-    /// * [`replace_with`](std::needle::ext::replace_with)
-    /// * [`replacen_with`](std::needle::ext::replacen_with)
+    /// * [`matches`](ext/fn.matches.html)
+    /// * [`contains`](ext/fn.contains.html)
+    /// * [`match_indices`](ext/fn.match_indices.html)
+    /// * [`find`](ext/fn.find.html)
+    /// * [`match_ranges`](ext/fn.match_ranges.html)
+    /// * [`find_range`](ext/fn.find_range.html)
+    /// * [`split`](ext/fn.split.html)
+    /// * [`split_terminator`](ext/fn.split_terminator.html)
+    /// * [`splitn`](ext/fn.splitn.html)
+    /// * [`replace_with`](ext/fn.replace_with.html)
+    /// * [`replacen_with`](ext/fn.replacen_with.html)
     ///
     /// The hay and the restricted range for searching can be recovered by
-    /// calling `span`[`.into_parts()`](Span::into_parts). The range returned
-    /// by this method
-    /// should be relative to the hay and must be contained within the
-    /// restricted range from the span.
+    /// calling `span`[`.into_parts()`](struct.Span.html#method.into_parts).
+    /// The range returned by this method should be relative to the hay and
+    /// must be contained within the restricted range from the span.
     ///
     /// If the needle is not found, this method should return `None`.
     ///
@@ -146,13 +146,13 @@ pub unsafe trait Searcher<A: Hay + ?Sized> {
     fn search(&mut self, span: Span<&A>) -> Option<Range<A::Index>>;
 }
 
-/// A consumer, for searching a [`Needle`] from a [`Hay`] anchored at the
-/// beginnning.
+/// A consumer, for searching a [`Needle`](trait.Needle.html) from a
+/// [`Hay`](trait.Hay.html) anchored at the beginnning.
 ///
 /// This trait provides methods for matching a needle anchored at the beginning
 /// of a hay.
 ///
-/// See documentation of [`Searcher`] for an example.
+/// See documentation of [`Searcher`](trait.Searcher.html) for an example.
 ///
 /// # Safety
 ///
@@ -163,13 +163,13 @@ pub unsafe trait Consumer<A: Hay + ?Sized> {
     /// Checks if the needle can be found at the beginning of the span.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`starts_with()`](std::needle::ext::starts_with) as well as providing the default
-    /// implementation for [`.trim_start()`](Consumer::trim_start).
+    /// [`starts_with()`](ext/fn.starts_with.html) as well as providing
+    /// the default implementation for [`.trim_start()`](#method.trim_start).
     ///
     /// The hay and the restricted range for searching can be recovered by
-    /// calling `span`[`.into_parts()`](Span::into_parts). If a needle can be
-    /// found starting at `range.start`, this method should return the end index
-    /// of the needle relative to the hay.
+    /// calling `span`[`.into_parts()`](struct.Span.html#method.into_parts).
+    /// If a needle can be found starting at `range.start`, this method should
+    /// return the end index of the needle relative to the hay.
     ///
     /// If the needle cannot be found at the beginning of the span, this method
     /// should return `None`.
@@ -203,12 +203,12 @@ pub unsafe trait Consumer<A: Hay + ?Sized> {
     /// Repeatedly removes prefixes of the hay which matches the needle.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`trim_start()`](std::needle::ext::trim_start).
+    /// [`trim_start()`](ext/fn.trim_start.html).
     ///
     /// Returns the start index of the slice after all prefixes are removed.
     ///
     /// A fast generic implementation in terms of
-    /// [`.consume()`](Consumer::consume) is provided by default. Nevertheless,
+    /// [`.consume()`](#method.consume) is provided by default. Nevertheless,
     /// many needles allow a higher-performance specialization.
     ///
     /// # Examples
@@ -254,19 +254,19 @@ pub unsafe trait ReverseSearcher<A: Hay + ?Sized>: Searcher<A> {
     ///
     /// This method is used to support the following standard algorithms:
     ///
-    /// * [`rmatches`](std::needle::ext::rmatches)
-    /// * [`rmatch_indices`](std::needle::ext::rmatch_indices)
-    /// * [`rfind`](std::needle::ext::find)
-    /// * [`rmatch_ranges`](std::needle::ext::rmatch_ranges)
-    /// * [`rfind_range`](std::needle::ext::rfind_range)
-    /// * [`rsplit`](std::needle::ext::rsplit)
-    /// * [`rsplit_terminator`](std::needle::ext::rsplit_terminator)
-    /// * [`rsplitn`](std::needle::ext::rsplitn)
+    /// * [`rmatches`](ext/fn.rmatches.html)
+    /// * [`rmatch_indices`](ext/fn.rmatch_indices.html)
+    /// * [`rfind`](ext/fn.find.html)
+    /// * [`rmatch_ranges`](ext/fn.rmatch_ranges.html)
+    /// * [`rfind_range`](ext/fn.rfind_range.html)
+    /// * [`rsplit`](ext/fn.rsplit.html)
+    /// * [`rsplit_terminator`](ext/fn.rsplit_terminator.html)
+    /// * [`rsplitn`](ext/fn.rsplitn.html)
     ///
     /// The hay and the restricted range for searching can be recovered by
-    /// calling `span`[`.into_parts()`](Span::into_parts). The returned range
-    /// should be relative to the hay and must be contained within the
-    /// restricted range from the span.
+    /// calling `span`[`.into_parts()`](struct.Span.html#method.into_parts).
+    /// The returned range should be relative to the hay and must be contained
+    /// within the restricted range from the span.
     ///
     /// If the needle is not found, this method should return `None`.
     ///
@@ -314,13 +314,13 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
     /// Checks if the needle can be found at the end of the span.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`ends_with()`](std::needle::ext::ends_with) as well as providing the default
-    /// implementation for [`.trim_end()`](ReverseConsumer::trim_end).
+    /// [`ends_with()`](ext/fn.ends_with.html) as well as providing the default
+    /// implementation for [`.trim_end()`](#method.trim_end).
     ///
     /// The hay and the restricted range for searching can be recovered by
-    /// calling `span`[`.into_parts()`](Span::into_parts). If a needle can be
-    /// found ending at `range.end`, this method should return the start index
-    /// of the needle relative to the hay.
+    /// calling `span`[`.into_parts()`](struct.Span.html#method.into_parts).
+    /// If a needle can be found ending at `range.end`, this method should
+    /// return the start index of the needle relative to the hay.
     ///
     /// If the needle cannot be found at the end of the span, this method
     /// should return `None`.
@@ -354,10 +354,10 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
     /// Repeatedly removes suffixes of the hay which matches the needle.
     ///
     /// This method is used to implement the standard algorithm
-    /// [`trim_end()`](std::needle::ext::trim_end).
+    /// [`trim_end()`](ext/fn.trim_end.html).
     ///
     /// A fast generic implementation in terms of
-    /// [`.rconsume()`](ReverseConsumer::rconsume) is provided by default.
+    /// [`.rconsume()`](#method.rconsume) is provided by default.
     /// Nevertheless, many needles allow a higher-performance specialization.
     ///
     /// # Examples
@@ -391,20 +391,20 @@ pub unsafe trait ReverseConsumer<A: Hay + ?Sized>: Consumer<A> {
 /// A searcher which can be searched from both end with consistent results.
 ///
 /// Implementing this marker trait enables the following standard algorithms to
-/// return [`DoubleEndedIterator`](std::iter::DoubleEndedIterator)s:
+/// return [`DoubleEndedIterator`](../iter/trait.DoubleEndedIterator.html)s:
 ///
-/// * [`matches`](std::needle::ext::matches) /
-///     [`rmatches`](std::needle::ext::rmatches)
-/// * [`match_indices`](std::needle::ext::match_indices) /
-///     [`rmatch_indices`](std::needle::ext::rmatch_indices)
-/// * [`match_ranges`](std::needle::ext::match_ranges) /
-///     [`rmatch_ranges`](std::needle::ext::rmatch_ranges)
-/// * [`split`](std::needle::ext::split) /
-///     [`rsplit`](std::needle::ext::rsplit)
-/// * [`split_terminator`](std::needle::ext::split_terminator) /
-///     [`rsplit_terminator`](std::needle::ext::rsplit_terminator)
-/// * [`splitn`](std::needle::ext::splitn) /
-///     [`rsplitn`](std::needle::ext::rsplitn)
+/// * [`matches`](ext/fn.matches.html) /
+///     [`rmatches`](ext/fn.rmatches.html)
+/// * [`match_indices`](ext/fn.match_indices.html) /
+///     [`rmatch_indices`](ext/fn.rmatch_indices.html)`
+/// * [`match_ranges`](ext/fn.match_ranges.html) /
+///     [`rmatch_ranges`](ext/fn.rmatch_ranges.html)
+/// * [`split`](ext/fn.split.html) /
+///     [`rsplit`](ext/fn.rsplit.html)
+/// * [`split_terminator`](ext/fn.split_terminator.html) /
+///     [`rsplit_terminator`](ext/fn.rsplit_terminator.html)
+/// * [`splitn`](ext/fn.splitn.html) /
+///     [`rsplitn`](ext/fn.rsplitn.html)
 ///
 /// # Examples
 ///
@@ -442,10 +442,10 @@ pub unsafe trait DoubleEndedSearcher<A: Hay + ?Sized>: ReverseSearcher<A> {}
 ///
 /// It is used to support the following standard algorithm:
 ///
-/// * [`trim`](std::needle::ext::trim)
+/// * [`trim`](ext/fn.trim.html)
 ///
 /// The `trim` function is implemented by calling
-/// [`trim_start`](std::needle::ext::trim_start) and [`trim_end`](std::needle::ext::trim_end)
+/// [`trim_start`](ext/fn.trim_start.html) and [`trim_end`](ext/fn.trim_end.html)
 /// together. This trait encodes the fact that we can call these two functions in any order.
 ///
 /// # Examples
@@ -477,11 +477,11 @@ pub unsafe trait DoubleEndedConsumer<A: Hay + ?Sized>: ReverseConsumer<A> {}
 
 /// A needle, a type which can be converted into a searcher.
 ///
-/// When using search algorithms like [`split()`](std::needle::ext::split), users will
+/// When using search algorithms like [`split()`](ext/fn.split.html), users will
 /// search with a `Needle` e.g. a `&str`. A needle is usually stateless,
 /// however for efficient searching, we often need some preprocessing and
 /// maintain a mutable state. The preprocessed structure is called the
-/// [`Searcher`] of this needle.
+/// [`Searcher`](trait.Searcher.html) of this needle.
 ///
 /// The relationship between `Searcher` and `Needle` is similar to `Iterator`
 /// and `IntoIterator`.

@@ -916,8 +916,8 @@ impl OsStr {
     /// An iterator over slices of this `OsStr`, separated by parts matched by
     /// the needle.
     ///
-    /// Equivalent to [`split`], except that the trailing slice is skipped if
-    /// empty.
+    /// Equivalent to [`split`](#method.split), except that the trailing slice
+    /// is skipped if empty.
     #[unstable(feature = "os_str_needle_methods", issue = "56345")]
     #[inline]
     pub fn split_terminator<'a, P>(&'a self, needle: P)
@@ -933,8 +933,8 @@ impl OsStr {
     /// An iterator over slices of this `OsStr`, separated by parts matched by
     /// the needle and yielded in reverse order.
     ///
-    /// Equivalent to [`rsplit`], except that the trailing slice is skipped if
-    /// empty.
+    /// Equivalent to [`rsplit`](#method.rsplit), except that the trailing slice
+    /// is skipped if empty.
     #[unstable(feature = "os_str_needle_methods", issue = "56345")]
     #[inline]
     pub fn rsplit_terminator<'a, P>(&'a self, needle: P)

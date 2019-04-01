@@ -2888,7 +2888,7 @@ impl str {
     /// Equivalent to [`rsplit`], except that the trailing substring is
     /// skipped if empty.
     ///
-    /// [`split`]: #method.split
+    /// [`rsplit`]: #method.rsplit
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.

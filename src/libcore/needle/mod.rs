@@ -4,6 +4,9 @@
 //!
 //! This module provides traits to facilitate searching [`Needle`] in a [`Haystack`].
 //!
+//! [`Needle`]: trait.Needle.html
+//! [`Haystack`]: trait.Haystack.html
+//!
 //! Haystacks
 //! =========
 //!
