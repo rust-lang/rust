@@ -545,10 +545,11 @@ macro_rules! rem_impl_float {
         ///
         /// # Examples
         /// ```
-        /// let x: f32 = 4.0;
-        /// let y: f32 = 2.5;
+        /// let x: f32 = 50.50;
+        /// let y: f32 = 8.125;
         /// let remainder = x - (x / y).trunc() * y;
         ///
+        /// // The answer to both operations is 1.75
         /// assert_eq!(x % y, remainder);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
