@@ -67,7 +67,7 @@ impl LintLevelSets {
                 Err(_) => continue, // errors handled in check_lint_name_cmdline above
             };
             for id in ids {
-                let src = LintSource::CommandLine(lint_flag_val);
+                let src = LintSource::CommandLine(lint_flag_val, None);
                 specs.insert(id, (level, src));
             }
         }
@@ -90,18 +90,28 @@ impl LintLevelSets {
         // lint.
         let mut level = level.unwrap_or_else(|| lint.default_level(sess));
 
+        // Ensure we don't go below the minimum level of the lint.
+        // Note that we allow `--cap-lints` to cap `WARNINGS`,
+        // but we will never allow `--cap-lints` to cap the lint itself.
+        let warn_level = cmp::max(level, lint.min_level);
+
         // If we're about to issue a warning, check at the last minute for any
         // directives against the warnings "lint". If, for example, there's an
         // `allow(warnings)` in scope then we want to respect that instead.
-        if level == Level::Warn {
+        if warn_level == Level::Warn {
             let (warnings_level, warnings_src) =
                 self.get_lint_id_level(LintId::of(lint::builtin::WARNINGS),
                                        idx,
                                        aux);
             if let Some(configured_warning_level) = warnings_level {
                 if configured_warning_level != Level::Warn {
+                    let orig_level = Some(level);
                     level = configured_warning_level;
-                    src = warnings_src;
+                    src = match warnings_src {
+                        LintSource::CommandLine(s, _) => LintSource::CommandLine(s, orig_level),
+                        LintSource::Node(n, _, s, r) => LintSource::Node(n, orig_level, s, r),
+                        other => other,
+                    };
                 }
             }
         }
@@ -290,7 +300,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 let name = meta_item.path.segments.last().expect("empty lint name").ident.name;
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        let src = LintSource::Node(name, li.span(), reason);
+                        let src = LintSource::Node(name, None, li.span(), reason);
                         for id in ids {
                             specs.insert(*id, (level, src));
                         }
@@ -301,7 +311,7 @@ impl<'a> LintLevelsBuilder<'a> {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
                                 let src = LintSource::Node(
-                                    Symbol::intern(complete_name), li.span(), reason
+                                    Symbol::intern(complete_name), None, li.span(), reason
                                 );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
@@ -334,7 +344,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                 ).emit();
 
                                 let src = LintSource::Node(
-                                    Symbol::intern(&new_lint_name), li.span(), reason
+                                    Symbol::intern(&new_lint_name), None, li.span(), reason
                                 );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
@@ -412,11 +422,11 @@ impl<'a> LintLevelsBuilder<'a> {
             };
             let forbidden_lint_name = match forbid_src {
                 LintSource::Default => id.to_string(),
-                LintSource::Node(name, _, _) => name.to_string(),
-                LintSource::CommandLine(name) => name.to_string(),
+                LintSource::Node(name, _, _, _) => name.to_string(),
+                LintSource::CommandLine(name, _) => name.to_string(),
             };
             let (lint_attr_name, lint_attr_span) = match *src {
-                LintSource::Node(name, span, _) => (name, span),
+                LintSource::Node(name, _, span, _) => (name, span),
                 _ => continue,
             };
             let mut diag_builder = struct_span_err!(self.sess,
@@ -429,14 +439,14 @@ impl<'a> LintLevelsBuilder<'a> {
             diag_builder.span_label(lint_attr_span, "overruled by previous forbid");
             match forbid_src {
                 LintSource::Default => {},
-                LintSource::Node(_, forbid_source_span, reason) => {
+                LintSource::Node(_, _, forbid_source_span, reason) => {
                     diag_builder.span_label(forbid_source_span,
                                             "`forbid` level set here");
                     if let Some(rationale) = reason {
                         diag_builder.note(&rationale.as_str());
                     }
                 },
-                LintSource::CommandLine(_) => {
+                LintSource::CommandLine(_, _) => {
                     diag_builder.note("`forbid` lint level was set on command line");
                 }
             }

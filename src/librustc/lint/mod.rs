@@ -33,7 +33,7 @@ use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
 use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
-use std::{hash, ptr};
+use std::{hash, ptr, cmp};
 use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnFormat};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
@@ -62,6 +62,11 @@ pub struct Lint {
 
     /// Default level for the lint.
     pub default_level: Level,
+
+    /// The minimum level this lint can be loosened to.
+    /// For example, suppose we have `#[allow(my_lint)]` and `min_level == Warn`.
+    /// In that case, a warning will still be emitted.
+    pub min_level: Level,
 
     /// Description of the lint or the issue it detects.
     ///
@@ -112,6 +117,7 @@ macro_rules! declare_lint {
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Allow,
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
@@ -123,11 +129,41 @@ macro_rules! declare_lint {
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Allow,
             desc: $desc,
             edition_lint_opts: Some(($lint_edition, $crate::lint::Level::$edition_level)),
             report_in_external_macro: false,
         };
     );
+}
+
+/// Declares a static item of type `&'static Lint` that is unsuppressable.
+///
+/// This means that the lint will have `Warn` as the minimum lint level.
+/// Therefore, it cannot be `#[allow(..)]`ed.
+///
+/// This lint should be used for C-future-compatibility lints on an opt-in
+/// case-by-case basis.
+///
+/// Note that the default is to use `declare_lint!`. It is recommended that
+/// a lint spend at least one release cycle using `declare_lint!` before
+/// moving to `declare_unsuppressable_lint!`.
+///
+/// Before moving the C-future-compatibility lint into a hard error,
+/// it is also recommended that `declare_unsuppressable_lint!` be used
+/// at least one release cycle.
+#[macro_export]
+macro_rules! declare_unsuppressable_lint {
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => {
+        $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
+            name: stringify!($NAME),
+            default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Warn,
+            desc: $desc,
+            edition_lint_opts: None,
+            report_in_external_macro: false,
+        };
+    };
 }
 
 #[macro_export]
@@ -151,6 +187,7 @@ macro_rules! declare_tool_lint {
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
             default_level: $crate::lint::$Level,
+            min_level: $crate::lint::Allow,
             desc: $desc,
             edition_lint_opts: None,
             report_in_external_macro: $external,
@@ -570,6 +607,15 @@ impl Level {
             _ => None,
         }
     }
+
+    fn level_to_flag(self) -> &'static str {
+        match self {
+            Level::Warn => "-W",
+            Level::Deny => "-D",
+            Level::Forbid => "-F",
+            Level::Allow => "-A",
+        }
+    }
 }
 
 /// How a lint level was set.
@@ -580,16 +626,22 @@ pub enum LintSource {
     Default,
 
     /// Lint level was set by an attribute.
-    Node(ast::Name, Span, Option<Symbol> /* RFC 2383 reason */),
+    ///
+    /// `Some(level)`, represents the original lint level which was altered by
+    /// by `#[<level>(warnings)]`.
+    Node(ast::Name, Option<Level>, Span, Option<Symbol> /* RFC 2383 reason */),
 
     /// Lint level was set by a command-line flag.
-    CommandLine(Symbol),
+    ///
+    /// `Some(level)`, represents the original lint level which was altered by
+    /// by `#[<level>(warnings)]`.
+    CommandLine(Symbol, Option<Level>),
 }
 
 impl_stable_hash_for!(enum self::LintSource {
     Default,
-    Node(name, span, reason),
-    CommandLine(text)
+    Node(name, original_level, span, reason),
+    CommandLine(text, original_level)
 });
 
 pub type LevelSource = (Level, LintSource);
@@ -636,14 +688,25 @@ impl LintBuffer {
     }
 }
 
+fn hyphenate(s: &str) -> String {
+    s.replace("_", "-")
+}
+
 pub fn struct_lint_level<'a>(sess: &'a Session,
                              lint: &'static Lint,
-                             level: Level,
+                             orig_level: Level,
                              src: LintSource,
                              span: Option<MultiSpan>,
                              msg: &str)
     -> DiagnosticBuilder<'a>
 {
+    // Pick the highest level of the given one and the minimum.
+    // The effect of this is that if e.g. `min_level == Warn` and
+    // you have `#[allow({lint.name})]` then a warning will still
+    // be emitted.
+    let min_level = lint.min_level;
+    let level = cmp::max(orig_level, min_level);
+
     let mut err = match (level, span) {
         (Level::Allow, _) => return sess.diagnostic().struct_dummy(),
         (Level::Warn, Some(span)) => sess.struct_span_warn(span, msg),
@@ -655,50 +718,54 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
     };
 
     let name = lint.name_lower();
-    match src {
+    let diag_msg_id = DiagnosticMessageId::from(lint);
+
+    let pre_warn_level = match src {
         LintSource::Default => {
-            sess.diag_note_once(
-                &mut err,
-                DiagnosticMessageId::from(lint),
-                &format!("#[{}({})] on by default", level.as_str(), name));
+            let msg = &format!("#[{}({})] on by default", orig_level.as_str(), name);
+            sess.diag_note_once(&mut err, diag_msg_id, msg);
+            None
         }
-        LintSource::CommandLine(lint_flag_val) => {
-            let flag = match level {
-                Level::Warn => "-W",
-                Level::Deny => "-D",
-                Level::Forbid => "-F",
-                Level::Allow => panic!(),
-            };
-            let hyphen_case_lint_name = name.replace("_", "-");
-            if lint_flag_val.as_str() == name {
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    &format!("requested on the command line with `{} {}`",
-                             flag, hyphen_case_lint_name));
+        LintSource::CommandLine(lint_flag_val, pre_warn_level) => {
+            let flag = orig_level.level_to_flag();
+            let lint_name = hyphenate(&name);
+            let msg = if lint_flag_val.as_str() == name {
+                format!("requested on the command line with `{} {}`", flag, lint_name)
             } else {
-                let hyphen_case_flag_val = lint_flag_val.as_str().replace("_", "-");
-                sess.diag_note_once(
-                    &mut err,
-                    DiagnosticMessageId::from(lint),
-                    &format!("`{} {}` implied by `{} {}`",
-                             flag, hyphen_case_lint_name, flag,
-                             hyphen_case_flag_val));
-            }
+                let flag_val = hyphenate(&lint_flag_val.as_str());
+                format!("`{} {}` implied by `{} {}`", flag, lint_name, flag, flag_val)
+            };
+            sess.diag_note_once(&mut err, diag_msg_id, &msg);
+            pre_warn_level
         }
-        LintSource::Node(lint_attr_name, src, reason) => {
-            if let Some(rationale) = reason {
-                err.note(&rationale.as_str());
+        LintSource::Node(lint_attr_name, pre_warn_level, src, reason) => {
+            if orig_level >= level || pre_warn_level.is_some() {
+                if let Some(rationale) = reason {
+                    err.note(&rationale.as_str());
+                }
             }
-            sess.diag_span_note_once(&mut err, DiagnosticMessageId::from(lint),
-                                     src, "lint level defined here");
+
+            sess.diag_span_note_once(&mut err, diag_msg_id, src, "lint level defined here");
             if lint_attr_name.as_str() != name {
-                let level_str = level.as_str();
-                sess.diag_note_once(&mut err, DiagnosticMessageId::from(lint),
-                                    &format!("#[{}({})] implied by #[{}({})]",
-                                             level_str, name, level_str, lint_attr_name));
+                let level_str = orig_level.as_str();
+                let msg = format!(
+                    "#[{}({})] implied by #[{}({})]",
+                    level_str, name, level_str, lint_attr_name
+                );
+                sess.diag_note_once(&mut err, diag_msg_id, &msg);
             }
+
+            pre_warn_level
         }
+    };
+
+    // Highlight the minimum as cause of the lint iff it was raised due to the minimum.
+    let orig_level = pre_warn_level.map(|pwl| cmp::min(pwl, orig_level)).unwrap_or(orig_level);
+    if orig_level < min_level {
+        let min_msg = format!("#[{}({})] is the minimum lint level", min_level.as_str(), name);
+        let rem_msg = format!("the lint level cannot be reduced to `{}`", orig_level.as_str());
+        sess.diag_note_once(&mut err, diag_msg_id, &min_msg);
+        sess.diag_note_once(&mut err, diag_msg_id, &rem_msg)
     }
 
     err.code(DiagnosticId::Lint(name));
@@ -725,8 +792,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
         } else {
             format!("{} in a future release!", STANDARD_MESSAGE)
         };
-        let citation = format!("for more information, see {}",
-                               future_incompatible.reference);
+        let citation = format!("for more information, see {}", future_incompatible.reference);
         err.warn(&explanation);
         err.note(&citation);
     }
