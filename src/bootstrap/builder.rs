@@ -634,7 +634,28 @@ impl<'a> Builder<'a> {
         if compiler.is_snapshot(self) {
             self.rustc_snapshot_libdir()
         } else {
-            self.sysroot(compiler).join(libdir(&compiler.host))
+            match self.config.libdir_relative() {
+                Some(relative_libdir) if compiler.stage >= 1
+                    => self.sysroot(compiler).join(relative_libdir),
+                _ => self.sysroot(compiler).join(libdir(&compiler.host))
+            }
+        }
+    }
+
+    /// Returns the compiler's relative libdir where it stores the dynamic libraries that
+    /// it itself links against.
+    ///
+    /// For example this returns `lib` on Unix and `bin` on
+    /// Windows.
+    pub fn libdir_relative(&self, compiler: Compiler) -> &Path {
+        if compiler.is_snapshot(self) {
+            libdir(&self.config.build).as_ref()
+        } else {
+            match self.config.libdir_relative() {
+                Some(relative_libdir) if compiler.stage >= 1
+                    => relative_libdir,
+                _ => libdir(&compiler.host).as_ref()
+            }
         }
     }
 
