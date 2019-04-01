@@ -20,19 +20,19 @@ error[E0432]: unresolved import `use_from_trait_xc::Foo`
   --> $DIR/use-from-trait-xc.rs:14:24
    |
 LL | use use_from_trait_xc::Foo::new;
-   |                        ^^^ not a module `Foo`
+   |                        ^^^ `Foo` is a struct, not a module
 
 error[E0432]: unresolved import `use_from_trait_xc::Foo`
   --> $DIR/use-from-trait-xc.rs:17:24
    |
 LL | use use_from_trait_xc::Foo::C;
-   |                        ^^^ not a module `Foo`
+   |                        ^^^ `Foo` is a struct, not a module
 
 error[E0432]: unresolved import `use_from_trait_xc::Bar`
   --> $DIR/use-from-trait-xc.rs:20:24
    |
 LL | use use_from_trait_xc::Bar::new as bnew;
-   |                        ^^^ not a module `Bar`
+   |                        ^^^ `Bar` is a struct, not a module
 
 error[E0432]: unresolved import `use_from_trait_xc::Baz::new`
   --> $DIR/use-from-trait-xc.rs:23:5

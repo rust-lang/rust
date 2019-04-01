@@ -1,17 +1,10 @@
-use Trait::foo;
-//~^ ERROR `foo` is not directly importable
-use Trait::Assoc;
-//~^ ERROR `Assoc` is not directly importable
-use Trait::C;
-//~^ ERROR `C` is not directly importable
+use Trait::foo; //~ ERROR `foo` is not directly importable
+use Trait::Assoc; //~ ERROR `Assoc` is not directly importable
+use Trait::C; //~ ERROR `C` is not directly importable
 
-use Foo::new;
-//~^ ERROR unresolved import `Foo` [E0432]
-//~| not a module `Foo`
+use Foo::new; //~ ERROR unresolved import `Foo` [E0432]
 
-use Foo::C2;
-//~^ ERROR unresolved import `Foo` [E0432]
-//~| not a module `Foo`
+use Foo::C2; //~ ERROR unresolved import `Foo` [E0432]
 
 pub trait Trait {
     fn foo();

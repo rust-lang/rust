@@ -3731,9 +3731,16 @@ impl<'a> Resolver<'a> {
                             def, path.len() - i - 1
                         ));
                     } else {
+                        let label = format!(
+                            "`{}` is {} {}, not a module",
+                            ident,
+                            def.article(),
+                            def.kind_name(),
+                        );
+
                         return PathResult::Failed {
                             span: ident.span,
-                            label: format!("not a module `{}`", ident),
+                            label,
                             suggestion: None,
                             is_error_from_last_segment: is_last,
                         };
