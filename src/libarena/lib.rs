@@ -239,7 +239,7 @@ impl<T> TypedArena<T> {
                         let len = vec.len();
                         let start_ptr = self.alloc_raw_slice(len);
                         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        mem::forget(vec.drain());
+                        vev.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)
                     }
                 })
@@ -515,7 +515,7 @@ impl DroplessArena {
                             mem::align_of::<T>()
                         ) as *mut _ as *mut T;
                         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        mem::forget(vec.drain());
+                        vev.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)
                     }
                 })
