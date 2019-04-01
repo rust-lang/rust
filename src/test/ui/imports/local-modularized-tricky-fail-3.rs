@@ -13,10 +13,12 @@ mod m {
     use exported;
     //~^ ERROR macro-expanded `macro_export` macros from the current crate cannot
     //~| WARN this was previously accepted
+    //~| WARN hard error
 }
 
 fn main() {
     ::exported!();
     //~^ ERROR macro-expanded `macro_export` macros from the current crate cannot
     //~| WARN this was previously accepted
+    //~| WARN hard error
 }

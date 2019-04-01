@@ -23,43 +23,55 @@ fn method_call() {
     S.late::<'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late::<'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late::<'static, 'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_early(&0); // OK
     S.late_early::<'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_early::<'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_early::<'static, 'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
 
     S.late_implicit(&0, &0); // OK
     S.late_implicit::<'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_implicit::<'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_implicit::<'static, 'static, 'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_implicit_early(&0); // OK
     S.late_implicit_early::<'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_implicit_early::<'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
     S.late_implicit_early::<'static, 'static, 'static>(&0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
 
     S::early_tricky_explicit::<'static>(loop {}, loop {}); // OK
     S::early_tricky_implicit::<'static>(loop {}, loop {}); // OK
@@ -69,10 +81,12 @@ fn ufcs() {
     S::late_early::<'static>(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
 
     S::late_implicit_early::<'static>(S, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
 }
 
 fn lint_not_inference_error() {
@@ -82,6 +96,7 @@ fn lint_not_inference_error() {
     f::<'static, u8>;
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
 }
 
 fn main() {}

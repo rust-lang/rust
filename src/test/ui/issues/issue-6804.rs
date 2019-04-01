@@ -10,12 +10,14 @@ fn main() {
     match x {
         NAN => {}, //~ ERROR floating-point types cannot be used
         //~^ WARN this was previously accepted by the compiler but is being phased out
+        //~| WARN hard error
         _ => {},
     };
 
     match [x, 1.0] {
         [NAN, _] => {}, //~ ERROR floating-point types cannot be used
         //~^ WARN this was previously accepted by the compiler but is being phased out
+        //~| WARN hard error
         _ => {},
     };
 }

@@ -18,8 +18,9 @@ fn main() {
     let x = 0.0;
     match x {
         f32::INFINITY => { }
-        //~^ WARNING floating-point types cannot be used in patterns
-        //~| WARNING will become a hard error in a future release
+        //~^ WARN floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted
+        //~| WARN will become a hard error in a future release
         _ => { }
     }
 }

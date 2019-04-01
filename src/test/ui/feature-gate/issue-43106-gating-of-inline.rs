@@ -17,6 +17,7 @@ mod inline {
     #[inline = "2100"] fn f() { }
     //~^ WARN attribute must be of the form
     //~| WARN this was previously accepted
+    //~| WARN hard error
 
     #[inline] struct S;
     //~^ ERROR attribute should be applied to function or closure

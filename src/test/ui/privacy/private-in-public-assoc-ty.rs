@@ -15,8 +15,10 @@ mod m {
     pub trait PubTr {
         //~^ WARN private trait `m::PrivTr` in public interface
         //~| WARN this was previously accepted
+        //~| WARN hard error
         //~| WARN private type `m::Priv` in public interface
         //~| WARN this was previously accepted
+        //~| WARN hard error
         type Alias1: PrivTr;
         type Alias2: PubTrAux1<Priv> = u8;
         type Alias3: PubTrAux2<A = Priv> = u8;

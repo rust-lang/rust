@@ -13,29 +13,38 @@ mod types {
     }
 
     pub type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
-    //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     pub enum E {
         V1(Priv), //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
         V2 { field: Priv }, //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     }
     pub trait Tr {
         const C: Priv = Priv; //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
         fn f1(arg: Priv) {} //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
         fn f2() -> Priv { panic!() } //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     }
     extern {
         pub static ES: Priv; //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
         pub fn ef1(arg: Priv); //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
         pub fn ef2() -> Priv; //~ ERROR private type `types::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     }
     impl PubTr for Pub {
         type Alias = Priv; //~ ERROR private type `types::Priv` in public interface
@@ -48,23 +57,30 @@ mod traits {
     pub trait PubTr {}
 
     pub type Alias<T: PrivTr> = T; //~ ERROR private trait `traits::PrivTr` in public interface
-    //~| WARNING hard error
-    //~| WARNING bounds on generic parameters are not enforced in type aliases
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
+        //~| WARNING bounds on generic parameters are not enforced in type aliases
     pub trait Tr1: PrivTr {} //~ ERROR private trait `traits::PrivTr` in public interface
-    //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     pub trait Tr2<T: PrivTr> {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     pub trait Tr3 {
         //~^ ERROR private trait `traits::PrivTr` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
         type Alias: PrivTr;
         fn f<T: PrivTr>(arg: T) {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     }
     impl<T: PrivTr> Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     impl<T: PrivTr> PubTr for Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
 }
 
 mod traits_where {
@@ -74,21 +90,26 @@ mod traits_where {
 
     pub type Alias<T> where T: PrivTr = T;
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
         //~| WARNING where clauses are not enforced in type aliases
     pub trait Tr2<T> where T: PrivTr {}
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
     pub trait Tr3 {
         fn f<T>(arg: T) where T: PrivTr {}
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
     }
     impl<T> Pub<T> where T: PrivTr {}
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
     impl<T> PubTr for Pub<T> where T: PrivTr {}
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
 }
 
@@ -100,13 +121,17 @@ mod generics {
 
     pub trait Tr1: PrivTr<Pub> {}
         //~^ ERROR private trait `generics::PrivTr<generics::Pub>` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
     pub trait Tr2: PubTr<Priv> {} //~ ERROR private type `generics::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     pub trait Tr3: PubTr<[Priv; 1]> {} //~ ERROR private type `generics::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     pub trait Tr4: PubTr<Pub<Priv>> {} //~ ERROR private type `generics::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
 }
 
 mod impls {
@@ -204,7 +229,8 @@ mod aliases_pub {
 
     impl PrivAlias {
         pub fn f(arg: Priv) {} //~ ERROR private type `aliases_pub::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARNING this was previously accepted
+        //~| WARNING hard error
     }
     impl PrivUseAliasTr for PrivUseAlias {
         type Check = Priv; //~ ERROR private type `aliases_pub::Priv` in public interface
@@ -248,11 +274,14 @@ mod aliases_priv {
 
     pub trait Tr1: PrivUseAliasTr {}
         //~^ ERROR private trait `aliases_priv::PrivTr1` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
     pub trait Tr2: PrivUseAliasTr<PrivAlias> {}
         //~^ ERROR private trait `aliases_priv::PrivTr1<aliases_priv::Priv2>` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
         //~| ERROR private type `aliases_priv::Priv2` in public interface
+        //~| WARNING this was previously accepted
         //~| WARNING hard error
 
     impl PrivUseAlias {

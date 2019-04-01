@@ -19,7 +19,8 @@ mod warned {
     pub trait Quux<T> { type Assoc; }
     pub fn demo(_: impl Quux<(), Assoc=<() as Quux<impl Bar>>::Assoc>) { }
     //~^ WARN `impl Trait` is not allowed in path parameters
-    //~| WARN will become a hard error in a future release!
+    //~| WARN this was previously accepted
+    //~| WARN hard error
     impl<T> Quux<T> for () { type Assoc = u32; }
 }
 
@@ -30,7 +31,8 @@ mod denied {
     pub trait Quux<T> { type Assoc; }
     pub fn demo(_: impl Quux<(), Assoc=<() as Quux<impl Bar>>::Assoc>) { }
     //~^ ERROR `impl Trait` is not allowed in path parameters
-    //~| WARN will become a hard error in a future release!
+    //~| WARN this was previously accepted
+    //~| WARN hard error
     impl<T> Quux<T> for () { type Assoc = u32; }
 }
 

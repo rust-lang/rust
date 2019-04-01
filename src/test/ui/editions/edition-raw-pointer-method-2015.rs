@@ -10,4 +10,5 @@ fn main() {
     let _ = y.is_null();
     //~^ error: type annotations needed [tyvar_behind_raw_pointer]
     //~^^ warning: this was previously accepted
+    //~| warning: hard error
 }

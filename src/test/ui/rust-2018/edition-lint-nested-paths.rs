@@ -5,7 +5,8 @@
 
 use foo::{a, b};
 //~^ ERROR absolute paths must start with
-//~| this was previously accepted
+//~| WARN this was previously accepted
+//~| WARN it will become a hard error
 
 mod foo {
     crate fn a() {}
@@ -20,7 +21,8 @@ fn main() {
     {
         use foo::{self as x, c};
         //~^ ERROR absolute paths must start with
-        //~| this was previously accepted
+        //~| WARN this was previously accepted
+        //~| WARN it will become a hard error
         x::a();
         c();
     }

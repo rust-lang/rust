@@ -12,10 +12,12 @@ fn method_call() {
     S.late::<'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
 
     S.late_implicit::<'static>(&0, &0);
     //~^ ERROR cannot specify lifetime arguments explicitly
     //~| WARN this was previously accepted
+    //~| WARN hard error
 }
 
 fn main() {}

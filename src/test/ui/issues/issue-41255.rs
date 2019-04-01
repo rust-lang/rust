@@ -8,18 +8,25 @@ fn main() {
     let x = 42.0;
     match x {
         5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+                   //~| WARN this was previously accepted
                    //~| WARNING hard error
         5.0f32 => {}, //~ ERROR floating-point types cannot be used in patterns
+                      //~| WARN this was previously accepted
                       //~| WARNING hard error
         -5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+                    //~| WARN this was previously accepted
                     //~| WARNING hard error
         1.0 .. 33.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+                           //~| WARN this was previously accepted
                            //~| WARNING hard error
                            //~| ERROR floating-point types cannot be used in patterns
+                           //~| WARN this was previously accepted
                            //~| WARNING hard error
         39.0 ..= 70.0 => {}, //~ ERROR floating-point types cannot be used in patterns
+                             //~| WARN this was previously accepted
                              //~| WARNING hard error
                              //~| ERROR floating-point types cannot be used in patterns
+                             //~| WARN this was previously accepted
                              //~| WARNING hard error
         _ => {},
     };
@@ -27,6 +34,7 @@ fn main() {
     // Same for tuples
     match (x, 5) {
         (3.14, 1) => {}, //~ ERROR floating-point types cannot be used
+                         //~| WARN this was previously accepted
                          //~| WARNING hard error
         _ => {},
     }
@@ -34,6 +42,7 @@ fn main() {
     struct Foo { x: f32 };
     match (Foo { x }) {
         Foo { x: 2.0 } => {}, //~ ERROR floating-point types cannot be used
+                              //~| WARN this was previously accepted
                               //~| WARNING hard error
         _ => {},
     }

@@ -3,6 +3,7 @@
 trait Tr {
     fn f1(mut arg: u8); //~ ERROR patterns aren't allowed in methods without bodies
                         //~^ WARN was previously accepted
+                        //~| WARN hard error
     fn f2(&arg: u8); //~ ERROR patterns aren't allowed in methods without bodies
     fn g1(arg: u8); // OK
     fn g2(_: u8); // OK

@@ -14,6 +14,7 @@ impl Tr for E {
     type V = u8;
     fn f() -> Self::V { 0 }
     //~^ ERROR ambiguous associated item
+    //~| WARN it will become a hard error
     //~| WARN this was previously accepted
 }
 

@@ -46,8 +46,26 @@ fn main() {
     let vec: &[f32] = &vec;
     match *vec { //~ ERROR non-exhaustive patterns: `[_, _, _, _]` not covered
         [0.1, 0.2, 0.3] => (),
+        //~^ WARN floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted
+        //~| WARN hard error
+        //~| WARN floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted
+        //~| WARN hard error
+        //~| WARN floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted
+        //~| WARN hard error
         [0.1, 0.2] => (),
+        //~^ WARN floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted
+        //~| WARN hard error
+        //~| WARN floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted
+        //~| WARN hard error
         [0.1] => (),
+        //~^ WARN floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted
+        //~| WARN hard error
         [] => ()
     }
     let vec = vec![Some(42), None, Some(21)];

@@ -6,5 +6,6 @@
 
 fn main() {
     let dyn = (); //~ ERROR dyn
-    //~^ WARN hard error in the 2018 edition
+    //~^ WARN this was previously accepted
+    //~| WARN hard error in the 2018 edition
 }

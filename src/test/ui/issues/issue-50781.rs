@@ -5,6 +5,7 @@ trait Trait {}
 trait X {
     fn foo(&self) where Self: Trait; //~ ERROR the trait `X` cannot be made into an object
     //~^ WARN this was previously accepted by the compiler but is being phased out
+    //~| WARN hard error
 }
 
 impl X for () {

@@ -16,14 +16,18 @@ struct S;
 #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
                                      //~| WARN cannot find type `OuterDerive` in this scope
                                      //~| WARN this was previously accepted
+                                     //~| WARN it will become a hard error
                                      //~| WARN this was previously accepted
+                                     //~| WARN it will become a hard error
 struct Z;
 
 fn inner_block() {
     #[derive(generate_mod::CheckDerive)] //~ WARN cannot find type `FromOutside` in this scope
                                         //~| WARN cannot find type `OuterDerive` in this scope
                                         //~| WARN this was previously accepted
+                                        //~| WARN it will become a hard error
                                         //~| WARN this was previously accepted
+                                        //~| WARN it will become a hard error
     struct InnerZ;
 }
 

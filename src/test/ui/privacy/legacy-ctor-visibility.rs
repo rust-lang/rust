@@ -13,6 +13,7 @@ mod m {
             S(10);
             //~^ ERROR private struct constructors are not usable through re-exports in outer modules
             //~| WARN this was previously accepted
+            //~| WARN hard error
         }
     }
 }

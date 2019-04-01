@@ -17,14 +17,17 @@ crate mod foo {
 use foo::{bar::{baz::{}}};
 //~^ ERROR absolute paths must start with
 //~| WARN this was previously accepted
+//~| WARN it will become a hard error
 
 use foo::{bar::{XX, baz::{}}};
 //~^ ERROR absolute paths must start with
 //~| WARN this was previously accepted
+//~| WARN it will become a hard error
 
 use foo::{bar::{baz::{}, baz1::{}}};
 //~^ ERROR absolute paths must start with
 //~| WARN this was previously accepted
+//~| WARN it will become a hard error
 
 fn main() {
 }

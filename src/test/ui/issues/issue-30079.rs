@@ -4,7 +4,8 @@ mod m1 {
     struct Priv;
     impl ::SemiPriv {
         pub fn f(_: Priv) {} //~ WARN private type `m1::Priv` in public interface
-        //~^ WARNING hard error
+        //~^ WARN previously accepted
+        //~| WARNING hard error
     }
 
     impl Priv {
