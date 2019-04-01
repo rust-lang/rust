@@ -1,4 +1,3 @@
-import * as timers from 'timers';
 import * as vscode from 'vscode';
 
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];

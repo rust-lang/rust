@@ -1,8 +1,9 @@
 import * as child_process from 'child_process';
 import * as path from 'path';
-import * as timers from 'timers';
 import * as vscode from 'vscode';
+import { terminate } from '../utils/processes';
 import { StatusDisplay } from './watch_status';
+
 
 export class CargoWatchProvider {
     private diagnosticCollection?: vscode.DiagnosticCollection;
@@ -21,24 +22,25 @@ export class CargoWatchProvider {
         // Start the cargo watch with json message
         this.cargoProcess = child_process.spawn(
             'cargo',
-            ['watch', '-x', '"check --message-format json"'],
+            ['watch', '-x', '\"check --message-format json\"'],
             {
-                // stdio: ['ignore', 'pipe', 'ignore'],
-                shell: true,
-                cwd: vscode.workspace.rootPath
+                stdio: ['ignore', 'pipe', 'pipe'],
+                cwd: vscode.workspace.rootPath,
+                windowsVerbatimArguments: true,
             }
         );
 
         this.cargoProcess.stdout.on('data', (s: string) => {
             this.processOutput(s);
+            console.log(s);
         });
 
         this.cargoProcess.stderr.on('data', (s: string) => {
-            // console.error('Error on cargo watch : ' + s);
+            console.error('Error on cargo watch : ' + s);
         });
 
         this.cargoProcess.on('error', (err: Error) => {
-            // console.error('Error on spawn cargo process : ' + err);
+            console.error('Error on spawn cargo process : ' + err);
         });
     }
 
@@ -50,6 +52,7 @@ export class CargoWatchProvider {
 
         if (this.cargoProcess) {
             this.cargoProcess.kill();
+            terminate(this.cargoProcess);
         }
     }
 

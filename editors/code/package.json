@@ -18,7 +18,7 @@
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "package": "vsce package",
-        "compile": "tsc -p ./",
+        "compile": "tsc -p ./ && shx cp src/utils/terminateProcess.sh out/utils/terminateProcess.sh",
         "watch": "tsc -watch -p ./",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "fix": "prettier **/*.{json,ts} --write && tslint --project . --fix",
@@ -41,7 +41,8 @@
         "tslint-config-prettier": "^1.18.0",
         "typescript": "^3.3.1",
         "vsce": "^1.57.0",
-        "vscode": "^1.1.29"
+        "vscode": "^1.1.29",
+        "shx": "^0.3.1"
     },
     "activationEvents": [
         "onLanguage:rust",
