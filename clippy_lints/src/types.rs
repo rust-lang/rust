@@ -1533,7 +1533,7 @@ impl LintPass for CharLitAsU8 {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        use syntax::ast::{LitKind, UintTy};
+        use syntax::ast::LitKind;
 
         if let ExprKind::Cast(ref e, _) = expr.node {
             if let ExprKind::Lit(ref l) = e.node {
@@ -1818,7 +1818,6 @@ impl Ord for FullInt {
 
 fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(FullInt, FullInt)> {
     use std::*;
-    use syntax::ast::{IntTy, UintTy};
 
     if let ExprKind::Cast(ref cast_exp, _) = expr.node {
         let pre_cast_ty = cx.tables.expr_ty(cast_exp);
