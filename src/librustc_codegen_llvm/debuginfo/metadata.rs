@@ -1386,7 +1386,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             let value = (i.as_u32() as u128)
                                 .wrapping_sub(niche_variants.start().as_u32() as u128)
                                 .wrapping_add(niche_start);
-                            Some(truncate(value, niche.value.size(cx)))
+                            Some(truncate(value, discr.value.size(cx)))
                         };
 
                         MemberDescription {
