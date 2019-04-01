@@ -161,14 +161,21 @@ impl<T> TypedArena<T> {
         available_capacity_bytes >= at_least_bytes
     }
 
+    /// Ensures there's enough space in the current chunk to fit `len` objects.
+    #[inline]
+    fn ensure_capacity(&self, len: usize) {
+        if !self.can_allocate(len) {
+            self.grow(len);
+            debug_assert!(self.can_allocate(len));
+        }
+    }
+
     #[inline]
     unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
         assert!(mem::size_of::<T>() != 0);
         assert!(len != 0);
 
-        if !self.can_allocate(len) {
-            self.grow(len);
-        }
+        self.ensure_capacity(len);
 
         let start_ptr = self.ptr.get();
         self.ptr.set(start_ptr.add(len));
@@ -203,19 +210,20 @@ impl<T> TypedArena<T> {
 
         match size_hint {
             (min, Some(max)) if min == max => {
-                if min == 0 {
+                // We know the exact number of elements the iterator will produce here
+                let len = min;
+
+                if len == 0 {
                     return &mut [];
                 }
 
-                if !self.can_allocate(min) {
-                    self.grow(min);
-                }
+                self.ensure_capacity(len);
 
                 let slice = self.ptr.get();
 
                 unsafe {
                     let mut ptr = self.ptr.get();
-                    for _ in 0..min {
+                    for _ in 0..len {
                         // Write into uninitialized memory.
                         ptr::write(ptr, iter.next().unwrap());
                         // Advance the pointer.
@@ -224,7 +232,7 @@ impl<T> TypedArena<T> {
                         // we destroy the correct amount
                         self.ptr.set(ptr);
                     }
-                    slice::from_raw_parts_mut(slice, min)
+                    slice::from_raw_parts_mut(slice, len)
                 }
             }
             _ => {
@@ -239,7 +247,7 @@ impl<T> TypedArena<T> {
                         let len = vec.len();
                         let start_ptr = self.alloc_raw_slice(len);
                         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vev.set_len(0);
+                        vec.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)
                     }
                 })
@@ -488,16 +496,19 @@ impl DroplessArena {
 
         match size_hint {
             (min, Some(max)) if min == max => {
-                if min == 0 {
+                // We know the exact number of elements the iterator will produce here
+                let len = min;
+
+                if len == 0 {
                     return &mut []
                 }
-                let size = min.checked_mul(mem::size_of::<T>()).unwrap();
+                let size = len.checked_mul(mem::size_of::<T>()).unwrap();
                 let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut _ as *mut T;
                 unsafe {
-                    for i in 0..min {
+                    for i in 0..len {
                         ptr::write(mem.offset(i as isize), iter.next().unwrap())
                     }
-                    slice::from_raw_parts_mut(mem, min)
+                    slice::from_raw_parts_mut(mem, len)
                 }
             }
             (_, _) => {
@@ -515,7 +526,7 @@ impl DroplessArena {
                             mem::align_of::<T>()
                         ) as *mut _ as *mut T;
                         vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vev.set_len(0);
+                        vec.set_len(0);
                         slice::from_raw_parts_mut(start_ptr, len)
                     }
                 })
