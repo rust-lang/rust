@@ -291,6 +291,15 @@ pub struct ExternEntry {
     pub public: bool
 }
 
+impl ExternEntry {
+    pub fn new_public(location: Option<String>) -> ExternEntry {
+        ExternEntry {
+            location,
+            public: true
+        }
+    }
+}
+
 impl Externs {
     pub fn new(data: BTreeMap<String, BTreeSet<ExternEntry>>) -> Externs {
         Externs(data)
@@ -2705,7 +2714,7 @@ mod tests {
         build_session_options_and_crate_config,
         to_crate_config
     };
-    use crate::session::config::{LtoCli, LinkerPluginLto, PgoGenerate};
+    use crate::session::config::{LtoCli, LinkerPluginLto, PgoGenerate, ExternEntry};
     use crate::session::build_session;
     use crate::session::search_paths::SearchPath;
     use std::collections::{BTreeMap, BTreeSet};
@@ -2851,33 +2860,45 @@ mod tests {
         v1.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
+                mk_set(vec![ExternEntry::new_public(Some(String::from("b"))),
+                            ExternEntry::new_public(Some(String::from("c")))
+                            ]),
             ),
             (
                 String::from("d"),
-                mk_set(vec![Some(String::from("e")), Some(String::from("f"))]),
+                mk_set(vec![ExternEntry::new_public(Some(String::from("e"))),
+                            ExternEntry::new_public(Some(String::from("f")))
+                            ]),
             ),
         ]));
 
         v2.externs = Externs::new(mk_map(vec![
             (
                 String::from("d"),
-                mk_set(vec![Some(String::from("e")), Some(String::from("f"))]),
+                mk_set(vec![ExternEntry::new_public(Some(String::from("e"))),
+                            ExternEntry::new_public(Some(String::from("f")))
+                            ]),
             ),
             (
                 String::from("a"),
-                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
+                mk_set(vec![ExternEntry::new_public(Some(String::from("b"))),
+                            ExternEntry::new_public(Some(String::from("c")))
+                            ]),
             ),
         ]));
 
         v3.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
+                mk_set(vec![ExternEntry::new_public(Some(String::from("b"))),
+                            ExternEntry::new_public(Some(String::from("c")))
+                            ]),
             ),
             (
                 String::from("d"),
-                mk_set(vec![Some(String::from("f")), Some(String::from("e"))]),
+                mk_set(vec![ExternEntry::new_public(Some(String::from("f"))),
+                            ExternEntry::new_public(Some(String::from("e")))
+                            ]),
             ),
         ]));
 
