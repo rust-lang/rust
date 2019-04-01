@@ -1,38 +1,22 @@
 //! All functions here are copied from https://github.com/rust-lang/rust/blob/942864a000efd74b73e36bda5606b2cdb55ecf39/src/librustc_codegen_llvm/back/link.rs
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind};
+use rustc::middle::cstore::NativeLibraryKind;
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::config::{self, OutputType, RUST_CGU_EXT};
-use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
 use rustc::util::common::time;
 use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::back::archive::ArchiveBuilder;
 use rustc_codegen_ssa::back::linker::*;
 use rustc_codegen_ssa::back::link::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
-use syntax::attr;
 
 use crate::prelude::*;
 
-use crate::archive::{ArchiveBuilder, ArchiveConfig};
-
-fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
-    sess.target_filesearch(PathKind::Native).search_path_dirs()
-}
-
-fn archive_config<'a>(sess: &'a Session,
-                      output: &Path,
-                      input: Option<&Path>) -> ArchiveConfig<'a> {
-    ArchiveConfig {
-        sess,
-        dst: output.to_path_buf(),
-        src: input.map(|p| p.to_path_buf()),
-        lib_search_paths: archive_search_paths(sess),
-    }
-}
+use crate::archive::ArArchiveBuilder;
 
 // # Rust Crate linking
 //
@@ -184,8 +168,7 @@ pub fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         }
 
         let dst = tmpdir.join(cratepath.file_name().unwrap());
-        let cfg = archive_config(sess, &dst, Some(cratepath));
-        let mut archive = ArchiveBuilder::new(cfg);
+        let mut archive = ArArchiveBuilder::new(sess, &dst, Some(cratepath));
         archive.update_symbols();
 
         for f in archive.src_files() {
@@ -261,8 +244,7 @@ pub fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         let name = &name[3..name.len() - 5]; // chop off lib/.rlib
 
         time(sess, &format!("altering {}.rlib", name), || {
-            let cfg = archive_config(sess, &dst, Some(cratepath));
-            let mut archive = ArchiveBuilder::new(cfg);
+            let mut archive = ArArchiveBuilder::new(sess, &dst, Some(cratepath));
             archive.update_symbols();
 
             let mut any_objects = false;
