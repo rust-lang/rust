@@ -2435,145 +2435,61 @@ pub trait Iterator {
     /// Determines if the elements of this `Iterator` are unequal to those of
     /// another.
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn ne<I>(mut self, other: I) -> bool where
+    fn ne<I>(self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialEq<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => return other.next().is_some(),
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return true,
-                Some(val) => val,
-            };
-
-            if x != y { return true }
-        }
+        !self.eq(other)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less than those of another.
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn lt<I>(mut self, other: I) -> bool where
+    fn lt<I>(self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => return other.next().is_some(),
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return false,
-                Some(val) => val,
-            };
-
-            match x.partial_cmp(&y) {
-                Some(Ordering::Less) => return true,
-                Some(Ordering::Equal) => (),
-                Some(Ordering::Greater) => return false,
-                None => return false,
-            }
-        }
+        self.partial_cmp(other) == Some(Ordering::Less)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// less or equal to those of another.
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn le<I>(mut self, other: I) -> bool where
+    fn le<I>(self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => { other.next(); return true; },
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return false,
-                Some(val) => val,
-            };
-
-            match x.partial_cmp(&y) {
-                Some(Ordering::Less) => return true,
-                Some(Ordering::Equal) => (),
-                Some(Ordering::Greater) => return false,
-                None => return false,
-            }
+        match self.partial_cmp(other) {
+            Some(Ordering::Less) | Some(Ordering::Equal) => true,
+            _ => false,
         }
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than those of another.
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn gt<I>(mut self, other: I) -> bool where
+    fn gt<I>(self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => { other.next(); return false; },
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return true,
-                Some(val) => val,
-            };
-
-            match x.partial_cmp(&y) {
-                Some(Ordering::Less) => return false,
-                Some(Ordering::Equal) => (),
-                Some(Ordering::Greater) => return true,
-                None => return false,
-            }
-        }
+        self.partial_cmp(other) == Some(Ordering::Greater)
     }
 
     /// Determines if the elements of this `Iterator` are lexicographically
     /// greater than or equal to those of another.
     #[stable(feature = "iter_order", since = "1.5.0")]
-    fn ge<I>(mut self, other: I) -> bool where
+    fn ge<I>(self, other: I) -> bool where
         I: IntoIterator,
         Self::Item: PartialOrd<I::Item>,
         Self: Sized,
     {
-        let mut other = other.into_iter();
-
-        loop {
-            let x = match self.next() {
-                None => return other.next().is_none(),
-                Some(val) => val,
-            };
-
-            let y = match other.next() {
-                None => return true,
-                Some(val) => val,
-            };
-
-            match x.partial_cmp(&y) {
-                Some(Ordering::Less) => return false,
-                Some(Ordering::Equal) => (),
-                Some(Ordering::Greater) => return true,
-                None => return false,
-            }
+        match self.partial_cmp(other) {
+            Some(Ordering::Greater) | Some(Ordering::Equal) => true,
+            _ => false,
         }
     }
 

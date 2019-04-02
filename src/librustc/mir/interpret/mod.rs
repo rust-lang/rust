@@ -2,7 +2,7 @@
 
 #[macro_export]
 macro_rules! err {
-    ($($tt:tt)*) => { Err($crate::mir::interpret::EvalErrorKind::$($tt)*.into()) };
+    ($($tt:tt)*) => { Err($crate::mir::interpret::InterpError::$($tt)*.into()) };
 }
 
 mod error;
@@ -11,7 +11,7 @@ mod allocation;
 mod pointer;
 
 pub use self::error::{
-    EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
+    EvalError, EvalResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
     FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
 };
 

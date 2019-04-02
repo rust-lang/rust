@@ -131,22 +131,22 @@ impl<T: RegisterArgument> RegisterArgument for Option<NonNull<T>> {
 
 impl ReturnValue for ! {
     fn from_registers(call: &'static str, _regs: (Register, Register)) -> Self {
-        panic!("Usercall {}: did not expect to be re-entered", call);
+        rtabort!("Usercall {}: did not expect to be re-entered", call);
     }
 }
 
 impl ReturnValue for () {
-    fn from_registers(call: &'static str, regs: (Register, Register)) -> Self {
-        assert_eq!(regs.0, 0, "Usercall {}: expected {} return value to be 0", call, "1st");
-        assert_eq!(regs.1, 0, "Usercall {}: expected {} return value to be 0", call, "2nd");
+    fn from_registers(call: &'static str, usercall_retval: (Register, Register)) -> Self {
+        rtassert!(usercall_retval.0 == 0);
+        rtassert!(usercall_retval.1 == 0);
         ()
     }
 }
 
 impl<T: RegisterArgument> ReturnValue for T {
-    fn from_registers(call: &'static str, regs: (Register, Register)) -> Self {
-        assert_eq!(regs.1, 0, "Usercall {}: expected {} return value to be 0", call, "2nd");
-        T::from_register(regs.0)
+    fn from_registers(call: &'static str, usercall_retval: (Register, Register)) -> Self {
+        rtassert!(usercall_retval.1 == 0);
+        T::from_register(usercall_retval.0)
     }
 }
 
@@ -174,8 +174,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3, $n4: $t4) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                NonZeroU64::new(Usercalls::$f as Register)
-                    .expect("Usercall number must be non-zero"),
+                rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
                 RegisterArgument::into_register($n1),
                 RegisterArgument::into_register($n2),
                 RegisterArgument::into_register($n3),
@@ -191,8 +190,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2, $n3: $t3) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                NonZeroU64::new(Usercalls::$f as Register)
-                    .expect("Usercall number must be non-zero"),
+                rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
                 RegisterArgument::into_register($n1),
                 RegisterArgument::into_register($n2),
                 RegisterArgument::into_register($n3),
@@ -208,8 +206,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1, $n2: $t2) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                NonZeroU64::new(Usercalls::$f as Register)
-                    .expect("Usercall number must be non-zero"),
+                rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
                 RegisterArgument::into_register($n1),
                 RegisterArgument::into_register($n2),
                 0,0,
@@ -224,8 +221,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f($n1: $t1) -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                NonZeroU64::new(Usercalls::$f as Register)
-                    .expect("Usercall number must be non-zero"),
+                rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
                 RegisterArgument::into_register($n1),
                 0,0,0,
                 return_type_is_abort!($r)
@@ -239,8 +235,7 @@ macro_rules! enclave_usercalls_internal_define_usercalls {
         #[inline(always)]
         pub unsafe fn $f() -> $r {
             ReturnValue::from_registers(stringify!($f), do_usercall(
-                NonZeroU64::new(Usercalls::$f as Register)
-                    .expect("Usercall number must be non-zero"),
+                rtunwrap!(Some, NonZeroU64::new(Usercalls::$f as Register)),
                 0,0,0,0,
                 return_type_is_abort!($r)
             ))

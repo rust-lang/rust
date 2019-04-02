@@ -334,3 +334,13 @@ fn bench_filter_chain_ref_count(b: &mut Bencher) {
         (0i64..1000000).chain(0..1000000).map(black_box).by_ref().filter(|x| x % 3 == 0).count()
     })
 }
+
+#[bench]
+fn bench_partial_cmp(b: &mut Bencher) {
+    b.iter(|| (0..100000).map(black_box).partial_cmp((0..100000).map(black_box)))
+}
+
+#[bench]
+fn bench_lt(b: &mut Bencher) {
+    b.iter(|| (0..100000).map(black_box).lt((0..100000).map(black_box)))
+}

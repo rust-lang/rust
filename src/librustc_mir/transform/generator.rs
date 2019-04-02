@@ -773,7 +773,7 @@ fn create_generator_resume_function<'a, 'tcx>(
 
     let mut cases = create_cases(mir, &transform, |point| Some(point.resume));
 
-    use rustc::mir::interpret::EvalErrorKind::{
+    use rustc::mir::interpret::InterpError::{
         GeneratorResumedAfterPanic,
         GeneratorResumedAfterReturn,
     };
