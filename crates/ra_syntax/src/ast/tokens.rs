@@ -24,9 +24,9 @@ impl<'a> Comment<'a> {
     pub fn flavor(&self) -> CommentFlavor {
         let text = self.text();
         if text.starts_with("///") {
-            CommentFlavor::Doc
+            CommentFlavor::OuterDoc
         } else if text.starts_with("//!") {
-            CommentFlavor::ModuleDoc
+            CommentFlavor::InnerDoc
         } else if text.starts_with("//") {
             CommentFlavor::Line
         } else {
@@ -46,25 +46,24 @@ impl<'a> Comment<'a> {
 #[derive(Debug, PartialEq, Eq)]
 pub enum CommentFlavor {
     Line,
-    Doc,
-    ModuleDoc,
+    OuterDoc,
+    InnerDoc,
     Multiline,
 }
 
 impl CommentFlavor {
     pub fn prefix(&self) -> &'static str {
-        use self::CommentFlavor::*;
         match *self {
-            Line => "//",
-            Doc => "///",
-            ModuleDoc => "//!",
-            Multiline => "/*",
+            CommentFlavor::Line => "//",
+            CommentFlavor::OuterDoc => "///",
+            CommentFlavor::InnerDoc => "//!",
+            CommentFlavor::Multiline => "/*",
         }
     }
 
     pub fn is_doc_comment(&self) -> bool {
         match self {
-            CommentFlavor::Doc | CommentFlavor::ModuleDoc => true,
+            CommentFlavor::OuterDoc | CommentFlavor::InnerDoc => true,
             _ => false,
         }
     }
