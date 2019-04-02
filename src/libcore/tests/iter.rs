@@ -1,4 +1,5 @@
 use core::cell::Cell;
+use core::convert::TryFrom;
 use core::iter::*;
 use core::{i8, i16, isize};
 use core::usize;
@@ -1798,6 +1799,66 @@ fn test_range_inclusive_folds() {
     assert!(it.is_empty());
     assert_eq!(it.try_rfold(0, |a,b| Some(a+b)), Some(0));
     assert!(it.is_empty());
+}
+
+#[test]
+fn test_range_size_hint() {
+    use core::usize::MAX as UMAX;
+    assert_eq!((0..0usize).size_hint(), (0, Some(0)));
+    assert_eq!((0..100usize).size_hint(), (100, Some(100)));
+    assert_eq!((0..UMAX).size_hint(), (UMAX, Some(UMAX)));
+
+    let umax = u128::try_from(UMAX).unwrap();
+    assert_eq!((0..0u128).size_hint(), (0, Some(0)));
+    assert_eq!((0..100u128).size_hint(), (100, Some(100)));
+    assert_eq!((0..umax).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((0..umax + 1).size_hint(), (UMAX, None));
+
+    use core::isize::{MAX as IMAX, MIN as IMIN};
+    assert_eq!((0..0isize).size_hint(), (0, Some(0)));
+    assert_eq!((-100..100isize).size_hint(), (200, Some(200)));
+    assert_eq!((IMIN..IMAX).size_hint(), (UMAX, Some(UMAX)));
+
+    let imin = i128::try_from(IMIN).unwrap();
+    let imax = i128::try_from(IMAX).unwrap();
+    assert_eq!((0..0i128).size_hint(), (0, Some(0)));
+    assert_eq!((-100..100i128).size_hint(), (200, Some(200)));
+    assert_eq!((imin..imax).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((imin..imax + 1).size_hint(), (UMAX, None));
+}
+
+#[test]
+fn test_range_inclusive_size_hint() {
+    use core::usize::MAX as UMAX;
+    assert_eq!((1..=0usize).size_hint(), (0, Some(0)));
+    assert_eq!((0..=0usize).size_hint(), (1, Some(1)));
+    assert_eq!((0..=100usize).size_hint(), (101, Some(101)));
+    assert_eq!((0..=UMAX - 1).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((0..=UMAX).size_hint(), (UMAX, None));
+
+    let umax = u128::try_from(UMAX).unwrap();
+    assert_eq!((1..=0u128).size_hint(), (0, Some(0)));
+    assert_eq!((0..=0u128).size_hint(), (1, Some(1)));
+    assert_eq!((0..=100u128).size_hint(), (101, Some(101)));
+    assert_eq!((0..=umax - 1).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((0..=umax).size_hint(), (UMAX, None));
+    assert_eq!((0..=umax + 1).size_hint(), (UMAX, None));
+
+    use core::isize::{MAX as IMAX, MIN as IMIN};
+    assert_eq!((0..=-1isize).size_hint(), (0, Some(0)));
+    assert_eq!((0..=0isize).size_hint(), (1, Some(1)));
+    assert_eq!((-100..=100isize).size_hint(), (201, Some(201)));
+    assert_eq!((IMIN..=IMAX - 1).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((IMIN..=IMAX).size_hint(), (UMAX, None));
+
+    let imin = i128::try_from(IMIN).unwrap();
+    let imax = i128::try_from(IMAX).unwrap();
+    assert_eq!((0..=-1i128).size_hint(), (0, Some(0)));
+    assert_eq!((0..=0i128).size_hint(), (1, Some(1)));
+    assert_eq!((-100..=100i128).size_hint(), (201, Some(201)));
+    assert_eq!((imin..=imax - 1).size_hint(), (UMAX, Some(UMAX)));
+    assert_eq!((imin..=imax).size_hint(), (UMAX, None));
+    assert_eq!((imin..=imax + 1).size_hint(), (UMAX, None));
 }
 
 #[test]
