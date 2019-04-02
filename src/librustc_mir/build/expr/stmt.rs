@@ -188,11 +188,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::InlineAsm {
-                            asm: box asm.clone(),
+                        kind: StatementKind::InlineAsm(box InlineAsm {
+                            asm: asm.clone(),
                             outputs,
                             inputs,
-                        },
+                        }),
                     },
                 );
                 this.block_context.pop();

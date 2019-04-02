@@ -272,13 +272,13 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             StatementKind::FakeRead(_, ref place) => {
                 self.create_move_path(place);
             }
-            StatementKind::InlineAsm { ref outputs, ref inputs, ref asm } => {
-                for (output, kind) in outputs.iter().zip(&asm.outputs) {
+            StatementKind::InlineAsm(ref asm) => {
+                for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect {
                         self.gather_init(output, InitKind::Deep);
                     }
                 }
-                for (_, input) in inputs.iter() {
+                for (_, input) in asm.inputs.iter() {
                     self.gather_operand(input);
                 }
             }

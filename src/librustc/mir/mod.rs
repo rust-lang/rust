@@ -4,7 +4,7 @@
 
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
-use crate::hir::{self, HirId, InlineAsm};
+use crate::hir::{self, HirId, InlineAsm as HirInlineAsm};
 use crate::mir::interpret::{ConstValue, InterpError, Scalar};
 use crate::mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
@@ -1735,7 +1735,7 @@ pub struct Statement<'tcx> {
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Statement<'_>>() == 56);
+static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Statement<'_>>() == 48);
 
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1779,12 +1779,9 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Local),
 
-    /// Executes a piece of inline Assembly.
-    InlineAsm {
-        asm: Box<InlineAsm>,
-        outputs: Box<[Place<'tcx>]>,
-        inputs: Box<[(Span, Operand<'tcx>)]>,
-    },
+    /// Executes a piece of inline Assembly. Stored in a Box to keep the size
+    /// of `StatementKind` low.
+    InlineAsm(Box<InlineAsm<'tcx>>),
 
     /// Retag references in the given place, ensuring they got fresh tags. This is
     /// part of the Stacked Borrows model. These statements are currently only interpreted
@@ -1858,6 +1855,13 @@ pub enum FakeReadCause {
     ForLet,
 }
 
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+pub struct InlineAsm<'tcx> {
+    pub asm: HirInlineAsm,
+    pub outputs: Box<[Place<'tcx>]>,
+    pub inputs: Box<[(Span, Operand<'tcx>)]>,
+}
+
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
@@ -1880,11 +1884,8 @@ impl<'tcx> Debug for Statement<'tcx> {
                 ref place,
                 variant_index,
             } => write!(fmt, "discriminant({:?}) = {:?}", place, variant_index),
-            InlineAsm {
-                ref asm,
-                ref outputs,
-                ref inputs,
-            } => write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs),
+            InlineAsm(ref asm) =>
+                write!(fmt, "asm!({:?} : {:?} : {:?})", asm.asm, asm.outputs, asm.inputs),
             AscribeUserType(ref place, ref variance, ref c_ty) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
@@ -3149,10 +3150,18 @@ EnumTypeFoldableImpl! {
         (StatementKind::SetDiscriminant) { place, variant_index },
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),
-        (StatementKind::InlineAsm) { asm, outputs, inputs },
+        (StatementKind::InlineAsm)(a),
         (StatementKind::Retag)(kind, place),
         (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),
+    }
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for InlineAsm<'tcx> {
+        asm,
+        outputs,
+        inputs,
     }
 }
 

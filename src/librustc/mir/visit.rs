@@ -391,15 +391,15 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::InlineAsm { outputs, inputs, asm: _ } => {
-                        for output in & $($mutability)? outputs[..] {
+                    StatementKind::InlineAsm(asm) => {
+                        for output in & $($mutability)? asm.outputs[..] {
                             self.visit_place(
                                 output,
                                 PlaceContext::MutatingUse(MutatingUseContext::AsmOutput),
                                 location
                             );
                         }
-                        for (span, input) in & $($mutability)? inputs[..] {
+                        for (span, input) in & $($mutability)? asm.inputs[..] {
                             self.visit_span(span);
                             self.visit_operand(input, location);
                         }
