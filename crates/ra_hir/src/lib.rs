@@ -56,7 +56,7 @@ pub use self::{
     name::Name,
     source_id::{AstIdMap, ErasedFileAstId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc, HirInterner},
-    nameres::{PerNs, Namespace},
+    nameres::{PerNs, Namespace, ImportId, ImportSource},
     ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},

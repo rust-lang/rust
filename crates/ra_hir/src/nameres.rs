@@ -70,9 +70,12 @@ use crate::{
     AstId,
 };
 
-pub(crate) use self::raw::{RawItems, ImportId, ImportSourceMap};
+pub(crate) use self::raw::{RawItems, ImportSourceMap};
 
-pub use self::per_ns::{PerNs, Namespace};
+pub use self::{
+    per_ns::{PerNs, Namespace},
+    raw::{ImportId, ImportSource},
+};
 
 /// Contans all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]

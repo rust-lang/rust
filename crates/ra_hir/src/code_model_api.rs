@@ -4,7 +4,7 @@ use ra_db::{CrateId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc};
 
 use crate::{
-    Name, ScopesWithSourceMap, Ty, HirFileId,
+    Name, ScopesWithSourceMap, Ty, HirFileId, ImportSource,
     HirDatabase, DefDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
@@ -117,7 +117,7 @@ impl Module {
     }
 
     /// Returns the syntax of the last path segment corresponding to this import
-    pub fn import_source(&self, db: &impl HirDatabase, import: ImportId) -> TreeArc<ast::UseTree> {
+    pub fn import_source(&self, db: &impl HirDatabase, import: ImportId) -> ImportSource {
         self.import_source_impl(db, import)
     }
 
