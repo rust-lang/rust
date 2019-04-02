@@ -1,9 +1,9 @@
 use itertools::Itertools;
 use ra_syntax::{
-    SourceFile, TextRange, TextUnit, AstNode, SyntaxNode, SyntaxElement, SyntaxToken,
+    SourceFile, TextRange, TextUnit, SyntaxNode, SyntaxElement, SyntaxToken,
     SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
     algo::{find_covering_element, non_trivia_sibling},
-    ast,
+    ast::{self, AstNode, AstToken},
     Direction,
 };
 use ra_fmt::{

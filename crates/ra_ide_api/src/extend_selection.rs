@@ -1,9 +1,9 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    Direction, SyntaxNode, TextRange, TextUnit, AstNode, SyntaxElement,
+    Direction, SyntaxNode, TextRange, TextUnit, SyntaxElement,
     algo::{find_covering_element, find_token_at_offset, TokenAtOffset},
     SyntaxKind::*, SyntaxToken,
-    ast::Comment,
+    ast::{self, AstNode, AstToken},
 };
 
 use crate::{FileRange, db::RootDatabase};
@@ -55,7 +55,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
             if token.range() != range {
                 return Some(token.range());
             }
-            if let Some(comment) = Comment::cast(token) {
+            if let Some(comment) = ast::Comment::cast(token) {
                 if let Some(range) = extend_comments(comment) {
                     return Some(range);
                 }
@@ -176,7 +176,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
     None
 }
 
-fn extend_comments(comment: Comment) -> Option<TextRange> {
+fn extend_comments(comment: ast::Comment) -> Option<TextRange> {
     let prev = adj_comments(comment, Direction::Prev);
     let next = adj_comments(comment, Direction::Next);
     if prev != next {
@@ -186,14 +186,14 @@ fn extend_comments(comment: Comment) -> Option<TextRange> {
     }
 }
 
-fn adj_comments(comment: Comment, dir: Direction) -> Comment {
+fn adj_comments(comment: ast::Comment, dir: Direction) -> ast::Comment {
     let mut res = comment;
     for element in comment.syntax().siblings_with_tokens(dir) {
         let token = match element.as_token() {
             None => break,
             Some(token) => token,
         };
-        if let Some(c) = Comment::cast(token) {
+        if let Some(c) = ast::Comment::cast(token) {
             res = c
         } else if token.kind() != WHITESPACE || token.text().contains("\n\n") {
             break;

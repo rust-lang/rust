@@ -2,9 +2,8 @@
 //!
 use itertools::Itertools;
 use ra_syntax::{
-    AstNode,
     SyntaxNode, SyntaxKind::*, SyntaxToken, SyntaxKind,
-    ast,
+    ast::{self, AstNode, AstToken},
     algo::generate,
 };
 

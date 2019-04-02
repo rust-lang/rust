@@ -1,6 +1,7 @@
 //! Abstract Syntax Tree, layered on top of untyped `SyntaxNode`s
 mod generated;
 mod traits;
+mod tokens;
 
 use std::marker::PhantomData;
 
@@ -15,6 +16,7 @@ use crate::{
 pub use self::{
     generated::*,
     traits::*,
+    tokens::*,
 };
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The
@@ -46,6 +48,16 @@ impl<'a, N: AstNode + 'a> Iterator for AstChildren<'a, N> {
     type Item = &'a N;
     fn next(&mut self) -> Option<&'a N> {
         self.inner.by_ref().find_map(N::cast)
+    }
+}
+
+pub trait AstToken<'a> {
+    fn cast(token: SyntaxToken<'a>) -> Option<Self>
+    where
+        Self: Sized;
+    fn syntax(&self) -> SyntaxToken<'a>;
+    fn text(&self) -> &'a SmolStr {
+        self.syntax().text()
     }
 }
 
@@ -93,100 +105,6 @@ impl Attr {
         } else {
             None
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Comment<'a>(SyntaxToken<'a>);
-
-impl<'a> Comment<'a> {
-    pub fn cast(token: SyntaxToken<'a>) -> Option<Self> {
-        if token.kind() == COMMENT {
-            Some(Comment(token))
-        } else {
-            None
-        }
-    }
-
-    pub fn syntax(&self) -> SyntaxToken<'a> {
-        self.0
-    }
-
-    pub fn text(&self) -> &'a SmolStr {
-        self.0.text()
-    }
-
-    pub fn flavor(&self) -> CommentFlavor {
-        let text = self.text();
-        if text.starts_with("///") {
-            CommentFlavor::Doc
-        } else if text.starts_with("//!") {
-            CommentFlavor::ModuleDoc
-        } else if text.starts_with("//") {
-            CommentFlavor::Line
-        } else {
-            CommentFlavor::Multiline
-        }
-    }
-
-    pub fn is_doc_comment(&self) -> bool {
-        self.flavor().is_doc_comment()
-    }
-
-    pub fn prefix(&self) -> &'static str {
-        self.flavor().prefix()
-    }
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum CommentFlavor {
-    Line,
-    Doc,
-    ModuleDoc,
-    Multiline,
-}
-
-impl CommentFlavor {
-    pub fn prefix(&self) -> &'static str {
-        use self::CommentFlavor::*;
-        match *self {
-            Line => "//",
-            Doc => "///",
-            ModuleDoc => "//!",
-            Multiline => "/*",
-        }
-    }
-
-    pub fn is_doc_comment(&self) -> bool {
-        match self {
-            CommentFlavor::Doc | CommentFlavor::ModuleDoc => true,
-            _ => false,
-        }
-    }
-}
-
-pub struct Whitespace<'a>(SyntaxToken<'a>);
-
-impl<'a> Whitespace<'a> {
-    pub fn cast(token: SyntaxToken<'a>) -> Option<Self> {
-        if token.kind() == WHITESPACE {
-            Some(Whitespace(token))
-        } else {
-            None
-        }
-    }
-
-    pub fn syntax(&self) -> SyntaxToken<'a> {
-        self.0
-    }
-
-    pub fn text(&self) -> &'a SmolStr {
-        self.0.text()
-    }
-
-    pub fn spans_multiple_lines(&self) -> bool {
-        let text = self.text();
-        text.find('\n').map_or(false, |idx| text[idx + 1..].contains('\n'))
     }
 }
 

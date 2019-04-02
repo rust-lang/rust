@@ -5,7 +5,7 @@ use crate::{Assist, AssistId, AssistCtx};
 use hir::Resolver;
 use hir::db::HirDatabase;
 use ra_syntax::{SmolStr, SyntaxKind, TextRange, TextUnit, TreeArc};
-use ra_syntax::ast::{self, AstNode, FnDef, ImplItem, ImplItemKind, NameOwner};
+use ra_syntax::ast::{self, AstNode, AstToken, FnDef, ImplItem, ImplItemKind, NameOwner};
 use ra_db::FilePosition;
 use ra_fmt::{leading_indent, reindent};
 

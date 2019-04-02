@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::{
     syntax_node::{SyntaxNodeChildren, SyntaxElementChildren},
-    ast::{self, child_opt, children, AstNode, AstChildren},
+    ast::{self, child_opt, children, AstNode, AstToken, AstChildren},
 };
 
 pub trait TypeAscriptionOwner: AstNode {
