@@ -2,7 +2,7 @@ use ra_syntax::{
     AstNode, SourceFile, SyntaxKind::*,
     TextUnit, TextRange, SyntaxToken,
     algo::{find_node_at_offset, find_token_at_offset, TokenAtOffset},
-    ast::{self},
+    ast::{self, AstToken},
 };
 use ra_fmt::leading_indent;
 use ra_text_edit::{TextEdit, TextEditBuilder};

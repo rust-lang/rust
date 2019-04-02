@@ -1,14 +1,9 @@
 use hir::{
     db::HirDatabase,
-    source_binder::function_from_child_node
+    source_binder::function_from_child_node,
 };
 use ra_syntax::{
-    ast::{
-        self,
-        AstNode,
-        PatKind,
-        ExprKind
-    },
+    ast::{self, AstNode, AstToken, PatKind, ExprKind},
     TextRange,
 };
 

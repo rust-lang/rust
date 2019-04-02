@@ -1,9 +1,9 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
-    AstNode, SourceFile, SyntaxNode, TextRange, Direction, SyntaxElement,
+    SourceFile, SyntaxNode, TextRange, Direction, SyntaxElement,
     SyntaxKind::{self, *},
-    ast::{self, VisibilityOwner, Comment},
+    ast::{self, AstNode, AstToken, VisibilityOwner},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -139,8 +139,8 @@ fn contiguous_range_for_group_unless<'a>(
 }
 
 fn contiguous_range_for_comment<'a>(
-    first: Comment<'a>,
-    visited: &mut FxHashSet<Comment<'a>>,
+    first: ast::Comment<'a>,
+    visited: &mut FxHashSet<ast::Comment<'a>>,
 ) -> Option<TextRange> {
     visited.insert(first);
 
@@ -157,7 +157,7 @@ fn contiguous_range_for_comment<'a>(
                         continue;
                     }
                 }
-                if let Some(c) = Comment::cast(token) {
+                if let Some(c) = ast::Comment::cast(token) {
                     if c.flavor() == group_flavor {
                         visited.insert(c);
                         last = c;
