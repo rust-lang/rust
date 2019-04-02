@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
     SyntaxNodePtr, AstPtr, AstNode,
-    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralFlavor, TypeAscriptionOwner}
+    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind, TypeAscriptionOwner}
 };
 
 use crate::{
@@ -726,8 +726,8 @@ impl ExprCollector {
                 self.alloc_expr(Expr::Array { exprs }, syntax_ptr)
             }
             ast::ExprKind::Literal(e) => {
-                let lit = match e.flavor() {
-                    LiteralFlavor::IntNumber { suffix } => {
+                let lit = match e.kind() {
+                    LiteralKind::IntNumber { suffix } => {
                         let known_name = suffix
                             .and_then(|it| IntTy::from_suffix(&it).map(UncertainIntTy::Known));
 
@@ -736,7 +736,7 @@ impl ExprCollector {
                             known_name.unwrap_or(UncertainIntTy::Unknown),
                         )
                     }
-                    LiteralFlavor::FloatNumber { suffix } => {
+                    LiteralKind::FloatNumber { suffix } => {
                         let known_name = suffix
                             .and_then(|it| FloatTy::from_suffix(&it).map(UncertainFloatTy::Known));
 
@@ -745,13 +745,13 @@ impl ExprCollector {
                             known_name.unwrap_or(UncertainFloatTy::Unknown),
                         )
                     }
-                    LiteralFlavor::ByteString => Literal::ByteString(Default::default()),
-                    LiteralFlavor::String => Literal::String(Default::default()),
-                    LiteralFlavor::Byte => {
+                    LiteralKind::ByteString => Literal::ByteString(Default::default()),
+                    LiteralKind::String => Literal::String(Default::default()),
+                    LiteralKind::Byte => {
                         Literal::Int(Default::default(), UncertainIntTy::Known(IntTy::u8()))
                     }
-                    LiteralFlavor::Bool => Literal::Bool(Default::default()),
-                    LiteralFlavor::Char => Literal::Char(Default::default()),
+                    LiteralKind::Bool => Literal::Bool(Default::default()),
+                    LiteralKind::Char => Literal::Char(Default::default()),
                 };
                 self.alloc_expr(Expr::Literal(lit), syntax_ptr)
             }

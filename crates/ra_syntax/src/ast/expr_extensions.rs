@@ -192,7 +192,7 @@ impl ast::BinExpr {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum LiteralFlavor {
+pub enum LiteralKind {
     String,
     ByteString,
     Char,
@@ -210,7 +210,7 @@ impl ast::Literal {
         }
     }
 
-    pub fn flavor(&self) -> LiteralFlavor {
+    pub fn kind(&self) -> LiteralKind {
         match self.token().kind() {
             INT_NUMBER => {
                 let allowed_suffix_list = [
@@ -222,7 +222,7 @@ impl ast::Literal {
                     .iter()
                     .find(|&s| text.ends_with(s))
                     .map(|&suf| SmolStr::new(suf));
-                LiteralFlavor::IntNumber { suffix }
+                LiteralKind::IntNumber { suffix }
             }
             FLOAT_NUMBER => {
                 let allowed_suffix_list = ["f64", "f32"];
@@ -231,13 +231,13 @@ impl ast::Literal {
                     .iter()
                     .find(|&s| text.ends_with(s))
                     .map(|&suf| SmolStr::new(suf));
-                LiteralFlavor::FloatNumber { suffix: suffix }
+                LiteralKind::FloatNumber { suffix: suffix }
             }
-            STRING | RAW_STRING => LiteralFlavor::String,
-            TRUE_KW | FALSE_KW => LiteralFlavor::Bool,
-            BYTE_STRING | RAW_BYTE_STRING => LiteralFlavor::ByteString,
-            CHAR => LiteralFlavor::Char,
-            BYTE => LiteralFlavor::Byte,
+            STRING | RAW_STRING => LiteralKind::String,
+            TRUE_KW | FALSE_KW => LiteralKind::Bool,
+            BYTE_STRING | RAW_BYTE_STRING => LiteralKind::ByteString,
+            CHAR => LiteralKind::Char,
+            BYTE => LiteralKind::Byte,
             _ => unreachable!(),
         }
     }

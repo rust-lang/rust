@@ -159,27 +159,27 @@ impl ast::ImplBlock {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum StructFlavor<'a> {
+pub enum StructKind<'a> {
     Tuple(&'a ast::PosFieldDefList),
     Named(&'a ast::NamedFieldDefList),
     Unit,
 }
 
-impl StructFlavor<'_> {
-    fn from_node<N: AstNode>(node: &N) -> StructFlavor {
+impl StructKind<'_> {
+    fn from_node<N: AstNode>(node: &N) -> StructKind {
         if let Some(nfdl) = child_opt::<_, ast::NamedFieldDefList>(node) {
-            StructFlavor::Named(nfdl)
+            StructKind::Named(nfdl)
         } else if let Some(pfl) = child_opt::<_, ast::PosFieldDefList>(node) {
-            StructFlavor::Tuple(pfl)
+            StructKind::Tuple(pfl)
         } else {
-            StructFlavor::Unit
+            StructKind::Unit
         }
     }
 }
 
 impl ast::StructDef {
-    pub fn flavor(&self) -> StructFlavor {
-        StructFlavor::from_node(self)
+    pub fn kind(&self) -> StructKind {
+        StructKind::from_node(self)
     }
 }
 
@@ -191,8 +191,8 @@ impl ast::EnumVariant {
             .and_then(ast::EnumDef::cast)
             .expect("EnumVariants are always nested in Enums")
     }
-    pub fn flavor(&self) -> StructFlavor {
-        StructFlavor::from_node(self)
+    pub fn kind(&self) -> StructKind {
+        StructKind::from_node(self)
     }
 }
 
@@ -243,7 +243,7 @@ impl ast::ReferenceType {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum SelfParamFlavor {
+pub enum SelfParamKind {
     /// self
     Owned,
     /// &self
@@ -261,7 +261,7 @@ impl ast::SelfParam {
             .expect("invalid tree: self param must have self")
     }
 
-    pub fn flavor(&self) -> SelfParamFlavor {
+    pub fn kind(&self) -> SelfParamKind {
         let borrowed = self.syntax().children_with_tokens().any(|n| n.kind() == AMP);
         if borrowed {
             // check for a `mut` coming after the & -- `mut &self` != `&mut self`
@@ -271,12 +271,12 @@ impl ast::SelfParam {
                 .skip_while(|n| n.kind() != AMP)
                 .any(|n| n.kind() == MUT_KW)
             {
-                SelfParamFlavor::MutRef
+                SelfParamKind::MutRef
             } else {
-                SelfParamFlavor::Ref
+                SelfParamKind::Ref
             }
         } else {
-            SelfParamFlavor::Owned
+            SelfParamKind::Owned
         }
     }
 }

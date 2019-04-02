@@ -20,12 +20,12 @@ impl FnSignature {
                     TypeRef::from_ast(type_ref)
                 } else {
                     let self_type = TypeRef::Path(Name::self_type().into());
-                    match self_param.flavor() {
-                        ast::SelfParamFlavor::Owned => self_type,
-                        ast::SelfParamFlavor::Ref => {
+                    match self_param.kind() {
+                        ast::SelfParamKind::Owned => self_type,
+                        ast::SelfParamKind::Ref => {
                             TypeRef::Reference(Box::new(self_type), Mutability::Shared)
                         }
-                        ast::SelfParamFlavor::MutRef => {
+                        ast::SelfParamKind::MutRef => {
                             TypeRef::Reference(Box::new(self_type), Mutability::Mut)
                         }
                     }
