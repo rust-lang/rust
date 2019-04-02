@@ -164,7 +164,7 @@ impl LetStmt {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ElseBranchFlavor<'a> {
+pub enum ElseBranch<'a> {
     Block(&'a Block),
     IfExpr(&'a IfExpr),
 }
@@ -173,12 +173,12 @@ impl IfExpr {
     pub fn then_branch(&self) -> Option<&Block> {
         self.blocks().nth(0)
     }
-    pub fn else_branch(&self) -> Option<ElseBranchFlavor> {
+    pub fn else_branch(&self) -> Option<ElseBranch> {
         let res = match self.blocks().nth(1) {
-            Some(block) => ElseBranchFlavor::Block(block),
+            Some(block) => ElseBranch::Block(block),
             None => {
                 let elif: &IfExpr = child_opt(self)?;
-                ElseBranchFlavor::IfExpr(elif)
+                ElseBranch::IfExpr(elif)
             }
         };
         Some(res)

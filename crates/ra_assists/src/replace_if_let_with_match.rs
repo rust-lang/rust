@@ -11,8 +11,8 @@ pub(crate) fn replace_if_let_with_match(mut ctx: AssistCtx<impl HirDatabase>) ->
     let expr = cond.expr()?;
     let then_block = if_expr.then_branch()?;
     let else_block = match if_expr.else_branch()? {
-        ast::ElseBranchFlavor::Block(it) => it,
-        ast::ElseBranchFlavor::IfExpr(_) => return None,
+        ast::ElseBranch::Block(it) => it,
+        ast::ElseBranch::IfExpr(_) => return None,
     };
 
     ctx.add_action(AssistId("replace_if_let_with_match"), "replace with match", |edit| {

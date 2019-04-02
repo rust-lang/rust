@@ -516,8 +516,8 @@ impl ExprCollector {
                     let else_branch = e
                         .else_branch()
                         .map(|b| match b {
-                            ast::ElseBranchFlavor::Block(it) => self.collect_block(it),
-                            ast::ElseBranchFlavor::IfExpr(elif) => {
+                            ast::ElseBranch::Block(it) => self.collect_block(it),
+                            ast::ElseBranch::IfExpr(elif) => {
                                 let expr: &ast::Expr = ast::Expr::cast(elif.syntax()).unwrap();
                                 self.collect_expr(expr)
                             }
@@ -533,8 +533,8 @@ impl ExprCollector {
                     let condition = self.collect_expr_opt(e.condition().and_then(|c| c.expr()));
                     let then_branch = self.collect_block_opt(e.then_branch());
                     let else_branch = e.else_branch().map(|b| match b {
-                        ast::ElseBranchFlavor::Block(it) => self.collect_block(it),
-                        ast::ElseBranchFlavor::IfExpr(elif) => {
+                        ast::ElseBranch::Block(it) => self.collect_block(it),
+                        ast::ElseBranch::IfExpr(elif) => {
                             let expr: &ast::Expr = ast::Expr::cast(elif.syntax()).unwrap();
                             self.collect_expr(expr)
                         }
