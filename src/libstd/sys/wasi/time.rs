@@ -57,6 +57,10 @@ impl SystemTime {
         SystemTime(current_time(libc::__WASI_CLOCK_REALTIME))
     }
 
+    pub fn from_wasi_timestamp(ts: libc::__wasi_timestamp_t) -> SystemTime {
+        SystemTime(Duration::from_nanos(ts))
+    }
+
     pub fn sub_time(&self, other: &SystemTime)
                     -> Result<Duration, Duration> {
         self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
