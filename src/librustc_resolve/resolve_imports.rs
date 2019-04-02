@@ -1334,7 +1334,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         self.populate_module_if_necessary(module);
 
-        if let Some(Def::Trait(_)) = module.def() {
+        if module.is_trait() {
             self.session.span_err(directive.span, "items in traits are not importable.");
             return;
         } else if module.def_id() == directive.parent_scope.module.def_id()  {

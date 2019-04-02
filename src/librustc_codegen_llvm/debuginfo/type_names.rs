@@ -5,6 +5,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashSet;
 
 use rustc::hir;
 
@@ -17,7 +18,8 @@ pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                              qualified: bool)
                                              -> String {
     let mut result = String::with_capacity(64);
-    push_debuginfo_type_name(cx, t, qualified, &mut result);
+    let mut visited = FxHashSet::default();
+    push_debuginfo_type_name(cx, t, qualified, &mut result, &mut visited);
     result
 }
 
@@ -26,7 +28,9 @@ pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                           t: Ty<'tcx>,
                                           qualified: bool,
-                                          output: &mut String) {
+                                          output: &mut String,
+                                          visited: &mut FxHashSet<Ty<'tcx>>) {
+
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
     let cpp_like_names = cx.sess().target.target.options.is_like_msvc;
@@ -42,12 +46,12 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::Foreign(def_id) => push_item_name(cx, def_id, qualified, output),
         ty::Adt(def, substs) => {
             push_item_name(cx, def.did, qualified, output);
-            push_type_params(cx, substs, output);
+            push_type_params(cx, substs, output, visited);
         },
         ty::Tuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
-                push_debuginfo_type_name(cx, component_type, true, output);
+                push_debuginfo_type_name(cx, component_type, true, output, visited);
                 output.push_str(", ");
             }
             if !component_types.is_empty() {
@@ -65,7 +69,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 hir::MutMutable => output.push_str("mut "),
             }
 
-            push_debuginfo_type_name(cx, inner_type, true, output);
+            push_debuginfo_type_name(cx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('*');
@@ -79,7 +83,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push_str("mut ");
             }
 
-            push_debuginfo_type_name(cx, inner_type, true, output);
+            push_debuginfo_type_name(cx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('*');
@@ -87,7 +91,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         },
         ty::Array(inner_type, len) => {
             output.push('[');
-            push_debuginfo_type_name(cx, inner_type, true, output);
+            push_debuginfo_type_name(cx, inner_type, true, output, visited);
             output.push_str(&format!("; {}", len.unwrap_usize(cx.tcx)));
             output.push(']');
         },
@@ -98,7 +102,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push('[');
             }
 
-            push_debuginfo_type_name(cx, inner_type, true, output);
+            push_debuginfo_type_name(cx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('>');
@@ -113,12 +117,31 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     &principal,
                 );
                 push_item_name(cx, principal.def_id, false, output);
-                push_type_params(cx, principal.substs, output);
+                push_type_params(cx, principal.substs, output, visited);
             } else {
                 output.push_str("dyn '_");
             }
         },
         ty::FnDef(..) | ty::FnPtr(_) => {
+            // We've encountered a weird 'recursive type'
+            // Currently, the only way to generate such a type
+            // is by using 'impl trait':
+            //
+            // fn foo() -> impl Copy { foo }
+            //
+            // There's not really a sensible name we can generate,
+            // since we don't include 'impl trait' types (e.g. ty::Opaque)
+            // in the output
+            //
+            // Since we need to generate *something*, we just
+            // use a dummy string that should make it clear
+            // that something unusual is going on
+            if !visited.insert(t) {
+                output.push_str("<recursive_type>");
+                return;
+            }
+
+
             let sig = t.fn_sig(cx.tcx);
             if sig.unsafety() == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
@@ -136,7 +159,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
-                    push_debuginfo_type_name(cx, parameter_type, true, output);
+                    push_debuginfo_type_name(cx, parameter_type, true, output, visited);
                     output.push_str(", ");
                 }
                 output.pop();
@@ -155,8 +178,20 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
             if !sig.output().is_unit() {
                 output.push_str(" -> ");
-                push_debuginfo_type_name(cx, sig.output(), true, output);
+                push_debuginfo_type_name(cx, sig.output(), true, output, visited);
             }
+
+
+            // We only keep the type in 'visited'
+            // for the duration of the body of this method.
+            // It's fine for a particular function type
+            // to show up multiple times in one overall type
+            // (e.g. MyType<fn() -> u8, fn() -> u8>
+            //
+            // We only care about avoiding recursing
+            // directly back to the type we're currently
+            // processing
+            visited.remove(t);
         },
         ty::Closure(..) => {
             output.push_str("closure");
@@ -200,7 +235,8 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // common denominator - otherwise we would run into conflicts.
     fn push_type_params<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                                   substs: SubstsRef<'tcx>,
-                                  output: &mut String) {
+                                  output: &mut String,
+                                  visited: &mut FxHashSet<Ty<'tcx>>) {
         if substs.types().next().is_none() {
             return;
         }
@@ -208,7 +244,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         output.push('<');
 
         for type_parameter in substs.types() {
-            push_debuginfo_type_name(cx, type_parameter, true, output);
+            push_debuginfo_type_name(cx, type_parameter, true, output, visited);
             output.push_str(", ");
         }
 

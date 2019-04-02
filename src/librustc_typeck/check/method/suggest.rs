@@ -757,9 +757,13 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
 
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
         fn visit_item(&mut self, i: &'v hir::Item) {
-            if let hir::ItemKind::Trait(..) = i.node {
-                let def_id = self.map.local_def_id_from_hir_id(i.hir_id);
-                self.traits.push(def_id);
+            match i.node {
+                hir::ItemKind::Trait(..) |
+                hir::ItemKind::TraitAlias(..) => {
+                    let def_id = self.map.local_def_id_from_hir_id(i.hir_id);
+                    self.traits.push(def_id);
+                }
+                _ => ()
             }
         }
 
@@ -781,7 +785,8 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
                            external_mods: &mut FxHashSet<DefId>,
                            def: Def) {
         match def {
-            Def::Trait(def_id) => {
+            Def::Trait(def_id) |
+            Def::TraitAlias(def_id) => {
                 traits.push(def_id);
             }
             Def::Mod(def_id) => {

@@ -896,20 +896,36 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         let trait_substs = self.fresh_item_substs(trait_def_id);
         let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
 
-        for item in self.impl_or_trait_item(trait_def_id) {
-            // Check whether `trait_def_id` defines a method with suitable name:
-            if !self.has_applicable_self(&item) {
-                debug!("method has inapplicable self");
-                self.record_static_candidate(TraitSource(trait_def_id));
-                continue;
-            }
+        if self.tcx.is_trait_alias(trait_def_id) {
+            // For trait aliases, assume all super-traits are relevant.
+            let bounds = iter::once(trait_ref.to_poly_trait_ref());
+            self.elaborate_bounds(bounds, |this, new_trait_ref, item| {
+                let new_trait_ref = this.erase_late_bound_regions(&new_trait_ref);
 
-            let (xform_self_ty, xform_ret_ty) =
-                self.xform_self_ty(&item, trait_ref.self_ty(), trait_substs);
-            self.push_candidate(Candidate {
-                xform_self_ty, xform_ret_ty, item, import_id,
-                kind: TraitCandidate(trait_ref),
-            }, false);
+                let (xform_self_ty, xform_ret_ty) =
+                    this.xform_self_ty(&item, new_trait_ref.self_ty(), new_trait_ref.substs);
+                this.push_candidate(Candidate {
+                    xform_self_ty, xform_ret_ty, item, import_id,
+                    kind: TraitCandidate(new_trait_ref),
+                }, true);
+            });
+        } else {
+            debug_assert!(self.tcx.is_trait(trait_def_id));
+            for item in self.impl_or_trait_item(trait_def_id) {
+                // Check whether `trait_def_id` defines a method with suitable name.
+                if !self.has_applicable_self(&item) {
+                    debug!("method has inapplicable self");
+                    self.record_static_candidate(TraitSource(trait_def_id));
+                    continue;
+                }
+
+                let (xform_self_ty, xform_ret_ty) =
+                    self.xform_self_ty(&item, trait_ref.self_ty(), trait_substs);
+                self.push_candidate(Candidate {
+                    xform_self_ty, xform_ret_ty, item, import_id,
+                    kind: TraitCandidate(trait_ref),
+                }, false);
+            }
         }
         Ok(())
     }
@@ -930,7 +946,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             .filter(|&name| set.insert(name))
             .collect();
 
-        // sort them by the name so we have a stable result
+        // Sort them by the name so we have a stable result.
         names.sort_by_cached_key(|n| n.as_str());
         names
     }
@@ -944,6 +960,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         if let Some(r) = self.pick_core() {
             return r;
         }
+
+        debug!("pick: actual search failed, assemble diagnotics");
 
         let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
         let private_candidate = self.private_candidate.take();

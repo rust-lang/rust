@@ -18,7 +18,7 @@ use build_helper::output;
 
 use crate::{Compiler, Mode, LLVM_TOOLS};
 use crate::channel;
-use crate::util::{libdir, is_dylib, exe};
+use crate::util::{is_dylib, exe};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::compile;
 use crate::tool::{self, Tool};
@@ -473,7 +473,7 @@ impl Step for Rustc {
         fn prepare_image(builder: &Builder<'_>, compiler: Compiler, image: &Path) {
             let host = compiler.host;
             let src = builder.sysroot(compiler);
-            let libdir = libdir(&host);
+            let libdir = builder.rustc_libdir(compiler);
 
             // Copy rustc/rustdoc binaries
             t!(fs::create_dir_all(image.join("bin")));
@@ -481,13 +481,15 @@ impl Step for Rustc {
 
             builder.install(&builder.rustdoc(compiler), &image.join("bin"), 0o755);
 
+            let libdir_relative = builder.libdir_relative(compiler);
+
             // Copy runtime DLLs needed by the compiler
-            if libdir != "bin" {
-                for entry in builder.read_dir(&src.join(libdir)) {
+            if libdir_relative.to_str() != Some("bin") {
+                for entry in builder.read_dir(&libdir) {
                     let name = entry.file_name();
                     if let Some(s) = name.to_str() {
                         if is_dylib(s) {
-                            builder.install(&entry.path(), &image.join(libdir), 0o644);
+                            builder.install(&entry.path(), &image.join(&libdir_relative), 0o644);
                         }
                     }
                 }
@@ -516,7 +518,8 @@ impl Step for Rustc {
                     .join("bin")
                     .join(&exe);
                 // for the rationale about this rename check `compile::copy_lld_to_sysroot`
-                let dst = image.join("lib/rustlib")
+                let dst = image.join(libdir_relative)
+                    .join("rustlib")
                     .join(&*host)
                     .join("bin")
                     .join(&exe);
