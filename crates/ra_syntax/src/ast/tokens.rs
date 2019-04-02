@@ -21,52 +21,71 @@ impl<'a> AstToken<'a> for Comment<'a> {
 }
 
 impl<'a> Comment<'a> {
-    pub fn flavor(&self) -> CommentFlavor {
-        let text = self.text();
-        if text.starts_with("///") {
-            CommentFlavor::OuterDoc
-        } else if text.starts_with("//!") {
-            CommentFlavor::InnerDoc
-        } else if text.starts_with("//") {
-            CommentFlavor::Line
-        } else {
-            CommentFlavor::Multiline
-        }
-    }
-
-    pub fn is_doc_comment(&self) -> bool {
-        self.flavor().is_doc_comment()
+    pub fn kind(&self) -> CommentKind {
+        kind_by_prefix(self.text())
     }
 
     pub fn prefix(&self) -> &'static str {
-        self.flavor().prefix()
+        prefix_by_kind(self.kind())
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum CommentFlavor {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct CommentKind {
+    pub shape: CommentShape,
+    pub doc: Option<CommentPlacement>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum CommentShape {
     Line,
-    OuterDoc,
-    InnerDoc,
-    Multiline,
+    Block,
 }
 
-impl CommentFlavor {
-    pub fn prefix(&self) -> &'static str {
-        match *self {
-            CommentFlavor::Line => "//",
-            CommentFlavor::OuterDoc => "///",
-            CommentFlavor::InnerDoc => "//!",
-            CommentFlavor::Multiline => "/*",
-        }
+impl CommentShape {
+    pub fn is_line(self) -> bool {
+        self == CommentShape::Line
     }
 
-    pub fn is_doc_comment(&self) -> bool {
-        match self {
-            CommentFlavor::OuterDoc | CommentFlavor::InnerDoc => true,
-            _ => false,
+    pub fn is_block(self) -> bool {
+        self == CommentShape::Block
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum CommentPlacement {
+    Inner,
+    Outer,
+}
+
+const COMMENT_PREFIX_TO_KIND: &[(&str, CommentKind)] = {
+    use {CommentShape::*, CommentPlacement::*};
+    &[
+        ("///", CommentKind { shape: Line, doc: Some(Outer) }),
+        ("//!", CommentKind { shape: Line, doc: Some(Inner) }),
+        ("/**", CommentKind { shape: Block, doc: Some(Outer) }),
+        ("/**", CommentKind { shape: Block, doc: Some(Inner) }),
+        ("//", CommentKind { shape: Line, doc: None }),
+        ("/*", CommentKind { shape: Block, doc: None }),
+    ]
+};
+
+fn kind_by_prefix(text: &str) -> CommentKind {
+    for (prefix, kind) in COMMENT_PREFIX_TO_KIND.iter() {
+        if text.starts_with(prefix) {
+            return *kind;
         }
     }
+    panic!("bad comment text: {:?}", text)
+}
+
+fn prefix_by_kind(kind: CommentKind) -> &'static str {
+    for (prefix, k) in COMMENT_PREFIX_TO_KIND.iter() {
+        if *k == kind {
+            return prefix;
+        }
+    }
+    unreachable!()
 }
 
 pub struct Whitespace<'a>(SyntaxToken<'a>);
