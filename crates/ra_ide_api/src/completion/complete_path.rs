@@ -73,6 +73,18 @@ mod tests {
     }
 
     #[test]
+    fn dont_complete_current_use_in_braces_with_glob() {
+        let completions = do_completion(
+            r"
+            mod foo { pub struct S; }
+            use self::{foo::*, bar<|>};
+            ",
+            CompletionKind::Reference,
+        );
+        assert_eq!(completions.len(), 2);
+    }
+
+    #[test]
     fn completes_mod_with_docs() {
         check_reference_completion(
             "mod_with_docs",

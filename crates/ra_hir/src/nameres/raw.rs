@@ -31,15 +31,15 @@ pub struct RawItems {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImportSourceMap {
-    map: ArenaMap<ImportId, AstPtr<ast::PathSegment>>,
+    map: ArenaMap<ImportId, AstPtr<ast::UseTree>>,
 }
 
 impl ImportSourceMap {
-    fn insert(&mut self, import: ImportId, segment: &ast::PathSegment) {
-        self.map.insert(import, AstPtr::new(segment))
+    fn insert(&mut self, import: ImportId, use_tree: &ast::UseTree) {
+        self.map.insert(import, AstPtr::new(use_tree))
     }
 
-    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::PathSegment> {
+    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::UseTree> {
         let file = match source {
             ModuleSource::SourceFile(file) => &*file,
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
@@ -256,17 +256,15 @@ impl RawItemsCollector {
     fn add_use_item(&mut self, current_module: Option<Module>, use_item: &ast::UseItem) {
         let is_prelude = use_item.has_atom_attr("prelude_import");
 
-        Path::expand_use_item(use_item, |path, segment, alias| {
+        Path::expand_use_item(use_item, |path, use_tree, is_glob, alias| {
             let import = self.raw_items.imports.alloc(ImportData {
                 path,
                 alias,
-                is_glob: segment.is_none(),
+                is_glob,
                 is_prelude,
                 is_extern_crate: false,
             });
-            if let Some(segment) = segment {
-                self.source_map.insert(import, segment)
-            }
+            self.source_map.insert(import, use_tree);
             self.push_item(current_module, RawItem::Import(import))
         })
     }
