@@ -353,7 +353,8 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64), CheckInAllocMsg::WriteBytes)?;
+        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64),
+                                       CheckInAllocMsg::WriteBytes)?;
         bytes.clone_from_slice(src);
         Ok(())
     }
