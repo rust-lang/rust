@@ -380,22 +380,22 @@ mod foo {
       "rendered": null
     }
   ],
-  "rendered": "/u001b[0m/u001b[1m/u001b[38;5;9merror[E0412]/u001b[0m/u001b[0m/u001b[1m: cannot find type `Iter` in this scope/u001b[0m
-/u001b[0m  /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m--> /u001b[0m/u001b[0m$DIR/use_suggestion_json.rs:11:12/u001b[0m
-/u001b[0m   /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m|/u001b[0m
-/u001b[0m/u001b[1m/u001b[38;5;12mLL/u001b[0m/u001b[0m /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m| /u001b[0m/u001b[0m    let x: Iter;/u001b[0m
-/u001b[0m   /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m| /u001b[0m/u001b[0m           /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;9m^^^^/u001b[0m/u001b[0m /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;9mnot found in this scope/u001b[0m
-/u001b[0m/u001b[1m/u001b[38;5;14mhelp/u001b[0m/u001b[0m: possible candidates are found in other modules, you can import them into scope/u001b[0m
-/u001b[0m   /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m|/u001b[0m
-/u001b[0m/u001b[1m/u001b[38;5;12mLL/u001b[0m/u001b[0m /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m| /u001b[0m/u001b[0muse std::collections::binary_heap::Iter;/u001b[0m
-/u001b[0m   /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m|/u001b[0m
-/u001b[0m/u001b[1m/u001b[38;5;12mLL/u001b[0m/u001b[0m /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m| /u001b[0m/u001b[0muse std::collections::btree_map::Iter;/u001b[0m
-/u001b[0m   /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m|/u001b[0m
-/u001b[0m/u001b[1m/u001b[38;5;12mLL/u001b[0m/u001b[0m /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m| /u001b[0m/u001b[0muse std::collections::btree_set::Iter;/u001b[0m
-/u001b[0m   /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m|/u001b[0m
-/u001b[0m/u001b[1m/u001b[38;5;12mLL/u001b[0m/u001b[0m /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m| /u001b[0m/u001b[0muse std::collections::hash_map::Iter;/u001b[0m
-/u001b[0m   /u001b[0m/u001b[0m/u001b[1m/u001b[38;5;12m|/u001b[0m
-/u001b[0mand 8 other candidates/u001b[0m
+  "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror[E0412]\u001b[0m\u001b[0m\u001b[1m: cannot find type `Iter` in this scope\u001b[0m
+\u001b[0m  \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m--> \u001b[0m\u001b[0m$DIR/use_suggestion_json.rs:11:12\u001b[0m
+\u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
+\u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0m    let x: Iter;\u001b[0m
+\u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0m           \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;9m^^^^\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;9mnot found in this scope\u001b[0m
+\u001b[0m\u001b[1m\u001b[38;5;14mhelp\u001b[0m\u001b[0m: possible candidates are found in other modules, you can import them into scope\u001b[0m
+\u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
+\u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0muse std::collections::binary_heap::Iter;\u001b[0m
+\u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
+\u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0muse std::collections::btree_map::Iter;\u001b[0m
+\u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
+\u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0muse std::collections::btree_set::Iter;\u001b[0m
+\u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
+\u001b[0m\u001b[1m\u001b[38;5;12mLL\u001b[0m\u001b[0m \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m| \u001b[0m\u001b[0muse std::collections::hash_map::Iter;\u001b[0m
+\u001b[0m   \u001b[0m\u001b[0m\u001b[1m\u001b[38;5;12m|\u001b[0m
+\u001b[0mand 8 other candidates\u001b[0m
 
 "
 }
@@ -405,7 +405,7 @@ mod foo {
   "level": "error",
   "spans": [],
   "children": [],
-  "rendered": "/u001b[0m/u001b[1m/u001b[38;5;9merror/u001b[0m/u001b[0m/u001b[1m: aborting due to previous error/u001b[0m
+  "rendered": "\u001b[0m\u001b[1m\u001b[38;5;9merror\u001b[0m\u001b[0m\u001b[1m: aborting due to previous error\u001b[0m
 
 "
 }
@@ -415,6 +415,6 @@ mod foo {
   "level": "",
   "spans": [],
   "children": [],
-  "rendered": "/u001b[0m/u001b[1mFor more information about this error, try `rustc --explain E0412`./u001b[0m
+  "rendered": "\u001b[0m\u001b[1mFor more information about this error, try `rustc --explain E0412`.\u001b[0m
 "
 }
