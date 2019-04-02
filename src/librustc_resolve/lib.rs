@@ -1352,7 +1352,7 @@ impl<'a> NameBinding<'a> {
         }
     }
 
-    // We sometimes need to treat variants as `pub` for backwards compatibility
+    // We sometimes need to treat variants as `pub` for backwards compatibility.
     fn pseudo_vis(&self) -> ty::Visibility {
         if self.is_variant() && self.def().def_id().is_local() {
             ty::Visibility::Public
@@ -2714,7 +2714,7 @@ impl<'a> Resolver<'a> {
     {
         let mut self_type_rib = Rib::new(NormalRibKind);
 
-        // plain insert (no renaming, types are not currently hygienic....)
+        // Plain insert (no renaming, since types are not currently hygienic)
         self_type_rib.bindings.insert(keywords::SelfUpper.ident(), self_def);
         self.ribs[TypeNS].push(self_type_rib);
         f(self);
@@ -4438,26 +4438,47 @@ impl<'a> Resolver<'a> {
             let mut collected_traits = Vec::new();
             module.for_each_child(|name, ns, binding| {
                 if ns != TypeNS { return }
-                if let Def::Trait(_) = binding.def() {
-                    collected_traits.push((name, binding));
+                match binding.def() {
+                    Def::Trait(_) |
+                    Def::TraitAlias(_) => collected_traits.push((name, binding)),
+                    _ => (),
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());
         }
 
         for &(trait_name, binding) in traits.as_ref().unwrap().iter() {
-            let module = binding.module().unwrap();
-            let mut ident = ident;
-            if ident.span.glob_adjust(module.expansion, binding.span.ctxt().modern()).is_none() {
-                continue
-            }
-            if self.resolve_ident_in_module_unadjusted(
-                ModuleOrUniformRoot::Module(module),
-                ident,
-                ns,
-                false,
-                module.span,
-            ).is_ok() {
+            // Traits have pseudo-modules that can be used to search for the given ident.
+            if let Some(module) = binding.module() {
+                let mut ident = ident;
+                if ident.span.glob_adjust(
+                    module.expansion,
+                    binding.span.ctxt().modern(),
+                ).is_none() {
+                    continue
+                }
+                if self.resolve_ident_in_module_unadjusted(
+                    ModuleOrUniformRoot::Module(module),
+                    ident,
+                    ns,
+                    false,
+                    module.span,
+                ).is_ok() {
+                    let import_id = match binding.kind {
+                        NameBindingKind::Import { directive, .. } => {
+                            self.maybe_unused_trait_imports.insert(directive.id);
+                            self.add_to_glob_map(&directive, trait_name);
+                            Some(directive.id)
+                        }
+                        _ => None,
+                    };
+                    let trait_def_id = module.def_id().unwrap();
+                    found_traits.push(TraitCandidate { def_id: trait_def_id, import_id });
+                }
+            } else if let Def::TraitAlias(_) = binding.def() {
+                // For now, just treat all trait aliases as possible candidates, since we don't
+                // know if the ident is somewhere in the transitive bounds.
+
                 let import_id = match binding.kind {
                     NameBindingKind::Import { directive, .. } => {
                         self.maybe_unused_trait_imports.insert(directive.id);
@@ -4466,8 +4487,10 @@ impl<'a> Resolver<'a> {
                     }
                     _ => None,
                 };
-                let trait_def_id = module.def_id().unwrap();
-                found_traits.push(TraitCandidate { def_id: trait_def_id, import_id: import_id });
+                let trait_def_id = binding.def().def_id();
+                found_traits.push(TraitCandidate { def_id: trait_def_id, import_id });
+            } else {
+                bug!("candidate is not trait or trait alias?")
             }
         }
     }
