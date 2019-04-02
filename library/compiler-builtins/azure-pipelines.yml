@@ -76,5 +76,9 @@ jobs:
           TARGET: x86_64-pc-windows-msvc
         i686-gnu:
           TARGET: i686-pc-windows-gnu
+          INTRINSICS_FAILS_WITH_MEM_FEATURE: 1
+          DEBUG_LTO_BUILD_DOESNT_WORK: 1
         x86_64-gnu:
           TARGET: x86_64-pc-windows-gnu
+          INTRINSICS_FAILS_WITH_MEM_FEATURE: 1
+          DEBUG_LTO_BUILD_DOESNT_WORK: 1
