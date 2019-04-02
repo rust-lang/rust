@@ -29,6 +29,8 @@ pub enum IgnoreMode {
     CVarArgs,
     /// A zero-sized type.
     Zst,
+    /// An uninhabited type.
+    Uninhabited,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

@@ -244,6 +244,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 return;
             }
 
+            PassMode::Ignore(IgnoreMode::Uninhabited) => {
+                bx.abort();
+                bx.unreachable();
+                return;
+            }
+
             PassMode::Ignore(IgnoreMode::CVarArgs) => {
                 bug!("C-variadic arguments should never be the return type");
             }
