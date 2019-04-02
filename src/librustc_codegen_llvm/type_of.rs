@@ -63,6 +63,11 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                     write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
             }
+            if let (&ty::Generator(..), &layout::Variants::Single { index })
+                 = (&layout.ty.sty, &layout.variants)
+            {
+                write!(&mut name, "::variant#{:?}", index).unwrap();
+            }
             Some(name)
         }
         _ => None

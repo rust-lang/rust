@@ -296,9 +296,15 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                 ..
             } => {
                 let ptr = self.project_field(bx, discr_index);
-                let to = self.layout.ty.ty_adt_def().unwrap()
-                    .discriminant_for_variant(bx.tcx(), variant_index)
-                    .val;
+                let to = match self.layout.ty.sty {
+                    ty::TyKind::Adt(adt_def, _) => adt_def
+                        .discriminant_for_variant(bx.tcx(), variant_index)
+                        .val,
+                    // Generators don't support explicit discriminant values, so
+                    // they are the same as the variant index.
+                    ty::TyKind::Generator(..) => variant_index.as_u32() as u128,
+                    _ => bug!(),
+                };
                 bx.store(
                     bx.cx().const_uint_big(bx.cx().backend_type(ptr.layout), to),
                     ptr.llval,

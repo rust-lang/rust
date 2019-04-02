@@ -15,7 +15,6 @@ use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, Pointer};
 
 use smallvec::SmallVec;
-use std::iter;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use rustc_target::spec::abi;
@@ -475,30 +474,23 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// This returns the types of the MIR locals which had to be stored across suspension points.
     /// It is calculated in rustc_mir::transform::generator::StateTransform.
     /// All the types here must be in the tuple in GeneratorInterior.
+    ///
+    /// The locals are grouped by their variant number. Note that some locals may
+    /// be repeated in multiple variants.
     pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a
+        impl Iterator<Item=impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a>
     {
-        // TODO remove so we can handle variants properly
         tcx.generator_layout(def_id)
-            .variant_fields[0].iter()
-            .map(move |d| d.ty.subst(tcx, self.substs))
+            .variant_fields.iter()
+            .map(move |v| v.iter().map(move |d| d.ty.subst(tcx, self.substs)))
     }
 
-    /// This is the types of the fields of a generator which
-    /// is available before the generator transformation.
-    /// It includes the upvars and the state discriminant.
-    pub fn pre_transforms_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+    /// This is the types of the fields of a generator which are not stored in a
+    /// variant.
+    pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=Ty<'tcx>> + 'a
     {
-        self.upvar_tys(def_id, tcx).chain(iter::once(self.discr_ty(tcx)))
-    }
-
-    /// This is the types of all the fields stored in a generator.
-    /// It includes the upvars, state types and the state discriminant.
-    pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a
-    {
-        self.pre_transforms_tys(def_id, tcx).chain(self.state_tys(def_id, tcx))
+        self.upvar_tys(def_id, tcx)
     }
 }
 
