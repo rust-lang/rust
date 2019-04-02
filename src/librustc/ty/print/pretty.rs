@@ -1564,7 +1564,7 @@ define_print_and_forward_display! {
                 p!(write("{}{}", sign_extend(bits, size) as i128, i))
             },
             (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Char)
-                => p!(write("{}", ::std::char::from_u32(bits as u32).unwrap())),
+                => p!(write("{:?}", ::std::char::from_u32(bits as u32).unwrap())),
             (_, ty::FnDef(did, _)) => p!(write("{}", cx.tcx().def_path_str(*did))),
             (
                 ConstValue::Slice(place, len),
