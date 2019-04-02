@@ -1,22 +1,22 @@
 SOURCE_FILE@[0; 22)
   TRAIT_DEF@[0; 21)
-    TRAIT_KW@[0; 5)
-    WHITESPACE@[5; 6)
+    TRAIT_KW@[0; 5) "trait"
+    WHITESPACE@[5; 6) " "
     NAME@[6; 7)
       IDENT@[6; 7) "T"
-    WHITESPACE@[7; 8)
+    WHITESPACE@[7; 8) " "
     ITEM_LIST@[8; 21)
-      L_CURLY@[8; 9)
-      WHITESPACE@[9; 10)
+      L_CURLY@[8; 9) "{"
+      WHITESPACE@[9; 10) " "
       FN_DEF@[10; 19)
-        FN_KW@[10; 12)
-        WHITESPACE@[12; 13)
+        FN_KW@[10; 12) "fn"
+        WHITESPACE@[12; 13) " "
         NAME@[13; 16)
           IDENT@[13; 16) "foo"
         PARAM_LIST@[16; 18)
-          L_PAREN@[16; 17)
-          R_PAREN@[17; 18)
-        SEMI@[18; 19)
-      WHITESPACE@[19; 20)
-      R_CURLY@[20; 21)
-  WHITESPACE@[21; 22)
+          L_PAREN@[16; 17) "("
+          R_PAREN@[17; 18) ")"
+        SEMI@[18; 19) ";"
+      WHITESPACE@[19; 20) " "
+      R_CURLY@[20; 21) "}"
+  WHITESPACE@[21; 22) "\n"

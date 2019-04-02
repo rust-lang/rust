@@ -1,41 +1,41 @@
 SOURCE_FILE@[0; 47)
   STATIC_DEF@[0; 20)
-    STATIC_KW@[0; 6)
-    WHITESPACE@[6; 7)
+    STATIC_KW@[0; 6) "static"
+    WHITESPACE@[6; 7) " "
     NAME@[7; 10)
       IDENT@[7; 10) "FOO"
-    COLON@[10; 11)
-    WHITESPACE@[11; 12)
+    COLON@[10; 11) ":"
+    WHITESPACE@[11; 12) " "
     PATH_TYPE@[12; 15)
       PATH@[12; 15)
         PATH_SEGMENT@[12; 15)
           NAME_REF@[12; 15)
             IDENT@[12; 15) "u32"
-    WHITESPACE@[15; 16)
-    EQ@[16; 17)
-    WHITESPACE@[17; 18)
+    WHITESPACE@[15; 16) " "
+    EQ@[16; 17) "="
+    WHITESPACE@[17; 18) " "
     LITERAL@[18; 19)
       INT_NUMBER@[18; 19) "1"
-    SEMI@[19; 20)
-  WHITESPACE@[20; 21)
+    SEMI@[19; 20) ";"
+  WHITESPACE@[20; 21) "\n"
   STATIC_DEF@[21; 46)
-    STATIC_KW@[21; 27)
-    WHITESPACE@[27; 28)
-    MUT_KW@[28; 31)
-    WHITESPACE@[31; 32)
+    STATIC_KW@[21; 27) "static"
+    WHITESPACE@[27; 28) " "
+    MUT_KW@[28; 31) "mut"
+    WHITESPACE@[31; 32) " "
     NAME@[32; 35)
       IDENT@[32; 35) "BAR"
-    COLON@[35; 36)
-    WHITESPACE@[36; 37)
+    COLON@[35; 36) ":"
+    WHITESPACE@[36; 37) " "
     PATH_TYPE@[37; 40)
       PATH@[37; 40)
         PATH_SEGMENT@[37; 40)
           NAME_REF@[37; 40)
             IDENT@[37; 40) "i32"
-    WHITESPACE@[40; 41)
-    EQ@[41; 42)
-    WHITESPACE@[42; 43)
+    WHITESPACE@[40; 41) " "
+    EQ@[41; 42) "="
+    WHITESPACE@[42; 43) " "
     LITERAL@[43; 45)
       INT_NUMBER@[43; 45) "92"
-    SEMI@[45; 46)
-  WHITESPACE@[46; 47)
+    SEMI@[45; 46) ";"
+  WHITESPACE@[46; 47) "\n"

@@ -93,6 +93,8 @@ fn syntax_tree_for_token(node: SyntaxToken, text_range: TextRange) -> Option<Str
 
 #[cfg(test)]
 mod tests {
+    use test_utils::assert_eq_text;
+
     use crate::mock_analysis::{single_file, single_file_with_range};
 
     #[test]
@@ -101,23 +103,23 @@ mod tests {
         let (analysis, file_id) = single_file(r#"fn foo() {}"#);
         let syn = analysis.syntax_tree(file_id, None);
 
-        assert_eq!(
+        assert_eq_text!(
             syn.trim(),
             r#"
 SOURCE_FILE@[0; 11)
   FN_DEF@[0; 11)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 6)
       IDENT@[3; 6) "foo"
     PARAM_LIST@[6; 8)
-      L_PAREN@[6; 7)
-      R_PAREN@[7; 8)
-    WHITESPACE@[8; 9)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
     BLOCK@[9; 11)
-      L_CURLY@[9; 10)
-      R_CURLY@[10; 11)
-    "#
+      L_CURLY@[9; 10) "{"
+      R_CURLY@[10; 11) "}"
+"#
             .trim()
         );
 
@@ -133,40 +135,40 @@ fn test() {
         );
         let syn = analysis.syntax_tree(file_id, None);
 
-        assert_eq!(
+        assert_eq_text!(
             syn.trim(),
             r#"
 SOURCE_FILE@[0; 60)
   FN_DEF@[0; 60)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 7)
       IDENT@[3; 7) "test"
     PARAM_LIST@[7; 9)
-      L_PAREN@[7; 8)
-      R_PAREN@[8; 9)
-    WHITESPACE@[9; 10)
+      L_PAREN@[7; 8) "("
+      R_PAREN@[8; 9) ")"
+    WHITESPACE@[9; 10) " "
     BLOCK@[10; 60)
-      L_CURLY@[10; 11)
-      WHITESPACE@[11; 16)
+      L_CURLY@[10; 11) "{"
+      WHITESPACE@[11; 16) "\n    "
       EXPR_STMT@[16; 58)
         MACRO_CALL@[16; 57)
           PATH@[16; 22)
             PATH_SEGMENT@[16; 22)
               NAME_REF@[16; 22)
                 IDENT@[16; 22) "assert"
-          EXCL@[22; 23)
+          EXCL@[22; 23) "!"
           TOKEN_TREE@[23; 57)
-            L_PAREN@[23; 24)
-            STRING@[24; 52)
-            COMMA@[52; 53)
-            WHITESPACE@[53; 54)
-            STRING@[54; 56)
-            R_PAREN@[56; 57)
-        SEMI@[57; 58)
-      WHITESPACE@[58; 59)
-      R_CURLY@[59; 60)
-    "#
+            L_PAREN@[23; 24) "("
+            STRING@[24; 52) "\"\n    fn foo() {\n     ..."
+            COMMA@[52; 53) ","
+            WHITESPACE@[53; 54) " "
+            STRING@[54; 56) "\"\""
+            R_PAREN@[56; 57) ")"
+        SEMI@[57; 58) ";"
+      WHITESPACE@[58; 59) "\n"
+      R_CURLY@[59; 60) "}"
+"#
             .trim()
         );
     }
@@ -176,22 +178,22 @@ SOURCE_FILE@[0; 60)
         let (analysis, range) = single_file_with_range(r#"<|>fn foo() {}<|>"#.trim());
         let syn = analysis.syntax_tree(range.file_id, Some(range.range));
 
-        assert_eq!(
+        assert_eq_text!(
             syn.trim(),
             r#"
 FN_DEF@[0; 11)
-  FN_KW@[0; 2)
-  WHITESPACE@[2; 3)
+  FN_KW@[0; 2) "fn"
+  WHITESPACE@[2; 3) " "
   NAME@[3; 6)
     IDENT@[3; 6) "foo"
   PARAM_LIST@[6; 8)
-    L_PAREN@[6; 7)
-    R_PAREN@[7; 8)
-  WHITESPACE@[8; 9)
+    L_PAREN@[6; 7) "("
+    R_PAREN@[7; 8) ")"
+  WHITESPACE@[8; 9) " "
   BLOCK@[9; 11)
-    L_CURLY@[9; 10)
-    R_CURLY@[10; 11)
-    "#
+    L_CURLY@[9; 10) "{"
+    R_CURLY@[10; 11) "}"
+"#
             .trim()
         );
 
@@ -206,7 +208,7 @@ FN_DEF@[0; 11)
         );
         let syn = analysis.syntax_tree(range.file_id, Some(range.range));
 
-        assert_eq!(
+        assert_eq_text!(
             syn.trim(),
             r#"
 EXPR_STMT@[16; 58)
@@ -215,16 +217,16 @@ EXPR_STMT@[16; 58)
       PATH_SEGMENT@[16; 22)
         NAME_REF@[16; 22)
           IDENT@[16; 22) "assert"
-    EXCL@[22; 23)
+    EXCL@[22; 23) "!"
     TOKEN_TREE@[23; 57)
-      L_PAREN@[23; 24)
-      STRING@[24; 52)
-      COMMA@[52; 53)
-      WHITESPACE@[53; 54)
-      STRING@[54; 56)
-      R_PAREN@[56; 57)
-  SEMI@[57; 58)
-    "#
+      L_PAREN@[23; 24) "("
+      STRING@[24; 52) "\"\n    fn foo() {\n     ..."
+      COMMA@[52; 53) ","
+      WHITESPACE@[53; 54) " "
+      STRING@[54; 56) "\"\""
+      R_PAREN@[56; 57) ")"
+  SEMI@[57; 58) ";"
+"#
             .trim()
         );
     }
@@ -243,23 +245,23 @@ fn bar() {
             .trim(),
         );
         let syn = analysis.syntax_tree(range.file_id, Some(range.range));
-        assert_eq!(
+        assert_eq_text!(
             syn.trim(),
             r#"
 SOURCE_FILE@[0; 12)
   FN_DEF@[0; 12)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 6)
       IDENT@[3; 6) "foo"
     PARAM_LIST@[6; 8)
-      L_PAREN@[6; 7)
-      R_PAREN@[7; 8)
-    WHITESPACE@[8; 9)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
     BLOCK@[9; 12)
-      L_CURLY@[9; 10)
-      WHITESPACE@[10; 11)
-      R_CURLY@[11; 12)
+      L_CURLY@[9; 10) "{"
+      WHITESPACE@[10; 11) "\n"
+      R_CURLY@[11; 12) "}"
 "#
             .trim()
         );
@@ -277,23 +279,23 @@ fn bar() {
                 .trim(),
         );
         let syn = analysis.syntax_tree(range.file_id, Some(range.range));
-        assert_eq!(
+        assert_eq_text!(
             syn.trim(),
             r#"
 SOURCE_FILE@[0; 12)
   FN_DEF@[0; 12)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 6)
       IDENT@[3; 6) "foo"
     PARAM_LIST@[6; 8)
-      L_PAREN@[6; 7)
-      R_PAREN@[7; 8)
-    WHITESPACE@[8; 9)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
     BLOCK@[9; 12)
-      L_CURLY@[9; 10)
-      WHITESPACE@[10; 11)
-      R_CURLY@[11; 12)
+      L_CURLY@[9; 10) "{"
+      WHITESPACE@[10; 11) "\n"
+      R_CURLY@[11; 12) "}"
 "#
             .trim()
         );
@@ -310,38 +312,37 @@ fn bar() {
                 .trim(),
         );
         let syn = analysis.syntax_tree(range.file_id, Some(range.range));
-        assert_eq!(
+        assert_eq_text!(
             syn.trim(),
             r#"
 SOURCE_FILE@[0; 25)
   FN_DEF@[0; 12)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 6)
       IDENT@[3; 6) "foo"
     PARAM_LIST@[6; 8)
-      L_PAREN@[6; 7)
-      R_PAREN@[7; 8)
-    WHITESPACE@[8; 9)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) " "
     BLOCK@[9; 12)
-      L_CURLY@[9; 10)
-      WHITESPACE@[10; 11)
-      R_CURLY@[11; 12)
-  WHITESPACE@[12; 13)
+      L_CURLY@[9; 10) "{"
+      WHITESPACE@[10; 11) "\n"
+      R_CURLY@[11; 12) "}"
+  WHITESPACE@[12; 13) "\n"
   FN_DEF@[13; 25)
-    FN_KW@[13; 15)
-    WHITESPACE@[15; 16)
+    FN_KW@[13; 15) "fn"
+    WHITESPACE@[15; 16) " "
     NAME@[16; 19)
       IDENT@[16; 19) "bar"
     PARAM_LIST@[19; 21)
-      L_PAREN@[19; 20)
-      R_PAREN@[20; 21)
-    WHITESPACE@[21; 22)
+      L_PAREN@[19; 20) "("
+      R_PAREN@[20; 21) ")"
+    WHITESPACE@[21; 22) " "
     BLOCK@[22; 25)
-      L_CURLY@[22; 23)
-      WHITESPACE@[23; 24)
-      R_CURLY@[24; 25)
-
+      L_CURLY@[22; 23) "{"
+      WHITESPACE@[23; 24) "\n"
+      R_CURLY@[24; 25) "}"
 "#
             .trim()
         );

@@ -1,21 +1,21 @@
 SOURCE_FILE@[0; 30)
   FN_DEF@[0; 29)
-    UNSAFE_KW@[0; 6)
-    WHITESPACE@[6; 7)
+    UNSAFE_KW@[0; 6) "unsafe"
+    WHITESPACE@[6; 7) " "
     ABI@[7; 17)
-      EXTERN_KW@[7; 13)
-      WHITESPACE@[13; 14)
-      STRING@[14; 17)
-    WHITESPACE@[17; 18)
-    FN_KW@[18; 20)
-    WHITESPACE@[20; 21)
+      EXTERN_KW@[7; 13) "extern"
+      WHITESPACE@[13; 14) " "
+      STRING@[14; 17) "\"C\""
+    WHITESPACE@[17; 18) " "
+    FN_KW@[18; 20) "fn"
+    WHITESPACE@[20; 21) " "
     NAME@[21; 24)
       IDENT@[21; 24) "foo"
     PARAM_LIST@[24; 26)
-      L_PAREN@[24; 25)
-      R_PAREN@[25; 26)
-    WHITESPACE@[26; 27)
+      L_PAREN@[24; 25) "("
+      R_PAREN@[25; 26) ")"
+    WHITESPACE@[26; 27) " "
     BLOCK@[27; 29)
-      L_CURLY@[27; 28)
-      R_CURLY@[28; 29)
-  WHITESPACE@[29; 30)
+      L_CURLY@[27; 28) "{"
+      R_CURLY@[28; 29) "}"
+  WHITESPACE@[29; 30) "\n"

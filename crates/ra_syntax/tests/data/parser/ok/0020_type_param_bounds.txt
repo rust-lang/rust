@@ -1,139 +1,139 @@
 SOURCE_FILE@[0; 250)
   STRUCT_DEF@[0; 12)
-    STRUCT_KW@[0; 6)
-    WHITESPACE@[6; 7)
+    STRUCT_KW@[0; 6) "struct"
+    WHITESPACE@[6; 7) " "
     NAME@[7; 8)
       IDENT@[7; 8) "A"
     TYPE_PARAM_LIST@[8; 11)
-      L_ANGLE@[8; 9)
+      L_ANGLE@[8; 9) "<"
       TYPE_PARAM@[9; 10)
         NAME@[9; 10)
           IDENT@[9; 10) "T"
-      R_ANGLE@[10; 11)
-    SEMI@[11; 12)
-  WHITESPACE@[12; 13)
+      R_ANGLE@[10; 11) ">"
+    SEMI@[11; 12) ";"
+  WHITESPACE@[12; 13) "\n"
   STRUCT_DEF@[13; 26)
-    STRUCT_KW@[13; 19)
-    WHITESPACE@[19; 20)
+    STRUCT_KW@[13; 19) "struct"
+    WHITESPACE@[19; 20) " "
     NAME@[20; 21)
       IDENT@[20; 21) "B"
     TYPE_PARAM_LIST@[21; 25)
-      L_ANGLE@[21; 22)
+      L_ANGLE@[21; 22) "<"
       TYPE_PARAM@[22; 24)
         NAME@[22; 23)
           IDENT@[22; 23) "T"
-        COLON@[23; 24)
+        COLON@[23; 24) ":"
         TYPE_BOUND_LIST@[24; 24)
-      R_ANGLE@[24; 25)
-    SEMI@[25; 26)
-  WHITESPACE@[26; 27)
+      R_ANGLE@[24; 25) ">"
+    SEMI@[25; 26) ";"
+  WHITESPACE@[26; 27) "\n"
   STRUCT_DEF@[27; 43)
-    STRUCT_KW@[27; 33)
-    WHITESPACE@[33; 34)
+    STRUCT_KW@[27; 33) "struct"
+    WHITESPACE@[33; 34) " "
     NAME@[34; 35)
       IDENT@[34; 35) "C"
     TYPE_PARAM_LIST@[35; 42)
-      L_ANGLE@[35; 36)
+      L_ANGLE@[35; 36) "<"
       TYPE_PARAM@[36; 41)
         NAME@[36; 37)
           IDENT@[36; 37) "T"
-        COLON@[37; 38)
-        WHITESPACE@[38; 39)
+        COLON@[37; 38) ":"
+        WHITESPACE@[38; 39) " "
         TYPE_BOUND_LIST@[39; 41)
           TYPE_BOUND@[39; 41)
-            LIFETIME@[39; 41) "'a"
-      R_ANGLE@[41; 42)
-    SEMI@[42; 43)
-  WHITESPACE@[43; 44)
+            LIFETIME@[39; 41) "\'a"
+      R_ANGLE@[41; 42) ">"
+    SEMI@[42; 43) ";"
+  WHITESPACE@[43; 44) "\n"
   STRUCT_DEF@[44; 63)
-    STRUCT_KW@[44; 50)
-    WHITESPACE@[50; 51)
+    STRUCT_KW@[44; 50) "struct"
+    WHITESPACE@[50; 51) " "
     NAME@[51; 52)
       IDENT@[51; 52) "D"
     TYPE_PARAM_LIST@[52; 62)
-      L_ANGLE@[52; 53)
+      L_ANGLE@[52; 53) "<"
       TYPE_PARAM@[53; 60)
         NAME@[53; 54)
           IDENT@[53; 54) "T"
-        COLON@[54; 55)
-        WHITESPACE@[55; 56)
+        COLON@[54; 55) ":"
+        WHITESPACE@[55; 56) " "
         TYPE_BOUND_LIST@[56; 60)
           TYPE_BOUND@[56; 58)
-            LIFETIME@[56; 58) "'a"
-          WHITESPACE@[58; 59)
-          PLUS@[59; 60)
-      WHITESPACE@[60; 61)
-      R_ANGLE@[61; 62)
-    SEMI@[62; 63)
-  WHITESPACE@[63; 64)
+            LIFETIME@[56; 58) "\'a"
+          WHITESPACE@[58; 59) " "
+          PLUS@[59; 60) "+"
+      WHITESPACE@[60; 61) " "
+      R_ANGLE@[61; 62) ">"
+    SEMI@[62; 63) ";"
+  WHITESPACE@[63; 64) "\n"
   STRUCT_DEF@[64; 86)
-    STRUCT_KW@[64; 70)
-    WHITESPACE@[70; 71)
+    STRUCT_KW@[64; 70) "struct"
+    WHITESPACE@[70; 71) " "
     NAME@[71; 72)
       IDENT@[71; 72) "E"
     TYPE_PARAM_LIST@[72; 85)
-      L_ANGLE@[72; 73)
+      L_ANGLE@[72; 73) "<"
       TYPE_PARAM@[73; 83)
         NAME@[73; 74)
           IDENT@[73; 74) "T"
-        COLON@[74; 75)
-        WHITESPACE@[75; 76)
+        COLON@[74; 75) ":"
+        WHITESPACE@[75; 76) " "
         TYPE_BOUND_LIST@[76; 83)
           TYPE_BOUND@[76; 78)
-            LIFETIME@[76; 78) "'a"
-          WHITESPACE@[78; 79)
-          PLUS@[79; 80)
-          WHITESPACE@[80; 81)
+            LIFETIME@[76; 78) "\'a"
+          WHITESPACE@[78; 79) " "
+          PLUS@[79; 80) "+"
+          WHITESPACE@[80; 81) " "
           TYPE_BOUND@[81; 83)
-            LIFETIME@[81; 83) "'d"
-      WHITESPACE@[83; 84)
-      R_ANGLE@[84; 85)
-    SEMI@[85; 86)
-  WHITESPACE@[86; 87)
+            LIFETIME@[81; 83) "\'d"
+      WHITESPACE@[83; 84) " "
+      R_ANGLE@[84; 85) ">"
+    SEMI@[85; 86) ";"
+  WHITESPACE@[86; 87) "\n"
   STRUCT_DEF@[87; 116)
-    STRUCT_KW@[87; 93)
-    WHITESPACE@[93; 94)
+    STRUCT_KW@[87; 93) "struct"
+    WHITESPACE@[93; 94) " "
     NAME@[94; 95)
       IDENT@[94; 95) "F"
     TYPE_PARAM_LIST@[95; 115)
-      L_ANGLE@[95; 96)
+      L_ANGLE@[95; 96) "<"
       TYPE_PARAM@[96; 114)
         NAME@[96; 97)
           IDENT@[96; 97) "T"
-        COLON@[97; 98)
-        WHITESPACE@[98; 99)
+        COLON@[97; 98) ":"
+        WHITESPACE@[98; 99) " "
         TYPE_BOUND_LIST@[99; 114)
           TYPE_BOUND@[99; 101)
-            LIFETIME@[99; 101) "'a"
-          WHITESPACE@[101; 102)
-          PLUS@[102; 103)
-          WHITESPACE@[103; 104)
+            LIFETIME@[99; 101) "\'a"
+          WHITESPACE@[101; 102) " "
+          PLUS@[102; 103) "+"
+          WHITESPACE@[103; 104) " "
           TYPE_BOUND@[104; 106)
-            LIFETIME@[104; 106) "'d"
-          WHITESPACE@[106; 107)
-          PLUS@[107; 108)
-          WHITESPACE@[108; 109)
+            LIFETIME@[104; 106) "\'d"
+          WHITESPACE@[106; 107) " "
+          PLUS@[107; 108) "+"
+          WHITESPACE@[108; 109) " "
           TYPE_BOUND@[109; 114)
             PATH_TYPE@[109; 114)
               PATH@[109; 114)
                 PATH_SEGMENT@[109; 114)
                   NAME_REF@[109; 114)
                     IDENT@[109; 114) "Clone"
-      R_ANGLE@[114; 115)
-    SEMI@[115; 116)
-  WHITESPACE@[116; 117)
+      R_ANGLE@[114; 115) ">"
+    SEMI@[115; 116) ";"
+  WHITESPACE@[116; 117) "\n"
   STRUCT_DEF@[117; 143)
-    STRUCT_KW@[117; 123)
-    WHITESPACE@[123; 124)
+    STRUCT_KW@[117; 123) "struct"
+    WHITESPACE@[123; 124) " "
     NAME@[124; 125)
       IDENT@[124; 125) "G"
     TYPE_PARAM_LIST@[125; 142)
-      L_ANGLE@[125; 126)
+      L_ANGLE@[125; 126) "<"
       TYPE_PARAM@[126; 141)
         NAME@[126; 127)
           IDENT@[126; 127) "T"
-        COLON@[127; 128)
-        WHITESPACE@[128; 129)
+        COLON@[127; 128) ":"
+        WHITESPACE@[128; 129) " "
         TYPE_BOUND_LIST@[129; 141)
           TYPE_BOUND@[129; 134)
             PATH_TYPE@[129; 134)
@@ -141,128 +141,128 @@ SOURCE_FILE@[0; 250)
                 PATH_SEGMENT@[129; 134)
                   NAME_REF@[129; 134)
                     IDENT@[129; 134) "Clone"
-          WHITESPACE@[134; 135)
-          PLUS@[135; 136)
-          WHITESPACE@[136; 137)
+          WHITESPACE@[134; 135) " "
+          PLUS@[135; 136) "+"
+          WHITESPACE@[136; 137) " "
           TYPE_BOUND@[137; 141)
             PATH_TYPE@[137; 141)
               PATH@[137; 141)
                 PATH_SEGMENT@[137; 141)
                   NAME_REF@[137; 141)
                     IDENT@[137; 141) "Copy"
-      R_ANGLE@[141; 142)
-    SEMI@[142; 143)
-  WHITESPACE@[143; 144)
+      R_ANGLE@[141; 142) ">"
+    SEMI@[142; 143) ";"
+  WHITESPACE@[143; 144) "\n"
   STRUCT_DEF@[144; 180)
-    STRUCT_KW@[144; 150)
-    WHITESPACE@[150; 151)
+    STRUCT_KW@[144; 150) "struct"
+    WHITESPACE@[150; 151) " "
     NAME@[151; 152)
       IDENT@[151; 152) "H"
     TYPE_PARAM_LIST@[152; 179)
-      L_ANGLE@[152; 153)
+      L_ANGLE@[152; 153) "<"
       TYPE_PARAM@[153; 178)
         NAME@[153; 154)
           IDENT@[153; 154) "T"
-        COLON@[154; 155)
-        WHITESPACE@[155; 156)
+        COLON@[154; 155) ":"
+        WHITESPACE@[155; 156) " "
         TYPE_BOUND_LIST@[156; 178)
           TYPE_BOUND@[156; 161)
             PATH_TYPE@[156; 161)
               PATH@[156; 161)
                 PATH_SEGMENT@[156; 161)
-                  COLONCOLON@[156; 158)
+                  COLONCOLON@[156; 158) "::"
                   NAME_REF@[158; 161)
                     IDENT@[158; 161) "Foo"
-          WHITESPACE@[161; 162)
-          PLUS@[162; 163)
-          WHITESPACE@[163; 164)
+          WHITESPACE@[161; 162) " "
+          PLUS@[162; 163) "+"
+          WHITESPACE@[163; 164) " "
           TYPE_BOUND@[164; 173)
             PATH_TYPE@[164; 173)
               PATH@[164; 173)
                 PATH@[164; 168)
                   PATH_SEGMENT@[164; 168)
-                    SELF_KW@[164; 168)
-                COLONCOLON@[168; 170)
+                    SELF_KW@[164; 168) "self"
+                COLONCOLON@[168; 170) "::"
                 PATH_SEGMENT@[170; 173)
                   NAME_REF@[170; 173)
                     IDENT@[170; 173) "Bar"
-          WHITESPACE@[173; 174)
-          PLUS@[174; 175)
-          WHITESPACE@[175; 176)
+          WHITESPACE@[173; 174) " "
+          PLUS@[174; 175) "+"
+          WHITESPACE@[175; 176) " "
           TYPE_BOUND@[176; 178)
-            LIFETIME@[176; 178) "'a"
-      R_ANGLE@[178; 179)
-    SEMI@[179; 180)
-  WHITESPACE@[180; 181)
+            LIFETIME@[176; 178) "\'a"
+      R_ANGLE@[178; 179) ">"
+    SEMI@[179; 180) ";"
+  WHITESPACE@[180; 181) "\n"
   STRUCT_DEF@[181; 199)
-    STRUCT_KW@[181; 187)
-    WHITESPACE@[187; 188)
+    STRUCT_KW@[181; 187) "struct"
+    WHITESPACE@[187; 188) " "
     NAME@[188; 189)
       IDENT@[188; 189) "I"
     TYPE_PARAM_LIST@[189; 198)
-      L_ANGLE@[189; 190)
+      L_ANGLE@[189; 190) "<"
       TYPE_PARAM@[190; 192)
         NAME@[190; 191)
           IDENT@[190; 191) "T"
-        COLON@[191; 192)
+        COLON@[191; 192) ":"
         TYPE_BOUND_LIST@[192; 192)
-      COMMA@[192; 193)
-      WHITESPACE@[193; 194)
+      COMMA@[192; 193) ","
+      WHITESPACE@[193; 194) " "
       TYPE_PARAM@[194; 196)
         NAME@[194; 195)
           IDENT@[194; 195) "U"
-        COLON@[195; 196)
+        COLON@[195; 196) ":"
         TYPE_BOUND_LIST@[196; 196)
-      COMMA@[196; 197)
-      R_ANGLE@[197; 198)
-    SEMI@[198; 199)
-  WHITESPACE@[199; 200)
+      COMMA@[196; 197) ","
+      R_ANGLE@[197; 198) ">"
+    SEMI@[198; 199) ";"
+  WHITESPACE@[199; 200) "\n"
   STRUCT_DEF@[200; 250)
-    STRUCT_KW@[200; 206)
-    WHITESPACE@[206; 207)
+    STRUCT_KW@[200; 206) "struct"
+    WHITESPACE@[206; 207) " "
     NAME@[207; 208)
       IDENT@[207; 208) "K"
     TYPE_PARAM_LIST@[208; 249)
-      L_ANGLE@[208; 209)
+      L_ANGLE@[208; 209) "<"
       LIFETIME_PARAM@[209; 215)
-        LIFETIME@[209; 211) "'a"
-        COLON@[211; 212)
-        WHITESPACE@[212; 213)
-        LIFETIME@[213; 215) "'d"
-      COMMA@[215; 216)
-      WHITESPACE@[216; 217)
+        LIFETIME@[209; 211) "\'a"
+        COLON@[211; 212) ":"
+        WHITESPACE@[212; 213) " "
+        LIFETIME@[213; 215) "\'d"
+      COMMA@[215; 216) ","
+      WHITESPACE@[216; 217) " "
       LIFETIME_PARAM@[217; 228)
-        LIFETIME@[217; 219) "'d"
-        COLON@[219; 220)
-        WHITESPACE@[220; 221)
-        LIFETIME@[221; 223) "'a"
-        WHITESPACE@[223; 224)
-        PLUS@[224; 225)
-        WHITESPACE@[225; 226)
-        LIFETIME@[226; 228) "'b"
-      COMMA@[228; 229)
-      WHITESPACE@[229; 230)
+        LIFETIME@[217; 219) "\'d"
+        COLON@[219; 220) ":"
+        WHITESPACE@[220; 221) " "
+        LIFETIME@[221; 223) "\'a"
+        WHITESPACE@[223; 224) " "
+        PLUS@[224; 225) "+"
+        WHITESPACE@[225; 226) " "
+        LIFETIME@[226; 228) "\'b"
+      COMMA@[228; 229) ","
+      WHITESPACE@[229; 230) " "
       TYPE_PARAM@[230; 248)
         NAME@[230; 231)
           IDENT@[230; 231) "T"
-        COLON@[231; 232)
-        WHITESPACE@[232; 233)
+        COLON@[231; 232) ":"
+        WHITESPACE@[232; 233) " "
         TYPE_BOUND_LIST@[233; 248)
           TYPE_BOUND@[233; 235)
-            LIFETIME@[233; 235) "'a"
-          WHITESPACE@[235; 236)
-          PLUS@[236; 237)
-          WHITESPACE@[237; 238)
+            LIFETIME@[233; 235) "\'a"
+          WHITESPACE@[235; 236) " "
+          PLUS@[236; 237) "+"
+          WHITESPACE@[237; 238) " "
           TYPE_BOUND@[238; 240)
-            LIFETIME@[238; 240) "'d"
-          WHITESPACE@[240; 241)
-          PLUS@[241; 242)
-          WHITESPACE@[242; 243)
+            LIFETIME@[238; 240) "\'d"
+          WHITESPACE@[240; 241) " "
+          PLUS@[241; 242) "+"
+          WHITESPACE@[242; 243) " "
           TYPE_BOUND@[243; 248)
             PATH_TYPE@[243; 248)
               PATH@[243; 248)
                 PATH_SEGMENT@[243; 248)
                   NAME_REF@[243; 248)
                     IDENT@[243; 248) "Clone"
-      R_ANGLE@[248; 249)
-    SEMI@[249; 250)
+      R_ANGLE@[248; 249) ">"
+    SEMI@[249; 250) ";"

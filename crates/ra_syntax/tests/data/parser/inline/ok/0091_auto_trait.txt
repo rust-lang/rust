@@ -1,13 +1,13 @@
 SOURCE_FILE@[0; 16)
   TRAIT_DEF@[0; 15)
-    AUTO_KW@[0; 4)
-    WHITESPACE@[4; 5)
-    TRAIT_KW@[5; 10)
-    WHITESPACE@[10; 11)
+    AUTO_KW@[0; 4) "auto"
+    WHITESPACE@[4; 5) " "
+    TRAIT_KW@[5; 10) "trait"
+    WHITESPACE@[10; 11) " "
     NAME@[11; 12)
       IDENT@[11; 12) "T"
-    WHITESPACE@[12; 13)
+    WHITESPACE@[12; 13) " "
     ITEM_LIST@[13; 15)
-      L_CURLY@[13; 14)
-      R_CURLY@[14; 15)
-  WHITESPACE@[15; 16)
+      L_CURLY@[13; 14) "{"
+      R_CURLY@[14; 15) "}"
+  WHITESPACE@[15; 16) "\n"

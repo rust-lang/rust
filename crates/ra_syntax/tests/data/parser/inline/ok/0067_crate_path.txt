@@ -1,15 +1,15 @@
 SOURCE_FILE@[0; 16)
   USE_ITEM@[0; 15)
-    USE_KW@[0; 3)
-    WHITESPACE@[3; 4)
+    USE_KW@[0; 3) "use"
+    WHITESPACE@[3; 4) " "
     USE_TREE@[4; 14)
       PATH@[4; 14)
         PATH@[4; 9)
           PATH_SEGMENT@[4; 9)
-            CRATE_KW@[4; 9)
-        COLONCOLON@[9; 11)
+            CRATE_KW@[4; 9) "crate"
+        COLONCOLON@[9; 11) "::"
         PATH_SEGMENT@[11; 14)
           NAME_REF@[11; 14)
             IDENT@[11; 14) "foo"
-    SEMI@[14; 15)
-  WHITESPACE@[15; 16)
+    SEMI@[14; 15) ";"
+  WHITESPACE@[15; 16) "\n"

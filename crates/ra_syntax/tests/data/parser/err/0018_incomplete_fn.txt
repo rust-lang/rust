@@ -1,131 +1,131 @@
 SOURCE_FILE@[0; 183)
   IMPL_BLOCK@[0; 182)
-    IMPL_KW@[0; 4)
-    WHITESPACE@[4; 5)
+    IMPL_KW@[0; 4) "impl"
+    WHITESPACE@[4; 5) " "
     PATH_TYPE@[5; 13)
       PATH@[5; 13)
         PATH_SEGMENT@[5; 13)
           NAME_REF@[5; 13)
             IDENT@[5; 13) "FnScopes"
-    WHITESPACE@[13; 14)
+    WHITESPACE@[13; 14) " "
     ITEM_LIST@[14; 182)
-      L_CURLY@[14; 15)
-      WHITESPACE@[15; 20)
+      L_CURLY@[14; 15) "{"
+      WHITESPACE@[15; 20) "\n    "
       FN_DEF@[20; 161)
-        FN_KW@[20; 22)
-        WHITESPACE@[22; 23)
+        FN_KW@[20; 22) "fn"
+        WHITESPACE@[22; 23) " "
         NAME@[23; 32)
           IDENT@[23; 32) "new_scope"
         PARAM_LIST@[32; 35)
-          L_PAREN@[32; 33)
+          L_PAREN@[32; 33) "("
           PARAM@[33; 34)
             REF_PAT@[33; 34)
-              AMP@[33; 34)
+              AMP@[33; 34) "&"
               err: `expected pattern`
               err: `expected COLON`
               err: `expected type`
-          R_PAREN@[34; 35)
-        WHITESPACE@[35; 36)
+          R_PAREN@[34; 35) ")"
+        WHITESPACE@[35; 36) " "
         RET_TYPE@[36; 46)
-          THIN_ARROW@[36; 38)
-          WHITESPACE@[38; 39)
+          THIN_ARROW@[36; 38) "->"
+          WHITESPACE@[38; 39) " "
           PATH_TYPE@[39; 46)
             PATH@[39; 46)
               PATH_SEGMENT@[39; 46)
                 NAME_REF@[39; 46)
                   IDENT@[39; 46) "ScopeId"
-        WHITESPACE@[46; 47)
+        WHITESPACE@[46; 47) " "
         BLOCK@[47; 161)
-          L_CURLY@[47; 48)
-          WHITESPACE@[48; 57)
+          L_CURLY@[47; 48) "{"
+          WHITESPACE@[48; 57) "\n        "
           LET_STMT@[57; 85)
-            LET_KW@[57; 60)
-            WHITESPACE@[60; 61)
+            LET_KW@[57; 60) "let"
+            WHITESPACE@[60; 61) " "
             BIND_PAT@[61; 64)
               NAME@[61; 64)
                 IDENT@[61; 64) "res"
-            WHITESPACE@[64; 65)
-            EQ@[65; 66)
-            WHITESPACE@[66; 67)
+            WHITESPACE@[64; 65) " "
+            EQ@[65; 66) "="
+            WHITESPACE@[66; 67) " "
             METHOD_CALL_EXPR@[67; 84)
               FIELD_EXPR@[67; 78)
                 PATH_EXPR@[67; 71)
                   PATH@[67; 71)
                     PATH_SEGMENT@[67; 71)
-                      SELF_KW@[67; 71)
-                DOT@[71; 72)
+                      SELF_KW@[67; 71) "self"
+                DOT@[71; 72) "."
                 NAME_REF@[72; 78)
                   IDENT@[72; 78) "scopes"
-              DOT@[78; 79)
+              DOT@[78; 79) "."
               NAME_REF@[79; 82)
                 IDENT@[79; 82) "len"
               ARG_LIST@[82; 84)
-                L_PAREN@[82; 83)
-                R_PAREN@[83; 84)
-            SEMI@[84; 85)
-          WHITESPACE@[85; 94)
+                L_PAREN@[82; 83) "("
+                R_PAREN@[83; 84) ")"
+            SEMI@[84; 85) ";"
+          WHITESPACE@[85; 94) "\n        "
           METHOD_CALL_EXPR@[94; 155)
             FIELD_EXPR@[94; 105)
               PATH_EXPR@[94; 98)
                 PATH@[94; 98)
                   PATH_SEGMENT@[94; 98)
-                    SELF_KW@[94; 98)
-              DOT@[98; 99)
+                    SELF_KW@[94; 98) "self"
+              DOT@[98; 99) "."
               NAME_REF@[99; 105)
                 IDENT@[99; 105) "scopes"
-            DOT@[105; 106)
+            DOT@[105; 106) "."
             NAME_REF@[106; 110)
               IDENT@[106; 110) "push"
             ARG_LIST@[110; 155)
-              L_PAREN@[110; 111)
+              L_PAREN@[110; 111) "("
               STRUCT_LIT@[111; 154)
                 PATH@[111; 120)
                   PATH_SEGMENT@[111; 120)
                     NAME_REF@[111; 120)
                       IDENT@[111; 120) "ScopeData"
-                WHITESPACE@[120; 121)
+                WHITESPACE@[120; 121) " "
                 NAMED_FIELD_LIST@[121; 154)
-                  L_CURLY@[121; 122)
-                  WHITESPACE@[122; 123)
+                  L_CURLY@[121; 122) "{"
+                  WHITESPACE@[122; 123) " "
                   NAMED_FIELD@[123; 135)
                     NAME_REF@[123; 129)
                       IDENT@[123; 129) "parent"
-                    COLON@[129; 130)
-                    WHITESPACE@[130; 131)
+                    COLON@[129; 130) ":"
+                    WHITESPACE@[130; 131) " "
                     PATH_EXPR@[131; 135)
                       PATH@[131; 135)
                         PATH_SEGMENT@[131; 135)
                           NAME_REF@[131; 135)
                             IDENT@[131; 135) "None"
-                  COMMA@[135; 136)
-                  WHITESPACE@[136; 137)
+                  COMMA@[135; 136) ","
+                  WHITESPACE@[136; 137) " "
                   NAMED_FIELD@[137; 152)
                     NAME_REF@[137; 144)
                       IDENT@[137; 144) "entries"
-                    COLON@[144; 145)
-                    WHITESPACE@[145; 146)
+                    COLON@[144; 145) ":"
+                    WHITESPACE@[145; 146) " "
                     MACRO_CALL@[146; 152)
                       PATH@[146; 149)
                         PATH_SEGMENT@[146; 149)
                           NAME_REF@[146; 149)
                             IDENT@[146; 149) "vec"
-                      EXCL@[149; 150)
+                      EXCL@[149; 150) "!"
                       TOKEN_TREE@[150; 152)
-                        L_BRACK@[150; 151)
-                        R_BRACK@[151; 152)
-                  WHITESPACE@[152; 153)
-                  R_CURLY@[153; 154)
-              R_PAREN@[154; 155)
-          WHITESPACE@[155; 160)
-          R_CURLY@[160; 161)
-      WHITESPACE@[161; 167)
+                        L_BRACK@[150; 151) "["
+                        R_BRACK@[151; 152) "]"
+                  WHITESPACE@[152; 153) " "
+                  R_CURLY@[153; 154) "}"
+              R_PAREN@[154; 155) ")"
+          WHITESPACE@[155; 160) "\n    "
+          R_CURLY@[160; 161) "}"
+      WHITESPACE@[161; 167) "\n\n    "
       FN_DEF@[167; 180)
-        FN_KW@[167; 169)
-        WHITESPACE@[169; 170)
+        FN_KW@[167; 169) "fn"
+        WHITESPACE@[169; 170) " "
         NAME@[170; 180)
           IDENT@[170; 180) "set_parent"
           err: `expected function arguments`
           err: `expected a block`
-      WHITESPACE@[180; 181)
-      R_CURLY@[181; 182)
-  WHITESPACE@[182; 183)
+      WHITESPACE@[180; 181) "\n"
+      R_CURLY@[181; 182) "}"
+  WHITESPACE@[182; 183) "\n"

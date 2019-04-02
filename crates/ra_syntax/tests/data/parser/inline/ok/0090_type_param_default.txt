@@ -1,22 +1,22 @@
 SOURCE_FILE@[0; 19)
   STRUCT_DEF@[0; 18)
-    STRUCT_KW@[0; 6)
-    WHITESPACE@[6; 7)
+    STRUCT_KW@[0; 6) "struct"
+    WHITESPACE@[6; 7) " "
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     TYPE_PARAM_LIST@[8; 17)
-      L_ANGLE@[8; 9)
+      L_ANGLE@[8; 9) "<"
       TYPE_PARAM@[9; 16)
         NAME@[9; 10)
           IDENT@[9; 10) "T"
-        WHITESPACE@[10; 11)
-        EQ@[11; 12)
-        WHITESPACE@[12; 13)
+        WHITESPACE@[10; 11) " "
+        EQ@[11; 12) "="
+        WHITESPACE@[12; 13) " "
         PATH_TYPE@[13; 16)
           PATH@[13; 16)
             PATH_SEGMENT@[13; 16)
               NAME_REF@[13; 16)
                 IDENT@[13; 16) "i32"
-      R_ANGLE@[16; 17)
-    SEMI@[17; 18)
-  WHITESPACE@[18; 19)
+      R_ANGLE@[16; 17) ">"
+    SEMI@[17; 18) ";"
+  WHITESPACE@[18; 19) "\n"

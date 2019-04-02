@@ -1,78 +1,78 @@
 SOURCE_FILE@[0; 89)
   IMPL_BLOCK@[0; 88)
-    IMPL_KW@[0; 4)
-    WHITESPACE@[4; 5)
+    IMPL_KW@[0; 4) "impl"
+    WHITESPACE@[4; 5) " "
     PATH_TYPE@[5; 6)
       PATH@[5; 6)
         PATH_SEGMENT@[5; 6)
           NAME_REF@[5; 6)
             IDENT@[5; 6) "F"
-    WHITESPACE@[6; 7)
+    WHITESPACE@[6; 7) " "
     ITEM_LIST@[7; 88)
-      L_CURLY@[7; 8)
-      WHITESPACE@[8; 13)
+      L_CURLY@[7; 8) "{"
+      WHITESPACE@[8; 13) "\n    "
       TYPE_ALIAS_DEF@[13; 26)
-        TYPE_KW@[13; 17)
-        WHITESPACE@[17; 18)
+        TYPE_KW@[13; 17) "type"
+        WHITESPACE@[17; 18) " "
         NAME@[18; 19)
           IDENT@[18; 19) "A"
-        WHITESPACE@[19; 20)
-        EQ@[20; 21)
-        WHITESPACE@[21; 22)
+        WHITESPACE@[19; 20) " "
+        EQ@[20; 21) "="
+        WHITESPACE@[21; 22) " "
         PATH_TYPE@[22; 25)
           PATH@[22; 25)
             PATH_SEGMENT@[22; 25)
               NAME_REF@[22; 25)
                 IDENT@[22; 25) "i32"
-        SEMI@[25; 26)
-      WHITESPACE@[26; 31)
+        SEMI@[25; 26) ";"
+      WHITESPACE@[26; 31) "\n    "
       CONST_DEF@[31; 49)
-        CONST_KW@[31; 36)
-        WHITESPACE@[36; 37)
+        CONST_KW@[31; 36) "const"
+        WHITESPACE@[36; 37) " "
         NAME@[37; 38)
           IDENT@[37; 38) "B"
-        COLON@[38; 39)
-        WHITESPACE@[39; 40)
+        COLON@[38; 39) ":"
+        WHITESPACE@[39; 40) " "
         PATH_TYPE@[40; 43)
           PATH@[40; 43)
             PATH_SEGMENT@[40; 43)
               NAME_REF@[40; 43)
                 IDENT@[40; 43) "i32"
-        WHITESPACE@[43; 44)
-        EQ@[44; 45)
-        WHITESPACE@[45; 46)
+        WHITESPACE@[43; 44) " "
+        EQ@[44; 45) "="
+        WHITESPACE@[45; 46) " "
         LITERAL@[46; 48)
           INT_NUMBER@[46; 48) "92"
-        SEMI@[48; 49)
-      WHITESPACE@[49; 54)
+        SEMI@[48; 49) ";"
+      WHITESPACE@[49; 54) "\n    "
       FN_DEF@[54; 65)
-        FN_KW@[54; 56)
-        WHITESPACE@[56; 57)
+        FN_KW@[54; 56) "fn"
+        WHITESPACE@[56; 57) " "
         NAME@[57; 60)
           IDENT@[57; 60) "foo"
         PARAM_LIST@[60; 62)
-          L_PAREN@[60; 61)
-          R_PAREN@[61; 62)
-        WHITESPACE@[62; 63)
+          L_PAREN@[60; 61) "("
+          R_PAREN@[61; 62) ")"
+        WHITESPACE@[62; 63) " "
         BLOCK@[63; 65)
-          L_CURLY@[63; 64)
-          R_CURLY@[64; 65)
-      WHITESPACE@[65; 70)
+          L_CURLY@[63; 64) "{"
+          R_CURLY@[64; 65) "}"
+      WHITESPACE@[65; 70) "\n    "
       FN_DEF@[70; 86)
-        FN_KW@[70; 72)
-        WHITESPACE@[72; 73)
+        FN_KW@[70; 72) "fn"
+        WHITESPACE@[72; 73) " "
         NAME@[73; 76)
           IDENT@[73; 76) "bar"
         PARAM_LIST@[76; 83)
-          L_PAREN@[76; 77)
+          L_PAREN@[76; 77) "("
           SELF_PARAM@[77; 82)
-            AMP@[77; 78)
-            SELF_KW@[78; 82)
-          R_PAREN@[82; 83)
-        WHITESPACE@[83; 84)
+            AMP@[77; 78) "&"
+            SELF_KW@[78; 82) "self"
+          R_PAREN@[82; 83) ")"
+        WHITESPACE@[83; 84) " "
         BLOCK@[84; 86)
-          L_CURLY@[84; 85)
-          R_CURLY@[85; 86)
-      WHITESPACE@[86; 87)
-      R_CURLY@[87; 88)
-  WHITESPACE@[88; 89)
+          L_CURLY@[84; 85) "{"
+          R_CURLY@[85; 86) "}"
+      WHITESPACE@[86; 87) "\n"
+      R_CURLY@[87; 88) "}"
+  WHITESPACE@[88; 89) "\n"

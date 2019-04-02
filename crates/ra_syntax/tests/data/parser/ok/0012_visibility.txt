@@ -1,102 +1,102 @@
 SOURCE_FILE@[0; 98)
   FN_DEF@[0; 9)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 4)
       IDENT@[3; 4) "a"
     PARAM_LIST@[4; 6)
-      L_PAREN@[4; 5)
-      R_PAREN@[5; 6)
-    WHITESPACE@[6; 7)
+      L_PAREN@[4; 5) "("
+      R_PAREN@[5; 6) ")"
+    WHITESPACE@[6; 7) " "
     BLOCK@[7; 9)
-      L_CURLY@[7; 8)
-      R_CURLY@[8; 9)
-  WHITESPACE@[9; 10)
+      L_CURLY@[7; 8) "{"
+      R_CURLY@[8; 9) "}"
+  WHITESPACE@[9; 10) "\n"
   FN_DEF@[10; 23)
     VISIBILITY@[10; 13)
-      PUB_KW@[10; 13)
-    WHITESPACE@[13; 14)
-    FN_KW@[14; 16)
-    WHITESPACE@[16; 17)
+      PUB_KW@[10; 13) "pub"
+    WHITESPACE@[13; 14) " "
+    FN_KW@[14; 16) "fn"
+    WHITESPACE@[16; 17) " "
     NAME@[17; 18)
       IDENT@[17; 18) "b"
     PARAM_LIST@[18; 20)
-      L_PAREN@[18; 19)
-      R_PAREN@[19; 20)
-    WHITESPACE@[20; 21)
+      L_PAREN@[18; 19) "("
+      R_PAREN@[19; 20) ")"
+    WHITESPACE@[20; 21) " "
     BLOCK@[21; 23)
-      L_CURLY@[21; 22)
-      R_CURLY@[22; 23)
-  WHITESPACE@[23; 24)
+      L_CURLY@[21; 22) "{"
+      R_CURLY@[22; 23) "}"
+  WHITESPACE@[23; 24) "\n"
   FN_DEF@[24; 44)
     VISIBILITY@[24; 34)
-      PUB_KW@[24; 27)
-      L_PAREN@[27; 28)
-      CRATE_KW@[28; 33)
-      R_PAREN@[33; 34)
-    WHITESPACE@[34; 35)
-    FN_KW@[35; 37)
-    WHITESPACE@[37; 38)
+      PUB_KW@[24; 27) "pub"
+      L_PAREN@[27; 28) "("
+      CRATE_KW@[28; 33) "crate"
+      R_PAREN@[33; 34) ")"
+    WHITESPACE@[34; 35) " "
+    FN_KW@[35; 37) "fn"
+    WHITESPACE@[37; 38) " "
     NAME@[38; 39)
       IDENT@[38; 39) "c"
     PARAM_LIST@[39; 41)
-      L_PAREN@[39; 40)
-      R_PAREN@[40; 41)
-    WHITESPACE@[41; 42)
+      L_PAREN@[39; 40) "("
+      R_PAREN@[40; 41) ")"
+    WHITESPACE@[41; 42) " "
     BLOCK@[42; 44)
-      L_CURLY@[42; 43)
-      R_CURLY@[43; 44)
-  WHITESPACE@[44; 45)
+      L_CURLY@[42; 43) "{"
+      R_CURLY@[43; 44) "}"
+  WHITESPACE@[44; 45) "\n"
   FN_DEF@[45; 65)
     VISIBILITY@[45; 55)
-      PUB_KW@[45; 48)
-      L_PAREN@[48; 49)
-      SUPER_KW@[49; 54)
-      R_PAREN@[54; 55)
-    WHITESPACE@[55; 56)
-    FN_KW@[56; 58)
-    WHITESPACE@[58; 59)
+      PUB_KW@[45; 48) "pub"
+      L_PAREN@[48; 49) "("
+      SUPER_KW@[49; 54) "super"
+      R_PAREN@[54; 55) ")"
+    WHITESPACE@[55; 56) " "
+    FN_KW@[56; 58) "fn"
+    WHITESPACE@[58; 59) " "
     NAME@[59; 60)
       IDENT@[59; 60) "d"
     PARAM_LIST@[60; 62)
-      L_PAREN@[60; 61)
-      R_PAREN@[61; 62)
-    WHITESPACE@[62; 63)
+      L_PAREN@[60; 61) "("
+      R_PAREN@[61; 62) ")"
+    WHITESPACE@[62; 63) " "
     BLOCK@[63; 65)
-      L_CURLY@[63; 64)
-      R_CURLY@[64; 65)
-  WHITESPACE@[65; 66)
+      L_CURLY@[63; 64) "{"
+      R_CURLY@[64; 65) "}"
+  WHITESPACE@[65; 66) "\n"
   FN_DEF@[66; 97)
     VISIBILITY@[66; 87)
-      PUB_KW@[66; 69)
-      L_PAREN@[69; 70)
-      IN_KW@[70; 72)
-      WHITESPACE@[72; 73)
+      PUB_KW@[66; 69) "pub"
+      L_PAREN@[69; 70) "("
+      IN_KW@[70; 72) "in"
+      WHITESPACE@[72; 73) " "
       PATH@[73; 86)
         PATH@[73; 81)
           PATH@[73; 76)
             PATH_SEGMENT@[73; 76)
               NAME_REF@[73; 76)
                 IDENT@[73; 76) "foo"
-          COLONCOLON@[76; 78)
+          COLONCOLON@[76; 78) "::"
           PATH_SEGMENT@[78; 81)
             NAME_REF@[78; 81)
               IDENT@[78; 81) "bar"
-        COLONCOLON@[81; 83)
+        COLONCOLON@[81; 83) "::"
         PATH_SEGMENT@[83; 86)
           NAME_REF@[83; 86)
             IDENT@[83; 86) "baz"
-      R_PAREN@[86; 87)
-    WHITESPACE@[87; 88)
-    FN_KW@[88; 90)
-    WHITESPACE@[90; 91)
+      R_PAREN@[86; 87) ")"
+    WHITESPACE@[87; 88) " "
+    FN_KW@[88; 90) "fn"
+    WHITESPACE@[90; 91) " "
     NAME@[91; 92)
       IDENT@[91; 92) "e"
     PARAM_LIST@[92; 94)
-      L_PAREN@[92; 93)
-      R_PAREN@[93; 94)
-    WHITESPACE@[94; 95)
+      L_PAREN@[92; 93) "("
+      R_PAREN@[93; 94) ")"
+    WHITESPACE@[94; 95) " "
     BLOCK@[95; 97)
-      L_CURLY@[95; 96)
-      R_CURLY@[96; 97)
-  WHITESPACE@[97; 98)
+      L_CURLY@[95; 96) "{"
+      R_CURLY@[96; 97) "}"
+  WHITESPACE@[97; 98) "\n"

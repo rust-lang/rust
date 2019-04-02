@@ -1,19 +1,19 @@
 SOURCE_FILE@[0; 16)
   TYPE_ALIAS_DEF@[0; 15)
-    TYPE_KW@[0; 4)
-    WHITESPACE@[4; 5)
+    TYPE_KW@[0; 4) "type"
+    WHITESPACE@[4; 5) " "
     NAME@[5; 6)
       IDENT@[5; 6) "T"
-    WHITESPACE@[6; 7)
-    EQ@[7; 8)
-    WHITESPACE@[8; 9)
+    WHITESPACE@[6; 7) " "
+    EQ@[7; 8) "="
+    WHITESPACE@[8; 9) " "
     PAREN_TYPE@[9; 14)
-      L_PAREN@[9; 10)
+      L_PAREN@[9; 10) "("
       PATH_TYPE@[10; 13)
         PATH@[10; 13)
           PATH_SEGMENT@[10; 13)
             NAME_REF@[10; 13)
               IDENT@[10; 13) "i32"
-      R_PAREN@[13; 14)
-    SEMI@[14; 15)
-  WHITESPACE@[15; 16)
+      R_PAREN@[13; 14) ")"
+    SEMI@[14; 15) ";"
+  WHITESPACE@[15; 16) "\n"

@@ -1,36 +1,36 @@
 SOURCE_FILE@[0; 53)
   STRUCT_DEF@[0; 33)
-    STRUCT_KW@[0; 6)
-    WHITESPACE@[6; 7)
+    STRUCT_KW@[0; 6) "struct"
+    WHITESPACE@[6; 7) " "
     NAME@[7; 11)
       IDENT@[7; 11) "Test"
     TYPE_PARAM_LIST@[11; 14)
-      L_ANGLE@[11; 12)
+      L_ANGLE@[11; 12) "<"
       TYPE_PARAM@[12; 13)
         NAME@[12; 13)
           IDENT@[12; 13) "T"
-      R_ANGLE@[13; 14)
+      R_ANGLE@[13; 14) ">"
     POS_FIELD_DEF_LIST@[14; 17)
-      L_PAREN@[14; 15)
+      L_PAREN@[14; 15) "("
       POS_FIELD_DEF@[15; 16)
         PATH_TYPE@[15; 16)
           PATH@[15; 16)
             PATH_SEGMENT@[15; 16)
               NAME_REF@[15; 16)
                 IDENT@[15; 16) "T"
-      R_PAREN@[16; 17)
-    WHITESPACE@[17; 18)
+      R_PAREN@[16; 17) ")"
+    WHITESPACE@[17; 18) " "
     WHERE_CLAUSE@[18; 32)
-      WHERE_KW@[18; 23)
-      WHITESPACE@[23; 24)
+      WHERE_KW@[18; 23) "where"
+      WHITESPACE@[23; 24) " "
       WHERE_PRED@[24; 32)
         PATH_TYPE@[24; 25)
           PATH@[24; 25)
             PATH_SEGMENT@[24; 25)
               NAME_REF@[24; 25)
                 IDENT@[24; 25) "T"
-        COLON@[25; 26)
-        WHITESPACE@[26; 27)
+        COLON@[25; 26) ":"
+        WHITESPACE@[26; 27) " "
         TYPE_BOUND_LIST@[27; 32)
           TYPE_BOUND@[27; 32)
             PATH_TYPE@[27; 32)
@@ -38,27 +38,27 @@ SOURCE_FILE@[0; 53)
                 PATH_SEGMENT@[27; 32)
                   NAME_REF@[27; 32)
                     IDENT@[27; 32) "Clone"
-    SEMI@[32; 33)
-  WHITESPACE@[33; 34)
+    SEMI@[32; 33) ";"
+  WHITESPACE@[33; 34) "\n"
   STRUCT_DEF@[34; 52)
-    STRUCT_KW@[34; 40)
-    WHITESPACE@[40; 41)
+    STRUCT_KW@[34; 40) "struct"
+    WHITESPACE@[40; 41) " "
     NAME@[41; 45)
       IDENT@[41; 45) "Test"
     TYPE_PARAM_LIST@[45; 48)
-      L_ANGLE@[45; 46)
+      L_ANGLE@[45; 46) "<"
       TYPE_PARAM@[46; 47)
         NAME@[46; 47)
           IDENT@[46; 47) "T"
-      R_ANGLE@[47; 48)
+      R_ANGLE@[47; 48) ">"
     POS_FIELD_DEF_LIST@[48; 51)
-      L_PAREN@[48; 49)
+      L_PAREN@[48; 49) "("
       POS_FIELD_DEF@[49; 50)
         PATH_TYPE@[49; 50)
           PATH@[49; 50)
             PATH_SEGMENT@[49; 50)
               NAME_REF@[49; 50)
                 IDENT@[49; 50) "T"
-      R_PAREN@[50; 51)
-    SEMI@[51; 52)
-  WHITESPACE@[52; 53)
+      R_PAREN@[50; 51) ")"
+    SEMI@[51; 52) ";"
+  WHITESPACE@[52; 53) "\n"

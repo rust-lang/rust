@@ -1,16 +1,16 @@
 SOURCE_FILE@[0; 32)
   STRUCT_DEF@[0; 31)
-    STRUCT_KW@[0; 6)
-    WHITESPACE@[6; 7)
+    STRUCT_KW@[0; 6) "struct"
+    WHITESPACE@[6; 7) " "
     NAME@[7; 8)
       IDENT@[7; 8) "S"
     TYPE_PARAM_LIST@[8; 17)
-      L_ANGLE@[8; 9)
+      L_ANGLE@[8; 9) "<"
       TYPE_PARAM@[9; 16)
         NAME@[9; 10)
           IDENT@[9; 10) "T"
-        COLON@[10; 11)
-        WHITESPACE@[11; 12)
+        COLON@[10; 11) ":"
+        WHITESPACE@[11; 12) " "
         TYPE_BOUND_LIST@[12; 16)
           TYPE_BOUND@[12; 16)
             PATH_TYPE@[12; 16)
@@ -18,22 +18,22 @@ SOURCE_FILE@[0; 32)
                 PATH_SEGMENT@[12; 16)
                   NAME_REF@[12; 16)
                     IDENT@[12; 16) "Copy"
-      R_ANGLE@[16; 17)
-    WHITESPACE@[17; 18)
+      R_ANGLE@[16; 17) ">"
+    WHITESPACE@[17; 18) " "
     NAMED_FIELD_DEF_LIST@[18; 31)
-      L_CURLY@[18; 19)
-      WHITESPACE@[19; 24)
+      L_CURLY@[18; 19) "{"
+      WHITESPACE@[19; 24) "\n    "
       NAMED_FIELD_DEF@[24; 28)
         NAME@[24; 25)
           IDENT@[24; 25) "f"
-        COLON@[25; 26)
-        WHITESPACE@[26; 27)
+        COLON@[25; 26) ":"
+        WHITESPACE@[26; 27) " "
         PATH_TYPE@[27; 28)
           PATH@[27; 28)
             PATH_SEGMENT@[27; 28)
               NAME_REF@[27; 28)
                 IDENT@[27; 28) "T"
-      COMMA@[28; 29)
-      WHITESPACE@[29; 30)
-      R_CURLY@[30; 31)
-  WHITESPACE@[31; 32)
+      COMMA@[28; 29) ","
+      WHITESPACE@[29; 30) "\n"
+      R_CURLY@[30; 31) "}"
+  WHITESPACE@[31; 32) "\n"

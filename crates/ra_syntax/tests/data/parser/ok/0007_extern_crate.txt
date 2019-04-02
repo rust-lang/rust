@@ -1,40 +1,40 @@
 SOURCE_FILE@[0; 69)
   EXTERN_CRATE_ITEM@[0; 17)
-    EXTERN_KW@[0; 6)
-    WHITESPACE@[6; 7)
-    CRATE_KW@[7; 12)
-    WHITESPACE@[12; 13)
+    EXTERN_KW@[0; 6) "extern"
+    WHITESPACE@[6; 7) " "
+    CRATE_KW@[7; 12) "crate"
+    WHITESPACE@[12; 13) " "
     NAME_REF@[13; 16)
       IDENT@[13; 16) "foo"
-    SEMI@[16; 17)
-  WHITESPACE@[17; 18)
+    SEMI@[16; 17) ";"
+  WHITESPACE@[17; 18) "\n"
   EXTERN_CRATE_ITEM@[18; 42)
-    EXTERN_KW@[18; 24)
-    WHITESPACE@[24; 25)
-    CRATE_KW@[25; 30)
-    WHITESPACE@[30; 31)
+    EXTERN_KW@[18; 24) "extern"
+    WHITESPACE@[24; 25) " "
+    CRATE_KW@[25; 30) "crate"
+    WHITESPACE@[30; 31) " "
     NAME_REF@[31; 34)
       IDENT@[31; 34) "foo"
-    WHITESPACE@[34; 35)
+    WHITESPACE@[34; 35) " "
     ALIAS@[35; 41)
-      AS_KW@[35; 37)
-      WHITESPACE@[37; 38)
+      AS_KW@[35; 37) "as"
+      WHITESPACE@[37; 38) " "
       NAME@[38; 41)
         IDENT@[38; 41) "bar"
-    SEMI@[41; 42)
-  WHITESPACE@[42; 43)
+    SEMI@[41; 42) ";"
+  WHITESPACE@[42; 43) "\n"
   EXTERN_CRATE_ITEM@[43; 68)
-    EXTERN_KW@[43; 49)
-    WHITESPACE@[49; 50)
-    CRATE_KW@[50; 55)
-    WHITESPACE@[55; 56)
+    EXTERN_KW@[43; 49) "extern"
+    WHITESPACE@[49; 50) " "
+    CRATE_KW@[50; 55) "crate"
+    WHITESPACE@[55; 56) " "
     SELF_KW@[56; 60)
-      SELF_KW@[56; 60)
-    WHITESPACE@[60; 61)
+      SELF_KW@[56; 60) "self"
+    WHITESPACE@[60; 61) " "
     ALIAS@[61; 67)
-      AS_KW@[61; 63)
-      WHITESPACE@[63; 64)
+      AS_KW@[61; 63) "as"
+      WHITESPACE@[63; 64) " "
       NAME@[64; 67)
         IDENT@[64; 67) "baz"
-    SEMI@[67; 68)
-  WHITESPACE@[68; 69)
+    SEMI@[67; 68) ";"
+  WHITESPACE@[68; 69) "\n"

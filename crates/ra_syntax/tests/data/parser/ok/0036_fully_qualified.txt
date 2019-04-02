@@ -1,21 +1,21 @@
 SOURCE_FILE@[0; 157)
-  COMMENT@[0; 60)
-  WHITESPACE@[60; 62)
+  COMMENT@[0; 60) "// https://github.com ..."
+  WHITESPACE@[60; 62) "\n\n"
   FN_DEF@[62; 156)
     VISIBILITY@[62; 65)
-      PUB_KW@[62; 65)
-    WHITESPACE@[65; 66)
-    FN_KW@[66; 68)
-    WHITESPACE@[68; 69)
+      PUB_KW@[62; 65) "pub"
+    WHITESPACE@[65; 66) " "
+    FN_KW@[66; 68) "fn"
+    WHITESPACE@[68; 69) " "
     NAME@[69; 72)
       IDENT@[69; 72) "foo"
     TYPE_PARAM_LIST@[72; 85)
-      L_ANGLE@[72; 73)
+      L_ANGLE@[72; 73) "<"
       TYPE_PARAM@[73; 84)
         NAME@[73; 74)
           IDENT@[73; 74) "S"
-        COLON@[74; 75)
-        WHITESPACE@[75; 76)
+        COLON@[74; 75) ":"
+        WHITESPACE@[75; 76) " "
         TYPE_BOUND_LIST@[76; 84)
           TYPE_BOUND@[76; 84)
             PATH_TYPE@[76; 84)
@@ -23,49 +23,49 @@ SOURCE_FILE@[0; 157)
                 PATH_SEGMENT@[76; 84)
                   NAME_REF@[76; 84)
                     IDENT@[76; 84) "Iterator"
-      R_ANGLE@[84; 85)
+      R_ANGLE@[84; 85) ">"
     PARAM_LIST@[85; 87)
-      L_PAREN@[85; 86)
-      R_PAREN@[86; 87)
-    WHITESPACE@[87; 88)
+      L_PAREN@[85; 86) "("
+      R_PAREN@[86; 87) ")"
+    WHITESPACE@[87; 88) " "
     RET_TYPE@[88; 97)
-      THIN_ARROW@[88; 90)
-      WHITESPACE@[90; 91)
+      THIN_ARROW@[88; 90) "->"
+      WHITESPACE@[90; 91) " "
       PATH_TYPE@[91; 97)
         PATH@[91; 97)
           PATH_SEGMENT@[91; 97)
             NAME_REF@[91; 97)
               IDENT@[91; 97) "String"
-    WHITESPACE@[97; 98)
+    WHITESPACE@[97; 98) "\n"
     WHERE_CLAUSE@[98; 134)
-      WHERE_KW@[98; 103)
-      WHITESPACE@[103; 108)
+      WHERE_KW@[98; 103) "where"
+      WHITESPACE@[103; 108) "\n    "
       WHERE_PRED@[108; 133)
         PATH_TYPE@[108; 129)
           PATH@[108; 129)
             PATH@[108; 123)
               PATH_SEGMENT@[108; 123)
-                L_ANGLE@[108; 109)
+                L_ANGLE@[108; 109) "<"
                 PATH_TYPE@[109; 110)
                   PATH@[109; 110)
                     PATH_SEGMENT@[109; 110)
                       NAME_REF@[109; 110)
                         IDENT@[109; 110) "S"
-                WHITESPACE@[110; 111)
-                AS_KW@[111; 113)
-                WHITESPACE@[113; 114)
+                WHITESPACE@[110; 111) " "
+                AS_KW@[111; 113) "as"
+                WHITESPACE@[113; 114) " "
                 PATH_TYPE@[114; 122)
                   PATH@[114; 122)
                     PATH_SEGMENT@[114; 122)
                       NAME_REF@[114; 122)
                         IDENT@[114; 122) "Iterator"
-                R_ANGLE@[122; 123)
-            COLONCOLON@[123; 125)
+                R_ANGLE@[122; 123) ">"
+            COLONCOLON@[123; 125) "::"
             PATH_SEGMENT@[125; 129)
               NAME_REF@[125; 129)
                 IDENT@[125; 129) "Item"
-        COLON@[129; 130)
-        WHITESPACE@[130; 131)
+        COLON@[129; 130) ":"
+        WHITESPACE@[130; 131) " "
         TYPE_BOUND_LIST@[131; 133)
           TYPE_BOUND@[131; 133)
             PATH_TYPE@[131; 133)
@@ -73,20 +73,20 @@ SOURCE_FILE@[0; 157)
                 PATH_SEGMENT@[131; 133)
                   NAME_REF@[131; 133)
                     IDENT@[131; 133) "Eq"
-      COMMA@[133; 134)
-    WHITESPACE@[134; 135)
+      COMMA@[133; 134) ","
+    WHITESPACE@[134; 135) "\n"
     BLOCK@[135; 156)
-      L_CURLY@[135; 136)
-      WHITESPACE@[136; 141)
+      L_CURLY@[135; 136) "{"
+      WHITESPACE@[136; 141) "\n    "
       METHOD_CALL_EXPR@[141; 154)
         LITERAL@[141; 143)
-          STRING@[141; 143)
-        DOT@[143; 144)
+          STRING@[141; 143) "\"\""
+        DOT@[143; 144) "."
         NAME_REF@[144; 152)
           IDENT@[144; 152) "to_owned"
         ARG_LIST@[152; 154)
-          L_PAREN@[152; 153)
-          R_PAREN@[153; 154)
-      WHITESPACE@[154; 155)
-      R_CURLY@[155; 156)
-  WHITESPACE@[156; 157)
+          L_PAREN@[152; 153) "("
+          R_PAREN@[153; 154) ")"
+      WHITESPACE@[154; 155) "\n"
+      R_CURLY@[155; 156) "}"
+  WHITESPACE@[156; 157) "\n"

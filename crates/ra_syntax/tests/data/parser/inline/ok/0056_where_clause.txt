@@ -1,38 +1,38 @@
 SOURCE_FILE@[0; 116)
   FN_DEF@[0; 115)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 6)
       IDENT@[3; 6) "foo"
     PARAM_LIST@[6; 8)
-      L_PAREN@[6; 7)
-      R_PAREN@[7; 8)
-    WHITESPACE@[8; 9)
+      L_PAREN@[6; 7) "("
+      R_PAREN@[7; 8) ")"
+    WHITESPACE@[8; 9) "\n"
     WHERE_CLAUSE@[9; 112)
-      WHERE_KW@[9; 14)
-      WHITESPACE@[14; 18)
+      WHERE_KW@[9; 14) "where"
+      WHITESPACE@[14; 18) "\n   "
       WHERE_PRED@[18; 29)
-        LIFETIME@[18; 20) "'a"
-        COLON@[20; 21)
-        WHITESPACE@[21; 22)
+        LIFETIME@[18; 20) "\'a"
+        COLON@[20; 21) ":"
+        WHITESPACE@[21; 22) " "
         TYPE_BOUND_LIST@[22; 29)
           TYPE_BOUND@[22; 24)
-            LIFETIME@[22; 24) "'b"
-          WHITESPACE@[24; 25)
-          PLUS@[25; 26)
-          WHITESPACE@[26; 27)
+            LIFETIME@[22; 24) "\'b"
+          WHITESPACE@[24; 25) " "
+          PLUS@[25; 26) "+"
+          WHITESPACE@[26; 27) " "
           TYPE_BOUND@[27; 29)
-            LIFETIME@[27; 29) "'c"
-      COMMA@[29; 30)
-      WHITESPACE@[30; 34)
+            LIFETIME@[27; 29) "\'c"
+      COMMA@[29; 30) ","
+      WHITESPACE@[30; 34) "\n   "
       WHERE_PRED@[34; 59)
         PATH_TYPE@[34; 35)
           PATH@[34; 35)
             PATH_SEGMENT@[34; 35)
               NAME_REF@[34; 35)
                 IDENT@[34; 35) "T"
-        COLON@[35; 36)
-        WHITESPACE@[36; 37)
+        COLON@[35; 36) ":"
+        WHITESPACE@[36; 37) " "
         TYPE_BOUND_LIST@[37; 59)
           TYPE_BOUND@[37; 42)
             PATH_TYPE@[37; 42)
@@ -40,22 +40,22 @@ SOURCE_FILE@[0; 116)
                 PATH_SEGMENT@[37; 42)
                   NAME_REF@[37; 42)
                     IDENT@[37; 42) "Clone"
-          WHITESPACE@[42; 43)
-          PLUS@[43; 44)
-          WHITESPACE@[44; 45)
+          WHITESPACE@[42; 43) " "
+          PLUS@[43; 44) "+"
+          WHITESPACE@[44; 45) " "
           TYPE_BOUND@[45; 49)
             PATH_TYPE@[45; 49)
               PATH@[45; 49)
                 PATH_SEGMENT@[45; 49)
                   NAME_REF@[45; 49)
                     IDENT@[45; 49) "Copy"
-          WHITESPACE@[49; 50)
-          PLUS@[50; 51)
-          WHITESPACE@[51; 52)
+          WHITESPACE@[49; 50) " "
+          PLUS@[50; 51) "+"
+          WHITESPACE@[51; 52) " "
           TYPE_BOUND@[52; 59)
-            LIFETIME@[52; 59) "'static"
-      COMMA@[59; 60)
-      WHITESPACE@[60; 64)
+            LIFETIME@[52; 59) "\'static"
+      COMMA@[59; 60) ","
+      WHITESPACE@[60; 64) "\n   "
       WHERE_PRED@[64; 82)
         PATH_TYPE@[64; 78)
           PATH@[64; 78)
@@ -63,48 +63,48 @@ SOURCE_FILE@[0; 116)
               PATH_SEGMENT@[64; 72)
                 NAME_REF@[64; 72)
                   IDENT@[64; 72) "Iterator"
-            COLONCOLON@[72; 74)
+            COLONCOLON@[72; 74) "::"
             PATH_SEGMENT@[74; 78)
               NAME_REF@[74; 78)
                 IDENT@[74; 78) "Item"
-        COLON@[78; 79)
-        WHITESPACE@[79; 80)
+        COLON@[78; 79) ":"
+        WHITESPACE@[79; 80) " "
         TYPE_BOUND_LIST@[80; 82)
           TYPE_BOUND@[80; 82)
-            LIFETIME@[80; 82) "'a"
-      COMMA@[82; 83)
-      WHITESPACE@[83; 87)
+            LIFETIME@[80; 82) "\'a"
+      COMMA@[82; 83) ","
+      WHITESPACE@[83; 87) "\n   "
       WHERE_PRED@[87; 112)
         PATH_TYPE@[87; 108)
           PATH@[87; 108)
             PATH@[87; 102)
               PATH_SEGMENT@[87; 102)
-                L_ANGLE@[87; 88)
+                L_ANGLE@[87; 88) "<"
                 PATH_TYPE@[88; 89)
                   PATH@[88; 89)
                     PATH_SEGMENT@[88; 89)
                       NAME_REF@[88; 89)
                         IDENT@[88; 89) "T"
-                WHITESPACE@[89; 90)
-                AS_KW@[90; 92)
-                WHITESPACE@[92; 93)
+                WHITESPACE@[89; 90) " "
+                AS_KW@[90; 92) "as"
+                WHITESPACE@[92; 93) " "
                 PATH_TYPE@[93; 101)
                   PATH@[93; 101)
                     PATH_SEGMENT@[93; 101)
                       NAME_REF@[93; 101)
                         IDENT@[93; 101) "Iterator"
-                R_ANGLE@[101; 102)
-            COLONCOLON@[102; 104)
+                R_ANGLE@[101; 102) ">"
+            COLONCOLON@[102; 104) "::"
             PATH_SEGMENT@[104; 108)
               NAME_REF@[104; 108)
                 IDENT@[104; 108) "Item"
-        COLON@[108; 109)
-        WHITESPACE@[109; 110)
+        COLON@[108; 109) ":"
+        WHITESPACE@[109; 110) " "
         TYPE_BOUND_LIST@[110; 112)
           TYPE_BOUND@[110; 112)
-            LIFETIME@[110; 112) "'a"
-    WHITESPACE@[112; 113)
+            LIFETIME@[110; 112) "\'a"
+    WHITESPACE@[112; 113) "\n"
     BLOCK@[113; 115)
-      L_CURLY@[113; 114)
-      R_CURLY@[114; 115)
-  WHITESPACE@[115; 116)
+      L_CURLY@[113; 114) "{"
+      R_CURLY@[114; 115) "}"
+  WHITESPACE@[115; 116) "\n"
