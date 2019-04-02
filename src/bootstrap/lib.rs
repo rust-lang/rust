@@ -1275,6 +1275,7 @@ impl Build {
     fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
         if self.config.dry_run { return; }
         let dst = dstdir.join(src.file_name().unwrap());
+        self.verbose_than(1, &format!("Install {:?} to {:?}", src, dst));
         t!(fs::create_dir_all(dstdir));
         drop(fs::remove_file(&dst));
         {

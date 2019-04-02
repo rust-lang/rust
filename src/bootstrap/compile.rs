@@ -20,7 +20,7 @@ use filetime::FileTime;
 use serde_json;
 
 use crate::dist;
-use crate::util::{exe, libdir, is_dylib};
+use crate::util::{exe, is_dylib};
 use crate::{Compiler, Mode, GitRepo};
 use crate::native;
 
@@ -1005,13 +1005,13 @@ impl Step for Assemble {
 
         // Link in all dylibs to the libdir
         let sysroot = builder.sysroot(target_compiler);
-        let sysroot_libdir = sysroot.join(libdir(&*host));
-        t!(fs::create_dir_all(&sysroot_libdir));
+        let rustc_libdir = builder.rustc_libdir(target_compiler);
+        t!(fs::create_dir_all(&rustc_libdir));
         let src_libdir = builder.sysroot_libdir(build_compiler, host);
         for f in builder.read_dir(&src_libdir) {
             let filename = f.file_name().into_string().unwrap();
             if is_dylib(&filename) {
-                builder.copy(&f.path(), &sysroot_libdir.join(&filename));
+                builder.copy(&f.path(), &rustc_libdir.join(&filename));
             }
         }
 
