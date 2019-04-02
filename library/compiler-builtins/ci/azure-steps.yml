@@ -1,4 +1,6 @@
 steps:
+  - checkout: self
+    submodules: true
   - template: azure-install-rust.yml
 
   - bash: ./ci/run.sh $TARGET

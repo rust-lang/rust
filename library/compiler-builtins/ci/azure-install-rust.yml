@@ -3,8 +3,9 @@ parameters:
 
 steps:
   - bash: |
+      set -e
       curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $TOOLCHAIN
-      echo "##vso[task.setvariable variable=PATH;]$PATH:$HOME/.cargo/bin"
+      echo "##vso[task.prependpath]$HOME/.cargo/bin"
     displayName: Install rust
     condition: ne( variables['Agent.OS'], 'Windows_NT' )
     env:
@@ -13,7 +14,7 @@ steps:
   - script: |
       curl -sSf -o rustup-init.exe https://win.rustup.rs
       rustup-init.exe -y --default-toolchain %TOOLCHAIN%
-      echo "##vso[task.setvariable variable=PATH;]%PATH%;%USERPROFILE%\.cargo\bin"
+      echo ##vso[task.prependpath]%USERPROFILE%\.cargo\bin
     displayName: Install rust
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
     env:

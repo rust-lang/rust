@@ -1,9 +1,8 @@
 # `compiler-builtins`
 
-[![Build status](https://ci.appveyor.com/api/projects/status/eusnjps5ui3d305p?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/compiler-builtins)
-[![Build Status](https://travis-ci.org/rust-lang-nursery/compiler-builtins.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/compiler-builtins)
+[![Build Status](https://dev.azure.com/rust-lang/compiler-builtins/_apis/build/status/compiler-builtins-CI?branchName=master)](https://dev.azure.com/rust-lang/compiler-builtins/_build/latest?definitionId=2&branchName=master)
 
-> [WIP] Porting `compiler-rt` intrinsics to Rust
+> Porting `compiler-rt` intrinsics to Rust
 
 See [rust-lang/rust#35437][0].
 
