@@ -179,15 +179,49 @@ cfg_if! {
 
         pub use std::rc::Rc as Lrc;
         pub use std::rc::Weak as Weak;
-        pub use std::cell::Ref as ReadGuard;
-        pub use std::cell::Ref as MappedReadGuard;
-        pub use std::cell::RefMut as WriteGuard;
-        pub use std::cell::RefMut as MappedWriteGuard;
-        pub use std::cell::RefMut as LockGuard;
-        pub use std::cell::RefMut as MappedLockGuard;
 
-        use std::cell::RefCell as InnerRwLock;
-        use std::cell::RefCell as InnerLock;
+        pub use parking_lot::RwLockReadGuard as ReadGuard;
+        pub use parking_lot::MappedRwLockReadGuard as MappedReadGuard;
+        pub use parking_lot::RwLockWriteGuard as WriteGuard;
+        pub use parking_lot::MappedRwLockWriteGuard as MappedWriteGuard;
+
+        pub use parking_lot::MutexGuard as LockGuard;
+        pub use parking_lot::MappedMutexGuard as MappedLockGuard;
+
+        pub type MTRef<'a, T> = &'a T;
+
+        #[derive(Debug, Default)]
+        pub struct MTLock<T>(Lock<T>);
+
+        impl<T> MTLock<T> {
+            #[inline(always)]
+            pub fn new(inner: T) -> Self {
+                MTLock(Lock::new(inner))
+            }
+
+            #[inline(always)]
+            pub fn into_inner(self) -> T {
+                self.0.into_inner()
+            }
+
+            #[inline(always)]
+            pub fn get_mut(&mut self) -> &mut T {
+                self.0.get_mut()
+            }
+
+            #[inline(always)]
+            pub fn lock(&self) -> LockGuard<'_, T> {
+                self.0.lock()
+            }
+
+            #[inline(always)]
+            pub fn lock_mut(&self) -> LockGuard<'_, T> {
+                self.lock()
+            }
+        }
+
+        use parking_lot::Mutex as InnerLock;
+        use parking_lot::RwLock as InnerRwLock;
 
         use std::cell::Cell;
 
@@ -215,38 +249,6 @@ cfg_if! {
             #[inline(always)]
             fn deref(&self) -> &T {
                 &*self.0
-            }
-        }
-
-        pub type MTRef<'a, T> = &'a mut T;
-
-        #[derive(Debug, Default)]
-        pub struct MTLock<T>(T);
-
-        impl<T> MTLock<T> {
-            #[inline(always)]
-            pub fn new(inner: T) -> Self {
-                MTLock(inner)
-            }
-
-            #[inline(always)]
-            pub fn into_inner(self) -> T {
-                self.0
-            }
-
-            #[inline(always)]
-            pub fn get_mut(&mut self) -> &mut T {
-                &mut self.0
-            }
-
-            #[inline(always)]
-            pub fn lock(&self) -> &T {
-                &self.0
-            }
-
-            #[inline(always)]
-            pub fn lock_mut(&mut self) -> &mut T {
-                &mut self.0
             }
         }
 
@@ -535,32 +537,14 @@ impl<T> Lock<T> {
         self.0.get_mut()
     }
 
-    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         self.0.try_lock()
     }
 
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
-    pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
-        self.0.try_borrow_mut().ok()
-    }
-
-    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn lock(&self) -> LockGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_lock().expect("lock was already held")
-        } else {
-            self.0.lock()
-        }
-    }
-
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
-    pub fn lock(&self) -> LockGuard<'_, T> {
-        self.0.borrow_mut()
+        self.0.lock()
     }
 
     #[inline(always)]
@@ -613,20 +597,9 @@ impl<T> RwLock<T> {
         self.0.get_mut()
     }
 
-    #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn read(&self) -> ReadGuard<'_, T> {
-        self.0.borrow()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    pub fn read(&self) -> ReadGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_read().expect("lock was already held")
-        } else {
-            self.0.read()
-        }
+        self.0.read()
     }
 
     #[inline(always)]
@@ -634,32 +607,14 @@ impl<T> RwLock<T> {
         f(&*self.read())
     }
 
-    #[cfg(not(parallel_compiler))]
-    #[inline(always)]
-    pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
-        self.0.try_borrow_mut().map_err(|_| ())
-    }
-
-    #[cfg(parallel_compiler)]
     #[inline(always)]
     pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         self.0.try_write().ok_or(())
     }
 
-    #[cfg(not(parallel_compiler))]
     #[inline(always)]
     pub fn write(&self) -> WriteGuard<'_, T> {
-        self.0.borrow_mut()
-    }
-
-    #[cfg(parallel_compiler)]
-    #[inline(always)]
-    pub fn write(&self) -> WriteGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_write().expect("lock was already held")
-        } else {
-            self.0.write()
-        }
+        self.0.write()
     }
 
     #[inline(always)]
