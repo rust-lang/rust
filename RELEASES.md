@@ -1,14 +1,14 @@
-Version v1.34.0 (2019-04-11)
+Version 1.34.0 (2019-04-11)
 ==========================
 
 Language
 --------
-- [You can now use `#[deprecation = "reason"]`][58166] as a shorthand for
-  `#[deprecation(note = "reason")]`. This was previously allowed as a syntax bug
+- [You can now use `#[deprecated = "reason"]`][58166] as a shorthand for
+  `#[deprecated(note = "reason")]`. This was previously allowed by mistake
   but had no effect.
 - [You can now accept token streams in `#[attr()]`,`#[attr[]]`, and
   `#[attr{}]` procedural macros.][57367]
-- [You can now write `extern crate self as foo;`][57407] to import the your
+- [You can now write `extern crate self as foo;`][57407] to import your
   crate's root into the extern prelude.
 
 
@@ -28,7 +28,7 @@ Libraries
 - [The trait bounds have been removed on some of `HashMap<K, V, S>`'s and
   `HashSet<T, S>`'s basic methods.][58370] Most notably you no longer require
   the `Hash` trait to create an iterator.
-- [Relax Ord trait bounds have been removed on some of `BinaryHeap<T>`'s basic
+- [The `Ord` trait bounds have been removed on some of `BinaryHeap<T>`'s basic
   methods.][58421] Most notably you no longer require the `Ord` trait to create
   an iterator.
 - [The methods `overflowing_neg` and `wrapping_neg` are now `const` functions
@@ -60,8 +60,6 @@ Stabilized APIs
 * [`convert::Infallible`]
 * [`convert::TryFrom`]
 * [`convert::TryInto`]
-* [`iter::FromFn`]
-* [`iter::Successors`]
 * [`iter::from_fn`]
 * [`iter::successors`]
 * [`num::NonZeroI128`]
@@ -84,7 +82,7 @@ Stabilized APIs
 
 Cargo
 -----
-- [You can now use alternatives registries to crates.io.][cargo/6654]
+- [You can now use alternative registries to crates.io.][cargo/6654]
 
 Misc
 ----
@@ -127,8 +125,6 @@ Compatibility Notes
 [`convert::Infallible`]: https://doc.rust-lang.org/std/convert/enum.Infallible.html
 [`convert::TryFrom`]: https://doc.rust-lang.org/std/convert/trait.TryFrom.html
 [`convert::TryInto`]: https://doc.rust-lang.org/std/convert/trait.TryInto.html
-[`iter::FromFn`]: https://doc.rust-lang.org/std/iter/struct.FromFn.html
-[`iter::Successors`]: https://doc.rust-lang.org/std/iter/struct.Successors.html
 [`iter::from_fn`]: https://doc.rust-lang.org/std/iter/fn.from_fn.html
 [`iter::successors`]: https://doc.rust-lang.org/std/iter/fn.successors.html
 [`num::NonZeroI128`]: https://doc.rust-lang.org/std/num/struct.NonZeroI128.html
