@@ -337,7 +337,7 @@ impl Mode {
     pub fn is_tool(&self) -> bool {
         match self {
             Mode::ToolBootstrap | Mode::ToolRustc | Mode::ToolStd |
-            Mode::ToolTest => true,
+            Mode::Test => true,
             _ => false
         }
     }

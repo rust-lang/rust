@@ -1,0 +1,9 @@
+error[E0432]: unresolved import `libtest`
+  --> $DIR/rustc_private-libtest.rs:3:9
+   |
+LL |     use libtest::*;
+   |         ^^^^^^^ maybe a missing `extern crate libtest;`?
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0432`.
