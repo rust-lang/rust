@@ -67,6 +67,9 @@ pub struct OpaqueTypeDecl<'tcx> {
     /// the fn body). (Ultimately, writeback is responsible for this
     /// check.)
     pub has_required_region_bounds: bool,
+
+    /// The origin of the existential type
+    pub origin: hir::ExistTyOrigin,
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
@@ -326,14 +329,39 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         // There are two regions (`lr` and
                         // `subst_arg`) which are not relatable. We can't
                         // find a best choice.
-                        self.tcx
+                        let context_name = match opaque_defn.origin {
+                            hir::ExistTyOrigin::ExistentialType => "existential type",
+                            hir::ExistTyOrigin::ReturnImplTrait => "impl Trait",
+                            hir::ExistTyOrigin::AsyncFn => "async fn",
+                        };
+                        let msg = format!("ambiguous lifetime bound in `{}`", context_name);
+                        let mut err = self.tcx
                             .sess
-                            .struct_span_err(span, "ambiguous lifetime bound in `impl Trait`")
-                            .span_label(
-                                span,
-                                format!("neither `{}` nor `{}` outlives the other", lr, subst_arg),
-                            )
-                            .emit();
+                            .struct_span_err(span, &msg);
+
+                        let lr_name = lr.to_string();
+                        let subst_arg_name = subst_arg.to_string();
+                        let label_owned;
+                        let label = match (&*lr_name, &*subst_arg_name) {
+                            ("'_", "'_") => "the elided lifetimes here do not outlive one another",
+                            _ => {
+                                label_owned = format!(
+                                    "neither `{}` nor `{}` outlives the other",
+                                    lr_name,
+                                    subst_arg_name,
+                                );
+                                &label_owned
+                            }
+                        };
+                        err.span_label(span, label);
+
+                        if let hir::ExistTyOrigin::AsyncFn = opaque_defn.origin {
+                            err.note("multiple unrelated lifetimes are not allowed in \
+                                     `async fn`.");
+                            err.note("if you're using argument-position elided lifetimes, consider \
+                                switching to a single named lifetime.");
+                        }
+                        err.emit();
 
                         least_region = Some(self.tcx.mk_region(ty::ReEmpty));
                         break;
@@ -692,31 +720,41 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                             parent_def_id == tcx.hir()
                                                 .local_def_id_from_hir_id(opaque_parent_hir_id)
                         };
-                        let in_definition_scope = match tcx.hir().find_by_hir_id(opaque_hir_id) {
+                        let (in_definition_scope, origin) =
+                            match tcx.hir().find_by_hir_id(opaque_hir_id)
+                        {
                             Some(Node::Item(item)) => match item.node {
                                 // impl trait
                                 hir::ItemKind::Existential(hir::ExistTy {
                                     impl_trait_fn: Some(parent),
+                                    origin,
                                     ..
-                                }) => parent == self.parent_def_id,
+                                }) => (parent == self.parent_def_id, origin),
                                 // named existential types
                                 hir::ItemKind::Existential(hir::ExistTy {
                                     impl_trait_fn: None,
+                                    origin,
                                     ..
-                                }) => may_define_existential_type(
-                                    tcx,
-                                    self.parent_def_id,
-                                    opaque_hir_id,
+                                }) => (
+                                    may_define_existential_type(
+                                        tcx,
+                                        self.parent_def_id,
+                                        opaque_hir_id,
+                                    ),
+                                    origin,
                                 ),
-                                _ => def_scope_default(),
+                                _ => (def_scope_default(), hir::ExistTyOrigin::ExistentialType),
                             },
                             Some(Node::ImplItem(item)) => match item.node {
-                                hir::ImplItemKind::Existential(_) => may_define_existential_type(
-                                    tcx,
-                                    self.parent_def_id,
-                                    opaque_hir_id,
+                                hir::ImplItemKind::Existential(_) => (
+                                    may_define_existential_type(
+                                        tcx,
+                                        self.parent_def_id,
+                                        opaque_hir_id,
+                                    ),
+                                    hir::ExistTyOrigin::ExistentialType,
                                 ),
-                                _ => def_scope_default(),
+                                _ => (def_scope_default(), hir::ExistTyOrigin::ExistentialType),
                             },
                             _ => bug!(
                                 "expected (impl) item, found {}",
@@ -724,7 +762,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                             ),
                         };
                         if in_definition_scope {
-                            return self.fold_opaque_ty(ty, def_id, substs);
+                            return self.fold_opaque_ty(ty, def_id, substs, origin);
                         }
 
                         debug!(
@@ -746,6 +784,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         ty: Ty<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
+        origin: hir::ExistTyOrigin,
     ) -> Ty<'tcx> {
         let infcx = self.infcx;
         let tcx = infcx.tcx;
@@ -795,6 +834,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
                 substs,
                 concrete_ty: ty_var,
                 has_required_region_bounds: !required_region_bounds.is_empty(),
+                origin,
             },
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);

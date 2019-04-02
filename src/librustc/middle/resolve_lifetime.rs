@@ -2891,7 +2891,7 @@ fn insert_late_bound_lifetimes(
     }
 }
 
-fn report_missing_lifetime_specifiers(
+pub fn report_missing_lifetime_specifiers(
     sess: &Session,
     span: Span,
     count: usize,
