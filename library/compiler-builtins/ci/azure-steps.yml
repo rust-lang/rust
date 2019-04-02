@@ -11,6 +11,6 @@ steps:
     condition: ne( variables['Agent.OS'], 'Linux' )
     displayName: Run test script
 
-  - bash: ./ci/run-docker.sh $TARGET
+  - bash: cargo generate-lockfile && ./ci/run-docker.sh $TARGET
     condition: eq( variables['Agent.OS'], 'Linux' )
     displayName: Run docker test script
