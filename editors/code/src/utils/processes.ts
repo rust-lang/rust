@@ -8,6 +8,13 @@ import { join } from 'path';
 const isWindows = process.platform === 'win32';
 const isMacintosh = process.platform === 'darwin';
 const isLinux = process.platform === 'linux';
+
+// this is very complex, but is basically copy-pased from VSCode implementation here:
+// https://github.com/Microsoft/vscode-languageserver-node/blob/dbfd37e35953ad0ee14c4eeced8cfbc41697b47e/client/src/utils/processes.ts#L15
+
+// And see discussion at 
+// https://github.com/rust-analyzer/rust-analyzer/pull/1079#issuecomment-478908109
+
 export function terminate(process: ChildProcess, cwd?: string): boolean {
     if (isWindows) {
         try {
