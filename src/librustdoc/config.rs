@@ -260,11 +260,11 @@ impl Options {
             Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
             Some("json") => ErrorOutputType::Json {
                 pretty: false,
-                json_rendered: HumanReadableErrorType::Default(color),
+                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
             },
             Some("pretty-json") => ErrorOutputType::Json {
                 pretty: true,
-                json_rendered: HumanReadableErrorType::Default(color),
+                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
             },
             Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
             Some(arg) => {
