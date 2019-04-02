@@ -1,0 +1,18 @@
+error[E0432]: unresolved import `test`
+  --> $DIR/feature-gate-test.rs:3:9
+   |
+LL |     use test::*;
+   |         ^^^^ maybe a missing `extern crate test;`?
+
+error[E0658]: use of unstable library feature 'test' (see issue #27812)
+  --> $DIR/feature-gate-test.rs:2:5
+   |
+LL |     extern crate test;
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(test)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0432, E0658.
+For more information about an error, try `rustc --explain E0432`.
