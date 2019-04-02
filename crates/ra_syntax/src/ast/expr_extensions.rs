@@ -1,3 +1,5 @@
+//! Various extension methods to ast Expr Nodes, which are hard to code-generate.
+
 use crate::{
     SyntaxToken, SyntaxElement, SmolStr,
     ast::{self, AstNode, AstChildren, children, child_opt},

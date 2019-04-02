@@ -1,3 +1,6 @@
+//! Various extension methods to ast Nodes, which are hard to code-generate.
+//! Extensions for various expressions live in a sibling `expr_extensions` module.
+
 use itertools::Itertools;
 
 use crate::{

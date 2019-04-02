@@ -1,4 +1,5 @@
 //! Abstract Syntax Tree, layered on top of untyped `SyntaxNode`s
+
 mod generated;
 mod traits;
 mod tokens;
@@ -44,6 +45,7 @@ pub trait AstToken<'a> {
     }
 }
 
+/// An iterator over `SyntaxNode` children of a particular AST type.
 #[derive(Debug)]
 pub struct AstChildren<'a, N> {
     inner: SyntaxNodeChildren<'a>,
