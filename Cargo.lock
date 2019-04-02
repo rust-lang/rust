@@ -54,6 +54,7 @@ name = "arena"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures 0.0.0",
+ "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

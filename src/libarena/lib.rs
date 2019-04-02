@@ -23,7 +23,9 @@
 
 extern crate alloc;
 
+use rustc_data_structures::cold_path;
 use rustc_data_structures::sync::MTLock;
+use smallvec::SmallVec;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -55,6 +57,8 @@ pub struct TypedArena<T> {
 struct TypedArenaChunk<T> {
     /// The raw storage for the arena chunk.
     storage: RawVec<T>,
+    /// The number of valid entries in the chunk.
+    entries: usize,
 }
 
 impl<T> TypedArenaChunk<T> {
@@ -62,6 +66,7 @@ impl<T> TypedArenaChunk<T> {
     unsafe fn new(capacity: usize) -> TypedArenaChunk<T> {
         TypedArenaChunk {
             storage: RawVec::with_capacity(capacity),
+            entries: 0,
         }
     }
 
@@ -149,6 +154,34 @@ impl<T> TypedArena<T> {
         }
     }
 
+    #[inline]
+    fn can_allocate(&self, len: usize) -> bool {
+        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
+        let at_least_bytes = len.checked_mul(mem::size_of::<T>()).unwrap();
+        available_capacity_bytes >= at_least_bytes
+    }
+
+    /// Ensures there's enough space in the current chunk to fit `len` objects.
+    #[inline]
+    fn ensure_capacity(&self, len: usize) {
+        if !self.can_allocate(len) {
+            self.grow(len);
+            debug_assert!(self.can_allocate(len));
+        }
+    }
+
+    #[inline]
+    unsafe fn alloc_raw_slice(&self, len: usize) -> *mut T {
+        assert!(mem::size_of::<T>() != 0);
+        assert!(len != 0);
+
+        self.ensure_capacity(len);
+
+        let start_ptr = self.ptr.get();
+        self.ptr.set(start_ptr.add(len));
+        start_ptr
+    }
+
     /// Allocates a slice of objects that are copied into the `TypedArena`, returning a mutable
     /// reference to it. Will panic if passed a zero-sized types.
     ///
@@ -161,21 +194,64 @@ impl<T> TypedArena<T> {
     where
         T: Copy,
     {
-        assert!(mem::size_of::<T>() != 0);
-        assert!(slice.len() != 0);
-
-        let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
-        let at_least_bytes = slice.len() * mem::size_of::<T>();
-        if available_capacity_bytes < at_least_bytes {
-            self.grow(slice.len());
-        }
-
         unsafe {
-            let start_ptr = self.ptr.get();
-            let arena_slice = slice::from_raw_parts_mut(start_ptr, slice.len());
-            self.ptr.set(start_ptr.add(arena_slice.len()));
-            arena_slice.copy_from_slice(slice);
-            arena_slice
+            let len = slice.len();
+            let start_ptr = self.alloc_raw_slice(len);
+            slice.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            slice::from_raw_parts_mut(start_ptr, len)
+        }
+    }
+
+    #[inline]
+    pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        assert!(mem::size_of::<T>() != 0);
+        let mut iter = iter.into_iter();
+        let size_hint = iter.size_hint();
+
+        match size_hint {
+            (min, Some(max)) if min == max => {
+                // We know the exact number of elements the iterator will produce here
+                let len = min;
+
+                if len == 0 {
+                    return &mut [];
+                }
+
+                self.ensure_capacity(len);
+
+                let slice = self.ptr.get();
+
+                unsafe {
+                    let mut ptr = self.ptr.get();
+                    for _ in 0..len {
+                        // Write into uninitialized memory.
+                        ptr::write(ptr, iter.next().unwrap());
+                        // Advance the pointer.
+                        ptr = ptr.offset(1);
+                        // Update the pointer per iteration so if `iter.next()` panics
+                        // we destroy the correct amount
+                        self.ptr.set(ptr);
+                    }
+                    slice::from_raw_parts_mut(slice, len)
+                }
+            }
+            _ => {
+                cold_path(move || -> &mut [T] {
+                    let mut vec: SmallVec<[_; 8]> = iter.collect();
+                    if vec.is_empty() {
+                        return &mut [];
+                    }
+                    // Move the content to the arena by copying it and then forgetting
+                    // the content of the SmallVec
+                    unsafe {
+                        let len = vec.len();
+                        let start_ptr = self.alloc_raw_slice(len);
+                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+                        vec.set_len(0);
+                        slice::from_raw_parts_mut(start_ptr, len)
+                    }
+                })
+            }
         }
     }
 
@@ -189,6 +265,7 @@ impl<T> TypedArena<T> {
             if let Some(last_chunk) = chunks.last_mut() {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
                 let currently_used_cap = used_bytes / mem::size_of::<T>();
+                last_chunk.entries = currently_used_cap;
                 if last_chunk.storage.reserve_in_place(currently_used_cap, n) {
                     self.end.set(last_chunk.end());
                     return;
@@ -222,8 +299,7 @@ impl<T> TypedArena<T> {
                 let len = chunks_borrow.len();
                 // If `T` is ZST, code below has no effect.
                 for mut chunk in chunks_borrow.drain(..len-1) {
-                    let cap = chunk.storage.cap();
-                    chunk.destroy(cap);
+                    chunk.destroy(chunk.entries);
                 }
             }
         }
@@ -265,8 +341,7 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
                 self.clear_last_chunk(&mut last_chunk);
                 // The last chunk will be dropped. Destroy all other chunks.
                 for chunk in chunks_borrow.iter_mut() {
-                    let cap = chunk.storage.cap();
-                    chunk.destroy(cap);
+                    chunk.destroy(chunk.entries);
                 }
             }
             // RawVec handles deallocation of `last_chunk` and `self.chunks`.
@@ -408,6 +483,54 @@ impl DroplessArena {
             let arena_slice = slice::from_raw_parts_mut(mem, slice.len());
             arena_slice.copy_from_slice(slice);
             arena_slice
+        }
+    }
+
+    #[inline]
+    pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        let mut iter = iter.into_iter();
+        assert!(mem::size_of::<T>() != 0);
+        assert!(!mem::needs_drop::<T>());
+
+        let size_hint = iter.size_hint();
+
+        match size_hint {
+            (min, Some(max)) if min == max => {
+                // We know the exact number of elements the iterator will produce here
+                let len = min;
+
+                if len == 0 {
+                    return &mut []
+                }
+                let size = len.checked_mul(mem::size_of::<T>()).unwrap();
+                let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut _ as *mut T;
+                unsafe {
+                    for i in 0..len {
+                        ptr::write(mem.offset(i as isize), iter.next().unwrap())
+                    }
+                    slice::from_raw_parts_mut(mem, len)
+                }
+            }
+            (_, _) => {
+                cold_path(move || -> &mut [T] {
+                    let mut vec: SmallVec<[_; 8]> = iter.collect();
+                    if vec.is_empty() {
+                        return &mut [];
+                    }
+                    // Move the content to the arena by copying it and then forgetting
+                    // the content of the SmallVec
+                    unsafe {
+                        let len = vec.len();
+                        let start_ptr = self.alloc_raw(
+                            len * mem::size_of::<T>(),
+                            mem::align_of::<T>()
+                        ) as *mut _ as *mut T;
+                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+                        vec.set_len(0);
+                        slice::from_raw_parts_mut(start_ptr, len)
+                    }
+                })
+            }
         }
     }
 }
