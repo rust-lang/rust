@@ -443,10 +443,6 @@ top_level_options!(
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
 
         edition: Edition [TRACKED],
-
-        // The crates to consider private when
-        // checking leaked private dependency types in public interfaces
-        //extern_private: ExternPrivates [UNTRACKED],
     }
 );
 
@@ -649,7 +645,6 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
-            //extern_private: ExternPrivates(BTreeMap::new())
         }
     }
 }
@@ -2331,23 +2326,6 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    /*let mut extern_private: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-
-    for arg in matches.opt_strs("extern-private").into_iter() {
-        let mut parts = arg.splitn(2, '=');
-        let name = parts.next().unwrap_or_else(||
-            early_error(error_format, "--extern-private value must not be empty"));
-        let location = parts.next().map(|s| s.to_string()).unwrap_or_else(||
-            early_error(error_format, "--extern-private value must include a location"));
-
-
-        extern_private
-            .entry(name.to_owned())
-            .or_default()
-            .insert(location);
-
-    }*/
-
     // We start out with a Vec<(Option<String>, bool)>>,
     // and later convert it into a BTreeSet<(Option<String>, bool)>
     // This allows to modify entries in-place to set their correct
@@ -2369,7 +2347,7 @@ pub fn build_session_options_and_crate_config(
         };
 
 
-        // Externsl crates start out public,
+        // Extern crates start out public,
         // and become private if we later see
         // an '--extern-private' key. They never
         // go back to being public once we've seen
@@ -2449,7 +2427,6 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
-            //extern_private: ExternPrivates(extern_private)
         },
         cfg,
     )

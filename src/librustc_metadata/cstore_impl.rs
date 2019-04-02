@@ -399,7 +399,6 @@ impl cstore::CStore {
         r
     }
 
-
     pub fn crate_edition_untracked(&self, cnum: CrateNum) -> Edition {
         self.get_crate_data(cnum).root.edition
     }
