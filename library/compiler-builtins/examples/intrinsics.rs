@@ -390,4 +390,8 @@ mod mingw_unwidning {
     pub fn rust_eh_personality() {}
     #[no_mangle]
     pub fn rust_eh_unwind_resume() {}
+    #[no_mangle]
+    pub fn rust_eh_register_frames() {}
+    #[no_mangle]
+    pub fn rust_eh_unregister_frames() {}
 }
