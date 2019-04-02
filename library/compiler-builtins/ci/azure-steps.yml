@@ -1,7 +1,11 @@
 steps:
   - checkout: self
     submodules: true
+
   - template: azure-install-rust.yml
+
+  - bash: rustup target add $TARGET
+    displayName: Install compilation target
 
   - bash: ./ci/run.sh $TARGET
     condition: ne( variables['Agent.OS'], 'Linux' )
