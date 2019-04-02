@@ -111,7 +111,7 @@ pub trait DocCommentsOwner: AstNode {
         let mut has_comments = false;
         let docs = self
             .doc_comments()
-            .filter(|comment| comment.is_doc_comment())
+            .filter(|comment| comment.kind().doc.is_some())
             .map(|comment| {
                 has_comments = true;
                 let prefix_len = comment.prefix().len();

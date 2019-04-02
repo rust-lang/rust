@@ -145,7 +145,10 @@ fn contiguous_range_for_comment<'a>(
     visited.insert(first);
 
     // Only fold comments of the same flavor
-    let group_flavor = first.flavor();
+    let group_kind = first.kind();
+    if !group_kind.shape.is_line() {
+        return None;
+    }
 
     let mut last = first;
     for element in first.syntax().siblings_with_tokens(Direction::Next) {
@@ -158,7 +161,7 @@ fn contiguous_range_for_comment<'a>(
                     }
                 }
                 if let Some(c) = ast::Comment::cast(token) {
-                    if c.flavor() == group_flavor {
+                    if c.kind() == group_kind {
                         visited.insert(c);
                         last = c;
                         continue;

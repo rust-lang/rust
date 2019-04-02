@@ -15,7 +15,7 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
         .left_biased()
         .and_then(ast::Comment::cast)?;
 
-    if comment.flavor() == ast::CommentFlavor::Multiline {
+    if comment.kind().shape.is_block() {
         return None;
     }
 
