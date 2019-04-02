@@ -13,7 +13,7 @@ steps:
 
   - script: |
       curl -sSf -o rustup-init.exe https://win.rustup.rs
-      rustup-init.exe -y --default-toolchain %TOOLCHAIN%
+      rustup-init.exe -y --default-toolchain %TOOLCHAIN%-%TARGET%
       echo ##vso[task.prependpath]%USERPROFILE%\.cargo\bin
     displayName: Install rust
     condition: eq( variables['Agent.OS'], 'Windows_NT' )
