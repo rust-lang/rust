@@ -31,15 +31,6 @@ pub enum LintLevel {
     Explicit(hir::HirId)
 }
 
-impl LintLevel {
-    pub fn is_explicit(self) -> bool {
-        match self {
-            LintLevel::Inherited => false,
-            LintLevel::Explicit(_) => true
-        }
-    }
-}
-
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {
     pub targeted_by_break: bool,
@@ -311,6 +302,8 @@ pub struct Arm<'tcx> {
     pub guard: Option<Guard<'tcx>>,
     pub body: ExprRef<'tcx>,
     pub lint_level: LintLevel,
+    pub scope: region::Scope,
+    pub span: Span,
 }
 
 #[derive(Clone, Debug)]

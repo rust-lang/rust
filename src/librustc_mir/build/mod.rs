@@ -945,10 +945,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         self.var_indices.insert(var, LocalsForNode::One(local));
                     }
                     _ => {
-                        scope = self.declare_bindings(scope, ast_body.span,
-                                                      LintLevel::Inherited, &pattern,
-                                                      matches::ArmHasGuard(false),
-                                                      Some((Some(&place), span)));
+                        scope = self.declare_bindings(
+                            scope,
+                            ast_body.span,
+                            &pattern,
+                            matches::ArmHasGuard(false),
+                            Some((Some(&place), span)),
+                        );
                         unpack!(block = self.place_into_pattern(block, pattern, &place, false));
                     }
                 }

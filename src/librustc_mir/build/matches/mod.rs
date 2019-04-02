@@ -259,11 +259,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let scope = self.declare_bindings(
                 None,
                 body.span,
-                LintLevel::Inherited,
                 &arm.patterns[0],
                 ArmHasGuard(arm.guard.is_some()),
                 Some((Some(&scrutinee_place), scrutinee_span)),
             );
+
+            if let Some(source_scope) = scope {
+                this.source_scope = source_scope;
+            }
 
             for candidate in candidates {
                 self.bind_and_guard_matched_candidate(
@@ -275,9 +278,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
             }
 
-            if let Some(source_scope) = scope {
-                self.source_scope = source_scope;
-            }
 
             unpack!(arm_block = self.into(destination, arm_block, body));
 
@@ -489,33 +489,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         &mut self,
         mut visibility_scope: Option<SourceScope>,
         scope_span: Span,
-        lint_level: LintLevel,
         pattern: &Pattern<'tcx>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
-        assert!(
-            !(visibility_scope.is_some() && lint_level.is_explicit()),
-            "can't have both a visibility and a lint scope at the same time"
-        );
-        let mut scope = self.source_scope;
         debug!("declare_bindings: pattern={:?}", pattern);
         self.visit_bindings(
             &pattern,
             UserTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
-                    // If we have lints, create a new source scope
-                    // that marks the lints for the locals. See the comment
-                    // on the `source_info` field for why this is needed.
-                    if lint_level.is_explicit() {
-                        scope = this.new_source_scope(scope_span, lint_level, None);
-                    }
-                visibility_scope = Some(this.new_source_scope(scope_span,
-                                                           LintLevel::Inherited,
-                                                           None));
+                    visibility_scope =
+                        Some(this.new_source_scope(scope_span, LintLevel::Inherited, None));
                 }
-                let source_info = SourceInfo { span, scope };
+                let source_info = SourceInfo { span, this.source_scope };
                 let visibility_scope = visibility_scope.unwrap();
                 this.declare_binding(
                     source_info,
