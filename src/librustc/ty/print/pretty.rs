@@ -1557,31 +1557,27 @@ define_print_and_forward_display! {
             (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Uint(ui)) =>
                 p!(write("{}{}", bits, ui)),
             (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Int(i)) => {
-                let size = ty::tls::with(|tcx| {
-                    let ty = tcx.lift_to_global(&self.ty).unwrap();
-                    tcx.layout_of(ty::ParamEnv::empty().and(ty))
-                        .unwrap()
-                        .size
-                });
+                let ty = cx.tcx().lift_to_global(&self.ty).unwrap();
+                let size = cx.tcx().layout_of(ty::ParamEnv::empty().and(ty))
+                    .unwrap()
+                    .size;
                 p!(write("{}{}", sign_extend(bits, size) as i128, i))
             },
             (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Char)
                 => p!(write("{}", ::std::char::from_u32(bits as u32).unwrap())),
-            (_, ty::FnDef(did, _)) => p!(write("{}", ty::tls::with(|tcx| tcx.def_path_str(*did)))),
+            (_, ty::FnDef(did, _)) => p!(write("{}", cx.tcx().def_path_str(*did))),
             (ConstValue::Slice(_, 0), ty::Ref(_, &ty::TyS { sty: ty::Str, .. }, _)) =>
                 p!(write("\"\"")),
             (
                 ConstValue::Slice(Scalar::Ptr(ptr), len),
                 ty::Ref(_, &ty::TyS { sty: ty::Str, .. }, _),
             ) => {
-                ty::tls::with(|tcx| {
-                    let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                    assert_eq!(len as usize as u64, len);
-                    let slice =
-                        &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                    let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
-                    Ok(p!(write("{:?}", s)))
-                })?;
+                let alloc = cx.tcx().alloc_map.lock().unwrap_memory(ptr.alloc_id);
+                assert_eq!(len as usize as u64, len);
+                let slice =
+                    &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
+                let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
+                p!(write("{:?}", s))
             },
             _ => p!(write("{:?} : ", self.val), print(self.ty)),
         }
