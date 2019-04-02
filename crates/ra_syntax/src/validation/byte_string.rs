@@ -10,7 +10,7 @@ use super::byte;
 pub(crate) fn validate_byte_string_node(node: SyntaxToken, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
     let literal_range = node.range();
-    let mut components = string_lexing::parse_byte_string_literal(literal_text);
+    let mut components = string_lexing::parse_quoted_literal(Some('b'), '"', literal_text);
     for component in &mut components {
         let range = component.range + literal_range.start();
 
