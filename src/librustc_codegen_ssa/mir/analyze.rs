@@ -172,14 +172,14 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 // ZSTs don't require any actual memory access.
                 let elem_ty = base_ty
                     .projection_ty(cx.tcx(), &proj.elem)
-                    .to_ty(cx.tcx());
+                    .ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
                 if cx.layout_of(elem_ty).is_zst() {
                     return;
                 }
 
                 if let mir::ProjectionElem::Field(..) = proj.elem {
-                    let layout = cx.layout_of(base_ty.to_ty(cx.tcx()));
+                    let layout = cx.layout_of(base_ty.ty);
                     if cx.is_backend_immediate(layout) || cx.is_backend_scalar_pair(layout) {
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
@@ -247,7 +247,7 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
                 let ty = mir::Place::Base(mir::PlaceBase::Local(local)).ty(self.fx.mir,
                                                                            self.fx.cx.tcx());
-                let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx()));
+                let ty = self.fx.monomorphize(&ty.ty);
 
                 // Only need the place if we're actually dropping it.
                 if self.fx.cx.type_needs_drop(ty) {

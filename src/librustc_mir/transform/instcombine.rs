@@ -82,14 +82,14 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for OptimizationFinder<'b, 'a, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, Place::Projection(ref projection)) = *rvalue {
             if let ProjectionElem::Deref = projection.elem {
-                if projection.base.ty(self.mir, self.tcx).to_ty(self.tcx).is_region_ptr() {
+                if projection.base.ty(self.mir, self.tcx).ty.is_region_ptr() {
                     self.optimizations.and_stars.insert(location);
                 }
             }
         }
 
         if let Rvalue::Len(ref place) = *rvalue {
-            let place_ty = place.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
+            let place_ty = place.ty(&self.mir.local_decls, self.tcx).ty;
             if let TyKind::Array(_, len) = place_ty.sty {
                 let span = self.mir.source_info(location).span;
                 let ty = self.tcx.types.usize;

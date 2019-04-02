@@ -49,7 +49,7 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 fn place_contents_drop_state_cannot_differ<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                                             mir: &Mir<'tcx>,
                                                             place: &mir::Place<'tcx>) -> bool {
-    let ty = place.ty(mir, tcx).to_ty(tcx);
+    let ty = place.ty(mir, tcx).ty;
     match ty.sty {
         ty::Array(..) => {
             debug!("place_contents_drop_state_cannot_differ place: {:?} ty: {:?} => false",
@@ -141,7 +141,7 @@ pub(crate) fn on_all_drop_children_bits<'a, 'gcx, 'tcx, F>(
 {
     on_all_children_bits(tcx, mir, &ctxt.move_data, path, |child| {
         let place = &ctxt.move_data.move_paths[path].place;
-        let ty = place.ty(mir, tcx).to_ty(tcx);
+        let ty = place.ty(mir, tcx).ty;
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, place, ty);
 
         let gcx = tcx.global_tcx();

@@ -74,7 +74,7 @@ impl<'tcx> PatternTypeProjection<'tcx> {
         annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
         inferred_ty: Ty<'tcx>,
         span: Span,
-    ) -> UserTypeProjection<'tcx> {
+    ) -> UserTypeProjection {
         UserTypeProjection {
             base: annotations.push(CanonicalUserTypeAnnotation {
                 span,
@@ -1094,7 +1094,7 @@ CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, hir::HirId, usize, ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
     SubstsRef<'tcx>, &'tcx Kind<'tcx>, UserType<'tcx>,
-    UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
+    UserTypeProjection, PatternTypeProjection<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {

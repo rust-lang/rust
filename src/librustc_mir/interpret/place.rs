@@ -558,7 +558,7 @@ where
     pub fn place_projection(
         &mut self,
         base: PlaceTy<'tcx, M::PointerTag>,
-        proj_elem: &mir::ProjectionElem<'tcx, mir::Local, Ty<'tcx>>,
+        proj_elem: &mir::ProjectionElem<mir::Local, Ty<'tcx>>,
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
