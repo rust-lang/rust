@@ -2,7 +2,7 @@ use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
-use rustc::mir::interpret::EvalErrorKind;
+use rustc::mir::interpret::InterpError;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
 use rustc_mir::monomorphize;
@@ -365,7 +365,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // checked operation, just a comparison with the minimum
         // value, so we have to check for the assert message.
         if !bx.check_overflow() {
-            if let mir::interpret::EvalErrorKind::OverflowNeg = *msg {
+            if let mir::interpret::InterpError::OverflowNeg = *msg {
                 const_cond = Some(expected);
             }
         }
@@ -400,7 +400,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match *msg {
-            EvalErrorKind::BoundsCheck { ref len, ref index } => {
+            InterpError::BoundsCheck { ref len, ref index } => {
                 let len = self.codegen_operand(&mut bx, len).immediate();
                 let index = self.codegen_operand(&mut bx, index).immediate();
 

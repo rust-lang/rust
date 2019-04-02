@@ -7,7 +7,7 @@ use rustc::ty;
 use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::mir::BinOp;
 use rustc::mir::interpret::{
-    EvalResult, EvalErrorKind, Scalar,
+    EvalResult, InterpError, Scalar,
 };
 
 use super::{
@@ -87,7 +87,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 let bits = self.read_scalar(args[0])?.to_bits(layout_of.size)?;
                 let kind = match layout_of.abi {
                     ty::layout::Abi::Scalar(ref scalar) => scalar.value,
-                    _ => Err(::rustc::mir::interpret::EvalErrorKind::TypeNotPrimitive(ty))?,
+                    _ => Err(::rustc::mir::interpret::InterpError::TypeNotPrimitive(ty))?,
                 };
                 let out_val = if intrinsic_name.ends_with("_nonzero") {
                     if bits == 0 {
@@ -248,7 +248,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(EvalErrorKind::Panic { msg, file, line, col }.into());
+            return Err(InterpError::Panic { msg, file, line, col }.into());
         } else if Some(def_id) == self.tcx.lang_items().begin_panic_fn() {
             assert!(args.len() == 2);
             // &'static str, &(&'static str, u32, u32)
@@ -266,7 +266,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
-            return Err(EvalErrorKind::Panic { msg, file, line, col }.into());
+            return Err(InterpError::Panic { msg, file, line, col }.into());
         } else {
             return Ok(false);
         }

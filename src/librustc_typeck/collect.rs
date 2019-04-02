@@ -1979,6 +1979,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                     ref bounds,
                     impl_trait_fn,
                     ref generics,
+                    origin: _,
                 }) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);

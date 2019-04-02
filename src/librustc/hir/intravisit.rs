@@ -490,7 +490,11 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(ty);
             visitor.visit_generics(generics)
         }
-        ItemKind::Existential(ExistTy { ref generics, ref bounds, impl_trait_fn: _ }) => {
+        ItemKind::Existential(ExistTy {
+            ref generics,
+            ref bounds,
+            ..
+        }) => {
             visitor.visit_id(item.hir_id);
             walk_generics(visitor, generics);
             walk_list!(visitor, visit_param_bound, bounds);

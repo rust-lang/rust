@@ -688,7 +688,7 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 cleanup: _,
             } => {
                 self.consume_operand(ContextKind::Assert.new(loc), (cond, span), flow_state);
-                use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+                use rustc::mir::interpret::InterpError::BoundsCheck;
                 if let BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(ContextKind::Assert.new(loc), (len, span), flow_state);
                     self.consume_operand(ContextKind::Assert.new(loc), (index, span), flow_state);

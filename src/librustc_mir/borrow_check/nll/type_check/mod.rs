@@ -28,7 +28,7 @@ use rustc::infer::canonical::QueryRegionConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::mir::interpret::{EvalErrorKind::BoundsCheck, ConstValue};
+use rustc::mir::interpret::{InterpError::BoundsCheck, ConstValue};
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;

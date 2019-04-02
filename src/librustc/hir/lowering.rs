@@ -66,7 +66,7 @@ use syntax::symbol::{keywords, Symbol};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::Token;
 use syntax::visit::{self, Visitor};
-use syntax_pos::{Span, MultiSpan};
+use syntax_pos::Span;
 
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
@@ -318,6 +318,49 @@ enum AnonymousLifetimeMode {
 
     /// Pass responsibility to `resolve_lifetime` code for all cases.
     PassThrough,
+
+    /// Used in the return types of `async fn` where there exists
+    /// exactly one argument-position elided lifetime.
+    ///
+    /// In `async fn`, we lower the arguments types using the `CreateParameter`
+    /// mode, meaning that non-`dyn` elided lifetimes are assigned a fresh name.
+    /// If any corresponding elided lifetimes appear in the output, we need to
+    /// replace them with references to the fresh name assigned to the corresponding
+    /// elided lifetime in the arguments.
+    ///
+    /// For **Modern cases**, replace the anonymous parameter with a
+    /// reference to a specific freshly-named lifetime that was
+    /// introduced in argument
+    ///
+    /// For **Dyn Bound** cases, pass responsibility to
+    /// `resole_lifetime` code.
+    Replace(LtReplacement),
+}
+
+/// The type of elided lifetime replacement to perform on `async fn` return types.
+#[derive(Copy, Clone)]
+enum LtReplacement {
+    /// Fresh name introduced by the single non-dyn elided lifetime
+    /// in the arguments of the async fn.
+    Some(ParamName),
+
+    /// There is no single non-dyn elided lifetime because no lifetimes
+    /// appeared in the arguments.
+    NoLifetimes,
+
+    /// There is no single non-dyn elided lifetime because multiple
+    /// lifetimes appeared in the arguments.
+    MultipleLifetimes,
+}
+
+/// Calculates the `LtReplacement` to use for elided lifetimes in the return
+/// type based on the fresh elided lifetimes introduced in argument position.
+fn get_elided_lt_replacement(arg_position_lifetimes: &[(Span, ParamName)]) -> LtReplacement {
+    match arg_position_lifetimes {
+        [] => LtReplacement::NoLifetimes,
+        [(_span, param)] => LtReplacement::Some(*param),
+        _ => LtReplacement::MultipleLifetimes,
+    }
 }
 
 struct ImplTraitTypeIdVisitor<'a> { ids: &'a mut SmallVec<[NodeId; 1]> }
@@ -778,51 +821,61 @@ impl<'a> LoweringContext<'a> {
 
         let params = lifetimes_to_define
             .into_iter()
-            .map(|(span, hir_name)| {
-                let LoweredNodeId { node_id, hir_id } = self.next_id();
-
-                // Get the name we'll use to make the def-path. Note
-                // that collisions are ok here and this shouldn't
-                // really show up for end-user.
-                let (str_name, kind) = match hir_name {
-                    ParamName::Plain(ident) => (
-                        ident.as_interned_str(),
-                        hir::LifetimeParamKind::InBand,
-                    ),
-                    ParamName::Fresh(_) => (
-                        keywords::UnderscoreLifetime.name().as_interned_str(),
-                        hir::LifetimeParamKind::Elided,
-                    ),
-                    ParamName::Error => (
-                        keywords::UnderscoreLifetime.name().as_interned_str(),
-                        hir::LifetimeParamKind::Error,
-                    ),
-                };
-
-                // Add a definition for the in-band lifetime def.
-                self.resolver.definitions().create_def_with_parent(
-                    parent_id.index,
-                    node_id,
-                    DefPathData::LifetimeParam(str_name),
-                    DefIndexAddressSpace::High,
-                    Mark::root(),
-                    span,
-                );
-
-                hir::GenericParam {
-                    hir_id,
-                    name: hir_name,
-                    attrs: hir_vec![],
-                    bounds: hir_vec![],
-                    span,
-                    pure_wrt_drop: false,
-                    kind: hir::GenericParamKind::Lifetime { kind }
-                }
-            })
+            .map(|(span, hir_name)| self.lifetime_to_generic_param(
+                span, hir_name, parent_id.index,
+            ))
             .chain(in_band_ty_params.into_iter())
             .collect();
 
         (params, res)
+    }
+
+    /// Converts a lifetime into a new generic parameter.
+    fn lifetime_to_generic_param(
+        &mut self,
+        span: Span,
+        hir_name: ParamName,
+        parent_index: DefIndex,
+    ) -> hir::GenericParam {
+        let LoweredNodeId { node_id, hir_id } = self.next_id();
+
+        // Get the name we'll use to make the def-path. Note
+        // that collisions are ok here and this shouldn't
+        // really show up for end-user.
+        let (str_name, kind) = match hir_name {
+            ParamName::Plain(ident) => (
+                ident.as_interned_str(),
+                hir::LifetimeParamKind::InBand,
+            ),
+            ParamName::Fresh(_) => (
+                keywords::UnderscoreLifetime.name().as_interned_str(),
+                hir::LifetimeParamKind::Elided,
+            ),
+            ParamName::Error => (
+                keywords::UnderscoreLifetime.name().as_interned_str(),
+                hir::LifetimeParamKind::Error,
+            ),
+        };
+
+        // Add a definition for the in-band lifetime def.
+        self.resolver.definitions().create_def_with_parent(
+            parent_index,
+            node_id,
+            DefPathData::LifetimeParam(str_name),
+            DefIndexAddressSpace::High,
+            Mark::root(),
+            span,
+        );
+
+        hir::GenericParam {
+            hir_id,
+            name: hir_name,
+            attrs: hir_vec![],
+            bounds: hir_vec![],
+            span,
+            pure_wrt_drop: false,
+            kind: hir::GenericParamKind::Lifetime { kind }
+        }
     }
 
     /// When there is a reference to some lifetime `'a`, and in-band
@@ -928,6 +981,13 @@ impl<'a> LoweringContext<'a> {
             |this| {
                 this.collect_in_band_defs(parent_id, anonymous_lifetime_mode, |this| {
                     let mut params = Vec::new();
+                    // Note: it is necessary to lower generics *before* calling `f`.
+                    // When lowering `async fn`, there's a final step when lowering
+                    // the return type that assumes that all in-scope lifetimes have
+                    // already been added to either `in_scope_lifetimes` or
+                    // `lifetimes_to_define`. If we swapped the order of these two,
+                    // in-band-lifetimes introduced by generics or where-clauses
+                    // wouldn't have been added yet.
                     let generics = this.lower_generics(
                         generics,
                         ImplTraitContext::Universal(&mut params),
@@ -1426,40 +1486,60 @@ impl<'a> LoweringContext<'a> {
 
         self.with_hir_id_owner(exist_ty_node_id, |lctx| {
             let LoweredNodeId { node_id: _, hir_id } = lctx.next_id();
-            let exist_ty_item_kind = hir::ItemKind::Existential(hir::ExistTy {
+            let exist_ty_item = hir::ExistTy {
                 generics: hir::Generics {
                     params: lifetime_defs,
                     where_clause: hir::WhereClause {
                         hir_id,
-                        predicates: Vec::new().into(),
+                        predicates: hir_vec![],
                     },
                     span,
                 },
                 bounds: hir_bounds,
                 impl_trait_fn: fn_def_id,
-            });
-            let exist_ty_id = lctx.lower_node_id(exist_ty_node_id);
-            // Generate an `existential type Foo: Trait;` declaration.
-            trace!("creating existential type with id {:#?}", exist_ty_id);
-
-            trace!("exist ty def index: {:#?}", exist_ty_def_index);
-            let exist_ty_item = hir::Item {
-                hir_id: exist_ty_id.hir_id,
-                ident: keywords::Invalid.ident(),
-                attrs: Default::default(),
-                node: exist_ty_item_kind,
-                vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
-                span: exist_ty_span,
+                origin: hir::ExistTyOrigin::ReturnImplTrait,
             };
 
-            // Insert the item into the global list. This usually happens
-            // automatically for all AST items. But this existential type item
-            // does not actually exist in the AST.
-            lctx.insert_item(exist_ty_item);
+            trace!("exist ty from impl trait def index: {:#?}", exist_ty_def_index);
+            let exist_ty_id = lctx.generate_existential_type(
+                exist_ty_node_id,
+                exist_ty_item,
+                span,
+                exist_ty_span,
+            );
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
             hir::TyKind::Def(hir::ItemId { id: exist_ty_id.hir_id }, lifetimes)
         })
+    }
+
+    /// Registers a new existential type with the proper NodeIds and
+    /// returns the lowered node ID for the existential type.
+    fn generate_existential_type(
+        &mut self,
+        exist_ty_node_id: NodeId,
+        exist_ty_item: hir::ExistTy,
+        span: Span,
+        exist_ty_span: Span,
+    ) -> LoweredNodeId {
+        let exist_ty_item_kind = hir::ItemKind::Existential(exist_ty_item);
+        let exist_ty_id = self.lower_node_id(exist_ty_node_id);
+        // Generate an `existential type Foo: Trait;` declaration.
+        trace!("registering existential type with id {:#?}", exist_ty_id);
+        let exist_ty_item = hir::Item {
+            hir_id: exist_ty_id.hir_id,
+            ident: keywords::Invalid.ident(),
+            attrs: Default::default(),
+            node: exist_ty_item_kind,
+            vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),
+            span: exist_ty_span,
+        };
+
+        // Insert the item into the global item list. This usually happens
+        // automatically for all AST items. But this existential type item
+        // does not actually exist in the AST.
+        self.insert_item(exist_ty_item);
+        exist_ty_id
     }
 
     fn lifetimes_from_impl_trait_bounds(
@@ -1569,9 +1649,6 @@ impl<'a> LoweringContext<'a> {
                         name,
                     }));
 
-                    // We need to manually create the ids here, because the
-                    // definitions will go into the explicit `existential type`
-                    // declaration and thus need to have their owner set to that item
                     let def_node_id = self.context.sess.next_node_id();
                     let LoweredNodeId { node_id: _, hir_id } =
                         self.context.lower_node_id_with_owner(def_node_id, self.exist_ty_id);
@@ -2108,23 +2185,42 @@ impl<'a> LoweringContext<'a> {
         impl_trait_return_allow: bool,
         make_ret_async: Option<NodeId>,
     ) -> P<hir::FnDecl> {
-        let inputs = decl.inputs
-            .iter()
-            .map(|arg| {
-                if let Some((_, ref mut ibty)) = in_band_ty_params {
-                    self.lower_ty_direct(&arg.ty, ImplTraitContext::Universal(ibty))
-                } else {
-                    self.lower_ty_direct(&arg.ty, ImplTraitContext::disallowed())
-                }
-            })
-            .collect::<HirVec<_>>();
+        let lt_mode = if make_ret_async.is_some() {
+            // In `async fn`, argument-position elided lifetimes
+            // must be transformed into fresh generic parameters so that
+            // they can be applied to the existential return type.
+            AnonymousLifetimeMode::CreateParameter
+        } else {
+            self.anonymous_lifetime_mode
+        };
+
+        // Remember how many lifetimes were already around so that we can
+        // only look at the lifetime parameters introduced by the arguments.
+        let lifetime_count_before_args = self.lifetimes_to_define.len();
+        let inputs = self.with_anonymous_lifetime_mode(lt_mode, |this| {
+            decl.inputs
+                .iter()
+                .map(|arg| {
+                    if let Some((_, ibty)) = &mut in_band_ty_params {
+                        this.lower_ty_direct(&arg.ty, ImplTraitContext::Universal(ibty))
+                    } else {
+                        this.lower_ty_direct(&arg.ty, ImplTraitContext::disallowed())
+                    }
+                })
+                .collect::<HirVec<_>>()
+        });
 
         let output = if let Some(ret_id) = make_ret_async {
+            // Calculate the `LtReplacement` to use for any return-position elided
+            // lifetimes based on the elided lifetime parameters introduced in the args.
+            let lt_replacement = get_elided_lt_replacement(
+                &self.lifetimes_to_define[lifetime_count_before_args..]
+            );
             self.lower_async_fn_ret_ty(
-                &inputs,
                 &decl.output,
                 in_band_ty_params.expect("make_ret_async but no fn_def_id").0,
                 ret_id,
+                lt_replacement,
             )
         } else {
             match decl.output {
@@ -2173,233 +2269,171 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    // Transform `-> T` into `-> impl Future<Output = T>` for `async fn`
+    // Transform `-> T` for `async fn` into -> ExistTy { .. }
+    // combined with the following definition of `ExistTy`:
     //
-    // fn_span: the span of the async function declaration. Used for error reporting.
+    // existential type ExistTy<generics_from_parent_fn>: Future<Output = T>;
+    //
     // inputs: lowered types of arguments to the function. Used to collect lifetimes.
     // output: unlowered output type (`T` in `-> T`)
     // fn_def_id: DefId of the parent function. Used to create child impl trait definition.
+    // exist_ty_node_id: NodeId of the existential type that should be created.
+    // elided_lt_replacement: replacement for elided lifetimes in the return type
     fn lower_async_fn_ret_ty(
         &mut self,
-        inputs: &[hir::Ty],
         output: &FunctionRetTy,
         fn_def_id: DefId,
-        return_impl_trait_id: NodeId,
+        exist_ty_node_id: NodeId,
+        elided_lt_replacement: LtReplacement,
     ) -> hir::FunctionRetTy {
-        // Get lifetimes used in the input arguments to the function. Our output type must also
-        // have the same lifetime.
-        // FIXME(cramertj): multiple different lifetimes are not allowed because
-        // `impl Trait + 'a + 'b` doesn't allow for capture `'a` and `'b` where neither is a subset
-        // of the other. We really want some new lifetime that is a subset of all input lifetimes,
-        // but that doesn't exist at the moment.
+        let span = output.span();
 
-        struct AsyncFnLifetimeCollector<'r, 'a: 'r> {
-            context: &'r mut LoweringContext<'a>,
-            // Lifetimes bound by HRTB.
-            currently_bound_lifetimes: Vec<hir::LifetimeName>,
-            // Whether to count elided lifetimes.
-            // Disabled inside of `Fn` or `fn` syntax.
-            collect_elided_lifetimes: bool,
-            // The lifetime found.
-            // Multiple different or elided lifetimes cannot appear in async fn for now.
-            output_lifetime: Option<(hir::LifetimeName, Span)>,
-        }
+        let exist_ty_span = self.mark_span_with_reason(
+            CompilerDesugaringKind::Async,
+            span,
+            None,
+        );
 
-        impl<'r, 'a: 'r, 'v> hir::intravisit::Visitor<'v> for AsyncFnLifetimeCollector<'r, 'a> {
-            fn nested_visit_map<'this>(
-                &'this mut self,
-            ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {
-                hir::intravisit::NestedVisitorMap::None
-            }
+        let exist_ty_def_index = self
+            .resolver
+            .definitions()
+            .opt_def_index(exist_ty_node_id)
+            .unwrap();
 
-            fn visit_generic_args(&mut self, span: Span, parameters: &'v hir::GenericArgs) {
-                // Don't collect elided lifetimes used inside of `Fn()` syntax.
-                if parameters.parenthesized {
-                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
-                    self.collect_elided_lifetimes = false;
-                    hir::intravisit::walk_generic_args(self, span, parameters);
-                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
-                } else {
-                    hir::intravisit::walk_generic_args(self, span, parameters);
-                }
-            }
+        self.allocate_hir_id_counter(exist_ty_node_id);
 
-            fn visit_ty(&mut self, t: &'v hir::Ty) {
-                // Don't collect elided lifetimes used inside of `fn()` syntax.
-                if let &hir::TyKind::BareFn(_) = &t.node {
-                    let old_collect_elided_lifetimes = self.collect_elided_lifetimes;
-                    self.collect_elided_lifetimes = false;
-
-                    // Record the "stack height" of `for<'a>` lifetime bindings
-                    // to be able to later fully undo their introduction.
-                    let old_len = self.currently_bound_lifetimes.len();
-                    hir::intravisit::walk_ty(self, t);
-                    self.currently_bound_lifetimes.truncate(old_len);
-
-                    self.collect_elided_lifetimes = old_collect_elided_lifetimes;
-                } else {
-                    hir::intravisit::walk_ty(self, t);
-                }
-            }
-
-            fn visit_poly_trait_ref(
-                &mut self,
-                trait_ref: &'v hir::PolyTraitRef,
-                modifier: hir::TraitBoundModifier,
-            ) {
-                // Record the "stack height" of `for<'a>` lifetime bindings
-                // to be able to later fully undo their introduction.
-                let old_len = self.currently_bound_lifetimes.len();
-                hir::intravisit::walk_poly_trait_ref(self, trait_ref, modifier);
-                self.currently_bound_lifetimes.truncate(old_len);
-            }
-
-            fn visit_generic_param(&mut self, param: &'v hir::GenericParam) {
-                 // Record the introduction of 'a in `for<'a> ...`
-                if let hir::GenericParamKind::Lifetime { .. } = param.kind {
-                    // Introduce lifetimes one at a time so that we can handle
-                    // cases like `fn foo<'d>() -> impl for<'a, 'b: 'a, 'c: 'b + 'd>`
-                    let lt_name = hir::LifetimeName::Param(param.name);
-                    self.currently_bound_lifetimes.push(lt_name);
-                }
-
-                hir::intravisit::walk_generic_param(self, param);
-            }
-
-            fn visit_lifetime(&mut self, lifetime: &'v hir::Lifetime) {
-                let name = match lifetime.name {
-                    hir::LifetimeName::Implicit | hir::LifetimeName::Underscore => {
-                        if self.collect_elided_lifetimes {
-                            // Use `'_` for both implicit and underscore lifetimes in
-                            // `abstract type Foo<'_>: SomeTrait<'_>;`
-                            hir::LifetimeName::Underscore
-                        } else {
-                            return;
-                        }
-                    }
-                    hir::LifetimeName::Param(_) => lifetime.name,
-                    hir::LifetimeName::Error | hir::LifetimeName::Static => return,
-                };
-
-                if !self.currently_bound_lifetimes.contains(&name) {
-                    if let Some((current_lt_name, current_lt_span)) = self.output_lifetime {
-                        // We don't currently have a reliable way to desugar `async fn` with
-                        // multiple potentially unrelated input lifetimes into
-                        // `-> impl Trait + 'lt`, so we report an error in this case.
-                        if current_lt_name != name {
-                            struct_span_err!(
-                                self.context.sess,
-                                MultiSpan::from_spans(vec![current_lt_span, lifetime.span]),
-                                E0709,
-                                "multiple different lifetimes used in arguments of `async fn`",
-                            )
-                                .span_label(current_lt_span, "first lifetime here")
-                                .span_label(lifetime.span, "different lifetime here")
-                                .help("`async fn` can only accept borrowed values \
-                                      with identical lifetimes")
-                                .emit()
-                        } else if current_lt_name.is_elided() && name.is_elided() {
-                            struct_span_err!(
-                                self.context.sess,
-                                MultiSpan::from_spans(vec![current_lt_span, lifetime.span]),
-                                E0707,
-                                "multiple elided lifetimes used in arguments of `async fn`",
-                            )
-                                .span_label(current_lt_span, "first lifetime here")
-                                .span_label(lifetime.span, "different lifetime here")
-                                .help("consider giving these arguments named lifetimes")
-                                .emit()
-                        }
-                    } else {
-                        self.output_lifetime = Some((name, lifetime.span));
-                    }
-                }
-            }
-        }
-
-        let bound_lifetime = {
-            let mut lifetime_collector = AsyncFnLifetimeCollector {
-                context: self,
-                currently_bound_lifetimes: Vec::new(),
-                collect_elided_lifetimes: true,
-                output_lifetime: None,
-            };
-
-            for arg in inputs {
-                hir::intravisit::walk_ty(&mut lifetime_collector, arg);
-            }
-            lifetime_collector.output_lifetime
-        };
-
-        let span = match output {
-            FunctionRetTy::Ty(ty) => ty.span,
-            FunctionRetTy::Default(span) => *span,
-        };
-
-        let impl_trait_ty = self.lower_existential_impl_trait(
-            span, Some(fn_def_id), return_impl_trait_id, |this| {
-            let output_ty = match output {
-                FunctionRetTy::Ty(ty) => {
-                    this.lower_ty(ty, ImplTraitContext::Existential(Some(fn_def_id)))
-                }
-                FunctionRetTy::Default(span) => {
-                    let LoweredNodeId { node_id: _, hir_id } = this.next_id();
-                    P(hir::Ty {
-                        hir_id,
-                        node: hir::TyKind::Tup(hir_vec![]),
-                        span: *span,
-                    })
-                }
-            };
-
-            // "<Output = T>"
-            let LoweredNodeId { node_id: _, hir_id } = this.next_id();
-            let future_params = P(hir::GenericArgs {
-                args: hir_vec![],
-                bindings: hir_vec![hir::TypeBinding {
-                    ident: Ident::from_str(FN_OUTPUT_NAME),
-                    ty: output_ty,
-                    hir_id,
+        let (exist_ty_node_id, lifetime_params) = self.with_hir_id_owner(exist_ty_node_id, |this| {
+            let future_bound = this.with_anonymous_lifetime_mode(
+                AnonymousLifetimeMode::Replace(elided_lt_replacement),
+                |this| this.lower_async_fn_output_type_to_future_bound(
+                    output,
+                    fn_def_id,
                     span,
-                }],
-                parenthesized: false,
-            });
+                ),
+            );
 
-            let future_path =
-                this.std_path(span, &["future", "Future"], Some(future_params), false);
+            // Calculate all the lifetimes that should be captured
+            // by the existential type. This should include all in-scope
+            // lifetime parameters, including those defined in-band.
+            //
+            // Note: this must be done after lowering the output type,
+            // as the output type may introduce new in-band lifetimes.
+            let lifetime_params: Vec<(Span, ParamName)> =
+                this.in_scope_lifetimes
+                    .iter().cloned()
+                    .map(|ident| (ident.span, ParamName::Plain(ident)))
+                    .chain(this.lifetimes_to_define.iter().cloned())
+                    .collect();
+
+            let generic_params =
+                lifetime_params
+                    .iter().cloned()
+                    .map(|(span, hir_name)| {
+                        this.lifetime_to_generic_param(span, hir_name, exist_ty_def_index)
+                    })
+                    .collect();
 
             let LoweredNodeId { node_id: _, hir_id } = this.next_id();
-            let mut bounds = vec![
-                hir::GenericBound::Trait(
-                    hir::PolyTraitRef {
-                        trait_ref: hir::TraitRef {
-                            path: future_path,
-                            hir_ref_id: hir_id,
-                        },
-                        bound_generic_params: hir_vec![],
-                        span,
+            let exist_ty_item = hir::ExistTy {
+                generics: hir::Generics {
+                    params: generic_params,
+                    where_clause: hir::WhereClause {
+                        hir_id,
+                        predicates: hir_vec![],
                     },
-                    hir::TraitBoundModifier::None
-                ),
-            ];
+                    span,
+                },
+                bounds: hir_vec![future_bound],
+                impl_trait_fn: Some(fn_def_id),
+                origin: hir::ExistTyOrigin::AsyncFn,
+            };
 
-            if let Some((name, span)) = bound_lifetime {
-                let LoweredNodeId { node_id: _, hir_id } = this.next_id();
-                bounds.push(hir::GenericBound::Outlives(
-                    hir::Lifetime { hir_id, name, span }));
-            }
+            trace!("exist ty from async fn def index: {:#?}", exist_ty_def_index);
+            let exist_ty_id = this.generate_existential_type(
+                exist_ty_node_id,
+                exist_ty_item,
+                span,
+                exist_ty_span,
+            );
 
-            hir::HirVec::from(bounds)
+            (exist_ty_id.node_id, lifetime_params)
         });
+
+        let generic_args =
+            lifetime_params
+                .iter().cloned()
+                .map(|(span, hir_name)| {
+                    let LoweredNodeId { node_id: _, hir_id  } = self.next_id();
+                    GenericArg::Lifetime(hir::Lifetime {
+                        hir_id,
+                        span,
+                        name: hir::LifetimeName::Param(hir_name),
+                    })
+                })
+                .collect();
+
+        let exist_ty_hir_id = self.lower_node_id(exist_ty_node_id).hir_id;
+        let exist_ty_ref = hir::TyKind::Def(hir::ItemId { id: exist_ty_hir_id }, generic_args);
 
         let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-        let impl_trait_ty = P(hir::Ty {
-            node: impl_trait_ty,
+        hir::FunctionRetTy::Return(P(hir::Ty {
+            node: exist_ty_ref,
             span,
             hir_id,
+        }))
+    }
+
+    /// Turns `-> T` into `Future<Output = T>`
+    fn lower_async_fn_output_type_to_future_bound(
+        &mut self,
+        output: &FunctionRetTy,
+        fn_def_id: DefId,
+        span: Span,
+    ) -> hir::GenericBound {
+        // Compute the `T` in `Future<Output = T>` from the return type.
+        let output_ty = match output {
+            FunctionRetTy::Ty(ty) => {
+                self.lower_ty(ty, ImplTraitContext::Existential(Some(fn_def_id)))
+            }
+            FunctionRetTy::Default(ret_ty_span) => {
+                let LoweredNodeId { node_id: _, hir_id } = self.next_id();
+                P(hir::Ty {
+                    hir_id,
+                    node: hir::TyKind::Tup(hir_vec![]),
+                    span: *ret_ty_span,
+                })
+            }
+        };
+
+        // "<Output = T>"
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
+        let future_params = P(hir::GenericArgs {
+            args: hir_vec![],
+            bindings: hir_vec![hir::TypeBinding {
+                ident: Ident::from_str(FN_OUTPUT_NAME),
+                ty: output_ty,
+                hir_id,
+                span,
+            }],
+            parenthesized: false,
         });
 
-        hir::FunctionRetTy::Return(impl_trait_ty)
+        // ::std::future::Future<future_params>
+        let future_path =
+            self.std_path(span, &["future", "Future"], Some(future_params), false);
+
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
+        hir::GenericBound::Trait(
+            hir::PolyTraitRef {
+                trait_ref: hir::TraitRef {
+                    path: future_path,
+                    hir_ref_id: hir_id,
+                },
+                bound_generic_params: hir_vec![],
+                span,
+            },
+            hir::TraitBoundModifier::None,
+        )
     }
 
     fn lower_param_bound(
@@ -2437,6 +2471,11 @@ impl<'a> LoweringContext<'a> {
                     }
 
                     AnonymousLifetimeMode::ReportError => self.new_error_lifetime(Some(l.id), span),
+
+                    AnonymousLifetimeMode::Replace(replacement) => {
+                        let LoweredNodeId { node_id: _, hir_id  } = self.lower_node_id(l.id);
+                        self.replace_elided_lifetime(hir_id, span, replacement)
+                    }
                 },
             ident => {
                 self.maybe_collect_in_band_lifetime(ident);
@@ -2459,6 +2498,39 @@ impl<'a> LoweringContext<'a> {
             span,
             name: name,
         }
+    }
+
+    /// Replace a return-position elided lifetime with the elided lifetime
+    /// from the arguments.
+    fn replace_elided_lifetime(
+        &mut self,
+        hir_id: hir::HirId,
+        span: Span,
+        replacement: LtReplacement,
+    ) -> hir::Lifetime {
+        let multiple_or_none = match replacement {
+            LtReplacement::Some(name) => {
+                return hir::Lifetime {
+                    hir_id,
+                    span,
+                    name: hir::LifetimeName::Param(name),
+                };
+            }
+            LtReplacement::MultipleLifetimes => "multiple",
+            LtReplacement::NoLifetimes => "none",
+        };
+
+        let mut err = crate::middle::resolve_lifetime::report_missing_lifetime_specifiers(
+            self.sess,
+            span,
+            1,
+        );
+        err.note(&format!(
+            "return-position elided lifetimes require exactly one \
+             input-position elided lifetime, found {}.", multiple_or_none));
+        err.emit();
+
+        hir::Lifetime { hir_id, span, name: hir::LifetimeName::Error }
     }
 
     fn lower_generic_params(
@@ -2941,6 +3013,7 @@ impl<'a> LoweringContext<'a> {
                 generics: self.lower_generics(generics, ImplTraitContext::disallowed()),
                 bounds: self.lower_param_bounds(b, ImplTraitContext::disallowed()),
                 impl_trait_fn: None,
+                origin: hir::ExistTyOrigin::ExistentialType,
             }),
             ItemKind::Enum(ref enum_definition, ref generics) => hir::ItemKind::Enum(
                 hir::EnumDef {
@@ -5083,7 +5156,8 @@ impl<'a> LoweringContext<'a> {
     /// with no explicit lifetime.
     fn elided_ref_lifetime(&mut self, span: Span) -> hir::Lifetime {
         match self.anonymous_lifetime_mode {
-            // Intercept when we are in an impl header and introduce an in-band lifetime.
+            // Intercept when we are in an impl header or async fn and introduce an in-band
+            // lifetime.
             // Hence `impl Foo for &u32` becomes `impl<'f> Foo for &'f u32` for some fresh
             // `'f`.
             AnonymousLifetimeMode::CreateParameter => {
@@ -5099,6 +5173,10 @@ impl<'a> LoweringContext<'a> {
             AnonymousLifetimeMode::ReportError => self.new_error_lifetime(None, span),
 
             AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
+
+            AnonymousLifetimeMode::Replace(replacement) => {
+                self.new_replacement_lifetime(replacement, span)
+            }
         }
     }
 
@@ -5133,6 +5211,12 @@ impl<'a> LoweringContext<'a> {
     /// sorts of cases are deprecated. This may therefore report a warning or an
     /// error, depending on the mode.
     fn elided_path_lifetimes(&mut self, span: Span, count: usize) -> P<[hir::Lifetime]> {
+        (0..count)
+            .map(|_| self.elided_path_lifetime(span))
+            .collect()
+    }
+
+    fn elided_path_lifetime(&mut self, span: Span) -> hir::Lifetime {
         match self.anonymous_lifetime_mode {
             // N.B., We intentionally ignore the create-parameter mode here
             // and instead "pass through" to resolve-lifetimes, which will then
@@ -5140,21 +5224,16 @@ impl<'a> LoweringContext<'a> {
             // impl elision for deprecated forms like
             //
             //     impl Foo for std::cell::Ref<u32> // note lack of '_
-            AnonymousLifetimeMode::CreateParameter => {}
+            AnonymousLifetimeMode::CreateParameter |
+            // This is the normal case.
+            AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
 
-            AnonymousLifetimeMode::ReportError => {
-                return (0..count)
-                    .map(|_| self.new_error_lifetime(None, span))
-                    .collect();
+            AnonymousLifetimeMode::Replace(replacement) => {
+                self.new_replacement_lifetime(replacement, span)
             }
 
-            // This is the normal case.
-            AnonymousLifetimeMode::PassThrough => {}
+            AnonymousLifetimeMode::ReportError => self.new_error_lifetime(None, span),
         }
-
-        (0..count)
-            .map(|_| self.new_implicit_lifetime(span))
-            .collect()
     }
 
     /// Invoked to create the lifetime argument(s) for an elided trait object
@@ -5184,9 +5263,23 @@ impl<'a> LoweringContext<'a> {
 
             // This is the normal case.
             AnonymousLifetimeMode::PassThrough => {}
+
+            // We don't need to do any replacement here as this lifetime
+            // doesn't refer to an elided lifetime elsewhere in the function
+            // signature.
+            AnonymousLifetimeMode::Replace(_) => {}
         }
 
         self.new_implicit_lifetime(span)
+    }
+
+    fn new_replacement_lifetime(
+        &mut self,
+        replacement: LtReplacement,
+        span: Span,
+    ) -> hir::Lifetime {
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
+        self.replace_elided_lifetime(hir_id, span, replacement)
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {

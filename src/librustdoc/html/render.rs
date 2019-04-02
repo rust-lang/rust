@@ -965,7 +965,11 @@ themePicker.onblur = handleThemeButtonsBlur;
                 if for_search_index && line.starts_with("var R") {
                     variables.push(line.clone());
                     // We need to check if the crate name has been put into a variable as well.
-                    let tokens = js::simple_minify(&line).apply(js::clean_tokens);
+                    let tokens: js::Tokens<'_> = js::simple_minify(&line)
+                                                    .into_iter()
+                                                    .filter(js::clean_token)
+                                                    .collect::<Vec<_>>()
+                                                    .into();
                     let mut pos = 0;
                     while pos < tokens.len() {
                         if let Some((var_pos, Some(value_pos))) =
@@ -1288,46 +1292,51 @@ fn write_minify_replacer<W: Write>(
     contents: &str,
     enable_minification: bool,
 ) -> io::Result<()> {
-    use minifier::js::{Keyword, ReservedChar, Token};
+    use minifier::js::{simple_minify, Keyword, ReservedChar, Token, Tokens};
 
     if enable_minification {
         writeln!(dst, "{}",
-                 minifier::js::simple_minify(contents)
-                              .apply(|f| {
-                                  // We keep backlines.
-                                  minifier::js::clean_tokens_except(f, |c| {
-                                      c.get_char() != Some(ReservedChar::Backline)
-                                  })
-                              })
-                              .apply(|f| {
-                                  minifier::js::replace_token_with(f, |t| {
-                                      match *t {
-                                          Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
-                                          Token::String(s) => {
-                                              let s = &s[1..s.len() -1]; // The quotes are included
-                                              if s.is_empty() {
-                                                  Some(Token::Other("E"))
-                                              } else if s == "t" {
-                                                  Some(Token::Other("T"))
-                                              } else if s == "u" {
-                                                  Some(Token::Other("U"))
-                                              } else {
-                                                  None
-                                              }
-                                          }
-                                          _ => None,
-                                      }
-                                  })
-                              })
-                              .apply(|f| {
-                                  // We add a backline after the newly created variables.
-                                  minifier::js::aggregate_strings_into_array_with_separation(
-                                      f,
-                                      "R",
-                                      Token::Char(ReservedChar::Backline),
-                                  )
-                              })
-                              .to_string())
+                 {
+                    let tokens: Tokens<'_> = simple_minify(contents)
+                        .into_iter()
+                        .filter(|f| {
+                            // We keep backlines.
+                            minifier::js::clean_token_except(f, &|c: &Token<'_>| {
+                                c.get_char() != Some(ReservedChar::Backline)
+                            })
+                        })
+                        .map(|f| {
+                            minifier::js::replace_token_with(f, &|t: &Token<'_>| {
+                                match *t {
+                                    Token::Keyword(Keyword::Null) => Some(Token::Other("N")),
+                                    Token::String(s) => {
+                                        let s = &s[1..s.len() -1]; // The quotes are included
+                                        if s.is_empty() {
+                                            Some(Token::Other("E"))
+                                        } else if s == "t" {
+                                            Some(Token::Other("T"))
+                                        } else if s == "u" {
+                                            Some(Token::Other("U"))
+                                        } else {
+                                            None
+                                        }
+                                    }
+                                    _ => None,
+                                }
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                        .into();
+                    tokens.apply(|f| {
+                        // We add a backline after the newly created variables.
+                        minifier::js::aggregate_strings_into_array_with_separation(
+                            f,
+                            "R",
+                            Token::Char(ReservedChar::Backline),
+                        )
+                    })
+                    .to_string()
+                })
     } else {
         writeln!(dst, "{}", contents)
     }

@@ -23,7 +23,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue,
-    EvalResult, EvalError, EvalErrorKind, GlobalId, InterpretCx, StackPopCleanup,
+    EvalResult, EvalError, InterpError, GlobalId, InterpretCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
 };
@@ -173,7 +173,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
     fn into(self) -> EvalError<'tcx> {
-        EvalErrorKind::MachineError(self.to_string()).into()
+        InterpError::MachineError(self.to_string()).into()
     }
 }
 
@@ -351,7 +351,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         Ok(Some(match ecx.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(err) => {
-                if let EvalErrorKind::NoMirFor(ref path) = err.kind {
+                if let InterpError::NoMirFor(ref path) = err.kind {
                     return Err(
                         ConstEvalError::NeedsRfc(format!("calling extern function `{}`", path))
                             .into(),
@@ -679,7 +679,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
                     let span = tcx.optimized_mir(def_id).promoted[p].span;
-                    if let EvalErrorKind::ReferencedConstant = err.error {
+                    if let InterpError::ReferencedConstant = err.error {
                         err.report_as_error(
                             tcx.at(span),
                             "evaluation of constant expression failed",

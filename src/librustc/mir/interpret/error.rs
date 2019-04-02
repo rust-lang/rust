@@ -43,7 +43,7 @@ pub type ConstEvalResult<'tcx> = Result<ty::Const<'tcx>, ErrorHandled>;
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub error: crate::mir::interpret::EvalErrorKind<'tcx, u64>,
+    pub error: crate::mir::interpret::InterpError<'tcx, u64>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
@@ -135,10 +135,10 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         match self.error {
-            EvalErrorKind::Layout(LayoutError::Unknown(_)) |
-            EvalErrorKind::TooGeneric => return Err(ErrorHandled::TooGeneric),
-            EvalErrorKind::Layout(LayoutError::SizeOverflow(_)) |
-            EvalErrorKind::TypeckError => return Err(ErrorHandled::Reported),
+            InterpError::Layout(LayoutError::Unknown(_)) |
+            InterpError::TooGeneric => return Err(ErrorHandled::TooGeneric),
+            InterpError::Layout(LayoutError::SizeOverflow(_)) |
+            InterpError::TypeckError => return Err(ErrorHandled::Reported),
             _ => {},
         }
         trace!("reporting const eval failure at {:?}", self.span);
@@ -180,7 +180,7 @@ pub fn struct_error<'a, 'gcx, 'tcx>(
 
 #[derive(Debug, Clone)]
 pub struct EvalError<'tcx> {
-    pub kind: EvalErrorKind<'tcx, u64>,
+    pub kind: InterpError<'tcx, u64>,
     pub backtrace: Option<Box<Backtrace>>,
 }
 
@@ -197,8 +197,8 @@ fn print_backtrace(backtrace: &mut Backtrace) {
     eprintln!("\n\nAn error occurred in miri:\n{:?}", backtrace);
 }
 
-impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
-    fn from(kind: EvalErrorKind<'tcx, u64>) -> Self {
+impl<'tcx> From<InterpError<'tcx, u64>> for EvalError<'tcx> {
+    fn from(kind: InterpError<'tcx, u64>) -> Self {
         let backtrace = match env::var("RUST_CTFE_BACKTRACE") {
             // matching RUST_BACKTRACE, we treat "0" the same as "not present".
             Ok(ref val) if val != "0" => {
@@ -221,10 +221,10 @@ impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
     }
 }
 
-pub type AssertMessage<'tcx> = EvalErrorKind<'tcx, mir::Operand<'tcx>>;
+pub type AssertMessage<'tcx> = InterpError<'tcx, mir::Operand<'tcx>>;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub enum EvalErrorKind<'tcx, O> {
+pub enum InterpError<'tcx, O> {
     /// This variant is used by machines to signal their own errors that do not
     /// match an existing variant.
     MachineError(String),
@@ -312,9 +312,9 @@ pub enum EvalErrorKind<'tcx, O> {
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
-impl<'tcx, O> EvalErrorKind<'tcx, O> {
+impl<'tcx, O> InterpError<'tcx, O> {
     pub fn description(&self) -> &str {
-        use self::EvalErrorKind::*;
+        use self::InterpError::*;
         match *self {
             MachineError(ref inner) => inner,
             FunctionAbiMismatch(..) | FunctionArgMismatch(..) | FunctionRetMismatch(..)
@@ -450,15 +450,15 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
     }
 }
 
-impl<'tcx> fmt::Display for EvalErrorKind<'tcx, u64> {
+impl<'tcx> fmt::Display for InterpError<'tcx, u64> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
+impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        use self::EvalErrorKind::*;
+        use self::InterpError::*;
         match *self {
             PointerOutOfBounds { ptr, check, allocation_size } => {
                 write!(f, "Pointer must be in-bounds{} at offset {}, but is outside bounds of \

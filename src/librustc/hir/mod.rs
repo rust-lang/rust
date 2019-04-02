@@ -1799,6 +1799,18 @@ pub struct ExistTy {
     pub generics: Generics,
     pub bounds: GenericBounds,
     pub impl_trait_fn: Option<DefId>,
+    pub origin: ExistTyOrigin,
+}
+
+/// Where the existential type came from
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub enum ExistTyOrigin {
+    /// `existential type Foo: Trait;`
+    ExistentialType,
+    /// `-> impl Trait`
+    ReturnImplTrait,
+    /// `async fn`
+    AsyncFn,
 }
 
 /// The various kinds of types recognized by the compiler.

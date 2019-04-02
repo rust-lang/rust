@@ -79,6 +79,11 @@ async fn async_fn(x: u8) -> u8 {
     x
 }
 
+async fn generic_async_fn<T>(x: T) -> T {
+    await!(wake_and_yield_once());
+    x
+}
+
 async fn async_fn_with_borrow(x: &u8) -> u8 {
     await!(wake_and_yield_once());
     *x
@@ -96,14 +101,21 @@ fn async_fn_with_impl_future_named_lifetime<'a>(x: &'a u8) -> impl Future<Output
     }
 }
 
-async fn async_fn_with_named_lifetime_multiple_args<'a>(x: &'a u8, _y: &'a u8) -> u8 {
+/* FIXME(cramertj) support when `existential type T<'a, 'b>:;` works
+async fn async_fn_multiple_args(x: &u8, _y: &u8) -> u8 {
+    await!(wake_and_yield_once());
+    *x
+}
+*/
+
+async fn async_fn_multiple_args_named_lifetime<'a>(x: &'a u8, _y: &'a u8) -> u8 {
     await!(wake_and_yield_once());
     *x
 }
 
 fn async_fn_with_internal_borrow(y: u8) -> impl Future<Output = u8> {
     async move {
-        await!(async_fn_with_borrow(&y))
+        await!(async_fn_with_borrow_named_lifetime(&y))
     }
 }
 
@@ -162,6 +174,7 @@ fn main() {
         async_nonmove_block,
         async_closure,
         async_fn,
+        generic_async_fn,
         async_fn_with_internal_borrow,
         Foo::async_method,
         |x| {
@@ -170,7 +183,6 @@ fn main() {
             }
         },
     }
-
     test_with_borrow! {
         async_block_with_borrow_named_lifetime,
         async_fn_with_borrow,
@@ -178,7 +190,7 @@ fn main() {
         async_fn_with_impl_future_named_lifetime,
         |x| {
             async move {
-                await!(async_fn_with_named_lifetime_multiple_args(x, x))
+                await!(async_fn_multiple_args_named_lifetime(x, x))
             }
         },
     }

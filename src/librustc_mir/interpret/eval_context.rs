@@ -16,7 +16,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
     ErrorHandled,
     GlobalId, Scalar, FrameInfo, AllocId,
-    EvalResult, EvalErrorKind,
+    EvalResult, InterpError,
     truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
@@ -167,7 +167,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
     #[inline]
     fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
-            .map_err(|layout| EvalErrorKind::Layout(layout).into())
+            .map_err(|layout| InterpError::Layout(layout).into())
     }
 }
 
@@ -255,7 +255,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
             self.param_env,
             def_id,
             substs,
-        ).ok_or_else(|| EvalErrorKind::TooGeneric.into())
+        ).ok_or_else(|| InterpError::TooGeneric.into())
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
@@ -647,8 +647,8 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
         let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
             match err {
-                ErrorHandled::Reported => EvalErrorKind::ReferencedConstant,
-                ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric,
+                ErrorHandled::Reported => InterpError::ReferencedConstant,
+                ErrorHandled::TooGeneric => InterpError::TooGeneric,
             }
         })?;
         self.raw_const_to_mplace(val)
@@ -670,7 +670,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
 
                 match self.stack[frame].locals[local].access() {
                     Err(err) => {
-                        if let EvalErrorKind::DeadLocal = err.kind {
+                        if let InterpError::DeadLocal = err.kind {
                             write!(msg, " is dead").unwrap();
                         } else {
                             panic!("Failed to access local: {:?}", err);

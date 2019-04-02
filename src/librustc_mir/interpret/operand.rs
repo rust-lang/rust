@@ -9,7 +9,7 @@ use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerEx
 use rustc::mir::interpret::{
     GlobalId, AllocId, InboundsCheck,
     ConstValue, Pointer, Scalar,
-    EvalResult, EvalErrorKind,
+    EvalResult, InterpError,
     sign_extend, truncate,
 };
 use super::{
@@ -369,7 +369,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
         let str = ::std::str::from_utf8(bytes)
-            .map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
+            .map_err(|err| InterpError::ValidationFailure(err.to_string()))?;
         Ok(str)
     }
 
@@ -653,7 +653,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     .expect("tagged layout for non adt")
                     .discriminants(self.tcx.tcx)
                     .find(|(_, var)| var.val == real_discr)
-                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant(raw_discr.erase_tag()))?;
+                    .ok_or_else(|| InterpError::InvalidDiscriminant(raw_discr.erase_tag()))?;
                 (real_discr, index.0)
             },
             layout::DiscriminantKind::Niche {

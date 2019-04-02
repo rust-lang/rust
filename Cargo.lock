@@ -54,6 +54,7 @@ name = "arena"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures 0.0.0",
+ "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1520,7 +1521,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "minifier"
-version = "0.0.28"
+version = "0.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "macro-utils 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3039,7 +3040,7 @@ dependencies = [
 name = "rustdoc"
 version = "0.0.0"
 dependencies = [
- "minifier 0.0.28 (registry+https://github.com/rust-lang/crates.io-index)",
+ "minifier 0.0.29 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pulldown-cmark 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4149,7 +4150,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum memchr 2.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0a3eb002f0535929f1199681417029ebea04aadc0c7a4224b46be99c7f5d6a16"
 "checksum memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e2ffa2c986de11a9df78620c01eeaaf27d94d3ff02bf81bfcca953102dd0c6ff"
 "checksum memoffset 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0f9dc261e2b62d7a622bf416ea3c5245cdd5d9a7fcc428c0d06804dfce1775b3"
-"checksum minifier 0.0.28 (registry+https://github.com/rust-lang/crates.io-index)" = "3a2898502751dcc9d66b6fff57f3cf63cc91605e83e1a33515396f5027f8e4ca"
+"checksum minifier 0.0.29 (registry+https://github.com/rust-lang/crates.io-index)" = "1f4950cb2617b1933e2da0446e864dfe0d6a22c22ff72297996c46e6a63b210b"
 "checksum miniz-sys 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)" = "0300eafb20369952951699b68243ab4334f4b10a88f411c221d444b36c40e649"
 "checksum miniz_oxide 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5ad30a47319c16cde58d0314f5d98202a80c9083b5f61178457403dfb14e509c"
 "checksum miniz_oxide_c_api 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "28edaef377517fd9fe3e085c37d892ce7acd1fbeab9239c5a36eec352d8a8b7e"

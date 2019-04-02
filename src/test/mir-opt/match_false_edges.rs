@@ -70,8 +70,8 @@ fn main() {
 //  }
 //  bb8: { // binding1 and guard
 //      StorageLive(_6);
-//      _6 = &(((promoted[1]: std::option::Option<i32>) as Some).0: i32);
-//      _4 = &shallow (promoted[0]: std::option::Option<i32>);
+//      _6 = &(((promoted[0]: std::option::Option<i32>) as Some).0: i32);
+//      _4 = &shallow _2;
 //      StorageLive(_7);
 //      _7 = const guard() -> [return: bb9, unwind: bb1];
 //  }

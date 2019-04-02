@@ -1,32 +1,20 @@
-error[E0709]: multiple different lifetimes used in arguments of `async fn`
-  --> $DIR/async-fn-multiple-lifetimes.rs:7:47
+error: ambiguous lifetime bound in `async fn`
+  --> $DIR/async-fn-multiple-lifetimes.rs:7:65
    |
 LL | async fn multiple_named_lifetimes<'a, 'b>(_: &'a u8, _: &'b u8) {}
-   |                                               ^^         ^^ different lifetime here
-   |                                               |
-   |                                               first lifetime here
+   |                                                                 ^ neither `'a` nor `'b` outlives the other
    |
-   = help: `async fn` can only accept borrowed values with identical lifetimes
+   = note: multiple unrelated lifetimes are not allowed in `async fn`.
+   = note: if you're using argument-position elided lifetimes, consider switching to a single named lifetime.
 
-error[E0707]: multiple elided lifetimes used in arguments of `async fn`
-  --> $DIR/async-fn-multiple-lifetimes.rs:16:39
+error: ambiguous lifetime bound in `async fn`
+  --> $DIR/async-fn-multiple-lifetimes.rs:16:52
    |
 LL | async fn multiple_elided_lifetimes(_: &u8, _: &u8) {}
-   |                                       ^       ^ different lifetime here
-   |                                       |
-   |                                       first lifetime here
+   |                                                    ^ the elided lifetimes here do not outlive one another
    |
-   = help: consider giving these arguments named lifetimes
+   = note: multiple unrelated lifetimes are not allowed in `async fn`.
+   = note: if you're using argument-position elided lifetimes, consider switching to a single named lifetime.
 
-error[E0106]: missing lifetime specifier
-  --> $DIR/async-fn-multiple-lifetimes.rs:16:39
-   |
-LL | async fn multiple_elided_lifetimes(_: &u8, _: &u8) {}
-   |                                       ^ expected lifetime parameter
-   |
-   = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `_` or `_`
+error: aborting due to 2 previous errors
 
-error: aborting due to 3 previous errors
-
-Some errors occurred: E0106, E0707, E0709.
-For more information about an error, try `rustc --explain E0106`.
