@@ -6,7 +6,7 @@ use std::sync::Arc;
 use ra_arena::{RawId, Arena, impl_arena_id};
 use ra_syntax::{
     TreeArc,
-    ast::{self, NameOwner, StructFlavor, TypeAscriptionOwner}
+    ast::{self, NameOwner, StructKind, TypeAscriptionOwner}
 };
 
 use crate::{
@@ -47,7 +47,7 @@ pub struct StructData {
 impl StructData {
     fn new(struct_def: &ast::StructDef) -> StructData {
         let name = struct_def.name().map(|n| n.as_name());
-        let variant_data = VariantData::new(struct_def.flavor());
+        let variant_data = VariantData::new(struct_def.kind());
         let variant_data = Arc::new(variant_data);
         StructData { name, variant_data }
     }
@@ -94,7 +94,7 @@ impl EnumData {
         let variants = variants(&*enum_def)
             .map(|var| EnumVariantData {
                 name: var.name().map(|it| it.as_name()),
-                variant_data: Arc::new(VariantData::new(var.flavor())),
+                variant_data: Arc::new(VariantData::new(var.kind())),
             })
             .collect();
         Arc::new(EnumData { name, variants })
@@ -143,9 +143,9 @@ impl VariantData {
 }
 
 impl VariantData {
-    fn new(flavor: StructFlavor) -> Self {
+    fn new(flavor: StructKind) -> Self {
         let inner = match flavor {
-            ast::StructFlavor::Tuple(fl) => {
+            ast::StructKind::Tuple(fl) => {
                 let fields = fl
                     .fields()
                     .enumerate()
@@ -156,7 +156,7 @@ impl VariantData {
                     .collect();
                 VariantDataInner::Tuple(fields)
             }
-            ast::StructFlavor::Named(fl) => {
+            ast::StructKind::Named(fl) => {
                 let fields = fl
                     .fields()
                     .map(|fd| StructFieldData {
@@ -166,7 +166,7 @@ impl VariantData {
                     .collect();
                 VariantDataInner::Struct(fields)
             }
-            ast::StructFlavor::Unit => VariantDataInner::Unit,
+            ast::StructKind::Unit => VariantDataInner::Unit,
         };
         VariantData(inner)
     }
@@ -200,27 +200,27 @@ impl StructField {
         let fields = var_data.fields().unwrap();
         let ss;
         let es;
-        let (file_id, struct_flavor) = match self.parent {
+        let (file_id, struct_kind) = match self.parent {
             VariantDef::Struct(s) => {
                 let (file_id, source) = s.source(db);
                 ss = source;
-                (file_id, ss.flavor())
+                (file_id, ss.kind())
             }
             VariantDef::EnumVariant(e) => {
                 let (file_id, source) = e.source(db);
                 es = source;
-                (file_id, es.flavor())
+                (file_id, es.kind())
             }
         };
 
-        let field_sources = match struct_flavor {
-            ast::StructFlavor::Tuple(fl) => {
+        let field_sources = match struct_kind {
+            ast::StructKind::Tuple(fl) => {
                 fl.fields().map(|it| FieldSource::Pos(it.to_owned())).collect()
             }
-            ast::StructFlavor::Named(fl) => {
+            ast::StructKind::Named(fl) => {
                 fl.fields().map(|it| FieldSource::Named(it.to_owned())).collect()
             }
-            ast::StructFlavor::Unit => Vec::new(),
+            ast::StructKind::Unit => Vec::new(),
         };
         let field = field_sources
             .into_iter()

@@ -1,3 +1,5 @@
+//! There are many AstNodes, but only a few tokens, so we hand-write them here.
+
 use crate::{
     SyntaxToken,
     SyntaxKind::{COMMENT, WHITESPACE},
