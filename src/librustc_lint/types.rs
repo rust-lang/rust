@@ -854,6 +854,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                     discr_kind: layout::DiscriminantKind::Tag,
                     ref discr,
                     ref variants,
+                    ..
                 } => (variants, discr),
                 _ => return,
             };
