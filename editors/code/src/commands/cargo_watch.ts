@@ -68,7 +68,11 @@ export class CargoWatchProvider {
         this.cargoProcess.stdout.on('data', (s: string) => {
             stdoutData.processOutput(s, line => {
                 this.logInfo(line);
-                this.parseLine(line);
+                try {
+                    this.parseLine(line);
+                } catch (err) {
+                    this.logError(`Failed to parse: ${err}, content : ${line}`);
+                }
             });
         });
 
@@ -133,79 +137,99 @@ export class CargoWatchProvider {
             if (s === 'error') {
                 return vscode.DiagnosticSeverity.Error;
             }
-
             if (s.startsWith('warn')) {
                 return vscode.DiagnosticSeverity.Warning;
             }
-
             return vscode.DiagnosticSeverity.Information;
         }
 
-        interface ErrorSpan {
+        // Reference:
+        // https://github.com/rust-lang/rust/blob/master/src/libsyntax/json.rs
+        interface RustDiagnosticSpan {
             line_start: number;
             line_end: number;
             column_start: number;
             column_end: number;
+            is_primary: boolean;
+            file_name: string;
         }
 
-        interface ErrorMessage {
-            reason: string;
-            message: {
-                spans: ErrorSpan[];
-                rendered: string;
-                level: string;
-                code?: {
-                    code: string;
-                };
+        interface RustDiagnostic {
+            spans: RustDiagnosticSpan[];
+            rendered: string;
+            level: string;
+            code?: {
+                code: string;
             };
+        }
+
+        interface CargoArtifact {
+            reason: string;
+            package_id: string;
+        }
+
+        // https://github.com/rust-lang/cargo/blob/master/src/cargo/util/machine_message.rs
+        interface CargoMessage {
+            reason: string;
+            package_id: string;
+            message: RustDiagnostic;
         }
 
         // cargo-watch itself output non json format
         // Ignore these lines
-        let data: ErrorMessage;
+        let data: CargoMessage;
         try {
             data = JSON.parse(line.trim());
         } catch (error) {
-            this.logError(`Fail to pass to json : { ${error} }`);
+            this.logError(`Fail to parse to json : { ${error} }`);
             return;
         }
 
-        // Only handle compiler-message now
-        if (data.reason !== 'compiler-message') {
-            return;
-        }
+        if (data.reason === 'compiler-artifact') {
+            const msg = data as CargoArtifact;
 
-        let spans: any[] = data.message.spans;
-        spans = spans.filter(o => o.is_primary);
+            // The format of the package_id is "{name} {version} ({source_id})",
+            // https://github.com/rust-lang/cargo/blob/37ad03f86e895bb80b474c1c088322634f4725f5/src/cargo/core/package_id.rs#L53
+            this.statusDisplay!.packageName = msg.package_id.split(' ')[0];
+        } else if (data.reason === 'compiler-message') {
+            const msg = data.message as RustDiagnostic;
 
-        // We only handle primary span right now.
-        if (spans.length > 0) {
-            const o = spans[0];
+            const spans = msg.spans.filter(o => o.is_primary);
 
-            const rendered = data.message.rendered;
-            const level = getLevel(data.message.level);
-            const range = new vscode.Range(
-                new vscode.Position(o.line_start - 1, o.column_start - 1),
-                new vscode.Position(o.line_end - 1, o.column_end - 1)
-            );
+            // We only handle primary span right now.
+            if (spans.length > 0) {
+                const o = spans[0];
 
-            const fileName = path.join(vscode.workspace.rootPath!, o.file_name);
-            const diagnostic = new vscode.Diagnostic(range, rendered, level);
+                const rendered = msg.rendered;
+                const level = getLevel(msg.level);
+                const range = new vscode.Range(
+                    new vscode.Position(o.line_start - 1, o.column_start - 1),
+                    new vscode.Position(o.line_end - 1, o.column_end - 1)
+                );
 
-            diagnostic.source = 'rustc';
-            diagnostic.code = data.message.code
-                ? data.message.code.code
-                : undefined;
-            diagnostic.relatedInformation = [];
+                const fileName = path.join(
+                    vscode.workspace.rootPath!,
+                    o.file_name
+                );
+                const diagnostic = new vscode.Diagnostic(
+                    range,
+                    rendered,
+                    level
+                );
 
-            const fileUrl = vscode.Uri.file(fileName!);
+                diagnostic.source = 'rustc';
+                diagnostic.code = msg.code ? msg.code.code : undefined;
+                diagnostic.relatedInformation = [];
 
-            const diagnostics: vscode.Diagnostic[] = [
-                ...(this.diagnosticCollection!.get(fileUrl) || [])
-            ];
-            diagnostics.push(diagnostic);
+                const fileUrl = vscode.Uri.file(fileName!);
 
-            this.diagnosticCollection!.set(fileUrl, diagnostics);
+                const diagnostics: vscode.Diagnostic[] = [
+                    ...(this.diagnosticCollection!.get(fileUrl) || [])
+                ];
+                diagnostics.push(diagnostic);
+
+                this.diagnosticCollection!.set(fileUrl, diagnostics);
+            }
         }
     }
 }

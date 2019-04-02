@@ -3,6 +3,8 @@ import * as vscode from 'vscode';
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
 export class StatusDisplay {
+    public packageName?: string;
+
     private i = 0;
     private statusBarItem: vscode.StatusBarItem;
     private timer?: NodeJS.Timeout;
@@ -17,10 +19,18 @@ export class StatusDisplay {
     }
 
     public show() {
+        this.packageName = undefined;
+
         this.timer =
             this.timer ||
             setInterval(() => {
-                this.statusBarItem!.text = 'cargo check ' + this.frame();
+                if (this.packageName) {
+                    this.statusBarItem!.text = `cargo check [${
+                        this.packageName
+                    }] ${this.frame()}`;
+                } else {
+                    this.statusBarItem!.text = `cargo check ${this.frame()}`;
+                }
             }, 300);
 
         this.statusBarItem!.show();
