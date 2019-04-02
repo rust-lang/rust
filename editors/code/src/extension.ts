@@ -121,7 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Executing `cargo watch` provides us with inline diagnostics on save
-    interactivelyStartCargoWatch();
+    interactivelyStartCargoWatch(context);
 
     // Start the language server, finally!
     Server.start(allNotifications);

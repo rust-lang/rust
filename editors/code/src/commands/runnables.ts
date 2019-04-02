@@ -1,9 +1,11 @@
 import * as child_process from 'child_process';
+
 import * as util from 'util';
 import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import { Server } from '../server';
+import { CargoWatchProvider } from './cargo_watch';
 
 interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;
@@ -127,37 +129,19 @@ export async function handleSingle(runnable: Runnable) {
     return vscode.tasks.executeTask(task);
 }
 
-export const autoCargoWatchTask: vscode.Task = {
-    name: 'cargo watch',
-    source: 'rust-analyzer',
-    definition: {
-        type: 'watch'
-    },
-    execution: new vscode.ShellExecution('cargo', ['watch'], { cwd: '.' }),
-
-    isBackground: true,
-    problemMatchers: ['$rustc-watch'],
-    presentationOptions: {
-        clear: true
-    },
-    // Not yet exposed in the vscode.d.ts
-    // https://github.com/Microsoft/vscode/blob/ea7c31d770e04b51d586b0d3944f3a7feb03afb9/src/vs/workbench/contrib/tasks/common/tasks.ts#L444-L456
-    runOptions: ({
-        runOn: 2 // RunOnOptions.folderOpen
-    } as unknown) as vscode.RunOptions
-};
-
 /**
  * Interactively asks the user whether we should run `cargo check` in order to
  * provide inline diagnostics; the user is met with a series of dialog boxes
  * that, when accepted, allow us to `cargo install cargo-watch` and then run it.
  */
-export async function interactivelyStartCargoWatch() {
-    if (Server.config.enableCargoWatchOnStartup === 'disabled') {
+export async function interactivelyStartCargoWatch(
+    context: vscode.ExtensionContext
+) {
+    if (Server.config.cargoWatchOptions.enableOnStartup === 'disabled') {
         return;
     }
 
-    if (Server.config.enableCargoWatchOnStartup === 'ask') {
+    if (Server.config.cargoWatchOptions.enableOnStartup === 'ask') {
         const watch = await vscode.window.showInformationMessage(
             'Start watching changes with cargo? (Executes `cargo watch`, provides inline diagnostics)',
             'yes',
@@ -212,5 +196,6 @@ export async function interactivelyStartCargoWatch() {
         }
     }
 
-    vscode.tasks.executeTask(autoCargoWatchTask);
+    const validater = new CargoWatchProvider();
+    validater.activate(context.subscriptions);
 }

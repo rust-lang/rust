@@ -18,7 +18,7 @@
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "package": "vsce package",
-        "compile": "tsc -p ./",
+        "compile": "tsc -p ./ && shx cp src/utils/terminateProcess.sh out/utils/terminateProcess.sh",
         "watch": "tsc -watch -p ./",
         "postinstall": "node ./node_modules/vscode/bin/install",
         "fix": "prettier **/*.{json,ts} --write && tslint --project . --fix",
@@ -41,7 +41,8 @@
         "tslint-config-prettier": "^1.18.0",
         "typescript": "^3.3.1",
         "vsce": "^1.57.0",
-        "vscode": "^1.1.29"
+        "vscode": "^1.1.29",
+        "shx": "^0.3.1"
     },
     "activationEvents": [
         "onLanguage:rust",
@@ -183,6 +184,11 @@
                     ],
                     "description": "Whether to run `cargo watch` on startup"
                 },
+                "rust-analyzer.cargo-watch.check-arguments": {
+                    "type": "string",
+                    "description": "`cargo-watch` check arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
+                    "default": ""
+                },
                 "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
@@ -191,8 +197,24 @@
                         "messages",
                         "verbose"
                     ],
+                    "enumDescriptions": [
+                        "No traces",
+                        "Error only",
+                        "Full log"
+                    ],
                     "default": "off",
                     "description": "Trace requests to the ra_lsp_server"
+                },
+                "rust-analyzer.trace.cargo-watch": {
+                    "type": "string",
+                    "scope": "window",
+                    "enum": [
+                        "off",
+                        "error",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Trace output of cargo-watch"
                 }
             }
         },
@@ -222,18 +244,6 @@
                     "relative",
                     "${workspaceRoot}"
                 ],
-                "pattern": "$rustc"
-            },
-            {
-                "name": "rustc-watch",
-                "fileLocation": [
-                    "relative",
-                    "${workspaceRoot}"
-                ],
-                "background": {
-                    "beginsPattern": "^\\[Running\\b",
-                    "endsPattern": "^\\[Finished running\\b"
-                },
                 "pattern": "$rustc"
             }
         ]
