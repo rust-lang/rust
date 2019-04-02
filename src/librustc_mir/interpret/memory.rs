@@ -20,7 +20,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     EvalResult, Scalar, EvalErrorKind, AllocKind, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck, CheckInAllocMsg,
+    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -440,13 +440,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Ok((layout.size, layout.align.abi))
             }
             _ => match msg {
-                InboundsCheck::MaybeDead => {
+                CheckInAllocMsg::CheckAlign | CheckInAllocMsg::ReadDiscriminant => {
                     // Must be a deallocated pointer
                     Ok(*self.dead_alloc_map.get(&id).expect(
                         "allocation missing in dead_alloc_map"
                     ))
                 },
-                InboundsCheck::Live => err!(DanglingPointerDeref),
+                _ => err!(DanglingPointerDeref),
             },
         }
     }

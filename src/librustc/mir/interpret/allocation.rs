@@ -22,8 +22,7 @@ pub enum InboundsCheck {
     MaybeDead,
 }
 
-/// Used by `check_in_alloc` to indicate whether the pointer needs to be just inbounds
-/// or also inbounds of a *live* allocation.
+/// Used by `check_in_alloc` to indicate context of check
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum CheckInAllocMsg {
     ReadCStr,
