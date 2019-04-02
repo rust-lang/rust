@@ -20,7 +20,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     EvalResult, Scalar, EvalErrorKind, AllocKind, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
+    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck, CheckInAllocMsg,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -252,7 +252,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
-                let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead)?;
+                let align = self.check_bounds_ptr(ptr, CheckInAllocMsg::CheckAlign)?;
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
@@ -292,10 +292,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn check_bounds_ptr(
         &self,
         ptr: Pointer<M::PointerTag>,
-        liveness: InboundsCheck,
+        msg: CheckInAllocMsg,
     ) -> EvalResult<'tcx, Align> {
-        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, liveness)?;
-        ptr.check_in_alloc(allocation_size, liveness)?;
+        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, msg)?;
+        ptr.check_in_alloc(allocation_size, msg)?;
         Ok(align)
     }
 }
@@ -423,7 +423,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn get_size_and_align(
         &self,
         id: AllocId,
-        liveness: InboundsCheck,
+        msg: CheckInAllocMsg,
     ) -> EvalResult<'static, (Size, Align)> {
         if let Ok(alloc) = self.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
@@ -439,7 +439,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                 Ok((layout.size, layout.align.abi))
             }
-            _ => match liveness {
+            _ => match msg {
                 InboundsCheck::MaybeDead => {
                     // Must be a deallocated pointer
                     Ok(*self.dead_alloc_map.get(&id).expect(
@@ -604,7 +604,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Ok(&[])
         } else {
             let ptr = ptr.to_ptr()?;
-            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
+            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size, CheckInAllocMsg::ReadBytes)
         }
     }
 }
@@ -729,10 +729,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         // This checks relocation edges on the src.
         let src_bytes = self.get(src.alloc_id)?
-            .get_bytes_with_undef_and_ptr(&tcx, src, size)?
+            .get_bytes_with_undef_and_ptr(&tcx, src, size, CheckInAllocMsg::CopyRepeatedly)?
             .as_ptr();
         let dest_bytes = self.get_mut(dest.alloc_id)?
-            .get_bytes_mut(&tcx, dest, size * length)?
+            .get_bytes_mut(&tcx, dest, size * length, CheckInAllocMsg::CopyRepeatedly)?
             .as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes

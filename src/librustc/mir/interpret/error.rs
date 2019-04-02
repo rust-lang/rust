@@ -8,7 +8,7 @@ use crate::ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 use rustc_macros::HashStable;
 
-use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
+use super::{RawConst, Pointer, CheckInAllocMsg, ScalarMaybeUndef};
 
 use backtrace::Backtrace;
 
@@ -243,7 +243,7 @@ pub enum EvalErrorKind<'tcx, O> {
     InvalidDiscriminant(ScalarMaybeUndef),
     PointerOutOfBounds {
         ptr: Pointer,
-        check: InboundsCheck,
+        msg: CheckInAllocMsg,
         allocation_size: Size,
     },
     InvalidNullPointerUsage,
@@ -460,13 +460,9 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::EvalErrorKind::*;
         match *self {
-            PointerOutOfBounds { ptr, check, allocation_size } => {
+            PointerOutOfBounds { ptr, msg, allocation_size } => {
                 write!(f, "Pointer must be in-bounds{} at offset {}, but is outside bounds of \
-                           allocation {} which has size {}",
-                       match check {
-                           InboundsCheck::Live => " and live",
-                           InboundsCheck::MaybeDead => "",
-                       },
+                           allocation {} which has size {}", msg,
                        ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },
             ValidationFailure(ref err) => {

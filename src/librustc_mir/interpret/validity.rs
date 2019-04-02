@@ -7,7 +7,7 @@ use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocKind, EvalResult, EvalErrorKind,
+    Scalar, AllocKind, EvalResult, EvalErrorKind, CheckInAllocMsg,
 };
 
 use super::{
@@ -394,7 +394,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         try_validation!(
                             self.ecx.memory
                                 .get(ptr.alloc_id)?
-                                .check_bounds(self.ecx, ptr, size),
+                                .check_bounds(self.ecx, ptr, size, CheckInAllocMsg::CheckBounds),
                             "dangling (not entirely in bounds) reference", self.path);
                     }
                     // Check if we have encountered this pointer+layout combination
