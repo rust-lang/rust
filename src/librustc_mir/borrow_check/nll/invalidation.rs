@@ -215,7 +215,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                 cleanup: _,
             } => {
                 self.consume_operand(ContextKind::Assert.new(location), cond);
-                use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+                use rustc::mir::interpret::InterpError::BoundsCheck;
                 if let BoundsCheck { ref len, ref index } = *msg {
                     self.consume_operand(ContextKind::Assert.new(location), len);
                     self.consume_operand(ContextKind::Assert.new(location), index);

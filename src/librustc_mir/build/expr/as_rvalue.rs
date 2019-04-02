@@ -7,7 +7,7 @@ use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
 use rustc::middle::region;
-use rustc::mir::interpret::EvalErrorKind;
+use rustc::mir::interpret::InterpError;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
 use syntax_pos::Span;
@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         block,
                         Operand::Move(is_min),
                         false,
-                        EvalErrorKind::OverflowNeg,
+                        InterpError::OverflowNeg,
                         expr_span,
                     );
                 }
@@ -433,7 +433,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let val = result_value.clone().field(val_fld, ty);
             let of = result_value.field(of_fld, bool_ty);
 
-            let err = EvalErrorKind::Overflow(op);
+            let err = InterpError::Overflow(op);
 
             block = self.assert(block, Operand::Move(of), false, err, span);
 
@@ -444,9 +444,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // and 2. there are two possible failure cases, divide-by-zero and overflow.
 
                 let (zero_err, overflow_err) = if op == BinOp::Div {
-                    (EvalErrorKind::DivisionByZero, EvalErrorKind::Overflow(op))
+                    (InterpError::DivisionByZero, InterpError::Overflow(op))
                 } else {
-                    (EvalErrorKind::RemainderByZero, EvalErrorKind::Overflow(op))
+                    (InterpError::RemainderByZero, InterpError::Overflow(op))
                 };
 
                 // Check for / 0

@@ -4,7 +4,7 @@ use crate::build::expr::category::Category;
 use crate::build::ForGuard::{OutsideGuard, RefWithinGuard};
 use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::hair::*;
-use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
+use rustc::mir::interpret::InterpError::BoundsCheck;
 use rustc::mir::*;
 use rustc::ty::{CanonicalUserTypeAnnotation, Variance};
 

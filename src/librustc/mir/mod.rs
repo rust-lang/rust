@@ -5,7 +5,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir::{self, HirId, InlineAsm};
-use crate::mir::interpret::{ConstValue, EvalErrorKind, Scalar};
+use crate::mir::interpret::{ConstValue, InterpError, Scalar};
 use crate::mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -3226,8 +3226,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 target,
                 cleanup,
             } => {
-                let msg = if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
-                    EvalErrorKind::BoundsCheck {
+                let msg = if let InterpError::BoundsCheck { ref len, ref index } = *msg {
+                    InterpError::BoundsCheck {
                         len: len.fold_with(folder),
                         index: index.fold_with(folder),
                     }
@@ -3301,7 +3301,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 ref cond, ref msg, ..
             } => {
                 if cond.visit_with(visitor) {
-                    if let EvalErrorKind::BoundsCheck { ref len, ref index } = *msg {
+                    if let InterpError::BoundsCheck { ref len, ref index } = *msg {
                         len.visit_with(visitor) || index.visit_with(visitor)
                     } else {
                         false

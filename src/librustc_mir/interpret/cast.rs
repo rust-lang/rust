@@ -4,7 +4,7 @@ use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_apfloat::ieee::{Single, Double};
 use rustc::mir::interpret::{
-    Scalar, EvalResult, Pointer, PointerArithmetic, EvalErrorKind, truncate
+    Scalar, EvalResult, Pointer, PointerArithmetic, InterpError, truncate
 };
 use rustc::mir::CastKind;
 use rustc_apfloat::Float;
@@ -85,7 +85,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                             self.param_env,
                             def_id,
                             substs,
-                        ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
+                        ).ok_or_else(|| InterpError::TooGeneric.into());
                         let fn_ptr = self.memory.create_fn_alloc(instance?).with_default_tag();
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
