@@ -104,7 +104,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                         report_bin_hex_error(
                                             cx,
                                             e,
-                                            ty::Int(t),
+                                            attr::IntType::SignedInt(t),
                                             repr_str,
                                             v,
                                             negative,
@@ -159,7 +159,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 report_bin_hex_error(
                                     cx,
                                     e,
-                                    ty::Uint(t),
+                                    attr::IntType::UnsignedInt(t),
                                     repr_str,
                                     lit_val,
                                     false,
@@ -364,29 +364,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             }
         }
 
-        #[cfg_attr(not(stage0), allow(usage_of_ty_tykind))]
         fn report_bin_hex_error(
             cx: &LateContext<'_, '_>,
             expr: &hir::Expr,
-            ty: ty::TyKind<'_>,
+            ty: attr::IntType,
             repr_str: String,
             val: u128,
             negative: bool,
         ) {
+            let size = layout::Integer::from_attr(&cx.tcx, ty).size();
             let (t, actually) = match ty {
-                ty::Int(t) => {
-                    let ity = attr::IntType::SignedInt(t);
-                    let size = layout::Integer::from_attr(&cx.tcx, ity).size();
+                attr::IntType::SignedInt(t) => {
                     let actually = sign_extend(val, size) as i128;
                     (format!("{:?}", t), actually.to_string())
                 }
-                ty::Uint(t) => {
-                    let ity = attr::IntType::UnsignedInt(t);
-                    let size = layout::Integer::from_attr(&cx.tcx, ity).size();
+                attr::IntType::UnsignedInt(t) => {
                     let actually = truncate(val, size);
                     (format!("{:?}", t), actually.to_string())
                 }
-                _ => bug!(),
             };
             let mut err = cx.struct_span_lint(
                 OVERFLOWING_LITERALS,
