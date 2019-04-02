@@ -1,4 +1,5 @@
 import * as child_process from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { Server } from '../server';
@@ -14,6 +15,27 @@ export class CargoWatchProvider {
     private outputChannel?: vscode.OutputChannel;
 
     public activate(subscriptions: vscode.Disposable[]) {
+        let cargoExists = false;
+        const cargoTomlFile = path.join(
+            vscode.workspace.rootPath!,
+            'Cargo.toml'
+        );
+        // Check if the working directory is valid cargo root path
+        try {
+            if (fs.existsSync(cargoTomlFile)) {
+                cargoExists = true;
+            }
+        } catch (err) {
+            cargoExists = false;
+        }
+
+        if (!cargoExists) {
+            vscode.window.showErrorMessage(
+                `Couldn\'t find \'Cargo.toml\' in ${cargoTomlFile}`
+            );
+            return;
+        }
+
         subscriptions.push(this);
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection(
             'rustc'
