@@ -1471,7 +1471,7 @@ mod tests {
             let x = Box::new(123_i32);
             let y: Box<dyn Any> = x;
 
-            OwningRef::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_ok();
+            assert!(OwningRef::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_ok());
         }
 
         #[test]
@@ -1481,7 +1481,7 @@ mod tests {
             let x = Box::new(123_i32);
             let y: Box<dyn Any> = x;
 
-            OwningRef::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_err();
+            assert!(!OwningRef::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_err());
         }
     }
 
@@ -1868,7 +1868,7 @@ mod tests {
             let x = Box::new(123_i32);
             let y: Box<dyn Any> = x;
 
-            OwningRefMut::new(y).try_map_mut(|x| x.downcast_mut::<i32>().ok_or(())).is_ok();
+            assert!(OwningRefMut::new(y).try_map_mut(|x| x.downcast_mut::<i32>().ok_or(())).is_ok());
         }
 
         #[test]
@@ -1878,7 +1878,7 @@ mod tests {
             let x = Box::new(123_i32);
             let y: Box<dyn Any> = x;
 
-            OwningRefMut::new(y).try_map_mut(|x| x.downcast_mut::<i32>().ok_or(())).is_err();
+            assert!(!OwningRefMut::new(y).try_map_mut(|x| x.downcast_mut::<i32>().ok_or(())).is_err());
         }
 
         #[test]
@@ -1888,7 +1888,7 @@ mod tests {
             let x = Box::new(123_i32);
             let y: Box<dyn Any> = x;
 
-            OwningRefMut::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_ok();
+            assert!(OwningRefMut::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_ok());
         }
 
         #[test]
@@ -1898,7 +1898,7 @@ mod tests {
             let x = Box::new(123_i32);
             let y: Box<dyn Any> = x;
 
-            OwningRefMut::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_err();
+            assert!(!OwningRefMut::new(y).try_map(|x| x.downcast_ref::<i32>().ok_or(())).is_err());
         }
 
         #[test]

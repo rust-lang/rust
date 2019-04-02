@@ -178,6 +178,7 @@ impl<T> Option<T> {
     /// ```
     ///
     /// [`Some`]: #variant.Some
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_some(&self) -> bool {
@@ -200,6 +201,7 @@ impl<T> Option<T> {
     /// ```
     ///
     /// [`None`]: #variant.None
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_none(&self) -> bool {
