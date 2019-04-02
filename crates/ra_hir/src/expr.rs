@@ -462,7 +462,7 @@ impl Pat {
 
 // Queries
 
-struct ExprCollector {
+pub(crate) struct ExprCollector {
     owner: DefWithBody,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
@@ -942,13 +942,4 @@ pub(crate) fn body_with_source_map_query(
 
 pub(crate) fn body_hir_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<Body> {
     db.body_with_source_map(def).0
-}
-
-#[cfg(test)]
-use crate::{Function};
-#[cfg(test)]
-fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> (Body, BodySourceMap) {
-    let mut collector = ExprCollector::new(DefWithBody::Function(function));
-    collector.collect_fn_body(node);
-    collector.finish()
 }
