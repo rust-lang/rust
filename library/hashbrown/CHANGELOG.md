@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.2.0] - 2019-03-31
+
+### Changed
+- The code has been updated to Rust 2018 edition. This means that the minimum
+  Rust version has been bumped to 1.31 (2018 edition).
+
+### Added
+- Added `insert_with_hasher` to the raw_entry API to allow `K: !(Hash + Eq)`. (#54)
+- Added support for using hashbrown as the hash table implementation in libstd. (#46)
+
+### Fixed
+- Fixed cargo build with minimal-versions. (#45)
+- Fixed `#[may_dangle]` attributes to match the libstd `HashMap`. (#46)
+- ZST keys and values are now handled properly. (#46)
+
 ## [v0.1.8] - 2019-01-14
 
 ### Added
@@ -63,7 +78,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.2.0...HEAD
+[v0.1.8]: https://github.com/Amanieu/hashbrown/compare/v0.1.8...v0.2.0
 [v0.1.8]: https://github.com/Amanieu/hashbrown/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/Amanieu/hashbrown/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/Amanieu/hashbrown/compare/v0.1.5...v0.1.6

@@ -62,25 +62,14 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-hashbrown = "0.1"
-```
-
-In version 0.1.8 rayon support has appeared, so that it works, specify:
-
-```toml
-[dependencies]
-hashbrown = { version = "0.1", features = ["rayon"] }
-```
-
-and this to your crate root:
-
-```rust
-extern crate hashbrown;
+hashbrown = "0.2"
 ```
 
 This crate has the following Cargo features:
 
-- `nightly`: Enables nightly-only features: `no_std` support, `#[may_dangle]` and ~10% speedup from branch hint intrinsics.
+- `nightly`: Enables nightly-only features: `no_std` support and `#[may_dangle]`.
+- `serde`: Enables serde serialization support.
+- `rayon`: Enables rayon parallel iterator support.
 
 ## License
 
