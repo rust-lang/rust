@@ -1535,6 +1535,14 @@ fn describe_enum_variant(
                                            unique_type_id,
                                            Some(containing_scope));
 
+    let arg_name = |i: usize| {
+        if variant.ctor_kind == CtorKind::Fn {
+            format!("__{}", i)
+        } else {
+            variant.fields[i].ident.to_string()
+        }
+    };
+
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
     let (offsets, args) = if use_enum_fallback(cx) {
         // If this is not a univariant enum, there is also the discriminant field.
@@ -1552,12 +1560,7 @@ fn describe_enum_variant(
                 layout.fields.offset(i)
             })).collect(),
             discr_arg.into_iter().chain((0..layout.fields.count()).map(|i| {
-                let name = if variant.ctor_kind == CtorKind::Fn {
-                    format!("__{}", i)
-                } else {
-                    variant.fields[i].ident.to_string()
-                };
-                (name, layout.field(cx, i).ty)
+                (arg_name(i), layout.field(cx, i).ty)
             })).collect()
         )
     } else {
@@ -1566,12 +1569,7 @@ fn describe_enum_variant(
                 layout.fields.offset(i)
             }).collect(),
             (0..layout.fields.count()).map(|i| {
-                let name = if variant.ctor_kind == CtorKind::Fn {
-                    format!("__{}", i)
-                } else {
-                    variant.fields[i].ident.to_string()
-                };
-                (name, layout.field(cx, i).ty)
+                (arg_name(i), layout.field(cx, i).ty)
             }).collect()
         )
     };
