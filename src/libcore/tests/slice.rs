@@ -1093,6 +1093,124 @@ fn sort_unstable() {
     assert!(v == [0xDEADBEEF]);
 }
 
+#[test]
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(miri))] // Miri does not support entropy
+fn partition_at_index() {
+    use core::cmp::Ordering::{Equal, Greater, Less};
+    use rand::rngs::SmallRng;
+    use rand::seq::SliceRandom;
+    use rand::{FromEntropy, Rng};
+
+    let mut rng = SmallRng::from_entropy();
+
+    for len in (2..21).chain(500..501) {
+        let mut orig = vec![0; len];
+
+        for &modulus in &[5, 10, 1000] {
+            for _ in 0..10 {
+                for i in 0..len {
+                    orig[i] = rng.gen::<i32>() % modulus;
+                }
+
+                let v_sorted = {
+                    let mut v = orig.clone();
+                    v.sort();
+                    v
+                };
+
+                // Sort in default order.
+                for pivot in 0..len {
+                    let mut v = orig.clone();
+                    v.partition_at_index(pivot);
+
+                    assert_eq!(v_sorted[pivot], v[pivot]);
+                    for i in 0..pivot {
+                        for j in pivot..len {
+                            assert!(v[i] <= v[j]);
+                        }
+                    }
+                }
+
+                // Sort in ascending order.
+                for pivot in 0..len {
+                    let mut v = orig.clone();
+                    let (left, pivot, right) = v.partition_at_index_by(pivot, |a, b| a.cmp(b));
+
+                    assert_eq!(left.len() + right.len(), len - 1);
+
+                    for l in left {
+                        assert!(l <= pivot);
+                        for r in right.iter_mut() {
+                            assert!(l <= r);
+                            assert!(pivot <= r);
+                        }
+                    }
+                }
+
+                // Sort in descending order.
+                let sort_descending_comparator = |a: &i32, b: &i32| b.cmp(a);
+                let v_sorted_descending = {
+                    let mut v = orig.clone();
+                    v.sort_by(sort_descending_comparator);
+                    v
+                };
+
+                for pivot in 0..len {
+                    let mut v = orig.clone();
+                    v.partition_at_index_by(pivot, sort_descending_comparator);
+
+                    assert_eq!(v_sorted_descending[pivot], v[pivot]);
+                    for i in 0..pivot {
+                        for j in pivot..len {
+                            assert!(v[j] <= v[i]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Sort at index using a completely random comparison function.
+    // This will reorder the elements *somehow*, but won't panic.
+    let mut v = [0; 500];
+    for i in 0..v.len() {
+        v[i] = i as i32;
+    }
+
+    for pivot in 0..v.len() {
+        v.partition_at_index_by(pivot, |_, _| *[Less, Equal, Greater].choose(&mut rng).unwrap());
+        v.sort();
+        for i in 0..v.len() {
+            assert_eq!(v[i], i as i32);
+        }
+    }
+
+    // Should not panic.
+    [(); 10].partition_at_index(0);
+    [(); 10].partition_at_index(5);
+    [(); 10].partition_at_index(9);
+    [(); 100].partition_at_index(0);
+    [(); 100].partition_at_index(50);
+    [(); 100].partition_at_index(99);
+
+    let mut v = [0xDEADBEEFu64];
+    v.partition_at_index(0);
+    assert!(v == [0xDEADBEEF]);
+}
+
+#[test]
+#[should_panic(expected = "index 0 greater than length of slice")]
+fn partition_at_index_zero_length() {
+    [0i32; 0].partition_at_index(0);
+}
+
+#[test]
+#[should_panic(expected = "index 20 greater than length of slice")]
+fn partition_at_index_past_length() {
+    [0i32; 10].partition_at_index(20);
+}
+
 pub mod memchr {
     use core::slice::memchr::{memchr, memrchr};
 
