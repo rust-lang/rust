@@ -315,6 +315,7 @@ Grammar(
                 "DocCommentsOwner",
                 "TypeAscriptionOwner",
             ],
+            options: [ ["body","Expr"]],
         ),
         "StaticDef": (
             traits: [
@@ -325,6 +326,7 @@ Grammar(
                 "DocCommentsOwner",
                 "TypeAscriptionOwner",
             ],
+            options: [ ["body","Expr"]],
         ),
         "TypeAliasDef": (
             traits: [

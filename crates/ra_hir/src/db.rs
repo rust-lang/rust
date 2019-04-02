@@ -8,6 +8,7 @@ use crate::{
     Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
+    DefWithBody,
     nameres::{Namespace, ImportSourceMap, RawItems, CrateDefMap},
     ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig},
     adt::{StructData, EnumData},
@@ -83,10 +84,10 @@ pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
 #[salsa::query_group(HirDatabaseStorage)]
 pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(ExprScopes::expr_scopes_query)]
-    fn expr_scopes(&self, func: Function) -> Arc<ExprScopes>;
+    fn expr_scopes(&self, def: DefWithBody) -> Arc<ExprScopes>;
 
     #[salsa::invoke(crate::ty::infer)]
-    fn infer(&self, func: Function) -> Arc<InferenceResult>;
+    fn infer(&self, def: DefWithBody) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::ty::type_for_def)]
     fn type_for_def(&self, def: TypableDef, ns: Namespace) -> Ty;
@@ -100,11 +101,11 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::expr::body_with_source_map_query)]
     fn body_with_source_map(
         &self,
-        func: Function,
+        def: DefWithBody,
     ) -> (Arc<crate::expr::Body>, Arc<crate::expr::BodySourceMap>);
 
     #[salsa::invoke(crate::expr::body_hir_query)]
-    fn body_hir(&self, func: Function) -> Arc<crate::expr::Body>;
+    fn body_hir(&self, def: DefWithBody) -> Arc<crate::expr::Body>;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;

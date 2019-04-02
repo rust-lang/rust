@@ -11,6 +11,8 @@ use crate::{
     source_binder,
     mock::MockDatabase,
     ty::display::HirDisplay,
+    ty::InferenceResult,
+    expr::BodySourceMap
 };
 
 // These tests compare the inference results for all expressions in a file
@@ -1267,6 +1269,9 @@ fn test() {
 }
 "#),
         @r###"
+[52; 53) '1': u32
+[103; 104) '2': u32
+[211; 212) '5': u32
 [227; 305) '{     ...:ID; }': ()
 [237; 238) 'x': u32
 [241; 252) 'Struct::FOO': u32
@@ -1855,6 +1860,9 @@ fn test() {
 }
 "#),
         @r###"
+[49; 50) '0': u32
+[80; 83) '101': u32
+[126; 128) '99': u32
 [95; 213) '{     ...NST; }': ()
 [138; 139) 'x': {unknown}
 [142; 153) 'LOCAL_CONST': {unknown}
@@ -1881,6 +1889,10 @@ fn test() {
 }
 "#),
         @r###"
+[29; 32) '101': u32
+[70; 73) '101': u32
+[118; 120) '99': u32
+[161; 163) '99': u32
 [85; 280) '{     ...MUT; }': ()
 [173; 174) 'x': {unknown}
 [177; 189) 'LOCAL_STATIC': {unknown}
@@ -2212,6 +2224,24 @@ fn test<T: Iterable<Item=u32>>() {
     );
 }
 
+#[test]
+fn infer_const_body() {
+    assert_snapshot_matches!(
+        infer(r#"
+const A: u32 = 1 + 1;
+static B: u64 = { let x = 1; x };
+"#),
+        @r###"
+[16; 17) '1': u32
+[16; 21) '1 + 1': u32
+[20; 21) '1': u32
+[39; 55) '{ let ...1; x }': u64
+[45; 46) 'x': u64
+[49; 50) '1': u64
+[52; 53) 'x': u64"###
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let func = source_binder::function_from_position(db, pos).unwrap();
     let body_source_map = func.body_source_map(db);
@@ -2228,11 +2258,11 @@ fn infer(content: &str) -> String {
     let source_file = db.parse(file_id);
     let mut acc = String::new();
     acc.push_str("\n");
-    for fn_def in source_file.syntax().descendants().filter_map(ast::FnDef::cast) {
-        let func = source_binder::function_from_source(&db, file_id, fn_def).unwrap();
-        let inference_result = func.infer(&db);
-        let body_source_map = func.body_source_map(&db);
+
+    let mut infer_def = |inference_result: Arc<InferenceResult>,
+                         body_source_map: Arc<BodySourceMap>| {
         let mut types = Vec::new();
+
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
                 Some(sp) => sp,
@@ -2240,6 +2270,7 @@ fn infer(content: &str) -> String {
             };
             types.push((syntax_ptr, ty));
         }
+
         for (expr, ty) in inference_result.type_of_expr.iter() {
             let syntax_ptr = match body_source_map.expr_syntax(expr) {
                 Some(sp) => sp,
@@ -2258,7 +2289,29 @@ fn infer(content: &str) -> String {
             };
             write!(acc, "{} '{}': {}\n", range, ellipsize(text, 15), ty.display(&db)).unwrap();
         }
+    };
+
+    for const_def in source_file.syntax().descendants().filter_map(ast::ConstDef::cast) {
+        let konst = source_binder::const_from_source(&db, file_id, const_def).unwrap();
+        let inference_result = konst.infer(&db);
+        let body_source_map = konst.body_source_map(&db);
+        infer_def(inference_result, body_source_map)
     }
+
+    for static_def in source_file.syntax().descendants().filter_map(ast::StaticDef::cast) {
+        let static_ = source_binder::static_from_source(&db, file_id, static_def).unwrap();
+        let inference_result = static_.infer(&db);
+        let body_source_map = static_.body_source_map(&db);
+        infer_def(inference_result, body_source_map)
+    }
+
+    for fn_def in source_file.syntax().descendants().filter_map(ast::FnDef::cast) {
+        let func = source_binder::function_from_source(&db, file_id, fn_def).unwrap();
+        let inference_result = func.infer(&db);
+        let body_source_map = func.body_source_map(&db);
+        infer_def(inference_result, body_source_map)
+    }
+
     acc.truncate(acc.trim_end().len());
     acc
 }

@@ -10,7 +10,7 @@ use ra_syntax::{
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    Name, AsName, Function,
+    Name, AsName,DefWithBody,
     expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySourceMap},
     HirDatabase,
 };
@@ -40,8 +40,8 @@ pub struct ScopeData {
 
 impl ExprScopes {
     // FIXME: This should take something more general than Function
-    pub(crate) fn expr_scopes_query(db: &impl HirDatabase, function: Function) -> Arc<ExprScopes> {
-        let body = db.body_hir(function);
+    pub(crate) fn expr_scopes_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<ExprScopes> {
+        let body = db.body_hir(def);
         let res = ExprScopes::new(body);
         Arc::new(res)
     }
@@ -297,8 +297,9 @@ mod tests {
     use ra_syntax::{SourceFile, algo::find_node_at_offset};
     use test_utils::{extract_offset, assert_eq_text};
     use ra_arena::ArenaId;
+    use crate::Function;
 
-    use crate::expr;
+    use crate::expr::{ExprCollector};
 
     use super::*;
 
@@ -316,7 +317,7 @@ mod tests {
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
-        let (body, source_map) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
+        let (body, source_map) = collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
         let scopes =
             ScopesWithSourceMap { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
@@ -405,6 +406,12 @@ mod tests {
         );
     }
 
+    fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> (Body, BodySourceMap) {
+        let mut collector = ExprCollector::new(DefWithBody::Function(function));
+        collector.collect_fn_body(node);
+        collector.finish()
+    }
+
     fn do_check_local_name(code: &str, expected_offset: u32) {
         let (off, code) = extract_offset(code);
         let file = SourceFile::parse(&code);
@@ -415,7 +422,7 @@ mod tests {
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
         let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
-        let (body, source_map) = expr::collect_fn_body_syntax(irrelevant_function, fn_def);
+        let (body, source_map) = collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
         let scopes =
             ScopesWithSourceMap { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };

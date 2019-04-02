@@ -67,6 +67,7 @@ pub use self::{
 
 pub use self::code_model_api::{
     Crate, CrateDependency,
+    DefWithBody,
     Module, ModuleDef, ModuleSource,
     Struct, Enum, EnumVariant,
     Function, FnSignature,

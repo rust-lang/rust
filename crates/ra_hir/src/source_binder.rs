@@ -13,7 +13,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, Struct, Enum,
+    HirDatabase, Function, Struct, Enum,Const,Static,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
     ids::LocationCtx,
     expr, AstId
@@ -87,6 +87,27 @@ fn module_from_source(
     )
 }
 
+pub fn const_from_source(
+    db: &impl HirDatabase,
+    file_id: FileId,
+    const_def: &ast::ConstDef,
+) -> Option<Const> {
+    let module = module_from_child_node(db, file_id, const_def.syntax())?;
+    let res = const_from_module(db, module, const_def);
+    Some(res)
+}
+
+pub fn const_from_module(
+    db: &impl HirDatabase,
+    module: Module,
+    const_def: &ast::ConstDef,
+) -> Const {
+    let (file_id, _) = module.definition_source(db);
+    let file_id = file_id.into();
+    let ctx = LocationCtx::new(db, module, file_id);
+    Const { id: ctx.to_def(const_def) }
+}
+
 pub fn function_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Function> {
     let file = db.parse(position.file_id);
     let fn_def = find_node_at_offset::<ast::FnDef>(file.syntax(), position.offset)?;
@@ -132,6 +153,27 @@ pub fn struct_from_module(
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
     Struct { id: ctx.to_def(struct_def) }
+}
+
+pub fn static_from_source(
+    db: &impl HirDatabase,
+    file_id: FileId,
+    static_def: &ast::StaticDef,
+) -> Option<Static> {
+    let module = module_from_child_node(db, file_id, static_def.syntax())?;
+    let res = static_from_module(db, module, static_def);
+    Some(res)
+}
+
+pub fn static_from_module(
+    db: &impl HirDatabase,
+    module: Module,
+    static_def: &ast::StaticDef,
+) -> Static {
+    let (file_id, _) = module.definition_source(db);
+    let file_id = file_id.into();
+    let ctx = LocationCtx::new(db, module, file_id);
+    Static { id: ctx.to_def(static_def) }
 }
 
 pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::EnumDef) -> Enum {

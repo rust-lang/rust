@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Path, Name, HirDatabase, Function, Resolver,
+    Path, Name, HirDatabase, Resolver,DefWithBody,
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
@@ -27,9 +27,8 @@ impl_arena_id!(ExprId);
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
-    // FIXME: this should be more general, consts & statics also have bodies
-    /// The Function of the item this body belongs to
-    owner: Function,
+    /// The def of the item this body belongs to
+    owner: DefWithBody,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     /// The patterns for the function's parameters. While the parameter types are
@@ -66,7 +65,7 @@ impl Body {
         self.body_expr
     }
 
-    pub fn owner(&self) -> Function {
+    pub fn owner(&self) -> DefWithBody {
         self.owner
     }
 
@@ -463,8 +462,8 @@ impl Pat {
 
 // Queries
 
-struct ExprCollector {
-    owner: Function,
+pub(crate) struct ExprCollector {
+    owner: DefWithBody,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     source_map: BodySourceMap,
@@ -473,7 +472,7 @@ struct ExprCollector {
 }
 
 impl ExprCollector {
-    fn new(owner: Function) -> Self {
+    fn new(owner: DefWithBody) -> Self {
         ExprCollector {
             owner,
             exprs: Arena::default(),
@@ -866,6 +865,16 @@ impl ExprCollector {
         }
     }
 
+    fn collect_const_body(&mut self, node: &ast::ConstDef) {
+        let body = self.collect_expr_opt(node.body());
+        self.body_expr = Some(body);
+    }
+
+    fn collect_static_body(&mut self, node: &ast::StaticDef) {
+        let body = self.collect_expr_opt(node.body());
+        self.body_expr = Some(body);
+    }
+
     fn collect_fn_body(&mut self, node: &ast::FnDef) {
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {
@@ -910,24 +919,20 @@ impl ExprCollector {
 
 pub(crate) fn body_with_source_map_query(
     db: &impl HirDatabase,
-    func: Function,
+    def: DefWithBody,
 ) -> (Arc<Body>, Arc<BodySourceMap>) {
-    let mut collector = ExprCollector::new(func);
+    let mut collector = ExprCollector::new(def);
 
-    // FIXME: consts, etc.
-    collector.collect_fn_body(&func.source(db).1);
+    match def {
+        DefWithBody::Const(ref c) => collector.collect_const_body(&c.source(db).1),
+        DefWithBody::Function(ref f) => collector.collect_fn_body(&f.source(db).1),
+        DefWithBody::Static(ref s) => collector.collect_static_body(&s.source(db).1),
+    }
 
     let (body, source_map) = collector.finish();
     (Arc::new(body), Arc::new(source_map))
 }
 
-pub(crate) fn body_hir_query(db: &impl HirDatabase, func: Function) -> Arc<Body> {
-    db.body_with_source_map(func).0
-}
-
-#[cfg(test)]
-fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> (Body, BodySourceMap) {
-    let mut collector = ExprCollector::new(function);
-    collector.collect_fn_body(node);
-    collector.finish()
+pub(crate) fn body_hir_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<Body> {
+    db.body_with_source_map(def).0
 }

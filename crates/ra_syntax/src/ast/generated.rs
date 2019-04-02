@@ -513,7 +513,11 @@ impl ast::TypeParamsOwner for ConstDef {}
 impl ast::AttrsOwner for ConstDef {}
 impl ast::DocCommentsOwner for ConstDef {}
 impl ast::TypeAscriptionOwner for ConstDef {}
-impl ConstDef {}
+impl ConstDef {
+    pub fn body(&self) -> Option<&Expr> {
+        super::child_opt(self)
+    }
+}
 
 // ContinueExpr
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -3364,7 +3368,11 @@ impl ast::TypeParamsOwner for StaticDef {}
 impl ast::AttrsOwner for StaticDef {}
 impl ast::DocCommentsOwner for StaticDef {}
 impl ast::TypeAscriptionOwner for StaticDef {}
-impl StaticDef {}
+impl StaticDef {
+    pub fn body(&self) -> Option<&Expr> {
+        super::child_opt(self)
+    }
+}
 
 // Stmt
 #[derive(Debug, PartialEq, Eq, Hash)]
