@@ -1313,10 +1313,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
         hir::Arm {
-            hir_id,
+            hir_id: self.next_id(),
             attrs: self.lower_attrs(&arm.attrs),
             pats: arm.pats.iter().map(|x| self.lower_pat(x)).collect(),
             guard: match arm.guard {
@@ -5027,10 +5025,8 @@ impl<'a> LoweringContext<'a> {
     // Helper methods for building HIR.
 
     fn arm(&mut self, pats: hir::HirVec<P<hir::Pat>>, expr: P<hir::Expr>) -> hir::Arm {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
         hir::Arm {
-            hir_id,
+            hir_id: self.next_id(),
             attrs: hir_vec![],
             pats,
             guard: None,
