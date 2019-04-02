@@ -117,6 +117,32 @@ impl TypeMap<'ll, 'tcx> {
         }
     }
 
+    // Removes a Ty to metadata mapping
+    // This is useful when computing the metadata for a potentially
+    // recursive type (e.g. a function ptr of the form:
+    //
+    // fn foo() -> impl Copy { foo }
+    //
+    // This kind of type cannot be properly represented
+    // via LLVM debuginfo. As a workaround,
+    // we register a temporary Ty to metadata mapping
+    // for the function before we compute its actual metadata.
+    // If the metadata computation ends up recursing back to the
+    // original function, it will use the temporary mapping
+    // for the inner self-reference, preventing us from
+    // recursing forever.
+    //
+    // This function is used to remove the temporary metadata
+    // mapping after we've computed the actual metadata
+    fn remove_type(
+        &mut self,
+        type_: Ty<'tcx>,
+    ) {
+        if self.type_to_metadata.remove(type_).is_none() {
+            bug!("Type metadata Ty '{}' is not in the TypeMap!", type_);
+        }
+    }
+
     // Adds a UniqueTypeId to metadata mapping to the TypeMap. The method will
     // fail if the mapping already exists.
     fn register_unique_id_with_metadata(
@@ -608,16 +634,48 @@ pub fn type_metadata(
             }
         }
         ty::FnDef(..) | ty::FnPtr(_) => {
-            let fn_metadata = subroutine_type_metadata(cx,
-                                                       unique_type_id,
-                                                       t.fn_sig(cx.tcx),
-                                                       usage_site_span).metadata;
+
             if let Some(metadata) = debug_context(cx).type_map
                .borrow()
                .find_metadata_for_unique_id(unique_type_id)
             {
                 return metadata;
             }
+
+            // It's possible to create a self-referential
+            // type in Rust by using 'impl trait':
+            //
+            // fn foo() -> impl Copy { foo }
+            //
+            // See TypeMap::remove_type for more detals
+            // about the workaround
+
+            let temp_type = {
+                unsafe {
+                    // The choice of type here is pretty arbitrary -
+                    // anything reading the debuginfo for a recursive
+                    // type is going to see *somthing* weird - the only
+                    // question is what exactly it will see
+                    let (size, align) = cx.size_and_align_of(t);
+                    llvm::LLVMRustDIBuilderCreateBasicType(
+                        DIB(cx),
+                        SmallCStr::new("<recur_type>").as_ptr(),
+                        size.bits(),
+                        align.bits() as u32,
+                        DW_ATE_unsigned)
+                }
+            };
+
+            let type_map = &debug_context(cx).type_map;
+            type_map.borrow_mut().register_type_with_metadata(t, temp_type);
+
+            let fn_metadata = subroutine_type_metadata(cx,
+                                                       unique_type_id,
+                                                       t.fn_sig(cx.tcx),
+                                                       usage_site_span).metadata;
+
+            type_map.borrow_mut().remove_type(t);
+
 
             // This is actually a function pointer, so wrap it in pointer DI
             MetadataCreationResult::new(pointer_type_metadata(cx, t, fn_metadata), false)
