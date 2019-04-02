@@ -117,11 +117,7 @@ impl Module {
     }
 
     /// Returns the syntax of the last path segment corresponding to this import
-    pub fn import_source(
-        &self,
-        db: &impl HirDatabase,
-        import: ImportId,
-    ) -> TreeArc<ast::PathSegment> {
+    pub fn import_source(&self, db: &impl HirDatabase, import: ImportId) -> TreeArc<ast::UseTree> {
         self.import_source_impl(db, import)
     }
 

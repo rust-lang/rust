@@ -46,7 +46,7 @@ impl Path {
     /// Calls `cb` with all paths, represented by this use item.
     pub fn expand_use_item<'a>(
         item: &'a ast::UseItem,
-        mut cb: impl FnMut(Path, Option<&'a ast::PathSegment>, Option<Name>),
+        mut cb: impl FnMut(Path, &'a ast::UseTree, bool, Option<Name>),
     ) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
@@ -156,7 +156,7 @@ impl From<Name> for Path {
 fn expand_use_tree<'a>(
     prefix: Option<Path>,
     tree: &'a ast::UseTree,
-    cb: &mut impl FnMut(Path, Option<&'a ast::PathSegment>, Option<Name>),
+    cb: &mut impl FnMut(Path, &'a ast::UseTree, bool, Option<Name>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -181,18 +181,15 @@ fn expand_use_tree<'a>(
                 if let Some(segment) = ast_path.segment() {
                     if segment.kind() == Some(ast::PathSegmentKind::SelfKw) {
                         if let Some(prefix) = prefix {
-                            cb(prefix, Some(segment), alias);
+                            cb(prefix, tree, false, alias);
                             return;
                         }
                     }
                 }
             }
             if let Some(path) = convert_path(prefix, ast_path) {
-                if tree.has_star() {
-                    cb(path, None, alias)
-                } else if let Some(segment) = ast_path.segment() {
-                    cb(path, Some(segment), alias)
-                };
+                let is_glob = tree.has_star();
+                cb(path, tree, is_glob, alias)
             }
             // FIXME: report errors somewhere
             // We get here if we do
