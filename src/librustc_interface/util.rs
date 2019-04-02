@@ -5,7 +5,6 @@ use rustc::session::CrateDisambiguator;
 use rustc::ty;
 use rustc::lint;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-#[cfg(parallel_compiler)]
 use rustc_data_structures::jobserver;
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -38,8 +37,6 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
 use syntax::symbol::Symbol;
 use syntax::{self, ast, attr};
-#[cfg(not(parallel_compiler))]
-use std::{thread, panic};
 
 pub fn diagnostics_registry() -> Registry {
     let mut all_errors = Vec::new();
@@ -140,54 +137,6 @@ impl Write for Sink {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-#[cfg(not(parallel_compiler))]
-pub fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -> R {
-    struct Ptr(*mut ());
-    unsafe impl Send for Ptr {}
-    unsafe impl Sync for Ptr {}
-
-    let mut f = Some(f);
-    let run = Ptr(&mut f as *mut _ as *mut ());
-    let mut result = None;
-    let result_ptr = Ptr(&mut result as *mut _ as *mut ());
-
-    let thread = cfg.spawn(move || {
-        let run = unsafe { (*(run.0 as *mut Option<F>)).take().unwrap() };
-        let result = unsafe { &mut *(result_ptr.0 as *mut Option<R>) };
-        *result = Some(run());
-    });
-
-    match thread.unwrap().join() {
-        Ok(()) => result.unwrap(),
-        Err(p) => panic::resume_unwind(p),
-    }
-}
-
-#[cfg(not(parallel_compiler))]
-pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
-    _threads: Option<usize>,
-    stderr: &Option<Arc<Mutex<Vec<u8>>>>,
-    f: F,
-) -> R {
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
-
-    if let Some(size) = get_stack_size() {
-        cfg = cfg.stack_size(size);
-    }
-
-    scoped_thread(cfg, || {
-        syntax::with_globals( || {
-            ty::tls::GCX_PTR.set(&Lock::new(0), || {
-                if let Some(stderr) = stderr {
-                    io::set_panic(Some(box Sink(stderr.clone())));
-                }
-                ty::tls::with_thread_locals(|| f())
-            })
-        })
-    })
-}
-
-#[cfg(parallel_compiler)]
 pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     threads: Option<usize>,
     stderr: &Option<Arc<Mutex<Vec<u8>>>>,
@@ -197,13 +146,10 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
     use syntax;
     use syntax_pos;
 
-    let gcx_ptr = &Lock::new(0);
-
     let mut config = ThreadPoolBuilder::new()
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
-        .num_threads(Session::threads_from_count(threads))
-        .deadlock_handler(|| unsafe { ty::query::handle_deadlock() });
+        .num_threads(Session::threads_from_count(threads));
 
     if let Some(size) = get_stack_size() {
         config = config.stack_size(size);
@@ -211,30 +157,22 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     let with_pool = move |pool: &ThreadPool| pool.install(move || f());
 
-    syntax::with_globals(|| {
-        syntax::GLOBALS.with(|syntax_globals| {
-            syntax_pos::GLOBALS.with(|syntax_pos_globals| {
-                // The main handler runs for each Rayon worker thread and sets up
-                // the thread local rustc uses. syntax_globals and syntax_pos_globals are
-                // captured and set on the new threads. ty::tls::with_thread_locals sets up
-                // thread local callbacks from libsyntax
-                let main_handler = move |worker: &mut dyn FnMut()| {
-                    syntax::GLOBALS.set(syntax_globals, || {
-                        syntax_pos::GLOBALS.set(syntax_pos_globals, || {
-                            if let Some(stderr) = stderr {
-                                io::set_panic(Some(box Sink(stderr.clone())));
-                            }
-                            ty::tls::with_thread_locals(|| {
-                                ty::tls::GCX_PTR.set(gcx_ptr, || worker())
-                            })
-                        })
-                    })
-                };
-
-                ThreadPool::scoped_pool(config, main_handler, with_pool).unwrap()
+    // The main handler runs for each Rayon worker thread and sets up
+    // the thread local rustc uses. syntax_globals and syntax_pos_globals are
+    // captured and set on the new threads. ty::tls::with_thread_locals sets up
+    // thread local callbacks from libsyntax
+    let main_handler = move |worker: &mut dyn FnMut()| {
+        syntax::with_globals(|| {
+            if let Some(stderr) = stderr {
+                io::set_panic(Some(box Sink(stderr.clone())));
+            }
+            ty::tls::with_thread_locals(|| {
+                ty::tls::GCX_PTR.set(&Lock::new(0), || worker())
             })
         })
-    })
+    };
+
+    ThreadPool::scoped_pool(config, main_handler, with_pool).unwrap()
 }
 
 fn load_backend_from_dylib(path: &Path) -> fn() -> Box<dyn CodegenBackend> {
