@@ -537,6 +537,21 @@ rem_impl_integer! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
 macro_rules! rem_impl_float {
     ($($t:ty)*) => ($(
+
+        /// The remainder from the division of two floats.
+        ///
+        /// The remainder has the same sign as the dividend and is computed as:
+        /// `x - (x / y).trunc() * y`.
+        ///
+        /// # Examples
+        /// ```
+        /// let x: f32 = 50.50;
+        /// let y: f32 = 8.125;
+        /// let remainder = x - (x / y).trunc() * y;
+        ///
+        /// // The answer to both operations is 1.75
+        /// assert_eq!(x % y, remainder);
+        /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
