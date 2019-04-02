@@ -1,0 +1,33 @@
+trigger:
+  - master
+
+jobs:
+  - job: Linux
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-steps.yml
+    strategy:
+      matrix:
+        aarch64-unknown-linux-gnu:
+          TARGET: aarch64-unknown-linux-gnu
+
+  - job: macOS
+    pool:
+      vmImage: macos-10.13
+    steps:
+      - template: ci/azure-steps.yml
+    strategy:
+      matrix:
+        x86_64-apple-darwin:
+          TARGET: x86_64-apple-darwin
+
+  - job: Windows
+    pool:
+      vmImage: 'vs2017-win2016'
+    steps:
+      - template: ci/azure-steps.yml
+    strategy:
+      matrix:
+        i686-pc-windows-msvc:
+          TARGET: i686-pc-windows-msvc

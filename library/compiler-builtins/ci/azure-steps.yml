@@ -1,0 +1,10 @@
+steps:
+  - template: azure-install-rust.yml
+
+  - bash: ./ci/run.sh $TARGET
+    condition: ne( variables['Agent.OS'], 'Linux' )
+    displayName: Run test script
+
+  - bash: ./ci/run-docker.sh $TARGET
+    condition: eq( variables['Agent.OS'], 'Linux' )
+    displayName: Run docker test script
