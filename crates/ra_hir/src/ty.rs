@@ -14,7 +14,7 @@ pub(crate) mod display;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase};
+use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait};
 
 pub(crate) use lower::{TypableDef, CallableDef, type_for_def, type_for_field, callable_item_sig};
 pub(crate) use infer::{infer, InferenceResult, InferTy};
@@ -91,7 +91,7 @@ pub enum TypeCtor {
 /// A nominal type with (maybe 0) type parameters. This might be a primitive
 /// type like `bool`, a struct, tuple, function pointer, reference or
 /// several other things.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ApplicationTy {
     pub ctor: TypeCtor,
     pub parameters: Substs,
@@ -103,7 +103,7 @@ pub struct ApplicationTy {
 /// the same thing (but in a different way).
 ///
 /// This should be cheap to clone.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum Ty {
     /// A nominal type with (maybe 0) type parameters. This might be a primitive
     /// type like `bool`, a struct, tuple, function pointer, reference or
@@ -132,7 +132,7 @@ pub enum Ty {
 }
 
 /// A list of substitutions for generic parameters.
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Substs(Arc<[Ty]>);
 
 impl Substs {
@@ -166,6 +166,21 @@ impl Substs {
             panic!("expected substs of len 1, got {:?}", self);
         }
         &self.0[0]
+    }
+}
+
+/// A trait with type parameters. This includes the `Self`, so this represents a concrete type implementing the trait.
+/// Name to be bikeshedded: TraitBound? TraitImplements?
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct TraitRef {
+    /// FIXME name?
+    trait_: Trait,
+    substs: Substs,
+}
+
+impl TraitRef {
+    pub fn self_ty(&self) -> &Ty {
+        &self.substs.0[0]
     }
 }
 

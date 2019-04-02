@@ -36,7 +36,9 @@ use crate::{
     path::{GenericArgs, GenericArg},
     adt::VariantDef,
     resolve::{Resolver, Resolution},
-    nameres::Namespace
+    nameres::Namespace,
+    ty::infer::diagnostics::InferenceDiagnostic,
+    diagnostics::DiagnosticSink,
 };
 use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor};
 
@@ -96,6 +98,7 @@ pub struct InferenceResult {
     field_resolutions: FxHashMap<ExprId, StructField>,
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
+    diagnostics: Vec<InferenceDiagnostic>,
     pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
     pub(super) type_of_pat: ArenaMap<PatId, Ty>,
 }
@@ -112,6 +115,14 @@ impl InferenceResult {
     }
     pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<ImplItem> {
         self.assoc_resolutions.get(&id.into()).map(|it| *it)
+    }
+    pub(crate) fn add_diagnostics(
+        &self,
+        db: &impl HirDatabase,
+        owner: Function,
+        sink: &mut DiagnosticSink,
+    ) {
+        self.diagnostics.iter().for_each(|it| it.add_to(db, owner, sink))
     }
 }
 
@@ -143,6 +154,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
     type_of_expr: ArenaMap<ExprId, Ty>,
     type_of_pat: ArenaMap<PatId, Ty>,
+    diagnostics: Vec<InferenceDiagnostic>,
     /// The return type of the function being inferred.
     return_ty: Ty,
 }
@@ -155,6 +167,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             assoc_resolutions: FxHashMap::default(),
             type_of_expr: ArenaMap::default(),
             type_of_pat: ArenaMap::default(),
+            diagnostics: Vec::default(),
             var_unification_table: InPlaceUnificationTable::new(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             db,
@@ -181,6 +194,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             assoc_resolutions: self.assoc_resolutions,
             type_of_expr: expr_types,
             type_of_pat: pat_types,
+            diagnostics: self.diagnostics,
         }
     }
 
@@ -807,7 +821,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::MethodCall { receiver, args, method_name, generic_args } => {
                 let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
-                let resolved = receiver_ty.clone().lookup_method(self.db, method_name);
+                let resolved =
+                    receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
                 let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
                     Some((ty, func)) => {
                         self.write_method_resolution(tgt_expr, func);
@@ -915,9 +930,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::StructLit { path, fields, spread } => {
                 let (ty, def_id) = self.resolve_variant(path.as_ref());
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
-                for field in fields {
+                for (field_idx, field) in fields.into_iter().enumerate() {
                     let field_ty = def_id
-                        .and_then(|it| it.field(self.db, &field.name))
+                        .and_then(|it| match it.field(self.db, &field.name) {
+                            Some(field) => Some(field),
+                            None => {
+                                self.diagnostics.push(InferenceDiagnostic::NoSuchField {
+                                    expr: tgt_expr,
+                                    field: field_idx,
+                                });
+                                None
+                            }
+                        })
                         .map_or(Ty::Unknown, |field| field.ty(self.db))
                         .subst(&substs);
                     self.infer_expr(field.expr, &Expectation::has_type(field_ty));
@@ -1242,5 +1266,31 @@ impl Expectation {
     /// This expresses no expectation on the type.
     fn none() -> Self {
         Expectation { ty: Ty::Unknown }
+    }
+}
+
+mod diagnostics {
+    use crate::{expr::ExprId, diagnostics::{DiagnosticSink, NoSuchField}, HirDatabase, Function};
+
+    #[derive(Debug, PartialEq, Eq, Clone)]
+    pub(super) enum InferenceDiagnostic {
+        NoSuchField { expr: ExprId, field: usize },
+    }
+
+    impl InferenceDiagnostic {
+        pub(super) fn add_to(
+            &self,
+            db: &impl HirDatabase,
+            owner: Function,
+            sink: &mut DiagnosticSink,
+        ) {
+            match self {
+                InferenceDiagnostic::NoSuchField { expr, field } => {
+                    let (file, _) = owner.source(db);
+                    let field = owner.body_source_map(db).field_syntax(*expr, *field);
+                    sink.push(NoSuchField { file, field })
+                }
+            }
+        }
     }
 }

@@ -216,8 +216,54 @@ mod tests {
     use crate::{
         mock_analysis::single_file_with_position,
         mock_analysis::analysis_and_position,
-        FileId
+        FileId, ReferenceSearchResult
 };
+
+    #[test]
+    fn test_find_all_refs_for_local() {
+        let code = r#"
+    fn main() {
+        let mut i = 1;
+        let j = 1;
+        i = i<|> + j;
+
+        {
+            i = 0;
+        }
+
+        i = 5;
+    }"#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 5);
+    }
+
+    #[test]
+    fn test_find_all_refs_for_param_inside() {
+        let code = r#"
+    fn foo(i : u32) -> u32 {
+        i<|>
+    }"#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 2);
+    }
+
+    #[test]
+    fn test_find_all_refs_for_fn_param() {
+        let code = r#"
+    fn foo(i<|> : u32) -> u32 {
+        i
+    }"#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 2);
+    }
+
+    fn get_all_refs(text: &str) -> ReferenceSearchResult {
+        let (analysis, position) = single_file_with_position(text);
+        analysis.find_all_refs(position).unwrap().unwrap()
+    }
 
     #[test]
     fn test_rename_for_local() {

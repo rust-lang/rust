@@ -1,18 +1,18 @@
 use ra_db::FileId;
-use ra_syntax::{ast, SyntaxNode, TreeArc, AstNode};
+use ra_syntax::{ast, TreeArc};
 
 use crate::{
-    Module, ModuleSource, Problem, Name,
+    Module, ModuleSource, Name, AstId,
     nameres::{CrateModuleId, ImportId},
     HirDatabase, DefDatabase,
-    HirFileId, SourceItemId,
+    HirFileId,
 };
 
 impl ModuleSource {
     pub(crate) fn new(
         db: &impl DefDatabase,
         file_id: Option<FileId>,
-        decl_id: Option<SourceItemId>,
+        decl_id: Option<AstId<ast::Module>>,
     ) -> ModuleSource {
         match (file_id, decl_id) {
             (Some(file_id), _) => {
@@ -20,8 +20,7 @@ impl ModuleSource {
                 ModuleSource::SourceFile(source_file)
             }
             (None, Some(item_id)) => {
-                let module = db.file_item(item_id);
-                let module = ast::Module::cast(&*module).unwrap();
+                let module = item_id.to_node(db);
                 assert!(module.item_list().is_some(), "expected inline module");
                 ModuleSource::Module(module.to_owned())
             }
@@ -55,7 +54,7 @@ impl Module {
         let decl_id = def_map[self.module_id].declaration;
         let file_id = def_map[self.module_id].definition;
         let module_source = ModuleSource::new(db, file_id, decl_id);
-        let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id);
+        let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id());
         (file_id, module_source)
     }
 
@@ -65,9 +64,8 @@ impl Module {
     ) -> Option<(HirFileId, TreeArc<ast::Module>)> {
         let def_map = db.crate_def_map(self.krate);
         let decl = def_map[self.module_id].declaration?;
-        let syntax_node = db.file_item(decl);
-        let ast = ast::Module::cast(&syntax_node).unwrap().to_owned();
-        Some((decl.file_id, ast))
+        let ast = decl.to_node(db);
+        Some((decl.file_id(), ast))
     }
 
     pub(crate) fn import_source_impl(
@@ -76,7 +74,7 @@ impl Module {
         import: ImportId,
     ) -> TreeArc<ast::PathSegment> {
         let (file_id, source) = self.definition_source(db);
-        let (_, source_map) = db.raw_items_with_source_map(file_id.original_file(db));
+        let (_, source_map) = db.raw_items_with_source_map(file_id);
         source_map.get(&source, import)
     }
 
@@ -107,20 +105,5 @@ impl Module {
         let def_map = db.crate_def_map(self.krate);
         let parent_id = def_map[self.module_id].parent?;
         Some(self.with_module_id(parent_id))
-    }
-
-    pub(crate) fn problems_impl(
-        &self,
-        db: &impl HirDatabase,
-    ) -> Vec<(TreeArc<SyntaxNode>, Problem)> {
-        let def_map = db.crate_def_map(self.krate);
-        let (my_file_id, _) = self.definition_source(db);
-        // FIXME: not entirely corret filterint by module
-        def_map
-            .problems()
-            .iter()
-            .filter(|(source_item_id, _problem)| my_file_id == source_item_id.file_id)
-            .map(|(source_item_id, problem)| (db.file_item(*source_item_id), problem.clone()))
-            .collect()
     }
 }

@@ -1,10 +1,11 @@
+use std::cell::RefCell;
+
 use itertools::Itertools;
-use hir::{Problem, source_binder};
+use hir::{source_binder, diagnostics::{Diagnostic as _, DiagnosticSink}};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
     ast::{self, AstNode},
-
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
 
@@ -26,11 +27,31 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         check_unnecessary_braces_in_use_statement(&mut res, file_id, node);
         check_struct_shorthand_initialization(&mut res, file_id, node);
     }
-
+    let res = RefCell::new(res);
+    let mut sink = DiagnosticSink::new(|d| {
+        res.borrow_mut().push(Diagnostic {
+            message: d.message(),
+            range: d.highlight_range(),
+            severity: Severity::Error,
+            fix: None,
+        })
+    })
+    .on::<hir::diagnostics::UnresolvedModule, _>(|d| {
+        let source_root = db.file_source_root(d.file().original_file(db));
+        let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };
+        let fix = SourceChange::file_system_edit("create module", create_file);
+        res.borrow_mut().push(Diagnostic {
+            range: d.highlight_range(),
+            message: d.message(),
+            severity: Severity::Error,
+            fix: Some(fix),
+        })
+    });
     if let Some(m) = source_binder::module_from_file_id(db, file_id) {
-        check_module(&mut res, db, file_id, m);
+        m.diagnostics(db, &mut sink);
     };
-    res
+    drop(sink);
+    res.into_inner()
 }
 
 fn syntax_errors(acc: &mut Vec<Diagnostic>, source_file: &SourceFile) {
@@ -128,34 +149,12 @@ fn check_struct_shorthand_initialization(
     Some(())
 }
 
-fn check_module(
-    acc: &mut Vec<Diagnostic>,
-    db: &RootDatabase,
-    file_id: FileId,
-    module: hir::Module,
-) {
-    let source_root = db.file_source_root(file_id);
-    for (name_node, problem) in module.problems(db) {
-        let diag = match problem {
-            Problem::UnresolvedModule { candidate } => {
-                let create_file =
-                    FileSystemEdit::CreateFile { source_root, path: candidate.clone() };
-                let fix = SourceChange::file_system_edit("create module", create_file);
-                Diagnostic {
-                    range: name_node.range(),
-                    message: "unresolved module".to_string(),
-                    severity: Severity::Error,
-                    fix: Some(fix),
-                }
-            }
-        };
-        acc.push(diag)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use test_utils::assert_eq_text;
+    use insta::assert_debug_snapshot_matches;
+
+    use crate::mock_analysis::single_file;
 
     use super::*;
 
@@ -182,6 +181,34 @@ mod tests {
         let edit = fix.source_file_edits.pop().unwrap().edit;
         let actual = edit.apply(&before);
         assert_eq_text!(after, &actual);
+    }
+
+    #[test]
+    fn test_unresolved_module_diagnostic() {
+        let (analysis, file_id) = single_file("mod foo;");
+        let diagnostics = analysis.diagnostics(file_id).unwrap();
+        assert_debug_snapshot_matches!(diagnostics, @r####"[
+    Diagnostic {
+        message: "unresolved module",
+        range: [0; 8),
+        fix: Some(
+            SourceChange {
+                label: "create module",
+                source_file_edits: [],
+                file_system_edits: [
+                    CreateFile {
+                        source_root: SourceRootId(
+                            0
+                        ),
+                        path: "foo.rs"
+                    }
+                ],
+                cursor_position: None
+            }
+        ),
+        severity: Error
+    }
+]"####);
     }
 
     #[test]

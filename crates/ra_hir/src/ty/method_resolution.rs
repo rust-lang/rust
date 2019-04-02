@@ -8,12 +8,12 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     HirDatabase, Module, Crate, Name, Function, Trait,
-    ids::TraitId,
     impl_block::{ImplId, ImplBlock, ImplItem},
     ty::{Ty, TypeCtor},
-    nameres::CrateModuleId,
+    nameres::CrateModuleId, resolve::Resolver, traits::TraitItem
 
 };
+use super::{ TraitRef, Substs};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -38,7 +38,7 @@ pub struct CrateImplBlocks {
     /// To make sense of the CrateModuleIds, we need the source root.
     krate: Crate,
     impls: FxHashMap<TyFingerprint, Vec<(CrateModuleId, ImplId)>>,
-    impls_by_trait: FxHashMap<TraitId, Vec<(CrateModuleId, ImplId)>>,
+    impls_by_trait: FxHashMap<Trait, Vec<(CrateModuleId, ImplId)>>,
 }
 
 impl CrateImplBlocks {
@@ -56,8 +56,7 @@ impl CrateImplBlocks {
         &'a self,
         tr: &Trait,
     ) -> impl Iterator<Item = ImplBlock> + 'a {
-        let id = tr.id;
-        self.impls_by_trait.get(&id).into_iter().flat_map(|i| i.iter()).map(
+        self.impls_by_trait.get(&tr).into_iter().flat_map(|i| i.iter()).map(
             move |(module_id, impl_id)| {
                 let module = Module { krate: self.krate, module_id: *module_id };
                 ImplBlock::from_id(module, *impl_id)
@@ -73,18 +72,18 @@ impl CrateImplBlocks {
 
             let target_ty = impl_block.target_ty(db);
 
-            if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
-                self.impls
-                    .entry(target_ty_fp)
-                    .or_insert_with(Vec::new)
-                    .push((module.module_id, impl_id));
-            }
-
             if let Some(tr) = impl_block.target_trait(db) {
                 self.impls_by_trait
-                    .entry(tr.id)
+                    .entry(tr)
                     .or_insert_with(Vec::new)
                     .push((module.module_id, impl_id));
+            } else {
+                if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
+                    self.impls
+                        .entry(target_ty_fp)
+                        .or_insert_with(Vec::new)
+                        .push((module.module_id, impl_id));
+                }
             }
         }
 
@@ -109,6 +108,20 @@ impl CrateImplBlocks {
     }
 }
 
+/// Rudimentary check whether an impl exists for a given type and trait; this
+/// will actually be done by chalk.
+pub(crate) fn implements(db: &impl HirDatabase, trait_ref: TraitRef) -> bool {
+    // FIXME use all trait impls in the whole crate graph
+    let krate = trait_ref.trait_.module(db).krate(db);
+    let krate = match krate {
+        Some(krate) => krate,
+        None => return false,
+    };
+    let crate_impl_blocks = db.impls_in_crate(krate);
+    let mut impl_blocks = crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_ref.trait_);
+    impl_blocks.any(|impl_block| &impl_block.target_ty(db) == trait_ref.self_ty())
+}
+
 fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
@@ -120,20 +133,64 @@ fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
 }
 
 impl Ty {
-    // FIXME: cache this as a query?
-    // - if so, what signature? (TyFingerprint, Name)?
-    // - or maybe cache all names and def_ids of methods per fingerprint?
     /// Look up the method with the given name, returning the actual autoderefed
     /// receiver type (but without autoref applied yet).
-    pub fn lookup_method(self, db: &impl HirDatabase, name: &Name) -> Option<(Ty, Function)> {
-        self.iterate_methods(db, |ty, f| {
+    pub fn lookup_method(
+        self,
+        db: &impl HirDatabase,
+        name: &Name,
+        resolver: &Resolver,
+    ) -> Option<(Ty, Function)> {
+        // FIXME: trait methods should be used before autoderefs
+        let inherent_method = self.clone().iterate_methods(db, |ty, f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
                 Some((ty.clone(), f))
             } else {
                 None
             }
-        })
+        });
+        inherent_method.or_else(|| self.lookup_trait_method(db, name, resolver))
+    }
+
+    fn lookup_trait_method(
+        self,
+        db: &impl HirDatabase,
+        name: &Name,
+        resolver: &Resolver,
+    ) -> Option<(Ty, Function)> {
+        let mut candidates = Vec::new();
+        for t in resolver.traits_in_scope() {
+            let data = t.trait_data(db);
+            for item in data.items() {
+                match item {
+                    &TraitItem::Function(m) => {
+                        let sig = m.signature(db);
+                        if sig.name() == name && sig.has_self_param() {
+                            candidates.push((t, m));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        // FIXME:
+        //  - we might not actually be able to determine fully that the type
+        //    implements the trait here; it's enough if we (well, Chalk) determine
+        //    that it's possible.
+        //  - when the trait method is picked, we need to register an
+        //    'obligation' somewhere so that we later check that it's really
+        //    implemented
+        //  - both points go for additional requirements from where clauses as
+        //    well (in fact, the 'implements' condition could just be considered a
+        //    'where Self: Trait' clause)
+        candidates.retain(|(t, _m)| {
+            let trait_ref = TraitRef { trait_: *t, substs: Substs::single(self.clone()) };
+            db.implements(trait_ref)
+        });
+        // FIXME if there's multiple candidates here, that's an ambiguity error
+        let (_chosen_trait, chosen_method) = candidates.first()?;
+        Some((self.clone(), *chosen_method))
     }
 
     // This would be nicer if it just returned an iterator, but that runs into

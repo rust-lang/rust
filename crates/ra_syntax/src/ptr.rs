@@ -64,6 +64,12 @@ impl<N: AstNode> AstPtr<N> {
     }
 }
 
+impl<N: AstNode> From<AstPtr<N>> for SyntaxNodePtr {
+    fn from(ptr: AstPtr<N>) -> SyntaxNodePtr {
+        ptr.raw
+    }
+}
+
 #[test]
 fn test_local_syntax_ptr() {
     use crate::{ast, AstNode};

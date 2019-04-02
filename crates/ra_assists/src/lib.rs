@@ -88,11 +88,12 @@ where
 mod add_derive;
 mod add_impl;
 mod flip_comma;
-mod flip_eq_operands;
+mod flip_binexpr;
 mod change_visibility;
 mod fill_match_arms;
 mod fill_struct_fields;
 mod introduce_variable;
+mod inline_local_variable;
 mod replace_if_let_with_match;
 mod split_import;
 mod remove_dbg;
@@ -107,7 +108,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         fill_match_arms::fill_match_arms,
         fill_struct_fields::fill_struct_fields,
         flip_comma::flip_comma,
-        flip_eq_operands::flip_eq_operands,
+        flip_binexpr::flip_binexpr,
         introduce_variable::introduce_variable,
         replace_if_let_with_match::replace_if_let_with_match,
         split_import::split_import,
@@ -115,6 +116,7 @@ fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assis
         auto_import::auto_import,
         add_missing_impl_members::add_missing_impl_members,
         add_missing_impl_members::add_missing_default_members,
+        inline_local_variable::inline_local_varialbe,
     ]
 }
 

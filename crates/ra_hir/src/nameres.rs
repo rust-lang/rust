@@ -59,12 +59,16 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{FileId, Edition};
 use test_utils::tested_by;
+use ra_syntax::ast;
 use ra_prof::profile;
 
 use crate::{
-    ModuleDef, Name, Crate, Module, Problem,
-    DefDatabase, Path, PathKind, HirFileId,
-    ids::{SourceItemId, SourceFileItemId, MacroCallId},
+    ModuleDef, Name, Crate, Module,
+    DefDatabase, Path, PathKind, HirFileId, Trait,
+    ids::MacroDefId,
+    diagnostics::DiagnosticSink,
+    nameres::diagnostics::DefDiagnostic,
+    AstId,
 };
 
 pub(crate) use self::raw::{RawItems, ImportId, ImportSourceMap};
@@ -83,10 +87,8 @@ pub struct CrateDefMap {
     extern_prelude: FxHashMap<Name, ModuleDef>,
     root: CrateModuleId,
     modules: Arena<CrateModuleId, ModuleData>,
-    macros: Arena<CrateMacroId, mbe::MacroRules>,
-    public_macros: FxHashMap<Name, CrateMacroId>,
-    macro_resolutions: FxHashMap<MacroCallId, (Crate, CrateMacroId)>,
-    problems: CrateDefMapProblems,
+    public_macros: FxHashMap<Name, MacroDefId>,
+    diagnostics: Vec<DefDiagnostic>,
 }
 
 impl std::ops::Index<CrateModuleId> for CrateDefMap {
@@ -95,18 +97,6 @@ impl std::ops::Index<CrateModuleId> for CrateDefMap {
         &self.modules[id]
     }
 }
-
-impl std::ops::Index<CrateMacroId> for CrateDefMap {
-    type Output = mbe::MacroRules;
-    fn index(&self, id: CrateMacroId) -> &mbe::MacroRules {
-        &self.macros[id]
-    }
-}
-
-/// An ID of a macro, **local** to a specific crate
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(crate) struct CrateMacroId(RawId);
-impl_arena_id!(CrateMacroId);
 
 /// An ID of a module, **local** to a specific crate
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -119,26 +109,11 @@ pub(crate) struct ModuleData {
     pub(crate) children: FxHashMap<Name, CrateModuleId>,
     pub(crate) scope: ModuleScope,
     /// None for root
-    pub(crate) declaration: Option<SourceItemId>,
+    pub(crate) declaration: Option<AstId<ast::Module>>,
     /// None for inline modules.
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
     pub(crate) definition: Option<FileId>,
-}
-
-#[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct CrateDefMapProblems {
-    problems: Vec<(SourceItemId, Problem)>,
-}
-
-impl CrateDefMapProblems {
-    fn add(&mut self, source_item_id: SourceItemId, problem: Problem) {
-        self.problems.push((source_item_id, problem))
-    }
-
-    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (&'a SourceItemId, &'a Problem)> + 'a {
-        self.problems.iter().map(|(s, p)| (s, p))
-    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -152,6 +127,12 @@ impl ModuleScope {
     }
     pub fn get(&self, name: &Name) -> Option<&Resolution> {
         self.items.get(name)
+    }
+    pub fn traits<'a>(&'a self) -> impl Iterator<Item = Trait> + 'a {
+        self.items.values().filter_map(|r| match r.def.take_types() {
+            Some(ModuleDef::Trait(t)) => Some(t),
+            _ => None,
+        })
     }
 }
 
@@ -210,10 +191,8 @@ impl CrateDefMap {
                 prelude: None,
                 root,
                 modules,
-                macros: Arena::default(),
                 public_macros: FxHashMap::default(),
-                macro_resolutions: FxHashMap::default(),
-                problems: CrateDefMapProblems::default(),
+                diagnostics: Vec::new(),
             }
         };
         let def_map = collector::collect_defs(db, def_map);
@@ -222,10 +201,6 @@ impl CrateDefMap {
 
     pub(crate) fn root(&self) -> CrateModuleId {
         self.root
-    }
-
-    pub(crate) fn problems(&self) -> &CrateDefMapProblems {
-        &self.problems
     }
 
     pub(crate) fn mk_module(&self, module_id: CrateModuleId) -> Module {
@@ -240,19 +215,20 @@ impl CrateDefMap {
         &self.extern_prelude
     }
 
-    pub(crate) fn resolve_macro(
+    pub(crate) fn add_diagnostics(
         &self,
-        macro_call_id: MacroCallId,
-    ) -> Option<(Crate, CrateMacroId)> {
-        self.macro_resolutions.get(&macro_call_id).map(|&it| it)
+        db: &impl DefDatabase,
+        module: CrateModuleId,
+        sink: &mut DiagnosticSink,
+    ) {
+        self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
     }
 
     pub(crate) fn find_module_by_source(
         &self,
         file_id: HirFileId,
-        decl_id: Option<SourceFileItemId>,
+        decl_id: Option<AstId<ast::Module>>,
     ) -> Option<CrateModuleId> {
-        let decl_id = decl_id.map(|it| it.with_file_id(file_id));
         let (module_id, _module_data) = self.modules.iter().find(|(_module_id, module_data)| {
             if decl_id.is_some() {
                 module_data.declaration == decl_id
@@ -449,6 +425,49 @@ impl CrateDefMap {
             resolution.map(|r| r.def).unwrap_or_else(PerNs::none)
         } else {
             PerNs::none()
+        }
+    }
+}
+
+mod diagnostics {
+    use relative_path::RelativePathBuf;
+    use ra_syntax::{AstPtr, ast};
+
+    use crate::{
+        AstId, DefDatabase,
+        nameres::CrateModuleId,
+        diagnostics::{DiagnosticSink, UnresolvedModule},
+};
+
+    #[derive(Debug, PartialEq, Eq)]
+    pub(super) enum DefDiagnostic {
+        UnresolvedModule {
+            module: CrateModuleId,
+            declaration: AstId<ast::Module>,
+            candidate: RelativePathBuf,
+        },
+    }
+
+    impl DefDiagnostic {
+        pub(super) fn add_to(
+            &self,
+            db: &impl DefDatabase,
+            target_module: CrateModuleId,
+            sink: &mut DiagnosticSink,
+        ) {
+            match self {
+                DefDiagnostic::UnresolvedModule { module, declaration, candidate } => {
+                    if *module != target_module {
+                        return;
+                    }
+                    let decl = declaration.to_node(db);
+                    sink.push(UnresolvedModule {
+                        file: declaration.file_id(),
+                        decl: AstPtr::new(&decl),
+                        candidate: candidate.clone(),
+                    })
+                }
+            }
         }
     }
 }

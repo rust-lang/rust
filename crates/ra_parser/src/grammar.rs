@@ -184,6 +184,10 @@ fn name_ref(p: &mut Parser) {
         let m = p.start();
         p.bump();
         m.complete(p, NAME_REF);
+    } else if p.at(SELF_KW) {
+        let m = p.start();
+        p.bump();
+        m.complete(p, SELF_KW);
     } else {
         p.err_and_bump("expected identifier");
     }

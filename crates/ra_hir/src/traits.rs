@@ -1,0 +1,52 @@
+//! HIR for trait definitions.
+
+use std::sync::Arc;
+
+use ra_syntax::ast::{self, NameOwner};
+
+use crate::{Function, Const, TypeAlias, Name, DefDatabase, Trait, ids::LocationCtx, name::AsName};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraitData {
+    name: Option<Name>,
+    items: Vec<TraitItem>,
+}
+
+impl TraitData {
+    pub(crate) fn trait_data_query(db: &impl DefDatabase, tr: Trait) -> Arc<TraitData> {
+        let (file_id, node) = tr.source(db);
+        let name = node.name().map(|n| n.as_name());
+        let module = tr.module(db);
+        let ctx = LocationCtx::new(db, module, file_id);
+        let items = if let Some(item_list) = node.item_list() {
+            item_list
+                .impl_items()
+                .map(|item_node| match item_node.kind() {
+                    ast::ImplItemKind::FnDef(it) => Function { id: ctx.to_def(it) }.into(),
+                    ast::ImplItemKind::ConstDef(it) => Const { id: ctx.to_def(it) }.into(),
+                    ast::ImplItemKind::TypeAliasDef(it) => TypeAlias { id: ctx.to_def(it) }.into(),
+                })
+                .collect()
+        } else {
+            Vec::new()
+        };
+        Arc::new(TraitData { name, items })
+    }
+
+    pub(crate) fn name(&self) -> &Option<Name> {
+        &self.name
+    }
+
+    pub(crate) fn items(&self) -> &[TraitItem] {
+        &self.items
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TraitItem {
+    Function(Function),
+    Const(Const),
+    TypeAlias(TypeAlias),
+    // Existential
+}
+impl_froms!(TraitItem: Function, Const, TypeAlias);
