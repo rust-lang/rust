@@ -1,13 +1,13 @@
 SOURCE_FILE@[0; 16)
   TYPE_ALIAS_DEF@[0; 15)
-    TYPE_KW@[0; 4)
-    WHITESPACE@[4; 5)
+    TYPE_KW@[0; 4) "type"
+    WHITESPACE@[4; 5) " "
     NAME@[5; 10)
       IDENT@[5; 10) "Never"
-    WHITESPACE@[10; 11)
-    EQ@[11; 12)
-    WHITESPACE@[12; 13)
+    WHITESPACE@[10; 11) " "
+    EQ@[11; 12) "="
+    WHITESPACE@[12; 13) " "
     NEVER_TYPE@[13; 14)
-      EXCL@[13; 14)
-    SEMI@[14; 15)
-  WHITESPACE@[15; 16)
+      EXCL@[13; 14) "!"
+    SEMI@[14; 15) ";"
+  WHITESPACE@[15; 16) "\n"

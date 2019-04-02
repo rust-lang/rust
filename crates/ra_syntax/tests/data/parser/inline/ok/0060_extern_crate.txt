@@ -1,10 +1,10 @@
 SOURCE_FILE@[0; 18)
   EXTERN_CRATE_ITEM@[0; 17)
-    EXTERN_KW@[0; 6)
-    WHITESPACE@[6; 7)
-    CRATE_KW@[7; 12)
-    WHITESPACE@[12; 13)
+    EXTERN_KW@[0; 6) "extern"
+    WHITESPACE@[6; 7) " "
+    CRATE_KW@[7; 12) "crate"
+    WHITESPACE@[12; 13) " "
     NAME_REF@[13; 16)
       IDENT@[13; 16) "foo"
-    SEMI@[16; 17)
-  WHITESPACE@[17; 18)
+    SEMI@[16; 17) ";"
+  WHITESPACE@[17; 18) "\n"

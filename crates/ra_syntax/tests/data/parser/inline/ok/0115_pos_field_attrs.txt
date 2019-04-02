@@ -1,39 +1,39 @@
 SOURCE_FILE@[0; 60)
   STRUCT_DEF@[0; 59)
-    STRUCT_KW@[0; 6)
-    WHITESPACE@[6; 7)
+    STRUCT_KW@[0; 6) "struct"
+    WHITESPACE@[6; 7) " "
     NAME@[7; 8)
       IDENT@[7; 8) "S"
-    WHITESPACE@[8; 9)
+    WHITESPACE@[8; 9) " "
     POS_FIELD_DEF_LIST@[9; 58)
-      L_PAREN@[9; 10)
-      WHITESPACE@[10; 15)
+      L_PAREN@[9; 10) "("
+      WHITESPACE@[10; 15) "\n    "
       POS_FIELD_DEF@[15; 55)
         ATTR@[15; 43)
-          POUND@[15; 16)
+          POUND@[15; 16) "#"
           TOKEN_TREE@[16; 43)
-            L_BRACK@[16; 17)
+            L_BRACK@[16; 17) "["
             IDENT@[17; 22) "serde"
             TOKEN_TREE@[22; 42)
-              L_PAREN@[22; 23)
+              L_PAREN@[22; 23) "("
               IDENT@[23; 27) "with"
-              WHITESPACE@[27; 28)
-              EQ@[28; 29)
-              WHITESPACE@[29; 30)
-              STRING@[30; 41)
-              R_PAREN@[41; 42)
-            R_BRACK@[42; 43)
-        WHITESPACE@[43; 48)
+              WHITESPACE@[27; 28) " "
+              EQ@[28; 29) "="
+              WHITESPACE@[29; 30) " "
+              STRING@[30; 41) "\"url_serde\""
+              R_PAREN@[41; 42) ")"
+            R_BRACK@[42; 43) "]"
+        WHITESPACE@[43; 48) "\n    "
         VISIBILITY@[48; 51)
-          PUB_KW@[48; 51)
-        WHITESPACE@[51; 52)
+          PUB_KW@[48; 51) "pub"
+        WHITESPACE@[51; 52) " "
         PATH_TYPE@[52; 55)
           PATH@[52; 55)
             PATH_SEGMENT@[52; 55)
               NAME_REF@[52; 55)
                 IDENT@[52; 55) "Uri"
-      COMMA@[55; 56)
-      WHITESPACE@[56; 57)
-      R_PAREN@[57; 58)
-    SEMI@[58; 59)
-  WHITESPACE@[59; 60)
+      COMMA@[55; 56) ","
+      WHITESPACE@[56; 57) "\n"
+      R_PAREN@[57; 58) ")"
+    SEMI@[58; 59) ";"
+  WHITESPACE@[59; 60) "\n"

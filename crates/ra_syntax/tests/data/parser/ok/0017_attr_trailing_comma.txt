@@ -1,26 +1,26 @@
 SOURCE_FILE@[0; 23)
   FN_DEF@[0; 22)
     ATTR@[0; 10)
-      POUND@[0; 1)
+      POUND@[0; 1) "#"
       TOKEN_TREE@[1; 10)
-        L_BRACK@[1; 2)
+        L_BRACK@[1; 2) "["
         IDENT@[2; 5) "foo"
         TOKEN_TREE@[5; 9)
-          L_PAREN@[5; 6)
+          L_PAREN@[5; 6) "("
           IDENT@[6; 7) "a"
-          COMMA@[7; 8)
-          R_PAREN@[8; 9)
-        R_BRACK@[9; 10)
-    WHITESPACE@[10; 11)
-    FN_KW@[11; 13)
-    WHITESPACE@[13; 14)
+          COMMA@[7; 8) ","
+          R_PAREN@[8; 9) ")"
+        R_BRACK@[9; 10) "]"
+    WHITESPACE@[10; 11) "\n"
+    FN_KW@[11; 13) "fn"
+    WHITESPACE@[13; 14) " "
     NAME@[14; 17)
       IDENT@[14; 17) "foo"
     PARAM_LIST@[17; 19)
-      L_PAREN@[17; 18)
-      R_PAREN@[18; 19)
-    WHITESPACE@[19; 20)
+      L_PAREN@[17; 18) "("
+      R_PAREN@[18; 19) ")"
+    WHITESPACE@[19; 20) " "
     BLOCK@[20; 22)
-      L_CURLY@[20; 21)
-      R_CURLY@[21; 22)
-  WHITESPACE@[22; 23)
+      L_CURLY@[20; 21) "{"
+      R_CURLY@[21; 22) "}"
+  WHITESPACE@[22; 23) "\n"

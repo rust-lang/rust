@@ -1,16 +1,16 @@
 SOURCE_FILE@[0; 93)
-  COMMENT@[0; 60)
-  WHITESPACE@[60; 62)
+  COMMENT@[0; 60) "// https://github.com ..."
+  WHITESPACE@[60; 62) "\n\n"
   MODULE@[62; 93)
-    COMMENT@[62; 70)
-    WHITESPACE@[70; 71)
-    COMMENT@[71; 82)
-    WHITESPACE@[82; 83)
-    MOD_KW@[83; 86)
-    WHITESPACE@[86; 87)
+    COMMENT@[62; 70) "//! docs"
+    WHITESPACE@[70; 71) "\n"
+    COMMENT@[71; 82) "// non-docs"
+    WHITESPACE@[82; 83) "\n"
+    MOD_KW@[83; 86) "mod"
+    WHITESPACE@[86; 87) " "
     NAME@[87; 90)
       IDENT@[87; 90) "foo"
-    WHITESPACE@[90; 91)
+    WHITESPACE@[90; 91) " "
     ITEM_LIST@[91; 93)
-      L_CURLY@[91; 92)
-      R_CURLY@[92; 93)
+      L_CURLY@[91; 92) "{"
+      R_CURLY@[92; 93) "}"

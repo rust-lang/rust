@@ -1,16 +1,16 @@
 SOURCE_FILE@[0; 16)
   TYPE_ALIAS_DEF@[0; 15)
-    TYPE_KW@[0; 4)
-    WHITESPACE@[4; 5)
+    TYPE_KW@[0; 4) "type"
+    WHITESPACE@[4; 5) " "
     NAME@[5; 8)
       IDENT@[5; 8) "Foo"
-    WHITESPACE@[8; 9)
-    EQ@[9; 10)
-    WHITESPACE@[10; 11)
+    WHITESPACE@[8; 9) " "
+    EQ@[9; 10) "="
+    WHITESPACE@[10; 11) " "
     PATH_TYPE@[11; 14)
       PATH@[11; 14)
         PATH_SEGMENT@[11; 14)
           NAME_REF@[11; 14)
             IDENT@[11; 14) "Bar"
-    SEMI@[14; 15)
-  WHITESPACE@[15; 16)
+    SEMI@[14; 15) ";"
+  WHITESPACE@[15; 16) "\n"

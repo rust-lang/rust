@@ -1,18 +1,18 @@
 SOURCE_FILE@[0; 21)
   ERROR@[0; 2)
-    IF_KW@[0; 2)
+    IF_KW@[0; 2) "if"
     err: `expected an item`
-  WHITESPACE@[2; 3)
+  WHITESPACE@[2; 3) " "
   err: `expected an item`
   ERROR@[3; 8)
-    MATCH_KW@[3; 8)
-  WHITESPACE@[8; 10)
+    MATCH_KW@[3; 8) "match"
+  WHITESPACE@[8; 10) "\n\n"
   STRUCT_DEF@[10; 21)
-    STRUCT_KW@[10; 16)
-    WHITESPACE@[16; 17)
+    STRUCT_KW@[10; 16) "struct"
+    WHITESPACE@[16; 17) " "
     NAME@[17; 18)
       IDENT@[17; 18) "S"
-    WHITESPACE@[18; 19)
+    WHITESPACE@[18; 19) " "
     NAMED_FIELD_DEF_LIST@[19; 21)
-      L_CURLY@[19; 20)
-      R_CURLY@[20; 21)
+      L_CURLY@[19; 20) "{"
+      R_CURLY@[20; 21) "}"

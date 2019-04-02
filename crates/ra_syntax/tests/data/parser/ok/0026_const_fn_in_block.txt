@@ -1,30 +1,30 @@
 SOURCE_FILE@[0; 34)
   FN_DEF@[0; 33)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 7)
       IDENT@[3; 7) "main"
     PARAM_LIST@[7; 9)
-      L_PAREN@[7; 8)
-      R_PAREN@[8; 9)
-    WHITESPACE@[9; 10)
+      L_PAREN@[7; 8) "("
+      R_PAREN@[8; 9) ")"
+    WHITESPACE@[9; 10) " "
     BLOCK@[10; 33)
-      L_CURLY@[10; 11)
-      WHITESPACE@[11; 16)
+      L_CURLY@[10; 11) "{"
+      WHITESPACE@[11; 16) "\n    "
       FN_DEF@[16; 31)
-        CONST_KW@[16; 21)
-        WHITESPACE@[21; 22)
-        FN_KW@[22; 24)
-        WHITESPACE@[24; 25)
+        CONST_KW@[16; 21) "const"
+        WHITESPACE@[21; 22) " "
+        FN_KW@[22; 24) "fn"
+        WHITESPACE@[24; 25) " "
         NAME@[25; 26)
           IDENT@[25; 26) "f"
         PARAM_LIST@[26; 28)
-          L_PAREN@[26; 27)
-          R_PAREN@[27; 28)
-        WHITESPACE@[28; 29)
+          L_PAREN@[26; 27) "("
+          R_PAREN@[27; 28) ")"
+        WHITESPACE@[28; 29) " "
         BLOCK@[29; 31)
-          L_CURLY@[29; 30)
-          R_CURLY@[30; 31)
-      WHITESPACE@[31; 32)
-      R_CURLY@[32; 33)
-  WHITESPACE@[33; 34)
+          L_CURLY@[29; 30) "{"
+          R_CURLY@[30; 31) "}"
+      WHITESPACE@[31; 32) "\n"
+      R_CURLY@[32; 33) "}"
+  WHITESPACE@[33; 34) "\n"

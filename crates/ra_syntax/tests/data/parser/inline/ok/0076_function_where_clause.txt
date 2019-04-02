@@ -1,30 +1,30 @@
 SOURCE_FILE@[0; 29)
   FN_DEF@[0; 28)
-    FN_KW@[0; 2)
-    WHITESPACE@[2; 3)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
     NAME@[3; 6)
       IDENT@[3; 6) "foo"
     TYPE_PARAM_LIST@[6; 9)
-      L_ANGLE@[6; 7)
+      L_ANGLE@[6; 7) "<"
       TYPE_PARAM@[7; 8)
         NAME@[7; 8)
           IDENT@[7; 8) "T"
-      R_ANGLE@[8; 9)
+      R_ANGLE@[8; 9) ">"
     PARAM_LIST@[9; 11)
-      L_PAREN@[9; 10)
-      R_PAREN@[10; 11)
-    WHITESPACE@[11; 12)
+      L_PAREN@[9; 10) "("
+      R_PAREN@[10; 11) ")"
+    WHITESPACE@[11; 12) " "
     WHERE_CLAUSE@[12; 25)
-      WHERE_KW@[12; 17)
-      WHITESPACE@[17; 18)
+      WHERE_KW@[12; 17) "where"
+      WHITESPACE@[17; 18) " "
       WHERE_PRED@[18; 25)
         PATH_TYPE@[18; 19)
           PATH@[18; 19)
             PATH_SEGMENT@[18; 19)
               NAME_REF@[18; 19)
                 IDENT@[18; 19) "T"
-        COLON@[19; 20)
-        WHITESPACE@[20; 21)
+        COLON@[19; 20) ":"
+        WHITESPACE@[20; 21) " "
         TYPE_BOUND_LIST@[21; 25)
           TYPE_BOUND@[21; 25)
             PATH_TYPE@[21; 25)
@@ -32,8 +32,8 @@ SOURCE_FILE@[0; 29)
                 PATH_SEGMENT@[21; 25)
                   NAME_REF@[21; 25)
                     IDENT@[21; 25) "Copy"
-    WHITESPACE@[25; 26)
+    WHITESPACE@[25; 26) " "
     BLOCK@[26; 28)
-      L_CURLY@[26; 27)
-      R_CURLY@[27; 28)
-  WHITESPACE@[28; 29)
+      L_CURLY@[26; 27) "{"
+      R_CURLY@[27; 28) "}"
+  WHITESPACE@[28; 29) "\n"

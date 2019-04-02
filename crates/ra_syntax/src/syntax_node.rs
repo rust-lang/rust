@@ -319,10 +319,17 @@ pub struct SyntaxToken<'a>(pub(crate) rowan::SyntaxToken<'a, RaTypes>);
 impl<'a> fmt::Debug for SyntaxToken<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}@{:?}", self.kind(), self.range())?;
-        if has_short_text(self.kind()) {
-            write!(fmt, " \"{}\"", self.text())?;
+        if self.text().len() < 25 {
+            return write!(fmt, " {:?}", self.text());
         }
-        Ok(())
+        let text = self.text().as_str();
+        for idx in 21..25 {
+            if text.is_char_boundary(idx) {
+                let text = format!("{} ...", &text[..idx]);
+                return write!(fmt, " {:?}", text);
+            }
+        }
+        unreachable!()
     }
 }
 
@@ -496,14 +503,6 @@ impl<'a> Iterator for SyntaxElementChildren<'a> {
 
     fn next(&mut self) -> Option<SyntaxElement<'a>> {
         self.0.next().map(SyntaxElement::from)
-    }
-}
-
-fn has_short_text(kind: SyntaxKind) -> bool {
-    use crate::SyntaxKind::*;
-    match kind {
-        IDENT | LIFETIME | INT_NUMBER | FLOAT_NUMBER => true,
-        _ => false,
     }
 }
 

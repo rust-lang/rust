@@ -1,31 +1,31 @@
 SOURCE_FILE@[0; 250)
   USE_ITEM@[0; 58)
-    USE_KW@[0; 3)
-    WHITESPACE@[3; 4)
+    USE_KW@[0; 3) "use"
+    WHITESPACE@[3; 4) " "
     USE_TREE@[4; 57)
       USE_TREE_LIST@[4; 57)
-        L_CURLY@[4; 5)
+        L_CURLY@[4; 5) "{"
         USE_TREE@[5; 28)
           PATH@[5; 28)
             PATH@[5; 22)
               PATH@[5; 16)
                 PATH@[5; 10)
                   PATH_SEGMENT@[5; 10)
-                    CRATE_KW@[5; 10)
-                COLONCOLON@[10; 12)
+                    CRATE_KW@[5; 10) "crate"
+                COLONCOLON@[10; 12) "::"
                 PATH_SEGMENT@[12; 16)
                   NAME_REF@[12; 16)
                     IDENT@[12; 16) "path"
-              COLONCOLON@[16; 18)
+              COLONCOLON@[16; 18) "::"
               PATH_SEGMENT@[18; 22)
                 NAME_REF@[18; 22)
                   IDENT@[18; 22) "from"
-            COLONCOLON@[22; 24)
+            COLONCOLON@[22; 24) "::"
             PATH_SEGMENT@[24; 28)
               NAME_REF@[24; 28)
                 IDENT@[24; 28) "root"
-        COMMA@[28; 29)
-        WHITESPACE@[29; 30)
+        COMMA@[28; 29) ","
+        WHITESPACE@[29; 30) " "
         USE_TREE@[30; 56)
           PATH@[30; 56)
             PATH@[30; 44)
@@ -34,29 +34,29 @@ SOURCE_FILE@[0; 250)
                   PATH_SEGMENT@[30; 32)
                     NAME_REF@[30; 32)
                       IDENT@[30; 32) "or"
-                COLONCOLON@[32; 34)
+                COLONCOLON@[32; 34) "::"
                 PATH_SEGMENT@[34; 38)
                   NAME_REF@[34; 38)
                     IDENT@[34; 38) "path"
-              COLONCOLON@[38; 40)
+              COLONCOLON@[38; 40) "::"
               PATH_SEGMENT@[40; 44)
                 NAME_REF@[40; 44)
                   IDENT@[40; 44) "from"
-            COLONCOLON@[44; 46)
+            COLONCOLON@[44; 46) "::"
             PATH_SEGMENT@[46; 56)
               NAME_REF@[46; 56)
                 IDENT@[46; 56) "crate_name"
-        R_CURLY@[56; 57)
-    SEMI@[57; 58)
-  WHITESPACE@[58; 59)
-  COMMENT@[59; 97)
-  WHITESPACE@[97; 98)
+        R_CURLY@[56; 57) "}"
+    SEMI@[57; 58) ";"
+  WHITESPACE@[58; 59) " "
+  COMMENT@[59; 97) "// Rust 2018 (with a  ..."
+  WHITESPACE@[97; 98) "\n"
   USE_ITEM@[98; 121)
-    USE_KW@[98; 101)
-    WHITESPACE@[101; 102)
+    USE_KW@[98; 101) "use"
+    WHITESPACE@[101; 102) " "
     USE_TREE@[102; 120)
       USE_TREE_LIST@[102; 120)
-        L_CURLY@[102; 103)
+        L_CURLY@[102; 103) "{"
         USE_TREE@[103; 119)
           PATH@[103; 119)
             PATH@[103; 113)
@@ -64,26 +64,26 @@ SOURCE_FILE@[0; 250)
                 PATH_SEGMENT@[103; 107)
                   NAME_REF@[103; 107)
                     IDENT@[103; 107) "path"
-              COLONCOLON@[107; 109)
+              COLONCOLON@[107; 109) "::"
               PATH_SEGMENT@[109; 113)
                 NAME_REF@[109; 113)
                   IDENT@[109; 113) "from"
-            COLONCOLON@[113; 115)
+            COLONCOLON@[113; 115) "::"
             PATH_SEGMENT@[115; 119)
               NAME_REF@[115; 119)
                 IDENT@[115; 119) "root"
-        R_CURLY@[119; 120)
-    SEMI@[120; 121)
-  WHITESPACE@[121; 122)
-  COMMENT@[122; 134)
-  WHITESPACE@[134; 135)
+        R_CURLY@[119; 120) "}"
+    SEMI@[120; 121) ";"
+  WHITESPACE@[121; 122) " "
+  COMMENT@[122; 134) "// Rust 2015"
+  WHITESPACE@[134; 135) "\n"
   USE_ITEM@[135; 166)
-    USE_KW@[135; 138)
-    WHITESPACE@[138; 139)
+    USE_KW@[135; 138) "use"
+    WHITESPACE@[138; 139) " "
     USE_TREE@[139; 165)
-      COLONCOLON@[139; 141)
+      COLONCOLON@[139; 141) "::"
       USE_TREE_LIST@[141; 165)
-        L_CURLY@[141; 142)
+        L_CURLY@[141; 142) "{"
         USE_TREE@[142; 164)
           PATH@[142; 164)
             PATH@[142; 158)
@@ -91,45 +91,45 @@ SOURCE_FILE@[0; 250)
                 PATH_SEGMENT@[142; 146)
                   NAME_REF@[142; 146)
                     IDENT@[142; 146) "some"
-              COLONCOLON@[146; 148)
+              COLONCOLON@[146; 148) "::"
               PATH_SEGMENT@[148; 158)
                 NAME_REF@[148; 158)
                   IDENT@[148; 158) "arbritrary"
-            COLONCOLON@[158; 160)
+            COLONCOLON@[158; 160) "::"
             PATH_SEGMENT@[160; 164)
               NAME_REF@[160; 164)
                 IDENT@[160; 164) "path"
-        R_CURLY@[164; 165)
-    SEMI@[165; 166)
-  WHITESPACE@[166; 167)
-  COMMENT@[167; 179)
-  WHITESPACE@[179; 180)
+        R_CURLY@[164; 165) "}"
+    SEMI@[165; 166) ";"
+  WHITESPACE@[166; 167) " "
+  COMMENT@[167; 179) "// Rust 2015"
+  WHITESPACE@[179; 180) "\n"
   USE_ITEM@[180; 206)
-    USE_KW@[180; 183)
-    WHITESPACE@[183; 184)
+    USE_KW@[180; 183) "use"
+    WHITESPACE@[183; 184) " "
     USE_TREE@[184; 205)
-      COLONCOLON@[184; 186)
+      COLONCOLON@[184; 186) "::"
       USE_TREE_LIST@[186; 205)
-        L_CURLY@[186; 187)
+        L_CURLY@[186; 187) "{"
         USE_TREE@[187; 204)
           USE_TREE_LIST@[187; 204)
-            L_CURLY@[187; 188)
+            L_CURLY@[187; 188) "{"
             USE_TREE@[188; 203)
               USE_TREE_LIST@[188; 203)
-                L_CURLY@[188; 189)
+                L_CURLY@[188; 189) "{"
                 USE_TREE@[189; 202)
                   PATH@[189; 202)
                     PATH@[189; 194)
                       PATH_SEGMENT@[189; 194)
-                        CRATE_KW@[189; 194)
-                    COLONCOLON@[194; 196)
+                        CRATE_KW@[189; 194) "crate"
+                    COLONCOLON@[194; 196) "::"
                     PATH_SEGMENT@[196; 202)
                       NAME_REF@[196; 202)
                         IDENT@[196; 202) "export"
-                R_CURLY@[202; 203)
-            R_CURLY@[203; 204)
-        R_CURLY@[204; 205)
-    SEMI@[205; 206)
-  WHITESPACE@[206; 207)
-  COMMENT@[207; 249)
-  WHITESPACE@[249; 250)
+                R_CURLY@[202; 203) "}"
+            R_CURLY@[203; 204) "}"
+        R_CURLY@[204; 205) "}"
+    SEMI@[205; 206) ";"
+  WHITESPACE@[206; 207) " "
+  COMMENT@[207; 249) "// Nonsensical but pe ..."
+  WHITESPACE@[249; 250) "\n"

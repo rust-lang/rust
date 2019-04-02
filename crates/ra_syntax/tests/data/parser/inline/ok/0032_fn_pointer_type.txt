@@ -1,55 +1,55 @@
 SOURCE_FILE@[0; 70)
   TYPE_ALIAS_DEF@[0; 14)
-    TYPE_KW@[0; 4)
-    WHITESPACE@[4; 5)
+    TYPE_KW@[0; 4) "type"
+    WHITESPACE@[4; 5) " "
     NAME@[5; 6)
       IDENT@[5; 6) "A"
-    WHITESPACE@[6; 7)
-    EQ@[7; 8)
-    WHITESPACE@[8; 9)
+    WHITESPACE@[6; 7) " "
+    EQ@[7; 8) "="
+    WHITESPACE@[8; 9) " "
     FN_POINTER_TYPE@[9; 13)
-      FN_KW@[9; 11)
+      FN_KW@[9; 11) "fn"
       PARAM_LIST@[11; 13)
-        L_PAREN@[11; 12)
-        R_PAREN@[12; 13)
-    SEMI@[13; 14)
-  WHITESPACE@[14; 15)
+        L_PAREN@[11; 12) "("
+        R_PAREN@[12; 13) ")"
+    SEMI@[13; 14) ";"
+  WHITESPACE@[14; 15) "\n"
   TYPE_ALIAS_DEF@[15; 36)
-    TYPE_KW@[15; 19)
-    WHITESPACE@[19; 20)
+    TYPE_KW@[15; 19) "type"
+    WHITESPACE@[19; 20) " "
     NAME@[20; 21)
       IDENT@[20; 21) "B"
-    WHITESPACE@[21; 22)
-    EQ@[22; 23)
-    WHITESPACE@[23; 24)
+    WHITESPACE@[21; 22) " "
+    EQ@[22; 23) "="
+    WHITESPACE@[23; 24) " "
     FN_POINTER_TYPE@[24; 35)
-      UNSAFE_KW@[24; 30)
-      WHITESPACE@[30; 31)
-      FN_KW@[31; 33)
+      UNSAFE_KW@[24; 30) "unsafe"
+      WHITESPACE@[30; 31) " "
+      FN_KW@[31; 33) "fn"
       PARAM_LIST@[33; 35)
-        L_PAREN@[33; 34)
-        R_PAREN@[34; 35)
-    SEMI@[35; 36)
-  WHITESPACE@[36; 37)
+        L_PAREN@[33; 34) "("
+        R_PAREN@[34; 35) ")"
+    SEMI@[35; 36) ";"
+  WHITESPACE@[36; 37) "\n"
   TYPE_ALIAS_DEF@[37; 69)
-    TYPE_KW@[37; 41)
-    WHITESPACE@[41; 42)
+    TYPE_KW@[37; 41) "type"
+    WHITESPACE@[41; 42) " "
     NAME@[42; 43)
       IDENT@[42; 43) "C"
-    WHITESPACE@[43; 44)
-    EQ@[44; 45)
-    WHITESPACE@[45; 46)
+    WHITESPACE@[43; 44) " "
+    EQ@[44; 45) "="
+    WHITESPACE@[45; 46) " "
     FN_POINTER_TYPE@[46; 68)
-      UNSAFE_KW@[46; 52)
-      WHITESPACE@[52; 53)
+      UNSAFE_KW@[46; 52) "unsafe"
+      WHITESPACE@[52; 53) " "
       ABI@[53; 63)
-        EXTERN_KW@[53; 59)
-        WHITESPACE@[59; 60)
-        STRING@[60; 63)
-      WHITESPACE@[63; 64)
-      FN_KW@[64; 66)
+        EXTERN_KW@[53; 59) "extern"
+        WHITESPACE@[59; 60) " "
+        STRING@[60; 63) "\"C\""
+      WHITESPACE@[63; 64) " "
+      FN_KW@[64; 66) "fn"
       PARAM_LIST@[66; 68)
-        L_PAREN@[66; 67)
-        R_PAREN@[67; 68)
-    SEMI@[68; 69)
-  WHITESPACE@[69; 70)
+        L_PAREN@[66; 67) "("
+        R_PAREN@[67; 68) ")"
+    SEMI@[68; 69) ";"
+  WHITESPACE@[69; 70) "\n"

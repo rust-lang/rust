@@ -1,155 +1,155 @@
 SOURCE_FILE@[0; 182)
   ENUM_DEF@[0; 11)
-    ENUM_KW@[0; 4)
-    WHITESPACE@[4; 5)
+    ENUM_KW@[0; 4) "enum"
+    WHITESPACE@[4; 5) " "
     NAME@[5; 7)
       IDENT@[5; 7) "E1"
-    WHITESPACE@[7; 8)
+    WHITESPACE@[7; 8) " "
     ENUM_VARIANT_LIST@[8; 11)
-      L_CURLY@[8; 9)
-      WHITESPACE@[9; 10)
-      R_CURLY@[10; 11)
-  WHITESPACE@[11; 13)
+      L_CURLY@[8; 9) "{"
+      WHITESPACE@[9; 10) "\n"
+      R_CURLY@[10; 11) "}"
+  WHITESPACE@[11; 13) "\n\n"
   ENUM_DEF@[13; 27)
-    ENUM_KW@[13; 17)
-    WHITESPACE@[17; 18)
+    ENUM_KW@[13; 17) "enum"
+    WHITESPACE@[17; 18) " "
     NAME@[18; 20)
       IDENT@[18; 20) "E2"
     TYPE_PARAM_LIST@[20; 23)
-      L_ANGLE@[20; 21)
+      L_ANGLE@[20; 21) "<"
       TYPE_PARAM@[21; 22)
         NAME@[21; 22)
           IDENT@[21; 22) "T"
-      R_ANGLE@[22; 23)
-    WHITESPACE@[23; 24)
+      R_ANGLE@[22; 23) ">"
+    WHITESPACE@[23; 24) " "
     ENUM_VARIANT_LIST@[24; 27)
-      L_CURLY@[24; 25)
-      WHITESPACE@[25; 26)
-      R_CURLY@[26; 27)
-  WHITESPACE@[27; 29)
+      L_CURLY@[24; 25) "{"
+      WHITESPACE@[25; 26) "\n"
+      R_CURLY@[26; 27) "}"
+  WHITESPACE@[27; 29) "\n\n"
   ENUM_DEF@[29; 46)
-    ENUM_KW@[29; 33)
-    WHITESPACE@[33; 34)
+    ENUM_KW@[29; 33) "enum"
+    WHITESPACE@[33; 34) " "
     NAME@[34; 36)
       IDENT@[34; 36) "E3"
-    WHITESPACE@[36; 37)
+    WHITESPACE@[36; 37) " "
     ENUM_VARIANT_LIST@[37; 46)
-      L_CURLY@[37; 38)
-      WHITESPACE@[38; 43)
+      L_CURLY@[37; 38) "{"
+      WHITESPACE@[38; 43) "\n    "
       ENUM_VARIANT@[43; 44)
         NAME@[43; 44)
           IDENT@[43; 44) "X"
-      WHITESPACE@[44; 45)
-      R_CURLY@[45; 46)
-  WHITESPACE@[46; 48)
+      WHITESPACE@[44; 45) "\n"
+      R_CURLY@[45; 46) "}"
+  WHITESPACE@[46; 48) "\n\n"
   ENUM_DEF@[48; 66)
-    ENUM_KW@[48; 52)
-    WHITESPACE@[52; 53)
+    ENUM_KW@[48; 52) "enum"
+    WHITESPACE@[52; 53) " "
     NAME@[53; 55)
       IDENT@[53; 55) "E4"
-    WHITESPACE@[55; 56)
+    WHITESPACE@[55; 56) " "
     ENUM_VARIANT_LIST@[56; 66)
-      L_CURLY@[56; 57)
-      WHITESPACE@[57; 62)
+      L_CURLY@[56; 57) "{"
+      WHITESPACE@[57; 62) "\n    "
       ENUM_VARIANT@[62; 63)
         NAME@[62; 63)
           IDENT@[62; 63) "X"
-      COMMA@[63; 64)
-      WHITESPACE@[64; 65)
-      R_CURLY@[65; 66)
-  WHITESPACE@[66; 68)
+      COMMA@[63; 64) ","
+      WHITESPACE@[64; 65) "\n"
+      R_CURLY@[65; 66) "}"
+  WHITESPACE@[66; 68) "\n\n"
   ENUM_DEF@[68; 181)
-    ENUM_KW@[68; 72)
-    WHITESPACE@[72; 73)
+    ENUM_KW@[68; 72) "enum"
+    WHITESPACE@[72; 73) " "
     NAME@[73; 75)
       IDENT@[73; 75) "E5"
-    WHITESPACE@[75; 76)
+    WHITESPACE@[75; 76) " "
     ENUM_VARIANT_LIST@[76; 181)
-      L_CURLY@[76; 77)
-      WHITESPACE@[77; 82)
+      L_CURLY@[76; 77) "{"
+      WHITESPACE@[77; 82) "\n    "
       ENUM_VARIANT@[82; 83)
         NAME@[82; 83)
           IDENT@[82; 83) "A"
-      COMMA@[83; 84)
-      WHITESPACE@[84; 89)
+      COMMA@[83; 84) ","
+      WHITESPACE@[84; 89) "\n    "
       ENUM_VARIANT@[89; 95)
         NAME@[89; 90)
           IDENT@[89; 90) "B"
-        WHITESPACE@[90; 91)
-        EQ@[91; 92)
-        WHITESPACE@[92; 93)
+        WHITESPACE@[90; 91) " "
+        EQ@[91; 92) "="
+        WHITESPACE@[92; 93) " "
         LITERAL@[93; 95)
           INT_NUMBER@[93; 95) "92"
-      COMMA@[95; 96)
-      WHITESPACE@[96; 101)
+      COMMA@[95; 96) ","
+      WHITESPACE@[96; 101) "\n    "
       ENUM_VARIANT@[101; 146)
         NAME@[101; 102)
           IDENT@[101; 102) "C"
-        WHITESPACE@[102; 103)
+        WHITESPACE@[102; 103) " "
         NAMED_FIELD_DEF_LIST@[103; 146)
-          L_CURLY@[103; 104)
-          WHITESPACE@[104; 113)
+          L_CURLY@[103; 104) "{"
+          WHITESPACE@[104; 113) "\n        "
           NAMED_FIELD_DEF@[113; 119)
             NAME@[113; 114)
               IDENT@[113; 114) "a"
-            COLON@[114; 115)
-            WHITESPACE@[115; 116)
+            COLON@[114; 115) ":"
+            WHITESPACE@[115; 116) " "
             PATH_TYPE@[116; 119)
               PATH@[116; 119)
                 PATH_SEGMENT@[116; 119)
                   NAME_REF@[116; 119)
                     IDENT@[116; 119) "u32"
-          COMMA@[119; 120)
-          WHITESPACE@[120; 129)
+          COMMA@[119; 120) ","
+          WHITESPACE@[120; 129) "\n        "
           NAMED_FIELD_DEF@[129; 139)
             VISIBILITY@[129; 132)
-              PUB_KW@[129; 132)
-            WHITESPACE@[132; 133)
+              PUB_KW@[129; 132) "pub"
+            WHITESPACE@[132; 133) " "
             NAME@[133; 134)
               IDENT@[133; 134) "b"
-            COLON@[134; 135)
-            WHITESPACE@[135; 136)
+            COLON@[134; 135) ":"
+            WHITESPACE@[135; 136) " "
             PATH_TYPE@[136; 139)
               PATH@[136; 139)
                 PATH_SEGMENT@[136; 139)
                   NAME_REF@[136; 139)
                     IDENT@[136; 139) "f64"
-          COMMA@[139; 140)
-          WHITESPACE@[140; 145)
-          R_CURLY@[145; 146)
-      COMMA@[146; 147)
-      WHITESPACE@[147; 152)
+          COMMA@[139; 140) ","
+          WHITESPACE@[140; 145) "\n    "
+          R_CURLY@[145; 146) "}"
+      COMMA@[146; 147) ","
+      WHITESPACE@[147; 152) "\n    "
       ENUM_VARIANT@[152; 156)
         NAME@[152; 153)
           IDENT@[152; 153) "F"
-        WHITESPACE@[153; 154)
+        WHITESPACE@[153; 154) " "
         NAMED_FIELD_DEF_LIST@[154; 156)
-          L_CURLY@[154; 155)
-          R_CURLY@[155; 156)
-      COMMA@[156; 157)
-      WHITESPACE@[157; 162)
+          L_CURLY@[154; 155) "{"
+          R_CURLY@[155; 156) "}"
+      COMMA@[156; 157) ","
+      WHITESPACE@[157; 162) "\n    "
       ENUM_VARIANT@[162; 169)
         NAME@[162; 163)
           IDENT@[162; 163) "D"
         POS_FIELD_DEF_LIST@[163; 169)
-          L_PAREN@[163; 164)
+          L_PAREN@[163; 164) "("
           POS_FIELD_DEF@[164; 167)
             PATH_TYPE@[164; 167)
               PATH@[164; 167)
                 PATH_SEGMENT@[164; 167)
                   NAME_REF@[164; 167)
                     IDENT@[164; 167) "u32"
-          COMMA@[167; 168)
-          R_PAREN@[168; 169)
-      COMMA@[169; 170)
-      WHITESPACE@[170; 175)
+          COMMA@[167; 168) ","
+          R_PAREN@[168; 169) ")"
+      COMMA@[169; 170) ","
+      WHITESPACE@[170; 175) "\n    "
       ENUM_VARIANT@[175; 178)
         NAME@[175; 176)
           IDENT@[175; 176) "E"
         POS_FIELD_DEF_LIST@[176; 178)
-          L_PAREN@[176; 177)
-          R_PAREN@[177; 178)
-      COMMA@[178; 179)
-      WHITESPACE@[179; 180)
-      R_CURLY@[180; 181)
-  WHITESPACE@[181; 182)
+          L_PAREN@[176; 177) "("
+          R_PAREN@[177; 178) ")"
+      COMMA@[178; 179) ","
+      WHITESPACE@[179; 180) "\n"
+      R_CURLY@[180; 181) "}"
+  WHITESPACE@[181; 182) "\n"
