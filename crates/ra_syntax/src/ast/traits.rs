@@ -107,11 +107,13 @@ pub trait DocCommentsOwner: AstNode {
     /// Returns the textual content of a doc comment block as a single string.
     /// That is, strips leading `///` (+ optional 1 character of whitespace)
     /// and joins lines.
-    fn doc_comment_text(&self) -> Option<std::string::String> {
+    fn doc_comment_text(&self) -> Option<String> {
+        let mut has_comments = false;
         let docs = self
             .doc_comments()
             .filter(|comment| comment.is_doc_comment())
             .map(|comment| {
+                has_comments = true;
                 let prefix_len = comment.prefix().len();
 
                 let line = comment.text().as_str();
@@ -128,10 +130,10 @@ pub trait DocCommentsOwner: AstNode {
             })
             .join("\n");
 
-        if docs.is_empty() {
-            None
-        } else {
+        if has_comments {
             Some(docs)
+        } else {
+            None
         }
     }
 }
