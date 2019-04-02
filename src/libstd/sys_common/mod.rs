@@ -28,6 +28,15 @@ macro_rules! rtassert {
     })
 }
 
+#[allow(unused_macros)] // not used on all platforms
+macro_rules! rtunwrap {
+    ($ok:ident, $e:expr) => (if let $ok(v) = $e {
+        v
+    } else {
+        rtabort!(concat!("unwrap failed: ", stringify!($e)));
+    })
+}
+
 pub mod alloc;
 pub mod at_exit_imp;
 #[cfg(feature = "backtrace")]

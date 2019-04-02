@@ -139,7 +139,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
                     return ret;
                 }
             }
-            panic!("Failed to obtain random data");
+            rtabort!("Failed to obtain random data");
         }
     }
     (rdrand64(), rdrand64())
