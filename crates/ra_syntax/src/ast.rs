@@ -30,6 +30,25 @@ pub trait AstNode:
     fn syntax(&self) -> &SyntaxNode;
 }
 
+#[derive(Debug)]
+pub struct AstChildren<'a, N> {
+    inner: SyntaxNodeChildren<'a>,
+    ph: PhantomData<N>,
+}
+
+impl<'a, N> AstChildren<'a, N> {
+    fn new(parent: &'a SyntaxNode) -> Self {
+        AstChildren { inner: parent.children(), ph: PhantomData }
+    }
+}
+
+impl<'a, N: AstNode + 'a> Iterator for AstChildren<'a, N> {
+    type Item = &'a N;
+    fn next(&mut self) -> Option<&'a N> {
+        self.inner.by_ref().find_map(N::cast)
+    }
+}
+
 impl Attr {
     pub fn is_inner(&self) -> bool {
         let tt = match self.value() {
@@ -329,29 +348,6 @@ fn child_opt<P: AstNode, C: AstNode>(parent: &P) -> Option<&C> {
 
 fn children<P: AstNode, C: AstNode>(parent: &P) -> AstChildren<C> {
     AstChildren::new(parent.syntax())
-}
-
-#[derive(Debug)]
-pub struct AstChildren<'a, N> {
-    inner: SyntaxNodeChildren<'a>,
-    ph: PhantomData<N>,
-}
-
-impl<'a, N> AstChildren<'a, N> {
-    fn new(parent: &'a SyntaxNode) -> Self {
-        AstChildren { inner: parent.children(), ph: PhantomData }
-    }
-}
-
-impl<'a, N: AstNode + 'a> Iterator for AstChildren<'a, N> {
-    type Item = &'a N;
-    fn next(&mut self) -> Option<&'a N> {
-        loop {
-            if let Some(n) = N::cast(self.inner.next()?) {
-                return Some(n);
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
