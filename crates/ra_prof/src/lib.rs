@@ -52,6 +52,12 @@ pub struct Filter {
     allowed: Vec<String>,
 }
 
+impl Filter {
+    pub fn new(depth: usize, allowed: Vec<String>) -> Filter {
+        Filter { depth, allowed }
+    }
+}
+
 struct ProfileStack {
     starts: Vec<Instant>,
     messages: Vec<Message>,

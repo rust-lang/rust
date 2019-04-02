@@ -3,6 +3,7 @@ use flexi_logger::{Duplicate, Logger};
 use gen_lsp_server::{run_server, stdio_transport};
 
 use ra_lsp_server::{Result, InitializationOptions};
+use ra_prof;
 
 fn main() -> Result<()> {
     ::std::env::set_var("RUST_BACKTRACE", "short");
@@ -11,6 +12,15 @@ fn main() -> Result<()> {
         Ok(ref v) if v == "1" => logger.log_to_file().directory("log").start()?,
         _ => logger.start()?,
     };
+    let prof_depth = match ::std::env::var("RA_PROFILE_DEPTH") {
+        Ok(ref d) => d.parse()?,
+        _ => 0,
+    };
+    let profile_allowed = match ::std::env::var("RA_PROFILE") {
+        Ok(ref p) => p.split(";").map(String::from).collect(),
+        _ => Vec::new(),
+    };
+    ra_prof::set_filter(ra_prof::Filter::new(prof_depth, profile_allowed));
     log::info!("lifecycle: server started");
     match ::std::panic::catch_unwind(main_inner) {
         Ok(res) => {
