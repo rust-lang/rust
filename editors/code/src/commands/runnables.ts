@@ -137,11 +137,11 @@ export async function handleSingle(runnable: Runnable) {
 export async function interactivelyStartCargoWatch(
     context: vscode.ExtensionContext
 ) {
-    if (Server.config.enableCargoWatchOnStartup === 'disabled') {
+    if (Server.config.cargoWatchOptions.enableOnStartup === 'disabled') {
         return;
     }
 
-    if (Server.config.enableCargoWatchOnStartup === 'ask') {
+    if (Server.config.cargoWatchOptions.enableOnStartup === 'ask') {
         const watch = await vscode.window.showInformationMessage(
             'Start watching changes with cargo? (Executes `cargo watch`, provides inline diagnostics)',
             'yes',

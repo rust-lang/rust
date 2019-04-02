@@ -194,6 +194,17 @@
                     ],
                     "default": "off",
                     "description": "Trace requests to the ra_lsp_server"
+                },
+                "rust-analyzer.trace.cargo-watch": {
+                    "type": "string",
+                    "scope": "window",
+                    "enum": [
+                        "off",
+                        "error",
+                        "verbose"
+                    ],
+                    "default": "off",
+                    "description": "Trace output of cargo-watch"
                 }
             }
         },

@@ -60,6 +60,7 @@ for details.
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
   watch` for live error highlighting (note, this **does not** use rust-analyzer)
 * `rust-analyzer.trace.server`: enables internal logging
+* `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
 
 
 ## Emacs

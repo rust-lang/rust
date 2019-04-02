@@ -1,6 +1,7 @@
 import * as child_process from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
+import { Server } from '../server';
 import { terminate } from '../utils/processes';
 import { StatusDisplay } from './watch_status';
 
@@ -10,6 +11,7 @@ export class CargoWatchProvider {
     private cargoProcess?: child_process.ChildProcess;
     private outBuffer: string = '';
     private statusDisplay?: StatusDisplay;
+    private outputChannel?: vscode.OutputChannel;
 
     public activate(subscriptions: vscode.Disposable[]) {
         subscriptions.push(this);
@@ -18,7 +20,10 @@ export class CargoWatchProvider {
         );
 
         this.statusDisplay = new StatusDisplay(subscriptions);
-
+        this.outputChannel = vscode.window.createOutputChannel(
+            'Cargo Watch Trace'
+        );
+            
         // Start the cargo watch with json message
         this.cargoProcess = child_process.spawn(
             'cargo',
@@ -31,17 +36,23 @@ export class CargoWatchProvider {
         );
 
         this.cargoProcess.stdout.on('data', (s: string) => {
-            this.processOutput(s);
-            console.log(s);
+            this.processOutput(s, (line) => {
+                this.logInfo(line);
+                this.parseLine(line);
+            });
         });
 
         this.cargoProcess.stderr.on('data', (s: string) => {
-            console.error('Error on cargo watch : ' + s);
+            this.processOutput(s, (line) => {
+                this.logError('Error on cargo-watch : {\n' + line + '}\n' );
+            });
         });
 
         this.cargoProcess.on('error', (err: Error) => {
-            console.error('Error on spawn cargo process : ' + err);
+            this.logError('Error on cargo-watch process : {\n' + err.message + '}\n');
         });
+
+        this.logInfo('cargo-watch started.');
     }
 
     public dispose(): void {
@@ -54,6 +65,22 @@ export class CargoWatchProvider {
             this.cargoProcess.kill();
             terminate(this.cargoProcess);
         }
+
+        if(this.outputChannel) {
+            this.outputChannel.dispose();
+        }
+    }
+
+    private logInfo(line: string) {
+        if (Server.config.cargoWatchOptions.trace === 'verbose') {
+            this.outputChannel!.append(line);
+        }                
+    }
+
+    private logError(line: string) {
+        if (Server.config.cargoWatchOptions.trace === 'error' || Server.config.cargoWatchOptions.trace === 'verbose' ) {
+            this.outputChannel!.append(line);
+        }                
     }
 
     private parseLine(line: string) {
@@ -124,14 +151,14 @@ export class CargoWatchProvider {
         }
     }
 
-    private processOutput(chunk: string) {
+    private processOutput(chunk: string, cb: (line: string) => void  ) {
         // The stdout is not line based, convert it to line based for proceess.
         this.outBuffer += chunk;
         let eolIndex = this.outBuffer.indexOf('\n');
         while (eolIndex >= 0) {
             // line includes the EOL
             const line = this.outBuffer.slice(0, eolIndex + 1);
-            this.parseLine(line);
+            cb(line);
             this.outBuffer = this.outBuffer.slice(eolIndex + 1);
 
             eolIndex = this.outBuffer.indexOf('\n');
