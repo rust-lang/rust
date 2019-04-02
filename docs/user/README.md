@@ -59,6 +59,8 @@ for details.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
   watch` for live error highlighting (note, this **does not** use rust-analyzer)
+* `rust-analyzer.cargo-watch.check-arguments`: cargo-watch check arguments. 
+  (e.g: `--features="shumway,pdf"` will run as `cargo watch -x "check --features="shumway,pdf""` )  
 * `rust-analyzer.trace.server`: enables internal logging
 * `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
 

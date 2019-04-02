@@ -184,6 +184,11 @@
                     ],
                     "description": "Whether to run `cargo watch` on startup"
                 },
+                "rust-analyzer.cargo-watch.check-arguments": {
+                    "type": "string",
+                    "description": "`cargo-watch` check arguments. (e.g: `--features=\"shumway,pdf\"` will run as `cargo watch -x \"check --features=\"shumway,pdf\"\"` )",
+                    "default": ""
+                },
                 "rust-analyzer.trace.server": {
                     "type": "string",
                     "scope": "window",
@@ -191,6 +196,11 @@
                         "off",
                         "messages",
                         "verbose"
+                    ],
+                    "enumDescriptions": [
+                        "No traces",
+                        "Error only",
+                        "Full log"
                     ],
                     "default": "off",
                     "description": "Trace requests to the ra_lsp_server"

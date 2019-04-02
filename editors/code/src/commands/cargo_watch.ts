@@ -3,8 +3,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { Server } from '../server';
 import { terminate } from '../utils/processes';
+import { LineBuffer } from './line_buffer';
 import { StatusDisplay } from './watch_status';
-
 
 export class CargoWatchProvider {
     private diagnosticCollection?: vscode.DiagnosticCollection;
@@ -23,33 +23,44 @@ export class CargoWatchProvider {
         this.outputChannel = vscode.window.createOutputChannel(
             'Cargo Watch Trace'
         );
-            
+
+        let args = '"check --message-format json';
+        if (Server.config.cargoWatchOptions.checkArguments.length > 0) {
+            // Excape the double quote string:
+            args += ' ' + Server.config.cargoWatchOptions.checkArguments;
+        }
+        args += '"';
+
         // Start the cargo watch with json message
         this.cargoProcess = child_process.spawn(
             'cargo',
-            ['watch', '-x', '\"check --message-format json\"'],
+            ['watch', '-x', args],
             {
                 stdio: ['ignore', 'pipe', 'pipe'],
                 cwd: vscode.workspace.rootPath,
-                windowsVerbatimArguments: true,
+                windowsVerbatimArguments: true
             }
         );
 
+        const stdoutData = new LineBuffer();
         this.cargoProcess.stdout.on('data', (s: string) => {
-            this.processOutput(s, (line) => {
+            stdoutData.processOutput(s, line => {
                 this.logInfo(line);
                 this.parseLine(line);
             });
         });
 
+        const stderrData = new LineBuffer();
         this.cargoProcess.stderr.on('data', (s: string) => {
-            this.processOutput(s, (line) => {
-                this.logError('Error on cargo-watch : {\n' + line + '}\n' );
+            stderrData.processOutput(s, line => {
+                this.logError('Error on cargo-watch : {\n' + line + '}\n');
             });
         });
 
         this.cargoProcess.on('error', (err: Error) => {
-            this.logError('Error on cargo-watch process : {\n' + err.message + '}\n');
+            this.logError(
+                'Error on cargo-watch process : {\n' + err.message + '}\n'
+            );
         });
 
         this.logInfo('cargo-watch started.');
@@ -66,7 +77,7 @@ export class CargoWatchProvider {
             terminate(this.cargoProcess);
         }
 
-        if(this.outputChannel) {
+        if (this.outputChannel) {
             this.outputChannel.dispose();
         }
     }
@@ -74,13 +85,16 @@ export class CargoWatchProvider {
     private logInfo(line: string) {
         if (Server.config.cargoWatchOptions.trace === 'verbose') {
             this.outputChannel!.append(line);
-        }                
+        }
     }
 
     private logError(line: string) {
-        if (Server.config.cargoWatchOptions.trace === 'error' || Server.config.cargoWatchOptions.trace === 'verbose' ) {
+        if (
+            Server.config.cargoWatchOptions.trace === 'error' ||
+            Server.config.cargoWatchOptions.trace === 'verbose'
+        ) {
             this.outputChannel!.append(line);
-        }                
+        }
     }
 
     private parseLine(line: string) {
@@ -105,12 +119,32 @@ export class CargoWatchProvider {
             return vscode.DiagnosticSeverity.Information;
         }
 
+        interface ErrorSpan {
+            line_start: number;
+            line_end: number;
+            column_start: number;
+            column_end: number;
+        }
+
+        interface ErrorMessage {
+            reason: string;
+            message: {
+                spans: ErrorSpan[];
+                rendered: string;
+                level: string;
+                code?: {
+                    code: string;
+                };
+            };
+        }
+
         // cargo-watch itself output non json format
         // Ignore these lines
-        let data = null;
+        let data: ErrorMessage;
         try {
             data = JSON.parse(line.trim());
         } catch (error) {
+            this.logError(`Fail to pass to json : { ${error} }`);
             return;
         }
 
@@ -137,7 +171,9 @@ export class CargoWatchProvider {
             const diagnostic = new vscode.Diagnostic(range, rendered, level);
 
             diagnostic.source = 'rustc';
-            diagnostic.code = data.message.code.code;
+            diagnostic.code = data.message.code
+                ? data.message.code.code
+                : undefined;
             diagnostic.relatedInformation = [];
 
             const fileUrl = vscode.Uri.file(fileName!);
@@ -148,20 +184,6 @@ export class CargoWatchProvider {
             diagnostics.push(diagnostic);
 
             this.diagnosticCollection!.set(fileUrl, diagnostics);
-        }
-    }
-
-    private processOutput(chunk: string, cb: (line: string) => void  ) {
-        // The stdout is not line based, convert it to line based for proceess.
-        this.outBuffer += chunk;
-        let eolIndex = this.outBuffer.indexOf('\n');
-        while (eolIndex >= 0) {
-            // line includes the EOL
-            const line = this.outBuffer.slice(0, eolIndex + 1);
-            cb(line);
-            this.outBuffer = this.outBuffer.slice(eolIndex + 1);
-
-            eolIndex = this.outBuffer.indexOf('\n');
         }
     }
 }

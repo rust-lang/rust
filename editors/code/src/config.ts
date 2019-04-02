@@ -8,16 +8,21 @@ export type CargoWatchStartupOptions = 'ask' | 'enabled' | 'disabled';
 export type CargoWatchTraceOptions = 'off' | 'error' | 'verbose';
 
 export interface CargoWatchOptions {
-    enableOnStartup: CargoWatchStartupOptions,
-    trace: CargoWatchTraceOptions,
-};
+    enableOnStartup: CargoWatchStartupOptions;
+    checkArguments: string;
+    trace: CargoWatchTraceOptions;
+}
 
 export class Config {
     public highlightingOn = true;
     public enableEnhancedTyping = true;
     public raLspServerPath = RA_LSP_DEBUG || 'ra_lsp_server';
     public showWorkspaceLoadedNotification = true;
-    public cargoWatchOptions: CargoWatchOptions = { enableOnStartup: 'ask', trace: 'off' };
+    public cargoWatchOptions: CargoWatchOptions = {
+        enableOnStartup: 'ask',
+        trace: 'off',
+        checkArguments: ''
+    };
 
     private prevEnhancedTyping: null | boolean = null;
 
@@ -79,17 +84,23 @@ export class Config {
         }
 
         if (config.has('enableCargoWatchOnStartup')) {
-            this.cargoWatchOptions.enableOnStartup =
-                config.get<CargoWatchStartupOptions>(
-                    'enableCargoWatchOnStartup',
-                    'ask'
-                );
-            this.cargoWatchOptions.trace =
-                config.get<CargoWatchTraceOptions>(
-                    'trace.cargo-watch',
-                    'off'
-                );
+            this.cargoWatchOptions.enableOnStartup = config.get<
+                CargoWatchStartupOptions
+            >('enableCargoWatchOnStartup', 'ask');
+        }
 
+        if (config.has('trace.cargo-watch')) {
+            this.cargoWatchOptions.trace = config.get<CargoWatchTraceOptions>(
+                'trace.cargo-watch',
+                'off'
+            );
+        }
+
+        if (config.has('cargo-watch.check-arguments')) {
+            this.cargoWatchOptions.checkArguments = config.get<string>(
+                'cargo-watch.check-arguments',
+                ''
+            );
         }
     }
 }
