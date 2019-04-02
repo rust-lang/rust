@@ -326,7 +326,7 @@ fn check_terminator(
                     abi::Abi::Rust if tcx.is_min_const_fn(def_id) => {},
                     abi::Abi::Rust => return Err((
                         span,
-                        "can only call other `min_const_fn` within a `min_const_fn`".into(),
+                        "can only call other `const` within a `const`".into(),
                     )),
                     abi => return Err((
                         span,

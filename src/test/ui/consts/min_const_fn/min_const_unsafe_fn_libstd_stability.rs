@@ -12,14 +12,14 @@ const unsafe fn foo() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // can't call non-min_const_fn
-const unsafe fn bar() -> u32 { unsafe { foo() } } //~ ERROR can only call other `min_const_fn`
+const unsafe fn bar() -> u32 { unsafe { foo() } } //~ ERROR can only call other `const`
 
 #[unstable(feature = "rust1", issue="0")]
 const unsafe fn foo2() -> u32 { 42 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // can't call non-min_const_fn
-const unsafe fn bar2() -> u32 { unsafe { foo2() } } //~ ERROR can only call other `min_const_fn`
+const unsafe fn bar2() -> u32 { unsafe { foo2() } } //~ ERROR can only call other `const`
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // conformity is required, even with `const_fn` feature gate
