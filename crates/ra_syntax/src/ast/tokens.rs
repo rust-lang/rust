@@ -66,7 +66,7 @@ const COMMENT_PREFIX_TO_KIND: &[(&str, CommentKind)] = {
         ("///", CommentKind { shape: Line, doc: Some(Outer) }),
         ("//!", CommentKind { shape: Line, doc: Some(Inner) }),
         ("/**", CommentKind { shape: Block, doc: Some(Outer) }),
-        ("/**", CommentKind { shape: Block, doc: Some(Inner) }),
+        ("/*!", CommentKind { shape: Block, doc: Some(Inner) }),
         ("//", CommentKind { shape: Line, doc: None }),
         ("/*", CommentKind { shape: Block, doc: None }),
     ]
