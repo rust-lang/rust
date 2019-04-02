@@ -40,7 +40,6 @@ pub enum CheckInAllocMsg {
 }
 
 impl Display for CheckInAllocMsg {
-
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", match *self {
             CheckInAllocMsg::ReadCStr => "read C str",
