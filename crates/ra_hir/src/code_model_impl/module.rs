@@ -5,7 +5,7 @@ use crate::{
     Module, ModuleSource, Name, AstId,
     nameres::{CrateModuleId, ImportId},
     HirDatabase, DefDatabase,
-    HirFileId,
+    HirFileId, ImportSource,
 };
 
 impl ModuleSource {
@@ -72,7 +72,7 @@ impl Module {
         &self,
         db: &impl HirDatabase,
         import: ImportId,
-    ) -> TreeArc<ast::UseTree> {
+    ) -> ImportSource {
         let (file_id, source) = self.definition_source(db);
         let (_, source_map) = db.raw_items_with_source_map(file_id);
         source_map.get(&source, import)

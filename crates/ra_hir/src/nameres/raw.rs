@@ -31,21 +31,43 @@ pub struct RawItems {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImportSourceMap {
-    map: ArenaMap<ImportId, AstPtr<ast::UseTree>>,
+    map: ArenaMap<ImportId, ImportSourcePtr>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum ImportSourcePtr {
+    UseTree(AstPtr<ast::UseTree>),
+    ExternCrate(AstPtr<ast::ExternCrateItem>),
+}
+
+impl ImportSourcePtr {
+    fn to_node(self, file: &SourceFile) -> ImportSource {
+        match self {
+            ImportSourcePtr::UseTree(ptr) => ImportSource::UseTree(ptr.to_node(file).to_owned()),
+            ImportSourcePtr::ExternCrate(ptr) => {
+                ImportSource::ExternCrate(ptr.to_node(file).to_owned())
+            }
+        }
+    }
+}
+
+pub enum ImportSource {
+    UseTree(TreeArc<ast::UseTree>),
+    ExternCrate(TreeArc<ast::ExternCrateItem>),
 }
 
 impl ImportSourceMap {
-    fn insert(&mut self, import: ImportId, use_tree: &ast::UseTree) {
-        self.map.insert(import, AstPtr::new(use_tree))
+    fn insert(&mut self, import: ImportId, ptr: ImportSourcePtr) {
+        self.map.insert(import, ptr)
     }
 
-    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> TreeArc<ast::UseTree> {
+    pub(crate) fn get(&self, source: &ModuleSource, import: ImportId) -> ImportSource {
         let file = match source {
             ModuleSource::SourceFile(file) => &*file,
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
         };
 
-        self.map[import].to_node(file).to_owned()
+        self.map[import].to_node(file)
     }
 }
 
@@ -257,15 +279,13 @@ impl RawItemsCollector {
         let is_prelude = use_item.has_atom_attr("prelude_import");
 
         Path::expand_use_item(use_item, |path, use_tree, is_glob, alias| {
-            let import = self.raw_items.imports.alloc(ImportData {
-                path,
-                alias,
-                is_glob,
-                is_prelude,
-                is_extern_crate: false,
-            });
-            self.source_map.insert(import, use_tree);
-            self.push_item(current_module, RawItem::Import(import))
+            let import_data =
+                ImportData { path, alias, is_glob, is_prelude, is_extern_crate: false };
+            self.push_import(
+                current_module,
+                import_data,
+                ImportSourcePtr::UseTree(AstPtr::new(use_tree)),
+            );
         })
     }
 
@@ -277,14 +297,18 @@ impl RawItemsCollector {
         if let Some(name_ref) = extern_crate.name_ref() {
             let path = Path::from_name_ref(name_ref);
             let alias = extern_crate.alias().and_then(|a| a.name()).map(AsName::as_name);
-            let import = self.raw_items.imports.alloc(ImportData {
+            let import_data = ImportData {
                 path,
                 alias,
                 is_glob: false,
                 is_prelude: false,
                 is_extern_crate: true,
-            });
-            self.push_item(current_module, RawItem::Import(import))
+            };
+            self.push_import(
+                current_module,
+                import_data,
+                ImportSourcePtr::ExternCrate(AstPtr::new(extern_crate)),
+            );
         }
     }
 
@@ -299,6 +323,17 @@ impl RawItemsCollector {
         let export = m.has_atom_attr("macro_export");
         let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export });
         self.push_item(current_module, RawItem::Macro(m));
+    }
+
+    fn push_import(
+        &mut self,
+        current_module: Option<Module>,
+        data: ImportData,
+        source: ImportSourcePtr,
+    ) {
+        let import = self.raw_items.imports.alloc(data);
+        self.source_map.insert(import, source);
+        self.push_item(current_module, RawItem::Import(import))
     }
 
     fn push_item(&mut self, current_module: Option<Module>, item: RawItem) {
