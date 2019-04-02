@@ -3,14 +3,10 @@ set -ex
 # FIXME(japarix/xargo#186) this shouldn't be necessary
 export RUST_TARGET_PATH=`pwd`
 
-case $1 in
-    thumb*)
-        cargo=xargo
-        ;;
-    *)
-        cargo=cargo
-        ;;
-esac
+cargo=cargo
+if [ "$XARGO" = "1" ]; then
+  cargo=xargo
+fi
 
 INTRINSICS_FEATURES="c"
 
@@ -22,34 +18,31 @@ if [ -z "$INTRINSICS_FAILS_WITH_MEM_FEATURE" ]; then
 fi
 
 # Test our implementation
-case $1 in
-    thumb*)
-        run="xargo test --manifest-path testcrate/Cargo.toml --target $1"
-        for t in $(ls testcrate/tests); do
-            t=${t%.rs}
+if [ "$XARGO" = "1" ]; then
+    run="xargo test --manifest-path testcrate/Cargo.toml --target $1"
+    for t in $(ls testcrate/tests); do
+        t=${t%.rs}
 
-            RUSTFLAGS="-C debug-assertions=no -C lto" \
-            CARGO_INCREMENTAL=0 \
-              $run --test $t --no-default-features --features 'mem c' --no-run
-            qemu-arm-static target/${1}/debug/$t-*
-	done
+        RUSTFLAGS="-C debug-assertions=no -C lto" \
+        CARGO_INCREMENTAL=0 \
+          $run --test $t --no-default-features --features 'mem c' --no-run
+        qemu-arm-static target/${1}/debug/$t-*
+    done
 
-	for t in $(ls testcrate/tests); do
-            t=${t%.rs}
-            RUSTFLAGS="-C lto" \
-            CARGO_INCREMENTAL=0 \
-              $run --test $t --no-default-features --features 'mem c' --no-run --release
-            qemu-arm-static target/${1}/release/$t-*
-        done
-        ;;
-    *)
-        run="cargo test --manifest-path testcrate/Cargo.toml --target $1"
-        $run
-        $run --release
-        $run --features c
-        $run --features c --release
-        ;;
-esac
+    for t in $(ls testcrate/tests); do
+        t=${t%.rs}
+        RUSTFLAGS="-C lto" \
+        CARGO_INCREMENTAL=0 \
+          $run --test $t --no-default-features --features 'mem c' --no-run --release
+        qemu-arm-static target/${1}/release/$t-*
+    done
+else
+    run="cargo test --manifest-path testcrate/Cargo.toml --target $1"
+    $run
+    $run --release
+    $run --features c
+    $run --features c --release
+fi
 
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
 case $1 in

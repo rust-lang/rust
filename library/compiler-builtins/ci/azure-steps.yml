@@ -4,13 +4,23 @@ steps:
 
   - template: azure-install-rust.yml
 
+  - script: rustup component add rust-src
+    displayName: Install Rust sources
+    condition: eq( variables['XARGO'], '1' )
+
   - bash: rustup target add $TARGET
-    displayName: Install compilation target
+    displayName: Install Rust target
+    condition: ne( variables['XARGO'], '1' )
 
   - bash: ./ci/run.sh $TARGET
     condition: ne( variables['Agent.OS'], 'Linux' )
     displayName: Run test script
 
-  - bash: cargo generate-lockfile && ./ci/run-docker.sh $TARGET
+  - bash: |
+      if [ "$ONLY_BUILD" = "1" ]; then
+        cargo build --target $TARGET
+      else
+        cargo generate-lockfile && ./ci/run-docker.sh $TARGET
+      fi
     condition: eq( variables['Agent.OS'], 'Linux' )
     displayName: Run docker test script
