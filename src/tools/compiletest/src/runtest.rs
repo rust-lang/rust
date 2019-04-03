@@ -2820,12 +2820,15 @@ impl<'test> TestCx<'test> {
             // don't test rustfix with nll right now
         } else if self.config.rustfix_coverage {
             // Find out which tests have `MachineApplicable` suggestions but are missing
-            // `run-rustfix` or `run-rustfix-only-machine-applicable` headers
+            // `run-rustfix` or `run-rustfix-only-machine-applicable` headers.
+            //
+            // This will return an empty `Vec` in case the executed test file has a
+            // `compile-flags: --error-format=xxxx` header with a value other than `json`.
             let suggestions = get_suggestions_from_json(
                 &proc_res.stderr,
                 &HashSet::new(),
                 Filter::MachineApplicableOnly
-            ).unwrap();
+            ).unwrap_or_default();
             if suggestions.len() > 0
                 && !self.props.run_rustfix
                 && !self.props.rustfix_only_machine_applicable {
