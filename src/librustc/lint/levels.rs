@@ -413,6 +413,8 @@ impl<'a> LintLevelsBuilder<'a> {
         }
 
         for (id, &(level, ref src)) in specs.iter() {
+            self.lint_higher_minimum_attr_lint(id.lint, level, src, &specs);
+
             if level == Level::Forbid {
                 continue
             }
@@ -467,6 +469,43 @@ impl<'a> LintLevelsBuilder<'a> {
         BuilderPush {
             prev: prev,
             changed: prev != self.cur,
+        }
+    }
+
+    /// If we have e.g. `#[allow($some_future_compat_lint)]` this will have
+    /// no effect as `min_level > Allow`. We want to tell the user about this.
+    fn lint_higher_minimum_attr_lint(
+        &self,
+        lint: &'static Lint,
+        level: Level,
+        src: &LintSource,
+        specs: &FxHashMap<LintId, (Level, LintSource)>,
+    ) {
+        let min_level = lint.min_level;
+        if min_level <= level {
+            return;
+        }
+
+        if let LintSource::Node(name, _, span, _) = src {
+            // Get the `unused_attributes` lint specs:
+            let unused = builtin::UNUSED_ATTRIBUTES;
+            let (lvl, src) = self.sets.get_lint_level(unused, self.cur, Some(&specs), &self.sess);
+
+            // Construct base diagnostic for `unused_attributes`:
+            let level_str = level.as_str();
+            let msg = format!("#[{}({})] has no effect", level_str, name);
+            let multi_span = Some((*span).into());
+            let mut err = lint::struct_lint_level(self.sess, unused, lvl, src, multi_span, &msg);
+
+            // Add notes about minimum levels and what the user should do here:
+            err.note(&format!("the minimum lint level for `{}` is `{}`", name, min_level.as_str()))
+                .note(&format!("the lint level cannot be reduced to `{}`", level_str))
+                .help(&format!("remove the #[{}({})] directive", level_str, name));
+
+            // If it is a future compat lint, warn the user about it.
+            crate::lint::check_future_compatibility(self.sess, lint, &mut err, Some(name));
+
+            err.emit();
         }
     }
 

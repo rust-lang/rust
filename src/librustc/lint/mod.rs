@@ -33,7 +33,7 @@ use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
 use crate::util::nodemap::NodeMap;
 use errors::{DiagnosticBuilder, DiagnosticId};
-use std::{hash, ptr, cmp};
+use std::{hash, ptr, cmp, fmt};
 use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnFormat};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
@@ -770,31 +770,46 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 
     err.code(DiagnosticId::Lint(name));
 
+    check_future_compatibility(sess, lint, &mut err, Option::<&str>::None);
+
+    return err
+}
+
+/// Check for future incompatibility lints and issue a stronger warning.
+pub fn check_future_compatibility<'a>(
+    sess: &'a Session,
+    lint: &'static Lint,
+    err: &mut DiagnosticBuilder<'_>,
+    name: Option<impl fmt::Display>,
+) {
     // Check for future incompatibility lints and issue a stronger warning.
     let lints = sess.lint_store.borrow();
     let lint_id = LintId::of(lint);
     let future_incompatible = lints.future_incompatible(lint_id);
     if let Some(future_incompatible) = future_incompatible {
-        const STANDARD_MESSAGE: &str =
-            "this was previously accepted by the compiler but is being phased out; \
-             it will become a hard error";
-
-        let explanation = if lint_id == LintId::of(builtin::UNSTABLE_NAME_COLLISIONS) {
-            "once this method is added to the standard library, \
-             the ambiguity may cause an error or change in behavior!"
-                .to_owned()
+        if lint_id == LintId::of(crate::lint::builtin::UNSTABLE_NAME_COLLISIONS) {
+            err.warn("once this method is added to the standard library, \
+                      the ambiguity may cause an error or change in behavior!");
         } else if lint_id == LintId::of(builtin::MUTABLE_BORROW_RESERVATION_CONFLICT) {
-            "this borrowing pattern was not meant to be accepted, \
-             and may become a hard error in the future"
-                .to_owned()
-        } else if let Some(edition) = future_incompatible.edition {
-            format!("{} in the {} edition!", STANDARD_MESSAGE, edition)
+            err.warn("this borrowing pattern was not meant to be accepted, \
+                      and may become a hard error in the future");
         } else {
-            format!("{} in a future release!", STANDARD_MESSAGE)
-        };
-        let citation = format!("for more information, see {}", future_incompatible.reference);
-        err.warn(&explanation);
-        err.note(&citation);
+            let previously_msg = if let Some(n) = name {
+                format!("`{}` was previously accepted by the compiler but is being phased out", n)
+            } else {
+                format!("this was previously accepted by the compiler but is being phased out")
+            };
+            err.warn(&previously_msg);
+
+            let hard_err_msg = if let Some(edition) = future_incompatible.edition {
+                format!("it will become a hard error in the {} edition!", edition)
+            } else {
+                format!("it will become a hard error in a future release!")
+            };
+            err.warn(&hard_err_msg);
+        }
+
+        err.note(&format!("for more information, see {}", future_incompatible.reference));
     }
 
     // If this code originates in a foreign macro, aka something that this crate
@@ -812,8 +827,6 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
             err.cancel()
         }
     }
-
-    return err
 }
 
 pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {

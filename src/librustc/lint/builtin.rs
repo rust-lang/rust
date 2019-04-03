@@ -23,6 +23,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNUSED_ATTRIBUTES,
+    Warn,
+    "detects attributes that were not used by the compiler"
+}
+
+declare_lint! {
     pub UNUSED_IMPORTS,
     Warn,
     "imports that are never used"
