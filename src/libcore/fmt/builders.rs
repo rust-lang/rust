@@ -11,7 +11,7 @@ impl<'a> PadAdapter<'a> {
         fmt.wrap_buf(move |buf| {
             *slot = Some(PadAdapter {
                 buf,
-                on_newline: false,
+                on_newline: true,
             });
             slot.as_mut().unwrap()
         })
@@ -128,22 +128,21 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, name: &str, value: &dyn fmt::Debug) -> &mut DebugStruct<'a, 'b> {
         self.result = self.result.and_then(|_| {
-            let prefix = if self.has_fields {
-                ","
-            } else {
-                " {"
-            };
-
             if self.is_pretty() {
+                if !self.has_fields {
+                    self.fmt.write_str(" {\n")?;
+                }
                 let mut slot = None;
                 let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(prefix)?;
-                writer.write_str("\n")?;
                 writer.write_str(name)?;
                 writer.write_str(": ")?;
-                value.fmt(&mut writer)
+                value.fmt(&mut writer)?;
+                writer.write_str(",\n")
             } else {
-                write!(self.fmt, "{} {}: ", prefix, name)?;
+                let prefix = if self.has_fields { ", " } else { " { " };
+                self.fmt.write_str(prefix)?;
+                self.fmt.write_str(name)?;
+                self.fmt.write_str(": ")?;
                 value.fmt(self.fmt)
             }
         });
@@ -184,7 +183,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
-                    self.fmt.write_str("\n}")
+                    self.fmt.write_str("}")
                 } else {
                     self.fmt.write_str(" }")
                 }
@@ -275,21 +274,17 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn field(&mut self, value: &dyn fmt::Debug) -> &mut DebugTuple<'a, 'b> {
         self.result = self.result.and_then(|_| {
-            let (prefix, space) = if self.fields > 0 {
-                (",", " ")
-            } else {
-                ("(", "")
-            };
-
             if self.is_pretty() {
+                if self.fields == 0 {
+                    self.fmt.write_str("(\n")?;
+                }
                 let mut slot = None;
                 let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(prefix)?;
-                writer.write_str("\n")?;
-                value.fmt(&mut writer)
+                value.fmt(&mut writer)?;
+                writer.write_str(",\n")
             } else {
+                let prefix = if self.fields == 0 { "(" } else { ", " };
                 self.fmt.write_str(prefix)?;
-                self.fmt.write_str(space)?;
                 value.fmt(self.fmt)
             }
         });
@@ -326,10 +321,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     pub fn finish(&mut self) -> fmt::Result {
         if self.fields > 0 {
             self.result = self.result.and_then(|_| {
-                if self.is_pretty() {
-                    self.fmt.write_str("\n")?;
-                }
-                if self.fields == 1 && self.empty_name {
+                if self.fields == 1 && self.empty_name && !self.is_pretty() {
                     self.fmt.write_str(",")?;
                 }
                 self.fmt.write_str(")")
@@ -353,14 +345,13 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     fn entry(&mut self, entry: &dyn fmt::Debug) {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
+                if !self.has_fields {
+                    self.fmt.write_str("\n")?;
+                }
                 let mut slot = None;
                 let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(if self.has_fields {
-                    ",\n"
-                } else {
-                    "\n"
-                })?;
-                entry.fmt(&mut writer)
+                entry.fmt(&mut writer)?;
+                writer.write_str(",\n")
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
@@ -370,15 +361,6 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
         });
 
         self.has_fields = true;
-    }
-
-    pub fn finish(&mut self) {
-        let prefix = if self.is_pretty() && self.has_fields {
-            "\n"
-        } else {
-            ""
-        };
-        self.result = self.result.and_then(|_| self.fmt.write_str(prefix));
     }
 
     fn is_pretty(&self) -> bool {
@@ -421,7 +403,7 @@ pub struct DebugSet<'a, 'b: 'a> {
 }
 
 pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
-    let result = write!(fmt, "{{");
+    let result = fmt.write_str("{");
     DebugSet {
         inner: DebugInner {
             fmt,
@@ -519,7 +501,6 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.inner.finish();
         self.inner.result.and_then(|_| self.inner.fmt.write_str("}"))
     }
 }
@@ -559,7 +540,7 @@ pub struct DebugList<'a, 'b: 'a> {
 }
 
 pub fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
-    let result = write!(fmt, "[");
+    let result = fmt.write_str("[");
     DebugList {
         inner: DebugInner {
             fmt,
@@ -657,7 +638,6 @@ impl<'a, 'b: 'a> DebugList<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        self.inner.finish();
         self.inner.result.and_then(|_| self.inner.fmt.write_str("]"))
     }
 }
@@ -699,7 +679,7 @@ pub struct DebugMap<'a, 'b: 'a> {
 }
 
 pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
-    let result = write!(fmt, "{{");
+    let result = fmt.write_str("{");
     DebugMap {
         fmt,
         result,
@@ -734,16 +714,15 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     pub fn entry(&mut self, key: &dyn fmt::Debug, value: &dyn fmt::Debug) -> &mut DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
             if self.is_pretty() {
+                if !self.has_fields {
+                    self.fmt.write_str("\n")?;
+                }
                 let mut slot = None;
                 let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot);
-                writer.write_str(if self.has_fields {
-                    ",\n"
-                } else {
-                    "\n"
-                })?;
                 key.fmt(&mut writer)?;
                 writer.write_str(": ")?;
-                value.fmt(&mut writer)
+                value.fmt(&mut writer)?;
+                writer.write_str(",\n")
             } else {
                 if self.has_fields {
                     self.fmt.write_str(", ")?
@@ -818,12 +797,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// ```
     #[stable(feature = "debug_builders", since = "1.2.0")]
     pub fn finish(&mut self) -> fmt::Result {
-        let prefix = if self.is_pretty() && self.has_fields {
-            "\n"
-        } else {
-            ""
-        };
-        self.result.and_then(|_| write!(self.fmt, "{}}}", prefix))
+        self.result.and_then(|_| self.fmt.write_str("}"))
     }
 
     fn is_pretty(&self) -> bool {

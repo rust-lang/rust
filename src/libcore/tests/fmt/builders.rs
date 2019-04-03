@@ -30,7 +30,7 @@ mod debug_struct {
         assert_eq!("Foo { bar: true }", format!("{:?}", Foo));
         assert_eq!(
 "Foo {
-    bar: true
+    bar: true,
 }",
                    format!("{:#?}", Foo));
     }
@@ -52,7 +52,7 @@ mod debug_struct {
         assert_eq!(
 "Foo {
     bar: true,
-    baz: 10/20
+    baz: 10/20,
 }",
                    format!("{:#?}", Foo));
     }
@@ -87,9 +87,9 @@ mod debug_struct {
 "Bar {
     foo: Foo {
         bar: true,
-        baz: 10/20
+        baz: 10/20,
     },
-    hello: \"world\"
+    hello: \"world\",
 }",
                    format!("{:#?}", Bar));
     }
@@ -127,7 +127,7 @@ mod debug_tuple {
         assert_eq!("Foo(true)", format!("{:?}", Foo));
         assert_eq!(
 "Foo(
-    true
+    true,
 )",
                    format!("{:#?}", Foo));
     }
@@ -149,7 +149,7 @@ mod debug_tuple {
         assert_eq!(
 "Foo(
     true,
-    10/20
+    10/20,
 )",
                    format!("{:#?}", Foo));
     }
@@ -184,9 +184,9 @@ mod debug_tuple {
 "Bar(
     Foo(
         true,
-        10/20
+        10/20,
     ),
-    \"world\"
+    \"world\",
 )",
                    format!("{:#?}", Bar));
     }
@@ -224,7 +224,7 @@ mod debug_map {
         assert_eq!("{\"bar\": true}", format!("{:?}", Foo));
         assert_eq!(
 "{
-    \"bar\": true
+    \"bar\": true,
 }",
                    format!("{:#?}", Foo));
     }
@@ -246,7 +246,7 @@ mod debug_map {
         assert_eq!(
 "{
     \"bar\": true,
-    10: 10/20
+    10: 10/20,
 }",
                    format!("{:#?}", Foo));
     }
@@ -282,12 +282,12 @@ mod debug_map {
 "{
     \"foo\": {
         \"bar\": true,
-        10: 10/20
+        10: 10/20,
     },
     {
         \"bar\": true,
-        10: 10/20
-    }: \"world\"
+        10: 10/20,
+    }: \"world\",
 }",
                    format!("{:#?}", Bar));
     }
@@ -325,7 +325,7 @@ mod debug_set {
         assert_eq!("{true}", format!("{:?}", Foo));
         assert_eq!(
 "{
-    true
+    true,
 }",
                    format!("{:#?}", Foo));
     }
@@ -347,7 +347,7 @@ mod debug_set {
         assert_eq!(
 "{
     true,
-    10/20
+    10/20,
 }",
                    format!("{:#?}", Foo));
     }
@@ -382,9 +382,9 @@ mod debug_set {
 "{
     {
         true,
-        10/20
+        10/20,
     },
-    \"world\"
+    \"world\",
 }",
                    format!("{:#?}", Bar));
     }
@@ -422,7 +422,7 @@ mod debug_list {
         assert_eq!("[true]", format!("{:?}", Foo));
         assert_eq!(
 "[
-    true
+    true,
 ]",
                    format!("{:#?}", Foo));
     }
@@ -444,7 +444,7 @@ mod debug_list {
         assert_eq!(
 "[
     true,
-    10/20
+    10/20,
 ]",
                    format!("{:#?}", Foo));
     }
@@ -479,9 +479,9 @@ mod debug_list {
 "[
     [
         true,
-        10/20
+        10/20,
     ],
-    \"world\"
+    \"world\",
 ]",
                    format!("{:#?}", Bar));
     }
@@ -513,31 +513,31 @@ fn test_formatting_parameters_are_forwarded() {
     assert_eq!(format!("{:#03?}", struct_), "
 Foo {
     bar: 1024,
-    baz: 007
+    baz: 007,
 }
     ".trim());
     assert_eq!(format!("{:#03?}", tuple), "
 (
     1024,
-    007
+    007,
 )
     ".trim());
     assert_eq!(format!("{:#03?}", list), "
 [
     1024,
-    007
+    007,
 ]
     ".trim());
     assert_eq!(format!("{:#03?}", map), r#"
 {
     "bar": 1024,
-    "baz": 007
+    "baz": 007,
 }
     "#.trim());
     assert_eq!(format!("{:#03?}", set), "
 {
     007,
-    1024
+    1024,
 }
     ".trim());
 }
