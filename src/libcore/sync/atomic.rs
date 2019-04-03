@@ -124,15 +124,28 @@ use fmt;
 
 use hint::spin_loop;
 
-/// Save power or switch hyperthreads in a busy-wait spin-loop.
+/// Signals the processor that it is entering a busy-wait spin-loop.
 ///
-/// This function is deliberately more primitive than
-/// [`std::thread::yield_now`](../../../std/thread/fn.yield_now.html) and
-/// does not directly yield to the system's scheduler.
-/// In some cases it might be useful to use a combination of both functions.
-/// Careful benchmarking is advised.
+/// Upon receiving spin-loop signal the processor can optimize its behavior by, for example, saving
+/// power or switching hyper-threads.
 ///
-/// On some platforms this function may not do anything at all.
+/// This function is different than [`std::thread::yield_now`] which directly yields to the
+/// system's scheduler, whereas `spin_loop_hint` only signals the processor that it is entering a
+/// busy-wait spin-loop without yielding control to the system's scheduler.
+///
+/// Using a busy-wait spin-loop with `spin_loop_hint` is ideally used in situations where a
+/// contended lock is held by another thread executed on a different CPU and where the waiting
+/// times are relatively small. Because entering busy-wait spin-loop does not trigger the system's
+/// scheduler, no overhead for switching threads occurs. However, if the thread holding the
+/// contended lock is running on the same CPU, the spin-loop is likely to occupy an entire CPU slice
+/// before switching to the thread that holds the lock. If the contending lock is held by a thread
+/// on the same CPU or if the waiting times for acquiring the lock are longer, it is often better to
+/// use [`std::thread::yield_now`].
+///
+/// **Note**: On platforms that do not support receiving spin-loop hints this function does not
+/// do anything at all.
+///
+/// [`std::thread::yield_now`]: ../../../std/thread/fn.yield_now.html
 #[inline]
 #[stable(feature = "spin_loop_hint", since = "1.24.0")]
 pub fn spin_loop_hint() {
