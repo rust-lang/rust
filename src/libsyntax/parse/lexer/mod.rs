@@ -126,7 +126,7 @@ impl<'a> StringReader<'a> {
     }
 
     /// Immutably extract string if found at current position with given delimiters
-    pub fn peek_delimited(&self, from_ch: char, to_ch: char) -> Option<String> {
+    fn peek_delimited(&self, from_ch: char, to_ch: char) -> Option<String> {
         let mut pos = self.pos;
         let mut idx = self.src_index(pos);
         let mut ch = char_at(&self.src, idx);
@@ -191,7 +191,7 @@ impl<'a> StringReader<'a> {
         self.fatal_span(self.peek_span, m)
     }
 
-    pub fn emit_fatal_errors(&mut self) {
+    crate fn emit_fatal_errors(&mut self) {
         for err in &mut self.fatal_errs {
             err.emit();
         }
