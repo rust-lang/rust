@@ -518,7 +518,11 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
             let is_return = arg_idx.is_none();
             let mut arg = mk_arg_type(ty, arg_idx);
-            if arg.layout.is_zst() {
+            if is_return && arg.layout.abi.is_uninhabited() {
+                // Functions with uninhabited return values are marked `noreturn`,
+                // so we don't actually need to do anything with the value.
+                arg.mode = PassMode::Ignore(IgnoreMode::Uninhabited);
+            } else if arg.layout.is_zst() {
                 // For some forsaken reason, x86_64-pc-windows-gnu
                 // doesn't ignore zero-sized struct arguments.
                 // The same is true for s390x-unknown-linux-gnu
@@ -677,7 +681,8 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         );
 
         let llreturn_ty = match self.ret.mode {
-            PassMode::Ignore(IgnoreMode::Zst) => cx.type_void(),
+            PassMode::Ignore(IgnoreMode::Zst)
+            | PassMode::Ignore(IgnoreMode::Uninhabited) => cx.type_void(),
             PassMode::Ignore(IgnoreMode::CVarArgs) =>
                 bug!("`va_list` should never be a return type"),
             PassMode::Direct(_) | PassMode::Pair(..) => {
