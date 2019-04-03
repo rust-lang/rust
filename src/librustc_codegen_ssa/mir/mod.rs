@@ -521,7 +521,8 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 PassMode::Ignore(IgnoreMode::Zst) => {
                     return local(OperandRef::new_zst(bx, arg.layout));
                 }
-                PassMode::Ignore(IgnoreMode::CVarArgs) => {}
+                PassMode::Ignore(IgnoreMode::CVarArgs)
+                | PassMode::Ignore(IgnoreMode::Uninhabited) => {}
                 PassMode::Direct(_) => {
                     let llarg = bx.get_param(llarg_idx);
                     bx.set_value_name(llarg, &name);
