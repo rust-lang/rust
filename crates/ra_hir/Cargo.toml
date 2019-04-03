@@ -19,6 +19,7 @@ ra_db = { path = "../ra_db" }
 mbe = { path = "../ra_mbe", package = "ra_mbe" }
 tt = { path = "../ra_tt", package = "ra_tt" }
 test_utils = { path = "../test_utils" }
+ra_prof = {path = "../ra_prof" }
 
 [dev-dependencies]
 flexi_logger = "0.11.0"

@@ -24,6 +24,7 @@ use crate::{
     Result,
     InitializationOptions,
 };
+use ra_prof::profile;
 
 #[derive(Debug, Fail)]
 #[fail(display = "Language Server request failed with {}. ({})", code, message)]
@@ -181,7 +182,7 @@ fn main_loop_inner(
             recv(libdata_receiver) -> data => Event::Lib(data.unwrap())
         };
         log::info!("loop_turn = {:?}", event);
-        let start = std::time::Instant::now();
+        let _p = profile("loop_turn");
         let mut state_changed = false;
         match event {
             Event::Task(task) => on_task(task, msg_sender, pending_requests),
@@ -235,10 +236,9 @@ fn main_loop_inner(
             in_flight_libraries += 1;
             let sender = libdata_sender.clone();
             pool.execute(move || {
-                let start = ::std::time::Instant::now();
                 log::info!("indexing {:?} ... ", root);
+                let _p = profile(&format!("indexed {:?}", root));
                 let data = LibraryData::prepare(root, files);
-                log::info!("indexed {:?} {:?}", start.elapsed(), root);
                 sender.send(data).unwrap();
             });
         }
@@ -266,7 +266,6 @@ fn main_loop_inner(
                 subs.subscriptions(),
             )
         }
-        log::info!("loop_turn = {:?}", start.elapsed());
     }
 }
 

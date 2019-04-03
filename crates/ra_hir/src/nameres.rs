@@ -60,6 +60,7 @@ use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{FileId, Edition};
 use test_utils::tested_by;
 use ra_syntax::ast;
+use ra_prof::profile;
 
 use crate::{
     ModuleDef, Name, Crate, Module,
@@ -181,7 +182,7 @@ enum ReachedFixedPoint {
 
 impl CrateDefMap {
     pub(crate) fn crate_def_map_query(db: &impl DefDatabase, krate: Crate) -> Arc<CrateDefMap> {
-        let start = std::time::Instant::now();
+        let _p = profile("crate_def_map_query");
         let def_map = {
             let edition = krate.edition(db);
             let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
@@ -198,7 +199,6 @@ impl CrateDefMap {
             }
         };
         let def_map = collector::collect_defs(db, def_map);
-        log::info!("crate_def_map_query: {:?}", start.elapsed());
         Arc::new(def_map)
     }
 

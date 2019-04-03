@@ -1,12 +1,13 @@
 mod analysis_stats;
 
-use std::{fs, io::Read, path::Path, time::Instant};
+use std::{fs, io::Read, path::Path};
 
 use clap::{App, Arg, SubCommand};
 use ra_ide_api::file_structure;
 use ra_syntax::{SourceFile, TreeArc, AstNode};
 use tools::collect_tests;
 use flexi_logger::Logger;
+use ra_prof::profile;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -27,13 +28,11 @@ fn main() -> Result<()> {
         .get_matches();
     match matches.subcommand() {
         ("parse", Some(matches)) => {
-            let start = Instant::now();
+            let _p = profile("parsing");
             let file = file()?;
-            let elapsed = start.elapsed();
             if !matches.is_present("no-dump") {
                 println!("{}", file.syntax().debug_dump());
             }
-            eprintln!("parsing: {:?}", elapsed);
             ::std::mem::forget(file);
         }
         ("symbols", _) => {
