@@ -88,7 +88,33 @@ struct SimilarNamesLocalVisitor<'a, 'tcx: 'a> {
     names: Vec<ExistingName>,
     cx: &'a EarlyContext<'tcx>,
     lint: &'a NonExpressiveNames,
-    single_char_names: Vec<char>,
+
+    /// A stack of scopes containing the single-character bindings in each scope.
+    single_char_names: Vec<Vec<Ident>>,
+}
+
+impl<'a, 'tcx: 'a> SimilarNamesLocalVisitor<'a, 'tcx> {
+    fn check_single_char_names(&self) {
+        let num_single_char_names = self.single_char_names.iter().flatten().count();
+        let threshold = self.lint.single_char_binding_names_threshold;
+        if num_single_char_names as u64 >= threshold {
+            let span = self
+                .single_char_names
+                .iter()
+                .flatten()
+                .map(|ident| ident.span)
+                .collect::<Vec<_>>();
+            span_lint(
+                self.cx,
+                MANY_SINGLE_CHAR_NAMES,
+                span,
+                &format!(
+                    "{} bindings with single-character names in scope",
+                    num_single_char_names
+                ),
+            );
+        }
+    }
 }
 
 // this list contains lists of names that are allowed to be similar
@@ -109,7 +135,7 @@ struct SimilarNamesNameVisitor<'a: 'b, 'tcx: 'a, 'b>(&'b mut SimilarNamesLocalVi
 impl<'a, 'tcx: 'a, 'b> Visitor<'tcx> for SimilarNamesNameVisitor<'a, 'tcx, 'b> {
     fn visit_pat(&mut self, pat: &'tcx Pat) {
         match pat.node {
-            PatKind::Ident(_, ident, _) => self.check_name(ident.span, ident.name),
+            PatKind::Ident(_, ident, _) => self.check_ident(ident),
             PatKind::Struct(_, ref fields, _) => {
                 for field in fields {
                     if !field.node.is_shorthand {
@@ -140,27 +166,24 @@ fn whitelisted(interned_name: &str, list: &[&str]) -> bool {
 }
 
 impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
-    fn check_short_name(&mut self, c: char, span: Span) {
-        // make sure we ignore shadowing
-        if self.0.single_char_names.contains(&c) {
+    fn check_short_ident(&mut self, ident: Ident) {
+        // Ignore shadowing
+        if self
+            .0
+            .single_char_names
+            .iter()
+            .flatten()
+            .any(|id| id.name == ident.name)
+        {
             return;
-        }
-        self.0.single_char_names.push(c);
-        if self.0.single_char_names.len() as u64 >= self.0.lint.single_char_binding_names_threshold {
-            span_lint(
-                self.0.cx,
-                MANY_SINGLE_CHAR_NAMES,
-                span,
-                &format!(
-                    "{}th binding whose name is just one char",
-                    self.0.single_char_names.len()
-                ),
-            );
+        } else if let Some(scope) = &mut self.0.single_char_names.last_mut() {
+            scope.push(ident);
         }
     }
+
     #[allow(clippy::too_many_lines)]
-    fn check_name(&mut self, span: Span, name: Name) {
-        let interned_name = name.as_str();
+    fn check_ident(&mut self, ident: Ident) {
+        let interned_name = ident.name.as_str();
         if interned_name.chars().any(char::is_uppercase) {
             return;
         }
@@ -168,7 +191,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             span_lint(
                 self.0.cx,
                 JUST_UNDERSCORES_AND_DIGITS,
-                span,
+                ident.span,
                 "consider choosing a more descriptive name",
             );
             return;
@@ -176,8 +199,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         let count = interned_name.chars().count();
         if count < 3 {
             if count == 1 {
-                let c = interned_name.chars().next().expect("already checked");
-                self.check_short_name(c, span);
+                self.check_short_ident(ident);
             }
             return;
         }
@@ -247,13 +269,13 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
             span_lint_and_then(
                 self.0.cx,
                 SIMILAR_NAMES,
-                span,
+                ident.span,
                 "binding's name is too similar to existing binding",
                 |diag| {
                     diag.span_note(existing_name.span, "existing binding defined here");
                     if let Some(split) = split_at {
                         diag.span_help(
-                            span,
+                            ident.span,
                             &format!(
                                 "separate the discriminating character by an \
                                  underscore like: `{}_{}`",
@@ -269,7 +291,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         self.0.names.push(ExistingName {
             whitelist: get_whitelist(&interned_name).unwrap_or(&[]),
             interned: interned_name,
-            span,
+            span: ident.span,
             len: count,
         });
     }
@@ -297,15 +319,25 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
         SimilarNamesNameVisitor(self).visit_pat(&*local.pat);
     }
     fn visit_block(&mut self, blk: &'tcx Block) {
+        self.single_char_names.push(vec![]);
+
         self.apply(|this| walk_block(this, blk));
+
+        self.check_single_char_names();
+        self.single_char_names.pop();
     }
     fn visit_arm(&mut self, arm: &'tcx Arm) {
+        self.single_char_names.push(vec![]);
+
         self.apply(|this| {
             // just go through the first pattern, as either all patterns
             // bind the same bindings or rustc would have errored much earlier
             SimilarNamesNameVisitor(this).visit_pat(&arm.pats[0]);
             this.apply(|this| walk_expr(this, &arm.body));
         });
+
+        self.check_single_char_names();
+        self.single_char_names.pop();
     }
     fn visit_item(&mut self, _: &Item) {
         // do not recurse into inner items
@@ -335,14 +367,17 @@ fn do_check(lint: &mut NonExpressiveNames, cx: &EarlyContext<'_>, attrs: &[Attri
             names: Vec::new(),
             cx,
             lint,
-            single_char_names: Vec::new(),
+            single_char_names: vec![vec![]],
         };
+
         // initialize with function arguments
         for arg in &decl.inputs {
             SimilarNamesNameVisitor(&mut visitor).visit_pat(&arg.pat);
         }
         // walk all other bindings
         walk_block(&mut visitor, blk);
+
+        visitor.check_single_char_names();
     }
 }
 
