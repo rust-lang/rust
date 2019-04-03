@@ -46,12 +46,11 @@ export class CargoWatchProvider {
             'Cargo Watch Trace'
         );
 
-        let args = '"check --message-format json';
+        let args = 'check --message-format json';
         if (Server.config.cargoWatchOptions.checkArguments.length > 0) {
             // Excape the double quote string:
             args += ' ' + Server.config.cargoWatchOptions.checkArguments;
         }
-        args += '"';
 
         // Start the cargo watch with json message
         this.cargoProcess = child_process.spawn(
