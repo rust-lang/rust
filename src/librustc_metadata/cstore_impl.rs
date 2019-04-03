@@ -11,6 +11,7 @@ use rustc::middle::cstore::{CrateStore, DepKind,
 use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
+use rustc::hir;
 use rustc::session::{CrateDisambiguator, Session};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::query::Providers;
@@ -347,7 +348,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             {
                 let visible_parent_map = &mut visible_parent_map;
                 let mut add_child = |bfs_queue: &mut VecDeque<_>,
-                                     child: &def::Export,
+                                     child: &def::Export<hir::HirId>,
                                      parent: DefId| {
                     if child.vis != ty::Visibility::Public {
                         return;
@@ -415,7 +416,11 @@ impl cstore::CStore {
         self.get_crate_data(def.krate).get_item_attrs(def.index, sess)
     }
 
-    pub fn item_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<def::Export> {
+    pub fn item_children_untracked(
+        &self,
+        def_id: DefId,
+        sess: &Session
+    ) -> Vec<def::Export<hir::HirId>> {
         let mut result = vec![];
         self.get_crate_data(def_id.krate)
             .each_child_of_item(def_id.index, |child| result.push(child), sess);

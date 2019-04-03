@@ -21,7 +21,7 @@ use rustc::lint::builtin::{
     UNUSED_IMPORTS,
 };
 use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::def::*;
+use rustc::hir::def::{self, PathResolution, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
@@ -38,6 +38,8 @@ use log::*;
 
 use std::cell::{Cell, RefCell};
 use std::{mem, ptr};
+
+type Def = def::Def<NodeId>;
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]

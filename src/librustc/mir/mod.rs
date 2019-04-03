@@ -2455,7 +2455,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(hir_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
-                                    let var_name = tcx.hir().name(freevar.var_id());
+                                    let var_name = tcx.hir().name_by_hir_id(freevar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                             });
@@ -2474,7 +2474,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             tcx.with_freevars(hir_id, |freevars| {
                                 for (freevar, place) in freevars.iter().zip(places) {
-                                    let var_name = tcx.hir().name(freevar.var_id());
+                                    let var_name = tcx.hir().name_by_hir_id(freevar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                                 struct_fmt.field("$state", &places[freevars.len()]);

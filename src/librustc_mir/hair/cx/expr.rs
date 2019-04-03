@@ -986,14 +986,13 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
     match def {
-        Def::Local(id) => ExprKind::VarRef { id: cx.tcx.hir().node_to_hir_id(id) },
+        Def::Local(id) => ExprKind::VarRef { id },
 
-        Def::Upvar(var_id, index, closure_expr_id) => {
+        Def::Upvar(var_hir_id, index, closure_expr_id) => {
             debug!("convert_var(upvar({:?}, {:?}, {:?}))",
-                   var_id,
+                   var_hir_id,
                    index,
                    closure_expr_id);
-            let var_hir_id = cx.tcx.hir().node_to_hir_id(var_id);
             let var_ty = cx.tables().node_type(var_hir_id);
 
             // FIXME free regions in closures are not right
@@ -1195,7 +1194,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    freevar: &hir::Freevar,
                                    freevar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_hir_id = cx.tcx.hir().node_to_hir_id(freevar.var_id());
+    let var_hir_id = freevar.var_id();
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
         closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),

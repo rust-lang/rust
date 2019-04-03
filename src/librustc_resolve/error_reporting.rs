@@ -2,13 +2,15 @@ use std::cmp::Reverse;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::def::{Def, CtorKind, Namespace::*};
+use rustc::hir::def::{self, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::{Session, config::nightly_options};
-use syntax::ast::{Expr, ExprKind, Ident};
+use syntax::ast::{self, Expr, ExprKind, Ident};
 use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{BytePos, Span};
+
+type Def = def::Def<ast::NodeId>;
 
 use crate::macros::ParentScope;
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};

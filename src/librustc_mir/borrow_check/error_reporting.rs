@@ -1824,7 +1824,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         .tcx
                         .with_freevars(hir_id, |fv| fv[field.index()]);
 
-                    self.infcx.tcx.hir().name(freevar.var_id()).to_string()
+                    self.infcx.tcx.hir().name_by_hir_id(freevar.var_id()).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
