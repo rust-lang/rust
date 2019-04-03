@@ -299,7 +299,7 @@ fn base_local_and_movability<'tcx>(
                 place = &proj.base;
                 deref = deref || matches!(proj.elem, mir::ProjectionElem::Deref);
                 if !field && matches!(proj.elem, mir::ProjectionElem::Field(..)) {
-                    field = has_drop(cx, place.ty(&mir.local_decls, cx.tcx).to_ty(cx.tcx));
+                    field = has_drop(cx, place.ty(&mir.local_decls, cx.tcx).ty);
                 }
             },
             _ => return None,
