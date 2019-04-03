@@ -51,6 +51,10 @@ export class CargoWatchProvider {
             // Excape the double quote string:
             args += ' ' + Server.config.cargoWatchOptions.checkArguments;
         }
+        // Windows handles arguments differently than the unix-likes, so we need to wrap the args in double quotes
+        if (process.platform == "win32") {
+            args = '"' + args + '"';
+        }
 
         // Start the cargo watch with json message
         this.cargoProcess = child_process.spawn(
