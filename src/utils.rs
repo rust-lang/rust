@@ -376,7 +376,9 @@ fn is_valid_str(snippet: &str, max_width: usize, shape: Shape) -> bool {
 }
 
 #[inline]
-pub fn colon_spaces(before: bool, after: bool) -> &'static str {
+pub fn colon_spaces(config: &Config) -> &'static str {
+    let before = config.space_before_colon();
+    let after = config.space_after_colon();
     match (before, after) {
         (true, true) => " : ",
         (true, false) => " :",

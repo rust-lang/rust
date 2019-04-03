@@ -378,10 +378,7 @@ where
 }
 
 fn type_bound_colon(context: &RewriteContext<'_>) -> &'static str {
-    colon_spaces(
-        context.config.space_before_colon(),
-        context.config.space_after_colon(),
-    )
+    colon_spaces(context.config)
 }
 
 impl Rewrite for ast::WherePredicate {

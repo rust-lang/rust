@@ -1691,7 +1691,7 @@ pub fn wrap_struct_field(
 }
 
 pub fn struct_lit_field_separator(config: &Config) -> &str {
-    colon_spaces(config.space_before_colon(), config.space_after_colon())
+    colon_spaces(config)
 }
 
 pub fn rewrite_field(
