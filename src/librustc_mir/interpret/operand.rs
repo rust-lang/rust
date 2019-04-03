@@ -500,7 +500,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             Move(ref place) =>
                 self.eval_place_to_op(place, layout)?,
 
-            Constant(ref constant) => self.eval_const_to_op(*constant.literal, layout)?,
+            Constant(ref constant) => self.eval_const_to_op(constant.literal, layout)?,
         };
         trace!("{:?}: {:?}", mir_op, *op);
         Ok(op)
@@ -520,7 +520,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     // in patterns via the `const_eval` module
     crate fn eval_const_to_op(
         &self,
-        val: ty::Const<'tcx>,
+        val: &'tcx ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = match val.val {

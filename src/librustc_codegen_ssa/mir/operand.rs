@@ -67,7 +67,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
 
     pub fn from_const<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         bx: &mut Bx,
-        val: ty::Const<'tcx>
+        val: &'tcx ty::Const<'tcx>
     ) -> Result<Self, ErrorHandled> {
         let layout = bx.layout_of(val.ty);
 
