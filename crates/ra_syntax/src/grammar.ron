@@ -395,7 +395,8 @@ Grammar(
             collections: [["exprs", "Expr"]]
         ),
         "ArrayExpr": (
-            collections: [["exprs", "Expr"]]
+            collections: [["exprs", "Expr"]],
+            options:[["repeat","Expr"]]
         ),
         "ParenExpr": (options: ["Expr"]),
         "PathExpr": (options: ["Path"]),

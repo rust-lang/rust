@@ -1074,7 +1074,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 Ty::apply(TypeCtor::Tuple, Substs(ty_vec.into()))
             }
-            Expr::Array { exprs } => {
+            Expr::Array { exprs, repeat } => {
                 let elem_ty = match &expected.ty {
                     Ty::Apply(a_ty) => match a_ty.ctor {
                         TypeCtor::Slice | TypeCtor::Array => {
@@ -1087,6 +1087,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 for expr in exprs.iter() {
                     self.infer_expr(*expr, &Expectation::has_type(elem_ty.clone()));
+                }
+
+                if let Some(expr) = repeat {
+                    self.infer_expr(
+                        *expr,
+                        &Expectation::has_type(Ty::simple(TypeCtor::Int(
+                            primitive::UncertainIntTy::Known(primitive::IntTy::usize()),
+                        ))),
+                    );
                 }
 
                 Ty::apply_one(TypeCtor::Array, elem_ty)

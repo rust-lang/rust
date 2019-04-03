@@ -353,9 +353,13 @@ impl HirDisplay for ApplicationTy {
             TypeCtor::Int(t) => write!(f, "{}", t)?,
             TypeCtor::Float(t) => write!(f, "{}", t)?,
             TypeCtor::Str => write!(f, "str")?,
-            TypeCtor::Slice | TypeCtor::Array => {
+            TypeCtor::Slice => {
                 let t = self.parameters.as_single();
                 write!(f, "[{}]", t.display(f.db))?;
+            }
+            TypeCtor::Array => {
+                let t = self.parameters.as_single();
+                write!(f, "[{};usize]", t.display(f.db))?;
             }
             TypeCtor::RawPtr(m) => {
                 let t = self.parameters.as_single();

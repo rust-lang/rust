@@ -240,6 +240,7 @@ pub enum Expr {
     },
     Array {
         exprs: Vec<ExprId>,
+        repeat: Option<ExprId>,
     },
     Literal(Literal),
 }
@@ -348,9 +349,18 @@ impl Expr {
             | Expr::UnaryOp { expr, .. } => {
                 f(*expr);
             }
-            Expr::Tuple { exprs } | Expr::Array { exprs } => {
+            Expr::Tuple { exprs } => {
                 for expr in exprs {
                     f(*expr);
+                }
+            }
+            Expr::Array { exprs, repeat } => {
+                for expr in exprs {
+                    f(*expr);
+                }
+
+                if let Some(expr) = repeat {
+                    f(*expr)
                 }
             }
             Expr::Literal(_) => {}
@@ -725,7 +735,8 @@ impl ExprCollector {
             }
             ast::ExprKind::ArrayExpr(e) => {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
-                self.alloc_expr(Expr::Array { exprs }, syntax_ptr)
+                let repeat = e.repeat().map(|e| self.collect_expr(e));
+                self.alloc_expr(Expr::Array { exprs, repeat }, syntax_ptr)
             }
             ast::ExprKind::Literal(e) => {
                 let lit = match e.kind() {
