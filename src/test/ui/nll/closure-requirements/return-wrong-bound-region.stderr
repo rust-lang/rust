@@ -6,7 +6,7 @@ LL |     expect_sig(|a, b| b); // ought to return `a`
    |
    = note: defining type: DefId(0/1:9 ~ return_wrong_bound_region[317d]::test[0]::{{closure}}[0]) with closure substs [
                i16,
-               for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) i32)) -> &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32
+               for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32, &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 's)) i32)) -> &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0:0), 'r)) i32,
            ]
 
 error: lifetime may not live long enough

@@ -8,7 +8,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#1r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>,
            ]
    = note: number of external vids: 3
    = note: where <T as std::iter::Iterator>::Item: '_#2r
@@ -27,7 +27,7 @@ LL | | }
    |
    = note: defining type: DefId(0/0:6 ~ projection_no_regions_closure[317d]::no_region[0]) with substs [
                '_#1r,
-               T
+               T,
            ]
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
@@ -48,7 +48,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#1r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#2r)>,
            ]
    = note: number of external vids: 3
    = note: where <T as std::iter::Iterator>::Item: '_#2r
@@ -66,7 +66,7 @@ LL | | }
    |
    = note: defining type: DefId(0/0:7 ~ projection_no_regions_closure[317d]::correct_region[0]) with substs [
                '_#1r,
-               T
+               T,
            ]
 
 note: External requirements
@@ -80,7 +80,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#2r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>,
            ]
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r
@@ -100,7 +100,7 @@ LL | | }
    = note: defining type: DefId(0/0:8 ~ projection_no_regions_closure[317d]::wrong_region[0]) with substs [
                '_#1r,
                '_#2r,
-               T
+               T,
            ]
 
 error[E0309]: the associated type `<T as std::iter::Iterator>::Item` may not live long enough
@@ -122,7 +122,7 @@ LL |     with_signature(x, |mut y| Box::new(y.next()))
                '_#2r,
                T,
                i32,
-               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>
+               extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn Anything + '_#3r)>,
            ]
    = note: number of external vids: 4
    = note: where <T as std::iter::Iterator>::Item: '_#3r
@@ -142,7 +142,7 @@ LL | | }
    = note: defining type: DefId(0/0:9 ~ projection_no_regions_closure[317d]::outlives_region[0]) with substs [
                '_#1r,
                '_#2r,
-               T
+               T,
            ]
 
 error: aborting due to 2 previous errors
