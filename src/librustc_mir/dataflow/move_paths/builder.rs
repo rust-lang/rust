@@ -120,7 +120,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
         let base = self.move_path_for(&proj.base)?;
         let mir = self.builder.mir;
         let tcx = self.builder.tcx;
-        let place_ty = proj.base.ty(mir, tcx).to_ty(tcx);
+        let place_ty = proj.base.ty(mir, tcx).ty;
         match place_ty.sty {
             ty::Ref(..) | ty::RawPtr(..) =>
                 return Err(MoveError::cannot_move_out_of(
@@ -424,7 +424,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
             Place::Projection(box Projection {
                 base,
                 elem: ProjectionElem::Field(_, _),
-            }) if match base.ty(self.builder.mir, self.builder.tcx).to_ty(self.builder.tcx).sty {
+            }) if match base.ty(self.builder.mir, self.builder.tcx).ty.sty {
                     ty::TyKind::Adt(def, _) if def.is_union() => true,
                     _ => false,
             } => base,

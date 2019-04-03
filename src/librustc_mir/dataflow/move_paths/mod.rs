@@ -148,7 +148,7 @@ pub struct MoveData<'tcx> {
     /// particular path being moved.)
     pub loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
     pub path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
-    pub rev_lookup: MovePathLookup<'tcx>,
+    pub rev_lookup: MovePathLookup,
     pub inits: IndexVec<InitIndex, Init>,
     /// Each Location `l` is mapped to the Inits that are effects
     /// of executing the code at `l`.
@@ -258,7 +258,7 @@ impl Init {
 
 /// Tables mapping from a place to its MovePathIndex.
 #[derive(Debug)]
-pub struct MovePathLookup<'tcx> {
+pub struct MovePathLookup {
     locals: IndexVec<Local, MovePathIndex>,
 
     /// projections are made from a base-place and a projection
@@ -267,7 +267,7 @@ pub struct MovePathLookup<'tcx> {
     /// subsequent search so that it is solely relative to that
     /// base-place). For the remaining lookup, we map the projection
     /// elem to the associated MovePathIndex.
-    projections: FxHashMap<(MovePathIndex, AbstractElem<'tcx>), MovePathIndex>
+    projections: FxHashMap<(MovePathIndex, AbstractElem), MovePathIndex>
 }
 
 mod builder;
@@ -278,7 +278,7 @@ pub enum LookupResult {
     Parent(Option<MovePathIndex>)
 }
 
-impl<'tcx> MovePathLookup<'tcx> {
+impl MovePathLookup {
     // Unlike the builder `fn move_path_for` below, this lookup
     // alternative will *not* create a MovePath on the fly for an
     // unknown place, but will rather return the nearest available

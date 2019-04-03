@@ -63,7 +63,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     tcx, mir, locals_state_at_exit),
 
                 ProjectionElem::Deref => {
-                    let ty = proj.base.ty(mir, tcx).to_ty(tcx);
+                    let ty = proj.base.ty(mir, tcx).ty;
                     match ty.sty {
                         // For both derefs of raw pointers and `&T`
                         // references, the original path is `Copy` and

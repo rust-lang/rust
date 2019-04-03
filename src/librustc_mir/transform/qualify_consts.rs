@@ -168,7 +168,7 @@ trait Qualif {
             cx,
             proj.base.ty(cx.mir, cx.tcx)
                 .projection_ty(cx.tcx, &proj.elem)
-                .to_ty(cx.tcx),
+                .ty,
         );
         match proj.elem {
             ProjectionElem::Deref |
@@ -245,7 +245,7 @@ trait Qualif {
                 // Special-case reborrows to be more like a copy of the reference.
                 if let Place::Projection(ref proj) = *place {
                     if let ProjectionElem::Deref = proj.elem {
-                        let base_ty = proj.base.ty(cx.mir, cx.tcx).to_ty(cx.tcx);
+                        let base_ty = proj.base.ty(cx.mir, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.sty {
                             return Self::in_place(cx, &proj.base);
                         }
@@ -301,7 +301,7 @@ impl Qualif for HasMutInterior {
             // allowed in constants (and the `Checker` will error), and/or it
             // won't be promoted, due to `&mut ...` or interior mutability.
             Rvalue::Ref(_, kind, ref place) => {
-                let ty = place.ty(cx.mir, cx.tcx).to_ty(cx.tcx);
+                let ty = place.ty(cx.mir, cx.tcx).ty;
 
                 if let BorrowKind::Mut { .. } = kind {
                     // In theory, any zero-sized value could be borrowed
@@ -398,7 +398,7 @@ impl Qualif for IsNotConst {
 
             ProjectionElem::Field(..) => {
                 if cx.mode == Mode::Fn {
-                    let base_ty = proj.base.ty(cx.mir, cx.tcx).to_ty(cx.tcx);
+                    let base_ty = proj.base.ty(cx.mir, cx.tcx).ty;
                     if let Some(def) = base_ty.ty_adt_def() {
                         if def.is_union() {
                             return true;
@@ -988,7 +988,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                             // `not_const` errors out in const contexts
                             self.not_const()
                         }
-                        let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                        let base_ty = proj.base.ty(self.mir, self.tcx).ty;
                         match self.mode {
                             Mode::Fn => {},
                             _ => {
@@ -1012,7 +1012,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     ProjectionElem::Subslice {..} |
                     ProjectionElem::Field(..) |
                     ProjectionElem::Index(_) => {
-                        let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                        let base_ty = proj.base.ty(self.mir, self.tcx).ty;
                         if let Some(def) = base_ty.ty_adt_def() {
                             if def.is_union() {
                                 match self.mode {
@@ -1069,7 +1069,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             let mut is_reborrow = false;
             if let Place::Projection(ref proj) = *place {
                 if let ProjectionElem::Deref = proj.elem {
-                    let base_ty = proj.base.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    let base_ty = proj.base.ty(self.mir, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.sty {
                         is_reborrow = true;
                     }
@@ -1193,7 +1193,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 self.assign(dest, ValueSource::Call {
                     callee: func,
                     args,
-                    return_ty: dest.ty(self.mir, self.tcx).to_ty(self.tcx),
+                    return_ty: dest.ty(self.mir, self.tcx).ty,
                 }, location);
             }
 
@@ -1367,7 +1367,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
                 if let Some(span) = needs_drop {
                     // Double-check the type being dropped, to minimize false positives.
-                    let ty = place.ty(self.mir, self.tcx).to_ty(self.tcx);
+                    let ty = place.ty(self.mir, self.tcx).ty;
                     if ty.needs_drop(self.tcx, self.param_env) {
                         struct_span_err!(self.tcx.sess, span, E0493,
                                          "destructors cannot be evaluated at compile-time")

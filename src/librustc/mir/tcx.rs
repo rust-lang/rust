@@ -4,21 +4,17 @@
  */
 
 use crate::mir::*;
-use crate::ty::subst::{Subst, SubstsRef};
-use crate::ty::{self, AdtDef, Ty, TyCtxt};
+use crate::ty::subst::Subst;
+use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::layout::VariantIdx;
 use crate::hir;
 use crate::ty::util::IntTypeExt;
 
 #[derive(Copy, Clone, Debug)]
-pub enum PlaceTy<'tcx> {
-    /// Normal type.
-    Ty { ty: Ty<'tcx> },
-
-    /// Downcast to a particular variant of an enum.
-    Downcast { adt_def: &'tcx AdtDef,
-               substs: SubstsRef<'tcx>,
-               variant_index: VariantIdx },
+pub struct PlaceTy<'tcx> {
+    pub ty: Ty<'tcx>,
+    /// Downcast to a particular variant of an enum, if included.
+    pub variant_index: Option<VariantIdx>,
 }
 
 static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
@@ -27,16 +23,7 @@ static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
-        PlaceTy::Ty { ty }
-    }
-
-    pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        match *self {
-            PlaceTy::Ty { ty } =>
-                ty,
-            PlaceTy::Downcast { adt_def, substs, variant_index: _ } =>
-                tcx.mk_adt(adt_def, substs),
-        }
+        PlaceTy { ty, variant_index: None }
     }
 
     /// `place_ty.field_ty(tcx, f)` computes the type at a given field
@@ -48,21 +35,20 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// Note that the resulting type has not been normalized.
     pub fn field_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, f: &Field) -> Ty<'tcx>
     {
-        // Pass `0` here so it can be used as a "default" variant_index in first arm below
-        let answer = match (self, VariantIdx::new(0)) {
-            (PlaceTy::Ty {
-                ty: &ty::TyS { sty: ty::TyKind::Adt(adt_def, substs), .. } }, variant_index) |
-            (PlaceTy::Downcast { adt_def, substs, variant_index }, _) => {
-                let variant_def = &adt_def.variants[variant_index];
+        let answer = match self.ty.sty {
+            ty::TyKind::Adt(adt_def, substs) => {
+                let variant_def = match self.variant_index {
+                    None => adt_def.non_enum_variant(),
+                    Some(variant_index) => {
+                        assert!(adt_def.is_enum());
+                        &adt_def.variants[variant_index]
+                    }
+                };
                 let field_def = &variant_def.fields[f.index()];
                 field_def.ty(tcx, substs)
             }
-            (PlaceTy::Ty { ty }, _) => {
-                match ty.sty {
-                    ty::Tuple(ref tys) => tys[f.index()],
-                    _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
-                }
-            }
+            ty::Tuple(ref tys) => tys[f.index()],
+            _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
         };
         debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);
         answer
@@ -86,7 +72,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        elem: &ProjectionElem<'tcx, V, T>,
+        elem: &ProjectionElem<V, T>,
         mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>)
         -> PlaceTy<'tcx>
     where
@@ -94,62 +80,43 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     {
         let answer = match *elem {
             ProjectionElem::Deref => {
-                let ty = self.to_ty(tcx)
+                let ty = self.ty
                              .builtin_deref(true)
                              .unwrap_or_else(|| {
                                  bug!("deref projection of non-dereferencable ty {:?}", self)
                              })
                              .ty;
-                PlaceTy::Ty {
-                    ty,
-                }
+                PlaceTy::from_ty(ty)
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } =>
-                PlaceTy::Ty {
-                    ty: self.to_ty(tcx).builtin_index().unwrap()
-                },
+                PlaceTy::from_ty(self.ty.builtin_index().unwrap()),
             ProjectionElem::Subslice { from, to } => {
-                let ty = self.to_ty(tcx);
-                PlaceTy::Ty {
-                    ty: match ty.sty {
-                        ty::Array(inner, size) => {
-                            let size = size.unwrap_usize(tcx);
-                            let len = size - (from as u64) - (to as u64);
-                            tcx.mk_array(inner, len)
-                        }
-                        ty::Slice(..) => ty,
-                        _ => {
-                            bug!("cannot subslice non-array type: `{:?}`", self)
-                        }
+                PlaceTy::from_ty(match self.ty.sty {
+                    ty::Array(inner, size) => {
+                        let size = size.unwrap_usize(tcx);
+                        let len = size - (from as u64) - (to as u64);
+                        tcx.mk_array(inner, len)
                     }
-                }
-            }
-            ProjectionElem::Downcast(adt_def1, index) =>
-                match self.to_ty(tcx).sty {
-                    ty::Adt(adt_def, substs) => {
-                        assert!(adt_def.is_enum());
-                        assert!(index.as_usize() < adt_def.variants.len());
-                        assert_eq!(adt_def, adt_def1);
-                        PlaceTy::Downcast { adt_def,
-                                            substs,
-                                            variant_index: index }
-                    }
+                    ty::Slice(..) => self.ty,
                     _ => {
-                        bug!("cannot downcast non-ADT type: `{:?}`", self)
+                        bug!("cannot subslice non-array type: `{:?}`", self)
                     }
-                },
+                })
+            }
+            ProjectionElem::Downcast(_name, index) =>
+                PlaceTy { ty: self.ty, variant_index: Some(index) },
             ProjectionElem::Field(ref f, ref fty) =>
-                PlaceTy::Ty { ty: handle_field(&self, f, fty) },
+                PlaceTy::from_ty(handle_field(&self, f, fty)),
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
     }
 }
 
-EnumTypeFoldableImpl! {
+BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
-        (PlaceTy::Ty) { ty },
-        (PlaceTy::Downcast) { adt_def, substs, variant_index },
+        ty,
+        variant_index,
     }
 }
 
@@ -159,9 +126,9 @@ impl<'tcx> Place<'tcx> {
     {
         match *self {
             Place::Base(PlaceBase::Local(index)) =>
-                PlaceTy::Ty { ty: local_decls.local_decls()[index].ty },
+                PlaceTy::from_ty(local_decls.local_decls()[index].ty),
             Place::Base(PlaceBase::Static(ref data)) =>
-                PlaceTy::Ty { ty: data.ty },
+                PlaceTy::from_ty(data.ty),
             Place::Projection(ref proj) =>
                 proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
         }
@@ -186,7 +153,7 @@ impl<'tcx> Place<'tcx> {
         match place {
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Field(field, _ty) => {
-                    let base_ty = proj.base.ty(mir, *tcx).to_ty(*tcx);
+                    let base_ty = proj.base.ty(mir, *tcx).ty;
 
                     if (base_ty.is_closure() || base_ty.is_generator()) &&
                         (!by_ref || mir.upvar_decls[field.index()].by_ref)
@@ -218,7 +185,7 @@ impl<'tcx> Rvalue<'tcx> {
                 tcx.mk_array(operand.ty(local_decls, tcx), count)
             }
             Rvalue::Ref(reg, bk, ref place) => {
-                let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
+                let place_ty = place.ty(local_decls, tcx).ty;
                 tcx.mk_ref(reg,
                     ty::TypeAndMut {
                         ty: place_ty,
@@ -244,7 +211,7 @@ impl<'tcx> Rvalue<'tcx> {
                 operand.ty(local_decls, tcx)
             }
             Rvalue::Discriminant(ref place) => {
-                let ty = place.ty(local_decls, tcx).to_ty(tcx);
+                let ty = place.ty(local_decls, tcx).ty;
                 if let ty::Adt(adt_def, _) = ty.sty {
                     adt_def.repr.discr_type().to_ty(tcx)
                 } else {
@@ -293,7 +260,7 @@ impl<'tcx> Operand<'tcx> {
     {
         match self {
             &Operand::Copy(ref l) |
-            &Operand::Move(ref l) => l.ty(local_decls, tcx).to_ty(tcx),
+            &Operand::Move(ref l) => l.ty(local_decls, tcx).ty,
             &Operand::Constant(ref c) => c.ty,
         }
     }
