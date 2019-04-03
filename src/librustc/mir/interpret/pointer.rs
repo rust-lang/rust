@@ -3,7 +3,7 @@ use crate::ty::layout::{self, HasDataLayout, Size};
 use rustc_macros::HashStable;
 
 use super::{
-    AllocId, EvalResult, InboundsCheck,
+    AllocId, InterpResult, InboundsCheck,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,7 +26,7 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     }
 
     #[inline]
-    fn offset<'tcx>(&self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
+    fn offset<'tcx>(&self, val: u64, i: u64) -> InterpResult<'tcx, u64> {
         let (res, over) = self.overflowing_offset(val, i);
         if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
@@ -39,7 +39,7 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     }
 
     #[inline]
-    fn signed_offset<'tcx>(&self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
+    fn signed_offset<'tcx>(&self, val: u64, i: i64) -> InterpResult<'tcx, u64> {
         let (res, over) = self.overflowing_signed_offset(val, i128::from(i));
         if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
     }
@@ -109,7 +109,7 @@ impl<'tcx, Tag> Pointer<Tag> {
     }
 
     #[inline]
-    pub fn offset(self, i: Size, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
+    pub fn offset(self, i: Size, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
         Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
@@ -129,7 +129,7 @@ impl<'tcx, Tag> Pointer<Tag> {
     }
 
     #[inline]
-    pub fn signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
+    pub fn signed_offset(self, i: i64, cx: &impl HasDataLayout) -> InterpResult<'tcx, Self> {
         Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
@@ -158,7 +158,7 @@ impl<'tcx, Tag> Pointer<Tag> {
         self,
         allocation_size: Size,
         check: InboundsCheck,
-    ) -> EvalResult<'tcx, ()> {
+    ) -> InterpResult<'tcx, ()> {
         if self.offset > allocation_size {
             err!(PointerOutOfBounds {
                 ptr: self.erase_tag(),

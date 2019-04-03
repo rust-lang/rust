@@ -19,7 +19,7 @@ use syntax::ast::Mutability;
 
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
-    EvalResult, Scalar, InterpError, AllocKind, PointerArithmetic,
+    InterpResult, Scalar, InterpError, AllocKind, PointerArithmetic,
     Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
 };
 
@@ -145,7 +145,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer> {
+    ) -> InterpResult<'tcx, Pointer> {
         if ptr.offset.bytes() != 0 {
             return err!(ReallocateNonBasePtr);
         }
@@ -167,7 +167,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// Deallocate a local, or do nothing if that local has been made into a static
-    pub fn deallocate_local(&mut self, ptr: Pointer<M::PointerTag>) -> EvalResult<'tcx> {
+    pub fn deallocate_local(&mut self, ptr: Pointer<M::PointerTag>) -> InterpResult<'tcx> {
         // The allocation might be already removed by static interning.
         // This can only really happen in the CTFE instance, not in miri.
         if self.alloc_map.contains_key(&ptr.alloc_id) {
@@ -182,7 +182,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         ptr: Pointer<M::PointerTag>,
         size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("deallocating: {}", ptr.alloc_id);
 
         if ptr.offset.bytes() != 0 {
@@ -246,7 +246,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Scalar<M::PointerTag>,
         required_align: Align
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
             Scalar::Ptr(ptr) => {
@@ -293,7 +293,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Pointer<M::PointerTag>,
         liveness: InboundsCheck,
-    ) -> EvalResult<'tcx, Align> {
+    ) -> InterpResult<'tcx, Align> {
         let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, liveness)?;
         ptr.check_in_alloc(allocation_size, liveness)?;
         Ok(align)
@@ -311,7 +311,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         id: AllocId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         memory_extra: &M::MemoryExtra,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let def_id = match alloc {
             Some(AllocKind::Memory(mem)) => {
@@ -355,11 +355,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         })
     }
 
-    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
+    pub fn get(
+        &self,
+        id: AllocId
+    ) -> InterpResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
         // The error type of the inner closure here is somewhat funny.  We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
-        // So the error type is `EvalResult<'tcx, &Allocation<M::PointerTag>>`.
+        // So the error type is `InterpResult<'tcx, &Allocation<M::PointerTag>>`.
         let a = self.alloc_map.get_or(id, || {
             let alloc = Self::get_static_alloc(id, self.tcx, &self.extra).map_err(Err)?;
             match alloc {
@@ -388,7 +391,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn get_mut(
         &mut self,
         id: AllocId,
-    ) -> EvalResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
+    ) -> InterpResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
         let tcx = self.tcx;
         let memory_extra = &self.extra;
         let a = self.alloc_map.get_mut_or(id, || {
@@ -424,7 +427,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         id: AllocId,
         liveness: InboundsCheck,
-    ) -> EvalResult<'static, (Size, Align)> {
+    ) -> InterpResult<'static, (Size, Align)> {
         if let Ok(alloc) = self.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
         }
@@ -451,7 +454,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn get_fn(&self, ptr: Pointer<M::PointerTag>) -> EvalResult<'tcx, Instance<'tcx>> {
+    pub fn get_fn(&self, ptr: Pointer<M::PointerTag>) -> InterpResult<'tcx, Instance<'tcx>> {
         if ptr.offset.bytes() != 0 {
             return err!(InvalidFunctionPointer);
         }
@@ -462,7 +465,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn mark_immutable(&mut self, id: AllocId) -> EvalResult<'tcx> {
+    pub fn mark_immutable(&mut self, id: AllocId) -> InterpResult<'tcx> {
         self.get_mut(id)?.mutability = Mutability::Immutable;
         Ok(())
     }
@@ -599,7 +602,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Scalar<M::PointerTag>,
         size: Size,
-    ) -> EvalResult<'tcx, &[u8]> {
+    ) -> InterpResult<'tcx, &[u8]> {
         if size.bytes() == 0 {
             Ok(&[])
         } else {
@@ -621,7 +624,7 @@ where
         &mut self,
         alloc_id: AllocId,
         mutability: Mutability,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!(
             "mark_static_initialized {:?}, mutability: {:?}",
             alloc_id,
@@ -669,7 +672,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         dest_align: Align,
         size: Size,
         nonoverlapping: bool,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         self.copy_repeatedly(src, src_align, dest, dest_align, size, 1, nonoverlapping)
     }
 
@@ -682,7 +685,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         length: u64,
         nonoverlapping: bool,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         self.check_align(src, src_align)?;
         self.check_align(dest, dest_align)?;
         if size.bytes() == 0 {
@@ -785,7 +788,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         dest: Pointer<M::PointerTag>,
         size: Size,
         repeat: u64,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // The bits have to be saved locally before writing to dest in case src and dest overlap.
         assert_eq!(size.bytes() as usize as u64, size.bytes());
 

@@ -9,7 +9,7 @@ use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerEx
 use rustc::mir::interpret::{
     GlobalId, AllocId, InboundsCheck,
     ConstValue, Pointer, Scalar,
-    EvalResult, InterpError,
+    InterpResult, InterpError,
     sign_extend, truncate,
 };
 use super::{
@@ -84,12 +84,12 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     #[inline]
-    pub fn to_scalar(self) -> EvalResult<'tcx, Scalar<Tag>> {
+    pub fn to_scalar(self) -> InterpResult<'tcx, Scalar<Tag>> {
         self.to_scalar_or_undef().not_undef()
     }
 
     #[inline]
-    pub fn to_scalar_pair(self) -> EvalResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
+    pub fn to_scalar_pair(self) -> InterpResult<'tcx, (Scalar<Tag>, Scalar<Tag>)> {
         match self {
             Immediate::Scalar(..) => bug!("Got a thin pointer where a scalar pair was expected"),
             Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
@@ -99,7 +99,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     /// Converts the immediate into a pointer (or a pointer-sized integer).
     /// Throws away the second half of a ScalarPair!
     #[inline]
-    pub fn to_scalar_ptr(self) -> EvalResult<'tcx, Scalar<Tag>> {
+    pub fn to_scalar_ptr(self) -> InterpResult<'tcx, Scalar<Tag>> {
         match self {
             Immediate::Scalar(ptr) |
             Immediate::ScalarPair(ptr, _) => ptr.not_undef(),
@@ -109,7 +109,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     /// Converts the value into its metadata.
     /// Throws away the first half of a ScalarPair!
     #[inline]
-    pub fn to_meta(self) -> EvalResult<'tcx, Option<Scalar<Tag>>> {
+    pub fn to_meta(self) -> InterpResult<'tcx, Option<Scalar<Tag>>> {
         Ok(match self {
             Immediate::Scalar(_) => None,
             Immediate::ScalarPair(_, meta) => Some(meta.not_undef()?),
@@ -229,7 +229,7 @@ impl<'tcx, Tag: Copy> ImmTy<'tcx, Tag>
     }
 
     #[inline]
-    pub fn to_bits(self) -> EvalResult<'tcx, u128> {
+    pub fn to_bits(self) -> InterpResult<'tcx, u128> {
         self.to_scalar()?.to_bits(self.layout.size)
     }
 }
@@ -251,8 +251,8 @@ impl<'tcx, Tag> OpTy<'tcx, Tag>
 #[inline(always)]
 pub(super) fn from_known_layout<'tcx>(
     layout: Option<TyLayout<'tcx>>,
-    compute: impl FnOnce() -> EvalResult<'tcx, TyLayout<'tcx>>
-) -> EvalResult<'tcx, TyLayout<'tcx>> {
+    compute: impl FnOnce() -> InterpResult<'tcx, TyLayout<'tcx>>
+) -> InterpResult<'tcx, TyLayout<'tcx>> {
     match layout {
         None => compute(),
         Some(layout) => {
@@ -273,7 +273,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     fn try_read_immediate_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, Option<Immediate<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Option<Immediate<M::PointerTag>>> {
         if mplace.layout.is_unsized() {
             // Don't touch unsized
             return Ok(None);
@@ -327,7 +327,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub(super) fn try_read_immediate(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, Result<Immediate<M::PointerTag>, MemPlace<M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Result<Immediate<M::PointerTag>, MemPlace<M::PointerTag>>> {
         Ok(match src.try_as_mplace() {
             Ok(mplace) => {
                 if let Some(val) = self.try_read_immediate_from_mplace(mplace)? {
@@ -345,7 +345,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn read_immediate(
         &self,
         op: OpTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::PointerTag>> {
         if let Ok(imm) = self.try_read_immediate(op)? {
             Ok(ImmTy { imm, layout: op.layout })
         } else {
@@ -357,7 +357,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn read_scalar(
         &self,
         op: OpTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
+    ) -> InterpResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
@@ -365,7 +365,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn read_str(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, &str> {
+    ) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
         let str = ::std::str::from_utf8(bytes)
@@ -376,7 +376,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn uninit_operand(
         &mut self,
         layout: TyLayout<'tcx>
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
+    ) -> InterpResult<'tcx, Operand<M::PointerTag>> {
         // This decides which types we will use the Immediate optimization for, and hence should
         // match what `try_read_immediate` and `eval_place_to_op` support.
         if layout.is_zst() {
@@ -405,7 +405,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         op: OpTy<'tcx, M::PointerTag>,
         field: u64,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let base = match op.try_as_mplace() {
             Ok(mplace) => {
                 // The easy case
@@ -440,7 +440,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         op: OpTy<'tcx, M::PointerTag>,
         variant: VariantIdx,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
         Ok(match op.try_as_mplace() {
             Ok(mplace) => {
@@ -457,7 +457,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         base: OpTy<'tcx, M::PointerTag>,
         proj_elem: &mir::PlaceElem<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
             Field(field, _) => self.operand_field(base, field.index() as u64)?,
@@ -484,7 +484,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         assert_ne!(local, mir::RETURN_PLACE);
         let op = *frame.locals[local].access()?;
         let layout = self.layout_of_local(frame, local, layout)?;
@@ -496,7 +496,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn place_to_op(
         &self,
         place: PlaceTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = match *place {
             Place::Ptr(mplace) => {
                 Operand::Indirect(mplace)
@@ -513,7 +513,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         mir_place: &mir::Place<'tcx>,
         layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Place::*;
         use rustc::mir::PlaceBase;
         let op = match *mir_place {
@@ -539,7 +539,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         mir_op: &mir::Operand<'tcx>,
         layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         use rustc::mir::Operand::*;
         let op = match *mir_op {
             // FIXME: do some more logic on `move` to invalidate the old location
@@ -557,7 +557,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub(super) fn eval_operands(
         &self,
         ops: &[mir::Operand<'tcx>],
-    ) -> EvalResult<'tcx, Vec<OpTy<'tcx, M::PointerTag>>> {
+    ) -> InterpResult<'tcx, Vec<OpTy<'tcx, M::PointerTag>>> {
         ops.into_iter()
             .map(|op| self.eval_operand(op, None))
             .collect()
@@ -569,7 +569,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         &self,
         val: ty::Const<'tcx>,
         layout: Option<TyLayout<'tcx>>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+    ) -> InterpResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         let op = match val.val {
             ConstValue::Param(_) | ConstValue::Infer(_) => bug!(),
             ConstValue::ByRef(ptr, alloc) => {
@@ -607,7 +607,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn read_discriminant(
         &self,
         rval: OpTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, (u128, VariantIdx)> {
+    ) -> InterpResult<'tcx, (u128, VariantIdx)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
 
         let discr_kind = match rval.layout.variants {

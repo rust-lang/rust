@@ -7,7 +7,7 @@ use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocKind, EvalResult, InterpError,
+    Scalar, AllocKind, InterpResult, InterpError,
 };
 
 use super::{
@@ -206,7 +206,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
         &mut self,
         new_op: OpTy<'tcx, M::PointerTag>,
         elem: PathElem,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         // Remember the old state
         let path_len = self.path.len();
         // Perform operation
@@ -234,7 +234,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         old_op: OpTy<'tcx, M::PointerTag>,
         field: usize,
         new_op: OpTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let elem = self.aggregate_field_path_elem(old_op.layout, field);
         self.visit_elem(new_op, elem)
     }
@@ -245,13 +245,13 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         old_op: OpTy<'tcx, M::PointerTag>,
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let name = old_op.layout.ty.ty_adt_def().unwrap().variants[variant_id].ident.name;
         self.visit_elem(new_op, PathElem::Variant(name))
     }
 
     #[inline]
-    fn visit_value(&mut self, op: OpTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
+    fn visit_value(&mut self, op: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx>
     {
         trace!("visit_value: {:?}, {:?}", *op, op.layout);
         // Translate some possible errors to something nicer.
@@ -271,7 +271,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
     }
 
-    fn visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
+    fn visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> InterpResult<'tcx>
     {
         let value = self.ecx.read_immediate(value)?;
         // Go over all the primitive types
@@ -427,7 +427,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         Ok(())
     }
 
-    fn visit_uninhabited(&mut self) -> EvalResult<'tcx>
+    fn visit_uninhabited(&mut self) -> InterpResult<'tcx>
     {
         validation_failure!("a value of an uninhabited type", self.path)
     }
@@ -436,7 +436,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         &mut self,
         op: OpTy<'tcx, M::PointerTag>,
         layout: &layout::Scalar,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         let value = self.ecx.read_scalar(op)?;
         // Determine the allowed range
         let (lo, hi) = layout.valid_range.clone().into_inner();
@@ -506,8 +506,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     fn visit_aggregate(
         &mut self,
         op: OpTy<'tcx, M::PointerTag>,
-        fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
-    ) -> EvalResult<'tcx> {
+        fields: impl Iterator<Item=InterpResult<'tcx, Self::V>>,
+    ) -> InterpResult<'tcx> {
         match op.layout.ty.sty {
             ty::Str => {
                 let mplace = op.to_mem_place(); // strings are never immediate
@@ -601,7 +601,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         path: Vec<PathElem>,
         ref_tracking: Option<&mut RefTracking<MPlaceTy<'tcx, M::PointerTag>>>,
         const_mode: bool,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         trace!("validate_operand: {:?}, {:?}", *op, op.layout.ty);
 
         // Construct a visitor

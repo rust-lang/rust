@@ -10,7 +10,7 @@ use rustc::mir;
 use rustc::ty::{self, query::TyCtxtAt};
 
 use super::{
-    Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
+    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
     InterpretCx, PlaceTy, MPlaceTy, OpTy, ImmTy, Pointer, MemoryKind,
 };
 
@@ -99,7 +99,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Called before a basic block terminator is executed.
     /// You can use this to detect endlessly running programs.
-    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>;
+    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx>;
 
     /// Entry point to all function calls.
     ///
@@ -117,7 +117,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>>;
+    ) -> InterpResult<'tcx, Option<&'mir mir::Mir<'tcx>>>;
 
     /// Directly process an intrinsic without pushing a stack frame.
     /// If this returns successfully, the engine will take care of jumping to the next block.
@@ -126,7 +126,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx>;
+    ) -> InterpResult<'tcx>;
 
     /// Called for read access to a foreign static item.
     ///
@@ -137,7 +137,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         def_id: DefId,
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         memory_extra: &Self::MemoryExtra,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
+    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called to turn an allocation obtained from the `tcx` into one that has
     /// the right type for this machine.
@@ -160,13 +160,13 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, Self::PointerTag>,
         right: ImmTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
+    ) -> InterpResult<'tcx, (Scalar<Self::PointerTag>, bool)>;
 
     /// Heap allocations via the `box` keyword.
     fn box_alloc(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx>;
+    ) -> InterpResult<'tcx>;
 
     /// Adds the tag for a newly allocated pointer.
     fn tag_new_allocation(
@@ -183,7 +183,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         _ecx: &InterpretCx<'a, 'mir, 'tcx, Self>,
         place: MPlaceTy<'tcx, Self::PointerTag>,
         _mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
+    ) -> InterpResult<'tcx, Scalar<Self::PointerTag>> {
         Ok(place.ptr)
     }
 
@@ -193,18 +193,18 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _kind: mir::RetagKind,
         _place: PlaceTy<'tcx, Self::PointerTag>,
-    ) -> EvalResult<'tcx> {
+    ) -> InterpResult<'tcx> {
         Ok(())
     }
 
     /// Called immediately before a new stack frame got pushed
     fn stack_push(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-    ) -> EvalResult<'tcx, Self::FrameExtra>;
+    ) -> InterpResult<'tcx, Self::FrameExtra>;
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(
         ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         extra: Self::FrameExtra,
-    ) -> EvalResult<'tcx>;
+    ) -> InterpResult<'tcx>;
 }

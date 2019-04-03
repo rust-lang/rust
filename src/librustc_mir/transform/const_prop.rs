@@ -7,7 +7,7 @@ use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Loc
 use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind, Static, StaticKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
-use rustc::mir::interpret::{InterpError, Scalar, GlobalId, EvalResult};
+use rustc::mir::interpret::{InterpError, Scalar, GlobalId, InterpResult};
 use rustc::ty::{TyCtxt, self, Instance};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
@@ -127,7 +127,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         f: F
     ) -> Option<T>
     where
-        F: FnOnce(&mut Self) -> EvalResult<'tcx, T>,
+        F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         self.ecx.tcx.span = source_info.span;
         let lint_root = match self.mir.source_scope_local_data {

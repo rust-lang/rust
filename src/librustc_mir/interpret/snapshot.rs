@@ -12,7 +12,7 @@ use rustc::mir;
 use rustc::mir::interpret::{
     AllocId, Pointer, Scalar,
     Relocations, Allocation, UndefMask,
-    EvalResult, InterpError,
+    InterpResult, InterpError,
 };
 
 use rustc::ty::{self, TyCtxt};
@@ -51,7 +51,7 @@ impl<'a, 'mir, 'tcx> InfiniteLoopDetector<'a, 'mir, 'tcx>
         span: Span,
         memory: &Memory<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
         stack: &[Frame<'mir, 'tcx>],
-    ) -> EvalResult<'tcx, ()> {
+    ) -> InterpResult<'tcx, ()> {
         // Compute stack's hash before copying anything
         let mut hcx = tcx.get_stable_hashing_context();
         let mut hasher = StableHasher::<u64>::new();
