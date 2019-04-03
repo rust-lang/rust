@@ -3387,6 +3387,7 @@ dependencies = [
  "arena 0.0.0",
  "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
+ "rustc_macros 0.1.0",
  "scoped-tls 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
  "unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
