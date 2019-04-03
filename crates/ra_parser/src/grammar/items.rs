@@ -79,19 +79,22 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
     let mut has_mods = false;
 
     // modifiers
-    // test_err async_without_semicolon
-    // fn foo() { let _ = async {} }
     has_mods |= p.eat(CONST_KW);
-    if p.at(ASYNC_KW) && p.nth(1) != L_CURLY && p.nth(1) != MOVE_KW && p.nth(1) != PIPE {
-        p.eat(ASYNC_KW);
-        has_mods = true;
-    }
+
     // test_err unsafe_block_in_mod
     // fn foo(){} unsafe { } fn bar(){}
     if p.at(UNSAFE_KW) && p.nth(1) != L_CURLY {
         p.eat(UNSAFE_KW);
         has_mods = true;
     }
+
+    // test_err async_without_semicolon
+    // fn foo() { let _ = async {} }
+    if p.at(ASYNC_KW) && p.nth(1) != L_CURLY && p.nth(1) != MOVE_KW && p.nth(1) != PIPE {
+        p.eat(ASYNC_KW);
+        has_mods = true;
+    }
+
     if p.at(EXTERN_KW) {
         has_mods = true;
         abi(p);
@@ -124,6 +127,14 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
 
         // test unsafe_fn
         // unsafe fn foo() {}
+
+        // test combined_fns
+        // unsafe async fn foo() {}
+        // const unsafe fn bar() {}
+
+        // test_err wrong_order_fns
+        // async unsafe fn foo() {}
+        // unsafe const fn bar() {}
         FN_KW => {
             fn_def(p, flavor);
             m.complete(p, FN_DEF);
