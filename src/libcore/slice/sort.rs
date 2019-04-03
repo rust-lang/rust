@@ -691,3 +691,92 @@ pub fn quicksort<T, F>(v: &mut [T], mut is_less: F)
 
     recurse(v, &mut is_less, None, limit);
 }
+
+fn partition_at_index_loop<'a, T, F>( mut v: &'a mut [T], mut index: usize, is_less: &mut F
+                                    , mut pred: Option<&'a T>) where F: FnMut(&T, &T) -> bool
+{
+    loop {
+        // For slices of up to this length it's probably faster to simply sort them.
+        const MAX_INSERTION: usize = 10;
+        if v.len() <= MAX_INSERTION {
+            insertion_sort(v, is_less);
+            return;
+        }
+
+        // Choose a pivot
+        let (pivot, _) = choose_pivot(v, is_less);
+
+        // If the chosen pivot is equal to the predecessor, then it's the smallest element in the
+        // slice. Partition the slice into elements equal to and elements greater than the pivot.
+        // This case is usually hit when the slice contains many duplicate elements.
+        if let Some(p) = pred {
+            if !is_less(p, &v[pivot]) {
+                let mid = partition_equal(v, pivot, is_less);
+
+                // If we've passed our index, then we're good.
+                if mid > index {
+                    return;
+                }
+
+                // Otherwise, continue sorting elements greater than the pivot.
+                v = &mut v[mid..];
+                index = index - mid;
+                pred = None;
+                continue;
+            }
+        }
+
+        let (mid, _) = partition(v, pivot, is_less);
+
+        // Split the slice into `left`, `pivot`, and `right`.
+        let (left, right) = {v}.split_at_mut(mid);
+        let (pivot, right) = right.split_at_mut(1);
+        let pivot = &pivot[0];
+
+        if mid < index {
+            v = right;
+            index = index - mid - 1;
+            pred = Some(pivot);
+        } else if mid > index {
+            v = left;
+        } else {
+            // If mid == index, then we're done, since partition() guaranteed that all elements
+            // after mid are greater than or equal to mid.
+            return;
+        }
+    }
+}
+
+pub fn partition_at_index<T, F>(v: &mut [T], index: usize, mut is_less: F)
+                                -> (&mut [T], &mut T, &mut [T]) where F: FnMut(&T, &T) -> bool
+{
+    use cmp::Ordering::Less;
+    use cmp::Ordering::Greater;
+
+    if index >= v.len() {
+        panic!("partition_at_index index {} greater than length of slice {}", index, v.len());
+    }
+
+    if mem::size_of::<T>() == 0 {
+        // Sorting has no meaningful behavior on zero-sized types. Do nothing.
+    } else if index == v.len() - 1 {
+        // Find max element and place it in the last position of the array. We're free to use
+        // `unwrap()` here because we know v must not be empty.
+        let (max_index, _) = v.iter().enumerate().max_by(
+            |&(_, x), &(_, y)| if is_less(x, y) { Less } else { Greater }).unwrap();
+        v.swap(max_index, index);
+    } else if index == 0 {
+        // Find min element and place it in the first position of the array. We're free to use
+        // `unwrap()` here because we know v must not be empty.
+        let (min_index, _) = v.iter().enumerate().min_by(
+            |&(_, x), &(_, y)| if is_less(x, y) { Less } else { Greater }).unwrap();
+        v.swap(min_index, index);
+    } else {
+        partition_at_index_loop(v, index, &mut is_less, None);
+    }
+
+    let (left, right) = v.split_at_mut(index);
+    let (pivot, right) = right.split_at_mut(1);
+    let pivot = &mut pivot[0];
+    (left, pivot, right)
+}
