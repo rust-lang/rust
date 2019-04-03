@@ -173,7 +173,7 @@ fn intervals2dur(intervals: u64) -> Duration {
 
 mod perf_counter {
     use super::{NANOS_PER_SEC};
-    use crate::sync::Once;
+    use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     use crate::sys_common::mul_div_u64;
     use crate::sys::c;
     use crate::sys::cvt;
@@ -210,13 +210,25 @@ mod perf_counter {
 
     fn frequency() -> c::LARGE_INTEGER {
         static mut FREQUENCY: c::LARGE_INTEGER = 0;
-        static ONCE: Once = Once::new();
+        static STATE: AtomicUsize = AtomicUsize::new(0);
 
         unsafe {
-            ONCE.call_once(|| {
-                cvt(c::QueryPerformanceFrequency(&mut FREQUENCY)).unwrap();
-            });
-            FREQUENCY
+            // If a previous thread has filled in this global state, use that.
+            if STATE.load(SeqCst) == 2 {
+                return FREQUENCY;
+            }
+
+            // ... otherwise learn for ourselves ...
+            let mut frequency = 0;
+            cvt(c::QueryPerformanceFrequency(&mut frequency)).unwrap();
+
+            // ... and attempt to be the one thread that stores it globally for
+            // all other threads
+            if STATE.compare_exchange(0, 1, SeqCst, SeqCst).is_ok() {
+                FREQUENCY = frequency;
+                STATE.store(2, SeqCst);
+            }
+            return frequency;
         }
     }
 

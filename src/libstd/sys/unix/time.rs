@@ -114,7 +114,8 @@ impl Hash for Timespec {
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod inner {
     use crate::fmt;
-    use crate::sync::Once;
+    use crate::mem;
+    use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
     use crate::sys::cvt;
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
@@ -229,18 +230,30 @@ mod inner {
         Some(mul_div_u64(nanos, info.denom as u64, info.numer as u64))
     }
 
-    fn info() -> &'static libc::mach_timebase_info {
+    fn info() -> libc::mach_timebase_info {
         static mut INFO: libc::mach_timebase_info = libc::mach_timebase_info {
             numer: 0,
             denom: 0,
         };
-        static ONCE: Once = Once::new();
+        static STATE: AtomicUsize = AtomicUsize::new(0);
 
         unsafe {
-            ONCE.call_once(|| {
-                libc::mach_timebase_info(&mut INFO);
-            });
-            &INFO
+            // If a previous thread has filled in this global state, use that.
+            if STATE.load(SeqCst) == 2 {
+                return INFO;
+            }
+
+            // ... otherwise learn for ourselves ...
+            let mut info = mem::zeroed();
+            libc::mach_timebase_info(&mut info);
+
+            // ... and attempt to be the one thread that stores it globally for
+            // all other threads
+            if STATE.compare_exchange(0, 1, SeqCst, SeqCst).is_ok() {
+                INFO = info;
+                STATE.store(2, SeqCst);
+            }
+            return info;
         }
     }
 }
