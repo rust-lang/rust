@@ -49,20 +49,11 @@ pub struct TypeLimits {
     negated_expr_id: hir::HirId,
 }
 
+impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS]);
+
 impl TypeLimits {
     pub fn new() -> TypeLimits {
         TypeLimits { negated_expr_id: hir::DUMMY_HIR_ID }
-    }
-}
-
-impl LintPass for TypeLimits {
-    fn name(&self) -> &'static str {
-        "TypeLimits"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_COMPARISONS,
-                    OVERFLOWING_LITERALS)
     }
 }
 
@@ -423,6 +414,8 @@ declare_lint! {
     Warn,
     "proper use of libc types in foreign modules"
 }
+
+declare_lint_pass!(ImproperCTypes => [IMPROPER_CTYPES]);
 
 struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
@@ -793,19 +786,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct ImproperCTypes;
-
-impl LintPass for ImproperCTypes {
-    fn name(&self) -> &'static str {
-        "ImproperCTypes"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(IMPROPER_CTYPES)
-    }
-}
-
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::ForeignItem) {
         let mut vis = ImproperCTypesVisitor { cx };
@@ -824,17 +804,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     }
 }
 
-pub struct VariantSizeDifferences;
-
-impl LintPass for VariantSizeDifferences {
-    fn name(&self) -> &'static str {
-        "VariantSizeDifferences"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(VARIANT_SIZE_DIFFERENCES)
-    }
-}
+declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {

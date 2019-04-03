@@ -12,19 +12,13 @@ use rustc_plugin::Registry;
 use rustc::hir;
 use syntax::attr;
 
-declare_lint!(CRATE_NOT_OKAY, Warn, "crate not marked with #![crate_okay]");
-
-struct Pass;
-
-impl LintPass for Pass {
-    fn name(&self) -> &'static str {
-        "Pass"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(CRATE_NOT_OKAY)
-    }
+declare_lint! {
+    CRATE_NOT_OKAY,
+    Warn,
+    "crate not marked with #![crate_okay]"
 }
+
+declare_lint_pass!(Pass => [CRATE_NOT_OKAY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
