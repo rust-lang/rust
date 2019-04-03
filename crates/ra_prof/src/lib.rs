@@ -9,6 +9,20 @@ use std::iter::FromIterator;
 use std::sync::RwLock;
 use lazy_static::lazy_static;
 
+/// Set profiling filter. It specifies descriptions allowed to profile.
+/// This is helpful when call stack has too many nested profiling scopes.
+/// Additionally filter can specify maximum depth of profiling scopes nesting.
+///
+/// #Example
+/// ```
+/// use ra_prof::set_filter;
+/// use ra_prof::Filter;
+/// let max_depth = 2;
+/// let allowed = vec!["profile1".to_string(), "profile2".to_string()];
+/// let f = Filter::new( max_depth, allowed );
+/// set_filter(f);
+/// ```
+///
 pub fn set_filter(f: Filter) {
     let set = HashSet::from_iter(f.allowed.iter().cloned());
     let mut old = FILTER.write().unwrap();
@@ -16,6 +30,37 @@ pub fn set_filter(f: Filter) {
     *old = filter_data;
 }
 
+/// This function starts a profiling scope in the current execution stack with a given description.
+/// It returns a Profile structure and measure elapsed time between this method invocation and Profile structure drop.
+/// It supports nested profiling scopes in case when this function invoked multiple times at the execution stack. In this case the profiling information will be nested at the output.
+/// Profiling information is being printed in the stderr.
+///
+/// #Example
+/// ```
+/// use ra_prof::profile;
+/// use ra_prof::set_filter;
+/// use ra_prof::Filter;
+///
+/// let allowed = vec!["profile1".to_string(), "profile2".to_string()];
+/// let f = Filter::new(2, allowed);
+/// set_filter(f);
+/// profiling_function1();
+///
+/// fn profiling_function1() {
+///     let _p = profile("profile1");
+///     profiling_function2();
+/// }
+///
+/// fn profiling_function2() {
+///     let _p = profile("profile2");
+/// }
+/// ```
+/// This will print in the stderr the following:
+/// ```text
+///  0ms - profile
+///      0ms - profile2
+/// ```
+///
 pub fn profile(desc: &str) -> Profiler {
     PROFILE_STACK.with(|stack| {
         let mut stack = stack.borrow_mut();
@@ -137,7 +182,7 @@ mod tests {
     #[test]
     fn test_basic_profile() {
         let s = vec!["profile1".to_string(), "profile2".to_string()];
-        let f = Filter { depth: 2, allowed: s };
+        let f = Filter::new(2, s);
         set_filter(f);
         profiling_function1();
     }
