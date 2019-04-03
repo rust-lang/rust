@@ -591,7 +591,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         );
 
         let is_object = self_ty.map_or(false, |ty| {
-            ty.sty == self.tcx().types.trait_object_dummy_self.sty
+            ty == self.tcx().types.trait_object_dummy_self
         });
         let default_needs_object_self = |param: &ty::GenericParamDef| {
             if let GenericParamDefKind::Type { has_default, .. } = param.kind {
@@ -956,7 +956,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// removing the dummy `Self` type (`trait_object_dummy_self`).
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
                                 -> ty::ExistentialTraitRef<'tcx> {
-        if trait_ref.self_ty().sty != self.tcx().types.trait_object_dummy_self.sty {
+        if trait_ref.self_ty() != self.tcx().types.trait_object_dummy_self {
             bug!("trait_ref_to_existential called on {:?} with non-dummy Self", trait_ref);
         }
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
