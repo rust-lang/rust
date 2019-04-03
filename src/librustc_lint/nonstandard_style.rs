@@ -38,6 +38,8 @@ declare_lint! {
     "types, variants, traits and type parameters should have camel case names"
 }
 
+declare_lint_pass!(NonCamelCaseTypes => [NON_CAMEL_CASE_TYPES]);
+
 fn char_has_case(c: char) -> bool {
     c.is_lowercase() || c.is_uppercase()
 }
@@ -105,9 +107,6 @@ fn to_camel_case(s: &str) -> String {
         .0
 }
 
-#[derive(Copy, Clone)]
-pub struct NonCamelCaseTypes;
-
 impl NonCamelCaseTypes {
     fn check_case(&self, cx: &EarlyContext<'_>, sort: &str, ident: &Ident) {
         let name = &ident.name.as_str();
@@ -123,16 +122,6 @@ impl NonCamelCaseTypes {
                 )
                 .emit();
         }
-    }
-}
-
-impl LintPass for NonCamelCaseTypes {
-    fn name(&self) -> &'static str {
-        "NonCamelCaseTypes"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NON_CAMEL_CASE_TYPES)
     }
 }
 
@@ -173,8 +162,7 @@ declare_lint! {
     "variables, methods, functions, lifetime parameters and modules should have snake case names"
 }
 
-#[derive(Copy, Clone)]
-pub struct NonSnakeCase;
+declare_lint_pass!(NonSnakeCase => [NON_SNAKE_CASE]);
 
 impl NonSnakeCase {
     fn to_snake_case(mut str: &str) -> String {
@@ -253,16 +241,6 @@ impl NonSnakeCase {
 
             err.emit();
         }
-    }
-}
-
-impl LintPass for NonSnakeCase {
-    fn name(&self) -> &'static str {
-        "NonSnakeCase"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NON_SNAKE_CASE)
     }
 }
 
@@ -387,8 +365,7 @@ declare_lint! {
     "static constants should have uppercase identifiers"
 }
 
-#[derive(Copy, Clone)]
-pub struct NonUpperCaseGlobals;
+declare_lint_pass!(NonUpperCaseGlobals => [NON_UPPER_CASE_GLOBALS]);
 
 impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_, '_>, sort: &str, ident: &Ident) {
@@ -407,16 +384,6 @@ impl NonUpperCaseGlobals {
                 )
                 .emit();
         }
-    }
-}
-
-impl LintPass for NonUpperCaseGlobals {
-    fn name(&self) -> &'static str {
-        "NonUpperCaseGlobals"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NON_UPPER_CASE_GLOBALS)
     }
 }
 
