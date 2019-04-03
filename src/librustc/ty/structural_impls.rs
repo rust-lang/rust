@@ -6,7 +6,7 @@
 use crate::hir::def::Namespace;
 use crate::mir::ProjectionKind;
 use crate::mir::interpret::ConstValue;
-use crate::ty::{self, Lift, Ty, TyCtxt, ConstVid, InferConst};
+use crate::ty::{self, Lift, Ty, TyCtxt, InferConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -14,7 +14,6 @@ use smallvec::SmallVec;
 use crate::mir::interpret;
 
 use std::fmt;
-use std::marker::PhantomData;
 use std::rc::Rc;
 
 impl fmt::Debug for ty::GenericParamDef {
@@ -295,9 +294,6 @@ CloneTypeFoldableAndLiftImpls! {
     (),
     bool,
     usize,
-    u32,
-    crate::ty::BoundVar,
-    crate::ty::DebruijnIndex,
     crate::ty::layout::VariantIdx,
     u64,
     String,
@@ -314,8 +310,6 @@ CloneTypeFoldableAndLiftImpls! {
     ::rustc_target::spec::abi::Abi,
     crate::mir::Local,
     crate::mir::Promoted,
-    crate::mir::interpret::Scalar,
-    crate::mir::interpret::Pointer,
     crate::traits::Reveal,
     crate::ty::adjustment::AutoBorrowMutability,
     crate::ty::AdtKind,
@@ -790,44 +784,6 @@ BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for interpret::GlobalId<'a> {
         type Lifted = interpret::GlobalId<'tcx>;
         instance, promoted
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for ty::Const<'a> {
-        type Lifted = ty::Const<'tcx>;
-        val, ty
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for interpret::ConstValue<'a> {
-        type Lifted = interpret::ConstValue<'tcx>;
-        (interpret::ConstValue::Unevaluated)(a, b),
-        (interpret::ConstValue::Param)(a),
-        (interpret::ConstValue::Infer)(a),
-        (interpret::ConstValue::Scalar)(a),
-        (interpret::ConstValue::Slice)(a, b),
-        (interpret::ConstValue::ByRef)(a, b),
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for ty::InferConst<'a> {
-        type Lifted = ty::InferConst<'tcx>;
-        (ty::InferConst::Var)(a),
-        (ty::InferConst::Fresh)(a),
-        (ty::InferConst::Canonical)(a, b),
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for ConstVid<'a> {
-    type Lifted = ConstVid<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, _: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        Some(ConstVid {
-            index: self.index,
-            phantom: PhantomData,
-        })
     }
 }
 

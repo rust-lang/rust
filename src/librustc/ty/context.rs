@@ -24,7 +24,7 @@ use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::{self, Mir, interpret, ProjectionKind};
-use crate::mir::interpret::{ConstValue, Allocation};
+use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
 use crate::traits;
@@ -1000,7 +1000,10 @@ impl<'tcx> CommonConsts<'tcx> {
         };
 
         CommonConsts {
-            err: mk_const(ty::Const::zero_sized(types.err)),
+            err: mk_const(ty::Const {
+                val: ConstValue::Scalar(Scalar::Bits { bits: 0, size: 0 }),
+                ty: types.err,
+            }),
         }
     }
 }
@@ -1822,14 +1825,6 @@ nop_list_lift!{ProjectionKind => ProjectionKind}
 // this is the impl for `&'a InternalSubsts<'a>`
 nop_list_lift!{Kind<'a> => Kind<'tcx>}
 
-impl<'a, 'tcx> Lift<'tcx> for &'a mir::interpret::Allocation {
-    type Lifted = &'tcx mir::interpret::Allocation;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        assert!(tcx.global_arenas.const_allocs.in_arena(*self as *const _));
-        Some(unsafe { mem::transmute(*self) })
-    }
-}
-
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt, ptr_eq};
 
@@ -2594,9 +2589,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
-        self.mk_ty(Array(ty, self.mk_const(
-            ty::Const::from_usize(self.global_tcx(), n)
-        )))
+        self.mk_ty(Array(ty, ty::Const::from_usize(self.global_tcx(), n)))
     }
 
     #[inline]

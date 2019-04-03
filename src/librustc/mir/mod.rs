@@ -1660,25 +1660,25 @@ impl<'tcx> TerminatorKind<'tcx> {
                 switch_ty,
                 ..
             } => {
-                let size = ty::tls::with(|tcx| {
+                ty::tls::with(|tcx| {
                     let param_env = ty::ParamEnv::empty();
                     let switch_ty = tcx.lift_to_global(&switch_ty).unwrap();
-                    tcx.layout_of(param_env.and(switch_ty)).unwrap().size
-                });
-                values
-                    .iter()
-                    .map(|&u| {
-                        (&ty::Const {
-                            val: ConstValue::Scalar(
-                                Scalar::Bits {
-                                    bits: u,
-                                    size: size.bytes() as u8,
-                                }.into(),
-                            ),
-                            ty: switch_ty,
-                        }).to_string().into()
-                    }).chain(iter::once("otherwise".into()))
-                    .collect()
+                    let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
+                    values
+                        .iter()
+                        .map(|&u| {
+                            tcx.mk_const(ty::Const {
+                                val: ConstValue::Scalar(
+                                    Scalar::Bits {
+                                        bits: u,
+                                        size: size.bytes() as u8,
+                                    }.into(),
+                                ),
+                                ty: switch_ty,
+                            }).to_string().into()
+                        }).chain(iter::once("otherwise".into()))
+                        .collect()
+                })
             }
             Call {
                 destination: Some(_),
@@ -2326,9 +2326,7 @@ impl<'tcx> Operand<'tcx> {
             span,
             ty,
             user_ty: None,
-            literal: tcx.mk_const(
-                ty::Const::zero_sized(ty),
-            ),
+            literal: ty::Const::zero_sized(tcx, ty),
         })
     }
 

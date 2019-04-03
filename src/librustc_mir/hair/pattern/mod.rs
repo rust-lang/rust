@@ -152,7 +152,7 @@ pub enum PatternKind<'tcx> {
     },
 
     Constant {
-        value: ty::Const<'tcx>,
+        value: &'tcx ty::Const<'tcx>,
     },
 
     Range(PatternRange<'tcx>),
@@ -176,8 +176,8 @@ pub enum PatternKind<'tcx> {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PatternRange<'tcx> {
-    pub lo: ty::Const<'tcx>,
-    pub hi: ty::Const<'tcx>,
+    pub lo: &'tcx ty::Const<'tcx>,
+    pub hi: &'tcx ty::Const<'tcx>,
     pub ty: Ty<'tcx>,
     pub end: RangeEnd,
 }
@@ -291,15 +291,15 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                 write!(f, "{}", subpattern)
             }
             PatternKind::Constant { value } => {
-                write!(f, "{}", &value)
+                write!(f, "{}", value)
             }
             PatternKind::Range(PatternRange { lo, hi, ty: _, end }) => {
-                write!(f, "{}", &lo)?;
+                write!(f, "{}", lo)?;
                 match end {
                     RangeEnd::Included => write!(f, "..=")?,
                     RangeEnd::Excluded => write!(f, "..")?,
                 }
-                write!(f, "{}", &hi)
+                write!(f, "{}", hi)
             }
             PatternKind::Slice { ref prefix, ref slice, ref suffix } |
             PatternKind::Array { ref prefix, ref slice, ref suffix } => {
@@ -942,7 +942,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
     fn const_to_pat(
         &self,
         instance: ty::Instance<'tcx>,
-        cv: ty::Const<'tcx>,
+        cv: &'tcx ty::Const<'tcx>,
         id: hir::HirId,
         span: Span,
     ) -> Pattern<'tcx> {
@@ -1205,7 +1205,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             PatternKind::Constant {
                 value
             } => PatternKind::Constant {
-                value: value.fold_with(folder)
+                value,
             },
             PatternKind::Range(PatternRange {
                 lo,
@@ -1213,8 +1213,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
                 ty,
                 end,
             }) => PatternKind::Range(PatternRange {
-                lo: lo.fold_with(folder),
-                hi: hi.fold_with(folder),
+                lo,
+                hi,
                 ty: ty.fold_with(folder),
                 end,
             }),
@@ -1242,8 +1242,8 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
 
 pub fn compare_const_vals<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    a: ty::Const<'tcx>,
-    b: ty::Const<'tcx>,
+    a: &'tcx ty::Const<'tcx>,
+    b: &'tcx ty::Const<'tcx>,
     ty: ty::ParamEnvAnd<'tcx, Ty<'tcx>>,
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);

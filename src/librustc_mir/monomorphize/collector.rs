@@ -609,7 +609,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        collect_const(self.tcx, **constant, self.param_substs, self.output);
+        collect_const(self.tcx, *constant, self.param_substs, self.output);
 
         self.super_const(constant);
     }
@@ -1248,7 +1248,7 @@ fn def_id_to_string<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn collect_const<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    constant: ty::Const<'tcx>,
+    constant: &'tcx ty::Const<'tcx>,
     param_substs: SubstsRef<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {

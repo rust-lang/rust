@@ -1536,7 +1536,7 @@ define_print_and_forward_display! {
         p!(print_def_path(self.def_id, self.substs));
     }
 
-    ty::Const<'tcx> {
+    &'tcx ty::Const<'tcx> {
         match (self.val, &self.ty.sty) {
             | (ConstValue::Unevaluated(..), _)
             | (ConstValue::Infer(..), _)

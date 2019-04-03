@@ -65,7 +65,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
 fn mplace_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     mplace: MPlaceTy<'tcx>,
-) -> ty::Const<'tcx> {
+) -> &'tcx ty::Const<'tcx> {
     let MemPlace { ptr, align, meta } = *mplace;
     // extract alloc-offset pair
     assert!(meta.is_none());
@@ -79,13 +79,13 @@ fn mplace_to_const<'tcx>(
     // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
     let alloc = ecx.tcx.intern_const_alloc(alloc);
     let val = ConstValue::ByRef(ptr, alloc);
-    ty::Const { val, ty: mplace.layout.ty }
+    ecx.tcx.mk_const(ty::Const { val, ty: mplace.layout.ty })
 }
 
 fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
-) -> ty::Const<'tcx> {
+) -> &'tcx ty::Const<'tcx> {
     // We do not normalize just any data.  Only non-union scalars and slices.
     let normalize = match op.layout.abi {
         layout::Abi::Scalar(..) => op.layout.ty.ty_adt_def().map_or(true, |adt| !adt.is_union()),
@@ -104,7 +104,7 @@ fn op_to_const<'tcx>(
         Err(Immediate::ScalarPair(a, b)) =>
             ConstValue::Slice(a.not_undef().unwrap(), b.to_usize(ecx).unwrap()),
     };
-    ty::Const { val, ty: op.layout.ty }
+    ecx.tcx.mk_const(ty::Const { val, ty: op.layout.ty })
 }
 
 // Returns a pointer to where the result lives
@@ -450,8 +450,8 @@ pub fn const_field<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     variant: Option<VariantIdx>,
     field: mir::Field,
-    value: ty::Const<'tcx>,
-) -> ty::Const<'tcx> {
+    value: &'tcx ty::Const<'tcx>,
+) -> &'tcx ty::Const<'tcx> {
     trace!("const_field: {:?}, {:?}", field, value);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
     // get the operand again
@@ -473,7 +473,7 @@ pub fn const_field<'a, 'tcx>(
 pub fn const_variant_index<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    val: ty::Const<'tcx>,
+    val: &'tcx ty::Const<'tcx>,
 ) -> VariantIdx {
     trace!("const_variant_index: {:?}", val);
     let ecx = mk_eval_cx(tcx, DUMMY_SP, param_env);
