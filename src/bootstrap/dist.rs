@@ -518,8 +518,7 @@ impl Step for Rustc {
                     .join("bin")
                     .join(&exe);
                 // for the rationale about this rename check `compile::copy_lld_to_sysroot`
-                let dst = image.join(libdir_relative)
-                    .join("rustlib")
+                let dst = image.join("lib/rustlib")
                     .join(&*host)
                     .join("bin")
                     .join(&exe);
