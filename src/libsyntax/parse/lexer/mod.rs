@@ -43,16 +43,16 @@ pub struct UnmatchedBrace {
 }
 
 pub struct StringReader<'a> {
-    pub sess: &'a ParseSess,
+    crate sess: &'a ParseSess,
     /// The absolute offset within the source_map of the next character to read
-    pub next_pos: BytePos,
+    crate next_pos: BytePos,
     /// The absolute offset within the source_map of the current character
-    pub pos: BytePos,
+    crate pos: BytePos,
     /// The current character (which has been read from self.pos)
-    pub ch: Option<char>,
-    pub source_file: Lrc<syntax_pos::SourceFile>,
+    crate ch: Option<char>,
+    crate source_file: Lrc<syntax_pos::SourceFile>,
     /// Stop reading src at this index.
-    pub end_src_index: usize,
+    crate end_src_index: usize,
     // cached:
     peek_tok: token::Token,
     peek_span: Span,
