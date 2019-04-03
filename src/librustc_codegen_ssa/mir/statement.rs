@@ -68,13 +68,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 bx
             }
-            mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
-                let outputs = outputs.iter().map(|output| {
+            mir::StatementKind::InlineAsm(ref asm) => {
+                let outputs = asm.outputs.iter().map(|output| {
                     self.codegen_place(&mut bx, output)
                 }).collect();
 
-                let input_vals = inputs.iter()
-                    .fold(Vec::with_capacity(inputs.len()), |mut acc, (span, input)| {
+                let input_vals = asm.inputs.iter()
+                    .fold(Vec::with_capacity(asm.inputs.len()), |mut acc, (span, input)| {
                         let op = self.codegen_operand(&mut bx, input);
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
@@ -85,8 +85,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         acc
                 });
 
-                if input_vals.len() == inputs.len() {
-                    let res = bx.codegen_inline_asm(asm, outputs, input_vals);
+                if input_vals.len() == asm.inputs.len() {
+                    let res = bx.codegen_inline_asm(&asm.asm, outputs, input_vals);
                     if !res {
                         span_err!(bx.sess(), statement.source_info.span, E0668,
                                   "malformed inline assembly");
