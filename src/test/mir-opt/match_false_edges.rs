@@ -109,8 +109,8 @@ fn main() {
 //      goto -> bb13;
 //  }
 //  bb13: {
-//      StorageDead(_1);
 //      StorageDead(_2);
+//      StorageDead(_1);
 //      _0 = ();
 //      return;
 //  }
@@ -186,8 +186,8 @@ fn main() {
 //      goto -> bb13;
 //  }
 //  bb13: {
-//      StorageDead(_1);
 //      StorageDead(_2);
+//      StorageDead(_1);
 //      _0 = ();
 //      return;
 //  }
@@ -289,8 +289,8 @@ fn main() {
 //      goto -> bb17;
 //  }
 //  bb17: {
-//      StorageDead(_1);
 //      StorageDead(_2);
+//      StorageDead(_1);
 //      _0 = ();
 //      return;
 //  }

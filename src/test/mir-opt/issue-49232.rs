@@ -86,7 +86,6 @@ fn main() {
 //         unreachable;
 //     }
 //     bb17: {
-//         StorageDead(_4);
 //         goto -> bb18;
 //     }
 //     bb18: {
