@@ -23,7 +23,7 @@ use crate::time::SystemTime;
 ///
 /// Files are automatically closed when they go out of scope.  Errors detected
 /// on closing are ignored by the implementation of `Drop`.  Use the method
-/// `sync_all` if these errors must be manually handled.
+/// [`sync_all`] if these errors must be manually handled.
 ///
 /// # Examples
 ///
@@ -86,6 +86,7 @@ use crate::time::SystemTime;
 /// [`Read`]: ../io/trait.Read.html
 /// [`Write`]: ../io/trait.Write.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
+/// [`sync_all`]: struct.File.html#method.sync_all
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
