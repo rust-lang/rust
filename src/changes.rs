@@ -969,7 +969,7 @@ pub mod tests {
 
     impl Arbitrary for DefId_ {
         fn arbitrary<G: Gen>(g: &mut G) -> DefId_ {
-            use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
+            use rustc::hir::def_id::{CrateNum, DefIndex};
 
             let a: u32 = Arbitrary::arbitrary(g);
             let b: u32 = Arbitrary::arbitrary(g);

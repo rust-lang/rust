@@ -201,7 +201,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     }
                     TyKind::Dynamic(preds, region) => {
                         // hacky error catching mechanism
-                        use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+                        use rustc::hir::def_id::CRATE_DEF_INDEX;
                         use std::cell::Cell;
 
                         let success = Cell::new(true);
@@ -364,7 +364,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     ) -> Option<Predicate<'tcx>> {
         use rustc::ty::{
             Binder, /*EquatePredicate,*/ OutlivesPredicate, ProjectionPredicate, ProjectionTy,
-            SubtypePredicate, TraitPredicate, TraitRef,
+            SubtypePredicate, TraitPredicate,
         };
 
         Some(match predicate {

@@ -69,7 +69,7 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
 
     /// Register the trait bound represented by a `TraitRef`.
     pub fn register_trait_ref(&mut self, checked_trait_ref: TraitRef<'tcx>) {
-        use rustc::ty::{Binder, Predicate, TraitPredicate};
+        use rustc::ty::{Binder, TraitPredicate};
 
         let predicate = Predicate::Trait(Binder::bind(TraitPredicate {
             trait_ref: checked_trait_ref,
