@@ -12,7 +12,6 @@ use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_metadata::cstore::CStore;
-use std::collections::HashSet;
 use std::io::Write;
 use std::path::PathBuf;
 use std::result;

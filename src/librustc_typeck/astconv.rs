@@ -99,11 +99,6 @@ enum GenericArgPosition {
     MethodCall,
 }
 
-/// Dummy type used for the `Self` of a `TraitRef` created for converting
-/// a trait object, and which gets removed in `ExistentialTraitRef`.
-/// This type must not appear anywhere in other converted types.
-const TRAIT_OBJECT_DUMMY_SELF: ty::TyKind<'static> = ty::Infer(ty::FreshTy(0));
-
 impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     pub fn ast_region_to_region(&self,
         lifetime: &hir::Lifetime,
@@ -595,7 +590,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             infer_types,
         );
 
-        let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
+        let is_object = self_ty.map_or(false, |ty| {
+            ty == self.tcx().types.trait_object_dummy_self
+        });
         let default_needs_object_self = |param: &ty::GenericParamDef| {
             if let GenericParamDefKind::Type { has_default, .. } = param.kind {
                 if is_object && has_default {
@@ -956,10 +953,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     /// Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
-    /// removing the dummy `Self` type (`TRAIT_OBJECT_DUMMY_SELF`).
+    /// removing the dummy `Self` type (`trait_object_dummy_self`).
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
                                 -> ty::ExistentialTraitRef<'tcx> {
-        if trait_ref.self_ty().sty != TRAIT_OBJECT_DUMMY_SELF {
+        if trait_ref.self_ty() != self.tcx().types.trait_object_dummy_self {
             bug!("trait_ref_to_existential called on {:?} with non-dummy Self", trait_ref);
         }
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
@@ -980,7 +977,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }
 
         let mut projection_bounds = Vec::new();
-        let dummy_self = tcx.mk_ty(TRAIT_OBJECT_DUMMY_SELF);
+        let dummy_self = self.tcx().types.trait_object_dummy_self;
         let (principal, potential_assoc_types) = self.instantiate_poly_trait_ref(
             &trait_bounds[0],
             dummy_self,
@@ -1030,7 +1027,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 }
                 ty::Predicate::Projection(pred) => {
                     // A `Self` within the original bound will be substituted with a
-                    // `TRAIT_OBJECT_DUMMY_SELF`, so check for that.
+                    // `trait_object_dummy_self`, so check for that.
                     let references_self =
                         pred.skip_binder().ty.walk().any(|t| t == dummy_self);
 
@@ -1130,7 +1127,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             err.emit();
         }
 
-        // Erase the `dummy_self` (`TRAIT_OBJECT_DUMMY_SELF`) used above.
+        // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
         let existential_principal = principal.map_bound(|trait_ref| {
             self.trait_ref_to_existential(trait_ref)
         });

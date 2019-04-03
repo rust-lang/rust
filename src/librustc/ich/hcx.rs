@@ -9,7 +9,6 @@ use crate::session::Session;
 
 use std::cmp::Ord;
 use std::hash as std_hash;
-use std::collections::HashMap;
 use std::cell::RefCell;
 
 use syntax::ast;
@@ -394,13 +393,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
     }
 }
 
-pub fn hash_stable_trait_impls<'a, 'gcx, W, R>(
+pub fn hash_stable_trait_impls<'a, 'gcx, W>(
     hcx: &mut StableHashingContext<'a>,
     hasher: &mut StableHasher<W>,
     blanket_impls: &[DefId],
-    non_blanket_impls: &HashMap<fast_reject::SimplifiedType, Vec<DefId>, R>)
-    where W: StableHasherResult,
-          R: std_hash::BuildHasher,
+    non_blanket_impls: &FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>)
+    where W: StableHasherResult
 {
     {
         let mut blanket_impls: SmallVec<[_; 8]> = blanket_impls

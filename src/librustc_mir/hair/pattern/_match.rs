@@ -1754,7 +1754,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     // they should be pointing to memory is when they are subslices of nonzero
                     // slices
                     let (opt_ptr, n, ty) = match value.ty.sty {
-                        ty::TyKind::Array(t, n) => {
+                        ty::Array(t, n) => {
                             match value.val {
                                 ConstValue::ByRef(ptr, alloc) => (
                                     Some((ptr, alloc)),
@@ -1767,7 +1767,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                                 ),
                             }
                         },
-                        ty::TyKind::Slice(t) => {
+                        ty::Slice(t) => {
                             match value.val {
                                 ConstValue::Slice(ptr, n) => (
                                     ptr.to_ptr().ok().map(|ptr| (
