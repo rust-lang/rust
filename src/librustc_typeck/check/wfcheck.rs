@@ -3,7 +3,7 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use crate::hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
+use rustc::ty::{self, Lift, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::mir::interpret::ConstValue;
@@ -354,7 +354,7 @@ fn check_item_type<'a, 'tcx>(
 
         let mut forbid_unsized = true;
         if allow_foreign_ty {
-            if let TyKind::Foreign(_) = fcx.tcx.struct_tail(item_ty).sty {
+            if let ty::Foreign(_) = fcx.tcx.struct_tail(item_ty).sty {
                 forbid_unsized = false;
             }
         }

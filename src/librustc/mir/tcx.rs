@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn field_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, f: &Field) -> Ty<'tcx>
     {
         let answer = match self.ty.sty {
-            ty::TyKind::Adt(adt_def, substs) => {
+            ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
                     Some(variant_index) => {

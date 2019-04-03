@@ -574,6 +574,7 @@ impl_stable_hash_for!(enum self::LintSource {
 pub type LevelSource = (Level, LintSource);
 
 pub mod builtin;
+pub mod internal;
 mod context;
 mod levels;
 

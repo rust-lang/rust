@@ -5,7 +5,7 @@ use rustc::mir::{
     Mutability, Operand, Place, PlaceBase, Projection, ProjectionElem, Static, StaticKind,
 };
 use rustc::mir::{Terminator, TerminatorKind};
-use rustc::ty::{self, Const, DefIdTree, TyS, TyKind, TyCtxt};
+use rustc::ty::{self, Const, DefIdTree, TyS, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 use syntax_pos::symbol::keywords;
@@ -261,7 +261,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             // Otherwise, check if the name is the self kewyord - in which case
                             // we have an explicit self. Do the same thing in this case and check
                             // for a `self: &mut Self` to suggest removing the `&mut`.
-                            if let ty::TyKind::Ref(
+                            if let ty::Ref(
                                 _, _, hir::Mutability::MutMutable
                             ) = local_decl.ty.sty {
                                 true
@@ -476,7 +476,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                                     func: Operand::Constant(box Constant {
                                         literal: Const {
                                             ty: &TyS {
-                                                sty: TyKind::FnDef(id, substs),
+                                                sty: ty::FnDef(id, substs),
                                                 ..
                                             },
                                             ..
@@ -633,8 +633,8 @@ fn annotate_struct_field(
     field: &mir::Field,
 ) -> Option<(Span, String)> {
     // Expect our local to be a reference to a struct of some kind.
-    if let ty::TyKind::Ref(_, ty, _) = ty.sty {
-        if let ty::TyKind::Adt(def, _) = ty.sty {
+    if let ty::Ref(_, ty, _) = ty.sty {
+        if let ty::Adt(def, _) = ty.sty {
             let field = def.all_fields().nth(field.index())?;
             // Use the HIR types to construct the diagnostic message.
             let hir_id = tcx.hir().as_local_hir_id(field.did)?;

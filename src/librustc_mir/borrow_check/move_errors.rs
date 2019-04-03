@@ -532,7 +532,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     if let StatementKind::Assign(_, box Rvalue::Ref(_, _, source)) = &stmt.kind {
                         let ty = source.ty(self.mir, self.infcx.tcx).ty;
                         let ty = match ty.sty {
-                            ty::TyKind::Ref(_, ty, _) => ty,
+                            ty::Ref(_, ty, _) => ty,
                             _ => ty,
                         };
                         debug!("borrowed_content_source: ty={:?}", ty);
@@ -557,7 +557,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
 
                         let ty = source.ty(self.mir, self.infcx.tcx).ty;
                         let ty = match ty.sty {
-                            ty::TyKind::Ref(_, ty, _) => ty,
+                            ty::Ref(_, ty, _) => ty,
                             _ => ty,
                         };
                         debug!("borrowed_content_source: ty={:?}", ty);

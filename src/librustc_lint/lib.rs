@@ -20,6 +20,7 @@
 #![recursion_limit="256"]
 
 #![deny(rust_2018_idioms)]
+#![cfg_attr(not(stage0), deny(internal))]
 
 #[macro_use]
 extern crate rustc;
@@ -61,6 +62,7 @@ use nonstandard_style::*;
 use builtin::*;
 use types::*;
 use unused::*;
+use rustc::lint::internal::*;
 
 /// Useful for other parts of the compiler.
 pub use builtin::SoftLints;
@@ -487,4 +489,19 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "no longer a warning, #[no_mangle] statics always exported");
     store.register_removed("bad_repr",
         "replaced with a generic attribute input check");
+}
+
+pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {
+    store.register_early_pass(sess, false, false, box DefaultHashTypes::new());
+    store.register_late_pass(sess, false, false, false, box TyKindUsage);
+    store.register_group(
+        sess,
+        false,
+        "internal",
+        None,
+        vec![
+            LintId::of(DEFAULT_HASH_TYPES),
+            LintId::of(USAGE_OF_TY_TYKIND),
+        ],
+    );
 }
