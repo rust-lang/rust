@@ -1,30 +1,15 @@
-use crate::any::Any;
 use crate::ffi::CStr;
+use crate::io;
+use crate::sys::cvt_wasi;
 use crate::ffi::OsString;
 use crate::marker::PhantomData;
 use crate::os::wasi::ffi::OsStringExt;
-use crate::ptr;
 use crate::vec;
 
-static mut ARGC: isize = 0;
-static mut ARGV: *const *const u8 = ptr::null();
-
-#[cfg(not(target_feature = "atomics"))]
-pub unsafe fn args_lock() -> impl Any {
-    // No need for a lock if we're single-threaded, but this function will need
-    // to get implemented for multi-threaded scenarios
-}
-
-pub unsafe fn init(argc: isize, argv: *const *const u8) {
-    let _guard = args_lock();
-    ARGC = argc;
-    ARGV = argv;
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
 }
 
 pub unsafe fn cleanup() {
-    let _guard = args_lock();
-    ARGC = 0;
-    ARGV = ptr::null();
 }
 
 pub struct Args {
@@ -34,18 +19,31 @@ pub struct Args {
 
 /// Returns the command line arguments
 pub fn args() -> Args {
-    unsafe {
-        let _guard = args_lock();
-        let args = (0..ARGC)
-            .map(|i| {
-                let cstr = CStr::from_ptr(*ARGV.offset(i) as *const libc::c_char);
-                OsStringExt::from_vec(cstr.to_bytes().to_vec())
-            })
-            .collect::<Vec<_>>();
+    maybe_args().unwrap_or_else(|_| {
         Args {
+            iter: Vec::new().into_iter(),
+            _dont_send_or_sync_me: PhantomData
+        }
+    })
+}
+
+fn maybe_args() -> io::Result<Args> {
+    unsafe {
+        let (mut argc, mut argv_buf_size) = (0, 0);
+        cvt_wasi(libc::__wasi_args_sizes_get(&mut argc, &mut argv_buf_size))?;
+
+        let mut argc = vec![0 as *mut libc::c_char; argc];
+        let mut argv_buf = vec![0; argv_buf_size];
+        cvt_wasi(libc::__wasi_args_get(argc.as_mut_ptr(), argv_buf.as_mut_ptr()))?;
+
+        let args = argc.into_iter()
+            .map(|ptr| CStr::from_ptr(ptr).to_bytes().to_vec())
+            .map(|bytes| OsString::from_vec(bytes))
+            .collect::<Vec<_>>();
+        Ok(Args {
             iter: args.into_iter(),
             _dont_send_or_sync_me: PhantomData,
-        }
+        })
     }
 }
 
