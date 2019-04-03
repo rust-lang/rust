@@ -1,6 +1,7 @@
-use crate::io;
+use crate::io::{self, IoVec, IoVecMut};
 use crate::libc;
-use crate::sys::cvt;
+use crate::mem::ManuallyDrop;
+use crate::sys::fd::WasiFd;
 
 pub struct Stdin;
 pub struct Stdout;
@@ -12,10 +13,8 @@ impl Stdin {
     }
 
     pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
-        let amt = cvt(unsafe {
-            libc::read(libc::STDIN_FILENO, data.as_mut_ptr() as *mut _, data.len())
-        })?;
-        Ok(amt as usize)
+        ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDIN_FILENO as u32) })
+            .read(&mut [IoVecMut::new(data)])
     }
 }
 
@@ -25,10 +24,8 @@ impl Stdout {
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let amt = cvt(unsafe {
-            libc::write(libc::STDOUT_FILENO, data.as_ptr() as *const _, data.len())
-        })?;
-        Ok(amt as usize)
+        ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDOUT_FILENO as u32) })
+            .write(&[IoVec::new(data)])
     }
 
     pub fn flush(&self) -> io::Result<()> {
@@ -42,10 +39,8 @@ impl Stderr {
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
-        let amt = cvt(unsafe {
-            libc::write(libc::STDERR_FILENO, data.as_ptr() as *const _, data.len())
-        })?;
-        Ok(amt as usize)
+        ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDERR_FILENO as u32) })
+            .write(&[IoVec::new(data)])
     }
 
     pub fn flush(&self) -> io::Result<()> {
