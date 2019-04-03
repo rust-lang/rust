@@ -870,7 +870,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span,
             untested_candidates,
             join_block,
-            &mut None,
+            fake_borrows,
         )
     }
 
