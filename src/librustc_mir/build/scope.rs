@@ -19,12 +19,17 @@ paragraph). This is because region scopes are tied to
 them. Eventually, when we shift to non-lexical lifetimes, there should
 be no need to remember this mapping.
 
-There is one additional wrinkle, actually, that I wanted to hide from
-you but duty compels me to mention. In the course of building
-matches, it sometimes happen that certain code (namely guards) gets
-executed multiple times. This means that the scope lexical scope may
-in fact correspond to multiple, disjoint SEME regions. So in fact our
+### Not so SEME Regions
+
+In the course of building matches, it sometimes happens that certain code
+(namely guards) gets executed multiple times. This means that the scope lexical
+scope may in fact correspond to multiple, disjoint SEME regions. So in fact our
 mapping is from one scope to a vector of SEME regions.
+
+Also in matches, the scopes assigned to arms are not even SEME regions! Each
+arm has a single region with one entry for each pattern. We manually
+manipulate the scheduled drops in this scope to avoid dropping things multiple
+times, although drop elaboration would clean this up for value drops.
 
 ### Drops
 
@@ -731,7 +736,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // Note that this code iterates scopes from the inner-most to the outer-most,
             // invalidating caches of each scope visited. This way bare minimum of the
             // caches gets invalidated. i.e., if a new drop is added into the middle scope, the
-            // cache of outer scpoe stays intact.
+            // cache of outer scope stays intact.
             scope.invalidate_cache(!needs_drop, this_scope);
             if this_scope {
                 if let DropKind::Value { .. } = drop_kind {
@@ -873,6 +878,73 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         success_block
     }
+
+    // `match` arm scopes
+    // ==================
+    /// Unschedules any drops in the top scope.
+    ///
+    /// This is only needed for `match` arm scopes, because they have one
+    /// entrance per pattern, but only one exit.
+    pub fn clear_top_scope(&mut self, region_scope: region::Scope) {
+        let top_scope = self.scopes.last_mut().unwrap();
+
+        assert_eq!(top_scope.region_scope, region_scope);
+
+        top_scope.drops.clear();
+        top_scope.invalidate_cache(false, true);
+    }
+
+    /// Drops the single variable provided
+    ///
+    /// * The scope must be the top scope.
+    /// * The variable must be in that scope.
+    /// * The variable must be at the top of that scope: it's the next thing
+    ///   scheduled to drop.
+    /// * The drop must be of DropKind::Storage.
+    ///
+    /// This is used for the boolean holding the result of the match guard. We
+    /// do this because:
+    ///
+    /// * The boolean is different for each pattern
+    /// * There is only one exit for the arm scope
+    /// * The guard expression scope is too short, it ends just before the
+    ///   boolean is tested.
+    pub fn pop_variable(
+        &mut self,
+        block: BasicBlock,
+        region_scope: region::Scope,
+        variable: Local,
+    ) {
+        let top_scope = self.scopes.last_mut().unwrap();
+
+        assert_eq!(top_scope.region_scope, region_scope);
+
+        let top_drop_data = top_scope.drops.pop().unwrap();
+
+        match top_drop_data.kind {
+            DropKind::Value { .. } => {
+                bug!("Should not be calling pop_top_variable on non-copy type!")
+            }
+            DropKind::Storage => {
+                // Drop the storage for both value and storage drops.
+                // Only temps and vars need their storage dead.
+                match top_drop_data.location {
+                    Place::Base(PlaceBase::Local(index)) => {
+                        let source_info = top_scope.source_info(top_drop_data.span);
+                        assert_eq!(index, variable);
+                        self.cfg.push(block, Statement {
+                            source_info,
+                            kind: StatementKind::StorageDead(index)
+                        });
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        }
+
+        top_scope.invalidate_cache(true, true);
+    }
+
 }
 
 /// Builds drops for pop_scope and exit_scope.

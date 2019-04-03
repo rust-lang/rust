@@ -133,7 +133,7 @@ LL |     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
    |                    help: remove this `mut`
 
 error: variable does not need to be mutable
-  --> $DIR/lint-unused-mut-variables.rs:130:9
+  --> $DIR/lint-unused-mut-variables.rs:138:9
    |
 LL |     let mut b = vec![2];
    |         ----^
@@ -141,7 +141,7 @@ LL |     let mut b = vec![2];
    |         help: remove this `mut`
    |
 note: lint level defined here
-  --> $DIR/lint-unused-mut-variables.rs:126:8
+  --> $DIR/lint-unused-mut-variables.rs:134:8
    |
 LL | #[deny(unused_mut)]
    |        ^^^^^^^^^^
