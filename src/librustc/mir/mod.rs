@@ -4,7 +4,7 @@
 
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
-use crate::hir::{self, HirId, InlineAsm};
+use crate::hir::{self, HirId, InlineAsm as HirInlineAsm};
 use crate::mir::interpret::{ConstValue, InterpError, Scalar};
 use crate::mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
@@ -25,7 +25,7 @@ use std::slice;
 use std::vec::IntoIter;
 use std::{iter, mem, option, u32};
 use syntax::ast::{self, Name};
-use syntax::symbol::InternedString;
+use syntax::symbol::{InternedString, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{Subst, SubstsRef};
@@ -772,7 +772,7 @@ pub struct LocalDecl<'tcx> {
     /// e.g., via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    pub user_ty: UserTypeProjections<'tcx>,
+    pub user_ty: UserTypeProjections,
 
     /// Name of the local, used in debuginfo and pretty-printing.
     ///
@@ -1735,7 +1735,7 @@ pub struct Statement<'tcx> {
 
 // `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Statement<'_>>() == 56);
+static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Statement<'_>>() == 48);
 
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
@@ -1779,12 +1779,9 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Local),
 
-    /// Executes a piece of inline Assembly.
-    InlineAsm {
-        asm: Box<InlineAsm>,
-        outputs: Box<[Place<'tcx>]>,
-        inputs: Box<[(Span, Operand<'tcx>)]>,
-    },
+    /// Executes a piece of inline Assembly. Stored in a Box to keep the size
+    /// of `StatementKind` low.
+    InlineAsm(Box<InlineAsm<'tcx>>),
 
     /// Retag references in the given place, ensuring they got fresh tags. This is
     /// part of the Stacked Borrows model. These statements are currently only interpreted
@@ -1805,7 +1802,7 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
-    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeProjection<'tcx>>),
+    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeProjection>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1858,6 +1855,13 @@ pub enum FakeReadCause {
     ForLet,
 }
 
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+pub struct InlineAsm<'tcx> {
+    pub asm: HirInlineAsm,
+    pub outputs: Box<[Place<'tcx>]>,
+    pub inputs: Box<[(Span, Operand<'tcx>)]>,
+}
+
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
@@ -1880,11 +1884,8 @@ impl<'tcx> Debug for Statement<'tcx> {
                 ref place,
                 variant_index,
             } => write!(fmt, "discriminant({:?}) = {:?}", place, variant_index),
-            InlineAsm {
-                ref asm,
-                ref outputs,
-                ref inputs,
-            } => write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs),
+            InlineAsm(ref asm) =>
+                write!(fmt, "asm!({:?} : {:?} : {:?})", asm.asm, asm.outputs, asm.inputs),
             AscribeUserType(ref place, ref variance, ref c_ty) => {
                 write!(fmt, "AscribeUserType({:?}, {:?}, {:?})", place, variance, c_ty)
             }
@@ -1939,14 +1940,14 @@ impl_stable_hash_for!(struct Static<'tcx> {
 /// `PlaceProjection` etc below.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord,
          Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Projection<'tcx, B, V, T> {
+pub struct Projection<B, V, T> {
     pub base: B,
-    pub elem: ProjectionElem<'tcx, V, T>,
+    pub elem: ProjectionElem<V, T>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord,
          Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub enum ProjectionElem<'tcx, V, T> {
+pub enum ProjectionElem<V, T> {
     Deref,
     Field(Field, T),
     Index(V),
@@ -1980,16 +1981,18 @@ pub enum ProjectionElem<'tcx, V, T> {
     /// "Downcast" to a variant of an ADT. Currently, we only introduce
     /// this for ADTs with more than one variant. It may be better to
     /// just introduce it always, or always for enums.
-    Downcast(&'tcx AdtDef, VariantIdx),
+    ///
+    /// The included Symbol is the name of the variant, used for printing MIR.
+    Downcast(Option<Symbol>, VariantIdx),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
-pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
+pub type PlaceProjection<'tcx> = Projection<Place<'tcx>, Local, Ty<'tcx>>;
 
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
-pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
+pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
 
 // at least on 64 bit systems, `PlaceElem` should not be larger than two pointers
 static_assert!(PROJECTION_ELEM_IS_2_PTRS_LARGE:
@@ -1998,7 +2001,7 @@ static_assert!(PROJECTION_ELEM_IS_2_PTRS_LARGE:
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
-pub type ProjectionKind<'tcx> = ProjectionElem<'tcx, (), ()>;
+pub type ProjectionKind = ProjectionElem<(), ()>;
 
 newtype_index! {
     pub struct Field {
@@ -2019,7 +2022,9 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx) -> Place<'tcx> {
-        self.elem(ProjectionElem::Downcast(adt_def, variant_index))
+        self.elem(ProjectionElem::Downcast(
+            Some(adt_def.variants[variant_index].ident.name),
+            variant_index))
     }
 
     pub fn index(self, index: Local) -> Place<'tcx> {
@@ -2080,8 +2085,11 @@ impl<'tcx> Debug for Place<'tcx> {
                 )
             },
             Projection(ref data) => match data.elem {
-                ProjectionElem::Downcast(ref adt_def, index) => {
-                    write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].ident)
+                ProjectionElem::Downcast(Some(name), _index) => {
+                    write!(fmt, "({:?} as {})", data.base, name)
+                }
+                ProjectionElem::Downcast(None, index) => {
+                    write!(fmt, "({:?} as variant#{:?})", data.base, index)
                 }
                 ProjectionElem::Deref => write!(fmt, "(*{:?})", data.base),
                 ProjectionElem::Field(field, ty) => {
@@ -2542,36 +2550,36 @@ pub struct Constant<'tcx> {
 /// inferred region `'1`). The second will lead to the constraint `w:
 /// &'static str`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub struct UserTypeProjections<'tcx> {
-    pub(crate) contents: Vec<(UserTypeProjection<'tcx>, Span)>,
+pub struct UserTypeProjections {
+    pub(crate) contents: Vec<(UserTypeProjection, Span)>,
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserTypeProjections<'tcx> {
+    impl<'tcx> TypeFoldable<'tcx> for UserTypeProjections {
         contents
     }
 }
 
-impl<'tcx> UserTypeProjections<'tcx> {
+impl<'tcx> UserTypeProjections {
     pub fn none() -> Self {
         UserTypeProjections { contents: vec![] }
     }
 
-    pub fn from_projections(projs: impl Iterator<Item=(UserTypeProjection<'tcx>, Span)>) -> Self {
+    pub fn from_projections(projs: impl Iterator<Item=(UserTypeProjection, Span)>) -> Self {
         UserTypeProjections { contents: projs.collect() }
     }
 
-    pub fn projections_and_spans(&self) -> impl Iterator<Item=&(UserTypeProjection<'tcx>, Span)> {
+    pub fn projections_and_spans(&self) -> impl Iterator<Item=&(UserTypeProjection, Span)> {
         self.contents.iter()
     }
 
-    pub fn projections(&self) -> impl Iterator<Item=&UserTypeProjection<'tcx>> {
+    pub fn projections(&self) -> impl Iterator<Item=&UserTypeProjection> {
         self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
 
     pub fn push_projection(
         mut self,
-        user_ty: &UserTypeProjection<'tcx>,
+        user_ty: &UserTypeProjection,
         span: Span,
     ) -> Self {
         self.contents.push((user_ty.clone(), span));
@@ -2580,7 +2588,7 @@ impl<'tcx> UserTypeProjections<'tcx> {
 
     fn map_projections(
         mut self,
-        mut f: impl FnMut(UserTypeProjection<'tcx>) -> UserTypeProjection<'tcx>
+        mut f: impl FnMut(UserTypeProjection) -> UserTypeProjection
     ) -> Self {
         self.contents = self.contents.drain(..).map(|(proj, span)| (f(proj), span)).collect();
         self
@@ -2628,14 +2636,14 @@ impl<'tcx> UserTypeProjections<'tcx> {
 ///   `field[0]` (aka `.0`), indicating that the type of `s` is
 ///   determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub struct UserTypeProjection<'tcx> {
+pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
-    pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
+    pub projs: Vec<ProjectionElem<(), ()>>,
 }
 
-impl<'tcx> Copy for ProjectionKind<'tcx> { }
+impl Copy for ProjectionKind { }
 
-impl<'tcx> UserTypeProjection<'tcx> {
+impl UserTypeProjection {
     pub(crate) fn index(mut self) -> Self {
         self.projs.push(ProjectionElem::Index(()));
         self
@@ -2662,15 +2670,17 @@ impl<'tcx> UserTypeProjection<'tcx> {
         variant_index: VariantIdx,
         field: Field,
     ) -> Self {
-        self.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
+        self.projs.push(ProjectionElem::Downcast(
+            Some(adt_def.variants[variant_index].ident.name),
+            variant_index));
         self.projs.push(ProjectionElem::Field(field, ()));
         self
     }
 }
 
-CloneTypeFoldableAndLiftImpls! { ProjectionKind<'tcx>, }
+CloneTypeFoldableAndLiftImpls! { ProjectionKind, }
 
-impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         use crate::mir::ProjectionElem::*;
 
@@ -3140,10 +3150,18 @@ EnumTypeFoldableImpl! {
         (StatementKind::SetDiscriminant) { place, variant_index },
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),
-        (StatementKind::InlineAsm) { asm, outputs, inputs },
+        (StatementKind::InlineAsm)(a),
         (StatementKind::Retag)(kind, place),
         (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),
+    }
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for InlineAsm<'tcx> {
+        asm,
+        outputs,
+        inputs,
     }
 }
 
@@ -3428,7 +3446,7 @@ impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
     }
 }
 
-impl<'tcx, B, V, T> TypeFoldable<'tcx> for Projection<'tcx, B, V, T>
+impl<'tcx, B, V, T> TypeFoldable<'tcx> for Projection<B, V, T>
 where
     B: TypeFoldable<'tcx>,
     V: TypeFoldable<'tcx>,

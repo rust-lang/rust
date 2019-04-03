@@ -288,8 +288,8 @@ impl<'a, 'gcx, 'tcx> BitDenotation<'tcx> for Borrows<'a, 'gcx, 'tcx> {
                 self.kill_borrows_on_place(sets, &Place::Base(PlaceBase::Local(local)));
             }
 
-            mir::StatementKind::InlineAsm { ref outputs, ref asm, .. } => {
-                for (output, kind) in outputs.iter().zip(&asm.outputs) {
+            mir::StatementKind::InlineAsm(ref asm) => {
+                for (output, kind) in asm.outputs.iter().zip(&asm.asm.outputs) {
                     if !kind.is_indirect && !kind.is_rw {
                         self.kill_borrows_on_place(sets, output);
                     }

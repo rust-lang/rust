@@ -301,7 +301,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
-        let ty = location.ty(self.mir, bx.tcx()).to_ty(bx.tcx());
+        let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(&ty);
         let drop_fn = monomorphize::resolve_drop_in_place(bx.tcx(), ty);
 

@@ -18,6 +18,7 @@
 #![feature(raw)]
 #![feature(slice_patterns)]
 #![feature(sort_internals)]
+#![feature(slice_partition_at_index)]
 #![feature(specialization)]
 #![feature(step_trait)]
 #![feature(str_internals)]
