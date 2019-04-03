@@ -105,11 +105,13 @@ pub const fn identity<T>(x: T) -> T { x }
 /// `&T` or write a custom function.
 ///
 ///
-/// `AsRef` is very similar to, but serves a slightly different purpose than [`Borrow`]:
+/// `AsRef` has the same signature as [`Borrow`], but `Borrow` is different in few aspects:
 ///
-/// - Use `AsRef` when the goal is to simply convert into a reference
-/// - Use `Borrow` when the goal is related to writing code that is agnostic to
-///   the type of borrow and whether it is a reference or value
+/// - Unlike `AsRef`, `Borrow` has a blanket impl for any `T`, and can be used to accept either
+///   a reference or a value.
+/// - `Borrow` also requires that `Hash`, `Eq` and `Ord` for borrowed value are
+///   equivalent to those of the owned value. For this reason, if you want to
+///   borrow only a single field of a struct you can implement `AsRef`, but not `Borrow`.
 ///
 /// [`Borrow`]: ../../std/borrow/trait.Borrow.html
 ///
