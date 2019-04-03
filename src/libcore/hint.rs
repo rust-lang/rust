@@ -71,7 +71,7 @@ pub unsafe fn unreachable_unchecked() -> ! {
 /// **Note**: On platforms that do not support receiving spin-loop hints this function does not
 /// do anything at all.
 ///
-/// [`std::thread::yield_now`]: ../../../std/thread/fn.yield_now.html
+/// [`std::thread::yield_now`]: ../../std/thread/fn.yield_now.html
 #[inline]
 #[unstable(feature = "renamed_spin_loop", issue = "55002")]
 pub fn spin_loop() {
