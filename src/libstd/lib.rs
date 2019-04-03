@@ -229,7 +229,6 @@
 #![feature(align_offset)]
 #![feature(alloc_error_handler)]
 #![feature(alloc_layout_extra)]
-#![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]

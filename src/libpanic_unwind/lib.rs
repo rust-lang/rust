@@ -19,8 +19,6 @@
 
 #![deny(rust_2018_idioms)]
 
-#![feature(allocator_api)]
-#![feature(alloc)]
 #![feature(core_intrinsics)]
 #![feature(lang_items)]
 #![feature(libc)]

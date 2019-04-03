@@ -1,4 +1,3 @@
-#![feature(alloc)]
 #![allow(unused_extern_crates)]
 
 extern crate alloc;

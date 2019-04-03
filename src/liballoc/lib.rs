@@ -51,10 +51,7 @@
 //! default global allocator. It is not compatible with the libc allocator API.
 
 #![allow(unused_attributes)]
-#![unstable(feature = "alloc",
-            reason = "this library is unlikely to be stabilized in its current \
-                      form or name",
-            issue = "27783")]
+#![stable(feature = "alloc", since = "1.36.0")]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/",
        test(no_crate_inject, attr(allow(unused_variables), deny(warnings))))]
