@@ -52,7 +52,7 @@ export class CargoWatchProvider {
             args += ' ' + Server.config.cargoWatchOptions.checkArguments;
         }
         // Windows handles arguments differently than the unix-likes, so we need to wrap the args in double quotes
-        if (process.platform == "win32") {
+        if (process.platform === 'win32') {
             args = '"' + args + '"';
         }
 
