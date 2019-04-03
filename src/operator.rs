@@ -325,7 +325,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset
             .checked_mul(pointee_size)
-            .ok_or_else(|| EvalErrorKind::Overflow(mir::BinOp::Mul))?;
+            .ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
         // Now let's see what kind of pointer this is.
         if let Scalar::Ptr(ptr) = ptr {
             // Both old and new pointer must be in-bounds of a *live* allocation.

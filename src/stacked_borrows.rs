@@ -7,7 +7,7 @@ use rustc::hir::{Mutability, MutMutable, MutImmutable};
 use rustc::mir::RetagKind;
 
 use crate::{
-    EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
+    EvalResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
     Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
@@ -380,7 +380,7 @@ impl<'tcx> Stacks {
             ptr.tag, kind, ptr, size.bytes());
         let stacks = self.stacks.borrow();
         for stack in stacks.iter(ptr.offset, size) {
-            stack.deref(ptr.tag, kind).map_err(EvalErrorKind::MachineError)?;
+            stack.deref(ptr.tag, kind).map_err(InterpError::MachineError)?;
         }
         Ok(())
     }
@@ -435,7 +435,7 @@ impl<'tcx> Stacks {
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
             // Access source `ptr`, create new ref.
-            let ptr_idx = stack.deref(ptr.tag, new_kind).map_err(EvalErrorKind::MachineError)?;
+            let ptr_idx = stack.deref(ptr.tag, new_kind).map_err(InterpError::MachineError)?;
             // If we can deref the new tag already, and if that tag lives higher on
             // the stack than the one we come from, just use that.
             // That is, we check if `new_bor` *already* is "derived from" `ptr.tag`.
