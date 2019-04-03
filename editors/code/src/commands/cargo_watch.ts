@@ -46,12 +46,15 @@ export class CargoWatchProvider {
             'Cargo Watch Trace'
         );
 
-        let args = '"check --message-format json';
+        let args = 'check --message-format json';
         if (Server.config.cargoWatchOptions.checkArguments.length > 0) {
             // Excape the double quote string:
             args += ' ' + Server.config.cargoWatchOptions.checkArguments;
         }
-        args += '"';
+        // Windows handles arguments differently than the unix-likes, so we need to wrap the args in double quotes
+        if (process.platform === 'win32') {
+            args = '"' + args + '"';
+        }
 
         // Start the cargo watch with json message
         this.cargoProcess = child_process.spawn(
