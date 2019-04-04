@@ -238,6 +238,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
         }
+        if self.fn_ty.ret.layout.abi.is_uninhabited() {
+            // Functions with uninhabited return values are marked `noreturn`,
+            // so we should make sure that we never actually do.
+            bx.abort();
+            bx.unreachable();
+            return;
+        }
         let llval = match self.fn_ty.ret.mode {
             PassMode::Ignore(IgnoreMode::Zst) | PassMode::Indirect(..) => {
                 bx.ret_void();
