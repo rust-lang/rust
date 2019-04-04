@@ -5,6 +5,7 @@ cache:
   # over time).
   directories:
     - /home/travis/.cargo
+    - /home/travis/.rustup
 
 os:
 - linux
@@ -17,17 +18,24 @@ before_script:
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
 - |
   if [[ "$TRAVIS_EVENT_TYPE" == cron ]]; then
-    RUST_TOOLCHAIN=nightly
+    RUSTC_HASH=$(git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}')
   else
-    RUST_TOOLCHAIN=$(cat rust-version)
+    RUSTC_HASH=$(cat rust-version)
   fi
 # install Rust
-- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN"
+- curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable
 - export PATH=$HOME/.cargo/bin:$PATH
+- cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
+- rustup-toolchain-install-master -f -n master $RUSTC_HASH
+- rustup default master
 - rustc --version
 
 script:
 - ./travis.sh
+
+after_script:
+# Don't cache this, it's a waste
+- rustup toolchain uninstall master
 
 notifications:
   email:
