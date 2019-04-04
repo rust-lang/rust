@@ -22,12 +22,6 @@ impl Into<String> for Documentation {
     }
 }
 
-impl<'a> Into<String> for &'a Documentation {
-    fn into(self) -> String {
-        self.contents().into()
-    }
-}
-
 pub trait Docs {
     fn docs(&self, db: &impl HirDatabase) -> Option<Documentation>;
 }

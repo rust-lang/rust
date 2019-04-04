@@ -118,16 +118,6 @@ impl CallInfo {
     fn parameters(&self) -> &[String] {
         &self.signature.parameters
     }
-
-    #[cfg(test)]
-    fn doc(&self) -> Option<&hir::Documentation> {
-        self.signature.doc.as_ref()
-    }
-
-    #[cfg(test)]
-    fn label(&self) -> String {
-        self.signature.to_string()
-    }
 }
 
 #[cfg(test)]
@@ -137,6 +127,17 @@ mod tests {
     use crate::mock_analysis::single_file_with_position;
 
     use super::*;
+
+    // These are only used when testing
+    impl CallInfo {
+        fn doc(&self) -> Option<hir::Documentation> {
+            self.signature.doc.clone()
+        }
+
+        fn label(&self) -> String {
+            self.signature.to_string()
+        }
+    }
 
     fn call_info(text: &str) -> CallInfo {
         let (analysis, position) = single_file_with_position(text);
