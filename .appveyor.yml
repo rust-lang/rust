@@ -3,7 +3,7 @@ environment:
         PROJECT_NAME: miri
     matrix:
         - TARGET: x86_64-pc-windows-msvc
-        #- TARGET: i686-pc-windows-msvc
+        - TARGET: i686-pc-windows-msvc
 
 # branches to build
 branches:
@@ -42,7 +42,7 @@ test_script:
     - cargo test --release --all-features
     # Test cargo integration
     - cd test-cargo-miri
-    - python3 run-test.py
+    - '"C:\msys64\mingw64\bin\python3.exe" run-test.py'
 
 after_test:
     # Don't cache "master" toolchain, it's a waste
