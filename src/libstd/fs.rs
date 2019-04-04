@@ -394,8 +394,12 @@ impl File {
 
     /// Attempts to sync all OS-internal metadata to disk.
     ///
-    /// This function will attempt to ensure that all in-core data reaches the
+    /// This function will attempt to ensure that all in-memory data reaches the
     /// filesystem before returning.
+    ///
+    /// This can be used to handle errors that would otherwise only be caught
+    /// when the `File` is closed.  Dropping a file will ignore errors in
+    /// synchronizing this in-memory data.
     ///
     /// # Examples
     ///
