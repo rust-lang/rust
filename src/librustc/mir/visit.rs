@@ -137,7 +137,7 @@ macro_rules! make_mir_visitor {
             fn visit_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
                                      variance: & $($mutability)? ty::Variance,
-                                     user_ty: & $($mutability)? UserTypeProjection<'tcx>,
+                                     user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
             }
@@ -205,7 +205,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_user_type_projection(
                 &mut self,
-                ty: & $($mutability)? UserTypeProjection<'tcx>,
+                ty: & $($mutability)? UserTypeProjection,
             ) {
                 self.super_user_type_projection(ty);
             }
@@ -391,15 +391,15 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::InlineAsm { outputs, inputs, asm: _ } => {
-                        for output in & $($mutability)? outputs[..] {
+                    StatementKind::InlineAsm(asm) => {
+                        for output in & $($mutability)? asm.outputs[..] {
                             self.visit_place(
                                 output,
                                 PlaceContext::MutatingUse(MutatingUseContext::AsmOutput),
                                 location
                             );
                         }
-                        for (span, input) in & $($mutability)? inputs[..] {
+                        for (span, input) in & $($mutability)? asm.inputs[..] {
                             self.visit_span(span);
                             self.visit_operand(input, location);
                         }
@@ -700,7 +700,7 @@ macro_rules! make_mir_visitor {
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)? Place<'tcx>,
                                      _variance: & $($mutability)? ty::Variance,
-                                     user_ty: & $($mutability)? UserTypeProjection<'tcx>,
+                                     user_ty: & $($mutability)? UserTypeProjection,
                                      location: Location) {
                 self.visit_place(
                     place,
@@ -777,7 +777,7 @@ macro_rules! make_mir_visitor {
                                                     min_length: _,
                                                     from_end: _ } => {
                     }
-                    ProjectionElem::Downcast(_adt_def, _variant_index) => {
+                    ProjectionElem::Downcast(_name, _variant_index) => {
                     }
                 }
             }
@@ -851,7 +851,7 @@ macro_rules! make_mir_visitor {
 
             fn super_user_type_projection(
                 &mut self,
-                _ty: & $($mutability)? UserTypeProjection<'tcx>,
+                _ty: & $($mutability)? UserTypeProjection,
             ) {
             }
 

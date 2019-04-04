@@ -174,7 +174,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         &mut self,
         _place: &Place<'tcx>,
         _variance: &ty::Variance,
-        _user_ty: &UserTypeProjection<'tcx>,
+        _user_ty: &UserTypeProjection,
         _location: Location,
     ) {
     }

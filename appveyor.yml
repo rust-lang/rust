@@ -14,6 +14,9 @@ environment:
     MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
     SCRIPT: python x.py test
+    # FIXME(#59637)
+    NO_DEBUG_ASSERTIONS: 1
+    NO_LLVM_ASSERTIONS: 1
   - CI_JOB_NAME: i686-msvc-1
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc
@@ -59,6 +62,9 @@ environment:
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: i686-6.3.0-release-posix-dwarf-rt_v5-rev2.7z
     MINGW_DIR: mingw32
+    # FIXME(#59637)
+    NO_DEBUG_ASSERTIONS: 1
+    NO_LLVM_ASSERTIONS: 1
   - CI_JOB_NAME: i686-mingw-2
     MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
@@ -73,6 +79,9 @@ environment:
     MINGW_URL: https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror
     MINGW_ARCHIVE: x86_64-6.3.0-release-posix-seh-rt_v5-rev2.7z
     MINGW_DIR: mingw64
+    # FIXME(#59637)
+    NO_DEBUG_ASSERTIONS: 1
+    NO_LLVM_ASSERTIONS: 1
 
   # 32/64 bit MSVC and GNU deployment
   - CI_JOB_NAME: dist-x86_64-msvc

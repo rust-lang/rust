@@ -13,6 +13,7 @@ use rustc::mir::{
     Static, StaticKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, DefIdTree};
+use rustc::ty::layout::VariantIdx;
 use rustc::ty::print::Print;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
@@ -201,7 +202,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 );
             }
 
-            let ty = used_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+            let ty = used_place.ty(self.mir, self.infcx.tcx).ty;
             let needs_note = match ty.sty {
                 ty::Closure(id, _) => {
                     let tables = self.infcx.tcx.typeck_tables_of(id);
@@ -216,7 +217,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let mpi = self.move_data.moves[move_out_indices[0]].path;
                 let place = &self.move_data.move_paths[mpi].place;
 
-                let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                let ty = place.ty(self.mir, self.infcx.tcx).ty;
                 let opt_name = self.describe_place_with_options(place, IncludingDowncast(true));
                 let note_msg = match opt_name {
                     Some(ref name) => format!("`{}`", name),
@@ -596,8 +597,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         // Define a small closure that we can use to check if the type of a place
         // is a union.
         let is_union = |place: &Place<'tcx>| -> bool {
-            place.ty(self.mir, self.infcx.tcx)
-                .to_ty(self.infcx.tcx)
+            place.ty(self.mir, self.infcx.tcx).ty
                 .ty_adt_def()
                 .map(|adt| adt.is_union())
                 .unwrap_or(false)
@@ -646,7 +646,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
                             // Also compute the name of the union type, eg. `Foo` so we
                             // can add a helpful note with it.
-                            let ty = base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                            let ty = base.ty(self.mir, self.infcx.tcx).ty;
 
                             return Some((desc_base, desc_first, desc_second, ty.to_string()));
                         },
@@ -1761,20 +1761,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, base: &Place<'_>, field: Field) -> String {
+    fn describe_field(&self, base: &Place<'tcx>, field: Field) -> String {
         match *base {
             Place::Base(PlaceBase::Local(local)) => {
                 let local = &self.mir.local_decls[local];
-                self.describe_field_from_ty(&local.ty, field)
+                self.describe_field_from_ty(&local.ty, field, None)
             }
             Place::Base(PlaceBase::Static(ref static_)) =>
-                self.describe_field_from_ty(&static_.ty, field),
+                self.describe_field_from_ty(&static_.ty, field, None),
             Place::Projection(ref proj) => match proj.elem {
                 ProjectionElem::Deref => self.describe_field(&proj.base, field),
-                ProjectionElem::Downcast(def, variant_index) =>
-                    def.variants[variant_index].fields[field.index()].ident.to_string(),
+                ProjectionElem::Downcast(_, variant_index) => {
+                    let base_ty = base.ty(self.mir, self.infcx.tcx).ty;
+                    self.describe_field_from_ty(&base_ty, field, Some(variant_index))
+                }
                 ProjectionElem::Field(_, field_type) => {
-                    self.describe_field_from_ty(&field_type, field)
+                    self.describe_field_from_ty(&field_type, field, None)
                 }
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
@@ -1786,24 +1788,34 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// End-user visible description of the `field_index`nth field of `ty`
-    fn describe_field_from_ty(&self, ty: &ty::Ty<'_>, field: Field) -> String {
+    fn describe_field_from_ty(
+        &self,
+        ty: &ty::Ty<'_>,
+        field: Field,
+        variant_index: Option<VariantIdx>
+    ) -> String {
         if ty.is_box() {
             // If the type is a box, the field is described from the boxed type
-            self.describe_field_from_ty(&ty.boxed_ty(), field)
+            self.describe_field_from_ty(&ty.boxed_ty(), field, variant_index)
         } else {
             match ty.sty {
-                ty::Adt(def, _) => if def.is_enum() {
-                    field.index().to_string()
-                } else {
-                    def.non_enum_variant().fields[field.index()]
+                ty::Adt(def, _) => {
+                    let variant = if let Some(idx) = variant_index {
+                        assert!(def.is_enum());
+                        &def.variants[idx]
+                    } else {
+                        def.non_enum_variant()
+                    };
+                    variant.fields[field.index()]
                         .ident
                         .to_string()
                 },
                 ty::Tuple(_) => field.index().to_string(),
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    self.describe_field_from_ty(&ty, field)
+                    self.describe_field_from_ty(&ty, field, variant_index)
                 }
-                ty::Array(ty, _) | ty::Slice(ty) => self.describe_field_from_ty(&ty, field),
+                ty::Array(ty, _) | ty::Slice(ty) =>
+                    self.describe_field_from_ty(&ty, field, variant_index),
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                     // Convert the def-id into a node-id. node-ids are only valid for
                     // the local code in the current crate, so this returns an `Option` in case
@@ -1861,7 +1873,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         StorageDeadOrDrop::LocalStorageDead
                         | StorageDeadOrDrop::BoxedStorageDead => {
                             assert!(
-                                base.ty(self.mir, tcx).to_ty(tcx).is_box(),
+                                base.ty(self.mir, tcx).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
                             );
                             StorageDeadOrDrop::BoxedStorageDead
@@ -1869,7 +1881,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         StorageDeadOrDrop::Destructor(_) => base_access,
                     },
                     ProjectionElem::Field(..) | ProjectionElem::Downcast(..) => {
-                        let base_ty = base.ty(self.mir, tcx).to_ty(tcx);
+                        let base_ty = base.ty(self.mir, tcx).ty;
                         match base_ty.sty {
                             ty::Adt(def, _) if def.has_dtor(tcx) => {
                                 // Report the outermost adt with a destructor

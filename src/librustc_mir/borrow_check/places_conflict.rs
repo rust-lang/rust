@@ -191,7 +191,7 @@ fn place_components_conflict<'gcx, 'tcx>(
                     Place::Projection(box Projection { base, elem }) => (base, elem),
                     _ => bug!("place has no base?"),
                 };
-                let base_ty = base.ty(mir, tcx).to_ty(tcx);
+                let base_ty = base.ty(mir, tcx).ty;
 
                 match (elem, &base_ty.sty, access) {
                     (_, _, Shallow(Some(ArtificialField::ArrayLength)))
@@ -427,7 +427,7 @@ fn place_element_conflict<'a, 'gcx: 'tcx, 'tcx>(
                         debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
                         Overlap::EqualOrDisjoint
                     } else {
-                        let ty = pi1.base.ty(mir, tcx).to_ty(tcx);
+                        let ty = pi1.base.ty(mir, tcx).ty;
                         match ty.sty {
                             ty::Adt(def, _) if def.is_union() => {
                                 // Different fields of a union, we are basically stuck.

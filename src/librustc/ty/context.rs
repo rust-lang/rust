@@ -125,7 +125,7 @@ pub struct CtxtInterners<'tcx> {
     clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
-    projs: InternedSet<'tcx, List<ProjectionKind<'tcx>>>,
+    projs: InternedSet<'tcx, List<ProjectionKind>>,
     const_: InternedSet<'tcx, Const<'tcx>>,
 }
 
@@ -1802,7 +1802,7 @@ nop_list_lift!{Ty<'a> => Ty<'tcx>}
 nop_list_lift!{ExistentialPredicate<'a> => ExistentialPredicate<'tcx>}
 nop_list_lift!{Predicate<'a> => Predicate<'tcx>}
 nop_list_lift!{CanonicalVarInfo => CanonicalVarInfo}
-nop_list_lift!{ProjectionKind<'a> => ProjectionKind<'tcx>}
+nop_list_lift!{ProjectionKind => ProjectionKind}
 
 // this is the impl for `&'a InternalSubsts<'a>`
 nop_list_lift!{Kind<'a> => Kind<'tcx>}
@@ -2261,9 +2261,9 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, InternalSubsts<'t
     }
 }
 
-impl<'tcx: 'lcx, 'lcx> Borrow<[ProjectionKind<'lcx>]>
-    for Interned<'tcx, List<ProjectionKind<'tcx>>> {
-    fn borrow<'a>(&'a self) -> &'a [ProjectionKind<'lcx>] {
+impl<'tcx> Borrow<[ProjectionKind]>
+    for Interned<'tcx, List<ProjectionKind>> {
+    fn borrow<'a>(&'a self) -> &'a [ProjectionKind] {
         &self.0[..]
     }
 }
@@ -2391,22 +2391,22 @@ direct_interners!('tcx,
 );
 
 macro_rules! slice_interners {
-    ($($field:ident: $method:ident($ty:ident)),+) => (
+    ($($field:ident: $method:ident($ty:ty)),+) => (
         $(intern_method!( 'tcx, $field: $method(
-            &[$ty<'tcx>],
+            &[$ty],
             |a, v| List::from_arena(a, v),
             Deref::deref,
-            |xs: &[$ty<'_>]| xs.iter().any(keep_local)) -> List<$ty<'tcx>>);)+
-    )
+            |xs: &[$ty]| xs.iter().any(keep_local)) -> List<$ty>);)+
+    );
 }
 
 slice_interners!(
-    existential_predicates: _intern_existential_predicates(ExistentialPredicate),
-    predicates: _intern_predicates(Predicate),
-    type_list: _intern_type_list(Ty),
-    substs: _intern_substs(Kind),
-    clauses: _intern_clauses(Clause),
-    goal_list: _intern_goals(Goal),
+    existential_predicates: _intern_existential_predicates(ExistentialPredicate<'tcx>),
+    predicates: _intern_predicates(Predicate<'tcx>),
+    type_list: _intern_type_list(Ty<'tcx>),
+    substs: _intern_substs(Kind<'tcx>),
+    clauses: _intern_clauses(Clause<'tcx>),
+    goal_list: _intern_goals(Goal<'tcx>),
     projs: _intern_projs(ProjectionKind)
 );
 
@@ -2774,7 +2774,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn intern_projs(self, ps: &[ProjectionKind<'tcx>]) -> &'tcx List<ProjectionKind<'tcx>> {
+    pub fn intern_projs(self, ps: &[ProjectionKind]) -> &'tcx List<ProjectionKind> {
         if ps.len() == 0 {
             List::empty()
         } else {

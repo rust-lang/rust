@@ -266,7 +266,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         // Inspect the type of the content behind the
                         // borrow to provide feedback about why this
                         // was a move rather than a copy.
-                        let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let ty = place.ty(self.mir, self.infcx.tcx).ty;
                         let is_upvar_field_projection =
                             self.prefixes(&original_path, PrefixSet::All)
                             .any(|p| p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
@@ -530,7 +530,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     // We're only interested in assignments (in particular, where the
                     // assignment came from - was it an `Rc` or `Arc`?).
                     if let StatementKind::Assign(_, box Rvalue::Ref(_, _, source)) = &stmt.kind {
-                        let ty = source.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let ty = source.ty(self.mir, self.infcx.tcx).ty;
                         let ty = match ty.sty {
                             ty::TyKind::Ref(_, ty, _) => ty,
                             _ => ty,
@@ -555,7 +555,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             _ => continue,
                         };
 
-                        let ty = source.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let ty = source.ty(self.mir, self.infcx.tcx).ty;
                         let ty = match ty.sty {
                             ty::TyKind::Ref(_, ty, _) => ty,
                             _ => ty,
@@ -581,7 +581,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             base,
             elem: ProjectionElem::Deref,
         }) = place {
-            if base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx).is_unsafe_ptr() {
+            if base.ty(self.mir, self.infcx.tcx).ty.is_unsafe_ptr() {
                 return BorrowedContentSource::DerefRawPointer;
             }
         }

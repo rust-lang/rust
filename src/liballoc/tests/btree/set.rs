@@ -69,6 +69,20 @@ fn test_intersection() {
     check_intersection(&[11, 1, 3, 77, 103, 5, -5],
                        &[2, 11, 77, -9, -42, 5, 3],
                        &[3, 5, 11, 77]);
+    let large = (0..1000).collect::<Vec<_>>();
+    check_intersection(&[], &large, &[]);
+    check_intersection(&large, &[], &[]);
+    check_intersection(&[-1], &large, &[]);
+    check_intersection(&large, &[-1], &[]);
+    check_intersection(&[0], &large, &[0]);
+    check_intersection(&large, &[0], &[0]);
+    check_intersection(&[999], &large, &[999]);
+    check_intersection(&large, &[999], &[999]);
+    check_intersection(&[1000], &large, &[]);
+    check_intersection(&large, &[1000], &[]);
+    check_intersection(&[11, 5000, 1, 3, 77, 8924, 103],
+                       &large,
+                       &[1, 3, 11, 77, 103]);
 }
 
 #[test]
@@ -84,6 +98,18 @@ fn test_difference() {
     check_difference(&[-5, 11, 22, 33, 40, 42],
                      &[-12, -5, 14, 23, 34, 38, 39, 50],
                      &[11, 22, 33, 40, 42]);
+    let large = (0..1000).collect::<Vec<_>>();
+    check_difference(&[], &large, &[]);
+    check_difference(&[-1], &large, &[-1]);
+    check_difference(&[0], &large, &[]);
+    check_difference(&[999], &large, &[]);
+    check_difference(&[1000], &large, &[1000]);
+    check_difference(&[11, 5000, 1, 3, 77, 8924, 103],
+                     &large,
+                     &[5000, 8924]);
+    check_difference(&large, &[], &large);
+    check_difference(&large, &[-1], &large);
+    check_difference(&large, &[1000], &large);
 }
 
 #[test]
@@ -112,6 +138,41 @@ fn test_union() {
     check_union(&[1, 3, 5, 9, 11, 16, 19, 24],
                 &[-2, 1, 5, 9, 13, 19],
                 &[-2, 1, 3, 5, 9, 11, 13, 16, 19, 24]);
+}
+
+#[test]
+// Only tests the simple function definition with respect to intersection
+fn test_is_disjoint() {
+    let one = [1].into_iter().collect::<BTreeSet<_>>();
+    let two = [2].into_iter().collect::<BTreeSet<_>>();
+    assert!(one.is_disjoint(&two));
+}
+
+#[test]
+// Also tests the trivial function definition of is_superset
+fn test_is_subset() {
+    fn is_subset(a: &[i32], b: &[i32]) -> bool {
+        let set_a = a.iter().collect::<BTreeSet<_>>();
+        let set_b = b.iter().collect::<BTreeSet<_>>();
+        set_a.is_subset(&set_b)
+    }
+
+    assert_eq!(is_subset(&[], &[]), true);
+    assert_eq!(is_subset(&[], &[1, 2]), true);
+    assert_eq!(is_subset(&[0], &[1, 2]), false);
+    assert_eq!(is_subset(&[1], &[1, 2]), true);
+    assert_eq!(is_subset(&[2], &[1, 2]), true);
+    assert_eq!(is_subset(&[3], &[1, 2]), false);
+    assert_eq!(is_subset(&[1, 2], &[1]), false);
+    assert_eq!(is_subset(&[1, 2], &[1, 2]), true);
+    assert_eq!(is_subset(&[1, 2], &[2, 3]), false);
+    let large = (0..1000).collect::<Vec<_>>();
+    assert_eq!(is_subset(&[], &large), true);
+    assert_eq!(is_subset(&large, &[]), false);
+    assert_eq!(is_subset(&[-1], &large), false);
+    assert_eq!(is_subset(&[0], &large), true);
+    assert_eq!(is_subset(&[1, 2], &large), true);
+    assert_eq!(is_subset(&[999, 1000], &large), false);
 }
 
 #[test]
