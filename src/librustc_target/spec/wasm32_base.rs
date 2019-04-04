@@ -118,6 +118,15 @@ pub fn options() -> TargetOptions {
 
         pre_link_args,
 
+        // This has no effect in LLVM 8 or prior, but in LLVM 9 and later when
+        // PIC code is implemented this has quite a drastric effect if it stays
+        // at the default, `pic`. In an effort to keep wasm binaries as minimal
+        // as possible we're defaulting to `static` for now, but the hope is
+        // that eventually we can ship a `pic`-compatible standard library which
+        // works with `static` as well (or works with some method of generating
+        // non-relative calls and such later on).
+        relocation_model: "static".to_string(),
+
         .. Default::default()
     }
 }
