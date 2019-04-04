@@ -19,17 +19,7 @@ declare_tool_lint!(
     Warn, "Warn about other stuff"
 );
 
-struct Pass;
-
-impl LintPass for Pass {
-    fn name(&self) -> &'static str {
-        "Pass"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(TEST_LINT, TEST_GROUP)
-    }
-}
+declare_lint_pass!(Pass => [TEST_LINT, TEST_GROUP]);
 
 impl EarlyLintPass for Pass {
     fn check_item(&mut self, cx: &EarlyContext, it: &ast::Item) {

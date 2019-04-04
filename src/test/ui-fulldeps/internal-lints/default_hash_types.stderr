@@ -1,0 +1,39 @@
+error: Prefer FxHashMap over HashMap, it has better performance
+  --> $DIR/default_hash_types.rs:12:15
+   |
+LL |     let _map: HashMap<String, String> = HashMap::default();
+   |               ^^^^^^^ help: use: `FxHashMap`
+   |
+note: lint level defined here
+  --> $DIR/default_hash_types.rs:10:8
+   |
+LL | #[deny(default_hash_types)]
+   |        ^^^^^^^^^^^^^^^^^^
+   = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
+
+error: Prefer FxHashMap over HashMap, it has better performance
+  --> $DIR/default_hash_types.rs:12:41
+   |
+LL |     let _map: HashMap<String, String> = HashMap::default();
+   |                                         ^^^^^^^ help: use: `FxHashMap`
+   |
+   = note: a `use rustc_data_structures::fx::FxHashMap` may be necessary
+
+error: Prefer FxHashSet over HashSet, it has better performance
+  --> $DIR/default_hash_types.rs:15:15
+   |
+LL |     let _set: HashSet<String> = HashSet::default();
+   |               ^^^^^^^ help: use: `FxHashSet`
+   |
+   = note: a `use rustc_data_structures::fx::FxHashSet` may be necessary
+
+error: Prefer FxHashSet over HashSet, it has better performance
+  --> $DIR/default_hash_types.rs:15:33
+   |
+LL |     let _set: HashSet<String> = HashSet::default();
+   |                                 ^^^^^^^ help: use: `FxHashSet`
+   |
+   = note: a `use rustc_data_structures::fx::FxHashSet` may be necessary
+
+error: aborting due to 4 previous errors
+

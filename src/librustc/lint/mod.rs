@@ -181,6 +181,27 @@ pub trait LintPass {
     fn get_lints(&self) -> LintArray;
 }
 
+/// Implements `LintPass for $name` with the given list of `Lint` statics.
+#[macro_export]
+macro_rules! impl_lint_pass {
+    ($name:ident => [$($lint:expr),* $(,)?]) => {
+        impl LintPass for $name {
+            fn name(&self) -> &'static str { stringify!($name) }
+            fn get_lints(&self) -> LintArray { $crate::lint_array!($($lint),*) }
+        }
+    };
+}
+
+/// Declares a type named `$name` which implements `LintPass`.
+/// To the right of `=>` a comma separated list of `Lint` statics is given.
+#[macro_export]
+macro_rules! declare_lint_pass {
+    ($(#[$m:meta])* $name:ident => [$($lint:expr),* $(,)?]) => {
+        $(#[$m])* #[derive(Copy, Clone)] pub struct $name;
+        $crate::impl_lint_pass!($name => [$($lint),*]);
+    };
+}
+
 #[macro_export]
 macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
@@ -574,6 +595,7 @@ impl_stable_hash_for!(enum self::LintSource {
 pub type LevelSource = (Level, LintSource);
 
 pub mod builtin;
+pub mod internal;
 mod context;
 mod levels;
 

@@ -32,18 +32,7 @@ declare_lint! {
     "unused result of an expression in a statement"
 }
 
-#[derive(Copy, Clone)]
-pub struct UnusedResults;
-
-impl LintPass for UnusedResults {
-    fn name(&self) -> &'static str {
-        "UnusedResults"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_MUST_USE, UNUSED_RESULTS)
-    }
-}
+declare_lint_pass!(UnusedResults => [UNUSED_MUST_USE, UNUSED_RESULTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
@@ -203,18 +192,7 @@ declare_lint! {
     "path statements with no effect"
 }
 
-#[derive(Copy, Clone)]
-pub struct PathStatements;
-
-impl LintPass for PathStatements {
-    fn name(&self) -> &'static str {
-        "PathStatements"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(PATH_STATEMENTS)
-    }
-}
+declare_lint_pass!(PathStatements => [PATH_STATEMENTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathStatements {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {
@@ -232,18 +210,7 @@ declare_lint! {
     "detects attributes that were not used by the compiler"
 }
 
-#[derive(Copy, Clone)]
-pub struct UnusedAttributes;
-
-impl LintPass for UnusedAttributes {
-    fn name(&self) -> &'static str {
-        "UnusedAttributes"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_ATTRIBUTES)
-    }
-}
+declare_lint_pass!(UnusedAttributes => [UNUSED_ATTRIBUTES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
@@ -305,8 +272,7 @@ declare_lint! {
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
 
-#[derive(Copy, Clone)]
-pub struct UnusedParens;
+declare_lint_pass!(UnusedParens => [UNUSED_PARENS]);
 
 impl UnusedParens {
     fn check_unused_parens_expr(&self,
@@ -383,16 +349,6 @@ impl UnusedParens {
     }
 }
 
-impl LintPass for UnusedParens {
-    fn name(&self) -> &'static str {
-        "UnusedParens"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_PARENS)
-    }
-}
-
 impl EarlyLintPass for UnusedParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         use syntax::ast::ExprKind::*;
@@ -465,8 +421,7 @@ declare_lint! {
     "unnecessary braces around an imported item"
 }
 
-#[derive(Copy, Clone)]
-pub struct UnusedImportBraces;
+declare_lint_pass!(UnusedImportBraces => [UNUSED_IMPORT_BRACES]);
 
 impl UnusedImportBraces {
     fn check_use_tree(&self, cx: &EarlyContext<'_>, use_tree: &ast::UseTree, item: &ast::Item) {
@@ -505,16 +460,6 @@ impl UnusedImportBraces {
     }
 }
 
-impl LintPass for UnusedImportBraces {
-    fn name(&self) -> &'static str {
-        "UnusedImportBraces"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_IMPORT_BRACES)
-    }
-}
-
 impl EarlyLintPass for UnusedImportBraces {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
         if let ast::ItemKind::Use(ref use_tree) = item.node {
@@ -529,18 +474,7 @@ declare_lint! {
     "detects unnecessary allocations that can be eliminated"
 }
 
-#[derive(Copy, Clone)]
-pub struct UnusedAllocation;
-
-impl LintPass for UnusedAllocation {
-    fn name(&self) -> &'static str {
-        "UnusedAllocation"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_ALLOCATION)
-    }
-}
+declare_lint_pass!(UnusedAllocation => [UNUSED_ALLOCATION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAllocation {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {

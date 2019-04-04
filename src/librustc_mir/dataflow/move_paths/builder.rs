@@ -425,7 +425,7 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 base,
                 elem: ProjectionElem::Field(_, _),
             }) if match base.ty(self.builder.mir, self.builder.tcx).ty.sty {
-                    ty::TyKind::Adt(def, _) if def.is_union() => true,
+                    ty::Adt(def, _) if def.is_union() => true,
                     _ => false,
             } => base,
             // Otherwise, lookup the place.

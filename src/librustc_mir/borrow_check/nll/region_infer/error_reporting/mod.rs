@@ -583,7 +583,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
             if let Some(ty::TyS {
-                sty: ty::TyKind::Opaque(did, substs),
+                sty: ty::Opaque(did, substs),
                 ..
             }) = infcx
                 .tcx

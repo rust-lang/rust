@@ -26,20 +26,13 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_attribute("whitelisted_attr".to_string(), Whitelisted);
 }
 
-declare_lint!(MISSING_WHITELISTED_ATTR, Deny,
-              "Checks for missing `whitelisted_attr` attribute");
-
-struct MissingWhitelistedAttrPass;
-
-impl LintPass for MissingWhitelistedAttrPass {
-    fn name(&self) -> &'static str {
-        "MissingWhitelistedAttrPass"
-    }
-
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MISSING_WHITELISTED_ATTR)
-    }
+declare_lint! {
+    MISSING_WHITELISTED_ATTR,
+    Deny,
+    "Checks for missing `whitelisted_attr` attribute"
 }
+
+declare_lint_pass!(MissingWhitelistedAttrPass => [MISSING_WHITELISTED_ATTR]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingWhitelistedAttrPass {
     fn check_fn(&mut self,

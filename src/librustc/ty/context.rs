@@ -219,6 +219,11 @@ pub struct CommonTypes<'tcx> {
     pub never: Ty<'tcx>,
     pub err: Ty<'tcx>,
 
+    /// Dummy type used for the `Self` of a `TraitRef` created for converting
+    /// a trait object, and which gets removed in `ExistentialTraitRef`.
+    /// This type must not appear anywhere in other converted types.
+    pub trait_object_dummy_self: Ty<'tcx>,
+
     pub re_empty: Region<'tcx>,
     pub re_static: Region<'tcx>,
     pub re_erased: Region<'tcx>,
@@ -954,6 +959,8 @@ impl<'tcx> CommonTypes<'tcx> {
             u128: mk(Uint(ast::UintTy::U128)),
             f32: mk(Float(ast::FloatTy::F32)),
             f64: mk(Float(ast::FloatTy::F64)),
+
+            trait_object_dummy_self: mk(Infer(ty::FreshTy(0))),
 
             re_empty: mk_region(RegionKind::ReEmpty),
             re_static: mk_region(RegionKind::ReStatic),

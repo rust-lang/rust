@@ -6,6 +6,7 @@
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![deny(rust_2018_idioms)]
+#![cfg_attr(not(stage0), deny(internal))]
 
 #[allow(unused_extern_crates)]
 extern crate serialize as rustc_serialize; // used by deriving

@@ -1,0 +1,196 @@
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:11:15
+   |
+LL |     let sty = TyKind::Bool;
+   |               ^^^^^^ help: try using ty::<kind> directly: `ty`
+   |
+note: lint level defined here
+  --> $DIR/ty_tykind_usage.rs:9:8
+   |
+LL | #[deny(usage_of_ty_tykind)]
+   |        ^^^^^^^^^^^^^^^^^^
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:14:9
+   |
+LL |         TyKind::Bool => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:15:9
+   |
+LL |         TyKind::Char => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:16:9
+   |
+LL |         TyKind::Int(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:17:9
+   |
+LL |         TyKind::Uint(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:18:9
+   |
+LL |         TyKind::Float(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:19:9
+   |
+LL |         TyKind::Adt(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:20:9
+   |
+LL |         TyKind::Foreign(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:21:9
+   |
+LL |         TyKind::Str => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:22:9
+   |
+LL |         TyKind::Array(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:23:9
+   |
+LL |         TyKind::Slice(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:24:9
+   |
+LL |         TyKind::RawPtr(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:25:9
+   |
+LL |         TyKind::Ref(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:26:9
+   |
+LL |         TyKind::FnDef(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:27:9
+   |
+LL |         TyKind::FnPtr(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:28:9
+   |
+LL |         TyKind::Dynamic(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:29:9
+   |
+LL |         TyKind::Closure(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:30:9
+   |
+LL |         TyKind::Generator(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:31:9
+   |
+LL |         TyKind::GeneratorWitness(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:32:9
+   |
+LL |         TyKind::Never => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:33:9
+   |
+LL |         TyKind::Tuple(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:34:9
+   |
+LL |         TyKind::Projection(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:35:9
+   |
+LL |         TyKind::UnnormalizedProjection(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:36:9
+   |
+LL |         TyKind::Opaque(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:37:9
+   |
+LL |         TyKind::Param(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:38:9
+   |
+LL |         TyKind::Bound(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:39:9
+   |
+LL |         TyKind::Placeholder(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:40:9
+   |
+LL |         TyKind::Infer(..) => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:41:9
+   |
+LL |         TyKind::Error => (),
+   |         ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind::<kind>`
+  --> $DIR/ty_tykind_usage.rs:46:12
+   |
+LL |     if let TyKind::Int(int_ty) = sty {}
+   |            ^^^^^^ help: try using ty::<kind> directly: `ty`
+
+error: usage of `ty::TyKind`
+  --> $DIR/ty_tykind_usage.rs:48:24
+   |
+LL |     fn ty_kind(ty_bad: TyKind<'_>, ty_good: Ty<'_>) {}
+   |                        ^^^^^^^^^^
+   |
+   = help: try using `ty::Ty` instead
+
+error: aborting due to 31 previous errors
+
