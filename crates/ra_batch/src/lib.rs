@@ -126,10 +126,7 @@ mod tests {
 
     #[test]
     fn test_loading_rust_analyzer() {
-        let mut path = std::env::current_exe().unwrap();
-        while !path.join("Cargo.toml").is_file() {
-            path = path.parent().unwrap().to_owned();
-        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
         let (db, roots) = BatchDatabase::load_cargo(path).unwrap();
         let mut n_crates = 0;
         for root in roots {
