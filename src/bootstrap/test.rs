@@ -1446,6 +1446,7 @@ test_book!(
     TheBook, "src/doc/book", "book", default=false;
     UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
     EditionGuide, "src/doc/edition-guide", "edition-guide", default=false;
+    RustcGuide, "src/doc/rustc-guide", "rustc-guide", default=false;
 );
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
