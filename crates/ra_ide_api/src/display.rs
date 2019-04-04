@@ -1,5 +1,34 @@
+//! This module contains utilities for rendering turning things into something
+//! that may be used to render in UI.
 use super::*;
 use std::fmt::{self, Display};
+use join_to_string::join;
+
+/// Contains information about a function signature
+#[derive(Debug)]
+pub struct FunctionSignature {
+    /// Optional visibility
+    pub visibility: Option<String>,
+    /// Name of the function
+    pub name: Option<String>,
+    /// Documentation for the function
+    pub doc: Option<Documentation>,
+    /// Generic parameters
+    pub generic_parameters: Vec<String>,
+    /// Parameters of the function
+    pub parameters: Vec<String>,
+    /// Optional return type
+    pub ret_type: Option<String>,
+    /// Where predicates
+    pub where_predicates: Vec<String>,
+}
+
+impl FunctionSignature {
+    pub(crate) fn with_doc_opt(mut self, doc: Option<Documentation>) -> Self {
+        self.doc = doc;
+        self
+    }
+}
 
 impl Display for FunctionSignature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -12,14 +41,13 @@ impl Display for FunctionSignature {
         }
 
         if !self.generic_parameters.is_empty() {
-            write!(f, "<")?;
-            write_joined(f, &self.generic_parameters, ", ")?;
-            write!(f, ">")?;
+            join(self.generic_parameters.iter())
+                .separator(", ")
+                .surround_with("<", ">")
+                .to_fmt(f)?;
         }
 
-        write!(f, "(")?;
-        write_joined(f, &self.parameters, ", ")?;
-        write!(f, ")")?;
+        join(self.parameters.iter()).separator(", ").surround_with("(", ")").to_fmt(f)?;
 
         if let Some(t) = &self.ret_type {
             write!(f, " -> {}", t)?;
@@ -27,25 +55,9 @@ impl Display for FunctionSignature {
 
         if !self.where_predicates.is_empty() {
             write!(f, "\nwhere ")?;
-            write_joined(f, &self.where_predicates, ",\n      ")?;
+            join(self.where_predicates.iter()).separator(",\n      ").to_fmt(f)?;
         }
 
         Ok(())
     }
-}
-
-fn write_joined<T: Display>(
-    f: &mut fmt::Formatter,
-    items: impl IntoIterator<Item = T>,
-    sep: &str,
-) -> fmt::Result {
-    let mut first = true;
-    for e in items {
-        if !first {
-            write!(f, "{}", sep)?;
-        }
-        first = false;
-        write!(f, "{}", e)?;
-    }
-    Ok(())
 }

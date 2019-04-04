@@ -73,6 +73,7 @@ pub use crate::{
     syntax_highlighting::HighlightedRange,
     structure::{StructureNode, file_structure},
     diagnostics::Severity,
+    display::FunctionSignature,
 };
 
 pub use ra_db::{
@@ -246,32 +247,6 @@ impl<T> RangeInfo<T> {
 pub struct CallInfo {
     pub signature: FunctionSignature,
     pub active_parameter: Option<usize>,
-}
-
-/// Contains information about a function signature
-#[derive(Debug)]
-pub struct FunctionSignature {
-    /// Optional visibility
-    pub visibility: Option<String>,
-    /// Name of the function
-    pub name: Option<String>,
-    /// Documentation for the function
-    pub doc: Option<Documentation>,
-    /// Generic parameters
-    pub generic_parameters: Vec<String>,
-    /// Parameters of the function
-    pub parameters: Vec<String>,
-    /// Optional return type
-    pub ret_type: Option<String>,
-    /// Where predicates
-    pub where_predicates: Vec<String>,
-}
-
-impl FunctionSignature {
-    pub(crate) fn with_doc_opt(mut self, doc: Option<Documentation>) -> Self {
-        self.doc = doc;
-        self
-    }
 }
 
 /// `AnalysisHost` stores the current state of the world.
