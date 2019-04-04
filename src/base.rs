@@ -309,7 +309,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 target,
                 unwind: _,
             } => {
-                let ty = location.ty(fx.mir, fx.tcx).to_ty(fx.tcx);
+                let ty = location.ty(fx.mir, fx.tcx).ty;
                 let ty = fx.monomorphize(&ty);
                 let drop_fn = crate::rustc_mir::monomorphize::resolve_drop_in_place(fx.tcx, ty);
 
