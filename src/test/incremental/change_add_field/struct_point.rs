@@ -70,7 +70,7 @@ pub mod point {
 pub mod fn_with_type_in_sig {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="typeck_tables_of", cfg="cfail2")]
     pub fn boop(p: Option<&Point>) -> f32 {
         p.map(|p| p.total()).unwrap_or(0.0)
     }
@@ -86,7 +86,7 @@ pub mod fn_with_type_in_sig {
 pub mod call_fn_with_type_in_sig {
     use fn_with_type_in_sig;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="typeck_tables_of", cfg="cfail2")]
     pub fn bip() -> f32 {
         fn_with_type_in_sig::boop(None)
     }
@@ -102,7 +102,7 @@ pub mod call_fn_with_type_in_sig {
 pub mod fn_with_type_in_body {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="typeck_tables_of", cfg="cfail2")]
     pub fn boop() -> f32 {
         Point::origin().total()
     }
@@ -115,7 +115,7 @@ pub mod fn_with_type_in_body {
 pub mod call_fn_with_type_in_body {
     use fn_with_type_in_body;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
     pub fn bip() -> f32 {
         fn_with_type_in_body::boop()
     }
@@ -125,7 +125,7 @@ pub mod call_fn_with_type_in_body {
 pub mod fn_make_struct {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="typeck_tables_of", cfg="cfail2")]
     pub fn make_origin(p: Point) -> Point {
         Point { ..p }
     }
@@ -135,7 +135,7 @@ pub mod fn_make_struct {
 pub mod fn_read_field {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="typeck_tables_of", cfg="cfail2")]
     pub fn get_x(p: Point) -> f32 {
         p.x
     }
@@ -145,7 +145,7 @@ pub mod fn_read_field {
 pub mod fn_write_field {
     use point::Point;
 
-    #[rustc_dirty(label="TypeckTables", cfg="cfail2")]
+    #[rustc_dirty(label="typeck_tables_of", cfg="cfail2")]
     pub fn inc_x(p: &mut Point) {
         p.x += 1.0;
     }

@@ -70,7 +70,7 @@ pub fn add_break() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_break() {
     let mut _x = 0;
@@ -141,7 +141,7 @@ pub fn change_break_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_break_label() {
     let mut _x = 0;
@@ -191,7 +191,7 @@ pub fn change_continue_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_continue_label() {
     let mut _x = 0;

@@ -1139,12 +1139,11 @@ pub fn force_from_dep_node<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     dep_node: &DepNode
 ) -> bool {
-    use crate::hir::def_id::LOCAL_CRATE;
     use crate::dep_graph::RecoverKey;
 
     // We must avoid ever having to call force_from_dep_node() for a
-    // DepNode::CodegenUnit:
-    // Since we cannot reconstruct the query key of a DepNode::CodegenUnit, we
+    // DepNode::codegen_unit:
+    // Since we cannot reconstruct the query key of a DepNode::codegen_unit, we
     // would always end up having to evaluate the first caller of the
     // `codegen_unit` query that *is* reconstructible. This might very well be
     // the `compile_codegen_unit` query, thus re-codegenning the whole CGU just
@@ -1155,8 +1154,8 @@ pub fn force_from_dep_node<'tcx>(
     // each CGU, right after partitioning. This way `try_mark_green` will always
     // hit the cache instead of having to go through `force_from_dep_node`.
     // This assertion makes sure, we actually keep applying the solution above.
-    debug_assert!(dep_node.kind != DepKind::CodegenUnit,
-                  "calling force_from_dep_node() on DepKind::CodegenUnit");
+    debug_assert!(dep_node.kind != DepKind::codegen_unit,
+                  "calling force_from_dep_node() on DepKind::codegen_unit");
 
     if !dep_node.kind.can_reconstruct_query_key() {
         return false
@@ -1193,9 +1192,6 @@ pub fn force_from_dep_node<'tcx>(
         ($query:ident, $key:expr) => { force_ex!(tcx, $query, $key) }
     };
 
-    // FIXME(#45015): We should try move this boilerplate code into a macro
-    //                somehow.
-
     rustc_dep_node_force!([dep_node, tcx]
         // These are inputs that are expected to be pre-allocated and that
         // should therefore always be red or green already
@@ -1210,223 +1206,11 @@ pub fn force_from_dep_node<'tcx>(
 
         // We don't have enough information to reconstruct the query key of
         // these
-        DepKind::IsCopy |
-        DepKind::IsSized |
-        DepKind::IsFreeze |
-        DepKind::NeedsDrop |
-        DepKind::Layout |
-        DepKind::ConstEval |
-        DepKind::ConstEvalRaw |
-        DepKind::SymbolName |
-        DepKind::MirShim |
-        DepKind::BorrowCheckKrate |
-        DepKind::Specializes |
-        DepKind::ImplementationsOfTrait |
-        DepKind::TypeParamPredicates |
-        DepKind::CodegenUnit |
-        DepKind::CompileCodegenUnit |
-        DepKind::FulfillObligation |
-        DepKind::VtableMethods |
-        DepKind::NormalizeProjectionTy |
-        DepKind::NormalizeTyAfterErasingRegions |
-        DepKind::ImpliedOutlivesBounds |
-        DepKind::DropckOutlives |
-        DepKind::EvaluateObligation |
-        DepKind::EvaluateGoal |
-        DepKind::TypeOpAscribeUserType |
-        DepKind::TypeOpEq |
-        DepKind::TypeOpSubtype |
-        DepKind::TypeOpProvePredicate |
-        DepKind::TypeOpNormalizeTy |
-        DepKind::TypeOpNormalizePredicate |
-        DepKind::TypeOpNormalizePolyFnSig |
-        DepKind::TypeOpNormalizeFnSig |
-        DepKind::SubstituteNormalizeAndTestPredicates |
-        DepKind::MethodAutoderefSteps |
-        DepKind::InstanceDefSizeEstimate => {
+        DepKind::CompileCodegenUnit => {
             bug!("force_from_dep_node() - Encountered {:?}", dep_node)
         }
 
-        // These are not queries
-        DepKind::CoherenceCheckTrait |
-        DepKind::ItemVarianceConstraints => {
-            return false
-        }
-
-        DepKind::RegionScopeTree => { force!(region_scope_tree, def_id!()); }
-
-        DepKind::Coherence => { force!(crate_inherent_impls, LOCAL_CRATE); }
-        DepKind::CoherenceInherentImplOverlapCheck => {
-            force!(crate_inherent_impls_overlap_check, LOCAL_CRATE)
-        },
-        DepKind::PrivacyAccessLevels => { force!(privacy_access_levels, LOCAL_CRATE); }
-        DepKind::CheckPrivateInPublic => { force!(check_private_in_public, LOCAL_CRATE); }
-
-        DepKind::BorrowCheck => { force!(borrowck, def_id!()); }
-        DepKind::MirBorrowCheck => { force!(mir_borrowck, def_id!()); }
-        DepKind::UnsafetyCheckResult => { force!(unsafety_check_result, def_id!()); }
-        DepKind::UnsafeDeriveOnReprPacked => { force!(unsafe_derive_on_repr_packed, def_id!()); }
-        DepKind::LintMod => { force!(lint_mod, def_id!()); }
-        DepKind::CheckModAttrs => { force!(check_mod_attrs, def_id!()); }
-        DepKind::CheckModLoops => { force!(check_mod_loops, def_id!()); }
-        DepKind::CheckModUnstableApiUsage => { force!(check_mod_unstable_api_usage, def_id!()); }
-        DepKind::CheckModItemTypes => { force!(check_mod_item_types, def_id!()); }
-        DepKind::CheckModPrivacy => { force!(check_mod_privacy, def_id!()); }
-        DepKind::CheckModIntrinsics => { force!(check_mod_intrinsics, def_id!()); }
-        DepKind::CheckModLiveness => { force!(check_mod_liveness, def_id!()); }
-        DepKind::CheckModImplWf => { force!(check_mod_impl_wf, def_id!()); }
-        DepKind::CollectModItemTypes => { force!(collect_mod_item_types, def_id!()); }
-        DepKind::Reachability => { force!(reachable_set, LOCAL_CRATE); }
-        DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }
-        DepKind::AssociatedItems => { force!(associated_item, def_id!()); }
-        DepKind::PredicatesDefinedOnItem => { force!(predicates_defined_on, def_id!()); }
-        DepKind::ExplicitPredicatesOfItem => { force!(explicit_predicates_of, def_id!()); }
-        DepKind::InferredOutlivesOf => { force!(inferred_outlives_of, def_id!()); }
-        DepKind::InferredOutlivesCrate => { force!(inferred_outlives_crate, LOCAL_CRATE); }
-        DepKind::SuperPredicatesOfItem => { force!(super_predicates_of, def_id!()); }
-        DepKind::TraitDefOfItem => { force!(trait_def, def_id!()); }
-        DepKind::AdtDefOfItem => { force!(adt_def, def_id!()); }
-        DepKind::ImplTraitRef => { force!(impl_trait_ref, def_id!()); }
-        DepKind::ImplPolarity => { force!(impl_polarity, def_id!()); }
-        DepKind::Issue33140SelfTy => { force!(issue33140_self_ty, def_id!()); }
-        DepKind::FnSignature => { force!(fn_sig, def_id!()); }
-        DepKind::CoerceUnsizedInfo => { force!(coerce_unsized_info, def_id!()); }
-        DepKind::ItemVariances => { force!(variances_of, def_id!()); }
-        DepKind::IsConstFn => { force!(is_const_fn_raw, def_id!()); }
-        DepKind::IsPromotableConstFn => { force!(is_promotable_const_fn, def_id!()); }
-        DepKind::IsForeignItem => { force!(is_foreign_item, def_id!()); }
-        DepKind::SizedConstraint => { force!(adt_sized_constraint, def_id!()); }
-        DepKind::DtorckConstraint => { force!(adt_dtorck_constraint, def_id!()); }
-        DepKind::AdtDestructor => { force!(adt_destructor, def_id!()); }
-        DepKind::AssociatedItemDefIds => { force!(associated_item_def_ids, def_id!()); }
-        DepKind::InherentImpls => { force!(inherent_impls, def_id!()); }
-        DepKind::TypeckBodiesKrate => { force!(typeck_item_bodies, LOCAL_CRATE); }
-        DepKind::TypeckTables => { force!(typeck_tables_of, def_id!()); }
-        DepKind::UsedTraitImports => { force!(used_trait_imports, def_id!()); }
-        DepKind::HasTypeckTables => { force!(has_typeck_tables, def_id!()); }
-        DepKind::SpecializationGraph => { force!(specialization_graph_of, def_id!()); }
-        DepKind::ObjectSafety => { force!(is_object_safe, def_id!()); }
-        DepKind::TraitImpls => { force!(trait_impls_of, def_id!()); }
-        DepKind::CheckMatch => { force!(check_match, def_id!()); }
-
-        DepKind::ParamEnv => { force!(param_env, def_id!()); }
-        DepKind::DescribeDef => { force!(describe_def, def_id!()); }
-        DepKind::DefSpan => { force!(def_span, def_id!()); }
-        DepKind::LookupStability => { force!(lookup_stability, def_id!()); }
-        DepKind::LookupDeprecationEntry => {
-            force!(lookup_deprecation_entry, def_id!());
-        }
-        DepKind::ConstIsRvaluePromotableToStatic => {
-            force!(const_is_rvalue_promotable_to_static, def_id!());
-        }
-        DepKind::RvaluePromotableMap => { force!(rvalue_promotable_map, def_id!()); }
-        DepKind::ImplParent => { force!(impl_parent, def_id!()); }
-        DepKind::TraitOfItem => { force!(trait_of_item, def_id!()); }
-        DepKind::IsReachableNonGeneric => { force!(is_reachable_non_generic, def_id!()); }
-        DepKind::IsUnreachableLocalDefinition => {
-            force!(is_unreachable_local_definition, def_id!());
-        }
-        DepKind::IsMirAvailable => { force!(is_mir_available, def_id!()); }
-        DepKind::ItemAttrs => { force!(item_attrs, def_id!()); }
-        DepKind::CodegenFnAttrs => { force!(codegen_fn_attrs, def_id!()); }
-        DepKind::FnArgNames => { force!(fn_arg_names, def_id!()); }
-        DepKind::RenderedConst => { force!(rendered_const, def_id!()); }
-        DepKind::DylibDepFormats => { force!(dylib_dependency_formats, krate!()); }
-        DepKind::IsCompilerBuiltins => { force!(is_compiler_builtins, krate!()); }
-        DepKind::HasGlobalAllocator => { force!(has_global_allocator, krate!()); }
-        DepKind::HasPanicHandler => { force!(has_panic_handler, krate!()); }
-        DepKind::ExternCrate => { force!(extern_crate, def_id!()); }
-        DepKind::InScopeTraits => { force!(in_scope_traits_map, def_id!().index); }
-        DepKind::ModuleExports => { force!(module_exports, def_id!()); }
-        DepKind::IsSanitizerRuntime => { force!(is_sanitizer_runtime, krate!()); }
-        DepKind::IsProfilerRuntime => { force!(is_profiler_runtime, krate!()); }
-        DepKind::GetPanicStrategy => { force!(panic_strategy, krate!()); }
-        DepKind::IsNoBuiltins => { force!(is_no_builtins, krate!()); }
-        DepKind::ImplDefaultness => { force!(impl_defaultness, def_id!()); }
-        DepKind::CheckItemWellFormed => { force!(check_item_well_formed, def_id!()); }
-        DepKind::CheckTraitItemWellFormed => { force!(check_trait_item_well_formed, def_id!()); }
-        DepKind::CheckImplItemWellFormed => { force!(check_impl_item_well_formed, def_id!()); }
-        DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
-        DepKind::EntryFn => { force!(entry_fn, krate!()); }
-        DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
-        DepKind::ProcMacroDeclsStatic => { force!(proc_macro_decls_static, krate!()); }
-        DepKind::CrateDisambiguator => { force!(crate_disambiguator, krate!()); }
-        DepKind::CrateHash => { force!(crate_hash, krate!()); }
-        DepKind::OriginalCrateName => { force!(original_crate_name, krate!()); }
-        DepKind::ExtraFileName => { force!(extra_filename, krate!()); }
         DepKind::Analysis => { force!(analysis, krate!()); }
-
-        DepKind::AllTraitImplementations => {
-            force!(all_trait_implementations, krate!());
-        }
-
-        DepKind::DllimportForeignItems => {
-            force!(dllimport_foreign_items, krate!());
-        }
-        DepKind::IsDllimportForeignItem => {
-            force!(is_dllimport_foreign_item, def_id!());
-        }
-        DepKind::IsStaticallyIncludedForeignItem => {
-            force!(is_statically_included_foreign_item, def_id!());
-        }
-        DepKind::NativeLibraryKind => { force!(native_library_kind, def_id!()); }
-        DepKind::LinkArgs => { force!(link_args, LOCAL_CRATE); }
-
-        DepKind::ResolveLifetimes => { force!(resolve_lifetimes, krate!()); }
-        DepKind::NamedRegion => { force!(named_region_map, def_id!().index); }
-        DepKind::IsLateBound => { force!(is_late_bound_map, def_id!().index); }
-        DepKind::ObjectLifetimeDefaults => {
-            force!(object_lifetime_defaults_map, def_id!().index);
-        }
-
-        DepKind::Visibility => { force!(visibility, def_id!()); }
-        DepKind::DepKind => { force!(dep_kind, krate!()); }
-        DepKind::CrateName => { force!(crate_name, krate!()); }
-        DepKind::ItemChildren => { force!(item_children, def_id!()); }
-        DepKind::ExternModStmtCnum => { force!(extern_mod_stmt_cnum, def_id!()); }
-        DepKind::GetLibFeatures => { force!(get_lib_features, LOCAL_CRATE); }
-        DepKind::DefinedLibFeatures => { force!(defined_lib_features, krate!()); }
-        DepKind::GetLangItems => { force!(get_lang_items, LOCAL_CRATE); }
-        DepKind::DefinedLangItems => { force!(defined_lang_items, krate!()); }
-        DepKind::MissingLangItems => { force!(missing_lang_items, krate!()); }
-        DepKind::VisibleParentMap => { force!(visible_parent_map, LOCAL_CRATE); }
-        DepKind::MissingExternCrateItem => {
-            force!(missing_extern_crate_item, krate!());
-        }
-        DepKind::UsedCrateSource => { force!(used_crate_source, krate!()); }
-        DepKind::PostorderCnums => { force!(postorder_cnums, LOCAL_CRATE); }
-
-        DepKind::Freevars => { force!(freevars, def_id!()); }
-        DepKind::MaybeUnusedTraitImport => {
-            force!(maybe_unused_trait_import, def_id!());
-        }
-        DepKind::NamesImportedByGlobUse => { force!(names_imported_by_glob_use, def_id!()); }
-        DepKind::MaybeUnusedExternCrates => { force!(maybe_unused_extern_crates, LOCAL_CRATE); }
-        DepKind::StabilityIndex => { force!(stability_index, LOCAL_CRATE); }
-        DepKind::AllTraits => { force!(all_traits, LOCAL_CRATE); }
-        DepKind::AllCrateNums => { force!(all_crate_nums, LOCAL_CRATE); }
-        DepKind::ExportedSymbols => { force!(exported_symbols, krate!()); }
-        DepKind::CollectAndPartitionMonoItems => {
-            force!(collect_and_partition_mono_items, LOCAL_CRATE);
-        }
-        DepKind::IsCodegenedItem => { force!(is_codegened_item, def_id!()); }
-        DepKind::OutputFilenames => { force!(output_filenames, LOCAL_CRATE); }
-
-        DepKind::TargetFeaturesWhitelist => { force!(target_features_whitelist, LOCAL_CRATE); }
-
-        DepKind::Features => { force!(features_query, LOCAL_CRATE); }
-
-        DepKind::ForeignModules => { force!(foreign_modules, krate!()); }
-
-        DepKind::UpstreamMonomorphizations => {
-            force!(upstream_monomorphizations, krate!());
-        }
-        DepKind::UpstreamMonomorphizationsFor => {
-            force!(upstream_monomorphizations_for, def_id!());
-        }
-        DepKind::BackendOptimizationLevel => {
-            force!(backend_optimization_level, krate!());
-        }
     );
 
     true
@@ -1479,18 +1263,18 @@ macro_rules! impl_load_from_cache {
 }
 
 impl_load_from_cache!(
-    TypeckTables => typeck_tables_of,
+    typeck_tables_of => typeck_tables_of,
     optimized_mir => optimized_mir,
-    UnsafetyCheckResult => unsafety_check_result,
-    BorrowCheck => borrowck,
-    MirBorrowCheck => mir_borrowck,
+    unsafety_check_result => unsafety_check_result,
+    borrowck => borrowck,
+    mir_borrowck => mir_borrowck,
     mir_const_qualif => mir_const_qualif,
-    ConstIsRvaluePromotableToStatic => const_is_rvalue_promotable_to_static,
-    CheckMatch => check_match,
+    const_is_rvalue_promotable_to_static => const_is_rvalue_promotable_to_static,
+    check_match => check_match,
     type_of => type_of,
     generics_of => generics_of,
     predicates_of => predicates_of,
-    UsedTraitImports => used_trait_imports,
-    CodegenFnAttrs => codegen_fn_attrs,
-    SpecializationGraph => specialization_graph_of,
+    used_trait_imports => used_trait_imports,
+    codegen_fn_attrs => codegen_fn_attrs,
+    specialization_graph_of => specialization_graph_of,
 );

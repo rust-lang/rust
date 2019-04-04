@@ -28,7 +28,7 @@ pub mod x {
 pub mod y {
     use x;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
     #[rustc_clean(label="optimized_mir", cfg="cfail2")]
     pub fn y() {
         x::x();
@@ -38,7 +38,7 @@ pub mod y {
 pub mod z {
     use y;
 
-    #[rustc_clean(label="TypeckTables", cfg="cfail2")]
+    #[rustc_clean(label="typeck_tables_of", cfg="cfail2")]
     #[rustc_clean(label="optimized_mir", cfg="cfail2")]
     pub fn z() {
         y::y();

@@ -23,7 +23,7 @@ impl Foo {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,AssociatedItemDefIds")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody,associated_item_def_ids")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
     #[rustc_clean(cfg="cfail3")]
@@ -42,7 +42,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,TypeckTables")]
+    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_body() {
         println!("Hello, world!");
@@ -63,7 +63,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,TypeckTables")]
+    #[rustc_clean(cfg="cfail2", except="HirBody,optimized_mir,mir_built,typeck_tables_of")]
     #[rustc_clean(cfg="cfail3")]
     #[inline]
     pub fn method_body_inlined() {
@@ -82,7 +82,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="AssociatedItems,Hir,HirBody")]
+    #[rustc_clean(cfg="cfail2", except="associated_item,Hir,HirBody")]
     #[rustc_clean(cfg="cfail3")]
     fn method_privacy() { }
 }
@@ -114,7 +114,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,FnSignature,TypeckTables,optimized_mir,mir_built"
+        except="Hir,HirBody,fn_sig,typeck_tables_of,optimized_mir,mir_built"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_selfmutness(&mut self) { }
@@ -129,7 +129,7 @@ impl Foo {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody,AssociatedItemDefIds")]
+#[rustc_clean(cfg="cfail2", except="Hir,HirBody,associated_item_def_ids")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
     #[rustc_clean(cfg="cfail2")]
@@ -154,7 +154,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,FnSignature,TypeckTables,optimized_mir,mir_built"
+        except="Hir,HirBody,fn_sig,typeck_tables_of,optimized_mir,mir_built"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_method_parameter(&self, _: i32) { }
@@ -191,7 +191,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,FnSignature,optimized_mir,mir_built,TypeckTables")]
+        except="Hir,HirBody,fn_sig,optimized_mir,mir_built,typeck_tables_of")]
     #[rustc_clean(cfg="cfail3")]
     pub fn change_method_return_type(&self) -> u8 { 0 }
 }
@@ -245,7 +245,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,FnSignature,TypeckTables,optimized_mir,mir_built"
+        except="Hir,HirBody,fn_sig,typeck_tables_of,optimized_mir,mir_built"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub unsafe fn make_method_unsafe(&self) { }
@@ -263,7 +263,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,mir_built,FnSignature,TypeckTables")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,mir_built,fn_sig,typeck_tables_of")]
     #[rustc_clean(cfg="cfail3")]
     pub extern fn make_method_extern(&self) { }
 }
@@ -280,7 +280,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,FnSignature,TypeckTables")]
+    #[rustc_clean(cfg="cfail2", except="Hir,HirBody,fn_sig,typeck_tables_of")]
     #[rustc_clean(cfg="cfail3")]
     pub extern "system" fn change_method_calling_convention(&self) { }
 }
@@ -297,15 +297,15 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    // Warning: Note that `TypeckTables` are coming up clean here.
+    // Warning: Note that `typeck_tables_of` are coming up clean here.
     // The addition or removal of lifetime parameters that don't
     // appear in the arguments or fn body in any way does not, in
-    // fact, affect the `TypeckTables` in any semantic way (at least
+    // fact, affect the `typeck_tables_of` in any semantic way (at least
     // as of this writing). **However,** altering the order of
-    // lowering **can** cause it appear to affect the `TypeckTables`:
+    // lowering **can** cause it appear to affect the `typeck_tables_of`:
     // if we lower generics before the body, then the `HirId` for
     // things in the body will be affected. So if you start to see
-    // `TypeckTables` appear dirty, that might be the cause. -nmatsakis
+    // `typeck_tables_of` appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_parameter_to_method<'a>(&self) { }
@@ -323,14 +323,14 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    // Warning: Note that `TypeckTables` are coming up clean here.
+    // Warning: Note that `typeck_tables_of` are coming up clean here.
     // The addition or removal of type parameters that don't appear in
     // the arguments or fn body in any way does not, in fact, affect
-    // the `TypeckTables` in any semantic way (at least as of this
+    // the `typeck_tables_of` in any semantic way (at least as of this
     // writing). **However,** altering the order of lowering **can**
-    // cause it appear to affect the `TypeckTables`: if we lower
+    // cause it appear to affect the `typeck_tables_of`: if we lower
     // generics before the body, then the `HirId` for things in the
-    // body will be affected. So if you start to see `TypeckTables`
+    // body will be affected. So if you start to see `typeck_tables_of`
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="cfail2",
@@ -354,7 +354,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,generics_of,predicates_of,type_of,TypeckTables"
+        except="Hir,HirBody,generics_of,predicates_of,type_of,typeck_tables_of"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
@@ -372,14 +372,14 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    // Warning: Note that `TypeckTables` are coming up clean here.
+    // Warning: Note that `typeck_tables_of` are coming up clean here.
     // The addition or removal of bounds that don't appear in the
     // arguments or fn body in any way does not, in fact, affect the
-    // `TypeckTables` in any semantic way (at least as of this
+    // `typeck_tables_of` in any semantic way (at least as of this
     // writing). **However,** altering the order of lowering **can**
-    // cause it appear to affect the `TypeckTables`: if we lower
+    // cause it appear to affect the `typeck_tables_of`: if we lower
     // generics before the body, then the `HirId` for things in the
-    // body will be affected. So if you start to see `TypeckTables`
+    // body will be affected. So if you start to see `typeck_tables_of`
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,generics_of,predicates_of,\
                                         type_of")]
@@ -399,14 +399,14 @@ impl Foo {
 #[rustc_clean(cfg="cfail2")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    // Warning: Note that `TypeckTables` are coming up clean here.
+    // Warning: Note that `typeck_tables_of` are coming up clean here.
     // The addition or removal of bounds that don't appear in the
     // arguments or fn body in any way does not, in fact, affect the
-    // `TypeckTables` in any semantic way (at least as of this
+    // `typeck_tables_of` in any semantic way (at least as of this
     // writing). **However,** altering the order of lowering **can**
-    // cause it appear to affect the `TypeckTables`: if we lower
+    // cause it appear to affect the `typeck_tables_of`: if we lower
     // generics before the body, then the `HirId` for things in the
-    // body will be affected. So if you start to see `TypeckTables`
+    // body will be affected. So if you start to see `typeck_tables_of`
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,predicates_of")]
     #[rustc_clean(cfg="cfail3")]
@@ -447,7 +447,7 @@ impl Bar<u32> {
 impl<T> Bar<T> {
     #[rustc_clean(
         cfg="cfail2",
-        except="generics_of,FnSignature,TypeckTables,type_of,optimized_mir,mir_built"
+        except="generics_of,fn_sig,typeck_tables_of,type_of,optimized_mir,mir_built"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_type_parameter_to_impl(&self) { }
@@ -465,7 +465,7 @@ impl Bar<u32> {
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 impl Bar<u64> {
-    #[rustc_clean(cfg="cfail2", except="FnSignature,optimized_mir,mir_built,TypeckTables")]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,optimized_mir,mir_built,typeck_tables_of")]
     #[rustc_clean(cfg="cfail3")]
     pub fn change_impl_self_type(&self) { }
 }
