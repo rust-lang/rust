@@ -4,8 +4,8 @@ cache:
   # we cannot reuse anyway when the nightly changes (and it grows quite large
   # over time).
   directories:
-    - /home/travis/.cargo
-    - /home/travis/.rustup
+    - $HOME/.cargo
+    - $HOME/.rustup
 
 os:
 - linux
@@ -22,19 +22,21 @@ before_script:
   else
     RUSTC_HASH=$(cat rust-version)
   fi
-# install Rust
+# Install Rust ("stable" toolchain for better caching, it is just used to build rustup-toolchain-install-master)
 - curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable
 - export PATH=$HOME/.cargo/bin:$PATH
+# Install "master" toolchain
 - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
-- rustup-toolchain-install-master -f -n master $RUSTC_HASH
+- travis_retry rustup-toolchain-install-master -f -n master $RUSTC_HASH -c cargo -c rust-src
 - rustup default master
 - rustc --version
 
 script:
 - ./travis.sh
 
-after_script:
-# Don't cache this, it's a waste
+before_cache:
+# Don't cache "master" toolchain, it's a waste
+- rustup default stable
 - rustup toolchain uninstall master
 
 notifications:
