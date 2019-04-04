@@ -113,6 +113,51 @@ struct TtToken {
     text: SmolStr,
 }
 
+// Some helper functions
+fn to_punct(tt: &tt::TokenTree) -> Option<&tt::Punct> {
+    if let tt::TokenTree::Leaf(tt::Leaf::Punct(pp)) = tt {
+        return Some(pp);
+    }
+    None
+}
+
+struct TokenPeek<'a, I>
+where
+    I: Iterator<Item = &'a tt::TokenTree>,
+{
+    iter: itertools::MultiPeek<I>,
+}
+
+impl<'a, I> TokenPeek<'a, I>
+where
+    I: Iterator<Item = &'a tt::TokenTree>,
+{
+    fn next(&mut self) -> Option<&tt::TokenTree> {
+        self.iter.next()
+    }
+
+    fn current_punct2(&mut self, p: &tt::Punct) -> Option<((char, char), bool)> {
+        if p.spacing != tt::Spacing::Joint {
+            return None;
+        }
+
+        self.iter.reset_peek();
+        let p1 = to_punct(self.iter.peek()?)?;
+        Some(((p.char, p1.char), p1.spacing == tt::Spacing::Joint))
+    }
+
+    fn current_punct3(&mut self, p: &tt::Punct) -> Option<((char, char, char), bool)> {
+        self.current_punct2(p).and_then(|((p0, p1), last_joint)| {
+            if !last_joint {
+                None
+            } else {
+                let p2 = to_punct(*self.iter.peek()?)?;
+                Some(((p0, p1, p2.char), p2.spacing == tt::Spacing::Joint))
+            }
+        })
+    }
+}
+
 impl TtTokenSource {
     fn new(tt: &tt::Subtree) -> TtTokenSource {
         let mut res = TtTokenSource { tokens: Vec::new() };
@@ -121,16 +166,27 @@ impl TtTokenSource {
     }
     fn convert_subtree(&mut self, sub: &tt::Subtree) {
         self.push_delim(sub.delimiter, false);
-        sub.token_trees.iter().for_each(|tt| self.convert_tt(tt));
+        let mut peek = TokenPeek { iter: itertools::multipeek(sub.token_trees.iter()) };
+        while let Some(tt) = peek.iter.next() {
+            self.convert_tt(tt, &mut peek);
+        }
         self.push_delim(sub.delimiter, true)
     }
-    fn convert_tt(&mut self, tt: &tt::TokenTree) {
+
+    fn convert_tt<'a, I>(&mut self, tt: &tt::TokenTree, iter: &mut TokenPeek<'a, I>)
+    where
+        I: Iterator<Item = &'a tt::TokenTree>,
+    {
         match tt {
-            tt::TokenTree::Leaf(token) => self.convert_token(token),
+            tt::TokenTree::Leaf(token) => self.convert_token(token, iter),
             tt::TokenTree::Subtree(sub) => self.convert_subtree(sub),
         }
     }
-    fn convert_token(&mut self, token: &tt::Leaf) {
+
+    fn convert_token<'a, I>(&mut self, token: &tt::Leaf, iter: &mut TokenPeek<'a, I>)
+    where
+        I: Iterator<Item = &'a tt::TokenTree>,
+    {
         let tok = match token {
             tt::Leaf::Literal(l) => TtToken {
                 kind: SyntaxKind::INT_NUMBER, // FIXME
@@ -138,21 +194,25 @@ impl TtTokenSource {
                 text: l.text.clone(),
             },
             tt::Leaf::Punct(p) => {
-                let kind = match p.char {
-                    // lexer may produce combpund tokens for these ones
-                    '.' => DOT,
-                    ':' => COLON,
-                    '=' => EQ,
-                    '!' => EXCL,
-                    '-' => MINUS,
-                    c => SyntaxKind::from_char(c).unwrap(),
-                };
-                let text = {
-                    let mut buf = [0u8; 4];
-                    let s: &str = p.char.encode_utf8(&mut buf);
-                    SmolStr::new(s)
-                };
-                TtToken { kind, is_joint_to_next: p.spacing == tt::Spacing::Joint, text }
+                if let Some(tt) = Self::convert_multi_char_punct(p, iter) {
+                    tt
+                } else {
+                    let kind = match p.char {
+                        // lexer may produce combpund tokens for these ones
+                        '.' => DOT,
+                        ':' => COLON,
+                        '=' => EQ,
+                        '!' => EXCL,
+                        '-' => MINUS,
+                        c => SyntaxKind::from_char(c).unwrap(),
+                    };
+                    let text = {
+                        let mut buf = [0u8; 4];
+                        let s: &str = p.char.encode_utf8(&mut buf);
+                        SmolStr::new(s)
+                    };
+                    TtToken { kind, is_joint_to_next: p.spacing == tt::Spacing::Joint, text }
+                }
             }
             tt::Leaf::Ident(ident) => {
                 let kind = SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT);
@@ -161,6 +221,64 @@ impl TtTokenSource {
         };
         self.tokens.push(tok)
     }
+
+    fn convert_multi_char_punct<'a, I>(
+        p: &tt::Punct,
+        iter: &mut TokenPeek<'a, I>,
+    ) -> Option<TtToken>
+    where
+        I: Iterator<Item = &'a tt::TokenTree>,
+    {
+        if let Some((m, is_joint_to_next)) = iter.current_punct3(p) {
+            if let Some((kind, text)) = match m {
+                ('<', '<', '=') => Some((SHLEQ, "<<=".into())),
+                ('>', '>', '=') => Some((SHREQ, ">>=".into())),
+                ('.', '.', '.') => Some((DOTDOTDOT, "...".into())),
+                ('.', '.', '=') => Some((DOTDOTEQ, "..=".into())),
+                _ => None,
+            } {
+                iter.next();
+                iter.next();
+                return Some(TtToken { kind, is_joint_to_next, text });
+            }
+        }
+
+        if let Some((m, is_joint_to_next)) = iter.current_punct2(p) {
+            if let Some((kind, text)) = match m {
+                ('<', '<') => Some((SHL, "<<".into())),
+                ('>', '>') => Some((SHR, ">>".into())),
+
+                ('|', '|') => Some((PIPEPIPE, "||".into())),
+                ('&', '&') => Some((AMPAMP, "&&".into())),
+                ('%', '=') => Some((PERCENTEQ, "%=".into())),
+                ('*', '=') => Some((STAREQ, "*=".into())),
+                ('/', '=') => Some((SLASHEQ, "/=".into())),
+                ('^', '=') => Some((CARETEQ, "^=".into())),
+
+                ('&', '=') => Some((AMPEQ, "&=".into())),
+                ('|', '=') => Some((PIPEEQ, "|=".into())),
+                ('-', '=') => Some((MINUSEQ, "-=".into())),
+                ('+', '=') => Some((PLUSEQ, "+=".into())),
+                ('>', '=') => Some((GTEQ, ">=".into())),
+                ('<', '=') => Some((LTEQ, "<=".into())),
+
+                ('-', '>') => Some((THIN_ARROW, "->".into())),
+                ('!', '=') => Some((NEQ, "!=".into())),
+                ('=', '>') => Some((FAT_ARROW, "=>".into())),
+                ('=', '=') => Some((EQEQ, "==".into())),
+                ('.', '.') => Some((DOTDOT, "..".into())),
+                (':', ':') => Some((COLONCOLON, "::".into())),
+
+                _ => None,
+            } {
+                iter.next();
+                return Some(TtToken { kind, is_joint_to_next, text });
+            }
+        }
+
+        None
+    }
+
     fn push_delim(&mut self, d: tt::Delimiter, closing: bool) {
         let (kinds, texts) = match d {
             tt::Delimiter::Parenthesis => ([L_PAREN, R_PAREN], "()"),
