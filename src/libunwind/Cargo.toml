@@ -4,6 +4,9 @@ name = "unwind"
 version = "0.0.0"
 build = "build.rs"
 edition = "2018"
+include = [
+  '/libunwind/*',
+]
 
 [lib]
 name = "unwind"
@@ -16,3 +19,9 @@ doc = false
 core = { path = "../libcore" }
 libc = { version = "0.2.43", features = ['rustc-dep-of-std'], default-features = false }
 compiler_builtins = "0.1.0"
+
+[build-dependencies]
+cc = { optional = true, version = "1.0.1" }
+
+[features]
+llvm-libunwind = ["cc"]

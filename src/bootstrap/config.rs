@@ -48,6 +48,7 @@ pub struct Config {
     pub exclude: Vec<PathBuf>,
     pub rustc_error_format: Option<String>,
     pub test_compare_mode: bool,
+    pub llvm_libunwind: bool,
 
     pub run_host_only: bool,
 
@@ -329,6 +330,7 @@ struct Rust {
     remap_debuginfo: Option<bool>,
     jemalloc: Option<bool>,
     test_compare_mode: Option<bool>,
+    llvm_libunwind: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -548,6 +550,7 @@ impl Config {
             set(&mut config.rust_rpath, rust.rpath);
             set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.test_compare_mode, rust.test_compare_mode);
+            set(&mut config.llvm_libunwind, rust.llvm_libunwind);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
             set(&mut config.rust_dist_src, rust.dist_src);

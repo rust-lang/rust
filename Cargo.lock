@@ -3849,6 +3849,7 @@ dependencies = [
 name = "unwind"
 version = "0.0.0"
 dependencies = [
+ "cc 1.0.28 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
  "libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)",
