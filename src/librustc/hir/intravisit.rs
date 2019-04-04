@@ -1011,22 +1011,22 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
-        ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
-            visitor.visit_expr(head_expression);
+        ExprKind::If(ref scrutinee, ref if_block, ref optional_else) => {
+            visitor.visit_expr(scrutinee);
             visitor.visit_expr(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
-        ExprKind::While(ref subexpression, ref block, ref opt_label) => {
+        ExprKind::While(ref scrutinee, ref block, ref opt_label) => {
             walk_list!(visitor, visit_label, opt_label);
-            visitor.visit_expr(subexpression);
+            visitor.visit_expr(scrutinee);
             visitor.visit_block(block);
         }
         ExprKind::Loop(ref block, ref opt_label, _) => {
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
         }
-        ExprKind::Match(ref subexpression, ref arms, _) => {
-            visitor.visit_expr(subexpression);
+        ExprKind::Match(ref scrutinee, ref arms, _) => {
+            visitor.visit_expr(scrutinee);
             walk_list!(visitor, visit_arm, arms);
         }
         ExprKind::Closure(_, ref function_declaration, body, _fn_decl_span, _gen) => {

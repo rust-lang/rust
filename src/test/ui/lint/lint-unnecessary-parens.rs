@@ -19,11 +19,11 @@ fn main() {
 
     if (true) {} //~ ERROR unnecessary parentheses around `if` condition
     while (true) {} //~ ERROR unnecessary parentheses around `while` condition
-    match (true) { //~ ERROR unnecessary parentheses around `match` head expression
+    match (true) { //~ ERROR unnecessary parentheses around `match` scrutinee
         _ => {}
     }
-    if let 1 = (1) {} //~ ERROR unnecessary parentheses around `if let` head expression
-    while let 1 = (2) {} //~ ERROR unnecessary parentheses around `while let` head expression
+    if let 1 = (1) {} //~ ERROR unnecessary parentheses around `if let` scrutinee
+    while let 1 = (2) {} //~ ERROR unnecessary parentheses around `while let` scrutinee
     let v = X { y: false };
     // struct lits needs parens, so these shouldn't warn.
     if (v == X { y: true }) {}
