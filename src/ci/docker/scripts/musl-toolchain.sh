@@ -36,6 +36,8 @@ export CFLAGS="-fPIC $CFLAGS"
 git clone https://github.com/richfelker/musl-cross-make -b v0.9.7
 cd musl-cross-make
 
+echo "COMMON_CONFIG += CFLAGS=\"$CFLAGS\"" > config.mak
+
 hide_output make -j$(nproc) TARGET=$TARGET
 hide_output make install TARGET=$TARGET OUTPUT=$OUTPUT
 
