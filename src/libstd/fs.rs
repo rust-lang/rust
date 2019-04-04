@@ -21,7 +21,9 @@ use crate::time::SystemTime;
 /// it was opened with. Files also implement [`Seek`] to alter the logical cursor
 /// that the file contains internally.
 ///
-/// Files are automatically closed when they go out of scope.
+/// Files are automatically closed when they go out of scope.  Errors detected
+/// on closing are ignored by the implementation of `Drop`.  Use the method
+/// [`sync_all`] if these errors must be manually handled.
 ///
 /// # Examples
 ///
@@ -84,6 +86,7 @@ use crate::time::SystemTime;
 /// [`Read`]: ../io/trait.Read.html
 /// [`Write`]: ../io/trait.Write.html
 /// [`BufReader<R>`]: ../io/struct.BufReader.html
+/// [`sync_all`]: struct.File.html#method.sync_all
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
@@ -391,8 +394,12 @@ impl File {
 
     /// Attempts to sync all OS-internal metadata to disk.
     ///
-    /// This function will attempt to ensure that all in-core data reaches the
+    /// This function will attempt to ensure that all in-memory data reaches the
     /// filesystem before returning.
+    ///
+    /// This can be used to handle errors that would otherwise only be caught
+    /// when the `File` is closed.  Dropping a file will ignore errors in
+    /// synchronizing this in-memory data.
     ///
     /// # Examples
     ///
