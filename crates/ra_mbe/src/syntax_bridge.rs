@@ -231,48 +231,48 @@ impl TtTokenSource {
     {
         if let Some((m, is_joint_to_next)) = iter.current_punct3(p) {
             if let Some((kind, text)) = match m {
-                ('<', '<', '=') => Some((SHLEQ, "<<=".into())),
-                ('>', '>', '=') => Some((SHREQ, ">>=".into())),
-                ('.', '.', '.') => Some((DOTDOTDOT, "...".into())),
-                ('.', '.', '=') => Some((DOTDOTEQ, "..=".into())),
+                ('<', '<', '=') => Some((SHLEQ, "<<=")),
+                ('>', '>', '=') => Some((SHREQ, ">>=")),
+                ('.', '.', '.') => Some((DOTDOTDOT, "...")),
+                ('.', '.', '=') => Some((DOTDOTEQ, "..=")),
                 _ => None,
             } {
                 iter.next();
                 iter.next();
-                return Some(TtToken { kind, is_joint_to_next, text });
+                return Some(TtToken { kind, is_joint_to_next, text: text.into() });
             }
         }
 
         if let Some((m, is_joint_to_next)) = iter.current_punct2(p) {
             if let Some((kind, text)) = match m {
-                ('<', '<') => Some((SHL, "<<".into())),
-                ('>', '>') => Some((SHR, ">>".into())),
+                ('<', '<') => Some((SHL, "<<")),
+                ('>', '>') => Some((SHR, ">>")),
 
-                ('|', '|') => Some((PIPEPIPE, "||".into())),
-                ('&', '&') => Some((AMPAMP, "&&".into())),
-                ('%', '=') => Some((PERCENTEQ, "%=".into())),
-                ('*', '=') => Some((STAREQ, "*=".into())),
-                ('/', '=') => Some((SLASHEQ, "/=".into())),
-                ('^', '=') => Some((CARETEQ, "^=".into())),
+                ('|', '|') => Some((PIPEPIPE, "||")),
+                ('&', '&') => Some((AMPAMP, "&&")),
+                ('%', '=') => Some((PERCENTEQ, "%=")),
+                ('*', '=') => Some((STAREQ, "*=")),
+                ('/', '=') => Some((SLASHEQ, "/=")),
+                ('^', '=') => Some((CARETEQ, "^=")),
 
-                ('&', '=') => Some((AMPEQ, "&=".into())),
-                ('|', '=') => Some((PIPEEQ, "|=".into())),
-                ('-', '=') => Some((MINUSEQ, "-=".into())),
-                ('+', '=') => Some((PLUSEQ, "+=".into())),
-                ('>', '=') => Some((GTEQ, ">=".into())),
-                ('<', '=') => Some((LTEQ, "<=".into())),
+                ('&', '=') => Some((AMPEQ, "&=")),
+                ('|', '=') => Some((PIPEEQ, "|=")),
+                ('-', '=') => Some((MINUSEQ, "-=")),
+                ('+', '=') => Some((PLUSEQ, "+=")),
+                ('>', '=') => Some((GTEQ, ">=")),
+                ('<', '=') => Some((LTEQ, "<=")),
 
-                ('-', '>') => Some((THIN_ARROW, "->".into())),
-                ('!', '=') => Some((NEQ, "!=".into())),
-                ('=', '>') => Some((FAT_ARROW, "=>".into())),
-                ('=', '=') => Some((EQEQ, "==".into())),
-                ('.', '.') => Some((DOTDOT, "..".into())),
-                (':', ':') => Some((COLONCOLON, "::".into())),
+                ('-', '>') => Some((THIN_ARROW, "->")),
+                ('!', '=') => Some((NEQ, "!=")),
+                ('=', '>') => Some((FAT_ARROW, "=>")),
+                ('=', '=') => Some((EQEQ, "==")),
+                ('.', '.') => Some((DOTDOT, "..")),
+                (':', ':') => Some((COLONCOLON, "::")),
 
                 _ => None,
             } {
                 iter.next();
-                return Some(TtToken { kind, is_joint_to_next, text });
+                return Some(TtToken { kind, is_joint_to_next, text: text.into() });
             }
         }
 
