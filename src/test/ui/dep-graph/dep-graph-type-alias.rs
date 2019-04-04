@@ -32,7 +32,7 @@ enum Enum {
 
 #[rustc_then_this_would_need(type_of)] //~ ERROR no path
 trait Trait {
-    #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
+    #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
     fn method(&self, _: TypeAlias);
 }
 
@@ -40,16 +40,16 @@ struct SomeType;
 
 #[rustc_then_this_would_need(type_of)] //~ ERROR no path
 impl SomeType {
-    #[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
-    #[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+    #[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
+    #[rustc_then_this_would_need(typeck_tables_of)] //~ ERROR OK
     fn method(&self, _: TypeAlias) {}
 }
 
 #[rustc_then_this_would_need(type_of)] //~ ERROR OK
 type TypeAlias2 = TypeAlias;
 
-#[rustc_then_this_would_need(FnSignature)] //~ ERROR OK
-#[rustc_then_this_would_need(TypeckTables)] //~ ERROR OK
+#[rustc_then_this_would_need(fn_sig)] //~ ERROR OK
+#[rustc_then_this_would_need(typeck_tables_of)] //~ ERROR OK
 fn function(_: TypeAlias) {
 
 }

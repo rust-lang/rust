@@ -3,9 +3,9 @@
 //! we will compare the fingerprint from the current and from the previous
 //! compilation session as appropriate:
 //!
-//! - `#[rustc_clean(cfg="rev2", except="TypeckTables")]` if we are
+//! - `#[rustc_clean(cfg="rev2", except="typeck_tables_of")]` if we are
 //!   in `#[cfg(rev2)]`, then the fingerprints associated with
-//!   `DepNode::TypeckTables(X)` must be DIFFERENT (`X` is the `DefId` of the
+//!   `DepNode::typeck_tables_of(X)` must be DIFFERENT (`X` is the `DefId` of the
 //!   current node).
 //! - `#[rustc_clean(cfg="rev2")]` same as above, except that the
 //!   fingerprints must be the SAME (along with all other fingerprints).
@@ -42,14 +42,14 @@ const BASE_CONST: &[&str] = &[
 /// DepNodes for functions + methods
 const BASE_FN: &[&str] = &[
     // Callers will depend on the signature of these items, so we better test
-    label_strs::FnSignature,
+    label_strs::fn_sig,
     label_strs::generics_of,
     label_strs::predicates_of,
     label_strs::type_of,
 
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
-    label_strs::TypeckTables,
+    label_strs::typeck_tables_of,
 ];
 
 /// DepNodes for Hir, which is pretty much everything
@@ -61,9 +61,9 @@ const BASE_HIR: &[&str] = &[
 
 /// `impl` implementation of struct/trait
 const BASE_IMPL: &[&str] = &[
-    label_strs::AssociatedItemDefIds,
+    label_strs::associated_item_def_ids,
     label_strs::generics_of,
-    label_strs::ImplTraitRef,
+    label_strs::impl_trait_ref,
 ];
 
 /// DepNodes for mir_built/Optimized, which is relevant in "executable"
@@ -85,22 +85,22 @@ const BASE_STRUCT: &[&str] = &[
 
 /// Trait definition `DepNode`s.
 const BASE_TRAIT_DEF: &[&str] = &[
-    label_strs::AssociatedItemDefIds,
+    label_strs::associated_item_def_ids,
     label_strs::generics_of,
-    label_strs::ObjectSafety,
+    label_strs::is_object_safe,
     label_strs::predicates_of,
-    label_strs::SpecializationGraph,
-    label_strs::TraitDefOfItem,
-    label_strs::TraitImpls,
+    label_strs::specialization_graph_of,
+    label_strs::trait_def,
+    label_strs::trait_impls_of,
 ];
 
 /// Extra `DepNode`s for functions and methods.
 const EXTRA_ASSOCIATED: &[&str] = &[
-    label_strs::AssociatedItems,
+    label_strs::associated_item,
 ];
 
 const EXTRA_TRAIT: &[&str] = &[
-    label_strs::TraitOfItem,
+    label_strs::trait_of_item,
 ];
 
 // Fully Built Labels

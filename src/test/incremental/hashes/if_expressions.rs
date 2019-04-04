@@ -25,7 +25,7 @@ pub fn change_condition(x: bool) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_condition(x: bool) -> u32 {
     if !x {
@@ -94,7 +94,7 @@ pub fn add_else_branch(x: bool) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_else_branch(x: bool) -> u32 {
     let mut ret = 1;
@@ -120,7 +120,7 @@ pub fn change_condition_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_condition_if_let(x: Option<u32>) -> u32 {
     if let Some(_) = x {
@@ -143,7 +143,7 @@ pub fn change_then_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_then_branch_if_let(x: Option<u32>) -> u32 {
     if let Some(x) = x {
@@ -191,7 +191,7 @@ pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody,TypeckTables")]
+#[rustc_clean(cfg="cfail2", except="HirBody,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_else_branch_if_let(x: Option<u32>) -> u32 {
     let mut ret = 1;

@@ -43,6 +43,9 @@ enum QueryModifier {
     /// A cycle error for this query aborting the compilation with a fatal error.
     FatalCycle,
 
+    /// A cycle error results in a delay_bug call
+    CycleDelayBug,
+
     /// Don't hash the result, instead just mark a query red if it runs
     NoHash,
 
@@ -101,6 +104,8 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::LoadCached(tcx, id, block))
         } else if modifier == "fatal_cycle" {
             Ok(QueryModifier::FatalCycle)
+        } else if modifier == "cycle_delay_bug" {
+            Ok(QueryModifier::CycleDelayBug)
         } else if modifier == "no_hash" {
             Ok(QueryModifier::NoHash)
         } else if modifier == "no_force" {
@@ -207,6 +212,9 @@ struct QueryModifiers {
     /// A cycle error for this query aborting the compilation with a fatal error.
     fatal_cycle: bool,
 
+    /// A cycle error results in a delay_bug call
+    cycle_delay_bug: bool,
+
     /// Don't hash the result, instead just mark a query red if it runs
     no_hash: bool,
 
@@ -226,6 +234,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut cache = None;
     let mut desc = None;
     let mut fatal_cycle = false;
+    let mut cycle_delay_bug = false;
     let mut no_hash = false;
     let mut no_force = false;
     let mut anon = false;
@@ -255,6 +264,12 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                     panic!("duplicate modifier `fatal_cycle` for query `{}`", query.name);
                 }
                 fatal_cycle = true;
+            }
+            QueryModifier::CycleDelayBug => {
+                if cycle_delay_bug {
+                    panic!("duplicate modifier `cycle_delay_bug` for query `{}`", query.name);
+                }
+                cycle_delay_bug = true;
             }
             QueryModifier::NoHash => {
                 if no_hash {
@@ -287,6 +302,7 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         cache,
         desc,
         fatal_cycle,
+        cycle_delay_bug,
         no_hash,
         no_force,
         anon,
@@ -333,6 +349,7 @@ fn add_query_description_impl(
         let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
         quote! {
             #[inline]
+            #[allow(unused_variables)]
             fn cache_on_disk(#tcx: TyCtxt<'_, 'tcx, 'tcx>, #key: Self::Key) -> bool {
                 #expr
             }
@@ -348,6 +365,7 @@ fn add_query_description_impl(
     let desc = modifiers.desc.as_ref().map(|(tcx, desc)| {
         let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
         quote! {
+            #[allow(unused_variables)]
             fn describe(
                 #tcx: TyCtxt<'_, '_, '_>,
                 #key: #arg,
@@ -396,6 +414,10 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             // Pass on the fatal_cycle modifier
             if modifiers.fatal_cycle {
                 attributes.push(quote! { fatal_cycle });
+            };
+            // Pass on the cycle_delay_bug modifier
+            if modifiers.cycle_delay_bug {
+                attributes.push(quote! { cycle_delay_bug });
             };
             // Pass on the no_hash modifier
             if modifiers.no_hash {
