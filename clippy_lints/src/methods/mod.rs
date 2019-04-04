@@ -1635,7 +1635,7 @@ fn lint_get_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &hir::Expr, get_a
 
     let mut span = expr.span;
 
-    // Handle the case where the result is immedately dereferenced
+    // Handle the case where the result is immediately dereferenced
     // by not requiring ref and pulling the dereference into the
     // suggestion.
     if_chain! {

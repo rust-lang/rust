@@ -15,7 +15,7 @@ error: This function has a large number of lines.
 LL | / fn comment_before_code() {
 LL | |     let _ = "test";
 LL | |     /* This comment extends to the front of
-LL | |     teh code but this line should still count. */ let _ = 5;
+LL | |     the code but this line should still count. */ let _ = 5;
 LL | | }
    | |_^
 
