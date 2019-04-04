@@ -1,4 +1,6 @@
 #!/bin/bash
+# ignore-tidy-linelength
+
 set -eux
 
 arch=$1
@@ -55,7 +57,9 @@ for lib in c++ c_nonshared compiler_rt execinfo gcc pthread rt ssp_nonshared; do
   files_to_extract=("${files_to_extract[@]}" "./usr/lib/lib${lib}.*")
 done
 
-URL=https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
+# Originally downloaded from:
+# https://download.freebsd.org/ftp/releases/${freebsd_arch}/${freebsd_version}-RELEASE/base.txz
+URL=https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2019-04-04-freebsd-${freebsd_arch}-${freebsd_version}-RELEASE-base.txz
 curl "$URL" | tar xJf - -C "$sysroot" --wildcards "${files_to_extract[@]}"
 
 # Fix up absolute symlinks from the system image.  This can be removed
