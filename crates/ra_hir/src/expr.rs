@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
     SyntaxNodePtr, AstPtr, AstNode,
-    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind, TypeAscriptionOwner}
+    ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner}
 };
 
 use crate::{
@@ -238,15 +238,17 @@ pub enum Expr {
     Tuple {
         exprs: Vec<ExprId>,
     },
-    Array {
-        exprs: Vec<ExprId>,
-        repeat: Option<ExprId>,
-    },
+    Array(Array),
     Literal(Literal),
 }
 
 pub use ra_syntax::ast::PrefixOp as UnaryOp;
 pub use ra_syntax::ast::BinOp as BinaryOp;
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub enum Array {
+    ElementList(Vec<ExprId>),
+    Repeat { initializer: ExprId, repeat: ExprId },
+}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MatchArm {
@@ -354,15 +356,17 @@ impl Expr {
                     f(*expr);
                 }
             }
-            Expr::Array { exprs, repeat } => {
-                for expr in exprs {
-                    f(*expr);
+            Expr::Array(a) => match a {
+                Array::ElementList(exprs) => {
+                    for expr in exprs {
+                        f(*expr);
+                    }
                 }
-
-                if let Some(expr) = repeat {
-                    f(*expr)
+                Array::Repeat { initializer, repeat } => {
+                    f(*initializer);
+                    f(*repeat)
                 }
-            }
+            },
             Expr::Literal(_) => {}
         }
     }
@@ -733,11 +737,26 @@ impl ExprCollector {
                 let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
                 self.alloc_expr(Expr::Tuple { exprs }, syntax_ptr)
             }
+
             ast::ExprKind::ArrayExpr(e) => {
-                let exprs = e.exprs().map(|expr| self.collect_expr(expr)).collect();
-                let repeat = e.repeat().map(|e| self.collect_expr(e));
-                self.alloc_expr(Expr::Array { exprs, repeat }, syntax_ptr)
+                let kind = e.kind();
+
+                match kind {
+                    ArrayExprKind::ElementList(e) => {
+                        let exprs = e.map(|expr| self.collect_expr(expr)).collect();
+                        self.alloc_expr(Expr::Array(Array::ElementList(exprs)), syntax_ptr)
+                    }
+                    ArrayExprKind::Repeat { initializer, repeat } => {
+                        let initializer = self.collect_expr_opt(initializer);
+                        let repeat = self.collect_expr_opt(repeat);
+                        self.alloc_expr(
+                            Expr::Array(Array::Repeat { initializer, repeat }),
+                            syntax_ptr,
+                        )
+                    }
+                }
             }
+
             ast::ExprKind::Literal(e) => {
                 let lit = match e.kind() {
                     LiteralKind::IntNumber { suffix } => {
