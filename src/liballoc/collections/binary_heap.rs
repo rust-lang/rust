@@ -165,6 +165,9 @@ use super::SpecExtend;
 /// trait, changes while it is in the heap. This is normally only possible
 /// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
 ///
+/// Both `push` and `pop` operations can be performed in `O(log(n))` time, whereas `peek` can be
+/// performed in `O(1)` time.
+///
 /// # Examples
 ///
 /// ```
