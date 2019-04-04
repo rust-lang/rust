@@ -3,7 +3,7 @@ use crate::dep_graph::DepNode;
 use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::TyCtxt;
 use crate::ty::query::queries;
-use crate::ty::query::Query;
+use crate::ty::query::{Query, QueryName};
 use crate::ty::query::QueryCache;
 use crate::ty::query::plumbing::CycleError;
 use crate::util::profiling::ProfileCategory;
@@ -18,7 +18,7 @@ use crate::ich::StableHashingContext;
 // Query configuration and description traits.
 
 pub trait QueryConfig<'tcx> {
-    const NAME: &'static str;
+    const NAME: QueryName;
     const CATEGORY: ProfileCategory;
 
     type Key: Eq + Hash + Clone + Debug;

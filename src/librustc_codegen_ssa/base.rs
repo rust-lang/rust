@@ -25,7 +25,6 @@ use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
-use rustc::util::profiling::ProfileCategory;
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
@@ -539,7 +538,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
 
     // Codegen the metadata.
-    tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen, "codegen crate metadata"));
+    tcx.sess.profiler(|p| p.start_activity("codegen crate metadata"));
 
     let metadata_cgu_name = cgu_name_builder.build_cgu_name(LOCAL_CRATE,
                                                             &["crate"],
@@ -549,7 +548,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let metadata = time(tcx.sess, "write metadata", || {
         backend.write_metadata(tcx, &mut metadata_llvm_module)
     });
-    tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen, "codegen crate metadata"));
+    tcx.sess.profiler(|p| p.end_activity("codegen crate metadata"));
 
     let metadata_module = ModuleCodegen {
         name: metadata_cgu_name,
@@ -662,14 +661,12 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
         match cgu_reuse {
             CguReuse::No => {
-                tcx.sess.profiler(|p| p.start_activity(ProfileCategory::Codegen,
-                                                       format!("codegen {}", cgu.name())));
+                tcx.sess.profiler(|p| p.start_activity(format!("codegen {}", cgu.name())));
                 let start_time = Instant::now();
                 let stats = backend.compile_codegen_unit(tcx, *cgu.name());
                 all_stats.extend(stats);
                 total_codegen_time += start_time.elapsed();
-                tcx.sess.profiler(|p| p.end_activity(ProfileCategory::Codegen,
-                                                     format!("codegen {}", cgu.name())));
+                tcx.sess.profiler(|p| p.end_activity(format!("codegen {}", cgu.name())));
                 false
             }
             CguReuse::PreLto => {

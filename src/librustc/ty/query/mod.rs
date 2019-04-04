@@ -41,7 +41,6 @@ use crate::ty::subst::SubstsRef;
 use crate::util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
 use crate::util::common::{ErrorReported};
 use crate::util::profiling::ProfileCategory::*;
-use crate::session::Session;
 
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::bit_set::BitSet;

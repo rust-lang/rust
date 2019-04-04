@@ -18,7 +18,6 @@ use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
 use rustc::util::common::time_ext;
-use rustc::util::profiling::ProfileCategory;
 use rustc_fs_util::{path_to_c_string, link_or_copy};
 use rustc_data_structures::small_c_str::SmallCStr;
 use errors::{Handler, FatalError};
@@ -414,7 +413,7 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
         // Finally, run the actual optimization passes
         {
-            let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_function_passes");
+            let _timer = cgcx.profile_activity("LLVM_function_passes");
             time_ext(config.time_passes,
                         None,
                         &format!("llvm function passes [{}]", module_name.unwrap()),
@@ -423,7 +422,7 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
             });
         }
         {
-            let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_module_passes");
+            let _timer = cgcx.profile_activity("LLVM_module_passes");
             time_ext(config.time_passes,
                     None,
                     &format!("llvm module passes [{}]", module_name.unwrap()),
@@ -445,7 +444,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
                   config: &ModuleConfig)
     -> Result<CompiledModule, FatalError>
 {
-    let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "codegen");
+    let _timer = cgcx.profile_activity("codegen");
     {
         let llmod = module.module_llvm.llmod();
         let llcx = &*module.module_llvm.llcx;
@@ -496,12 +495,12 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
 
         if write_bc || config.emit_bc_compressed || config.embed_bitcode {
-            let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_make_bitcode");
+            let _timer = cgcx.profile_activity("LLVM_make_bitcode");
             let thin = ThinBuffer::new(llmod);
             let data = thin.data();
 
             if write_bc {
-                let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_emit_bitcode");
+                let _timer = cgcx.profile_activity("LLVM_emit_bitcode");
                 if let Err(e) = fs::write(&bc_out, data) {
                     let msg = format!("failed to write bytecode to {}: {}", bc_out.display(), e);
                     diag_handler.err(&msg);
@@ -509,13 +508,12 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }
 
             if config.embed_bitcode {
-                let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_embed_bitcode");
+                let _timer = cgcx.profile_activity("LLVM_embed_bitcode");
                 embed_bitcode(cgcx, llcx, llmod, Some(data));
             }
 
             if config.emit_bc_compressed {
-                let _timer = cgcx.profile_activity(ProfileCategory::Codegen,
-                                                   "LLVM_compress_bitcode");
+                let _timer = cgcx.profile_activity("LLVM_compress_bitcode");
                 let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
                 let data = bytecode::encode(&module.name, data);
                 if let Err(e) = fs::write(&dst, data) {
@@ -530,7 +528,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
         time_ext(config.time_passes, None, &format!("codegen passes [{}]", module_name.unwrap()),
             || -> Result<(), FatalError> {
             if config.emit_ir {
-                let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_emit_ir");
+                let _timer = cgcx.profile_activity("LLVM_emit_ir");
                 let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
                 let out_c = path_to_c_string(&out);
 
@@ -577,7 +575,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }
 
             if config.emit_asm || asm_to_obj {
-                let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_emit_asm");
+                let _timer = cgcx.profile_activity("LLVM_emit_asm");
                 let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
 
                 // We can't use the same module for asm and binary output, because that triggers
@@ -595,13 +593,13 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }
 
             if write_obj {
-                let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_emit_obj");
+                let _timer = cgcx.profile_activity("LLVM_emit_obj");
                 with_codegen(tm, llmod, config.no_builtins, |cpm| {
                     write_output_file(diag_handler, tm, cpm, llmod, &obj_out,
                                       llvm::FileType::ObjectFile)
                 })?;
             } else if asm_to_obj {
-                let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_asm_to_obj");
+                let _timer = cgcx.profile_activity("LLVM_asm_to_obj");
                 let assembly = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
                 run_assembler(cgcx, diag_handler, &assembly, &obj_out);
 
