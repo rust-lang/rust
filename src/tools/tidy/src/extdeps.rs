@@ -8,8 +8,8 @@ const WHITELISTED_SOURCES: &[&str] = &[
     "\"registry+https://github.com/rust-lang/crates.io-index\"",
 
     "\"git+https://github.com/michaelwoerister/std-mangle-rs?\
-        rev=2336dcdfcc91db3cdda18eda73aca488773ac6fc#\
-            2336dcdfcc91db3cdda18eda73aca488773ac6fc\"",
+        rev=e884304cfcb2f636db4d59ca8ad8fa95b983281c#\
+            e884304cfcb2f636db4d59ca8ad8fa95b983281c\"",
 ];
 
 /// Checks for external package sources.

@@ -2699,7 +2699,7 @@ dependencies = [
  "rustc_metadata 0.0.0",
  "rustc_mir 0.0.0",
  "rustc_target 0.0.0",
- "std-mangle-rs 0.1.0 (git+https://github.com/michaelwoerister/std-mangle-rs?rev=2336dcdfcc91db3cdda18eda73aca488773ac6fc)",
+ "std-mangle-rs 0.1.0 (git+https://github.com/michaelwoerister/std-mangle-rs?rev=e884304cfcb2f636db4d59ca8ad8fa95b983281c)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -3339,7 +3339,7 @@ dependencies = [
 [[package]]
 name = "std-mangle-rs"
 version = "0.1.0"
-source = "git+https://github.com/michaelwoerister/std-mangle-rs?rev=2336dcdfcc91db3cdda18eda73aca488773ac6fc#2336dcdfcc91db3cdda18eda73aca488773ac6fc"
+source = "git+https://github.com/michaelwoerister/std-mangle-rs?rev=e884304cfcb2f636db4d59ca8ad8fa95b983281c#e884304cfcb2f636db4d59ca8ad8fa95b983281c"
 dependencies = [
  "unic-idna-punycode 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -4368,7 +4368,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "b73ea3738b47563803ef814925e69be00799a8c07420be8b996f8e98fb2336db"
 "checksum socket2 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "c4d11a52082057d87cb5caa31ad812f4504b97ab44732cd8359df2e9ff9f48e7"
 "checksum stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ffbc596e092fe5f598b12ef46cc03754085ac2f4d8c739ad61c4ae266cc3b3fa"
-"checksum std-mangle-rs 0.1.0 (git+https://github.com/michaelwoerister/std-mangle-rs?rev=2336dcdfcc91db3cdda18eda73aca488773ac6fc)" = "<none>"
+"checksum std-mangle-rs 0.1.0 (git+https://github.com/michaelwoerister/std-mangle-rs?rev=e884304cfcb2f636db4d59ca8ad8fa95b983281c)" = "<none>"
 "checksum string_cache 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)" = "25d70109977172b127fe834e5449e5ab1740b9ba49fa18a2020f509174f25423"
 "checksum string_cache_codegen 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1eea1eee654ef80933142157fdad9dd8bc43cf7c74e999e369263496f04ff4da"
 "checksum string_cache_shared 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b1884d1bc09741d466d9b14e6d37ac89d6909cbcac41dd9ae982d4d063bbedfc"

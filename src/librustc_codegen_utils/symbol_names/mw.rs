@@ -1,4 +1,4 @@
-use std_mangle_rs::{ast, compress::compress_ext};
+use std_mangle_rs::ast;
 
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId};
@@ -6,7 +6,6 @@ use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::print::{Printer, Print};
 use rustc::ty::subst::{Kind, UnpackedKind};
-use rustc_data_structures::base_n;
 use rustc_mir::monomorphize::Instance;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{IntTy, UintTy, FloatTy};
@@ -25,25 +24,29 @@ pub(super) fn mangle(
     }
 
     let symbol = ast::Symbol {
-        name: SymbolPrinter { tcx }
+        version: None,
+        path: SymbolPrinter { tcx }
             .print_def_path(instance.def_id(), instance.substs)?,
-        instantiating_crate: instantiating_crate.map(|instantiating_crate| {
-            let fingerprint = tcx.crate_disambiguator(instantiating_crate).to_fingerprint();
-            Arc::new(ast::PathPrefix::CrateId {
-                name: tcx.original_crate_name(instantiating_crate).to_string(),
-                dis: base_n::encode(fingerprint.to_smaller_hash() as u128, 62),
-            })
-        }),
+        instantiating_crate: match instantiating_crate {
+            Some(instantiating_crate) => Some(
+                SymbolPrinter { tcx }
+                    .path_crate(instantiating_crate)?
+            ),
+            None => None,
+        },
     };
 
-    let mut uncompressed = String::new();
+    let _ = symbol;
+    unimplemented!("missing compressor/mangler for mw symbol mangling");
+
+    /*let mut uncompressed = String::new();
     symbol.mangle(&mut uncompressed);
 
-    let (compressed_symbol, _) = compress_ext(&symbol);
+    let (compressed_symbol, _) = std_mangle_rs::compress::compress_ext(&symbol);
     let mut compressed = String::new();
     compressed_symbol.mangle(&mut compressed);
 
-    Ok((uncompressed, compressed))
+    Ok((uncompressed, compressed))*/
 }
 
 #[derive(Copy, Clone)]
@@ -54,11 +57,11 @@ struct SymbolPrinter<'a, 'tcx> {
 impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     type Error = Unsupported;
 
-    type Path = Arc<ast::AbsolutePath>;
-    type Region = !;
-    type Type = Arc<ast::Type>;
-    type DynExistential = !;
-    type Const = !;
+    type Path = ast::Path;
+    type Region = ast::Lifetime;
+    type Type = ast::Type;
+    type DynExistential = ast::DynBounds;
+    type Const = ast::Const;
 
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
@@ -84,9 +87,21 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
 
     fn print_region(
         self,
-        _region: ty::Region<'_>,
+        region: ty::Region<'_>,
     ) -> Result<Self::Region, Self::Error> {
-        bug!("mw::print_region: should never be called")
+        let i = match *region {
+            ty::ReErased => 0,
+
+            // FIXME(eddyb) copy the implementation over to here.
+            ty::ReLateBound(_, ty::BrAnon(_)) => {
+                return Err(Unsupported);
+            }
+
+            _ => bug!("mw: non-erased region `{:?}`", region),
+        };
+        Ok(ast::Lifetime {
+            debruijn_index: ast::Base62Number(i),
+        })
     }
 
     fn print_type(
@@ -96,7 +111,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
         macro_rules! basic {
             ($name:ident) => (ast::Type::BasicType(ast::BasicType::$name))
         }
-        Ok(Arc::new(match ty.sty {
+        Ok(match ty.sty {
             ty::Bool => basic!(Bool),
             ty::Char => basic!(Char),
             ty::Str => basic!(Str),
@@ -117,21 +132,34 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
             ty::Float(FloatTy::F64) => basic!(F64),
             ty::Never => basic!(Never),
 
-            ty::Ref(_, ty, hir::MutImmutable) => ast::Type::Ref(ty.print(self)?),
-            ty::Ref(_, ty, hir::MutMutable) => ast::Type::RefMut(ty.print(self)?),
+            // Placeholders (should be demangled as `_`).
+            ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) |
+            ty::Infer(_) | ty::Error => basic!(Placeholder),
+
+            ty::Ref(r, ty, mutbl) => {
+                let lt = if *r != ty::ReErased {
+                    Some(r.print(self)?)
+                } else {
+                    None
+                };
+                let ty = Arc::new(ty.print(self)?);
+                match mutbl {
+                    hir::MutImmutable => ast::Type::Ref(lt, ty),
+                    hir::MutMutable => ast::Type::RefMut(lt, ty),
+                }
+            }
 
             ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::MutImmutable }) => {
-                ast::Type::RawPtrConst(ty.print(self)?)
+                ast::Type::RawPtrConst(Arc::new(ty.print(self)?))
             }
             ty::RawPtr(ty::TypeAndMut { ty, mutbl: hir::MutMutable }) => {
-                ast::Type::RawPtrMut(ty.print(self)?)
+                ast::Type::RawPtrMut(Arc::new(ty.print(self)?))
             }
 
             ty::Array(ty, len) => {
-                let len = len.assert_usize(self.tcx()).ok_or(Unsupported)?;
-                ast::Type::Array(Some(len), ty.print(self)?)
+                ast::Type::Array(Arc::new(ty.print(self)?), Arc::new(len.print(self)?))
             }
-            ty::Slice(ty) => ast::Type::Array(None, ty.print(self)?),
+            ty::Slice(ty) => ast::Type::Slice(Arc::new(ty.print(self)?)),
 
             ty::Tuple(tys) => {
                 let tys = tys.iter()
@@ -148,59 +176,113 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
             ty::UnnormalizedProjection(ty::ProjectionTy { item_def_id: def_id, substs }) |
             ty::Closure(def_id, ty::ClosureSubsts { substs }) |
             ty::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
-                ast::Type::Named(self.print_def_path(def_id, substs)?)
+                ast::Type::Named(Arc::new(self.print_def_path(def_id, substs)?))
             }
             ty::Foreign(def_id) => {
-                ast::Type::Named(self.print_def_path(def_id, &[])?)
+                ast::Type::Named(Arc::new(self.print_def_path(def_id, &[])?))
             }
 
-            ty::Param(p) => ast::Type::GenericParam(ast::Ident {
-                ident: p.name.to_string(),
-                tag: ast::IdentTag::TypeNs,
-                dis: ast::NumericDisambiguator(0),
-            }),
-
             ty::FnPtr(sig) => {
-                let mut params = sig.inputs().skip_binder().iter()
+                let mut param_types = sig.inputs().skip_binder().iter()
                     .map(|ty| ty.print(self))
                     .collect::<Result<Vec<_>, _>>()?;
                 if sig.c_variadic() {
-                    params.push(Arc::new(basic!(Ellipsis)));
+                    param_types.push(basic!(Ellipsis));
                 }
-                let output = *sig.output().skip_binder();
-                let return_type = if output.is_unit() {
-                    None
-                } else {
-                    Some(output.print(self)?)
-                };
-                ast::Type::Fn {
+                let return_type = sig.output().skip_binder().print(self)?;
+                ast::Type::Fn(Arc::new(ast::FnSig {
+                    binder: ast::Binder {
+                        // FIXME(eddyb) needs to be implemented, see `print_region`.
+                        count: ast::Base62Number(0),
+                    },
                     is_unsafe: sig.unsafety() == hir::Unsafety::Unsafe,
                     abi: match sig.abi() {
-                        Abi::Rust => ast::Abi::Rust,
-                        Abi::C => ast::Abi::C,
-                        _ => return Err(Unsupported),
+                        Abi::Rust => None,
+                        Abi::C => Some(ast::Abi::C),
+                        abi => Some(ast::Abi::Named(ast::UIdent(abi.name().replace('-', "_")))),
                     },
-                    params,
+                    param_types,
                     return_type,
-                }
+                }))
             }
 
-            _ => return Err(Unsupported),
-        }))
+            ty::Dynamic(predicates, r) => {
+                let bounds = Arc::new(self.print_dyn_existential(predicates.skip_binder())?);
+                let lt = r.print(self)?;
+                ast::Type::DynTrait(bounds, lt)
+            }
+
+            ty::GeneratorWitness(_) => {
+                bug!("mw: unexpected `GeneratorWitness`")
+            }
+        })
     }
 
     fn print_dyn_existential(
         self,
-        _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
+        predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error> {
-        Err(Unsupported)
+        let mut traits = vec![];
+        for predicate in predicates {
+            match *predicate {
+                ty::ExistentialPredicate::Trait(trait_ref) => {
+                    // Use a type that can't appear in defaults of type parameters.
+                    let dummy_self = self.tcx.mk_infer(ty::FreshTy(0));
+                    let trait_ref = trait_ref.with_self_ty(self.tcx, dummy_self);
+                    traits.push(ast::DynTrait {
+                        path: self.print_def_path(trait_ref.def_id, trait_ref.substs)?,
+                        assoc_type_bindings: vec![],
+                    });
+                }
+                ty::ExistentialPredicate::Projection(projection) => {
+                    let name = self.tcx.associated_item(projection.item_def_id).ident;
+                    traits.last_mut().unwrap().assoc_type_bindings.push(ast::DynTraitAssocBinding {
+                        ident: ast::UIdent(name.to_string()),
+                        ty: projection.ty.print(self)?,
+                    });
+                }
+                ty::ExistentialPredicate::AutoTrait(def_id) => {
+                    traits.push(ast::DynTrait {
+                        path: self.print_def_path(def_id, &[])?,
+                        assoc_type_bindings: vec![],
+                    });
+                }
+            }
+        }
+
+        Ok(ast::DynBounds {
+            binder: ast::Binder {
+                // FIXME(eddyb) needs to be implemented, see `print_region`.
+                count: ast::Base62Number(0),
+            },
+            traits,
+        })
     }
 
     fn print_const(
         self,
-        _ct: &'tcx ty::Const<'tcx>,
+        ct: &'tcx ty::Const<'tcx>,
     ) -> Result<Self::Const, Self::Error> {
-        Err(Unsupported)
+        match ct.ty.sty {
+            ty::Uint(_) => {}
+            _ => {
+                bug!("mw: unsupported constant of type `{}` ({:?})",
+                    ct.ty, ct);
+            }
+        }
+        let ty = ct.ty.print(self)?;
+
+        if let Some(bits) = ct.assert_bits(self.tcx, ty::ParamEnv::empty().and(ct.ty)) {
+            if bits as u64 as u128 != bits {
+                return Err(Unsupported);
+            }
+            Ok(ast::Const::Value(ty, bits as u64))
+        } else {
+            // NOTE(eddyb) despite having the path, we need to
+            // encode a placeholder, as the path could refer
+            // back to e.g. an `impl` using the constant.
+            Ok(ast::Const::Placeholder(ty))
+        }
     }
 
     fn path_crate(
@@ -208,14 +290,12 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
         cnum: CrateNum,
     ) -> Result<Self::Path, Self::Error> {
         let fingerprint = self.tcx.crate_disambiguator(cnum).to_fingerprint();
-        let path = ast::PathPrefix::CrateId {
-            name: self.tcx.original_crate_name(cnum).to_string(),
-            dis: base_n::encode(fingerprint.to_smaller_hash() as u128, 62),
-        };
-        Ok(Arc::new(ast::AbsolutePath::Path {
-            name: Arc::new(path),
-            args: ast::GenericArgumentList::new_empty(),
-        }))
+        Ok(ast::Path::CrateRoot {
+            id: ast::Ident {
+                dis: ast::Base62Number(fingerprint.to_smaller_hash()),
+                u_ident: ast::UIdent(self.tcx.original_crate_name(cnum).to_string()),
+            },
+        })
     }
     fn path_qualified(
         self,
@@ -226,15 +306,10 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
         let trait_ref = trait_ref.unwrap();
 
         // This is a default method in the trait declaration.
-        let path = ast::PathPrefix::TraitImpl {
+        Ok(ast::Path::TraitDef {
             self_type: self_ty.print(self)?,
-            impled_trait: Some(self.print_def_path(trait_ref.def_id, trait_ref.substs)?),
-            dis: ast::NumericDisambiguator(0),
-        };
-        Ok(Arc::new(ast::AbsolutePath::Path {
-            name: Arc::new(path),
-            args: ast::GenericArgumentList::new_empty(),
-        }))
+            trait_name: Arc::new(self.print_def_path(trait_ref.def_id, trait_ref.substs)?),
+        })
     }
 
     fn path_append_impl(
@@ -244,127 +319,103 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
         self_ty: Ty<'tcx>,
         trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<Self::Path, Self::Error> {
-        let path = ast::PathPrefix::TraitImpl {
-            // HACK(eddyb) include the `impl` prefix into the path, by nesting
-            // another `TraitImpl` node into the Self type of the `impl`, e.g.:
-            // `foo::<impl Tr for X>::..` becomes `<<X as foo> as Tr>::...`.
-            self_type: Arc::new(ast::Type::Named(Arc::new(ast::AbsolutePath::Path {
-                name: Arc::new(ast::PathPrefix::TraitImpl {
-                    self_type: self_ty.print(self)?,
-                    impled_trait: Some(print_prefix(self)?),
-                    dis: ast::NumericDisambiguator(disambiguated_data.disambiguator as u64),
-                }),
-                args: ast::GenericArgumentList::new_empty(),
-            }))),
-
-            impled_trait: match trait_ref {
-                Some(trait_ref) => Some(
-                    self.print_def_path(trait_ref.def_id, trait_ref.substs)?
-                ),
-                None => None,
-            },
-            dis: ast::NumericDisambiguator(0),
+        let impl_path = ast::ImplPath {
+            dis: Some(ast::Base62Number(disambiguated_data.disambiguator as u64)),
+            path: Arc::new(print_prefix(self)?),
         };
-        Ok(Arc::new(ast::AbsolutePath::Path {
-            name: Arc::new(path),
-            args: ast::GenericArgumentList::new_empty(),
-        }))
+        let self_type = self_ty.print(self)?;
+        match trait_ref {
+            Some(trait_ref) => Ok(ast::Path::TraitImpl {
+                impl_path,
+                self_type,
+                trait_name: Arc::new(self.print_def_path(trait_ref.def_id, trait_ref.substs)?),
+            }),
+            None => Ok(ast::Path::InherentImpl {
+                impl_path,
+                self_type,
+            }),
+        }
     }
     fn path_append(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         disambiguated_data: &DisambiguatedDefPathData,
     ) -> Result<Self::Path, Self::Error> {
-        let mut path = print_prefix(self)?;
+        let inner = Arc::new(print_prefix(self)?);
 
-        let (prefix, ast_args) = match Arc::make_mut(&mut path) {
-            ast::AbsolutePath::Path { name, args } => (name, args),
-            _ => unreachable!(),
-        };
+        let name = disambiguated_data.data.get_opt_name().map(|s| s.as_str());
+        let name = name.as_ref().map_or("", |s| &s[..]);
+        let ns = match disambiguated_data.data {
+            DefPathData::ClosureExpr => ast::Namespace(b'C'),
 
-        let mut ident = match disambiguated_data.data {
-            DefPathData::ClosureExpr => String::new(),
-            _ => disambiguated_data.data.get_opt_name().ok_or(Unsupported)?.to_string(),
-        };
-
-        let tag = match disambiguated_data.data {
-            DefPathData::ClosureExpr => ast::IdentTag::Closure,
-
-            /*DefPathData::ValueNs(..) |
-            DefPathData::Ctor |
-            DefPathData::Field(..) => ast::IdentTag::ValueNs,*/
-
-            // HACK(eddyb) rather than using `ValueNs` (see above), this
-            // encodes the disambiguated category into the identifier, so it's
-            // lossless (see the RFC for why we can't just do type vs value).
+            // Lowercase a-z are unspecified disambiguation categories.
             _ => {
-                let tag = {
-                    let discriminant = unsafe {
-                        ::std::intrinsics::discriminant_value(&disambiguated_data.data)
-                    };
-                    assert!(discriminant < 26);
-
-                    // Mix in the name to avoid making it too predictable.
-                    let mut d = (discriminant ^ 0x55) % 26;
-                    for (i, b) in ident.bytes().enumerate() {
-                        d = (d + i as u64 + b as u64) % 26;
-                    }
-
-                    (b'A' + d as u8) as char
+                let discriminant = unsafe {
+                    ::std::intrinsics::discriminant_value(&disambiguated_data.data)
                 };
-                ident.push(tag);
+                assert!(discriminant < 26);
 
-                ast::IdentTag::TypeNs
+                // Mix in the name to avoid making it too predictable.
+                let mut d = (discriminant ^ 0x55) % 26;
+                for (i, b) in name.bytes().enumerate() {
+                    d = (d + i as u64 + b as u64) % 26;
+                }
+
+                ast::Namespace(b'a' + d as u8)
             }
         };
 
-        let dis = ast::NumericDisambiguator(disambiguated_data.disambiguator as u64);
-
-        let prefix = if !ast_args.is_empty() {
-            Arc::new(ast::PathPrefix::AbsolutePath { path })
-        } else {
-            prefix.clone()
-        };
-
-        Ok(Arc::new(ast::AbsolutePath::Path {
-            name: Arc::new(ast::PathPrefix::Node {
-                prefix: prefix.clone(),
-                ident: ast::Ident { ident, tag, dis },
-            }),
-            args: ast::GenericArgumentList::new_empty(),
-        }))
+        Ok(ast::Path::Nested {
+            ns,
+            inner,
+            ident: ast::Ident {
+                dis: ast::Base62Number(disambiguated_data.disambiguator as u64),
+                u_ident: ast::UIdent(name.to_string()),
+            }
+        })
     }
     fn path_generic_args(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
         args: &[Kind<'tcx>],
     ) -> Result<Self::Path, Self::Error> {
-        let mut path = print_prefix(self)?;
+        let prefix = print_prefix(self)?;
 
-        if args.is_empty() {
-            return Ok(path);
-        }
-
-        let ast_args = match Arc::make_mut(&mut path) {
-            ast::AbsolutePath::Path { args, .. } => args,
-            _ => unreachable!(),
-        };
-
-        if !ast_args.is_empty() {
-            bug!("mw::path_generic_args({:?}): prefix already has generic args: {:#?}",
-                args, path);
-        }
-
-        for &arg in args {
+        // Don't print any regions if they're all erased.
+        let print_regions = args.iter().any(|arg| {
             match arg.unpack() {
-                UnpackedKind::Lifetime(_) => {}
-                UnpackedKind::Type(ty) => {
-                    ast_args.0.push(ty.print(self)?);
-                }
-                UnpackedKind::Const(_) => return Err(Unsupported),
+                UnpackedKind::Lifetime(r) => *r != ty::ReErased,
+                _ => false,
             }
+        });
+        let args = args.iter().cloned().filter(|arg| {
+            match arg.unpack() {
+                UnpackedKind::Lifetime(_) => print_regions,
+                _ => true,
+            }
+        });
+
+        if args.clone().next().is_none() {
+            return Ok(prefix);
         }
 
-        Ok(path)
+        let args = args.map(|arg| {
+            Ok(match arg.unpack() {
+                UnpackedKind::Lifetime(lt) => {
+                    ast::GenericArg::Lifetime(lt.print(self)?)
+                }
+                UnpackedKind::Type(ty) => {
+                    ast::GenericArg::Type(ty.print(self)?)
+                }
+                UnpackedKind::Const(ct) => {
+                    ast::GenericArg::Const(ct.print(self)?)
+                }
+            })
+        }).collect::<Result<Vec<_>, _>>()?;
+
+        Ok(ast::Path::Generic {
+            inner: Arc::new(prefix),
+            args,
+        })
     }
 }
