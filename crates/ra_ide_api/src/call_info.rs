@@ -8,7 +8,7 @@ use ra_syntax::{
 };
 use hir::Docs;
 
-use crate::{FilePosition, CallInfo, db::RootDatabase};
+use crate::{FilePosition, CallInfo, FunctionSignature, db::RootDatabase};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
@@ -108,11 +108,10 @@ impl<'a> FnCallNode<'a> {
 
 impl CallInfo {
     fn new(db: &RootDatabase, function: hir::Function, node: &ast::FnDef) -> Option<Self> {
-        let sig = crate::completion::function_signature(node)?;
         let doc = function.docs(db);
-        let sig = sig.with_doc_opt(doc);
+        let signature = FunctionSignature::from(node).with_doc_opt(doc);
 
-        Some(CallInfo { signature: sig, active_parameter: None })
+        Some(CallInfo { signature, active_parameter: None })
     }
 
     fn parameters(&self) -> &[String] {

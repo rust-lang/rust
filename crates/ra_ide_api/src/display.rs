@@ -3,6 +3,8 @@
 use super::*;
 use std::fmt::{self, Display};
 use join_to_string::join;
+use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner, TypeParamsOwner};
+use std::convert::From;
 
 /// Contains information about a function signature
 #[derive(Debug)]
@@ -27,6 +29,36 @@ impl FunctionSignature {
     pub(crate) fn with_doc_opt(mut self, doc: Option<Documentation>) -> Self {
         self.doc = doc;
         self
+    }
+}
+
+impl From<&'_ ast::FnDef> for FunctionSignature {
+    fn from(node: &ast::FnDef) -> FunctionSignature {
+        fn param_list(node: &ast::FnDef) -> Vec<String> {
+            let mut res = vec![];
+            if let Some(param_list) = node.param_list() {
+                if let Some(self_param) = param_list.self_param() {
+                    res.push(self_param.syntax().text().to_string())
+                }
+
+                res.extend(param_list.params().map(|param| param.syntax().text().to_string()));
+            }
+            res
+        }
+
+        FunctionSignature {
+            visibility: node.visibility().map(|n| n.syntax().text().to_string()),
+            name: node.name().map(|n| n.text().to_string()),
+            ret_type: node
+                .ret_type()
+                .and_then(|r| r.type_ref())
+                .map(|n| n.syntax().text().to_string()),
+            parameters: param_list(node),
+            generic_parameters: generic_parameters(node),
+            where_predicates: where_predicates(node),
+            // docs are processed separately
+            doc: None,
+        }
     }
 }
 
@@ -60,4 +92,21 @@ impl Display for FunctionSignature {
 
         Ok(())
     }
+}
+
+pub(crate) fn generic_parameters<N: TypeParamsOwner>(node: &N) -> Vec<String> {
+    let mut res = vec![];
+    if let Some(type_params) = node.type_param_list() {
+        res.extend(type_params.lifetime_params().map(|p| p.syntax().text().to_string()));
+        res.extend(type_params.type_params().map(|p| p.syntax().text().to_string()));
+    }
+    res
+}
+
+pub(crate) fn where_predicates<N: TypeParamsOwner>(node: &N) -> Vec<String> {
+    let mut res = vec![];
+    if let Some(clause) = node.where_clause() {
+        res.extend(clause.predicates().map(|p| p.syntax().text().to_string()));
+    }
+    res
 }
