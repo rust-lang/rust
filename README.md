@@ -2,7 +2,6 @@
 
 [![Build Status](https://travis-ci.com/rust-lang/rust-clippy.svg?branch=master)](https://travis-ci.com/rust-lang/rust-clippy)
 [![Windows Build status](https://ci.appveyor.com/api/projects/status/id677xpw1dguo7iw?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/rust-clippy)
-[![Current Version](https://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MIT/Apache-2.0](https://img.shields.io/crates/l/clippy.svg)](#license)
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
@@ -12,7 +11,7 @@ A collection of lints to catch common mistakes and improve your [Rust](https://g
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 
 * `clippy::all` (everything that is on by default: all the categories below except for `nursery`, `pedantic`, and `cargo`)
-* **`clippy::correctness`** (code that is just outright wrong or very very useless, causes hard errors by default)
+* `clippy::correctness` (code that is just **outright wrong** or **very very useless**, causes hard errors by default)
 * `clippy::style` (code that should be written in a more idiomatic way)
 * `clippy::complexity` (code that does something simple but in a complex way)
 * `clippy::perf` (code that can be written in a faster way)
