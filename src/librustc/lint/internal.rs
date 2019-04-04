@@ -28,15 +28,7 @@ impl DefaultHashTypes {
     }
 }
 
-impl LintPass for DefaultHashTypes {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DEFAULT_HASH_TYPES)
-    }
-
-    fn name(&self) -> &'static str {
-        "DefaultHashTypes"
-    }
-}
+impl_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 
 impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
@@ -68,17 +60,7 @@ declare_lint! {
     "Usage of `ty::TyKind` outside of the `ty::sty` module"
 }
 
-pub struct TyKindUsage;
-
-impl LintPass for TyKindUsage {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(USAGE_OF_TY_TYKIND)
-    }
-
-    fn name(&self) -> &'static str {
-        "TyKindUsage"
-    }
-}
+declare_lint_pass!(TyKindUsage => [USAGE_OF_TY_TYKIND]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
     fn check_path(&mut self, cx: &LateContext<'_, '_>, path: &'tcx Path, _: HirId) {
