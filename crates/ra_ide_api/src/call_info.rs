@@ -198,6 +198,25 @@ where T: Copy + Display,
     }
 
     #[test]
+    fn test_fn_signature_no_params() {
+        let info = call_info(
+            r#"fn foo<T>() -> T where T: Copy + Display {}
+fn bar() { foo(<|>); }"#,
+        );
+
+        assert!(info.parameters().is_empty());
+        assert_eq!(
+            info.label(),
+            r#"
+fn foo<T>() -> T
+where T: Copy + Display
+    "#
+            .trim()
+        );
+        assert!(info.active_parameter.is_none());
+    }
+
+    #[test]
     fn test_fn_signature_for_impl() {
         let info = call_info(
             r#"struct F; impl F { pub fn new() { F{}} }
