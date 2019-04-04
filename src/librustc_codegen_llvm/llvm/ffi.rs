@@ -588,7 +588,6 @@ pub mod debuginfo {
             const FlagIntroducedVirtual   = (1 << 18);
             const FlagBitField            = (1 << 19);
             const FlagNoReturn            = (1 << 20);
-            const FlagMainSubprogram      = (1 << 21);
         }
     }
 
@@ -603,6 +602,7 @@ pub mod debuginfo {
             const SPFlagLocalToUnit       = (1 << 2);
             const SPFlagDefinition        = (1 << 3);
             const SPFlagOptimized         = (1 << 4);
+            const SPFlagMainSubprogram    = (1 << 5);
         }
     }
 

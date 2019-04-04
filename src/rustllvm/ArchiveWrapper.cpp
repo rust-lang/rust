@@ -24,9 +24,14 @@ struct RustArchiveIterator {
   bool First;
   Archive::child_iterator Cur;
   Archive::child_iterator End;
-  Error Err;
+  std::unique_ptr<Error> Err;
 
-  RustArchiveIterator() : First(true), Err(Error::success()) {}
+  RustArchiveIterator(Archive::child_iterator Cur, Archive::child_iterator End,
+      std::unique_ptr<Error> Err)
+    : First(true),
+      Cur(Cur),
+      End(End),
+      Err(std::move(Err)) {}
 };
 
 enum class LLVMRustArchiveKind {
@@ -84,15 +89,14 @@ extern "C" void LLVMRustDestroyArchive(LLVMRustArchiveRef RustArchive) {
 extern "C" LLVMRustArchiveIteratorRef
 LLVMRustArchiveIteratorNew(LLVMRustArchiveRef RustArchive) {
   Archive *Archive = RustArchive->getBinary();
-  RustArchiveIterator *RAI = new RustArchiveIterator();
-  RAI->Cur = Archive->child_begin(RAI->Err);
-  if (RAI->Err) {
-    LLVMRustSetLastError(toString(std::move(RAI->Err)).c_str());
-    delete RAI;
+  std::unique_ptr<Error> Err = llvm::make_unique<Error>(Error::success());
+  auto Cur = Archive->child_begin(*Err);
+  if (*Err) {
+    LLVMRustSetLastError(toString(std::move(*Err)).c_str());
     return nullptr;
   }
-  RAI->End = Archive->child_end();
-  return RAI;
+  auto End = Archive->child_end();
+  return new RustArchiveIterator(Cur, End, std::move(Err));
 }
 
 extern "C" LLVMRustArchiveChildConstRef
@@ -108,8 +112,8 @@ LLVMRustArchiveIteratorNext(LLVMRustArchiveIteratorRef RAI) {
   // but instead advance it *before* fetching the child in all later calls.
   if (!RAI->First) {
     ++RAI->Cur;
-    if (RAI->Err) {
-      LLVMRustSetLastError(toString(std::move(RAI->Err)).c_str());
+    if (*RAI->Err) {
+      LLVMRustSetLastError(toString(std::move(*RAI->Err)).c_str());
       return nullptr;
     }
   } else {
