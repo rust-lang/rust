@@ -383,13 +383,13 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         binding_mode: ty::BindingMode::BindByValue(_),
                         opt_ty_info,
                         ..
-                    })) => Some(suggest_ampmut(
+                    })) => suggest_ampmut(
                         self.infcx.tcx,
                         self.mir,
                         *local,
                         local_decl,
                         *opt_ty_info,
-                    )),
+                    ),
 
                     ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
                         binding_mode: ty::BindingMode::BindByReference(_),
@@ -563,21 +563,24 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
     local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
     opt_ty_info: Option<Span>,
-) -> (Span, String) {
+) -> Option<(Span, String)> {
     let locations = mir.find_assignments(local);
     if !locations.is_empty() {
         let assignment_rhs_span = mir.source_info(locations[0]).span;
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
+            if src.contains("&mut") {
+                return None;
+            }
             if let (true, Some(ws_pos)) = (
                 src.starts_with("&'"),
                 src.find(|c: char| -> bool { c.is_whitespace() }),
             ) {
                 let lt_name = &src[1..ws_pos];
                 let ty = &src[ws_pos..];
-                return (assignment_rhs_span, format!("&{} mut {}", lt_name, ty));
+                return Some((assignment_rhs_span, format!("&{} mut {}", lt_name, ty)));
             } else if src.starts_with('&') {
                 let borrowed_expr = &src[1..];
-                return (assignment_rhs_span, format!("&mut {}", borrowed_expr));
+                return Some((assignment_rhs_span, format!("&mut {}", borrowed_expr)));
             }
         }
     }
@@ -599,18 +602,18 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
         ) {
             let lt_name = &src[1..ws_pos];
             let ty = &src[ws_pos..];
-            return (highlight_span, format!("&{} mut{}", lt_name, ty));
+            return Some((highlight_span, format!("&{} mut{}", lt_name, ty)));
         }
     }
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
     assert_eq!(ty_mut.mutbl, hir::MutImmutable);
-    (highlight_span,
+    Some((highlight_span,
      if local_decl.ty.is_region_ptr() {
          format!("&mut {}", ty_mut.ty)
      } else {
          format!("*mut {}", ty_mut.ty)
-     })
+     }))
 }
 
 fn is_closure_or_generator(ty: ty::Ty<'_>) -> bool {
