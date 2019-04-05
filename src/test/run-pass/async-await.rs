@@ -19,7 +19,10 @@ struct Counter {
 }
 
 impl ArcWake for Counter {
-    fn wake(arc_self: &Arc<Self>) {
+    fn wake(self: Arc<Self>) {
+        Self::wake_by_ref(&self)
+    }
+    fn wake_by_ref(arc_self: &Arc<Self>) {
         arc_self.wakes.fetch_add(1, atomic::Ordering::SeqCst);
     }
 }
@@ -34,7 +37,7 @@ impl Future for WakeOnceThenComplete {
         if self.0 {
             Poll::Ready(())
         } else {
-            cx.waker().wake();
+            cx.waker().wake_by_ref();
             self.0 = true;
             Poll::Pending
         }
