@@ -14,6 +14,7 @@
        test(attr(deny(warnings))))]
 #![feature(staged_api)]
 #![feature(test)]
+#![feature(rustc_private)]
 
 extern crate libtest;
 
