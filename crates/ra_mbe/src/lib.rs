@@ -167,7 +167,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
     )
     }
 
-    fn create_rules(macro_definition: &str) -> MacroRules {
+    pub(crate) fn create_rules(macro_definition: &str) -> MacroRules {
         let source_file = ast::SourceFile::parse(macro_definition);
         let macro_definition =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
@@ -176,7 +176,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
         crate::MacroRules::parse(&definition_tt).unwrap()
     }
 
-    fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
+    pub(crate) fn expand(rules: &MacroRules, invocation: &str) -> tt::Subtree {
         let source_file = ast::SourceFile::parse(invocation);
         let macro_invocation =
             source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
@@ -186,7 +186,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
         rules.expand(&invocation_tt).unwrap()
     }
 
-    fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
+    pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
     }
@@ -337,4 +337,46 @@ SOURCE_FILE@[0; 40)
         );
     }
 
+    #[test]
+    fn expand_literals_to_token_tree() {
+        fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
+            if let tt::TokenTree::Subtree(subtree) = tt {
+                return &subtree;
+            }
+            unreachable!("It is not a subtree");
+        }
+
+        fn to_literal(tt: &tt::TokenTree) -> &tt::Literal {
+            if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = tt {
+                return lit;
+            }
+            unreachable!("It is not a literal");
+        }
+
+        let rules = create_rules(
+            r#"
+            macro_rules! literals {
+                ($i:ident) => {
+                    {
+                        let a = 'c';
+                        let c = 1000;
+                        let f = 12E+99_f64;
+                        let s = "rust1";
+                    }
+                }
+            }
+            "#,
+        );
+        let expansion = expand(&rules, "literals!(foo)");
+        let stm_tokens = &to_subtree(&expansion.token_trees[0]).token_trees;
+
+        // [let] [a] [=] ['c'] [;]
+        assert_eq!(to_literal(&stm_tokens[3]).text, "'c'");
+        // [let] [c] [=] [1000] [;]
+        assert_eq!(to_literal(&stm_tokens[5 + 3]).text, "1000");
+        // [let] [f] [=] [12E+99_f64] [;]
+        assert_eq!(to_literal(&stm_tokens[10 + 3]).text, "12E+99_f64");
+        // [let] [s] [=] ["rust1"] [;]
+        assert_eq!(to_literal(&stm_tokens[15 + 3]).text, "\"rust1\"");
+    }
 }
