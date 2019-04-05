@@ -100,7 +100,8 @@ symbols! {
 
     // Other symbols that can be referred to with syntax_pos::symbols::*
     Other {
-        doc, cfg, masked, spotlight, alias, keyword, feature, include, simd, align,
+        doc, cfg, masked, spotlight, alias, keyword, feature, include, simd, align, stable,
+        unstable, rustc_const_unstable,
     }
 }
 
