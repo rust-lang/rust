@@ -12,7 +12,7 @@ export PATH=`pwd`/clang+llvm-8.0.0-x86_64-linux-gnu-ubuntu-14.04/bin:$PATH
 git clone https://github.com/CraneStation/wasi-sysroot
 
 cd wasi-sysroot
-git reset --hard 320054e84f8f2440def3b1c8700cedb8fd697bf8
+git reset --hard e5f14be38362f1ab83302895a6e74b2ffd0e2302
 make -j$(nproc) INSTALL_DIR=/wasm32-unknown-wasi install
 
 cd ..

@@ -1,5 +1,4 @@
-use crate::collections::HashMap;
-use crate::ffi::{OsStr, OsString};
+use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, IoVec, IoVecMut, SeekFrom};
 use crate::iter;
@@ -7,11 +6,10 @@ use crate::mem::{self, ManuallyDrop};
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 use crate::ptr;
-use crate::sync::atomic::{AtomicPtr, Ordering::SeqCst};
 use crate::sync::Arc;
 use crate::sys::fd::{DirCookie, WasiFd};
 use crate::sys::time::SystemTime;
-use crate::sys::{cvt_wasi, unsupported};
+use crate::sys::unsupported;
 use crate::sys_common::FromInner;
 
 pub use crate::sys_common::fs::copy;
@@ -230,7 +228,11 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        metadata_at(&self.inner.dir.fd, 0, OsStr::from_bytes(&self.name).as_ref())
+        metadata_at(
+            &self.inner.dir.fd,
+            0,
+            OsStr::from_bytes(&self.name).as_ref(),
+        )
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -377,8 +379,8 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let (dir, file) = open_parent(path)?;
-        open_at(&dir, file, opts)
+        let (dir, file) = open_parent(path, libc::__WASI_RIGHT_PATH_OPEN)?;
+        open_at(&dir, &file, opts)
     }
 
     pub fn open_at(&self, path: &Path, opts: &OpenOptions) -> io::Result<File> {
@@ -475,7 +477,7 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let (dir, file) = open_parent(p)?;
+        let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_CREATE_DIRECTORY)?;
         dir.create_directory(file.as_os_str().as_bytes())
     }
 }
@@ -506,13 +508,13 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p)?;
+    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_UNLINK_FILE)?;
     dir.unlink_file(file.as_os_str().as_bytes())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let (old, old_file) = open_parent(old)?;
-    let (new, new_file) = open_parent(new)?;
+    let (old, old_file) = open_parent(old, libc::__WASI_RIGHT_PATH_RENAME_SOURCE)?;
+    let (new, new_file) = open_parent(new, libc::__WASI_RIGHT_PATH_RENAME_TARGET)?;
     old.rename(
         old_file.as_os_str().as_bytes(),
         &new,
@@ -527,13 +529,13 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p)?;
+    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_REMOVE_DIRECTORY)?;
     dir.remove_directory(file.as_os_str().as_bytes())
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let (dir, file) = open_parent(p)?;
-    read_link(&dir, file)
+    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_READLINK)?;
+    read_link(&dir, &file)
 }
 
 fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
@@ -568,13 +570,13 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let (dst, dst_file) = open_parent(dst)?;
+    let (dst, dst_file) = open_parent(dst, libc::__WASI_RIGHT_PATH_SYMLINK)?;
     dst.symlink(src.as_os_str().as_bytes(), dst_file.as_os_str().as_bytes())
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let (src, src_file) = open_parent(src)?;
-    let (dst, dst_file) = open_parent(dst)?;
+    let (src, src_file) = open_parent(src, libc::__WASI_RIGHT_PATH_LINK_SOURCE)?;
+    let (dst, dst_file) = open_parent(dst, libc::__WASI_RIGHT_PATH_LINK_TARGET)?;
     src.link(
         libc::__WASI_LOOKUP_SYMLINK_FOLLOW,
         src_file.as_os_str().as_bytes(),
@@ -584,13 +586,13 @@ pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p)?;
-    metadata_at(&dir, libc::__WASI_LOOKUP_SYMLINK_FOLLOW, file)
+    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_FILESTAT_GET)?;
+    metadata_at(&dir, libc::__WASI_LOOKUP_SYMLINK_FOLLOW, &file)
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p)?;
-    metadata_at(&dir, 0, file)
+    let (dir, file) = open_parent(p, libc::__WASI_RIGHT_PATH_FILESTAT_GET)?;
+    metadata_at(&dir, 0, &file)
 }
 
 fn metadata_at(
@@ -621,72 +623,69 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
     Ok(File { fd })
 }
 
-// FIXME: we shouldn't implement this. It'd be much better to share this between
-// libc (the wasi-sysroot) and Rust as the logic here is likely far more tricky
-// than what we're executing below. For now this is a stopgap to enable this
-// module, but we should add an official API in upstream wasi-libc which looks
-// like this.
-//
-// In the meantime this is highly unlikely to be correct. It allows some basic
-// testing but is not at all robust.
-fn open_parent(p: &Path) -> io::Result<(&'static WasiFd, &Path)> {
-    let map = preopened_map();
-    for ancestor in p.ancestors() {
-        if let Some(fd) = map.get(ancestor) {
-            let tail = p.strip_prefix(ancestor).unwrap();
-            let tail = if tail == Path::new("") {
-                ".".as_ref()
-            } else {
-                tail
-            };
-            return Ok((fd, tail))
+/// Attempts to open a bare path `p`.
+///
+/// WASI has no fundamental capability to do this. All syscalls and operations
+/// are relative to already-open file descriptors. The C library, however,
+/// manages a map of preopened file descriptors to their path, and then the C
+/// library provides an API to look at this. In other words, when you want to
+/// open a path `p`, you have to find a previously opened file descriptor in a
+/// global table and then see if `p` is relative to that file descriptor.
+///
+/// This function, if successful, will return two items:
+///
+/// * The first is a `ManuallyDrop<WasiFd>`. This represents a preopened file
+///   descriptor which we don't have ownership of, but we can use. You shouldn't
+///   actually drop the `fd`.
+///
+/// * The second is a path that should be a part of `p` and represents a
+///   relative traversal from the file descriptor specified to the desired
+///   location `p`.
+///
+/// If successful you can use the returned file descriptor to perform
+/// file-descriptor-relative operations on the path returned as well. The
+/// `rights` argument indicates what operations are desired on the returned file
+/// descriptor, and if successful the returned file descriptor should have the
+/// appropriate rights for performing `rights` actions.
+///
+/// Note that this can fail if `p` doesn't look like it can be opened relative
+/// to any preopened file descriptor.
+fn open_parent(
+    p: &Path,
+    rights: libc::__wasi_rights_t,
+) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
+    let p = CString::new(p.as_os_str().as_bytes())?;
+    unsafe {
+        let mut ret = ptr::null();
+        let fd = __wasilibc_find_relpath(p.as_ptr(), rights, 0, &mut ret);
+        if fd == -1 {
+            let msg = format!(
+                "failed to find a preopened file descriptor \
+                 through which {:?} could be opened",
+                p
+            );
+            return Err(io::Error::new(io::ErrorKind::Other, msg));
         }
+        let path = Path::new(OsStr::from_bytes(CStr::from_ptr(ret).to_bytes()));
+
+        // FIXME: right now `path` is a pointer into `p`, the `CString` above.
+        // When we return `p` is deallocated and we can't use it, so we need to
+        // currently separately allocate `path`. If this becomes an issue though
+        // we should probably turn this into a closure-taking interface or take
+        // `&CString` and then pass off `&Path` tied to the same lifetime.
+        let path = path.to_path_buf();
+
+        return Ok((ManuallyDrop::new(WasiFd::from_raw(fd as u32)), path));
     }
-    let msg = format!("failed to find a preopened file descriptor to open {:?}", p);
-    return Err(io::Error::new(io::ErrorKind::Other, msg));
 
-    type Preopened = HashMap<PathBuf, ManuallyDrop<WasiFd>>;
-    fn preopened_map() -> &'static Preopened {
-        static PTR: AtomicPtr<Preopened> = AtomicPtr::new(ptr::null_mut());
-        unsafe {
-            let ptr = PTR.load(SeqCst);
-            if !ptr.is_null() {
-                return &*ptr;
-            }
-
-            let mut map = Box::new(HashMap::new());
-            for fd in 3.. {
-                let mut buf = mem::zeroed();
-                if cvt_wasi(libc::__wasi_fd_prestat_get(fd, &mut buf)).is_err() {
-                    break;
-                }
-                if buf.pr_type != libc::__WASI_PREOPENTYPE_DIR {
-                    continue;
-                }
-                let len = buf.u.dir.pr_name_len;
-                let mut v = vec![0u8; len];
-                let res = cvt_wasi(libc::__wasi_fd_prestat_dir_name(
-                    fd,
-                    v.as_mut_ptr() as *mut i8,
-                    v.len(),
-                ));
-                if res.is_err() {
-                    continue;
-                }
-                let path = PathBuf::from(OsString::from_vec(v));
-                map.insert(path, ManuallyDrop::new(WasiFd::from_raw(fd)));
-            }
-            let ptr = Box::into_raw(map);
-            match PTR.compare_exchange(ptr::null_mut(), ptr, SeqCst, SeqCst) {
-                Ok(_) => &*ptr,
-
-                // If we lost the race for initialization clean up the map we
-                // made and just use the one that's already there
-                Err(other) => {
-                    drop(Box::from_raw(ptr));
-                    &*other
-                }
-            }
-        }
+    // FIXME(rust-lang/libc#1314) use the `libc` crate for this when the API
+    // there is published
+    extern "C" {
+        pub fn __wasilibc_find_relpath(
+            path: *const libc::c_char,
+            rights_base: libc::__wasi_rights_t,
+            rights_inheriting: libc::__wasi_rights_t,
+            relative_path: *mut *const libc::c_char,
+        ) -> libc::c_int;
     }
 }
