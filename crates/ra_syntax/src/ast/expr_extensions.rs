@@ -203,7 +203,7 @@ impl ast::ArrayExpr {
         if self.is_repeat() {
             ArrayExprKind::Repeat {
                 initializer: children(self).nth(0),
-                repeat: children(self).nth(2),
+                repeat: children(self).nth(1),
             }
         } else {
             ArrayExprKind::ElementList(children(self))

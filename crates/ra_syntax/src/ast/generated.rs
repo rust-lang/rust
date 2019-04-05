@@ -108,10 +108,6 @@ impl ArrayExpr {
     pub fn exprs(&self) -> impl Iterator<Item = &Expr> {
         super::children(self)
     }
-
-    pub fn repeat(&self) -> Option<&Expr> {
-        super::child_opt(self)
-    }
 }
 
 // ArrayType
