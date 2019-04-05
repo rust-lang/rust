@@ -2,6 +2,10 @@ use fortanix_sgx_abi as abi;
 
 use crate::io;
 use crate::sys::fd::FileDesc;
+#[cfg(not(test))]
+use crate::slice;
+#[cfg(not(test))]
+use crate::str;
 
 pub struct Stdin(());
 pub struct Stdout(());
@@ -61,4 +65,18 @@ pub fn is_ebadf(err: &io::Error) -> bool {
 
 pub fn panic_output() -> Option<impl io::Write> {
     super::abi::panic::SgxPanicOutput::new()
+}
+
+// This function is needed by libunwind. The symbol is named in pre-link args
+// for the target specification, so keep that in sync.
+#[cfg(not(test))]
+#[no_mangle]
+pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
+    if s < 0 {
+        return;
+    }
+    let buf = slice::from_raw_parts(m as *const u8, s as _);
+    if let Ok(s) = str::from_utf8(&buf[..buf.iter().position(|&b| b == 0).unwrap_or(buf.len())]) {
+        eprint!("{}", s);
+    }
 }
