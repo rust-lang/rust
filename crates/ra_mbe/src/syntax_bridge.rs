@@ -103,10 +103,12 @@ fn convert_tt(
     Some(res)
 }
 
+#[derive(Debug)]
 struct TtTokenSource {
     tokens: Vec<TtToken>,
 }
 
+#[derive(Debug)]
 struct TtToken {
     kind: SyntaxKind,
     is_joint_to_next: bool,
@@ -353,5 +355,46 @@ impl<'a> TreeSink for TtTreeSink<'a> {
 
     fn error(&mut self, error: ParseError) {
         self.inner.error(error, self.text_pos)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tests::{expand, create_rules};
+
+    #[test]
+    fn convert_tt_token_source() {
+        let rules = create_rules(
+            r#"
+            macro_rules! literals {
+                ($i:ident) => {
+                    {
+                        let a = 'c';
+                        let c = 1000;
+                        let f = 12E+99_f64;
+                        let s = "rust1";
+                    }
+                }
+            }
+            "#,
+        );
+        let expansion = expand(&rules, "literals!(foo)");
+        let tt_src = TtTokenSource::new(&expansion);
+
+        // [{]
+        // [let] [a] [=] ['c'] [;]
+        assert_eq!(tt_src.tokens[1 + 3].text, "'c'");
+        assert_eq!(tt_src.tokens[1 + 3].kind, CHAR);
+        // [let] [c] [=] [1000] [;]
+        assert_eq!(tt_src.tokens[1 + 5 + 3].text, "1000");
+        assert_eq!(tt_src.tokens[1 + 5 + 3].kind, INT_NUMBER);
+        // [let] [f] [=] [12E+99_f64] [;]
+        assert_eq!(tt_src.tokens[1 + 10 + 3].text, "12E+99_f64");
+        assert_eq!(tt_src.tokens[1 + 10 + 3].kind, FLOAT_NUMBER);
+
+        // [let] [s] [=] ["rust1"] [;]
+        assert_eq!(tt_src.tokens[1 + 15 + 3].text, "\"rust1\"");
+        assert_eq!(tt_src.tokens[1 + 15 + 3].kind, STRING);
     }
 }

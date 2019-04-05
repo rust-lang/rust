@@ -217,7 +217,7 @@ fn scan_literal_suffix(ptr: &mut Ptr) {
 
 pub fn classify_literal(text: &str) -> Option<Token> {
     let tkn = next_token(text);
-    if tkn.kind.is_literal() || tkn.len.to_usize() != text.len() {
+    if !tkn.kind.is_literal() || tkn.len.to_usize() != text.len() {
         return None;
     }
 
