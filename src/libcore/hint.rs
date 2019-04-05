@@ -21,9 +21,8 @@ use intrinsics;
 /// difficult-to-debug problems.
 ///
 /// Use this function only when you can prove that the code will never call it.
-///
-/// The [`unreachable!()`] macro is the safe counterpart of this function, which
-/// will panic instead when executed.
+/// Otherwise, consider using the [`unreachable!()`] macro, which does not allow
+/// optimizations but will panic when executed.
 ///
 /// [`unreachable!()`]: ../macro.unreachable.html
 ///
