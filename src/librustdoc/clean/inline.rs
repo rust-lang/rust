@@ -228,7 +228,7 @@ fn build_external_function(cx: &DocContext<'_>, did: DefId) -> clean::Function {
 }
 
 fn build_enum(cx: &DocContext<'_>, did: DefId) -> clean::Enum {
-    let predicates = cx.tcx.predicates_of(did);
+    let predicates = cx.tcx.explicit_predicates_of(did);
 
     clean::Enum {
         generics: (cx.tcx.generics_of(did), &predicates).clean(cx),
@@ -238,7 +238,7 @@ fn build_enum(cx: &DocContext<'_>, did: DefId) -> clean::Enum {
 }
 
 fn build_struct(cx: &DocContext<'_>, did: DefId) -> clean::Struct {
-    let predicates = cx.tcx.predicates_of(did);
+    let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Struct {
@@ -254,7 +254,7 @@ fn build_struct(cx: &DocContext<'_>, did: DefId) -> clean::Struct {
 }
 
 fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
-    let predicates = cx.tcx.predicates_of(did);
+    let predicates = cx.tcx.explicit_predicates_of(did);
     let variant = cx.tcx.adt_def(did).non_enum_variant();
 
     clean::Union {
@@ -266,7 +266,7 @@ fn build_union(cx: &DocContext<'_>, did: DefId) -> clean::Union {
 }
 
 fn build_type_alias(cx: &DocContext<'_>, did: DefId) -> clean::Typedef {
-    let predicates = cx.tcx.predicates_of(did);
+    let predicates = cx.tcx.explicit_predicates_of(did);
 
     clean::Typedef {
         type_: cx.tcx.type_of(did).clean(cx),
@@ -325,7 +325,7 @@ pub fn build_impl(cx: &DocContext<'_>, did: DefId, ret: &mut Vec<clean::Item>) {
         }
     }
 
-    let predicates = tcx.predicates_of(did);
+    let predicates = tcx.explicit_predicates_of(did);
     let (trait_items, generics) = if let Some(hir_id) = tcx.hir().as_local_hir_id(did) {
         match tcx.hir().expect_item_by_hir_id(hir_id).node {
             hir::ItemKind::Impl(.., ref gen, _, _, ref item_ids) => {
