@@ -107,6 +107,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
+#![feature(unsized_locals)]
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
 #![feature(rustc_const_unstable)]

@@ -32,7 +32,7 @@ fn test3<F>(f: &mut F) where F: FnMut() {
 
 fn test4(f: &Test) {
     f.f.call_mut(())
-    //~^ ERROR: cannot borrow `Box` content `*f.f` of immutable binding as mutable
+    //~^ ERROR: cannot borrow field `f.f` of immutable binding as mutable
 }
 
 fn test5(f: &mut Test) {
