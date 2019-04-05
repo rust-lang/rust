@@ -1672,6 +1672,21 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
             }
         }).into_try()
     }
+
+    #[inline]
+    fn fold<C, G>(mut self, init: C, mut g: G) -> C where
+        Self: Sized, G: FnMut(C, Self::Item) -> C,
+    {
+        // self.try_fold(init, move |acc, x| Ok::<C, !>(g(acc, x))).unwrap()
+        let state = &mut self.state;
+        let f = &mut self.f;
+        self.iter.fold(init, move |acc, x| {
+            match f(state, x) {
+                None => acc,
+                Some(x) => g(acc, x),
+            }
+        })
+    }
 }
 
 /// An iterator that yields `None` forever after the underlying iterator
