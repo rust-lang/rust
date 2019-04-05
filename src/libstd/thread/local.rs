@@ -159,6 +159,8 @@ macro_rules! __thread_local_inner {
             #[inline]
             fn __init() -> $t { $init }
 
+            // FIXME: https://github.com/rust-lang/rust/issues/44391
+            #[cfg_attr(not(target_env = "msvc"), inline)]
             unsafe fn __getit() -> $crate::option::Option<
                 &'static $crate::cell::UnsafeCell<
                     $crate::option::Option<$t>>>
