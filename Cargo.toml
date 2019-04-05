@@ -45,7 +45,6 @@ semver = "0.9"
 rustc_tools_util = { version = "0.1.1", path = "rustc_tools_util"}
 
 [dev-dependencies]
-clippy_dev = { version = "0.0.1", path = "clippy_dev" }
 cargo_metadata = "0.7.1"
 compiletest_rs = { version = "=0.3.19", features = ["tmp", "stable"] }
 libtest = "0.0.1"
