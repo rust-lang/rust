@@ -960,6 +960,7 @@ impl IntoInner<Buf> for OsString {
 }
 
 impl AsInner<Slice> for OsStr {
+    #[inline]
     fn as_inner(&self) -> &Slice {
         &self.inner
     }

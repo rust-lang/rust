@@ -236,9 +236,11 @@ pub trait OsStrExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl OsStrExt for OsStr {
+    #[inline]
     fn from_bytes(slice: &[u8]) -> &OsStr {
         unsafe { mem::transmute(slice) }
     }
+    #[inline]
     fn as_bytes(&self) -> &[u8] {
         &self.as_inner().inner
     }
