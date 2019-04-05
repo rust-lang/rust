@@ -21,10 +21,10 @@ use intrinsics;
 /// difficult-to-debug problems.
 ///
 /// Use this function only when you can prove that the code will never call it.
-/// Otherwise, consider using the [`unreachable!()`] macro, which does not allow
+/// Otherwise, consider using the [`unreachable!`] macro, which does not allow
 /// optimizations but will panic when executed.
 ///
-/// [`unreachable!()`]: ../macro.unreachable.html
+/// [`unreachable!`]: ../macro.unreachable.html
 ///
 /// # Example
 ///
