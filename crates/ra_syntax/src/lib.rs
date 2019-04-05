@@ -40,7 +40,7 @@ pub use crate::{
     syntax_text::SyntaxText,
     syntax_node::{Direction,  SyntaxNode, WalkEvent, TreeArc, SyntaxTreeBuilder, SyntaxElement, SyntaxToken},
     ptr::{SyntaxNodePtr, AstPtr},
-    parsing::{tokenize, Token},
+    parsing::{tokenize, next_token, Token},
 };
 
 use ra_text_edit::AtomTextEdit;

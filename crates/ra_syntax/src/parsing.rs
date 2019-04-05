@@ -11,7 +11,7 @@ use crate::{
     syntax_node::GreenNode,
 };
 
-pub use self::lexer::{tokenize, Token};
+pub use self::lexer::{tokenize, next_token, Token};
 
 pub(crate) use self::reparsing::incremental_reparse;
 

@@ -337,4 +337,45 @@ SOURCE_FILE@[0; 40)
         );
     }
 
+    #[test]
+    fn expand_literals_to_item_list() {
+        fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
+            if let tt::TokenTree::Subtree(subtree) = tt {
+                return &subtree;
+            }
+            assert!(false, "It is not a subtree");
+            unreachable!();
+        }
+
+        fn to_literal(tt: &tt::TokenTree) -> &tt::Literal {
+            if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = tt {
+                return lit;
+            }
+            assert!(false, "It is not a literal");
+            unreachable!();
+        }
+
+        let rules = create_rules(
+            r#"
+            macro_rules! literals {
+                ($i:ident) => {
+                    {
+                        let a = 'c';
+                        let c = 1000;
+                        let f = 12E+99_f64;
+                    }
+                }
+            }
+            "#,
+        );
+        let expansion = expand(&rules, "literals!(foo)");
+        let stm_tokens = &to_subtree(&expansion.token_trees[0]).token_trees;
+
+        // [let] [a] [=] ['c'] [;]
+        assert_eq!(to_literal(&stm_tokens[3]).text, "'c'");
+        // [let] [c] [=] [1000] [;]
+        assert_eq!(to_literal(&stm_tokens[5 + 3]).text, "1000");
+        // [let] [f] [=] [12E+99_f64] [;]
+        assert_eq!(to_literal(&stm_tokens[10 + 3]).text, "12E+99_f64");
+    }
 }
