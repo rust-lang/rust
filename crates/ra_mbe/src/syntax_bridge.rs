@@ -1,7 +1,7 @@
 use ra_parser::{TokenSource, TreeSink, ParseError};
 use ra_syntax::{
     AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc, SyntaxElement,
-    ast, SyntaxKind::*, TextUnit, next_token
+    ast, SyntaxKind::*, TextUnit, classify_literal
 };
 
 /// Maps `tt::TokenId` to the relative range of the original token.
@@ -189,7 +189,7 @@ impl TtTokenSource {
     {
         let tok = match token {
             tt::Leaf::Literal(l) => TtToken {
-                kind: next_token(&l.text).kind,
+                kind: classify_literal(&l.text).unwrap().kind,
                 is_joint_to_next: false,
                 text: l.text.clone(),
             },

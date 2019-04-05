@@ -343,16 +343,14 @@ SOURCE_FILE@[0; 40)
             if let tt::TokenTree::Subtree(subtree) = tt {
                 return &subtree;
             }
-            assert!(false, "It is not a subtree");
-            unreachable!();
+            unreachable!("It is not a subtree");
         }
 
         fn to_literal(tt: &tt::TokenTree) -> &tt::Literal {
             if let tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) = tt {
                 return lit;
             }
-            assert!(false, "It is not a literal");
-            unreachable!();
+            unreachable!("It is not a literal");
         }
 
         let rules = create_rules(

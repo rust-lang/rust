@@ -214,3 +214,12 @@ fn scan_literal_suffix(ptr: &mut Ptr) {
     }
     ptr.bump_while(is_ident_continue);
 }
+
+pub fn classify_literal(text: &str) -> Option<Token> {
+    let tkn = next_token(text);
+    if tkn.kind.is_literal() || tkn.len.to_usize() != text.len() {
+        return None;
+    }
+
+    Some(tkn)
+}
