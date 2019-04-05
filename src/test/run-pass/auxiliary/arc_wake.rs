@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(futures_api)]
-
 use std::sync::Arc;
 use std::task::{
     Waker, RawWaker, RawWakerVTable,

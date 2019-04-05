@@ -1,7 +1,7 @@
 // Test that impl trait does not allow creating recursive types that are
 // otherwise forbidden.
 
-#![feature(futures_api, generators)]
+#![feature(generators)]
 
 fn option(i: i32) -> impl Sized { //~ ERROR
     if i < 0 {
