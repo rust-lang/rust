@@ -10,8 +10,9 @@ use syntax::visit;
 use syntax::{ast, ptr, symbol};
 
 use crate::comment::{
-    combine_strs_with_missing_comments, contains_comment, recover_comment_removed,
-    recover_missing_comment_in_span, rewrite_missing_comment, FindUncommented,
+    combine_strs_with_missing_comments, contains_comment, is_last_comment_block,
+    recover_comment_removed, recover_missing_comment_in_span, rewrite_missing_comment,
+    FindUncommented,
 };
 use crate::config::lists::*;
 use crate::config::{BraceStyle, Config, Density, IndentStyle, Version};
@@ -1173,11 +1174,7 @@ fn format_unit_struct(
 ) -> Option<String> {
     let header_str = format_header(context, p.prefix, p.ident, p.vis);
     let generics_str = if let Some(generics) = p.generics {
-        let hi = if generics.where_clause.predicates.is_empty() {
-            generics.span.hi()
-        } else {
-            generics.where_clause.span.hi()
-        };
+        let hi = context.snippet_provider.span_before(p.span, ";");
         format_generics(
             context,
             generics,
@@ -2711,19 +2708,19 @@ fn format_generics(
     let shape = Shape::legacy(context.budget(used_width + offset.width()), offset);
     let mut result = rewrite_generics(context, "", generics, shape)?;
 
-    let same_line_brace = if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
+    // If the generics are not parameterized then generics.span.hi() == 0,
+    // so we use span.lo(), which is the position after `struct Foo`.
+    let span_end_before_where = if !generics.params.is_empty() {
+        generics.span.hi()
+    } else {
+        span.lo()
+    };
+    let (same_line_brace, missed_comments) = if !generics.where_clause.predicates.is_empty() {
         let budget = context.budget(last_line_used_width(&result, offset.width()));
         let mut option = WhereClauseOption::snuggled(&result);
         if brace_pos == BracePos::None {
             option.suppress_comma = true;
         }
-        // If the generics are not parameterized then generics.span.hi() == 0,
-        // so we use span.lo(), which is the position after `struct Foo`.
-        let span_end_before_where = if !generics.params.is_empty() {
-            generics.span.hi()
-        } else {
-            span.lo()
-        };
         let where_clause_str = rewrite_where_clause(
             context,
             &generics.where_clause,
@@ -2737,15 +2734,41 @@ fn format_generics(
             false,
         )?;
         result.push_str(&where_clause_str);
-        brace_pos == BracePos::ForceSameLine
-            || brace_style == BraceStyle::PreferSameLine
-            || (generics.where_clause.predicates.is_empty()
-                && trimmed_last_line_width(&result) == 1)
+        (
+            brace_pos == BracePos::ForceSameLine || brace_style == BraceStyle::PreferSameLine,
+            // missed comments are taken care of in #rewrite_where_clause
+            None,
+        )
     } else {
-        brace_pos == BracePos::ForceSameLine
-            || trimmed_last_line_width(&result) == 1
-            || brace_style != BraceStyle::AlwaysNextLine
+        (
+            brace_pos == BracePos::ForceSameLine
+                || (result.contains('\n') && brace_style == BraceStyle::PreferSameLine
+                    || brace_style != BraceStyle::AlwaysNextLine)
+                || trimmed_last_line_width(&result) == 1,
+            rewrite_missing_comment(
+                mk_sp(
+                    span_end_before_where,
+                    if brace_pos == BracePos::None {
+                        span.hi()
+                    } else {
+                        context.snippet_provider.span_before(span, "{")
+                    },
+                ),
+                shape,
+                context,
+            ),
+        )
     };
+    // add missing comments
+    let missed_line_comments = missed_comments
+        .filter(|missed_comments| !missed_comments.is_empty())
+        .map_or(false, |missed_comments| {
+            let is_block = is_last_comment_block(&missed_comments);
+            let sep = if is_block { " " } else { "\n" };
+            result.push_str(sep);
+            result.push_str(&missed_comments);
+            !is_block
+        });
     if brace_pos == BracePos::None {
         return Some(result);
     }
@@ -2761,7 +2784,7 @@ fn format_generics(
         // 2 = ` {`
         2
     };
-    let forbid_same_line_brace = overhead > remaining_budget;
+    let forbid_same_line_brace = missed_line_comments || overhead > remaining_budget;
     if !forbid_same_line_brace && same_line_brace {
         result.push(' ');
     } else {

@@ -142,6 +142,11 @@ fn comment_style(orig: &str, normalize_comments: bool) -> CommentStyle<'_> {
     }
 }
 
+/// Returns true if the last line of the passed string finishes with a block-comment.
+pub fn is_last_comment_block(s: &str) -> bool {
+    s.trim_end().ends_with("*/")
+}
+
 /// Combine `prev_str` and `next_str` into a single `String`. `span` may contain
 /// comments between two strings. If there are such comments, then that will be
 /// recovered. If `allow_extend` is true and there is no comment between the two
