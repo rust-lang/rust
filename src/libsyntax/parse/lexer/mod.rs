@@ -1,10 +1,9 @@
 use crate::ast::{self, Ident};
-use crate::source_map::{SourceMap, FilePathMapping};
 use crate::parse::{token, ParseSess};
 use crate::symbol::Symbol;
 
 use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
-use syntax_pos::{BytePos, CharPos, Pos, Span, NO_EXPANSION};
+use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
 use core::unicode::property::Pattern_White_Space;
 
 use std::borrow::Cow;
@@ -667,14 +666,9 @@ impl<'a> StringReader<'a> {
                     return None;
                 }
 
-                // I guess this is the only way to figure out if
-                // we're at the beginning of the file...
-                let smap = SourceMap::new(FilePathMapping::empty());
-                smap.files.borrow_mut().source_files.push(self.source_file.clone());
-                let loc = smap.lookup_char_pos_adj(self.pos);
-                debug!("Skipping a shebang");
-                if loc.line == 1 && loc.col == CharPos(0) {
-                    // FIXME: Add shebang "token", return it
+                let is_beginning_of_file = self.pos == self.source_file.start_pos;
+                if is_beginning_of_file {
+                    debug!("Skipping a shebang");
                     let start = self.pos;
                     while !self.ch_is('\n') && !self.is_eof() {
                         self.bump();
@@ -1911,7 +1905,7 @@ mod tests {
 
     use crate::ast::{Ident, CrateConfig};
     use crate::symbol::Symbol;
-    use crate::source_map::SourceMap;
+    use crate::source_map::{SourceMap, FilePathMapping};
     use crate::feature_gate::UnstableFeatures;
     use crate::parse::token;
     use crate::diagnostics::plugin::ErrorMap;
