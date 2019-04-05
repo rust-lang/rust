@@ -1396,10 +1396,6 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
 
     // Same thing as above, but for dynamic crates instead of static crates.
     fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
-        // If we're performing LTO, then it should have been previously required
-        // that all upstream rust dependencies were available in an rlib format.
-        assert!(!are_upstream_rust_objects_already_included(sess));
-
         // Just need to tell the linker about where the library lives and
         // what its name is
         let parent = cratepath.parent();
