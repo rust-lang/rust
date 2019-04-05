@@ -160,9 +160,7 @@ impl iter::FromIterator<TokenTree> for TokenStream {
 impl iter::FromIterator<TokenStream> for TokenStream {
     fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
         let mut builder = bridge::client::TokenStreamBuilder::new();
-        for stream in streams {
-            builder.push(stream.0);
-        }
+        streams.into_iter().for_each(|stream| builder.push(stream.0));
         TokenStream(builder.build())
     }
 }
