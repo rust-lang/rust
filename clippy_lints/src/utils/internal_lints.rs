@@ -150,7 +150,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
                         output: &mut self.registered_lints,
                         cx,
                     };
-                    let body_id = cx.tcx.hir().body_owned_by(impl_item_refs[0].id.hir_id);
+                    let body_id = cx.tcx.hir().body_owned_by(
+                        impl_item_refs
+                            .iter()
+                            .find(|iiref| iiref.ident.as_str() == "get_lints")
+                            .expect("LintPass needs to implement get_lints")
+                            .id.hir_id
+                    );
                     collector.visit_expr(&cx.tcx.hir().body(body_id).value);
                 }
             }
