@@ -184,4 +184,26 @@ mod tests {
             ",
         );
     }
+
+    #[test]
+    fn test_tuple_field_inference() {
+        check_ref_completion(
+            "tuple_field_inference",
+            r"
+            pub struct S;
+            impl S {
+                pub fn blah(&self) {}
+            }
+
+            struct T(S);
+
+            impl T {
+                fn foo(&self) {
+                    // FIXME: This doesn't work without the trailing `a` as `0.` is a float
+                    self.0.a<|>
+                }
+            }
+            ",
+        );
+    }
 }
