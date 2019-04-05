@@ -671,7 +671,10 @@ impl ExprCollector {
             }
             ast::ExprKind::FieldExpr(e) => {
                 let expr = self.collect_expr_opt(e.expr());
-                let name = e.name_ref().map(|nr| nr.as_name()).unwrap_or_else(Name::missing);
+                let name = match e.field_access() {
+                    Some(kind) => kind.as_name(),
+                    _ => Name::missing(),
+                };
                 self.alloc_expr(Expr::Field { expr, name }, syntax_ptr)
             }
             ast::ExprKind::TryExpr(e) => {

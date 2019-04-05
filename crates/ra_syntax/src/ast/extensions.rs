@@ -3,11 +3,8 @@
 
 use itertools::Itertools;
 
-use crate::{
-    SmolStr, SyntaxToken,
-    ast::{self, AstNode, children, child_opt},
-    SyntaxKind::*,
-};
+use crate::{SmolStr, SyntaxToken, ast::{self, AstNode, children, child_opt}, SyntaxKind::*, SyntaxElement};
+use ra_parser::SyntaxKind;
 
 impl ast::Name {
     pub fn text(&self) -> &SmolStr {
@@ -213,6 +210,33 @@ impl ast::ExprStmt {
         match self.syntax().last_child_or_token() {
             None => false,
             Some(node) => node.kind() == SEMI,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FieldKind<'a> {
+    Name(&'a ast::NameRef),
+    Index(SyntaxToken<'a>),
+}
+
+impl ast::FieldExpr {
+    pub fn index_token(&self) -> Option<SyntaxToken> {
+        self.syntax
+            .children_with_tokens()
+            // FIXME: Accepting floats here to reject them in validation later
+            .find(|c| c.kind() == SyntaxKind::INT_NUMBER || c.kind() == SyntaxKind::FLOAT_NUMBER)
+            .as_ref()
+            .and_then(SyntaxElement::as_token)
+    }
+
+    pub fn field_access(&self) -> Option<FieldKind> {
+        if let Some(nr) = self.name_ref() {
+            Some(FieldKind::Name(nr))
+        } else if let Some(tok) = self.index_token() {
+            Some(FieldKind::Index(tok))
+        } else {
+            None
         }
     }
 }
