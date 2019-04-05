@@ -1,3 +1,5 @@
+// run-pass
+
 #![deny(clippy::mut_mut, clippy::zero_ptr, clippy::cmp_nan)]
 #![allow(dead_code)]
 

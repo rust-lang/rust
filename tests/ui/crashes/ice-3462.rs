@@ -1,3 +1,5 @@
+// run-pass
+
 #![warn(clippy::all)]
 #![allow(clippy::blacklisted_name)]
 #![allow(unused)]
