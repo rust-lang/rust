@@ -1,10 +1,4 @@
-#[cfg(not(test))]
-use crate::alloc::{self, Layout};
 use crate::num::NonZeroUsize;
-#[cfg(not(test))]
-use crate::slice;
-#[cfg(not(test))]
-use crate::str;
 
 use super::waitqueue::{
     try_lock_or_false, NotifiedTcs, SpinMutex, SpinMutexGuard, WaitQueue, WaitVariable,
@@ -165,10 +159,11 @@ impl RWLock {
     pub unsafe fn destroy(&self) {}
 }
 
+// The following functions are needed by libunwind. These symbols are named
+// in pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
 const EINVAL: i32 = 22;
 
-// used by libunwind port
 #[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_rwlock_rdlock(p: *mut RWLock) -> i32 {
@@ -196,39 +191,6 @@ pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RWLock) -> i32 {
     }
     (*p).unlock();
     return 0;
-}
-
-// the following functions are also used by the libunwind port. They're
-// included here to make sure parallel codegen and LTO don't mess things up.
-#[cfg(not(test))]
-#[no_mangle]
-pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
-    if s < 0 {
-        return;
-    }
-    let buf = slice::from_raw_parts(m as *const u8, s as _);
-    if let Ok(s) = str::from_utf8(&buf[..buf.iter().position(|&b| b == 0).unwrap_or(buf.len())]) {
-        eprint!("{}", s);
-    }
-}
-
-#[cfg(not(test))]
-#[no_mangle]
-// NB. used by both libunwind and libpanic_abort
-pub unsafe extern "C" fn __rust_abort() {
-    crate::sys::abort_internal();
-}
-
-#[cfg(not(test))]
-#[no_mangle]
-pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
-    alloc::alloc(Layout::from_size_align_unchecked(size, align))
-}
-
-#[cfg(not(test))]
-#[no_mangle]
-pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
-    alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align))
 }
 
 #[cfg(test)]

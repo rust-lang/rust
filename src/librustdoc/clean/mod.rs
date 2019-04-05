@@ -2288,7 +2288,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
             }
             ty::AssociatedKind::Method => {
                 let generics = (cx.tcx.generics_of(self.def_id),
-                                &cx.tcx.predicates_of(self.def_id)).clean(cx);
+                                &cx.tcx.explicit_predicates_of(self.def_id)).clean(cx);
                 let sig = cx.tcx.fn_sig(self.def_id);
                 let mut decl = (self.def_id, sig).clean(cx);
 
@@ -2361,7 +2361,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     // are actually located on the trait/impl itself, so we need to load
                     // all of the generics from there and then look for bounds that are
                     // applied to this associated type in question.
-                    let predicates = cx.tcx.predicates_of(did);
+                    let predicates = cx.tcx.explicit_predicates_of(did);
                     let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
                     let mut bounds = generics.where_predicates.iter().filter_map(|pred| {
                         let (name, self_type, trait_, bounds) = match *pred {
@@ -3069,7 +3069,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Opaque(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the projections associated with the def_id.
-                let predicates_of = cx.tcx.predicates_of(def_id);
+                let predicates_of = cx.tcx.explicit_predicates_of(def_id);
                 let substs = cx.tcx.lift(&substs).expect("Opaque lift failed");
                 let bounds = predicates_of.instantiate(cx.tcx, substs);
                 let mut regions = vec![];

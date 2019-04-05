@@ -568,7 +568,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 (replaced.clone(), replaced.clean(self.cx))
             });
 
-        let full_generics = (&type_generics, &tcx.predicates_of(did));
+        let full_generics = (&type_generics, &tcx.explicit_predicates_of(did));
         let Generics {
             params: mut generic_params,
             ..

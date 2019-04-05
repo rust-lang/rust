@@ -429,6 +429,26 @@ pub trait TryInto<T>: Sized {
 /// When the `!` type is stablized `Infallible` and `!` will be
 /// equivalent.
 ///
+/// `TryFrom<T>` can be implemented as follows:
+///
+/// ```
+/// use std::convert::TryFrom;
+///
+/// struct SuperiorThanZero(i32);
+///
+/// impl TryFrom<i32> for SuperiorThanZero {
+///     type Error = &'static str;
+///
+///     fn try_from(value: i32) -> Result<Self, Self::Error> {
+///         if value < 0 {
+///             Err("SuperiorThanZero only accepts value superior than zero!")
+///         } else {
+///             Ok(SuperiorThanZero(value))
+///         }
+///     }
+/// }
+/// ```
+///
 /// # Examples
 ///
 /// As described, [`i32`] implements `TryFrom<i64>`:
