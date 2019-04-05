@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(async_await, futures_api)]
+#![feature(async_await)]
 
 // @has async_fn/fn.foo.html '//pre[@class="rust fn"]' 'pub async fn foo() -> Option<Foo>'
 pub async fn foo() -> Option<Foo> {

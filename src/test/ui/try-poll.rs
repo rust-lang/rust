@@ -1,7 +1,6 @@
 // compile-pass
 
 #![allow(dead_code, unused)]
-#![feature(futures_api)]
 
 use std::task::Poll;
 
