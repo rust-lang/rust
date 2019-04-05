@@ -363,7 +363,6 @@ rustc_queries! {
         query has_typeck_tables(_: DefId) -> bool {}
 
         query coherent_trait(def_id: DefId) -> () {
-            no_force
             desc { |tcx| "coherence checking all impls of trait `{}`", tcx.def_path_str(def_id) }
         }
     }
