@@ -817,7 +817,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        // Ensure the `IsNotPromotable` qualification is preserved.
+        // Ensure the `IsNotConst` qualification is preserved.
         // NOTE(eddyb) this is actually unnecessary right now, as
         // we never replace the local's qualif, but we might in
         // the future, and so it serves to catch changes that unset
