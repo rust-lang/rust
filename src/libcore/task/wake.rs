@@ -215,7 +215,7 @@ impl Waker {
         // Don't call `drop` -- the waker will be consumed by `wake`.
         crate::mem::forget(self);
 
-        // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+        // SAFETY: This is safe because `Waker::from_raw` is the only way
         // to initialize `wake` and `data` requiring the user to acknowledge
         // that the contract of `RawWaker` is upheld.
         unsafe { (wake)(data) };
@@ -253,7 +253,7 @@ impl Waker {
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
     /// Therefore this method is unsafe.
     #[inline]
-    pub unsafe fn new_unchecked(waker: RawWaker) -> Waker {
+    pub unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker {
             waker,
         }
@@ -264,7 +264,7 @@ impl Clone for Waker {
     #[inline]
     fn clone(&self) -> Self {
         Waker {
-            // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+            // SAFETY: This is safe because `Waker::from_raw` is the only way
             // to initialize `clone` and `data` requiring the user to acknowledge
             // that the contract of [`RawWaker`] is upheld.
             waker: unsafe { (self.waker.vtable.clone)(self.waker.data) },
@@ -275,7 +275,7 @@ impl Clone for Waker {
 impl Drop for Waker {
     #[inline]
     fn drop(&mut self) {
-        // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+        // SAFETY: This is safe because `Waker::from_raw` is the only way
         // to initialize `drop` and `data` requiring the user to acknowledge
         // that the contract of `RawWaker` is upheld.
         unsafe { (self.waker.vtable.drop)(self.waker.data) }

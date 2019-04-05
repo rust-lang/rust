@@ -30,7 +30,7 @@ pub trait ArcWake {
         let ptr = Arc::into_raw(wake) as *const ();
 
         unsafe {
-            Waker::new_unchecked(RawWaker::new(ptr, waker_vtable!(Self)))
+            Waker::from_raw(RawWaker::new(ptr, waker_vtable!(Self)))
         }
     }
 }
