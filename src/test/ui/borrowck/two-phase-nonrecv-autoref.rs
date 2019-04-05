@@ -67,9 +67,9 @@ fn overloaded_call_traits() {
     }
     fn twice_ten_so<F: FnOnce(i32) -> i32>(f: Box<F>) {
         f(f(10));
-        //[nll]~^   ERROR use of moved value: `*f`
-        //[g2p]~^^  ERROR use of moved value: `*f`
-        //[ast]~^^^ ERROR use of moved value: `*f`
+        //[nll]~^   ERROR use of moved value: `f`
+        //[g2p]~^^  ERROR use of moved value: `f`
+        //[ast]~^^^ ERROR use of moved value: `f`
     }
 
     fn twice_ten_om(f: &mut FnMut(i32) -> i32) {
@@ -83,13 +83,9 @@ fn overloaded_call_traits() {
     }
     fn twice_ten_oo(f: Box<FnOnce(i32) -> i32>) {
         f(f(10));
-        //[nll]~^          ERROR cannot move a value of type
-        //[nll]~^^         ERROR cannot move a value of type
-        //[nll]~^^^        ERROR use of moved value: `*f`
-        //[g2p]~^^^^       ERROR cannot move a value of type
-        //[g2p]~^^^^^      ERROR cannot move a value of type
-        //[g2p]~^^^^^^     ERROR use of moved value: `*f`
-        //[ast]~^^^^^^^    ERROR use of moved value: `*f`
+        //[nll]~^   ERROR use of moved value: `f`
+        //[g2p]~^^  ERROR use of moved value: `f`
+        //[ast]~^^^ ERROR use of moved value: `f`
     }
 
     twice_ten_sm(&mut |x| x + 1);
