@@ -6,11 +6,12 @@
 //
 
 use crate::utils::{in_macro, span_lint};
+use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast;
+use syntax::ast::{self, MetaItem, MetaItemKind};
 use syntax::attr;
 use syntax::source_map::Span;
 
@@ -52,6 +53,20 @@ impl MissingDoc {
         *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
+    fn has_include(meta: Option<MetaItem>) -> bool {
+        if_chain! {
+            if let Some(meta) = meta;
+            if let MetaItemKind::List(list) = meta.node;
+            if let Some(meta) = list.get(0);
+            if let Some(name) = meta.ident();
+            then {
+                name.as_str() == "include"
+            } else {
+                false
+            }
+        }
+    }
+
     fn check_missing_docs_attrs(
         &self,
         cx: &LateContext<'_, '_>,
@@ -74,7 +89,9 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name() == "doc");
+        let has_doc = attrs
+            .iter()
+            .any(|a| a.check_name("doc") && (a.is_value_str() || Self::has_include(a.meta())));
         if !has_doc {
             span_lint(
                 cx,

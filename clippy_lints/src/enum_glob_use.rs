@@ -39,9 +39,10 @@ impl LintPass for EnumGlobUse {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EnumGlobUse {
     fn check_mod(&mut self, cx: &LateContext<'a, 'tcx>, m: &'tcx Mod, _: Span, _: HirId) {
+        let map = cx.tcx.hir();
         // only check top level `use` statements
         for item in &m.item_ids {
-            self.lint_item(cx, cx.tcx.hir().expect_item(item.id));
+            self.lint_item(cx, map.expect_item(map.hir_to_node_id(item.id)));
         }
     }
 }

@@ -4,6 +4,7 @@ use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Vi
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
+use rustc::ty::DefIdTree;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::keywords::SelfUpper;
@@ -232,8 +233,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         if path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
             if self.item_path.def == path.def {
                 span_use_self_lint(self.cx, path);
-            } else if let Def::StructCtor(ctor_did, CtorKind::Fn) = path.def {
-                if self.item_path.def.opt_def_id() == self.cx.tcx.parent_def_id(ctor_did) {
+            } else if let Def::Ctor(ctor_did, def::CtorOf::Struct, CtorKind::Fn) = path.def {
+                if self.item_path.def.opt_def_id() == self.cx.tcx.parent(ctor_did) {
                     span_use_self_lint(self.cx, path);
                 }
             }

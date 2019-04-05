@@ -12,7 +12,7 @@ use rustc::mir::{
     visit::{MutatingUseContext, PlaceContext, Visitor},
     TerminatorKind,
 };
-use rustc::ty;
+use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use std::convert::TryFrom;
@@ -225,7 +225,7 @@ fn is_call_with_ref_arg<'tcx>(
     cx: &LateContext<'_, 'tcx>,
     mir: &'tcx mir::Mir<'tcx>,
     kind: &'tcx mir::TerminatorKind<'tcx>,
-) -> Option<(def_id::DefId, mir::Local, ty::Ty<'tcx>, Option<&'tcx mir::Place<'tcx>>)> {
+) -> Option<(def_id::DefId, mir::Local, Ty<'tcx>, Option<&'tcx mir::Place<'tcx>>)> {
     if_chain! {
         if let TerminatorKind::Call { func, args, destination, .. } = kind;
         if args.len() == 1;
@@ -299,7 +299,7 @@ fn base_local_and_movability<'tcx>(
                 place = &proj.base;
                 deref = deref || matches!(proj.elem, mir::ProjectionElem::Deref);
                 if !field && matches!(proj.elem, mir::ProjectionElem::Field(..)) {
-                    field = has_drop(cx, place.ty(&mir.local_decls, cx.tcx).to_ty(cx.tcx));
+                    field = has_drop(cx, place.ty(&mir.local_decls, cx.tcx).ty);
                 }
             },
             _ => return None,

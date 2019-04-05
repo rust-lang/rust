@@ -516,11 +516,11 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
             for pat in &arm.pats {
                 if let PatKind::Path(ref path) = pat.deref().node {
                     if let QPath::Resolved(_, p) = path {
-                        missing_variants.retain(|e| e.did != p.def.def_id());
+                        missing_variants.retain(|e| e.ctor_def_id != Some(p.def.def_id()));
                     }
                 } else if let PatKind::TupleStruct(ref path, ..) = pat.deref().node {
                     if let QPath::Resolved(_, p) = path {
-                        missing_variants.retain(|e| e.did != p.def.def_id());
+                        missing_variants.retain(|e| e.ctor_def_id != Some(p.def.def_id()));
                     }
                 }
             }
@@ -539,7 +539,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
                     String::new()
                 };
                 // This path assumes that the enum type is imported into scope.
-                format!("{}{}{}", ident_str, cx.tcx.item_path_str(v.did), suffix)
+                format!("{}{}{}", ident_str, cx.tcx.def_path_str(v.def_id), suffix)
             })
             .collect();
 

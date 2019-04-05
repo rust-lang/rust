@@ -14,7 +14,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use semver::Version;
-use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use syntax::source_map::Span;
 
 declare_clippy_lint! {
@@ -208,22 +208,24 @@ impl LintPass for AttrPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
-            match &*attr.name().as_str() {
-                "allow" | "warn" | "deny" | "forbid" => {
-                    check_clippy_lint_names(cx, items);
-                },
-                _ => {},
-            }
-            if items.is_empty() || attr.name() != "deprecated" {
-                return;
-            }
-            for item in items {
-                if_chain! {
-                    if let NestedMetaItemKind::MetaItem(mi) = &item.node;
-                    if let MetaItemKind::NameValue(lit) = &mi.node;
-                    if mi.name() == "since";
-                    then {
-                        check_semver(cx, item.span, lit);
+            if let Some(ident) = attr.ident() {
+                match &*ident.as_str() {
+                    "allow" | "warn" | "deny" | "forbid" => {
+                        check_clippy_lint_names(cx, items);
+                    },
+                    _ => {},
+                }
+                if items.is_empty() || !attr.check_name("deprecated") {
+                    return;
+                }
+                for item in items {
+                    if_chain! {
+                        if let NestedMetaItem::MetaItem(mi) = &item;
+                        if let MetaItemKind::NameValue(lit) = &mi.node;
+                        if mi.check_name("since");
+                        then {
+                            check_semver(cx, item.span(), lit);
+                        }
                     }
                 }
             }
@@ -236,55 +238,57 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
         }
         match item.node {
             ItemKind::ExternCrate(..) | ItemKind::Use(..) => {
-                let skip_unused_imports = item.attrs.iter().any(|attr| attr.name() == "macro_use");
+                let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name("macro_use"));
 
                 for attr in &item.attrs {
                     if let Some(lint_list) = &attr.meta_item_list() {
-                        match &*attr.name().as_str() {
-                            "allow" | "warn" | "deny" | "forbid" => {
-                                // whitelist `unused_imports` and `deprecated` for `use` items
-                                // and `unused_imports` for `extern crate` items with `macro_use`
-                                for lint in lint_list {
-                                    match item.node {
-                                        ItemKind::Use(..) => {
-                                            if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                                return;
-                                            }
-                                        },
-                                        ItemKind::ExternCrate(..) => {
-                                            if is_word(lint, "unused_imports") && skip_unused_imports {
-                                                return;
-                                            }
-                                            if is_word(lint, "unused_extern_crates") {
-                                                return;
-                                            }
-                                        },
-                                        _ => {},
-                                    }
-                                }
-                                let line_span = last_line_of_span(cx, attr.span);
-
-                                if let Some(mut sugg) = snippet_opt(cx, line_span) {
-                                    if sugg.contains("#[") {
-                                        span_lint_and_then(
-                                            cx,
-                                            USELESS_ATTRIBUTE,
-                                            line_span,
-                                            "useless lint attribute",
-                                            |db| {
-                                                sugg = sugg.replacen("#[", "#![", 1);
-                                                db.span_suggestion(
-                                                    line_span,
-                                                    "if you just forgot a `!`, use",
-                                                    sugg,
-                                                    Applicability::MachineApplicable,
-                                                );
+                        if let Some(ident) = attr.ident() {
+                            match &*ident.as_str() {
+                                "allow" | "warn" | "deny" | "forbid" => {
+                                    // whitelist `unused_imports` and `deprecated` for `use` items
+                                    // and `unused_imports` for `extern crate` items with `macro_use`
+                                    for lint in lint_list {
+                                        match item.node {
+                                            ItemKind::Use(..) => {
+                                                if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
+                                                    return;
+                                                }
                                             },
-                                        );
+                                            ItemKind::ExternCrate(..) => {
+                                                if is_word(lint, "unused_imports") && skip_unused_imports {
+                                                    return;
+                                                }
+                                                if is_word(lint, "unused_extern_crates") {
+                                                    return;
+                                                }
+                                            },
+                                            _ => {},
+                                        }
                                     }
-                                }
-                            },
-                            _ => {},
+                                    let line_span = last_line_of_span(cx, attr.span);
+
+                                    if let Some(mut sugg) = snippet_opt(cx, line_span) {
+                                        if sugg.contains("#[") {
+                                            span_lint_and_then(
+                                                cx,
+                                                USELESS_ATTRIBUTE,
+                                                line_span,
+                                                "useless lint attribute",
+                                                |db| {
+                                                    sugg = sugg.replacen("#[", "#![", 1);
+                                                    db.span_suggestion(
+                                                        line_span,
+                                                        "if you just forgot a `!`, use",
+                                                        sugg,
+                                                        Applicability::MachineApplicable,
+                                                    );
+                                                },
+                                            );
+                                        }
+                                    }
+                                },
+                                _ => {},
+                            }
                         }
                     }
                 }
@@ -311,10 +315,11 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
         if_chain! {
-            if let Some(word) = lint.word();
-            if let Some(tool_name) = word.is_scoped();
+            if let Some(meta_item) = lint.meta_item();
+            if meta_item.path.segments.len() > 1;
+            if let tool_name = meta_item.path.segments[0].ident;
             if tool_name.as_str() == "clippy";
-            let name = word.name();
+            let name = meta_item.path.segments.last().unwrap().ident.name;
             if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(
                 &name.as_str(),
                 Some(tool_name.as_str()),
@@ -323,7 +328,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                 span_lint_and_then(
                     cx,
                     UNKNOWN_CLIPPY_LINTS,
-                    lint.span,
+                    lint.span(),
                     &format!("unknown clippy lint: clippy::{}", name),
                     |db| {
                         if name.as_str().chars().any(char::is_uppercase) {
@@ -337,7 +342,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 CheckLintNameResult::NoLint(None) => (),
                                 _ => {
                                     db.span_suggestion(
-                                        lint.span,
+                                        lint.span(),
                                         "lowercase the lint name",
                                         name_lower,
                                         Applicability::MaybeIncorrect,
@@ -352,7 +357,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     }
 }
 
-fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
+fn is_relevant_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &Item) -> bool {
     if let ItemKind::Fn(_, _, _, eid) = item.node {
         is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value)
     } else {
@@ -360,14 +365,14 @@ fn is_relevant_item(tcx: TyCtxt<'_, '_, '_>, item: &Item) -> bool {
     }
 }
 
-fn is_relevant_impl(tcx: TyCtxt<'_, '_, '_>, item: &ImplItem) -> bool {
+fn is_relevant_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &ImplItem) -> bool {
     match item.node {
         ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
+fn is_relevant_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
@@ -377,7 +382,7 @@ fn is_relevant_trait(tcx: TyCtxt<'_, '_, '_>, item: &TraitItem) -> bool {
     }
 }
 
-fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
+fn is_relevant_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match &stmt.node {
             StmtKind::Local(_) => true,
@@ -389,7 +394,7 @@ fn is_relevant_block(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, blo
     }
 }
 
-fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
+fn is_relevant_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
     match &expr.node {
         ExprKind::Block(block, _) => is_relevant_block(tcx, tables, block),
         ExprKind::Ret(Some(e)) => is_relevant_expr(tcx, tables, e),
@@ -443,7 +448,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
         }
 
         if let Some(values) = attr.meta_item_list() {
-            if values.len() != 1 || attr.name() != "inline" {
+            if values.len() != 1 || !attr.check_name("inline") {
                 continue;
             }
             if is_word(&values[0], "always") {
@@ -476,8 +481,8 @@ fn check_semver(cx: &LateContext<'_, '_>, span: Span, lit: &Lit) {
 }
 
 fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
-    if let NestedMetaItemKind::MetaItem(mi) = &nmi.node {
-        mi.is_word() && mi.name() == expected
+    if let NestedMetaItem::MetaItem(mi) = &nmi {
+        mi.is_word() && mi.check_name(expected)
     } else {
         false
     }
@@ -514,15 +519,16 @@ impl EarlyLintPass for CfgAttrPass {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         if_chain! {
             // check cfg_attr
-            if attr.name() == "cfg_attr";
+            if attr.check_name("cfg_attr");
             if let Some(items) = attr.meta_item_list();
             if items.len() == 2;
             // check for `rustfmt`
             if let Some(feature_item) = items[0].meta_item();
-            if feature_item.name() == "rustfmt";
+            if feature_item.check_name("rustfmt");
             // check for `rustfmt_skip` and `rustfmt::skip`
             if let Some(skip_item) = &items[1].meta_item();
-            if skip_item.name() == "rustfmt_skip" || skip_item.name() == "skip";
+            if skip_item.check_name("rustfmt_skip") ||
+                skip_item.path.segments.last().expect("empty path in attribute").ident.name == "skip";
             // Only lint outer attributes, because custom inner attributes are unstable
             // Tracking issue: https://github.com/rust-lang/rust/issues/54726
             if let AttrStyle::Outer = attr.style;

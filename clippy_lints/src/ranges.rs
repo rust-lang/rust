@@ -157,25 +157,30 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }) = higher::range(cx, expr);
             if let Some(y) = y_plus_one(end);
             then {
+                let span = expr.span
+                    .ctxt()
+                    .outer()
+                    .expn_info()
+                    .map_or(expr.span, |info| info.call_site);
                 span_lint_and_then(
                     cx,
                     RANGE_PLUS_ONE,
-                    expr.span,
+                    span,
                     "an inclusive range would be more readable",
                     |db| {
                         let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").to_string());
                         let end = Sugg::hir(cx, y, "y");
-                        if let Some(is_wrapped) = &snippet_opt(cx, expr.span) {
+                        if let Some(is_wrapped) = &snippet_opt(cx, span) {
                             if is_wrapped.starts_with('(') && is_wrapped.ends_with(')') {
                                 db.span_suggestion(
-                                    expr.span,
+                                    span,
                                     "use",
                                     format!("({}..={})", start, end),
                                     Applicability::MaybeIncorrect,
                                 );
                             } else {
                                 db.span_suggestion(
-                                    expr.span,
+                                    span,
                                     "use",
                                     format!("{}..={}", start, end),
                                     Applicability::MachineApplicable, // snippet

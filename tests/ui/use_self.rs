@@ -239,6 +239,7 @@ mod nesting {
     struct Foo {}
     impl Foo {
         fn foo() {
+            #[allow(unused_imports)]
             use self::Foo; // Can't use Self here
             struct Bar {
                 foo: Foo, // Foo != Self

@@ -115,7 +115,7 @@ where all the lint code is. We are going to call the file
 `clippy_lints/src/foo_functions.rs` and import some initial things we need:
 
 ```rust
-use rustc::lint::{LintArray, LintPass};
+use rustc::lint::{LintArray, LintPass, EarlyLintPass};
 use rustc::{declare_tool_lint, lint_array};
 ```
 
@@ -161,6 +161,8 @@ impl LintPass for FooFunctionsPass {
         "FooFunctions"
     }
 }
+
+impl EarlyLintPass for FooFunctionsPass {}
 ```
 
 Don't worry about the `name` method here. As long as it includes the name of the

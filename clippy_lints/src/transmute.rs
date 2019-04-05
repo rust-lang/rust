@@ -347,7 +347,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                     |db| {
                                         let arg = sugg::Sugg::hir(cx, &args[0], "..");
                                         let arg = if let ty::Int(_) = from_ty.sty {
-                                            arg.as_ty(ty::Uint(ast::UintTy::U32))
+                                            arg.as_ty(ast::UintTy::U32)
                                         } else {
                                             arg
                                         };
