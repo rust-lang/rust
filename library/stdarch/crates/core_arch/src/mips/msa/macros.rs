@@ -1,5 +1,6 @@
 //! Utility macros.
 
+//immediate value: -4096:4088
 macro_rules! constify_imm_s13 {
     ($imm_s13:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -28,13 +29,13 @@ macro_rules! constify_imm_s13 {
             168 => $expand!(168),
             176 => $expand!(176),
             184 => $expand!(184),
-            192 => $expand!(192), 
-            200 => $expand!(200), 
-            208 => $expand!(208), 
-            216 => $expand!(216), 
-            224 => $expand!(224), 
-            232 => $expand!(232), 
-            240 => $expand!(240), 
+            192 => $expand!(192),
+            200 => $expand!(200),
+            208 => $expand!(208),
+            216 => $expand!(216),
+            224 => $expand!(224),
+            232 => $expand!(232),
+            240 => $expand!(240),
             248 => $expand!(248),
             256 => $expand!(256),
             264 => $expand!(264),
@@ -1027,11 +1028,12 @@ macro_rules! constify_imm_s13 {
             8168 => $expand!(-24),
             8176 => $expand!(-16),
             8184 => $expand!(-8),
-               _ => $expand!(4088)
-        }   
-    }; 
+            _ => $expand!(4088),
+        }
+    };
 }
 
+//immediate value: -2048:2044
 macro_rules! constify_imm_s12 {
     ($imm_s12:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -2058,11 +2060,12 @@ macro_rules! constify_imm_s12 {
             4084 => $expand!(-12),
             4088 => $expand!(-8),
             4092 => $expand!(-4),
-            _ => $expand!(2044)
-        } 
-    }; 
+            _ => $expand!(2044),
+        }
+    };
 }
 
+//immediate value: -1024:1022
 macro_rules! constify_imm_s11 {
     ($imm_s11:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -3090,12 +3093,12 @@ macro_rules! constify_imm_s11 {
             2042 => $expand!(-6),
             2044 => $expand!(-4),
             2046 => $expand!(-2),
-            _ => $expand!(1022)
+            _ => $expand!(1022),
         }
-    }; 
+    };
 }
 
-
+//immediate value: -512:511
 macro_rules! constify_imm_s10 {
     ($imm_s10:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -3124,13 +3127,13 @@ macro_rules! constify_imm_s10 {
             21 => $expand!(21),
             22 => $expand!(22),
             23 => $expand!(23),
-            24 => $expand!(24), 
-            25 => $expand!(25), 
-            26 => $expand!(26), 
-            27 => $expand!(27), 
-            28 => $expand!(28), 
-            29 => $expand!(29), 
-            30 => $expand!(30), 
+            24 => $expand!(24),
+            25 => $expand!(25),
+            26 => $expand!(26),
+            27 => $expand!(27),
+            28 => $expand!(28),
+            29 => $expand!(29),
+            30 => $expand!(30),
             31 => $expand!(31),
             32 => $expand!(32),
             33 => $expand!(33),
@@ -4123,12 +4126,12 @@ macro_rules! constify_imm_s10 {
             1021 => $expand!(-3),
             1022 => $expand!(-2),
             1023 => $expand!(-1),
-            _ => $expand!(511)
+            _ => $expand!(511),
         }
-    }; 
+    };
 }
 
-
+//immediate value: 0:63
 macro_rules! constify_imm6 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -4157,13 +4160,13 @@ macro_rules! constify_imm6 {
             21 => $expand!(21),
             22 => $expand!(22),
             23 => $expand!(23),
-            24 => $expand!(24), 
-            25 => $expand!(25), 
-            26 => $expand!(26), 
-            27 => $expand!(27), 
-            28 => $expand!(28), 
-            29 => $expand!(29), 
-            30 => $expand!(30), 
+            24 => $expand!(24),
+            25 => $expand!(25),
+            26 => $expand!(26),
+            27 => $expand!(27),
+            28 => $expand!(28),
+            29 => $expand!(29),
+            30 => $expand!(30),
             31 => $expand!(31),
             32 => $expand!(32),
             33 => $expand!(33),
@@ -4197,11 +4200,11 @@ macro_rules! constify_imm6 {
             61 => $expand!(61),
             62 => $expand!(62),
             _ => $expand!(63),
- 
-        } 
-    }; 
-} 
+        }
+    };
+}
 
+//immediate value: 0:31
 macro_rules! constify_imm5 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -4242,11 +4245,12 @@ macro_rules! constify_imm5 {
     };
 }
 
+//immediate value: -16:15
 macro_rules! constify_imm_s5 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
-        match ($imm8) & 0b1_1111 { 
-	        0 => $expand!(0),
+        match ($imm8) & 0b1_1111 {
+            0 => $expand!(0),
             1 => $expand!(1),
             2 => $expand!(2),
             3 => $expand!(3),
@@ -4267,22 +4271,22 @@ macro_rules! constify_imm_s5 {
             19 => $expand!(-13),
             20 => $expand!(-12),
             21 => $expand!(-11),
-            22  => $expand!(-10),
-            23  => $expand!(-9),
-            24  => $expand!(-8),
-            25  => $expand!(-7), 
-            26  => $expand!(-6), 
-            27 => $expand!(-5), 
-            28 => $expand!(-4), 
-            29 => $expand!(-3), 
+            22 => $expand!(-10),
+            23 => $expand!(-9),
+            24 => $expand!(-8),
+            25 => $expand!(-7),
+            26 => $expand!(-6),
+            27 => $expand!(-5),
+            28 => $expand!(-4),
+            29 => $expand!(-3),
             30 => $expand!(-2),
             31 => $expand!(-1),
-            _ => $expand!(15)
-
+            _ => $expand!(15),
         }
     };
 }
 
+//immediate value: 0:15
 macro_rules! constify_imm4 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -4307,6 +4311,7 @@ macro_rules! constify_imm4 {
     };
 }
 
+//immediate value: 0:7
 macro_rules! constify_imm3 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -4323,6 +4328,7 @@ macro_rules! constify_imm3 {
     };
 }
 
+//immediate value: 0:3
 macro_rules! constify_imm2 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
@@ -4335,13 +4341,13 @@ macro_rules! constify_imm2 {
     };
 }
 
+//immediate value: 0:1
 macro_rules! constify_imm1 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]
         match ($imm8) & 0b1 {
             0 => $expand!(0),
-            _ => $expand!(1)
+            _ => $expand!(1),
         }
     };
 }
-
