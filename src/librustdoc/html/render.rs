@@ -1358,7 +1358,8 @@ fn write_minify_replacer<W: Write>(
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) where
+fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
+where
     F: FnMut(&OsStr),
 {
     // make it relative, if possible
@@ -1470,11 +1471,11 @@ impl<'a> SourceCollector<'a> {
         let mut href = String::new();
         clean_srcpath(&self.scx.src_root, &p, false, |component| {
             cur.push(component);
-            fs::create_dir_all(&cur).unwrap();
             root_path.push_str("../");
             href.push_str(&component.to_string_lossy());
             href.push('/');
         });
+        fs::create_dir_all(&cur)?;
         let mut fname = p.file_name()
                          .expect("source has no filename")
                          .to_os_string();
@@ -1483,7 +1484,7 @@ impl<'a> SourceCollector<'a> {
         href.push_str(&fname.to_string_lossy());
 
         let mut w = BufWriter::new(File::create(&cur)?);
-        let title = format!("{} -- source", cur.file_name().unwrap()
+        let title = format!("{} -- source", cur.file_name().expect("failed to get file name")
                                                .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
         let page = layout::Page {
