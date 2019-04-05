@@ -11,13 +11,11 @@ error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:69:11
    |
 LL |     fn twice_ten_so<F: FnOnce(i32) -> i32>(f: Box<F>) {
-   |                     - consider adding a `Copy` constraint to this type argument
+   |                                            - move occurs because `f` has type `std::boxed::Box<F>`, which does not implement the `Copy` trait
 LL |         f(f(10));
    |         - ^ value used here after move
    |         |
    |         value moved here
-   |
-   = note: move occurs because `f` has type `std::boxed::Box<F>`, which does not implement the `Copy` trait
 
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
   --> $DIR/two-phase-nonrecv-autoref.rs:76:11
@@ -31,12 +29,12 @@ LL |         f(f(10));
 error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:85:11
    |
+LL |     fn twice_ten_oo(f: Box<FnOnce(i32) -> i32>) {
+   |                     - move occurs because `f` has type `std::boxed::Box<dyn std::ops::FnOnce(i32) -> i32>`, which does not implement the `Copy` trait
 LL |         f(f(10));
    |         - ^ value used here after move
    |         |
    |         value moved here
-   |
-   = note: move occurs because `f` has type `std::boxed::Box<dyn std::ops::FnOnce(i32) -> i32>`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `a` as immutable because it is also borrowed as mutable
   --> $DIR/two-phase-nonrecv-autoref.rs:125:27
