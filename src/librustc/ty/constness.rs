@@ -95,9 +95,16 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         }
     }
 
+    fn const_fn_is_allowed_fn_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> bool {
+        tcx.is_const_fn(def_id) &&
+            tcx.lookup_stability(def_id)
+                .map(|stab| stab.allow_const_fn_ptr).unwrap_or(false)
+    }
+
     *providers = Providers {
         is_const_fn_raw,
         is_promotable_const_fn,
+        const_fn_is_allowed_fn_ptr,
         ..*providers
     };
 }
