@@ -81,13 +81,11 @@ impl NestedMetaItem {
     }
 
     /// Returns `true` if this list item is a MetaItem with a name of `name`.
-    pub fn check_name(&self, name: &str) -> bool {
+    pub fn check_name<T>(&self, name: T) -> bool
+    where
+        Path: PartialEq<T>,
+    {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
-    }
-
-    /// Returns `true` if this list item is a MetaItem with a name of `name`.
-    pub fn check_name_symbol(&self, name: Symbol) -> bool {
-        self.meta_item().map_or(false, |meta_item| meta_item.check_name_symbol(name))
     }
 
     /// For a single-segment meta-item returns its name, otherwise returns `None`.
@@ -156,19 +154,10 @@ impl Attribute {
     /// attribute is marked as used.
     ///
     /// To check the attribute name without marking it used, use the `path` field directly.
-    pub fn check_name(&self, name: &str) -> bool {
-        let matches = self.path == name;
-        if matches {
-            mark_used(self);
-        }
-        matches
-    }
-
-    /// Returns `true` if the attribute's path matches the argument. If it matches, then the
-    /// attribute is marked as used.
-    ///
-    /// To check the attribute name without marking it used, use the `path` field directly.
-    pub fn check_name_symbol(&self, name: Symbol) -> bool {
+    pub fn check_name<T>(&self, name: T) -> bool
+    where
+        Path: PartialEq<T>,
+    {
         let matches = self.path == name;
         if matches {
             mark_used(self);
@@ -261,11 +250,10 @@ impl MetaItem {
         }
     }
 
-    pub fn check_name(&self, name: &str) -> bool {
-        self.path == name
-    }
-
-    pub fn check_name_symbol(&self, name: Symbol) -> bool {
+    pub fn check_name<T>(&self, name: T) -> bool
+    where
+        Path: PartialEq<T>,
+    {
         self.path == name
     }
 
