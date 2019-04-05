@@ -101,8 +101,6 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
 use rustc_mir::monomorphize::Instance;
 
-use syntax_pos::symbol::{Symbol, InternedString};
-
 use log::debug;
 
 use std::fmt::{self, Write};
@@ -221,13 +219,13 @@ fn get_symbol_hash<'a, 'tcx>(
     hasher.finish()
 }
 
-fn symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName {
+fn symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
     ty::SymbolName {
         name: compute_symbol_name(tcx, instance),
     }
 }
 
-fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> InternedString {
+fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> &'tcx str {
     let def_id = instance.def_id();
     let substs = instance.substs;
 
@@ -238,13 +236,11 @@ fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) ->
     if def_id.is_local() {
         if tcx.plugin_registrar_fn(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return Symbol::intern(&tcx.sess.generate_plugin_registrar_symbol(disambiguator))
-                .as_interned_str();
+            return tcx.arena.alloc_str(&tcx.sess.generate_plugin_registrar_symbol(disambiguator));
         }
         if tcx.proc_macro_decls_static(LOCAL_CRATE) == Some(def_id) {
             let disambiguator = tcx.sess.local_crate_disambiguator();
-            return Symbol::intern(&tcx.sess.generate_proc_macro_decls_symbol(disambiguator))
-                .as_interned_str();
+            return tcx.arena.alloc_str(&tcx.sess.generate_proc_macro_decls_symbol(disambiguator));
         }
     }
 
@@ -261,20 +257,24 @@ fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) ->
     let attrs = tcx.codegen_fn_attrs(def_id);
     if is_foreign {
         if let Some(name) = attrs.link_name {
-            return name.as_interned_str();
+            // FIXME: Return the interned &str instead of allocating again
+            return tcx.arena.alloc_str(&name.as_str());
         }
         // Don't mangle foreign items.
-        return tcx.item_name(def_id);
+        // FIXME: Return the interned &str instead of allocating again
+        return tcx.arena.alloc_str(&tcx.item_name(def_id).as_str());
     }
 
     if let Some(name) = &attrs.export_name {
         // Use provided name
-        return name.as_interned_str();
+        // FIXME: Return the interned &str instead of allocating again
+        return tcx.arena.alloc_str(&name.as_str());
     }
 
     if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
         // Don't mangle
-        return tcx.item_name(def_id);
+        // FIXME: Return the interned &str instead of allocating again
+        return tcx.arena.alloc_str(&tcx.item_name(def_id).as_str());
     }
 
     // We want to compute the "type" of this item. Unfortunately, some
@@ -322,7 +322,7 @@ fn compute_symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) ->
         let _ = printer.write_str("{{vtable-shim}}");
     }
 
-    Symbol::intern(&printer.path.finish(hash)).as_interned_str()
+    tcx.arena.alloc_str(&printer.path.finish(hash))
 }
 
 // Follow C++ namespace-mangling style, see

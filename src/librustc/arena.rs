@@ -1,5 +1,6 @@
 use arena::{TypedArena, DroplessArena};
 use std::mem;
+use std::str;
 use std::ptr;
 use std::slice;
 use std::cell::RefCell;
@@ -99,6 +100,18 @@ impl<'tcx> Arena<'tcx> {
         match <T as ArenaField<'tcx>>::arena(self) {
             Some(arena) => arena.alloc(value),
             None => unsafe { self.drop.alloc(value) },
+        }
+    }
+
+    #[inline]
+    pub fn alloc_slice<T: Copy>(&self, value: &[T]) -> &mut [T] {
+        self.dropless.alloc_slice(value)
+    }
+
+    #[inline]
+    pub fn alloc_str(&self, value: &str) -> &str {
+        unsafe {
+            str::from_utf8_unchecked(self.alloc_slice(value.as_bytes()))
         }
     }
 

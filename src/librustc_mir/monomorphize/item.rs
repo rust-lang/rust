@@ -10,7 +10,6 @@ use syntax::attr::InlineAttr;
 use std::fmt::{self, Write};
 use std::iter;
 use rustc::mir::mono::Linkage;
-use syntax_pos::symbol::Symbol;
 use syntax::source_map::Span;
 pub use rustc::mir::mono::MonoItem;
 
@@ -52,7 +51,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
         }
     }
 
-    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName {
+    fn symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::SymbolName<'tcx> {
         match *self.as_mono_item() {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => {
@@ -60,9 +59,7 @@ pub trait MonoItemExt<'a, 'tcx>: fmt::Debug {
             }
             MonoItem::GlobalAsm(hir_id) => {
                 let def_id = tcx.hir().local_def_id_from_hir_id(hir_id);
-                ty::SymbolName {
-                    name: Symbol::intern(&format!("global_asm_{:?}", def_id)).as_interned_str()
-                }
+                ty::SymbolName::new(tcx, &format!("global_asm_{:?}", def_id))
             }
         }
     }

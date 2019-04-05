@@ -195,7 +195,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  .collect();
 
     if tcx.entry_fn(LOCAL_CRATE).is_some() {
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new("main"));
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::from_static("main"));
 
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
@@ -203,7 +203,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if tcx.sess.allocator_kind.get().is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
             symbols.push((exported_symbol, SymbolExportLevel::Rust));
         }
@@ -219,14 +219,14 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ];
 
         symbols.extend(PROFILER_WEAK_SYMBOLS.iter().map(|sym| {
-            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(sym));
+            let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, sym));
             (exported_symbol, SymbolExportLevel::C)
         }));
     }
 
     if tcx.sess.crate_types.borrow().contains(&config::CrateType::Dylib) {
         let symbol_name = metadata_symbol_name(tcx);
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
+        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
         symbols.push((exported_symbol, SymbolExportLevel::Rust));
     }

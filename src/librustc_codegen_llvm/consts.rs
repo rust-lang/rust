@@ -14,7 +14,6 @@ use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
 use rustc::hir::Node;
 use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
-use syntax_pos::symbol::LocalInternedString;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
 
@@ -100,7 +99,7 @@ fn check_and_apply_linkage(
     cx: &CodegenCx<'ll, 'tcx>,
     attrs: &CodegenFnAttrs,
     ty: Ty<'tcx>,
-    sym: LocalInternedString,
+    sym: &str,
     span: Option<Span>
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);

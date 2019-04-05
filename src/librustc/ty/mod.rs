@@ -44,7 +44,7 @@ use std::{mem, ptr};
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
+use syntax::symbol::{keywords, Symbol, InternedString};
 use syntax_pos::Span;
 
 use smallvec;
@@ -3388,36 +3388,38 @@ pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
-pub struct SymbolName {
-    // FIXME: we don't rely on interning or equality here - better have
-    // this be a `&'tcx str`.
-    pub name: InternedString
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, HashStable)]
+pub struct SymbolName<'tcx> {
+    pub name: &'tcx str,
 }
 
-impl_stable_hash_for!(struct self::SymbolName {
-    name
-});
+impl serialize::UseSpecializedDecodable for SymbolName<'_> {}
 
-impl SymbolName {
-    pub fn new(name: &str) -> SymbolName {
+impl SymbolName<'tcx> {
+    pub fn new(tcx: TyCtxt<'_, 'tcx, '_>, name: &str) -> SymbolName<'tcx> {
         SymbolName {
-            name: Symbol::intern(name).as_interned_str()
+            name: tcx.arena.alloc_str(name),
         }
     }
 
-    pub fn as_str(&self) -> LocalInternedString {
-        self.name.as_str()
+    pub fn from_static(name: &'static str) -> SymbolName<'tcx> {
+        SymbolName {
+            name,
+        }
+    }
+
+    pub fn as_str(&self) -> &'tcx str {
+        self.name
     }
 }
 
-impl fmt::Display for SymbolName {
+impl fmt::Display for SymbolName<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
     }
 }
 
-impl fmt::Debug for SymbolName {
+impl fmt::Debug for SymbolName<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.name, fmt)
     }

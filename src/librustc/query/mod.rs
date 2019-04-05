@@ -459,7 +459,7 @@ rustc_queries! {
             desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
         }
 
-        query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName {
+        query symbol_name(key: ty::Instance<'tcx>) -> ty::SymbolName<'tcx> {
             no_force
             desc { "computing the symbol for `{}`", key }
             cache { true }

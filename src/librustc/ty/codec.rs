@@ -152,6 +152,16 @@ pub fn decode_arena_allocable_slice<'a, 'tcx, D, T: ArenaAllocatable + Decodable
 }
 
 #[inline]
+pub fn decode_str<'a, 'tcx, D>(
+    decoder: &mut D
+) -> Result<&'tcx str, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    Ok(decoder.tcx().arena.alloc_str(&*decoder.read_str()?))
+}
+
+#[inline]
 pub fn decode_cnum<'a, 'tcx, D>(decoder: &mut D) -> Result<CrateNum, D::Error>
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
@@ -377,6 +387,13 @@ macro_rules! implement_ty_decoder {
             // by using the unspecialized proxies to them.
 
             arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
+
+            impl<$($typaram),*> SpecializedDecoder<ty::SymbolName<'tcx>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self) -> Result<ty::SymbolName<'tcx>, Self::Error> {
+                    Ok(ty::SymbolName { name: decode_str(self)? })
+                }
+            }
 
             impl<$($typaram),*> SpecializedDecoder<CrateNum>
             for $DecoderName<$($typaram),*> {

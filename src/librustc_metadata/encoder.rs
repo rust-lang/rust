@@ -1594,7 +1594,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                                -> EncodedExportedSymbols {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
-        let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
+        let metadata_symbol_name = SymbolName::new(self.tcx, &metadata_symbol_name(self.tcx));
 
         let lazy_seq = self.lazy_seq(exported_symbols
             .iter()
