@@ -1,4 +1,5 @@
 use proc_macro::TokenStream;
+use proc_macro2::{TokenTree, Delimiter};
 use syn::{
     Token, Ident, Type, Attribute, ReturnType, Expr, Block, Error,
     braced, parenthesized, parse_macro_input,
@@ -35,7 +36,7 @@ enum QueryModifier {
     Desc(Option<Ident>, Punctuated<Expr, Token![,]>),
 
     /// Cache the query to disk if the `Expr` returns true.
-    Cache(Option<Ident>, Expr),
+    Cache(Option<(IdentOrWild, IdentOrWild)>, Block),
 
     /// Custom code to load the query from disk.
     LoadCached(Ident, Ident, Block),
@@ -77,21 +78,26 @@ impl Parse for QueryModifier {
             };
             let desc = attr_content.parse_terminated(Expr::parse)?;
             Ok(QueryModifier::Desc(tcx, desc))
-        } else if modifier == "cache" {
+        } else if modifier == "cache_on_disk_if" {
             // Parse a cache modifier like:
-            // `cache { |tcx| key.is_local() }`
-            let attr_content;
-            braced!(attr_content in input);
-            let tcx = if attr_content.peek(Token![|]) {
-                attr_content.parse::<Token![|]>()?;
-                let tcx = attr_content.parse()?;
-                attr_content.parse::<Token![|]>()?;
-                Some(tcx)
+            // `cache(tcx, value) { |tcx| key.is_local() }`
+            let has_args = if let TokenTree::Group(group) = input.fork().parse()? {
+                group.delimiter() == Delimiter::Parenthesis
+            } else {
+                false
+            };
+            let args = if has_args {
+                let args;
+                parenthesized!(args in input);
+                let tcx = args.parse()?;
+                args.parse::<Token![,]>()?;
+                let value = args.parse()?;
+                Some((tcx, value))
             } else {
                 None
             };
-            let expr = attr_content.parse()?;
-            Ok(QueryModifier::Cache(tcx, expr))
+            let block = input.parse()?;
+            Ok(QueryModifier::Cache(args, block))
         } else if modifier == "load_cached" {
             // Parse a load_cached modifier like:
             // `load_cached(tcx, id) { tcx.queries.on_disk_cache.try_load_query_result(tcx, id) }`
@@ -203,8 +209,8 @@ struct QueryModifiers {
     /// The description of the query.
     desc: Option<(Option<Ident>, Punctuated<Expr, Token![,]>)>,
 
-    /// Cache the query to disk if the `Expr` returns true.
-    cache: Option<(Option<Ident>, Expr)>,
+    /// Cache the query to disk if the `Block` returns true.
+    cache: Option<(Option<(IdentOrWild, IdentOrWild)>, Block)>,
 
     /// Custom code to load the query from disk.
     load_cached: Option<(Ident, Ident, Block)>,
@@ -247,11 +253,11 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 load_cached = Some((tcx, id, block));
             }
-            QueryModifier::Cache(tcx, expr) => {
+            QueryModifier::Cache(args, expr) => {
                 if cache.is_some() {
                     panic!("duplicate modifier `cache` for query `{}`", query.name);
                 }
-                cache = Some((tcx, expr));
+                cache = Some((args, expr));
             }
             QueryModifier::Desc(tcx, list) => {
                 if desc.is_some() {
@@ -321,7 +327,7 @@ fn add_query_description_impl(
     let key = &query.key.0;
 
     // Find out if we should cache the query on disk
-    let cache = modifiers.cache.as_ref().map(|(tcx, expr)| {
+    let cache = modifiers.cache.as_ref().map(|(args, expr)| {
         let try_load_from_disk = if let Some((tcx, id, block)) = modifiers.load_cached.as_ref() {
             // Use custom code to load the query from disk
             quote! {
@@ -346,11 +352,22 @@ fn add_query_description_impl(
             }
         };
 
-        let tcx = tcx.as_ref().map(|t| quote! { #t }).unwrap_or(quote! { _ });
+        let tcx = args.as_ref().map(|t| {
+            let t = &(t.0).0;
+            quote! { #t }
+        }).unwrap_or(quote! { _ });
+        let value = args.as_ref().map(|t| {
+            let t = &(t.1).0;
+            quote! { #t }
+        }).unwrap_or(quote! { _ });
         quote! {
             #[inline]
             #[allow(unused_variables)]
-            fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: Self::Key) -> bool {
+            fn cache_on_disk(
+                #tcx: TyCtxt<'tcx>,
+                #key: Self::Key,
+                #value: Option<&Self::Value>
+            ) -> bool {
                 #expr
             }
 
@@ -395,6 +412,7 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
     let mut query_description_stream = quote! {};
     let mut dep_node_def_stream = quote! {};
     let mut dep_node_force_stream = quote! {};
+    let mut try_load_from_on_disk_cache_stream = quote! {};
     let mut no_force_queries = Vec::new();
 
     for group in groups.0 {
@@ -408,6 +426,22 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 ReturnType::Default => quote! { -> () },
                 _ => quote! { #result_full },
             };
+
+            if modifiers.cache.is_some() && !modifiers.no_force {
+                try_load_from_on_disk_cache_stream.extend(quote! {
+                    DepKind::#name => {
+                        debug_assert!(tcx.dep_graph
+                                         .node_color(self)
+                                         .map(|c| c.is_green())
+                                         .unwrap_or(false));
+
+                        let key = RecoverKey::recover(tcx.global_tcx(), self).unwrap();
+                        if queries::#name::cache_on_disk(tcx.global_tcx(), key, None) {
+                            let _ = tcx.#name(key);
+                        }
+                    }
+                });
+            }
 
             let mut attributes = Vec::new();
 
@@ -462,7 +496,11 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 });
             }
 
-            add_query_description_impl(&query, modifiers, &mut query_description_stream);
+            add_query_description_impl(
+                &query,
+                modifiers,
+                &mut query_description_stream,
+            );
         }
         let name = &group.name;
         query_stream.extend(quote! {
@@ -512,5 +550,19 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             }
         }
         #query_description_stream
+
+        impl DepNode {
+            /// Check whether the query invocation corresponding to the given
+            /// DepNode is eligible for on-disk-caching. If so, this is method
+            /// will execute the query corresponding to the given DepNode.
+            /// Also, as a sanity check, it expects that the corresponding query
+            /// invocation has been marked as green already.
+            pub fn try_load_from_on_disk_cache(&self, tcx: TyCtxt<'_>) {
+                match self.kind {
+                    #try_load_from_on_disk_cache_stream
+                    _ => (),
+                }
+            }
+        }
     })
 }

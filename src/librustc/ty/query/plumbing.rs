@@ -444,7 +444,7 @@ impl<'tcx> TyCtxt<'tcx> {
         debug_assert!(self.dep_graph.is_green(dep_node));
 
         // First we try to load the result from the on-disk cache
-        let result = if Q::cache_on_disk(self.global_tcx(), key.clone()) &&
+        let result = if Q::cache_on_disk(self.global_tcx(), key.clone(), None) &&
                         self.sess.opts.debugging_opts.incremental_queries {
             self.sess.profiler(|p| p.incremental_load_result_start(Q::NAME));
             let result = Q::try_load_from_disk(self.global_tcx(), prev_dep_node_index);
@@ -1243,66 +1243,3 @@ pub fn force_from_dep_node<'tcx>(tcx: TyCtxt<'tcx>, dep_node: &DepNode) -> bool 
 
     true
 }
-
-
-// FIXME(#45015): Another piece of boilerplate code that could be generated in
-//                a combined define_dep_nodes!()/define_queries!() macro.
-macro_rules! impl_load_from_cache {
-    ($($dep_kind:ident => $query_name:ident,)*) => {
-        impl DepNode {
-            // Check whether the query invocation corresponding to the given
-            // DepNode is eligible for on-disk-caching.
-            pub fn cache_on_disk(&self, tcx: TyCtxt<'_>) -> bool {
-                use crate::ty::query::queries;
-                use crate::ty::query::QueryDescription;
-
-                match self.kind {
-                    $(DepKind::$dep_kind => {
-                        let def_id = self.extract_def_id(tcx).unwrap();
-                        queries::$query_name::cache_on_disk(tcx.global_tcx(), def_id)
-                    })*
-                    _ => false
-                }
-            }
-
-            // This is method will execute the query corresponding to the given
-            // DepNode. It is only expected to work for DepNodes where the
-            // above `cache_on_disk` methods returns true.
-            // Also, as a sanity check, it expects that the corresponding query
-            // invocation has been marked as green already.
-            pub fn load_from_on_disk_cache(&self, tcx: TyCtxt<'_>) {
-                match self.kind {
-                    $(DepKind::$dep_kind => {
-                        debug_assert!(tcx.dep_graph
-                                         .node_color(self)
-                                         .map(|c| c.is_green())
-                                         .unwrap_or(false));
-
-                        let def_id = self.extract_def_id(tcx).unwrap();
-                        let _ = tcx.$query_name(def_id);
-                    })*
-                    _ => {
-                        bug!()
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl_load_from_cache!(
-    typeck_tables_of => typeck_tables_of,
-    optimized_mir => optimized_mir,
-    unsafety_check_result => unsafety_check_result,
-    borrowck => borrowck,
-    mir_borrowck => mir_borrowck,
-    mir_const_qualif => mir_const_qualif,
-    const_is_rvalue_promotable_to_static => const_is_rvalue_promotable_to_static,
-    check_match => check_match,
-    type_of => type_of,
-    generics_of => generics_of,
-    predicates_of => predicates_of,
-    used_trait_imports => used_trait_imports,
-    codegen_fn_attrs => codegen_fn_attrs,
-    specialization_graph_of => specialization_graph_of,
-);

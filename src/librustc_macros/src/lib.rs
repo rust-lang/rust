@@ -1,6 +1,8 @@
 #![feature(proc_macro_hygiene)]
 #![deny(rust_2018_idioms)]
 
+#![recursion_limit="128"]
+
 extern crate proc_macro;
 
 use synstructure::decl_derive;
