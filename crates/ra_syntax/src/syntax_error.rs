@@ -95,6 +95,7 @@ pub enum SyntaxErrorKind {
     InvalidSuffix,
     InvalidBlockAttr,
     InvalidMatchInnerAttr,
+    InvalidTupleIndexFormat,
 }
 
 impl fmt::Display for SyntaxErrorKind {
@@ -138,6 +139,9 @@ impl fmt::Display for SyntaxErrorKind {
             }
             InvalidMatchInnerAttr => {
                 write!(f, "Inner attributes are only allowed directly after the opening brace of the match expression")
+            }
+            InvalidTupleIndexFormat => {
+                write!(f, "Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix")
             }
             ParseError(msg) => write!(f, "{}", msg.0),
         }

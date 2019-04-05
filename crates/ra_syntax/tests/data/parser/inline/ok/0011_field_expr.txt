@@ -1,5 +1,5 @@
-SOURCE_FILE@[0; 37)
-  FN_DEF@[0; 36)
+SOURCE_FILE@[0; 48)
+  FN_DEF@[0; 47)
     FN_KW@[0; 2) "fn"
     WHITESPACE@[2; 3) " "
     NAME@[3; 6)
@@ -8,7 +8,7 @@ SOURCE_FILE@[0; 37)
       L_PAREN@[6; 7) "("
       R_PAREN@[7; 8) ")"
     WHITESPACE@[8; 9) " "
-    BLOCK@[9; 36)
+    BLOCK@[9; 47)
       L_CURLY@[9; 10) "{"
       WHITESPACE@[10; 15) "\n    "
       EXPR_STMT@[15; 21)
@@ -37,6 +37,21 @@ SOURCE_FILE@[0; 37)
           NAME_REF@[30; 33)
             IDENT@[30; 33) "bar"
         SEMI@[33; 34) ";"
-      WHITESPACE@[34; 35) "\n"
-      R_CURLY@[35; 36) "}"
-  WHITESPACE@[36; 37) "\n"
+      WHITESPACE@[34; 39) "\n    "
+      EXPR_STMT@[39; 45)
+        CALL_EXPR@[39; 44)
+          FIELD_EXPR@[39; 42)
+            PATH_EXPR@[39; 40)
+              PATH@[39; 40)
+                PATH_SEGMENT@[39; 40)
+                  NAME_REF@[39; 40)
+                    IDENT@[39; 40) "x"
+            DOT@[40; 41) "."
+            INT_NUMBER@[41; 42) "0"
+          ARG_LIST@[42; 44)
+            L_PAREN@[42; 43) "("
+            R_PAREN@[43; 44) ")"
+        SEMI@[44; 45) ";"
+      WHITESPACE@[45; 46) "\n"
+      R_CURLY@[46; 47) "}"
+  WHITESPACE@[47; 48) "\n"

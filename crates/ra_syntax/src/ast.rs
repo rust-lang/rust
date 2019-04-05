@@ -17,7 +17,7 @@ pub use self::{
     generated::*,
     traits::*,
     tokens::*,
-    extensions::{PathSegmentKind, StructKind, SelfParamKind},
+    extensions::{PathSegmentKind, StructKind, FieldKind, SelfParamKind},
     expr_extensions::{ElseBranch, PrefixOp, BinOp, LiteralKind},
 };
 

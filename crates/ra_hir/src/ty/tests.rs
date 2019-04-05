@@ -2242,6 +2242,65 @@ static B: u64 = { let x = 1; x };
     );
 }
 
+#[test]
+fn tuple_struct_fields() {
+    assert_snapshot_matches!(
+        infer(r#"
+struct S(i32, u64);
+fn test() -> u64 {
+    let a = S(4, 6);
+    let b = a.0;
+    a.1
+}
+"#),
+        @r###"
+[38; 87) '{     ... a.1 }': u64
+[48; 49) 'a': S
+[52; 53) 'S': S(i32, u64) -> S
+[52; 59) 'S(4, 6)': S
+[54; 55) '4': i32
+[57; 58) '6': u64
+[69; 70) 'b': i32
+[73; 74) 'a': S
+[73; 76) 'a.0': i32
+[82; 83) 'a': S
+[82; 85) 'a.1': u64"###
+    );
+}
+
+#[test]
+fn tuple_struct_with_fn() {
+    assert_snapshot_matches!(
+        infer(r#"
+struct S(fn(u32) -> u64);
+fn test() -> u64 {
+    let a = S(|i| 2*i);
+    let b = a.0(4);
+    a.0(2)
+}
+"#),
+        @r###"
+[44; 102) '{     ...0(2) }': u64
+[54; 55) 'a': S
+[58; 59) 'S': S(fn(u32) -> u64) -> S
+[58; 68) 'S(|i| 2*i)': S
+[60; 67) '|i| 2*i': fn(u32) -> u64
+[61; 62) 'i': i32
+[64; 65) '2': i32
+[64; 67) '2*i': i32
+[66; 67) 'i': i32
+[78; 79) 'b': u64
+[82; 83) 'a': S
+[82; 85) 'a.0': fn(u32) -> u64
+[82; 88) 'a.0(4)': u64
+[86; 87) '4': u32
+[94; 95) 'a': S
+[94; 97) 'a.0': fn(u32) -> u64
+[94; 100) 'a.0(2)': u64
+[98; 99) '2': u32"###
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let func = source_binder::function_from_position(db, pos).unwrap();
     let body_source_map = func.body_source_map(db);

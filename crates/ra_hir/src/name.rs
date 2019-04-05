@@ -90,6 +90,15 @@ impl AsName for ast::Name {
     }
 }
 
+impl<'a> AsName for ast::FieldKind<'a> {
+    fn as_name(&self) -> Name {
+        match self {
+            ast::FieldKind::Name(nr) => nr.as_name(),
+            ast::FieldKind::Index(idx) => Name::new(idx.text().clone()),
+        }
+    }
+}
+
 impl AsName for ra_db::Dependency {
     fn as_name(&self) -> Name {
         Name::new(self.name.clone())

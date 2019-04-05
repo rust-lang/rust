@@ -379,6 +379,14 @@ fn method_call_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
 // fn foo() {
 //     x.foo;
 //     x.0.bar;
+//     x.0();
+// }
+
+// test_err bad_tuple_index_expr
+// fn foo() {
+//     x.0.;
+//     x.1i32;
+//     x.0x01;
 // }
 fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     assert!(p.at(DOT));
@@ -387,7 +395,10 @@ fn field_expr(p: &mut Parser, lhs: CompletedMarker) -> CompletedMarker {
     if p.at(IDENT) {
         name_ref(p)
     } else if p.at(INT_NUMBER) {
-        p.bump()
+        p.bump();
+    } else if p.at(FLOAT_NUMBER) {
+        // FIXME: How to recover and instead parse INT + DOT?
+        p.bump();
     } else {
         p.error("expected field name or number")
     }

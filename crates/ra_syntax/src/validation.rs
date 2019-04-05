@@ -3,6 +3,7 @@ mod byte_string;
 mod char;
 mod string;
 mod block;
+mod field_expr;
 
 use crate::{
     SourceFile, SyntaxError, AstNode, SyntaxNode,
@@ -17,6 +18,7 @@ pub(crate) fn validate(file: &SourceFile) -> Vec<SyntaxError> {
         let _ = visitor_ctx(&mut errors)
             .visit::<ast::Literal, _>(validate_literal)
             .visit::<ast::Block, _>(block::validate_block_node)
+            .visit::<ast::FieldExpr, _>(field_expr::validate_field_expr_node)
             .accept(node);
     }
     errors
