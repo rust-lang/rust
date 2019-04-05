@@ -14,12 +14,6 @@ impl<'tcx, T> Value<'tcx> for T {
     }
 }
 
-impl<'tcx, T: Default> Value<'tcx> for T {
-    default fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> T {
-        T::default()
-    }
-}
-
 impl<'tcx> Value<'tcx> for Ty<'tcx> {
     fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         tcx.types.err
