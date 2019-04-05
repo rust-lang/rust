@@ -11,7 +11,7 @@
 
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::hygiene::{self, Mark, SyntaxContext};
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast;
 use syntax::source_map::respan;
 use syntax::symbol::{Symbol, sym};
@@ -47,7 +47,7 @@ pub fn expand(
             ].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            edition: hygiene::default_edition(),
+            edition: ecx.parse_sess.edition,
         });
         attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
     };

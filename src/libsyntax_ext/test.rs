@@ -3,7 +3,7 @@
 
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
-use syntax::ext::hygiene::{self, Mark, SyntaxContext};
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::attr;
 use syntax::ast;
 use syntax::print::pprust;
@@ -72,7 +72,7 @@ pub fn expand_test_or_bench(
             ].into()),
             allow_internal_unsafe: false,
             local_inner_macros: false,
-            edition: hygiene::default_edition(),
+            edition: cx.parse_sess.edition,
         });
         (item.span.with_ctxt(SyntaxContext::empty().apply_mark(mark)),
          attr_sp.with_ctxt(SyntaxContext::empty().apply_mark(mark)))

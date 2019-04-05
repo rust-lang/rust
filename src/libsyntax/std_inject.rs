@@ -3,7 +3,7 @@ use crate::attr;
 use crate::edition::Edition;
 use crate::ext::hygiene::{Mark, SyntaxContext};
 use crate::symbol::{Ident, Symbol, keywords, sym};
-use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
+use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, respan};
 use crate::ptr::P;
 use crate::tokenstream::TokenStream;
 
@@ -14,7 +14,7 @@ use syntax_pos::{DUMMY_SP, Span};
 /// Craft a span that will be ignored by the stability lint's
 /// call to source_map's `is_internal` check.
 /// The expanded code uses the unstable `#[prelude_import]` attribute.
-fn ignored_span(sp: Span) -> Span {
+fn ignored_span(sp: Span, edition: Edition) -> Span {
     let mark = Mark::fresh(Mark::root());
     mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
@@ -25,7 +25,7 @@ fn ignored_span(sp: Span) -> Span {
         ].into()),
         allow_internal_unsafe: false,
         local_inner_macros: false,
-        edition: hygiene::default_edition(),
+        edition,
     });
     sp.with_ctxt(SyntaxContext::empty().apply_mark(mark))
 }
@@ -94,7 +94,7 @@ pub fn maybe_inject_crates_ref(
 
     INJECTED_CRATE_NAME.with(|opt_name| opt_name.set(Some(name)));
 
-    let span = ignored_span(DUMMY_SP);
+    let span = ignored_span(DUMMY_SP, edition);
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,

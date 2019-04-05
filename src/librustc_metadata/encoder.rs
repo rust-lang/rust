@@ -34,7 +34,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{keywords, sym};
-use syntax_pos::{self, hygiene, FileName, SourceFile, Span};
+use syntax_pos::{self, FileName, SourceFile, Span};
 use log::{debug, trace};
 
 use rustc::hir::{self, PatKind};
@@ -480,7 +480,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hash: tcx.crate_hash(LOCAL_CRATE),
             disambiguator: tcx.sess.local_crate_disambiguator(),
             panic_strategy: tcx.sess.panic_strategy(),
-            edition: hygiene::default_edition(),
+            edition: tcx.sess.edition(),
             has_global_allocator: has_global_allocator,
             has_panic_handler: has_panic_handler,
             has_default_lib_allocator: has_default_lib_allocator,

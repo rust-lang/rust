@@ -5,7 +5,7 @@ use crate::attr::HasAttrs;
 use crate::source_map::{SourceMap, Spanned, respan};
 use crate::edition::Edition;
 use crate::ext::expand::{self, AstFragment, Invocation};
-use crate::ext::hygiene::{self, Mark, SyntaxContext, Transparency};
+use crate::ext::hygiene::{Mark, SyntaxContext, Transparency};
 use crate::mut_visit::{self, MutVisitor};
 use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
@@ -713,7 +713,7 @@ impl SyntaxExtension {
         }
     }
 
-    pub fn edition(&self) -> Edition {
+    pub fn edition(&self, default_edition: Edition) -> Edition {
         match *self {
             SyntaxExtension::NormalTT { edition, .. } |
             SyntaxExtension::DeclMacro { edition, .. } |
@@ -725,7 +725,7 @@ impl SyntaxExtension {
             SyntaxExtension::IdentTT { .. } |
             SyntaxExtension::MultiDecorator(..) |
             SyntaxExtension::MultiModifier(..) |
-            SyntaxExtension::BuiltinDerive(..) => hygiene::default_edition(),
+            SyntaxExtension::BuiltinDerive(..) => default_edition,
         }
     }
 }
@@ -734,6 +734,7 @@ pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 pub trait Resolver {
     fn next_node_id(&mut self) -> ast::NodeId;
+
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark;
 
     fn resolve_dollar_crates(&mut self, fragment: &AstFragment);
@@ -768,6 +769,7 @@ pub struct DummyResolver;
 
 impl Resolver for DummyResolver {
     fn next_node_id(&mut self) -> ast::NodeId { ast::DUMMY_NODE_ID }
+
     fn get_module_scope(&mut self, _id: ast::NodeId) -> Mark { Mark::root() }
 
     fn resolve_dollar_crates(&mut self, _fragment: &AstFragment) {}

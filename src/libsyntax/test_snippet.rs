@@ -1,5 +1,5 @@
 use crate::source_map::{SourceMap, FilePathMapping};
-use crate::with_globals;
+use crate::with_default_globals;
 
 use errors::Handler;
 use errors::emitter::EmitterWriter;
@@ -39,7 +39,7 @@ impl<T: Write> Write for Shared<T> {
 }
 
 fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &str) {
-    with_globals(|| {
+    with_default_globals(|| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));

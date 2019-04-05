@@ -29,6 +29,7 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bit_set::GrowableBitSet;
 pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
+use syntax_pos::edition::Edition;
 
 // A variant of 'try!' that panics on an Err. This is used as a crutch on the
 // way towards a non-panic!-prone parser. It should be used for fatal parsing
@@ -82,24 +83,30 @@ pub struct Globals {
 }
 
 impl Globals {
-    fn new() -> Globals {
+    fn new(edition: Edition) -> Globals {
         Globals {
             // We have no idea how many attributes their will be, so just
             // initiate the vectors with 0 bits. We'll grow them as necessary.
             used_attrs: Lock::new(GrowableBitSet::new_empty()),
             known_attrs: Lock::new(GrowableBitSet::new_empty()),
-            syntax_pos_globals: syntax_pos::Globals::new(),
+            syntax_pos_globals: syntax_pos::Globals::new(edition),
         }
     }
 }
 
-pub fn with_globals<F, R>(f: F) -> R
+pub fn with_globals<F, R>(edition: Edition, f: F) -> R
     where F: FnOnce() -> R
 {
-    let globals = Globals::new();
+    let globals = Globals::new(edition);
     GLOBALS.set(&globals, || {
         syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
     })
+}
+
+pub fn with_default_globals<F, R>(f: F) -> R
+    where F: FnOnce() -> R
+{
+    with_globals(edition::DEFAULT_EDITION, f)
 }
 
 scoped_tls::scoped_thread_local!(pub static GLOBALS: Globals);
