@@ -245,7 +245,7 @@ Stabilized APIs
 
 Cargo
 -----
-- [You can now publish crates which require a feature flag to compile with
+- [You can now publish crates that require a feature flag to compile with
   `cargo publish --features` or `cargo publish --all-features`.][cargo/6453]
 - [Cargo should now rebuild a crate if a file was modified during the initial
   build.][cargo/6484]
