@@ -639,7 +639,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                             per_local.insert(local);
                         }
                     }
-                    cx.per_local[IsNotPromotable].insert(local);
+                    cx.per_local[IsNotConst].insert(local);
                 }
 
                 LocalKind::Var if mode == Mode::Fn => {
