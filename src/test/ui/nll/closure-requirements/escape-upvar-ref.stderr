@@ -8,7 +8,7 @@ LL |         let mut closure = || p = &y;
                i16,
                extern "rust-call" fn(()),
                &'_#1r mut &'_#2r i32,
-               &'_#3r i32
+               &'_#3r i32,
            ]
    = note: number of external vids: 4
    = note: where '_#3r: '_#2r
