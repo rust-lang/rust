@@ -16,7 +16,6 @@ struct A<T>
     where T : Trait,
           T : Add<T::Item>
     //~^ ERROR cycle detected
-    //~| ERROR associated type `Item` not found for `T`
 {
     data: T
 }
