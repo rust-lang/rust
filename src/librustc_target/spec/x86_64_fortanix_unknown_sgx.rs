@@ -21,6 +21,15 @@ pub fn target() -> Result<Target, String> {
         "-Wl,--no-undefined-version",
         "-Wl,-Bsymbolic",
         "-Wl,--export-dynamic",
+        // The following symbols are needed by libunwind, which is linked after
+        // libstd. Make sure they're included in the link.
+        "-Wl,-u,__rust_abort",
+        "-Wl,-u,__rust_c_alloc",
+        "-Wl,-u,__rust_c_dealloc",
+        "-Wl,-u,__rust_print_err",
+        "-Wl,-u,__rust_rwlock_rdlock",
+        "-Wl,-u,__rust_rwlock_unlock",
+        "-Wl,-u,__rust_rwlock_wrlock",
     ];
 
     const EXPORT_SYMBOLS: &[&str] = &[
