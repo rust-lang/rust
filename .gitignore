@@ -1,6 +1,7 @@
 /target/
 crates/*/target
 **/*.rs.bk
+**/*.rs.pending-snap
 .idea/*
 *.log
 *.iml
