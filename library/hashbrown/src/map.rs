@@ -2436,9 +2436,9 @@ where
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let iter = iter.into_iter();
         let mut map = Self::with_capacity_and_hasher(iter.size_hint().0, S::default());
-        for (k, v) in iter {
+        iter.for_each(|(k, v)| {
             map.insert(k, v);
-        }
+        });
         map
     }
 }
@@ -2461,9 +2461,9 @@ where
             (iter.size_hint().0 + 1) / 2
         };
         self.reserve(reserve);
-        for (k, v) in iter {
+        iter.for_each(move |(k, v)| {
             self.insert(k, v);
-        }
+        });
     }
 }
 
