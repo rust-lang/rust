@@ -2071,10 +2071,7 @@ fn explicit_predicates_of(
         }
     }
 
-    let hir_id = match tcx.hir().as_local_hir_id(def_id) {
-        Some(hir_id) => hir_id,
-        None => return tcx.predicates_of(def_id),
-    };
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
     let node = tcx.hir().get(hir_id);
 
     let mut is_trait = None;
