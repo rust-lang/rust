@@ -1,5 +1,3 @@
-// edition:2018
-
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
 }
