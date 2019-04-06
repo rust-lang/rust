@@ -526,7 +526,7 @@ impl<W: Write> BufWriter<W> {
     /// let reference = buffer.get_ref();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_ref(&self) -> &W { self.inner }
+    pub fn get_ref(&self) -> &W { &self.inner }
 
     /// Gets a mutable reference to the underlying writer.
     ///
@@ -544,7 +544,7 @@ impl<W: Write> BufWriter<W> {
     /// let reference = buffer.get_mut();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut(&mut self) -> &mut W { self.inner }
+    pub fn get_mut(&mut self) -> &mut W { &mut self.inner }
 
     /// Returns a reference to the internally buffered data.
     ///
