@@ -388,9 +388,7 @@ impl Extend<CodePoint> for Wtf8Buf {
         let (low, _high) = iterator.size_hint();
         // Lower bound of one byte per code point (ASCII only)
         self.bytes.reserve(low);
-        for code_point in iterator {
-            self.push(code_point);
-        }
+        iterator.for_each(move |code_point| self.push(code_point));
     }
 }
 

@@ -1551,9 +1551,7 @@ impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
-        for p in iter {
-            self.push(p.as_ref())
-        }
+        iter.into_iter().for_each(move |p| self.push(p.as_ref()));
     }
 }
 
