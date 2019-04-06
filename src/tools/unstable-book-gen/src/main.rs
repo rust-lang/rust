@@ -102,8 +102,8 @@ fn generate_unstable_book_files(src :&Path, out: &Path, features :&Features) {
     }
 }
 
-fn copy_recursive(path: &Path, to: &Path) {
-    for entry in t!(fs::read_dir(path)) {
+fn copy_recursive(from: &Path, to: &Path) {
+    for entry in t!(fs::read_dir(from)) {
         let e = t!(entry);
         let t = t!(e.metadata());
         let dest = &to.join(e.file_name());
