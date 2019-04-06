@@ -73,12 +73,10 @@ pub fn write_output_file(
     unsafe {
         let output_c = path_to_c_string(output);
         let result = llvm::LLVMRustWriteOutputFile(target, pm, m, output_c.as_ptr(), file_type);
-        if result.into_result().is_err() {
+        result.into_result().map_err(|()| {
             let msg = format!("could not write output to {}", output.display());
-            Err(llvm_err(handler, &msg))
-        } else {
-            Ok(())
-        }
+            llvm_err(handler, &msg)
+        })
     }
 }
 
@@ -505,7 +503,8 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             if write_bc {
                 let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_emit_bitcode");
                 if let Err(e) = fs::write(&bc_out, data) {
-                    diag_handler.err(&format!("failed to write bytecode: {}", e));
+                    let msg = format!("failed to write bytecode to {}: {}", bc_out.display(), e);
+                    diag_handler.err(&msg);
                 }
             }
 
@@ -520,7 +519,8 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 let dst = bc_out.with_extension(RLIB_BYTECODE_EXTENSION);
                 let data = bytecode::encode(&module.name, data);
                 if let Err(e) = fs::write(&dst, data) {
-                    diag_handler.err(&format!("failed to write bytecode: {}", e));
+                    let msg = format!("failed to write bytecode to {}: {}", dst.display(), e);
+                    diag_handler.err(&msg);
                 }
             }
         } else if config.embed_bitcode_marker {
@@ -532,7 +532,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             if config.emit_ir {
                 let _timer = cgcx.profile_activity(ProfileCategory::Codegen, "LLVM_emit_ir");
                 let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
-                let out = path_to_c_string(&out);
+                let out_c = path_to_c_string(&out);
 
                 extern "C" fn demangle_callback(input_ptr: *const c_char,
                                                 input_len: size_t,
@@ -566,9 +566,14 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 }
 
                 with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                    llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr(), demangle_callback);
+                    let result =
+                        llvm::LLVMRustPrintModule(cpm, llmod, out_c.as_ptr(), demangle_callback);
                     llvm::LLVMDisposePassManager(cpm);
-                });
+                    result.into_result().map_err(|()| {
+                        let msg = format!("failed to write LLVM IR to {}", out.display());
+                        llvm_err(diag_handler, &msg)
+                    })
+                })?;
             }
 
             if config.emit_asm || asm_to_obj {
