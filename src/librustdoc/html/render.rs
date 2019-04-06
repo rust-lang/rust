@@ -150,6 +150,10 @@ struct SharedContext {
     pub generate_search_filter: bool,
     /// Option disabled by default to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
+    /// If true, it'll lower all type names and handle conflicts.
+    pub case_insensitive: bool,
+    /// The type name and its url.
+    pub types_urls: FxHashMap<String, String>,
 }
 
 impl SharedContext {
@@ -162,9 +166,7 @@ impl SharedContext {
 
         Ok(())
     }
-}
 
-impl SharedContext {
     /// Returns `true` if the `collapse-docs` pass was run on this crate.
     pub fn was_collapsed(&self) -> bool {
         self.passes.contains("collapse-docs")
@@ -172,7 +174,7 @@ impl SharedContext {
 
     /// Based on whether the `collapse-docs` pass was run, return either the `doc_value` or the
     /// `collapsed_doc_value` of the given item.
-    pub fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<Cow<'a, str>> {
+    pub fn maybe_collapsed_doc_value<'b>(&self, item: &'b clean::Item) -> Option<Cow<'b, str>> {
         if self.was_collapsed() {
             item.collapsed_doc_value().map(|s| s.into())
         } else {
@@ -527,6 +529,7 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        case_insensitive,
         ..
     } = options;
 
@@ -557,6 +560,8 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        types_urls: Default::default(),
+        case_insensitive,
     };
 
     // If user passed in `--playground-url` arg, we fill in crate name here
@@ -595,8 +600,10 @@ pub fn run(mut krate: clean::Crate,
     }
     let dst = output;
     try_err!(fs::create_dir_all(&dst), &dst);
-    krate = render_sources(&dst, &mut scx, krate)?;
-    let cx = Context {
+    krate = {
+        render_sources(&dst, &mut scx, krate)?
+    };
+    let mut cx = Context {
         current: Vec::new(),
         dst,
         render_redirect_pages: false,
@@ -699,6 +706,7 @@ pub fn run(mut krate: clean::Crate,
 
     write_shared(&cx, &krate, &*cache, index, &md_opts, diag)?;
 
+    cx.generate_urls(&krate)?;
     // And finally render the whole crate's documentation
     cx.krate(krate)
 }
@@ -1254,8 +1262,11 @@ themePicker.onblur = handleThemeButtonsBlur;
     Ok(())
 }
 
-fn render_sources(dst: &Path, scx: &mut SharedContext,
-                  krate: clean::Crate) -> Result<clean::Crate, Error> {
+fn render_sources<'a>(
+    dst: &Path,
+    scx: &'a mut SharedContext,
+    krate: clean::Crate,
+) -> Result<clean::Crate, Error> {
     info!("emitting source files");
     let dst = dst.join("src").join(&krate.name);
     try_err!(fs::create_dir_all(&dst), &dst);
@@ -1995,6 +2006,23 @@ impl<'a> fmt::Display for Settings<'a> {
     }
 }
 
+fn get_real_path(
+    types_urls: &mut FxHashMap<String, (String, bool)>,
+    full_name: String,
+    is_mod: bool,
+) {
+    let mut real_path = full_name.to_lowercase();
+    if is_mod && real_path.ends_with('/') {
+        real_path.pop();
+    }
+    let mut inc = 1;
+    while types_urls.contains_key(&real_path) {
+        real_path = format!("{}{}", real_path, inc);
+        inc += 1;
+    }
+    types_urls.insert(real_path, (full_name, is_mod));
+}
+
 impl Context {
     fn derive_id(&self, id: String) -> String {
         let mut map = self.id_map.borrow_mut();
@@ -2032,6 +2060,51 @@ impl Context {
         ret
     }
 
+    fn generate_urls(
+        &mut self,
+        krate: &clean::Crate,
+    ) -> Result<(), Error> {
+        /*if !self.shared.case_insensitive {
+            return Ok(());
+        }*/
+        let mut item = match krate.module {
+            Some(ref i) => i.clone(),
+            None => return Ok(()),
+        };
+        item.name = Some(krate.name.clone());
+
+        let mut types_urls = FxHashMap::default();
+        {
+            let mut all = AllTypes::new();
+            let mut work = vec![(self.clone(), item)];
+
+            while let Some((mut cx, item)) = work.pop() {
+                cx.item(item, &mut all, |icx, item, push| {
+                    if item.name.is_some() {
+                        let name = icx.dst.join(item_path_without_extension(&item));
+                        get_real_path(&mut types_urls, name.display().to_string(), item.is_mod());
+                    }
+                    if push {
+                        work.push((icx.clone(), item));
+                    }
+                }, false)?
+            }
+        }
+        let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
+        shared.types_urls = types_urls.into_iter()
+                                      .map(|(k, (v, is_mod))| {
+                                          let (add, m) = if is_mod {
+                                              ("index.html", "/")
+                                          } else {
+                                              (".html", "")
+                                          };
+                                          (format!("{}{}", v, add), format!("{}{}{}", k, m, add))
+                                      })
+                                      .collect::<FxHashMap<_, _>>();
+        eprintln!("{:?}", shared.types_urls);
+        Ok(())
+    }
+
     /// Main method for rendering a crate.
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
@@ -2051,13 +2124,14 @@ impl Context {
         let mut all = AllTypes::new();
 
         {
-            // Render the crate documentation
+            // Generate URLs if needed.
             let mut work = vec![(self.clone(), item)];
 
+            // Render the crate documentation.
             while let Some((mut cx, item)) = work.pop() {
-                cx.item(item, &mut all, |cx, item| {
-                    work.push((cx.clone(), item))
-                })?
+                cx.item(item, &mut all, |icx, item, _| {
+                    work.push((icx.clone(), item))
+                }, true)?
             }
         }
 
@@ -2136,7 +2210,7 @@ impl Context {
             if !title.is_empty() {
                 title.push_str("::");
             }
-            title.push_str(it.name.as_ref().unwrap());
+            title.push_str(it.name.as_ref().expect("unavailable name"));
         }
         title.push_str(" - Rust");
         let tyname = it.type_().css_class();
@@ -2145,7 +2219,7 @@ impl Context {
                     self.shared.layout.krate)
         } else {
             format!("API documentation for the Rust `{}` {} in crate `{}`.",
-                    it.name.as_ref().unwrap(), tyname, self.shared.layout.krate)
+                    it.name.as_ref().expect("unavailable name"), tyname, self.shared.layout.krate)
         };
         let keywords = make_item_keywords(it);
         let page = layout::Page {
@@ -2167,8 +2241,8 @@ impl Context {
 
         if !self.render_redirect_pages {
             layout::render(writer, &self.shared.layout, &page,
-                           &Sidebar{ cx: self, item: it },
-                           &Item{ cx: self, item: it },
+                           &Sidebar { cx: self, item: it },
+                           &Item { cx: self, item: it },
                            self.shared.css_file_extension.is_some(),
                            &self.shared.themes,
                            self.shared.generate_search_filter)?;
@@ -2179,7 +2253,8 @@ impl Context {
                     url.push_str(name);
                     url.push_str("/");
                 }
-                url.push_str(&item_path(ty, names.last().unwrap()));
+                url.push_str(&format!("{}.{}.html",
+                                      ty, &names.last().expect("name is empty")));
                 layout::redirect(writer, &url)?;
             }
         }
@@ -2191,8 +2266,9 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F) -> Result<(), Error>
-        where F: FnMut(&mut Context, clean::Item),
+    fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F,
+               render: bool) -> Result<(), Error>
+        where F: FnMut(&mut Context, clean::Item, bool),
     {
         // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
         // if they contain impls for public types. These modules can also
@@ -2208,55 +2284,68 @@ impl Context {
         if item.is_mod() {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
-            let name = item.name.as_ref().unwrap().to_string();
+            let name = item.name.as_ref().expect("module name empty").to_string();
+            if !render {
+                f(self, item.clone(), false);
+            }
             let mut item = Some(item);
+            let dst = self.dst.clone();
             self.recurse(name, |this| {
-                let item = item.take().unwrap();
+                let item = item.take().expect("item unavailable");
 
-                let mut buf = Vec::new();
-                this.render_item(&mut buf, &item, false).unwrap();
-                // buf will be empty if the module is stripped and there is no redirect for it
-                if !buf.is_empty() {
-                    try_err!(this.shared.ensure_dir(&this.dst), &this.dst);
-                    let joint_dst = this.dst.join("index.html");
-                    try_err!(fs::write(&joint_dst, buf), &joint_dst);
+                println!("1");
+                let dst = item_path(&this.shared, &dst, item.type_(),
+                                    item.name.as_ref().expect("module name empty"));
+                if render {
+                    let mut buf = Vec::new();
+                    this.render_item(&mut buf, &item, false).expect("failed to render...");
+                    // buf will be empty if the module is stripped and there is no redirect for it
+                    if !buf.is_empty() {                        let path = Path::new(&dst).parent().expect("no parent");
+                        try_err!(this.shared.ensure_dir(path), path);
+                        try_err!(fs::write(&dst, buf), Path::new(&dst));
+                    }
                 }
-
                 let m = match item.inner {
                     clean::StrippedItem(box clean::ModuleItem(m)) |
                     clean::ModuleItem(m) => m,
                     _ => unreachable!()
                 };
-
-                // Render sidebar-items.js used throughout this module.
-                if !this.render_redirect_pages {
-                    let items = this.build_sidebar_items(&m);
-                    let js_dst = this.dst.join("sidebar-items.js");
-                    let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
-                    try_err!(write!(&mut js_out, "initSidebarItems({});",
-                                    as_json(&items)), &js_dst);
+                if render {
+                    // Render sidebar-items.js used throughout this module.
+                    if !this.render_redirect_pages {
+                        // FIXME: generate correct url for sidebar items.
+                        let items = this.build_sidebar_items(&m);
+                        let js_dst = Path::new(&dst).parent()
+                                                    .expect("no parent found for js")
+                                                    .join("sidebar-items.js");
+                        let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
+                        try_err!(write!(&mut js_out, "initSidebarItems({});",
+                                        as_json(&items)), &js_dst);
+                    }
                 }
 
                 for item in m.items {
-                    f(this, item);
+                    f(this, item, true);
                 }
 
                 Ok(())
             })?;
-        } else if item.name.is_some() {
+        } else if item.name.is_some() && render {
             let mut buf = Vec::new();
-            self.render_item(&mut buf, &item, true).unwrap();
+            self.render_item(&mut buf, &item, true).expect("failed to render 2");
             // buf will be empty if the item is stripped and there is no redirect for it
             if !buf.is_empty() {
-                let name = item.name.as_ref().unwrap();
+                let name = item.name.as_ref().expect("name is unavailable 2");
                 let item_type = item.type_();
-                let file_name = &item_path(item_type, name);
-                try_err!(self.shared.ensure_dir(&self.dst), &self.dst);
-                let joint_dst = self.dst.join(file_name);
-                try_err!(fs::write(&joint_dst, buf), &joint_dst);
+                println!("2");
+                let file_name = item_path(&self.shared, &self.dst, item_type, name);
+                let path = Path::new(&file_name).parent().expect("no parent for item...");
+                try_err!(self.shared.ensure_dir(path), path);
+                try_err!(fs::write(&file_name, buf), Path::new(&file_name));
 
                 if !self.render_redirect_pages {
-                    all.append(full_path(self, &item), &item_type);
+                    let full_name = full_path(self, &item);
+                    all.append(full_name, &item_type);
                 }
                 if self.shared.generate_redirect_pages {
                     // Redirect from a sane URL using the namespace to Rustdoc's
@@ -2267,7 +2356,7 @@ impl Context {
                                                                 .write(true)
                                                                 .open(&redir_dst) {
                         let mut redirect_out = BufWriter::new(redirect_out);
-                        try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
+                        try_err!(layout::redirect(&mut redirect_out, &file_name), &redir_dst);
                     }
                 }
                 // If the item is a macro, redirect from the old macro URL (with !)
@@ -2277,7 +2366,7 @@ impl Context {
                     let redir_dst = self.dst.join(redir_name);
                     let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
                     let mut redirect_out = BufWriter::new(redirect_out);
-                    try_err!(layout::redirect(&mut redirect_out, file_name), &redir_dst);
+                    try_err!(layout::redirect(&mut redirect_out, &file_name), &redir_dst);
                 }
             }
         }
@@ -2452,14 +2541,15 @@ impl<'a> fmt::Display for Item<'a> {
             }
         }
         write!(fmt, "<a class=\"{}\" href=''>{}</a>",
-               self.item.type_(), self.item.name.as_ref().unwrap())?;
+               self.item.type_(), self.item.name.as_ref().expect("name is unavailable 4"))?;
 
         write!(fmt, "</span></h1>")?; // in-band
 
         match self.item.inner {
             clean::ModuleItem(ref m) =>
                 item_module(fmt, self.cx, self.item, &m.items),
-            clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f) =>
+            clean::FunctionItem(ref f) |
+            clean::ForeignFunctionItem(ref f) =>
                 item_function(fmt, self.cx, self.item, f),
             clean::TraitItem(ref t) => item_trait(fmt, self.cx, self.item, t),
             clean::StructItem(ref s) => item_struct(fmt, self.cx, self.item, s),
@@ -2469,7 +2559,8 @@ impl<'a> fmt::Display for Item<'a> {
             clean::MacroItem(ref m) => item_macro(fmt, self.cx, self.item, m),
             clean::ProcMacroItem(ref m) => item_proc_macro(fmt, self.cx, self.item, m),
             clean::PrimitiveItem(ref p) => item_primitive(fmt, self.cx, self.item, p),
-            clean::StaticItem(ref i) | clean::ForeignStaticItem(ref i) =>
+            clean::StaticItem(ref i) |
+            clean::ForeignStaticItem(ref i) =>
                 item_static(fmt, self.cx, self.item, i),
             clean::ConstantItem(ref c) => item_constant(fmt, self.cx, self.item, c),
             clean::ForeignTypeItem => item_foreign_type(fmt, self.cx, self.item),
@@ -2484,17 +2575,32 @@ impl<'a> fmt::Display for Item<'a> {
     }
 }
 
-fn item_path(ty: ItemType, name: &str) -> String {
+fn item_path_without_extension(item: &clean::Item) -> String {
+    let ty = item.type_();
+    let name = item.name.as_ref().expect("name is unavailable 5");
     match ty {
-        ItemType::Module => format!("{}index.html", SlashChecker(name)),
-        _ => format!("{}.{}.html", ty.css_class(), name),
+        ItemType::Module => format!("{}", SlashChecker(name)),
+        _ => format!("{}.{}", ty.css_class(), name),
+    }
+}
+
+fn item_path(scx: &SharedContext, path: &Path, ty: ItemType, name: &str) -> String {
+    let x = match ty {
+        ItemType::Module => path.join(format!("{}/index.html", name)),
+        _ => path.join(format!("{}.{}.html", ty.css_class(), name)),
+    }.display().to_string();
+    if !scx.types_urls.is_empty() {
+        println!("=> {:?}", x);
+        scx.types_urls.get(&x).map(|x| x.to_owned()).expect("failed to find type's url...")
+    } else {
+        x
     }
 }
 
 fn full_path(cx: &Context, item: &clean::Item) -> String {
     let mut s = cx.current.join("::");
     s.push_str("::");
-    s.push_str(item.name.as_ref().unwrap());
+    s.push_str(item.name.as_ref().expect("name is unavailable 6"));
     s
 }
 
@@ -2533,13 +2639,14 @@ fn document(w: &mut fmt::Formatter<'_>, cx: &Context, item: &clean::Item) -> fmt
 }
 
 /// Render md_text as markdown.
-fn render_markdown(w: &mut fmt::Formatter<'_>,
-                   cx: &Context,
-                   md_text: &str,
-                   links: Vec<(String, String)>,
-                   prefix: &str,
-                   is_hidden: bool)
-                   -> fmt::Result {
+fn render_markdown(
+    w: &mut fmt::Formatter<'_>,
+    cx: &Context,
+    md_text: &str,
+    links: Vec<(String, String)>,
+    prefix: &str,
+    is_hidden: bool,
+) -> fmt::Result {
     let mut ids = cx.id_map.borrow_mut();
     write!(w, "<div class='docblock{}'>{}{}</div>",
            if is_hidden { " hidden" } else { "" },
@@ -2745,7 +2852,7 @@ fn item_module(w: &mut fmt::Formatter<'_>, cx: &Context,
                 write!(w, "</table>")?;
             }
             curty = myty;
-            let (short, name) = item_ty_to_strs(&myty.unwrap());
+            let (short, name) = item_ty_to_strs(&myty.expect("no myty"));
             write!(w, "<h2 id='{id}' class='section-header'>\
                        <a href=\"#{id}\">{name}</a></h2>\n<table>",
                    id = cx.derive_id(short.to_owned()), name = name)?;
@@ -2795,20 +2902,24 @@ fn item_module(w: &mut fmt::Formatter<'_>, cx: &Context,
                 };
 
                 let doc_value = myitem.doc_value().unwrap_or("");
+                println!("3");
                 write!(w, "\
                        <tr class='{stab}{add}module-item'>\
                            <td><a class=\"{class}\" href=\"{href}\" \
                                   title='{title}'>{name}</a>{unsafety_flag}</td>\
                            <td class='docblock-short'>{stab_tags}{docs}</td>\
                        </tr>",
-                       name = *myitem.name.as_ref().unwrap(),
+                       name = *myitem.name.as_ref().expect("no myitem name"),
                        stab_tags = stability_tags(myitem),
                        docs = MarkdownSummaryLine(doc_value, &myitem.links()),
                        class = myitem.type_(),
                        add = add,
                        stab = stab.unwrap_or_else(|| String::new()),
                        unsafety_flag = unsafety_flag,
-                       href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
+                       href = item_path(&cx.shared,
+                                        &cx.dst,
+                                        myitem.type_(),
+                                        myitem.name.as_ref().expect("no myitem name 2")),
                        title = [full_path(cx, myitem), myitem.type_().to_string()]
                                 .iter()
                                 .filter_map(|s| if !s.is_empty() {
@@ -2976,7 +3087,7 @@ fn item_constant(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
     write!(w, "{vis}const \
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
-           name = it.name.as_ref().unwrap(),
+           name = it.name.as_ref().expect("name unavailable 7"),
            typ = c.type_)?;
     document(w, cx, it)
 }
@@ -2989,7 +3100,7 @@ fn item_static(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
            mutability = MutableSpace(s.mutability),
-           name = it.name.as_ref().unwrap(),
+           name = it.name.as_ref().expect("name unavailable 8"),
            typ = s.type_)?;
     document(w, cx, it)
 }
@@ -3003,7 +3114,7 @@ fn item_function(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
         UnsafetySpace(f.header.unsafety),
         AsyncSpace(f.header.asyncness),
         AbiSpace(f.header.abi),
-        it.name.as_ref().unwrap(),
+        it.name.as_ref().expect("name unavailable 9"),
         f.generics
     ).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
@@ -3016,7 +3127,7 @@ fn item_function(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
            unsafety = UnsafetySpace(f.header.unsafety),
            asyncness = AsyncSpace(f.header.asyncness),
            abi = AbiSpace(f.header.abi),
-           name = it.name.as_ref().unwrap(),
+           name = it.name.as_ref().expect("name unavailable 10"),
            generics = f.generics,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
            decl = Function {
@@ -3049,7 +3160,7 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter<'_>,
                 traits: &[&&Impl],
                 containing_item: &clean::Item) -> fmt::Result {
     for i in traits {
-        let did = i.trait_did().unwrap();
+        let did = i.trait_did().expect("cannot get trait def id");
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
         render_impl(w, cx, i, assoc_link,
                     RenderMode::Normal, containing_item.stable_since(), true, None)?;
@@ -3101,7 +3212,7 @@ fn item_trait(
                VisSpace(&it.visibility),
                UnsafetySpace(t.unsafety),
                if t.is_auto { "auto " } else { "" },
-               it.name.as_ref().unwrap(),
+               it.name.as_ref().expect("name unavailable 10"),
                t.generics,
                bounds)?;
 
@@ -3185,7 +3296,7 @@ fn item_trait(
 
     fn trait_item(w: &mut fmt::Formatter<'_>, cx: &Context, m: &clean::Item, t: &clean::Item)
                   -> fmt::Result {
-        let name = m.name.as_ref().unwrap();
+        let name = m.name.as_ref().expect("name unavailable 11");
         let item_type = m.type_();
         let id = cx.derive_id(format!("{}.{}", item_type, name));
         let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
@@ -3336,14 +3447,14 @@ fn item_trait(
                path[..path.len() - 1].join("/")
            },
            ty = it.type_().css_class(),
-           name = *it.name.as_ref().unwrap())?;
+           name = *it.name.as_ref().expect("name unavailable 12"))?;
     Ok(())
 }
 
 fn naive_assoc_href(it: &clean::Item, link: AssocItemLink<'_>) -> String {
     use crate::html::item_type::ItemType::*;
 
-    let name = it.name.as_ref().unwrap();
+    let name = it.name.as_ref().expect("name unavailable 13");
     let ty = match it.type_() {
         Typedef | AssociatedType => AssociatedType,
         s@_ => s,
@@ -3367,7 +3478,7 @@ fn assoc_const(w: &mut fmt::Formatter<'_>,
     write!(w, "{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
            VisSpace(&it.visibility),
            naive_assoc_href(it, link),
-           it.name.as_ref().unwrap(),
+           it.name.as_ref().expect("name unavailable 14"),
            ty)?;
     Ok(())
 }
@@ -3378,7 +3489,7 @@ fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
                              link: AssocItemLink<'_>) -> fmt::Result {
     write!(w, "type <a href='{}' class=\"type\">{}</a>",
            naive_assoc_href(it, link),
-           it.name.as_ref().unwrap())?;
+           it.name.as_ref().expect("name unavailable 15"))?;
     if !bounds.is_empty() {
         write!(w, ": {}", GenericBounds(bounds))?
     }
@@ -3419,7 +3530,7 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
               link: AssocItemLink<'_>,
               parent: ItemType)
               -> fmt::Result {
-        let name = meth.name.as_ref().unwrap();
+        let name = meth.name.as_ref().expect("name unavailable 16");
         let anchor = format!("#{}.{}", meth.type_(), name);
         let href = match link {
             AssocItemLink::Anchor(Some(ref id)) => format!("#{}", id),
@@ -3526,9 +3637,10 @@ fn item_struct(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
             for (field, ty) in fields {
                 let id = cx.derive_id(format!("{}.{}",
                                            ItemType::StructField,
-                                           field.name.as_ref().unwrap()));
+                                           field.name.as_ref().expect("field name unavailable")));
                 let ns_id = cx.derive_id(format!("{}.{}",
-                                              field.name.as_ref().unwrap(),
+                                              field.name.as_ref()
+                                                        .expect("field name unavailable 2"),
                                               ItemType::StructField.name_space()));
                 write!(w, "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
                            <a href=\"#{id}\" class=\"anchor field\"></a>\
@@ -3537,7 +3649,7 @@ fn item_struct(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                        item_type = ItemType::StructField,
                        id = id,
                        ns_id = ns_id,
-                       name = field.name.as_ref().unwrap(),
+                       name = field.name.as_ref().expect("field name unavailable 3"),
                        ty = ty)?;
                 document(w, cx, field)?;
             }
@@ -3547,7 +3659,7 @@ fn item_struct(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 }
 
 fn item_union(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
-               s: &clean::Union) -> fmt::Result {
+              s: &clean::Union) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust union'>")?;
         render_attributes(w, it)?;
@@ -3598,7 +3710,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
         render_attributes(w, it)?;
         write!(w, "{}enum {}{}{}",
                VisSpace(&it.visibility),
-               it.name.as_ref().unwrap(),
+               it.name.as_ref().expect("enum name unavailable"),
                e.generics,
                WhereClause { gens: &e.generics, indent: 0, end_newline: true })?;
         if e.variants.is_empty() && !e.variants_stripped {
@@ -3607,7 +3719,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
             write!(w, " {{\n")?;
             for v in &e.variants {
                 write!(w, "    ")?;
-                let name = v.name.as_ref().unwrap();
+                let name = v.name.as_ref().expect("variant name unavailable");
                 match v.inner {
                     clean::VariantItem(ref var) => {
                         match var.kind {
@@ -3655,16 +3767,17 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
         for variant in &e.variants {
             let id = cx.derive_id(format!("{}.{}",
                                        ItemType::Variant,
-                                       variant.name.as_ref().unwrap()));
+                                       variant.name.as_ref().expect("variant name unavailable 2")));
             let ns_id = cx.derive_id(format!("{}.{}",
-                                          variant.name.as_ref().unwrap(),
+                                          variant.name.as_ref()
+                                                      .expect("variant name unavailable 3"),
                                           ItemType::Variant.name_space()));
             write!(w, "<span id=\"{id}\" class=\"variant small-section-header\">\
                        <a href=\"#{id}\" class=\"anchor field\"></a>\
                        <code id='{ns_id}'>{name}",
                    id = id,
                    ns_id = ns_id,
-                   name = variant.name.as_ref().unwrap())?;
+                   name = variant.name.as_ref().expect("variant name unavailable 4"))?;
             if let clean::VariantItem(ref var) = variant.inner {
                 if let clean::VariantKind::Tuple(ref tys) = var.kind {
                     write!(w, "(")?;
@@ -3686,21 +3799,29 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
             }) = variant.inner {
                 let variant_id = cx.derive_id(format!("{}.{}.fields",
                                                    ItemType::Variant,
-                                                   variant.name.as_ref().unwrap()));
+                                                   variant.name
+                                                          .as_ref()
+                                                          .expect("variant name unavailable 5")));
                 write!(w, "<span class='autohide sub-variant' id='{id}'>",
                        id = variant_id)?;
                 write!(w, "<h3>Fields of <b>{name}</b></h3><div>",
-                       name = variant.name.as_ref().unwrap())?;
+                       name = variant.name.as_ref().expect("variant name unavailable 6"))?;
                 for field in &s.fields {
                     use crate::clean::StructFieldItem;
                     if let StructFieldItem(ref ty) = field.inner {
                         let id = cx.derive_id(format!("variant.{}.field.{}",
-                                                   variant.name.as_ref().unwrap(),
-                                                   field.name.as_ref().unwrap()));
+                                                   variant.name
+                                                          .as_ref()
+                                                          .expect("variant name unavailable 7"),
+                                                   field.name.as_ref()
+                                                             .expect("field name unavailable")));
                         let ns_id = cx.derive_id(format!("{}.{}.{}.{}",
-                                                      variant.name.as_ref().unwrap(),
+                                                      variant.name
+                                                             .as_ref()
+                                                             .expect("variant name unavailable 8"),
                                                       ItemType::Variant.name_space(),
-                                                      field.name.as_ref().unwrap(),
+                                                      field.name.as_ref()
+                                                                .expect("field name unavailable 2"),
                                                       ItemType::StructField.name_space()));
                         write!(w, "<span id=\"{id}\" class=\"variant small-section-header\">\
                                    <a href=\"#{id}\" class=\"anchor field\"></a>\
@@ -3708,7 +3829,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                                    </code></span>",
                                id = id,
                                ns_id = ns_id,
-                               f = field.name.as_ref().unwrap(),
+                               f = field.name.as_ref().expect("field name unavailable 3"),
                                t = *ty)?;
                         document(w, cx, field)?;
                     }
@@ -3762,7 +3883,7 @@ fn render_attributes(w: &mut fmt::Formatter<'_>, it: &clean::Item) -> fmt::Resul
         if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty().get()) {
             continue;
         }
-        if let Some(s) = render_attribute(&attr.meta().unwrap()) {
+        if let Some(s) = render_attribute(&attr.meta().expect("failed to render attribute")) {
             attrs.push_str(&format!("#[{}]\n", s));
         }
     }
@@ -3780,8 +3901,8 @@ fn render_struct(w: &mut fmt::Formatter<'_>, it: &clean::Item,
                  structhead: bool) -> fmt::Result {
     write!(w, "{}{}{}",
            VisSpace(&it.visibility),
-           if structhead {"struct "} else {""},
-           it.name.as_ref().unwrap())?;
+           if structhead { "struct " } else { "" },
+           it.name.as_ref().expect("name unavailable 20"))?;
     if let Some(g) = g {
         write!(w, "{}", g)?
     }
@@ -3797,18 +3918,18 @@ fn render_struct(w: &mut fmt::Formatter<'_>, it: &clean::Item,
                     write!(w, "\n{}    {}{}: {},",
                            tab,
                            VisSpace(&field.visibility),
-                           field.name.as_ref().unwrap(),
+                           field.name.as_ref().expect("field name unavailable 5"),
                            *ty)?;
                     has_visible_fields = true;
                 }
             }
 
             if has_visible_fields {
-                if it.has_stripped_fields().unwrap() {
+                if it.has_stripped_fields().expect("failed to check stripped fields") {
                     write!(w, "\n{}    // some fields omitted", tab)?;
                 }
                 write!(w, "\n{}", tab)?;
-            } else if it.has_stripped_fields().unwrap() {
+            } else if it.has_stripped_fields().expect("failed to check stripped fields 2") {
                 // If there are no visible fields we can just display
                 // `{ /* fields omitted */ }` to save space.
                 write!(w, " /* fields omitted */ ")?;
@@ -3856,7 +3977,7 @@ fn render_union(w: &mut fmt::Formatter<'_>, it: &clean::Item,
     write!(w, "{}{}{}",
            VisSpace(&it.visibility),
            if structhead {"union "} else {""},
-           it.name.as_ref().unwrap())?;
+           it.name.as_ref().expect("name unavailable 21"))?;
     if let Some(g) = g {
         write!(w, "{}", g)?;
         write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true })?;
@@ -3867,13 +3988,13 @@ fn render_union(w: &mut fmt::Formatter<'_>, it: &clean::Item,
         if let clean::StructFieldItem(ref ty) = field.inner {
             write!(w, "    {}{}: {},\n{}",
                    VisSpace(&field.visibility),
-                   field.name.as_ref().unwrap(),
+                   field.name.as_ref().expect("field name unavailable 6"),
                    *ty,
                    tab)?;
         }
     }
 
-    if it.has_stripped_fields().unwrap() {
+    if it.has_stripped_fields().expect("failed to check stripped fields 3") {
         write!(w, "    // some fields omitted\n{}", tab)?;
     }
     write!(w, "}}")?;
@@ -3906,11 +4027,13 @@ enum RenderMode {
     ForDeref { mut_: bool },
 }
 
-fn render_assoc_items(w: &mut fmt::Formatter<'_>,
-                      cx: &Context,
-                      containing_item: &clean::Item,
-                      it: DefId,
-                      what: AssocItemRender<'_>) -> fmt::Result {
+fn render_assoc_items(
+    w: &mut fmt::Formatter<'_>,
+    cx: &Context,
+    containing_item: &clean::Item,
+    it: DefId,
+    what: AssocItemRender<'_>
+) -> fmt::Result {
     let c = cache();
     let v = match c.impls.get(&it) {
         Some(v) => v,
@@ -4370,7 +4493,11 @@ fn item_typedef(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
     render_assoc_items(w, cx, it, it.def_id, AssocItemRender::All)
 }
 
-fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item) -> fmt::Result {
+fn item_foreign_type(
+    w: &mut fmt::Formatter<'_>,
+    cx: &Context,
+    it: &clean::Item,
+) -> fmt::Result {
     writeln!(w, "<pre class='rust foreigntype'>extern {{")?;
     render_attributes(w, it)?;
     write!(
@@ -4980,8 +5107,12 @@ fn item_macro(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
     document(w, cx, it)
 }
 
-fn item_proc_macro(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item, m: &clean::ProcMacro)
-    -> fmt::Result
+fn item_proc_macro(
+    w: &mut fmt::Formatter<'_>,
+    cx: &Context,
+    it: &clean::Item,
+    m: &clean::ProcMacro,
+) -> fmt::Result
 {
     let name = it.name.as_ref().expect("proc-macros always have names");
     match m.kind {

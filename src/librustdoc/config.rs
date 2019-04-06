@@ -198,6 +198,9 @@ pub struct RenderOptions {
     pub generate_search_filter: bool,
     /// Option (disabled by default) to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
+    /// Option (disabled by default) to generate file with names that won't crate conflicts
+    /// on case insensitive file systems.
+    pub case_insensitive: bool,
 }
 
 impl Options {
@@ -431,6 +434,7 @@ impl Options {
 
         let show_coverage = matches.opt_present("show-coverage");
         let document_private = matches.opt_present("document-private-items");
+        let case_insensitive = matches.opt_present("case-insensitive");
 
         let default_passes = if matches.opt_present("no-defaults") {
             passes::DefaultPassOption::None
@@ -508,6 +512,7 @@ impl Options {
                 markdown_playground_url,
                 generate_search_filter,
                 generate_redirect_pages,
+                case_insensitive,
             }
         })
     }

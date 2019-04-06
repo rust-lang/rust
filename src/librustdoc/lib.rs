@@ -355,6 +355,11 @@ fn opts() -> Vec<RustcOptGroup> {
                       "show-coverage",
                       "calculate percentage of public items with documentation")
         }),
+        unstable("case-insensitive", |o| {
+            o.optflag("",
+                      "case-insensitive",
+                      "Generate files with taking into account case insensitive file system")
+        }),
     ]
 }
 
