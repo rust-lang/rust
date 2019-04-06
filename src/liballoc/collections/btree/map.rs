@@ -1727,9 +1727,9 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
-        for (k, v) in iter {
+        iter.into_iter().for_each(move |(k, v)| {
             self.insert(k, v);
-        }
+        });
     }
 }
 

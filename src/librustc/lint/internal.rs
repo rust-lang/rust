@@ -100,7 +100,7 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
     if segment.ident.as_str() == "TyKind" {
         if let Some(def) = segment.def {
             if let Some(did) = def.opt_def_id() {
-                return did.match_path(cx.tcx, &["rustc", "ty", "sty", "TyKind"]);
+                return cx.match_path(did, &["rustc", "ty", "sty", "TyKind"]);
             }
         }
     }

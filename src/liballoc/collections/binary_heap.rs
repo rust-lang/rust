@@ -1177,9 +1177,7 @@ impl<T: Ord> BinaryHeap<T> {
 
         self.reserve(lower);
 
-        for elem in iterator {
-            self.push(elem);
-        }
+        iterator.for_each(move |elem| self.push(elem));
     }
 }
 
