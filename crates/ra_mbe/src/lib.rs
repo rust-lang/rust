@@ -379,4 +379,26 @@ SOURCE_FILE@[0; 40)
         // [let] [s] [=] ["rust1"] [;]
         assert_eq!(to_literal(&stm_tokens[15 + 3]).text, "\"rust1\"");
     }
+
+    /// The following tests are port from intellij-rust directly
+    /// https://github.com/intellij-rust/intellij-rust/blob/c4e9feee4ad46e7953b1948c112533360b6087bb/src/test/kotlin/org/rust/lang/core/macros/RsMacroExpansionTest.kt
+
+    #[test]
+    fn test_path() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:path) => {
+                fn foo() { let a = $ i; }
+            }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { foo }", "fn foo () {let a = foo ;}");
+        assert_expansion(
+            &rules,
+            "foo! { bar::<u8>::baz::<u8> }",
+            "fn foo () {let a = bar :: < u8 > :: baz :: < u8 > ;}",
+        );
+    }
 }

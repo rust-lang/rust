@@ -78,6 +78,10 @@ impl<'a> TtCursor<'a> {
         })
     }
 
+    pub(crate) fn eat_path(&mut self) -> Option<tt::Subtree> {        
+        None
+    }
+
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {
         if self.at_char(char) {
             self.bump();
