@@ -16,32 +16,8 @@ use std::hash::{Hash, Hasher};
 /// The primary goal of `Span` is to be as small as possible and fit into other structures
 /// (that's why it uses `packed` as well). Decoding speed is the second priority.
 /// See `SpanData` for the info on span fields in decoded representation.
-#[repr(packed)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash)]
 pub struct Span(u32);
-
-impl Copy for Span {}
-impl Clone for Span {
-    #[inline]
-    fn clone(&self) -> Span {
-        *self
-    }
-}
-impl PartialEq for Span {
-    #[inline]
-    fn eq(&self, other: &Span) -> bool {
-        let a = self.0;
-        let b = other.0;
-        a == b
-    }
-}
-impl Eq for Span {}
-impl Hash for Span {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let a = self.0;
-        a.hash(state)
-    }
-}
 
 /// Dummy span, both position and length are zero, syntax context is zero as well.
 /// This span is kept inline and encoded with format 0.
@@ -109,7 +85,7 @@ fn decode(span: Span) -> SpanData {
     let val = span.0;
 
     // Extract a field at position `pos` having size `size`.
-    let extract = |pos: u32, size: u32| {
+    let extract = #[inline] |pos: u32, size: u32| {
         let mask = ((!0u32) as u64 >> (32 - size)) as u32; // Can't shift u32 by 32
         (val >> pos) & mask
     };
