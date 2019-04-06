@@ -315,7 +315,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
 
 // Detect scheme on Redox
 fn has_redox_scheme(s: &[u8]) -> bool {
-    cfg!(target_os = "redox") && s.split(b"/").next().unwrap_or(b"").contains(&b':')
+    cfg!(target_os = "redox") && s.split_match(b"/").next().unwrap_or(b"").contains(&b':')
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -344,7 +344,7 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
         // contents of the encoding and (2) new &OsStr values are produced
         // only from ASCII-bounded slices of existing &OsStr values.
 
-        let mut iter = os_str_as_u8_slice(file).rsplitn(2, b".");
+        let mut iter = os_str_as_u8_slice(file).rsplitn_match(2, b".");
         let after = iter.next();
         let before = iter.next();
         if before == Some(b"") {

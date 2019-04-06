@@ -295,6 +295,7 @@
 #![feature(shrink_to)]
 #![feature(slice_concat_ext)]
 #![feature(slice_internals)]
+#![feature(slice_needle_methods)]
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 #![feature(std_internals)]

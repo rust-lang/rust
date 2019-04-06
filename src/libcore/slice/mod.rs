@@ -1015,8 +1015,10 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let slice = [10, 40, 33, 20];
-    /// let mut iter = slice.split(|num: &i32| num % 3 == 0);
+    /// let mut iter = slice.split_match(|num: &i32| num % 3 == 0);
     ///
     /// assert_eq!(iter.next().unwrap(), &[10, 40]);
     /// assert_eq!(iter.next().unwrap(), &[20]);
@@ -1029,8 +1031,10 @@ impl<T> [T] {
     /// iterator:
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let slice = [10, 40, 33];
-    /// let mut iter = slice.split(|num: &i32| num % 3 == 0);
+    /// let mut iter = slice.split_match(|num: &i32| num % 3 == 0);
     ///
     /// assert_eq!(iter.next().unwrap(), &[10, 40]);
     /// assert_eq!(iter.next().unwrap(), &[]);
@@ -1041,21 +1045,39 @@ impl<T> [T] {
     /// present between them:
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let slice = [10, 6, 33, 20];
-    /// let mut iter = slice.split(|num: &i32| num % 3 == 0);
+    /// let mut iter = slice.split_match(|num: &i32| num % 3 == 0);
     ///
     /// assert_eq!(iter.next().unwrap(), &[10]);
     /// assert_eq!(iter.next().unwrap(), &[]);
     /// assert_eq!(iter.next().unwrap(), &[20]);
     /// assert!(iter.next().is_none());
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn split<'a, F>(&'a self, pred: F) -> Split<'a, T, F>
+    pub fn split_match<'a, F>(&'a self, pred: F) -> ext::Split<&'a [T], F::Searcher>
     where
         F: Needle<&'a [T]>,
         F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::split(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`. The matched element is not contained in the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`split_match`](#method.split_match), except it only accepts closures
+    /// instead of all kinds of needles. See documentations of `split_match` for
+    /// usage examples.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn split<F>(&self, pred: F) -> Split<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::split(self, pred)
     }
@@ -1066,20 +1088,38 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let mut v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.split_mut(|num: &i32| *num % 3 == 0) {
+    /// for group in v.split_match_mut(|num: &i32| *num % 3 == 0) {
     ///     group[0] = 1;
     /// }
     /// assert_eq!(v, [1, 40, 30, 1, 60, 1]);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn split_mut<'a, F>(&'a mut self, pred: F) -> SplitMut<'a, T, F>
+    pub fn split_match_mut<'a, F>(&'a mut self, pred: F) -> ext::Split<&'a mut [T], F::Searcher>
     where
         F: Needle<&'a mut [T]>,
         F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::split(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`. The matched element is not contained in the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`split_match_mut`](#method.split_match_mut), except it only accepts
+    /// closures instead of all kinds of needles. See documentations of
+    /// `split_match_mut` for usage examples.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::split(self, pred)
     }
@@ -1091,33 +1131,54 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let slice = [11, 22, 33, 0, 44, 55];
-    /// let mut iter = slice.rsplit(|num: &i32| *num == 0);
+    /// let mut iter = slice.rsplit_match(&[0]);
     ///
     /// assert_eq!(iter.next().unwrap(), &[44, 55]);
     /// assert_eq!(iter.next().unwrap(), &[11, 22, 33]);
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    /// As with `split()`, if the first or last element is matched, an empty
+    /// As with `split_match()`, if the first or last element is matched, an empty
     /// slice will be the first (or last) item returned by the iterator.
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let v = &[0, 1, 1, 2, 3, 5, 8];
-    /// let mut it = v.rsplit(|n: &i32| *n % 2 == 0);
+    /// let mut it = v.rsplit_match(|n: &i32| *n % 2 == 0);
     /// assert_eq!(it.next().unwrap(), &[]);
     /// assert_eq!(it.next().unwrap(), &[3, 5]);
     /// assert_eq!(it.next().unwrap(), &[1, 1]);
     /// assert_eq!(it.next().unwrap(), &[]);
     /// assert_eq!(it.next(), None);
     /// ```
-    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn rsplit<'a, F>(&'a self, pred: F) -> RSplit<'a, T, F>
+    pub fn rsplit_match<'a, F>(&'a self, pred: F) -> ext::RSplit<&'a [T], F::Searcher>
     where
         F: Needle<&'a [T]>,
         F::Searcher: ReverseSearcher<[T]>,
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rsplit(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, starting at the end of the slice and working backwards.
+    /// The matched element is not contained in the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`rsplit_match`](#method.rsplit_match), except it only accepts closures
+    /// instead of all kinds of needles. See documentations of `rsplit_match`
+    /// for usage examples.
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    #[inline]
+    pub fn rsplit<F>(&self, pred: F) -> RSplit<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::rsplit(self, pred)
     }
@@ -1129,23 +1190,42 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let mut v = [100, 400, 300, 200, 600, 500];
     ///
     /// let mut count = 0;
-    /// for group in v.rsplit_mut(|num: &i32| *num % 3 == 0) {
+    /// for group in v.rsplit_match_mut(|num: &i32| *num % 3 == 0) {
     ///     count += 1;
     ///     group[0] = count;
     /// }
     /// assert_eq!(v, [3, 400, 300, 2, 600, 1]);
     /// ```
     ///
-    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn rsplit_mut<'a, F>(&'a mut self, pred: F) -> RSplitMut<'a, T, F>
+    pub fn rsplit_match_mut<'a, F>(&'a mut self, pred: F) -> ext::RSplit<&'a mut [T], F::Searcher>
     where
         F: Needle<&'a mut [T]>,
         F::Searcher: ReverseSearcher<[T]>,
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rsplit(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`, starting at the end of the slice and working
+    /// backwards. The matched element is not contained in the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`rsplit_match_mut`](#method.rsplit_match_mut), except it only accepts
+    /// closures instead of all kinds of needles. See documentations of
+    /// `rsplit_match_mut` for usage examples.
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    #[inline]
+    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplit<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::rsplit(self, pred)
     }
@@ -1163,19 +1243,38 @@ impl<T> [T] {
     /// `[20, 60, 50]`):
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.splitn(2, |num: &i32| *num % 3 == 0) {
+    /// for group in v.splitn_match(2, |num: &i32| *num % 3 == 0) {
     ///     println!("{:?}", group);
     /// }
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn splitn<'a, F>(&'a self, n: usize, pred: F) -> SplitN<'a, T, F>
+    pub fn splitn_match<'a, F>(&'a self, n: usize, pred: F) -> ext::SplitN<&'a [T], F::Searcher>
     where
         F: Needle<&'a [T]>,
         F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::splitn(self, n, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, limited to returning at most `n` items. The matched element is
+    /// not contained in the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`splitn_match`](#method.splitn_match), except it only accepts closures
+    /// instead of all kinds of needles. See documentations of `splitn_match`
+    /// for usage examples.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::splitn(self, n, pred)
     }
@@ -1190,20 +1289,40 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let mut v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.splitn_mut(2, |num: &i32| *num % 3 == 0) {
+    /// for group in v.splitn_match_mut(2, |num: &i32| *num % 3 == 0) {
     ///     group[0] = 1;
     /// }
     /// assert_eq!(v, [1, 40, 30, 1, 60, 50]);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn splitn_mut<'a, F>(&'a mut self, n: usize, pred: F) -> SplitNMut<'a, T, F>
+    pub fn splitn_match_mut<'a, F>(&'a mut self, n: usize, pred: F)
+        -> ext::SplitN<&'a mut [T], F::Searcher>
     where
         F: Needle<&'a mut [T]>,
         F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::splitn(self, n, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, limited to returning at most `n` items. The matched element is
+    /// not contained in the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`splitn_match_mut`](#method.splitn_match_mut), except it only accepts
+    /// closures instead of all kinds of needles. See documentations of
+    /// `splitn_match_mut` for usage examples.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::splitn(self, n, pred)
     }
@@ -1222,19 +1341,39 @@ impl<T> [T] {
     /// by 3 (i.e., `[50]`, `[10, 40, 30, 20]`):
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let v = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in v.rsplitn(2, |num: &i32| *num % 3 == 0) {
+    /// for group in v.rsplitn_match(2, |num: &i32| *num % 3 == 0) {
     ///     println!("{:?}", group);
     /// }
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn rsplitn<'a, F>(&'a self, n: usize, pred: F) -> RSplitN<'a, T, F>
+    pub fn rsplitn_match<'a, F>(&'a self, n: usize, pred: F) -> ext::RSplitN<&'a [T], F::Searcher>
     where
         F: Needle<&'a [T]>,
         F::Searcher: ReverseSearcher<[T]>,
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rsplitn(self, n, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred` limited to returning at most `n` items. This starts at the end of
+    /// the slice and works backwards. The matched element is not contained in
+    /// the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`rsplitn_match`](#method.rsplitn_match), except it only accepts
+    /// closures instead of all kinds of needles. See documentations of
+    /// `rsplitn_match` for usage examples.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::rsplitn(self, n, pred)
     }
@@ -1250,20 +1389,41 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(slice_needle_methods)]
+    ///
     /// let mut s = [10, 40, 30, 20, 60, 50];
     ///
-    /// for group in s.rsplitn_mut(2, |num: &i32| *num % 3 == 0) {
+    /// for group in s.rsplitn_match_mut(2, |num: &i32| *num % 3 == 0) {
     ///     group[0] = 1;
     /// }
     /// assert_eq!(s, [1, 40, 30, 20, 60, 1]);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "slice_needle_methods", issue = "56345")]
     #[inline]
-    pub fn rsplitn_mut<'a, F>(&'a mut self, n: usize, pred: F) -> RSplitNMut<'a, T, F>
+    pub fn rsplitn_match_mut<'a, F>(&'a mut self, n: usize, pred: F)
+        -> ext::RSplitN<&'a mut [T], F::Searcher>
     where
         F: Needle<&'a mut [T]>,
         F::Searcher: ReverseSearcher<[T]>,
         F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
+    {
+        ext::rsplitn(self, n, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred` limited to returning at most `n` items. This starts at the end of
+    /// the slice and works backwards. The matched element is not contained in
+    /// the subslices.
+    ///
+    /// This method is the stable equivalent of
+    /// [`rsplitn_match_mut`](#method.rsplitn_match_mut), except it only accepts
+    /// closures instead of all kinds of needles. See documentations of
+    /// `rsplitn_match_mut` for usage examples.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn rsplitn_mut<F>(&mut self, n: usize, pred: F) -> RSplitNMut<'_, T, F>
+    where
+        F: FnMut(&T) -> bool,
     {
         ext::rsplitn(self, n, pred)
     }
@@ -3791,11 +3951,9 @@ macro_rules! forward_to_needle_api {
     ($($(#[$meta:meta])* type $name:ident; $(#[$meta_mut:meta])* type $name_mut:ident;)+) => {
         $(
             $(#[$meta])*
-            pub type $name<'a, T, P> =
-                ext::$name<&'a [T], <P as Needle<&'a [T]>>::Searcher>;
+            pub type $name<'a, T, P> = ext::$name<&'a [T], self::needles::ElemSearcher<P>>;
             $(#[$meta_mut])*
-            pub type $name_mut<'a, T, P> =
-                ext::$name<&'a mut [T], <P as Needle<&'a mut [T]>>::Searcher>;
+            pub type $name_mut<'a, T, P> = ext::$name<&'a mut [T], self::needles::ElemSearcher<P>>;
         )+
     }
 }
