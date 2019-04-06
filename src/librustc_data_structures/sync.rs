@@ -517,7 +517,7 @@ impl<T> Once<T> {
 }
 
 #[derive(Debug)]
-pub struct Lock<T>(InnerLock<T>);
+pub struct Lock<T>(pub InnerLock<T>);
 
 impl<T> Lock<T> {
     #[inline(always)]

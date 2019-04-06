@@ -4,12 +4,10 @@
 // The encoding format for inline spans were obtained by optimizing over crates in rustc/libstd.
 // See https://internals.rust-lang.org/t/rfc-compiler-refactoring-spans/1357/28
 
-use crate::GLOBALS;
 use crate::{BytePos, SpanData};
 use crate::hygiene::SyntaxContext;
 
 use rustc_data_structures::fx::FxHashMap;
-use std::hash::{Hash, Hasher};
 
 /// A compressed span.
 /// Contains either fields of `SpanData` inline if they are small, or index into span interner.
@@ -74,7 +72,7 @@ fn encode(sd: &SpanData) -> Span {
         (base << INLINE_OFFSETS[BASE_INDEX]) | (len << INLINE_OFFSETS[LEN_INDEX]) |
         (ctxt << INLINE_OFFSETS[CTXT_INDEX]) | TAG_INLINE
     } else {
-        let index = with_span_interner(|interner| interner.intern(sd));
+        let index = unsafe { (*SPAN_INTERNER_BACKDOOR).intern(sd) };
         (index << INTERNED_INDEX_OFFSET) | TAG_INTERNED
     };
     Span(val)
@@ -96,7 +94,7 @@ fn decode(span: Span) -> SpanData {
         extract(INLINE_OFFSETS[CTXT_INDEX], INLINE_SIZES[CTXT_INDEX]),
     )} else {
         let index = extract(INTERNED_INDEX_OFFSET, INTERNED_INDEX_SIZE);
-        return with_span_interner(|interner| *interner.get(index));
+        return unsafe { *(*SPAN_INTERNER_BACKDOOR).get(index) };
     };
     SpanData { lo: BytePos(base), hi: BytePos(base + len), ctxt: SyntaxContext::from_u32(ctxt) }
 }
@@ -125,8 +123,4 @@ impl SpanInterner {
     }
 }
 
-// If an interner exists, return it. Otherwise, prepare a fresh one.
-#[inline]
-fn with_span_interner<T, F: FnOnce(&mut SpanInterner) -> T>(f: F) -> T {
-    GLOBALS.with(|globals| f(&mut *globals.span_interner.lock()))
-}
+pub static mut SPAN_INTERNER_BACKDOOR: *mut SpanInterner = std::ptr::null_mut();

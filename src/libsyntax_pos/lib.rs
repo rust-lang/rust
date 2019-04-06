@@ -18,6 +18,7 @@
 #![feature(rustc_attrs)]
 #![feature(specialization)]
 #![feature(step_trait)]
+#![feature(stmt_expr_attributes)]
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -29,7 +30,7 @@ pub mod hygiene;
 pub use hygiene::{Mark, SyntaxContext, ExpnInfo, ExpnFormat, CompilerDesugaringKind};
 
 mod span_encoding;
-pub use span_encoding::{Span, DUMMY_SP};
+pub use span_encoding::{Span, DUMMY_SP, SPAN_INTERNER_BACKDOOR};
 
 pub mod symbol;
 
@@ -48,7 +49,7 @@ use std::path::PathBuf;
 
 pub struct Globals {
     symbol_interner: Lock<symbol::Interner>,
-    span_interner: Lock<span_encoding::SpanInterner>,
+    pub span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
 }
 

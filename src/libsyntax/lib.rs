@@ -98,7 +98,18 @@ pub fn with_globals<F, R>(f: F) -> R
 {
     let globals = Globals::new();
     GLOBALS.set(&globals, || {
-        syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
+        syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, || unsafe {
+            let init_backdoor = syntax_pos::SPAN_INTERNER_BACKDOOR.is_null();
+            if init_backdoor {
+                syntax_pos::SPAN_INTERNER_BACKDOOR =
+                    globals.syntax_pos_globals.span_interner.0.as_ptr();
+            }
+            let res = f();
+            if init_backdoor {
+                syntax_pos::SPAN_INTERNER_BACKDOOR = std::ptr::null_mut();
+            }
+            res
+        })
     })
 }
 
