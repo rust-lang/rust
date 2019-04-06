@@ -117,7 +117,11 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
                                                     const char *Name,
                                                     LLVMTypeRef FunctionTy) {
   return wrap(
-      unwrap(M)->getOrInsertFunction(Name, unwrap<FunctionType>(FunctionTy)));
+      unwrap(M)->getOrInsertFunction(Name, unwrap<FunctionType>(FunctionTy))
+#if LLVM_VERSION_GE(9, 0)
+      .getCallee()
+#endif
+      );
 }
 
 extern "C" LLVMValueRef
@@ -417,7 +421,6 @@ enum class LLVMRustDIFlags : uint32_t {
   FlagIntroducedVirtual = (1 << 18),
   FlagBitField = (1 << 19),
   FlagNoReturn = (1 << 20),
-  FlagMainSubprogram = (1 << 21),
   // Do not add values that are not supported by the minimum LLVM
   // version we support! see llvm/include/llvm/IR/DebugInfoFlags.def
 };
@@ -508,9 +511,6 @@ static DINode::DIFlags fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagNoReturn)) {
     Result |= DINode::DIFlags::FlagNoReturn;
   }
-  if (isSet(Flags & LLVMRustDIFlags::FlagMainSubprogram)) {
-    Result |= DINode::DIFlags::FlagMainSubprogram;
-  }
 
   return Result;
 }
@@ -525,6 +525,7 @@ enum class LLVMRustDISPFlags : uint32_t {
   SPFlagLocalToUnit = (1 << 2),
   SPFlagDefinition = (1 << 3),
   SPFlagOptimized = (1 << 4),
+  SPFlagMainSubprogram = (1 << 5),
   // Do not add values that are not supported by the minimum LLVM
   // version we support! see llvm/include/llvm/IR/DebugInfoFlags.def
   // (In LLVM < 8, createFunction supported these as separate bool arguments.)
@@ -575,6 +576,11 @@ static DISubprogram::DISPFlags fromRust(LLVMRustDISPFlags SPFlags) {
   if (isSet(SPFlags & LLVMRustDISPFlags::SPFlagOptimized)) {
     Result |= DISubprogram::DISPFlags::SPFlagOptimized;
   }
+#if LLVM_VERSION_GE(9, 0)
+  if (isSet(SPFlags & LLVMRustDISPFlags::SPFlagMainSubprogram)) {
+    Result |= DISubprogram::DISPFlags::SPFlagMainSubprogram;
+  }
+#endif
 
   return Result;
 }
@@ -671,18 +677,27 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFunction(
   DITemplateParameterArray TParams =
       DITemplateParameterArray(unwrap<MDTuple>(TParam));
 #if LLVM_VERSION_GE(8, 0)
+  DISubprogram::DISPFlags llvmSPFlags = fromRust(SPFlags);
+  DINode::DIFlags llvmFlags = fromRust(Flags);
+#if LLVM_VERSION_LT(9, 0)
+  if (isSet(SPFlags & LLVMRustDISPFlags::SPFlagMainSubprogram))
+    llvmFlags |= DINode::DIFlags::FlagMainSubprogram;
+#endif
   DISubprogram *Sub = Builder->createFunction(
       unwrapDI<DIScope>(Scope), Name, LinkageName, unwrapDI<DIFile>(File),
-      LineNo, unwrapDI<DISubroutineType>(Ty), ScopeLine, fromRust(Flags),
-      fromRust(SPFlags), TParams, unwrapDIPtr<DISubprogram>(Decl));
+      LineNo, unwrapDI<DISubroutineType>(Ty), ScopeLine, llvmFlags,
+      llvmSPFlags, TParams, unwrapDIPtr<DISubprogram>(Decl));
 #else
   bool IsLocalToUnit = isSet(SPFlags & LLVMRustDISPFlags::SPFlagLocalToUnit);
   bool IsDefinition = isSet(SPFlags & LLVMRustDISPFlags::SPFlagDefinition);
   bool IsOptimized = isSet(SPFlags & LLVMRustDISPFlags::SPFlagOptimized);
+  DINode::DIFlags llvmFlags = fromRust(Flags);
+  if (isSet(SPFlags & LLVMRustDISPFlags::SPFlagMainSubprogram))
+    llvmFlags |= DINode::DIFlags::FlagMainSubprogram;
   DISubprogram *Sub = Builder->createFunction(
       unwrapDI<DIScope>(Scope), Name, LinkageName, unwrapDI<DIFile>(File),
       LineNo, unwrapDI<DISubroutineType>(Ty), IsLocalToUnit, IsDefinition,
-      ScopeLine, fromRust(Flags), IsOptimized, TParams,
+      ScopeLine, llvmFlags, IsOptimized, TParams,
       unwrapDIPtr<DISubprogram>(Decl));
 #endif
   unwrap<Function>(Fn)->setSubprogram(Sub);

@@ -296,12 +296,6 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        if let Some((id, _)) = self.tcx.entry_fn(LOCAL_CRATE) {
-            if id == def_id {
-                flags |= DIFlags::FlagMainSubprogram;
-            }
-        }
-
         if self.layout_of(sig.output()).abi.is_uninhabited() {
             flags |= DIFlags::FlagNoReturn;
         }
@@ -312,6 +306,11 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
         if self.sess().opts.optimize != config::OptLevel::No {
             spflags |= DISPFlags::SPFlagOptimized;
+        }
+        if let Some((id, _)) = self.tcx.entry_fn(LOCAL_CRATE) {
+            if id == def_id {
+                spflags |= DISPFlags::SPFlagMainSubprogram;
+            }
         }
 
         let fn_metadata = unsafe {
