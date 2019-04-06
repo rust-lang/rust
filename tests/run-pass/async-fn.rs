@@ -1,3 +1,4 @@
+// ignore-test FIXME ignored to let https://github.com/rust-lang/rust/pull/59119 land
 #![feature(
     async_await,
     await_macro,
