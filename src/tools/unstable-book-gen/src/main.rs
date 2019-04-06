@@ -116,6 +116,11 @@ fn copy_recursive(path: &Path, to: &Path) {
     }
 }
 
+fn copy_book_toml(path: &Path) {
+    let mut file = t!(File::create(&path.join("book.toml")));
+    t!(file.write_fmt(format_args!(include_str!("book.toml"));
+}
+
 fn main() {
     let src_path_str = env::args_os().skip(1).next().expect("source path required");
     let dest_path_str = env::args_os().skip(2).next().expect("destination path required");
@@ -141,4 +146,6 @@ fn main() {
     copy_recursive(&doc_src_path, &dest_path);
 
     generate_summary(&dest_path, &lang_features, &lib_features);
+
+    copy_book_toml(&dest_path);
 }
