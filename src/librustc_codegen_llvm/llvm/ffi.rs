@@ -1687,7 +1687,8 @@ extern "C" {
                                Demangle: extern fn(*const c_char,
                                                    size_t,
                                                    *mut c_char,
-                                                   size_t) -> size_t);
+                                                   size_t) -> size_t,
+                               ) -> LLVMRustResult;
     pub fn LLVMRustSetLLVMOptions(Argc: c_int, Argv: *const *const c_char);
     pub fn LLVMRustPrintPasses();
     pub fn LLVMRustSetNormalizedTarget(M: &Module, triple: *const c_char);
