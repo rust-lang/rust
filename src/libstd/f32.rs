@@ -193,11 +193,11 @@ impl f32 {
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
-    /// `y`.
+    /// `sign`.
     ///
-    /// Equal to `self` if the sign of `self` and `y` are the same, otherwise
+    /// Equal to `self` if the sign of `self` and `sign` are the same, otherwise
     /// equal to `-self`. If `self` is a `NAN`, then a `NAN` with the sign of
-    /// `y` is returned.
+    /// `sign` is returned.
     ///
     /// # Examples
     ///
@@ -216,8 +216,8 @@ impl f32 {
     #[inline]
     #[must_use]
     #[stable(feature = "copysign", since = "1.35.0")]
-    pub fn copysign(self, y: f32) -> f32 {
-        unsafe { intrinsics::copysignf32(self, y) }
+    pub fn copysign(self, sign: f32) -> f32 {
+        unsafe { intrinsics::copysignf32(self, sign) }
     }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
