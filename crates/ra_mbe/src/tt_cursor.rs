@@ -1,4 +1,124 @@
 use crate::ParseError;
+use crate::syntax_bridge::{TtTokenSource, TtToken, TokenPeek};
+use ra_parser::{TokenSource, TreeSink};
+
+use ra_syntax::{
+    SyntaxKind
+};
+
+struct TtCursorTokenSource {
+    tt_pos: usize,
+    inner: TtTokenSource,
+}
+
+impl TtCursorTokenSource {
+    fn new(subtree: &tt::Subtree, curr: usize) -> TtCursorTokenSource {
+        let mut res = TtCursorTokenSource { inner: TtTokenSource::new(subtree), tt_pos: 1 };
+
+        // Matching `TtToken` cursor to `tt::TokenTree` cursor
+        // It is because TtToken is not One to One mapping to tt::Token
+        // There are 3 case (`TtToken` <=> `tt::TokenTree`) :
+        // * One to One =>  ident, single char punch
+        // * Many to One => `tt::TokenTree::SubTree`
+        // * One to Many => multibyte punct
+        //
+        // Such that we cannot simpliy advance the cursor
+        // We have to bump it one by one
+        let mut pos = 0;
+        while pos < curr {
+            pos += res.bump(&subtree.token_trees[pos]);
+        }
+
+        res
+    }
+
+    fn skip_sibling_leaf(&self, leaf: &tt::Leaf, iter: &mut std::slice::Iter<tt::TokenTree>) {
+        if let tt::Leaf::Punct(p) = leaf {
+            let mut peek = TokenPeek::new(iter);
+            if let Some((_, _, _, size)) = TtTokenSource::convert_multi_char_punct(p, &mut peek) {
+                for _ in 0..size - 1 {
+                    peek.next();
+                }
+            }
+        }
+    }
+
+    fn count_tt_tokens(
+        &self,
+        tt: &tt::TokenTree,
+        iter: Option<&mut std::slice::Iter<tt::TokenTree>>,
+    ) -> usize {
+        assert!(!self.inner.tokens.is_empty());
+
+        match tt {
+            tt::TokenTree::Subtree(sub_tree) => {
+                let mut iter = sub_tree.token_trees.iter();
+                let mut count = match sub_tree.delimiter {
+                    tt::Delimiter::None => 0,
+                    _ => 2,
+                };
+
+                while let Some(tt) = iter.next() {
+                    count += self.count_tt_tokens(&tt, Some(&mut iter));
+                }
+                count
+            }
+
+            tt::TokenTree::Leaf(leaf) => {
+                iter.map(|iter| {
+                    self.skip_sibling_leaf(leaf, iter);
+                });
+
+                1
+            }
+        }
+    }
+
+    fn count(&self, tt: &tt::TokenTree) -> usize {
+        self.count_tt_tokens(tt, None)
+    }
+
+    fn bump(&mut self, tt: &tt::TokenTree) -> usize {
+        let cur = self.current().unwrap();
+        let n_tokens = cur.n_tokens;
+        self.tt_pos += self.count(tt);
+        n_tokens
+    }
+
+    fn current(&self) -> Option<&TtToken> {
+        self.inner.tokens.get(self.tt_pos)
+    }
+}
+
+impl TokenSource for TtCursorTokenSource {
+    fn token_kind(&self, pos: usize) -> SyntaxKind {
+        if let Some(tok) = self.inner.tokens.get(self.tt_pos + pos) {
+            tok.kind
+        } else {
+            SyntaxKind::EOF
+        }
+    }
+    fn is_token_joint_to_next(&self, pos: usize) -> bool {
+        self.inner.tokens[self.tt_pos + pos].is_joint_to_next
+    }
+    fn is_keyword(&self, pos: usize, kw: &str) -> bool {
+        self.inner.tokens[self.tt_pos + pos].text == *kw
+    }
+}
+
+struct TtCursorTokenSink {
+    token_pos: usize,
+}
+
+impl TreeSink for TtCursorTokenSink {
+    fn token(&mut self, _kind: SyntaxKind, n_tokens: u8) {
+        self.token_pos += n_tokens as usize;
+    }
+
+    fn start_node(&mut self, _kind: SyntaxKind) {}
+    fn finish_node(&mut self) {}
+    fn error(&mut self, _error: ra_parser::ParseError) {}
+}
 
 #[derive(Clone)]
 pub(crate) struct TtCursor<'a> {
@@ -78,8 +198,54 @@ impl<'a> TtCursor<'a> {
         })
     }
 
-    pub(crate) fn eat_path(&mut self) -> Option<tt::Subtree> {        
-        None
+    fn eat_parse_result(
+        &mut self,
+        parsed_token: usize,
+        src: &mut TtCursorTokenSource,
+    ) -> Option<tt::TokenTree> {
+        let mut res = vec![];
+
+        // Matching `TtToken` cursor to `tt::TokenTree` cursor
+        // It is because TtToken is not One to One mapping to tt::Token
+        // There are 3 case (`TtToken` <=> `tt::TokenTree`) :
+        // * One to One =>  ident, single char punch
+        // * Many to One => `tt::TokenTree::SubTree`
+        // * One to Many => multibyte punct
+        //
+        // Such that we cannot simpliy advance the cursor
+        // We have to bump it one by one
+        let next_pos = src.tt_pos + parsed_token;
+        while src.tt_pos < next_pos {
+            let n = src.bump(self.current().unwrap());
+            res.extend((0..n).map(|_| self.eat().unwrap()));
+        }
+
+        let res: Vec<_> = res.into_iter().cloned().collect();
+
+        match res.len() {
+            0 => None,
+            1 => Some(res[0].clone()),
+            _ => Some(tt::TokenTree::Subtree(tt::Subtree {
+                delimiter: tt::Delimiter::None,
+                token_trees: res,
+            })),
+        }
+    }
+
+    fn eat_parse<F>(&mut self, f: F) -> Option<tt::TokenTree>
+    where
+        F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),
+    {
+        let mut src = TtCursorTokenSource::new(self.subtree, self.pos);
+        let mut sink = TtCursorTokenSink { token_pos: 0 };
+
+        f(&src, &mut sink);
+
+        self.eat_parse_result(sink.token_pos, &mut src)
+    }
+
+    pub(crate) fn eat_path(&mut self) -> Option<tt::TokenTree> {
+        self.eat_parse(ra_parser::parse_path)
     }
 
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {

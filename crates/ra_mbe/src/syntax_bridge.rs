@@ -104,15 +104,16 @@ fn convert_tt(
 }
 
 #[derive(Debug)]
-struct TtTokenSource {
-    tokens: Vec<TtToken>,
+pub(crate) struct TtTokenSource {
+    pub tokens: Vec<TtToken>,
 }
 
 #[derive(Debug)]
-struct TtToken {
-    kind: SyntaxKind,
-    is_joint_to_next: bool,
-    text: SmolStr,
+pub(crate) struct TtToken {
+    pub kind: SyntaxKind,
+    pub is_joint_to_next: bool,
+    pub text: SmolStr,
+    pub n_tokens: usize,
 }
 
 // Some helper functions
@@ -123,7 +124,7 @@ fn to_punct(tt: &tt::TokenTree) -> Option<&tt::Punct> {
     None
 }
 
-struct TokenPeek<'a, I>
+pub(crate) struct TokenPeek<'a, I>
 where
     I: Iterator<Item = &'a tt::TokenTree>,
 {
@@ -134,7 +135,11 @@ impl<'a, I> TokenPeek<'a, I>
 where
     I: Iterator<Item = &'a tt::TokenTree>,
 {
-    fn next(&mut self) -> Option<&tt::TokenTree> {
+    pub fn new(iter: I) -> Self {
+        TokenPeek { iter: itertools::multipeek(iter) }
+    }
+
+    pub fn next(&mut self) -> Option<&tt::TokenTree> {
         self.iter.next()
     }
 
@@ -161,14 +166,14 @@ where
 }
 
 impl TtTokenSource {
-    fn new(tt: &tt::Subtree) -> TtTokenSource {
+    pub fn new(tt: &tt::Subtree) -> TtTokenSource {
         let mut res = TtTokenSource { tokens: Vec::new() };
         res.convert_subtree(tt);
         res
     }
     fn convert_subtree(&mut self, sub: &tt::Subtree) {
         self.push_delim(sub.delimiter, false);
-        let mut peek = TokenPeek { iter: itertools::multipeek(sub.token_trees.iter()) };
+        let mut peek = TokenPeek::new(sub.token_trees.iter());
         while let Some(tt) = peek.iter.next() {
             self.convert_tt(tt, &mut peek);
         }
@@ -194,10 +199,17 @@ impl TtTokenSource {
                 kind: classify_literal(&l.text).unwrap().kind,
                 is_joint_to_next: false,
                 text: l.text.clone(),
+                n_tokens: 1,
             },
             tt::Leaf::Punct(p) => {
-                if let Some(tt) = Self::convert_multi_char_punct(p, iter) {
-                    tt
+                if let Some((kind, is_joint_to_next, text, size)) =
+                    Self::convert_multi_char_punct(p, iter)
+                {
+                    for _ in 0..size - 1 {
+                        iter.next();
+                    }
+
+                    TtToken { kind, is_joint_to_next, text: text.into(), n_tokens: size }
                 } else {
                     let kind = match p.char {
                         // lexer may produce combpund tokens for these ones
@@ -213,21 +225,26 @@ impl TtTokenSource {
                         let s: &str = p.char.encode_utf8(&mut buf);
                         SmolStr::new(s)
                     };
-                    TtToken { kind, is_joint_to_next: p.spacing == tt::Spacing::Joint, text }
+                    TtToken {
+                        kind,
+                        is_joint_to_next: p.spacing == tt::Spacing::Joint,
+                        text,
+                        n_tokens: 1,
+                    }
                 }
             }
             tt::Leaf::Ident(ident) => {
                 let kind = SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT);
-                TtToken { kind, is_joint_to_next: false, text: ident.text.clone() }
+                TtToken { kind, is_joint_to_next: false, text: ident.text.clone(), n_tokens: 1 }
             }
         };
         self.tokens.push(tok)
     }
 
-    fn convert_multi_char_punct<'a, I>(
+    pub(crate) fn convert_multi_char_punct<'a, I>(
         p: &tt::Punct,
         iter: &mut TokenPeek<'a, I>,
-    ) -> Option<TtToken>
+    ) -> Option<(SyntaxKind, bool, &'static str, usize)>
     where
         I: Iterator<Item = &'a tt::TokenTree>,
     {
@@ -239,9 +256,7 @@ impl TtTokenSource {
                 ('.', '.', '=') => Some((DOTDOTEQ, "..=")),
                 _ => None,
             } {
-                iter.next();
-                iter.next();
-                return Some(TtToken { kind, is_joint_to_next, text: text.into() });
+                return Some((kind, is_joint_to_next, text, 3));
             }
         }
 
@@ -273,8 +288,7 @@ impl TtTokenSource {
 
                 _ => None,
             } {
-                iter.next();
-                return Some(TtToken { kind, is_joint_to_next, text: text.into() });
+                return Some((kind, is_joint_to_next, text, 2));
             }
         }
 
@@ -291,7 +305,7 @@ impl TtTokenSource {
         let idx = closing as usize;
         let kind = kinds[idx];
         let text = &texts[idx..texts.len() - (1 - idx)];
-        let tok = TtToken { kind, is_joint_to_next: false, text: SmolStr::new(text) };
+        let tok = TtToken { kind, is_joint_to_next: false, text: SmolStr::new(text), n_tokens: 1 };
         self.tokens.push(tok)
     }
 }
