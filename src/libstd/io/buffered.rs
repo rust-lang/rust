@@ -589,9 +589,10 @@ impl<W: Write> BufWriter<W> {
         match self.flush_buf() {
             Err(e) => Err(IntoInnerError(self, e)),
             Ok(()) => {
-                use std::mem::{replace, uninitialized, forget};
-                let inner = replace(&mut self.inner, unsafe { uninitialized() });
-                replace(&mut self.buf, unsafe { uninitialized() });
+                use crate::mem::forget;
+                use crate::ptr::{drop_in_place, read};
+                let inner = unsafe { read(&mut self.inner) };
+                unsafe { drop_in_place(&mut self.buf) };
                 forget(self);
                 Ok(inner)
             }
