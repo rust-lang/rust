@@ -122,12 +122,17 @@ other projects:
 
 ```sh
 rustup component remove miri # avoid having Miri installed twice
-cargo +nightly install --path "$DIR" --force # or the nightly in `rust-version`
+cargo +nightly install --path "$DIR" --force
 cargo +nightly miri setup
 ```
 
 (We are giving `+nightly` explicitly here all the time because it is important
 that all of these commands get executed with the same toolchain.)
+
+In case this fails, your nightly might be incompatible with Miri master.  The
+`rust-version` file contains the commit hash of rustc that Miri is currently
+tested against; you can use that to find a nightly that works or you might have
+to wait for the next nightly to get released.
 
 If you want to use a different libstd (not the one that comes with the
 nightly), you can do that by running

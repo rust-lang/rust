@@ -4,7 +4,7 @@ use rustc_target::abi::LayoutOf;
 use rustc::{ty, ty::layout::HasDataLayout, mir};
 
 use crate::{
-    EvalResult, EvalErrorKind, StackPopCleanup,
+    EvalResult, InterpError, StackPopCleanup,
     MPlaceTy, Scalar, Borrow,
 };
 
@@ -149,7 +149,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 StackPopCleanup::None { cleanup: true },
             )?;
             let arg_local = this.frame().mir.args_iter().next().ok_or_else(
-                || EvalErrorKind::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
+                || InterpError::AbiViolation("TLS dtor does not take enough arguments.".to_owned()),
             )?;
             let dest = this.eval_place(&mir::Place::Base(mir::PlaceBase::Local(arg_local)))?;
             this.write_scalar(ptr, dest)?;

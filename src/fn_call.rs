@@ -270,7 +270,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 let mut args = this.frame().mir.args_iter();
 
                 let arg_local = args.next().ok_or_else(||
-                    EvalErrorKind::AbiViolation(
+                    InterpError::AbiViolation(
                         "Argument to __rust_maybe_catch_panic does not take enough arguments."
                             .to_owned(),
                     ),
@@ -529,7 +529,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 // This is `libc::pthread_key_t`.
                 let key_type = args[0].layout.ty
                     .builtin_deref(true)
-                    .ok_or_else(|| EvalErrorKind::AbiViolation("wrong signature used for `pthread_key_create`: first argument must be a raw pointer.".to_owned()))?
+                    .ok_or_else(|| InterpError::AbiViolation("wrong signature used for `pthread_key_create`: first argument must be a raw pointer.".to_owned()))?
                     .ty;
                 let key_layout = this.layout_of(key_type)?;
 
