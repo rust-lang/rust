@@ -1,3 +1,5 @@
+// run-pass
+
 /// Test for https://github.com/rust-lang/rust-clippy/issues/2865
 
 #[derive(Clone)]
