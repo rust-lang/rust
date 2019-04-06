@@ -883,9 +883,9 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
     fn extend<Iter: IntoIterator<Item = T>>(&mut self, iter: Iter) {
-        for elem in iter {
+        iter.into_iter().for_each(move |elem| {
             self.insert(elem);
-        }
+        });
     }
 }
 

@@ -1107,9 +1107,7 @@ impl<T> Extend<T> for LinkedList<T> {
 
 impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
     default fn spec_extend(&mut self, iter: I) {
-        for elt in iter {
-            self.push_back(elt);
-        }
+        iter.into_iter().for_each(move |elt| self.push_back(elt));
     }
 }
 
