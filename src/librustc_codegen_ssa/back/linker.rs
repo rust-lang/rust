@@ -377,15 +377,11 @@ impl<'a> Linker for GccLinker<'a> {
             return;
         }
 
-        // If we're compiling a dylib, then we let symbol visibility in object
-        // files to take care of whether they're exported or not.
-        //
-        // If we're compiling a cdylib, however, we manually create a list of
-        // exported symbols to ensure we don't expose any more. The object files
-        // have far more public symbols than we actually want to export, so we
-        // hide them all here.
-        if crate_type == CrateType::Dylib ||
-           crate_type == CrateType::ProcMacro {
+        // We manually create a list of exported symbols to ensure we don't expose any more.
+        // The object files have far more public symbols than we actually want to export,
+        // so we hide them all here.
+
+        if crate_type == CrateType::ProcMacro {
             return
         }
 
