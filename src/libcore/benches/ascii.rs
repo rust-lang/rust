@@ -2,7 +2,7 @@
 // after wrap-adding 0x1F:
 //
 //     b'a' + 0x1F == 0x80 == 0b1000_0000
-//     b'z' + 0x1F == 0x98 == 0b10011000
+//     b'z' + 0x1F == 0x98 == 0b1001_1000
 //
 // Lower-case ASCII 'z' is the last byte that has its highest bit unset
 // after wrap-adding 0x05:
