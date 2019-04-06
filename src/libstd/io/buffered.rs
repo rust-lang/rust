@@ -1398,6 +1398,32 @@ mod tests {
         });
     }
 
+    #[bench]
+    fn bench_buffered_writer_large_write_causing_flush(b: &mut test::Bencher) {
+        b.iter(|| {
+            let mut buf_writer = BufWriter::with_capacity(10, io::sink());
+            buf_writer.write(b"abcdefghijklmnopqrstuvwxyz").unwrap();
+        });
+    }
+
+    #[bench]
+    fn bench_buffered_writer_small_write(b: &mut test::Bencher) {
+        b.iter(|| {
+            let mut buf_writer = BufWriter::with_capacity(10, io::sink());
+            buf_writer.write(b"abcdef").unwrap();
+        });
+    }
+
+    #[bench]
+    fn bench_buffered_writer_multiple_small_writes(b: &mut test::Bencher) {
+        b.iter(|| {
+            let mut buf_writer = BufWriter::with_capacity(10, io::sink());
+            buf_writer.write(b"abcdef").unwrap();
+            buf_writer.write(b"abcdef").unwrap();
+            buf_writer.write(b"abcdef").unwrap();
+        });
+    }
+
     struct AcceptOneThenFail {
         written: bool,
         flushed: bool,
