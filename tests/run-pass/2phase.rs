@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
 }
@@ -54,6 +52,8 @@ fn with_interior_mutability() {
 
     let mut x = Cell::new(1);
     let l = &x;
+
+    #[allow(unknown_lints, mutable_borrow_reservation_conflict)]
     x
         .do_the_thing({
             x.set(3);
