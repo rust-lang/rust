@@ -315,12 +315,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     );
 
                     // Figure out how to pass which arguments.
-                    // We have two iterators: Where the arguments come from,
-                    // and where they go to.
+                    // The Rust ABI is special: ZST get skipped.
                     let rust_abi = match caller_abi {
                         Abi::Rust | Abi::RustCall => true,
                         _ => false
                     };
+                    // We have two iterators: Where the arguments come from,
+                    // and where they go to.
 
                     // For where they come from: If the ABI is RustCall, we untuple the
                     // last incoming argument.  These two iterators do not have the same type,
@@ -368,7 +369,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     }
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
-                        trace!("Caller has too many args over");
+                        trace!("Caller has passed too many args");
                         return err!(FunctionArgCountMismatch);
                     }
                     // Don't forget to check the return type!

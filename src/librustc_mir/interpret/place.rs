@@ -15,7 +15,7 @@ use rustc::ty::TypeFoldable;
 use super::{
     GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
     InterpretCx, Machine, AllocMap, AllocationExtra,
-    RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
+    RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind, LocalValue
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -639,6 +639,7 @@ where
                 None => return err!(InvalidNullPointerUsage),
             },
             Base(PlaceBase::Local(local)) => PlaceTy {
+                // This works even for dead/uninitialized locals; we check further when writing
                 place: Place::Local {
                     frame: self.cur_frame(),
                     local,
@@ -714,16 +715,19 @@ where
         // but not factored as a separate function.
         let mplace = match dest.place {
             Place::Local { frame, local } => {
-                match *self.stack[frame].locals[local].access_mut()? {
-                    Operand::Immediate(ref mut dest_val) => {
-                        // Yay, we can just change the local directly.
-                        *dest_val = src;
+                match self.stack[frame].locals[local].access_mut()? {
+                    Ok(local) => {
+                        // Local can be updated in-place.
+                        *local = LocalValue::Live(Operand::Immediate(src));
                         return Ok(());
-                    },
-                    Operand::Indirect(mplace) => mplace, // already in memory
+                    }
+                    Err(mplace) => {
+                        // The local is in memory, go on below.
+                        mplace
+                    }
                 }
             },
-            Place::Ptr(mplace) => mplace, // already in memory
+            Place::Ptr(mplace) => mplace, // already referring to memory
         };
         let dest = MPlaceTy { mplace, layout: dest.layout };
 
@@ -904,27 +908,40 @@ where
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let mplace = match place.place {
             Place::Local { frame, local } => {
-                match *self.stack[frame].locals[local].access()? {
-                    Operand::Indirect(mplace) => mplace,
-                    Operand::Immediate(value) => {
+                match self.stack[frame].locals[local].access_mut()? {
+                    Ok(local_val) => {
                         // We need to make an allocation.
                         // FIXME: Consider not doing anything for a ZST, and just returning
                         // a fake pointer?  Are we even called for ZST?
+
+                        // We cannot hold on to the reference `local_val` while allocating,
+                        // but we can hold on to the value in there.
+                        let old_val =
+                            if let LocalValue::Live(Operand::Immediate(value)) = *local_val {
+                                Some(value)
+                            } else {
+                                None
+                            };
 
                         // We need the layout of the local.  We can NOT use the layout we got,
                         // that might e.g., be an inner field of a struct with `Scalar` layout,
                         // that has different alignment than the outer field.
                         let local_layout = self.layout_of_local(&self.stack[frame], local, None)?;
                         let ptr = self.allocate(local_layout, MemoryKind::Stack);
-                        // We don't have to validate as we can assume the local
-                        // was already valid for its type.
-                        self.write_immediate_to_mplace_no_validate(value, ptr)?;
+                        if let Some(value) = old_val {
+                            // Preserve old value.
+                            // We don't have to validate as we can assume the local
+                            // was already valid for its type.
+                            self.write_immediate_to_mplace_no_validate(value, ptr)?;
+                        }
                         let mplace = ptr.mplace;
-                        // Update the local
-                        *self.stack[frame].locals[local].access_mut()? =
-                            Operand::Indirect(mplace);
+                        // Now we can call `access_mut` again, asserting it goes well,
+                        // and actually overwrite things.
+                        *self.stack[frame].locals[local].access_mut().unwrap().unwrap() =
+                            LocalValue::Live(Operand::Indirect(mplace));
                         mplace
                     }
+                    Err(mplace) => mplace, // this already was an indirect local
                 }
             }
             Place::Ptr(mplace) => mplace

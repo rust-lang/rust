@@ -116,26 +116,41 @@ pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
 /// State of a local variable
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum LocalValue<Tag=(), Id=AllocId> {
+    /// This local is not currently alive, and cannot be used at all.
     Dead,
-    // Mostly for convenience, we re-use the `Operand` type here.
-    // This is an optimization over just always having a pointer here;
-    // we can thus avoid doing an allocation when the local just stores
-    // immediate values *and* never has its address taken.
+    /// This local is alive but not yet initialized. It can be written to
+    /// but not read from or its address taken. Locals get initialized on
+    /// first write because for unsized locals, we do not know their size
+    /// before that.
+    Uninitialized,
+    /// A normal, live local.
+    /// Mostly for convenience, we re-use the `Operand` type here.
+    /// This is an optimization over just always having a pointer here;
+    /// we can thus avoid doing an allocation when the local just stores
+    /// immediate values *and* never has its address taken.
     Live(Operand<Tag, Id>),
 }
 
-impl<'tcx, Tag> LocalState<'tcx, Tag> {
+impl<'tcx, Tag: Copy> LocalState<'tcx, Tag> {
     pub fn access(&self) -> EvalResult<'tcx, &Operand<Tag>> {
         match self.state {
-            LocalValue::Dead => err!(DeadLocal),
+            LocalValue::Dead | LocalValue::Uninitialized => err!(DeadLocal),
             LocalValue::Live(ref val) => Ok(val),
         }
     }
 
-    pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand<Tag>> {
+    /// Overwrite the local.  If the local can be overwritten in place, return a reference
+    /// to do so; otherwise return the `MemPlace` to consult instead.
+    pub fn access_mut(
+        &mut self,
+    ) -> EvalResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
         match self.state {
             LocalValue::Dead => err!(DeadLocal),
-            LocalValue::Live(ref mut val) => Ok(val),
+            LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
+            ref mut local @ LocalValue::Live(Operand::Immediate(_)) |
+            ref mut local @ LocalValue::Uninitialized => {
+                Ok(Ok(local))
+            }
         }
     }
 }
@@ -327,6 +342,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                     let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
                     self.layout_of(local_ty)
                 })?;
+                // Layouts of locals are requested a lot, so we cache them.
                 frame.locals[local].layout.set(Some(layout));
                 Ok(layout)
             }
@@ -473,13 +489,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
 
         // don't allocate at all for trivial constants
         if mir.local_decls.len() > 1 {
-            // We put some marker immediate into the locals that we later want to initialize.
-            // This can be anything except for LocalValue::Dead -- because *that* is the
-            // value we use for things that we know are initially dead.
+            // Locals are initially uninitialized.
             let dummy = LocalState {
-                state: LocalValue::Live(Operand::Immediate(Immediate::Scalar(
-                    ScalarMaybeUndef::Undef,
-                ))),
+                state: LocalValue::Uninitialized,
                 layout: Cell::new(None),
             };
             let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
@@ -506,19 +518,25 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                     }
                 },
             }
-            // Finally, properly initialize all those that still have the dummy value
+            // FIXME: We initialize live ZST here.  This should not be needed if MIR was
+            // consistently generated for ZST, but that seems to not be the case -- there
+            // is MIR (around promoteds in particular) that reads local ZSTs that never
+            // were written to.
             for (idx, local) in locals.iter_enumerated_mut() {
                 match local.state {
-                    LocalValue::Live(_) => {
+                    LocalValue::Uninitialized => {
                         // This needs to be properly initialized.
                         let ty = self.monomorphize(mir.local_decls[idx].ty)?;
                         let layout = self.layout_of(ty)?;
-                        local.state = LocalValue::Live(self.uninit_operand(layout)?);
+                        if layout.is_zst() {
+                            local.state = LocalValue::Live(self.uninit_operand(layout)?);
+                        }
                         local.layout = Cell::new(Some(layout));
                     }
                     LocalValue::Dead => {
                         // Nothing to do
                     }
+                    LocalValue::Live(_) => bug!("Locals cannot be live yet"),
                 }
             }
             // done
