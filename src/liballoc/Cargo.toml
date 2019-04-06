@@ -12,7 +12,7 @@ path = "lib.rs"
 
 [dependencies]
 core = { path = "../libcore" }
-compiler_builtins = { version = "0.1.0", features = ['rustc-dep-of-std'] }
+compiler_builtins = { version = "0.1.10", features = ['rustc-dep-of-std'] }
 
 [dev-dependencies]
 rand = "0.6"
