@@ -353,7 +353,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 match self.ecx.memory.check_align(ptr, align) {
                     Ok(_) => {},
                     Err(err) => {
-                        error!("{:?} is not aligned to {:?}", ptr, align);
+                        info!("{:?} is not aligned to {:?}", ptr, align);
                         match err.kind {
                             InterpError::InvalidNullPointerUsage =>
                                 return validation_failure!("NULL reference", self.path),
