@@ -22,7 +22,7 @@ echo
 
 echo "Test miri with full MIR, on the host and other architectures"
 MIRI_SYSROOT="$MIRI_SYSROOT_BASE"/HOST cargo test --release --all-features
-MIRI_SYSROOT="$MIRI_SYSROOT_BASE" MIRI_TARGET="$FOREIGN_TARGET" cargo test --release --all-features
+MIRI_SYSROOT="$MIRI_SYSROOT_BASE" MIRI_COMPILETEST_TARGET="$FOREIGN_TARGET" cargo test --release --all-features
 echo
 
 echo "Test cargo integration"
