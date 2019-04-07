@@ -484,6 +484,10 @@ fn add_define_dyn_fn_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
 fn add_define_drop_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
                                        trait_refs: &FxHashSet<ExistentialTraitRef<'tcx>>,
                                        llfn: &'ll Value) {
+    if trait_refs.is_empty() {
+        return;
+    }
+
     unsafe {
         let meta: SmallVec<[&Metadata; 4]> = trait_refs.iter().map(|trait_ref| {
             let trait_ref = CString::new(trait_ref.to_string()).unwrap();
@@ -495,10 +499,15 @@ fn add_define_drop_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
             llvm::LLVMRustCreateMDTuple(cx.llcx, tuple.as_ptr(), tuple.len() as _)
         }).collect();
 
-        llvm::LLVMRustAddFunctionMetadata(
-            llfn,
-            llvm::LLVMRustCreateMDTuple(cx.llcx, meta.as_ptr(), meta.len() as _),
-        );
+        if meta.len() == 1 {
+            // don't create a tuple if there's only a single metadata node
+            llvm::LLVMRustAddFunctionMetadata(llfn, meta[0]);
+        } else {
+            llvm::LLVMRustAddFunctionMetadata(
+                llfn,
+                llvm::LLVMRustCreateMDTuple(cx.llcx, meta.as_ptr(), meta.len() as _),
+            );
+        }
     }
 }
 
