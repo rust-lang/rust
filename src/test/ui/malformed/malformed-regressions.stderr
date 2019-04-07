@@ -5,7 +5,8 @@ LL | #[doc]
    | ^^^^^^
    |
    = note: #[warn(ill_formed_attribute_input)] on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[ignore]` or `#[ignore = "reason"]`
@@ -14,7 +15,8 @@ warning: attribute must be of the form `#[ignore]` or `#[ignore = "reason"]`
 LL | #[ignore()]
    | ^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
@@ -23,7 +25,8 @@ warning: attribute must be of the form `#[inline]` or `#[inline(always|never)]`
 LL | #[inline = ""]
    | ^^^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...",
@@ -33,7 +36,8 @@ warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dyl
 LL | #[link]
    | ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...",
@@ -43,6 +47,7 @@ warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dyl
 LL | #[link = ""]
    | ^^^^^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 

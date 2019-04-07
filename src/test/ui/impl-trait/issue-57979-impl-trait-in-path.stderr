@@ -9,21 +9,23 @@ note: lint level defined here
    |
 LL |     #![warn(nested_impl_trait)]
    |             ^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #59014 <https://github.com/rust-lang/rust/issues/59014>
 
 error: `impl Trait` is not allowed in path parameters
-  --> $DIR/issue-57979-impl-trait-in-path.rs:31:52
+  --> $DIR/issue-57979-impl-trait-in-path.rs:32:52
    |
 LL |     pub fn demo(_: impl Quux<(), Assoc=<() as Quux<impl Bar>>::Assoc>) { }
    |                                                    ^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/issue-57979-impl-trait-in-path.rs:27:13
+  --> $DIR/issue-57979-impl-trait-in-path.rs:28:13
    |
 LL |     #![deny(nested_impl_trait)]
    |             ^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #59014 <https://github.com/rust-lang/rust/issues/59014>
 
 error: aborting due to previous error

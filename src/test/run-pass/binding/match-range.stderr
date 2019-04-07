@@ -1,0 +1,124 @@
+warning: #[allow(illegal_floating_point_literal_pattern)] has no effect
+  --> $DIR/match-range.rs:2:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(unused_attributes)] on by default
+   = note: the minimum lint level for `illegal_floating_point_literal_pattern` is `warn`
+   = note: the lint level cannot be reduced to `allow`
+   = help: remove the #[allow(illegal_floating_point_literal_pattern)] directive
+   = warning: `illegal_floating_point_literal_pattern` was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: #[allow(illegal_floating_point_literal_pattern)] has no effect
+  --> $DIR/match-range.rs:2:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the minimum lint level for `illegal_floating_point_literal_pattern` is `warn`
+   = note: the lint level cannot be reduced to `allow`
+   = help: remove the #[allow(illegal_floating_point_literal_pattern)] directive
+   = warning: `illegal_floating_point_literal_pattern` was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:36:7
+   |
+LL |       1.0..=5.0 => {}
+   |       ^^^
+   |
+note: lint level defined here
+  --> $DIR/match-range.rs:2:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)] // FIXME #41620
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[warn(illegal_floating_point_literal_pattern)] is the minimum lint level
+   = note: the lint level cannot be reduced to `allow`
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:36:13
+   |
+LL |       1.0..=5.0 => {}
+   |             ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:40:8
+   |
+LL |       -3.6..=3.6 => {}
+   |        ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:40:14
+   |
+LL |       -3.6..=3.6 => {}
+   |              ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:44:9
+   |
+LL |         0.0..3.5 => panic!("should not match the range end"),
+   |         ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:44:14
+   |
+LL |         0.0..3.5 => panic!("should not match the range end"),
+   |              ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:48:9
+   |
+LL |         0.0..3.5 => {},
+   |         ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:48:14
+   |
+LL |         0.0..3.5 => {},
+   |              ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range.rs:36:7
+   |
+LL |       1.0..=5.0 => {}
+   |       ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+

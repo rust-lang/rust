@@ -9,61 +9,68 @@ note: lint level defined here
    |
 LL | #![deny(absolute_paths_not_starting_with_crate)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:18:9
+  --> $DIR/edition-lint-paths.rs:19:9
    |
 LL |     use bar;
    |         ^^^ help: use `crate`: `crate::bar`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:23:9
+  --> $DIR/edition-lint-paths.rs:25:9
    |
 LL |     use {Bar as SomethingElse, main};
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `crate`: `crate::{Bar as SomethingElse, main}`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:35:5
+  --> $DIR/edition-lint-paths.rs:38:5
    |
 LL | use bar::Bar;
    |     ^^^^^^^^ help: use `crate`: `crate::bar::Bar`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:47:9
+  --> $DIR/edition-lint-paths.rs:51:9
    |
 LL |     use *;
    |         ^ help: use `crate`: `crate::*`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:52:6
+  --> $DIR/edition-lint-paths.rs:57:6
    |
 LL | impl ::foo::SomeTrait for u32 { }
    |      ^^^^^^^^^^^^^^^^ help: use `crate`: `crate::foo::SomeTrait`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: absolute paths must start with `self`, `super`, `crate`, or an external crate name in the 2018 edition
-  --> $DIR/edition-lint-paths.rs:57:13
+  --> $DIR/edition-lint-paths.rs:63:13
    |
 LL |     let x = ::bar::Bar;
    |             ^^^^^^^^^^ help: use `crate`: `crate::bar::Bar`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in the 2018 edition!
    = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: aborting due to 7 previous errors

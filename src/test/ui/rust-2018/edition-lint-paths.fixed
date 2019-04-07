@@ -12,17 +12,20 @@ pub mod foo {
     use crate::bar::Bar;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
+    //~| WARN it will become a hard error
     use super::bar::Bar2;
     use crate::bar::Bar3;
 
     use crate::bar;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
+    //~| WARN it will become a hard error
     use crate::{bar as something_else};
 
     use crate::{Bar as SomethingElse, main};
     //~^ ERROR absolute
     //~| WARN this was previously accepted
+    //~| WARN it will become a hard error
 
     use crate::{Bar as SomethingElse2, main as another_main};
 
@@ -35,6 +38,7 @@ pub mod foo {
 use crate::bar::Bar;
 //~^ ERROR absolute
 //~| WARN this was previously accepted
+//~| WARN it will become a hard error
 
 pub mod bar {
     use edition_lint_paths as foo;
@@ -47,16 +51,19 @@ mod baz {
     use crate::*;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
+    //~| WARN it will become a hard error
 }
 
 impl crate::foo::SomeTrait for u32 { }
 //~^ ERROR absolute
 //~| WARN this was previously accepted
+//~| WARN it will become a hard error
 
 fn main() {
     let x = crate::bar::Bar;
     //~^ ERROR absolute
     //~| WARN this was previously accepted
+    //~| WARN it will become a hard error
     let x = bar::Bar;
     let x = crate::bar::Bar;
     let x = self::bar::Bar;

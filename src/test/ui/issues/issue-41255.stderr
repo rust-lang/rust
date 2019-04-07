@@ -9,79 +9,88 @@ note: lint level defined here
    |
 LL | #![forbid(illegal_floating_point_literal_pattern)]
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:12:9
+  --> $DIR/issue-41255.rs:13:9
    |
 LL |         5.0f32 => {},
    |         ^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:14:10
+  --> $DIR/issue-41255.rs:16:10
    |
 LL |         -5.0 => {},
    |          ^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:16:9
+  --> $DIR/issue-41255.rs:19:9
    |
 LL |         1.0 .. 33.0 => {},
    |         ^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:16:16
+  --> $DIR/issue-41255.rs:19:16
    |
 LL |         1.0 .. 33.0 => {},
    |                ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:20:9
+  --> $DIR/issue-41255.rs:25:9
    |
 LL |         39.0 ..= 70.0 => {},
    |         ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:20:18
+  --> $DIR/issue-41255.rs:25:18
    |
 LL |         39.0 ..= 70.0 => {},
    |                  ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:29:10
+  --> $DIR/issue-41255.rs:36:10
    |
 LL |         (3.14, 1) => {},
    |          ^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: floating-point types cannot be used in patterns
-  --> $DIR/issue-41255.rs:36:18
+  --> $DIR/issue-41255.rs:44:18
    |
 LL |         Foo { x: 2.0 } => {},
    |                  ^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
 error: aborting due to 9 previous errors

@@ -12,8 +12,8 @@ extern crate edition_lint_paths as my_crate;
 use crate::my_crate::foo;
 //~^ ERROR absolute paths must start
 //~| WARNING this was previously accepted
+//~| WARN it will become a hard error
 
 fn main() {
     foo();
 }
-

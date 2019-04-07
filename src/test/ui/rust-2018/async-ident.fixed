@@ -5,19 +5,23 @@
 // run-rustfix
 
 fn r#async() {} //~ ERROR async
-//~^ WARN hard error in the 2018 edition
+//~^ WARN this was previously accepted
+//~| WARN hard error in the 2018 edition
 
 macro_rules! foo {
     ($foo:ident) => {};
     ($r#async:expr, r#async) => {};
     //~^ ERROR async
     //~| ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 }
 
 foo!(r#async);
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 
 mod dont_lint_raw {
@@ -27,40 +31,49 @@ mod dont_lint_raw {
 mod async_trait {
     trait r#async {}
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
     struct MyStruct;
     impl r#async for MyStruct {}
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 }
 
 mod async_static {
     static r#async: u32 = 0;
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 }
 
 mod async_const {
     const r#async: u32 = 0;
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 }
 
 struct Foo;
 impl Foo { fn r#async() {} }
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 
 fn main() {
     struct r#async {}
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
     let r#async: r#async = r#async {};
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
     //~| ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
     //~| ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 }
 
@@ -68,6 +81,7 @@ fn main() {
 macro_rules! produces_async {
     () => (pub fn r#async() {})
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 }
 
@@ -75,5 +89,6 @@ macro_rules! produces_async {
 macro_rules! consumes_async {
     (r#async) => (1)
     //~^ ERROR async
+    //~| WARN this was previously accepted
     //~| WARN hard error in the 2018 edition
 }

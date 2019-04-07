@@ -13,26 +13,33 @@ mod outer_mod {
     pub mod r#dyn {
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
         pub struct r#dyn;
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
     }
 }
 use outer_mod::r#dyn::r#dyn;
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 //~| ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 
 fn main() {
     match r#dyn { r#dyn => {} }
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 //~| ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
     macro_defn::r#dyn();
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 
     macro_defn::boxed();
 }
@@ -43,6 +50,7 @@ mod macro_defn {
     macro_rules! r#dyn {
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 
         // Note that we do not lint nor fix occurrences under macros
         ($dyn:tt) => { (Box<dyn Trait>, Box<$dyn Trait>) }
@@ -51,15 +59,20 @@ mod macro_defn {
     pub fn r#dyn() -> ::outer_mod::r#dyn::r#dyn {
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 //~| ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 //~| ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
         ::outer_mod::r#dyn::r#dyn
 //~^ ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
 //~| ERROR `dyn` is a keyword
 //~| WARN was previously accepted
+//~| WARN hard error
     }
 
 
@@ -67,6 +80,7 @@ mod macro_defn {
     pub fn boxed() -> r#dyn!(
         //~^ ERROR `dyn` is a keyword
         //~| WARN was previously accepted
+        //~| WARN hard error
 
             // Note that we do not lint nor fix occurrences under macros
             dyn

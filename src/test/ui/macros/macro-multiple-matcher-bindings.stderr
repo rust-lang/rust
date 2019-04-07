@@ -9,7 +9,8 @@ note: lint level defined here
    |
 LL | #![warn(duplicate_matcher_binding_name)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
 warning: duplicate matcher binding
@@ -18,7 +19,8 @@ warning: duplicate matcher binding
 LL |     ($a:ident, $a:path) => {};
    |      ^^^^^^^^  ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
 warning: duplicate matcher binding
@@ -27,7 +29,8 @@ warning: duplicate matcher binding
 LL |     ($a:ident, $($a:ident),*) => {};
    |      ^^^^^^^^    ^^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 
 warning: duplicate matcher binding
@@ -36,6 +39,7 @@ warning: duplicate matcher binding
 LL |     ($($a:ident)+ # $($($a:path),+);*) => {};
    |        ^^^^^^^^         ^^^^^^^
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57593 <https://github.com/rust-lang/rust/issues/57593>
 

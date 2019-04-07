@@ -1,0 +1,54 @@
+warning: #[allow(illegal_floating_point_literal_pattern)] has no effect
+  --> $DIR/union-pat-refutability.rs:3:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(unused_attributes)] on by default
+   = note: the minimum lint level for `illegal_floating_point_literal_pattern` is `warn`
+   = note: the lint level cannot be reduced to `allow`
+   = help: remove the #[allow(illegal_floating_point_literal_pattern)] directive
+   = warning: `illegal_floating_point_literal_pattern` was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: #[allow(illegal_floating_point_literal_pattern)] has no effect
+  --> $DIR/union-pat-refutability.rs:3:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the minimum lint level for `illegal_floating_point_literal_pattern` is `warn`
+   = note: the lint level cannot be reduced to `allow`
+   = help: remove the #[allow(illegal_floating_point_literal_pattern)] directive
+   = warning: `illegal_floating_point_literal_pattern` was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/union-pat-refutability.rs:24:44
+   |
+LL |             Value { tag: Tag::F, u: U { f: 0.0 } } => true,
+   |                                            ^^^
+   |
+note: lint level defined here
+  --> $DIR/union-pat-refutability.rs:3:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[warn(illegal_floating_point_literal_pattern)] is the minimum lint level
+   = note: the lint level cannot be reduced to `allow`
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/union-pat-refutability.rs:24:44
+   |
+LL |             Value { tag: Tag::F, u: U { f: 0.0 } } => true,
+   |                                            ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+

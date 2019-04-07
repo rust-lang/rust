@@ -11,7 +11,8 @@ note: lint level defined here
    |
 LL | #![warn(order_dependent_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 warning: conflicting implementations of trait `Trait` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
@@ -22,7 +23,8 @@ LL | unsafe impl Trait for ::std::marker::Send + Send + Sync { }
 LL | unsafe impl Trait for ::std::marker::Sync + Send { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 warning: conflicting implementations of trait `Trait` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
@@ -34,6 +36,7 @@ LL | unsafe impl Trait for ::std::marker::Sync + Sync { }
 LL | unsafe impl Trait for ::std::marker::Sync + Send + Sync { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 

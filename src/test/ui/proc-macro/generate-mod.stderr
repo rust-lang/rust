@@ -29,7 +29,8 @@ LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
    = note: #[warn(proc_macro_derive_resolution_fallback)] on by default
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
 warning: cannot find type `OuterDerive` in this scope
@@ -38,25 +39,28 @@ warning: cannot find type `OuterDerive` in this scope
 LL | #[derive(generate_mod::CheckDerive)]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
 warning: cannot find type `FromOutside` in this scope
-  --> $DIR/generate-mod.rs:23:14
+  --> $DIR/generate-mod.rs:25:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
 warning: cannot find type `OuterDerive` in this scope
-  --> $DIR/generate-mod.rs:23:14
+  --> $DIR/generate-mod.rs:25:14
    |
 LL |     #[derive(generate_mod::CheckDerive)]
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ names from parent modules are not accessible without an explicit import
    |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
 
 error: aborting due to 4 previous errors

@@ -9,7 +9,8 @@ note: lint level defined here
    |
 LL | #![deny(ambiguous_associated_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
    = note: for more information, see issue #57644 <https://github.com/rust-lang/rust/issues/57644>
 note: `V` could refer to variant defined here
   --> $DIR/type-alias-enum-variants-priority.rs:5:5
