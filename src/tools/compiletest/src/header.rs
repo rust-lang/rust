@@ -288,6 +288,7 @@ pub struct TestProps {
     pub aux_builds: Vec<String>,
     // A list of crates to pass '--extern-private name:PATH' flags for
     // This should be a subset of 'aux_build'
+    // FIXME: Replace this with a better solution: https://github.com/rust-lang/rust/pull/54020
     pub extern_private: Vec<String>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
