@@ -1,0 +1,24 @@
+error[E0432]: unresolved import `issue_59764::foo::makro`
+  --> $DIR/issue-59764.rs:5:5
+   |
+LL | use issue_59764::foo::makro;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ no `makro` in `foo`
+
+error: cannot determine resolution for the macro `makro`
+  --> $DIR/issue-59764.rs:8:1
+   |
+LL | makro!(bar);
+   | ^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/issue-59764.rs:12:5
+   |
+LL |     bar();
+   |     ^^^ not found in this scope
+
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.
