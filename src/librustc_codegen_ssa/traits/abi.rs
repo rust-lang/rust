@@ -1,3 +1,4 @@
+use crate::CallKind;
 use super::BackendTypes;
 use rustc::ty::{FnSig, Instance, Ty};
 use rustc_target::abi::call::FnType;
@@ -9,6 +10,9 @@ pub trait AbiMethods<'tcx> {
 }
 
 pub trait AbiBuilderMethods<'tcx>: BackendTypes {
-    fn apply_attrs_callsite(&mut self, ty: &FnType<'tcx, Ty<'tcx>>, callsite: Self::Value);
+    fn apply_attrs_callsite(&mut self,
+                            ty: &FnType<'tcx, Ty<'tcx>>,
+                            callsite: Self::Value,
+                            kind: CallKind<'tcx>);
     fn get_param(&self, index: usize) -> Self::Value;
 }

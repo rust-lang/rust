@@ -1550,3 +1550,29 @@ extern "C" LLVMValueRef
 LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
     return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS),unwrap(RHS)));
 }
+
+extern "C" LLVMMetadataRef
+LLVMRustCreateMDString(LLVMContextRef ContextRef, const char* S) {
+  LLVMContext &Context = *unwrap(ContextRef);
+  return wrap(MDString::get(Context, S));
+}
+
+extern "C" LLVMMetadataRef
+LLVMRustCreateMDTuple(LLVMContextRef ContextRef,
+                      LLVMMetadataRef *Ptr,
+                      unsigned Count) {
+  LLVMContext &Context = *unwrap(ContextRef);
+  return wrap(MDTuple::get(Context, makeArrayRef(unwrap(Ptr), Count)));
+}
+
+extern "C" void
+LLVMRustAddFunctionMetadata(LLVMValueRef Fn, LLVMMetadataRef Metadata) {
+  Function* F = unwrap<Function>(Fn);
+  F->setMetadata("rust", unwrap<MDNode>(Metadata));
+}
+
+extern "C" void
+LLVMRustAddInstructionMetadata(LLVMValueRef Instr, LLVMMetadataRef Metadata) {
+  Instruction* I = unwrap<Instruction>(Instr);
+  I->setMetadata("rust", unwrap<MDNode>(Metadata));
+}

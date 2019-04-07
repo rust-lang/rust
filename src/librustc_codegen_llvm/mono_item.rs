@@ -1,5 +1,6 @@
 use crate::attributes;
 use crate::base;
+use crate::common;
 use crate::context::CodegenCx;
 use crate::llvm;
 use crate::monomorphize::Instance;
@@ -44,8 +45,11 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 !instance.substs.has_param_types());
 
         let mono_sig = instance.fn_sig(self.tcx());
+
         let attrs = self.tcx.codegen_fn_attrs(instance.def_id());
         let lldecl = self.declare_fn(symbol_name, mono_sig);
+        common::add_define_metadata(self, instance, lldecl);
+
         unsafe { llvm::LLVMRustSetLinkage(lldecl, base::linkage_to_llvm(linkage)) };
         base::set_link_section(lldecl, &attrs);
         if linkage == Linkage::LinkOnceODR ||

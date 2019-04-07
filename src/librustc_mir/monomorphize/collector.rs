@@ -181,7 +181,9 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
-use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
+use rustc::ty::{
+    self, GenericParamDefKind, InstanceDef, Ty, TyCtxt, TypeFoldable, ExistentialTraitRef,
+};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
@@ -199,6 +201,7 @@ use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
 
 use std::iter;
+use std::sync::Arc;
 
 #[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
 pub enum MonoItemCollectionMode {
@@ -282,21 +285,36 @@ impl<'tcx> InliningMap<'tcx> {
     }
 }
 
-pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                          mode: MonoItemCollectionMode)
-                                          -> (FxHashSet<MonoItem<'tcx>>,
-                                                     InliningMap<'tcx>) {
-    let roots = time(tcx.sess, "collecting roots", || {
-        collect_roots(tcx, mode)
-    });
+pub fn collect_crate_mono_items<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mode: MonoItemCollectionMode,
+) -> (
+    FxHashSet<MonoItem<'tcx>>,
+    InliningMap<'tcx>,
+    FxHashSet<Instance<'tcx>>,
+    FxHashSet<Instance<'tcx>>,
+    FxHashMap<Instance<'tcx>, Arc<FxHashSet<ExistentialTraitRef<'tcx>>>>,
+) {
+    let (roots, function_pointer, dynamic_dispatch, drop_glue) = time(
+        tcx.sess,
+        "collecting roots",
+        || {
+            collect_roots(tcx, mode)
+        });
 
     debug!("Building mono item graph, beginning at roots");
 
     let mut visited = MTLock::new(FxHashSet::default());
+    let mut function_pointer = MTLock::new(function_pointer);
+    let mut dynamic_dispatch = MTLock::new(dynamic_dispatch);
+    let mut drop_glue = MTLock::new(drop_glue);
     let mut inlining_map = MTLock::new(InliningMap::new());
 
     {
         let visited: MTRef<'_, _> = &mut visited;
+        let function_pointer: MTRef<'_, _> = &mut function_pointer;
+        let dynamic_dispatch: MTRef<'_, _> = &mut dynamic_dispatch;
+        let drop_glue: MTRef<'_, _> = &mut drop_glue;
         let inlining_map: MTRef<'_, _> = &mut inlining_map;
 
         time(tcx.sess, "collecting mono items", || {
@@ -305,22 +323,39 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 collect_items_rec(tcx,
                                 root,
                                 visited,
+                                function_pointer,
+                                dynamic_dispatch,
+                                drop_glue,
                                 &mut recursion_depths,
                                 inlining_map);
             });
         });
     }
 
-    (visited.into_inner(), inlining_map.into_inner())
+    (
+        visited.into_inner(),
+        inlining_map.into_inner(),
+        function_pointer.into_inner(),
+        dynamic_dispatch.into_inner(),
+        drop_glue.into_inner().into_iter().map(|(k, v)| (k, Arc::new(v))).collect(),
+    )
 }
 
 // Find all non-generic items by walking the HIR. These items serve as roots to
 // start monomorphizing from.
-fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           mode: MonoItemCollectionMode)
-                           -> Vec<MonoItem<'tcx>> {
-    debug!("Collecting roots");
+fn collect_roots<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mode: MonoItemCollectionMode,
+) -> (
+    Vec<MonoItem<'tcx>>,
+    FxHashSet<Instance<'tcx>>,
+    FxHashSet<Instance<'tcx>>,
+    FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>,
+) {
     let mut roots = Vec::new();
+    let mut function_pointer = FxHashSet::default();
+    let mut dynamic_dispatch = FxHashSet::default();
+    let mut drop_glue = FxHashMap::default();
 
     {
         let entry_fn = tcx.entry_fn(LOCAL_CRATE);
@@ -332,6 +367,9 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             mode,
             entry_fn,
             output: &mut roots,
+            function_pointer: &mut function_pointer,
+            dynamic_dispatch: &mut dynamic_dispatch,
+            drop_glue: &mut drop_glue,
         };
 
         tcx.hir().krate().visit_all_item_likes(&mut visitor);
@@ -344,15 +382,20 @@ fn collect_roots<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // can't actually be used, so we can just skip codegenning them.
     roots.retain(|root| root.is_instantiable(tcx));
 
-    roots
+    (roots, function_pointer, dynamic_dispatch, drop_glue)
 }
 
 // Collect all monomorphized items reachable from `starting_point`
-fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                   starting_point: MonoItem<'tcx>,
-                                   visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,
-                                   recursion_depths: &mut DefIdMap<usize>,
-                                   inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>) {
+fn collect_items_rec<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    starting_point: MonoItem<'tcx>,
+    visited: MTRef<'_, MTLock<FxHashSet<MonoItem<'tcx>>>>,
+    function_pointer: MTRef<'_, MTLock<FxHashSet<Instance<'tcx>>>>,
+    dynamic_dispatch: MTRef<'_, MTLock<FxHashSet<Instance<'tcx>>>>,
+    drop_glue: MTRef<'_, MTLock<FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>>>,
+    recursion_depths: &mut DefIdMap<usize>,
+    inlining_map: MTRef<'_, MTLock<InliningMap<'tcx>>>,
+) {
     if !visited.lock_mut().insert(starting_point.clone()) {
         // We've been here already, no need to search again.
         return;
@@ -360,6 +403,9 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("BEGIN collect_items_rec({})", starting_point.to_string(tcx, true));
 
     let mut neighbors = Vec::new();
+    let mut function_pointer_ = FxHashSet::default();
+    let mut dynamic_dispatch_ = FxHashSet::default();
+    let mut drop_glue_ = FxHashMap::default();
     let recursion_depth_reset;
 
     match starting_point {
@@ -381,7 +427,15 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let param_env = ty::ParamEnv::reveal_all();
 
             if let Ok(val) = tcx.const_eval(param_env.and(cid)) {
-                collect_const(tcx, val, InternalSubsts::empty(), &mut neighbors);
+                collect_const(
+                    tcx,
+                    val,
+                    InternalSubsts::empty(),
+                    &mut neighbors,
+                    &mut function_pointer_,
+                    &mut dynamic_dispatch_,
+                    &mut drop_glue_,
+                );
             }
         }
         MonoItem::Fn(instance) => {
@@ -394,7 +448,14 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                recursion_depths));
             check_type_length_limit(tcx, instance);
 
-            collect_neighbours(tcx, instance, &mut neighbors);
+            collect_neighbours(
+                tcx,
+                instance,
+                &mut neighbors,
+                &mut function_pointer_,
+                &mut dynamic_dispatch_,
+                &mut drop_glue_,
+            );
         }
         MonoItem::GlobalAsm(..) => {
             recursion_depth_reset = None;
@@ -403,8 +464,26 @@ fn collect_items_rec<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     record_accesses(tcx, starting_point, &neighbors[..], inlining_map);
 
+    function_pointer.lock_mut().extend(function_pointer_);
+    dynamic_dispatch.lock_mut().extend(dynamic_dispatch_);
+    {
+        let drop_glue = drop_glue.lock_mut();
+        for (k, v) in drop_glue_ {
+            drop_glue.entry(k).or_default().extend(v);
+        }
+    }
+
     for neighbour in neighbors {
-        collect_items_rec(tcx, neighbour, visited, recursion_depths, inlining_map);
+        collect_items_rec(
+            tcx,
+            neighbour,
+            visited,
+            function_pointer,
+            dynamic_dispatch,
+            drop_glue,
+            recursion_depths,
+            inlining_map,
+        );
     }
 
     if let Some((def_id, depth)) = recursion_depth_reset {
@@ -517,6 +596,9 @@ struct MirNeighborCollector<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mir: &'a mir::Mir<'tcx>,
     output: &'a mut Vec<MonoItem<'tcx>>,
+    function_pointer: &'a mut FxHashSet<Instance<'tcx>>,
+    dynamic_dispatch: &'a mut FxHashSet<Instance<'tcx>>,
+    drop_glue: &'a mut FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>,
     param_substs: SubstsRef<'tcx>,
 }
 
@@ -551,7 +633,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     create_mono_items_for_vtable_methods(self.tcx,
                                                          target_ty,
                                                          source_ty,
-                                                         self.output);
+                                                         self.output,
+                                                         self.dynamic_dispatch,
+                                                         self.drop_glue);
                 }
             }
             mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
@@ -561,7 +645,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     &fn_ty,
                 );
-                visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
+                visit_fn_use(self.tcx, fn_ty, false, &mut self.output, &mut self.function_pointer);
             }
             mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer(_), ref operand, _) => {
                 let source_ty = operand.ty(self.mir, self.tcx);
@@ -601,7 +685,15 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     fn visit_const(&mut self, constant: &&'tcx ty::Const<'tcx>, location: Location) {
         debug!("visiting const {:?} @ {:?}", *constant, location);
 
-        collect_const(self.tcx, **constant, self.param_substs, self.output);
+        collect_const(
+            self.tcx,
+            **constant,
+            self.param_substs,
+            self.output,
+            self.function_pointer,
+            self.dynamic_dispatch,
+            self.drop_glue,
+        );
 
         self.super_const(constant);
     }
@@ -621,7 +713,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     &callee_ty,
                 );
-                visit_fn_use(self.tcx, callee_ty, true, &mut self.output);
+                visit_fn_use(
+                    self.tcx,
+                    callee_ty,
+                    true,
+                    &mut self.output,
+                    &mut self.function_pointer,
+                );
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
@@ -631,7 +729,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                     ty::ParamEnv::reveal_all(),
                     &ty,
                 );
-                visit_drop_use(self.tcx, ty, true, self.output);
+                visit_drop_use(
+                    self.tcx,
+                    ty,
+                    true,
+                    self.output,
+                );
             }
             mir::TerminatorKind::Goto { .. } |
             mir::TerminatorKind::SwitchInt { .. } |
@@ -672,25 +775,33 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     }
 }
 
-fn visit_drop_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            ty: Ty<'tcx>,
-                            is_direct_call: bool,
-                            output: &mut Vec<MonoItem<'tcx>>)
-{
+fn visit_drop_use<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ty: Ty<'tcx>,
+    is_direct_call: bool,
+    output: &mut Vec<MonoItem<'tcx>>,
+) -> Instance<'tcx> {
     let instance = monomorphize::resolve_drop_in_place(tcx, ty);
     visit_instance_use(tcx, instance, is_direct_call, output);
+    instance
 }
 
 fn visit_fn_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           ty: Ty<'tcx>,
                           is_direct_call: bool,
-                          output: &mut Vec<MonoItem<'tcx>>)
+                          output: &mut Vec<MonoItem<'tcx>>,
+                          function_pointer: &mut FxHashSet<Instance<'tcx>>)
 {
     if let ty::FnDef(def_id, substs) = ty.sty {
         let instance = ty::Instance::resolve(tcx,
                                              ty::ParamEnv::reveal_all(),
                                              def_id,
                                              substs).unwrap();
+
+        if !is_direct_call {
+            function_pointer.insert(instance);
+        }
+
         visit_instance_use(tcx, instance, is_direct_call, output);
     }
 }
@@ -907,33 +1018,53 @@ fn create_fn_mono_item<'a, 'tcx>(instance: Instance<'tcx>) -> MonoItem<'tcx> {
 
 /// Creates a `MonoItem` for each method that is referenced by the vtable for
 /// the given trait/impl pair.
-fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                  trait_ty: Ty<'tcx>,
-                                                  impl_ty: Ty<'tcx>,
-                                                  output: &mut Vec<MonoItem<'tcx>>) {
+fn create_mono_items_for_vtable_methods<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_ty: Ty<'tcx>,
+    impl_ty: Ty<'tcx>,
+    output: &mut Vec<MonoItem<'tcx>>,
+    dynamic_dispatch: &mut FxHashSet<Instance<'tcx>>,
+    drop_glue: &mut FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>,
+) {
     assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_bound_vars() &&
             !impl_ty.needs_subst() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.sty {
-        if let Some(principal) = trait_ty.principal() {
+    if let ty::Dynamic(ref trait_sty, ..) = trait_ty.sty {
+        // add the destructor
+        let drop_glue_instance = visit_drop_use(tcx, impl_ty, false, output);
+
+        if let Some(principal) = trait_sty.principal() {
+            let drop_glue = drop_glue.entry(drop_glue_instance).or_default();
+
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());
 
             // Walk all methods of the trait, including those of its supertraits
             let methods = tcx.vtable_methods(poly_trait_ref);
-            let methods = methods.iter().cloned().filter_map(|method| method)
-                .map(|(def_id, substs)| ty::Instance::resolve_for_vtable(
-                    tcx,
-                    ty::ParamEnv::reveal_all(),
-                    def_id,
-                    substs).unwrap())
-                .filter(|&instance| should_monomorphize_locally(tcx, &instance))
-                .map(|instance| create_fn_mono_item(instance));
-            output.extend(methods);
-        }
+            let methods = methods
+                .iter()
+                .cloned()
+                .filter_map(|method| method)
+                .map(|(def_id, substs)| {
+                    ty::Instance::resolve_for_vtable(
+                        tcx,
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                        .unwrap()
+                })
+                .filter(|instance| should_monomorphize_locally(tcx, &instance));
 
-        // Also add the destructor
-        visit_drop_use(tcx, impl_ty, false, output);
+            for instance in methods {
+                if let Some((trait_ref, _)) = instance.trait_ref_and_method(tcx) {
+                    drop_glue.insert(trait_ref);
+                    dynamic_dispatch.insert(instance);
+                }
+
+                output.push(create_fn_mono_item(instance));
+            }
+        }
     }
 }
 
@@ -945,6 +1076,9 @@ struct RootCollector<'b, 'a: 'b, 'tcx: 'a + 'b> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     mode: MonoItemCollectionMode,
     output: &'b mut Vec<MonoItem<'tcx>>,
+    function_pointer: &'b mut FxHashSet<Instance<'tcx>>,
+    dynamic_dispatch: &'b mut FxHashSet<Instance<'tcx>>,
+    drop_glue: &'b mut FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>,
     entry_fn: Option<(DefId, EntryFnType)>,
 }
 
@@ -1011,7 +1145,15 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                 let param_env = ty::ParamEnv::reveal_all();
 
                 if let Ok(val) = self.tcx.const_eval(param_env.and(cid)) {
-                    collect_const(self.tcx, val, InternalSubsts::empty(), &mut self.output);
+                    collect_const(
+                        self.tcx,
+                        val,
+                        InternalSubsts::empty(),
+                        &mut self.output,
+                        &mut self.function_pointer,
+                        &mut self.dynamic_dispatch,
+                        &mut self.drop_glue,
+                    );
                 }
             }
             hir::ItemKind::Fn(..) => {
@@ -1174,6 +1316,9 @@ fn collect_miri<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     alloc_id: AllocId,
     output: &mut Vec<MonoItem<'tcx>>,
+    function_pointer: &mut FxHashSet<Instance<'tcx>>,
+    dynamic_dispatch: &mut FxHashSet<Instance<'tcx>>,
+    drop_glue: &mut FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>,
 ) {
     let alloc_kind = tcx.alloc_map.lock().get(alloc_id);
     match alloc_kind {
@@ -1186,13 +1331,57 @@ fn collect_miri<'a, 'tcx>(
         }
         Some(AllocKind::Memory(alloc)) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &((), inner) in alloc.relocations.values() {
-                collect_miri(tcx, inner, output);
+
+            // if this contains a drop glue instance then this is a const-evaluated trait object
+            let drop_glue_instance = alloc.relocations.values().filter_map(|(_, inner)| {
+                let kind = tcx.alloc_map.lock().get(*inner);
+
+                if let Some(AllocKind::Function(instance)) = kind {
+                    if let InstanceDef::DropGlue(..) = instance.def {
+                        Some(instance)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            }).next();
+
+            if let Some(drop_glue_instance) = drop_glue_instance {
+                let drop_glue = drop_glue.entry(drop_glue_instance).or_default();
+
+                // trait object in const / static context
+                for ((), inner) in alloc.relocations.values() {
+                    let kind = tcx.alloc_map.lock().get(*inner);
+
+                    if let Some(AllocKind::Function(instance)) = kind {
+                        if should_monomorphize_locally(tcx, &instance) {
+                            trace!("collecting {:?} with {:#?}", alloc_id, instance);
+
+                            if let Some((trait_ref, _)) = instance.trait_ref_and_method(tcx) {
+                                dynamic_dispatch.insert(instance);
+                                drop_glue.insert(trait_ref);
+                            }
+
+                            output.push(create_fn_mono_item(instance));
+                        }
+                    } else {
+                        bug!("unexpected kind: {:?}", kind);
+                    }
+                }
+            } else {
+                for &((), inner) in alloc.relocations.values() {
+                    collect_miri(tcx, inner, output, function_pointer, dynamic_dispatch, drop_glue);
+                }
             }
         },
         Some(AllocKind::Function(fn_instance)) => {
             if should_monomorphize_locally(tcx, &fn_instance) {
                 trace!("collecting {:?} with {:#?}", alloc_id, fn_instance);
+
+                // function pointer in const / static context
+                function_pointer.insert(fn_instance);
+
                 output.push(create_fn_mono_item(fn_instance));
             }
         }
@@ -1201,10 +1390,14 @@ fn collect_miri<'a, 'tcx>(
 }
 
 /// Scan the MIR in order to find function calls, closures, and drop-glue
-fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                instance: Instance<'tcx>,
-                                output: &mut Vec<MonoItem<'tcx>>)
-{
+fn collect_neighbours<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: Instance<'tcx>,
+    output: &mut Vec<MonoItem<'tcx>>,
+    function_pointer: &mut FxHashSet<Instance<'tcx>>,
+    dynamic_dispatch: &mut FxHashSet<Instance<'tcx>>,
+    drop_glue: &mut FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>,
+) {
     let mir = tcx.instance_mir(instance.def);
 
     MirNeighborCollector {
@@ -1212,6 +1405,9 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         mir: &mir,
         output,
         param_substs: instance.substs,
+        function_pointer,
+        dynamic_dispatch,
+        drop_glue,
     }.visit_mir(&mir);
     let param_env = ty::ParamEnv::reveal_all();
     for i in 0..mir.promoted.len() {
@@ -1222,7 +1418,17 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             promoted: Some(i),
         };
         match tcx.const_eval(param_env.and(cid)) {
-            Ok(val) => collect_const(tcx, val, instance.substs, output),
+            Ok(val) => {
+                collect_const(
+                    tcx,
+                    val,
+                    instance.substs,
+                    output,
+                    function_pointer,
+                    dynamic_dispatch,
+                    drop_glue,
+                )
+            },
             Err(ErrorHandled::Reported) => {},
             Err(ErrorHandled::TooGeneric) => span_bug!(
                 mir.promoted[i].span, "collection encountered polymorphic constant",
@@ -1245,16 +1451,19 @@ fn collect_const<'a, 'tcx>(
     constant: ty::Const<'tcx>,
     param_substs: SubstsRef<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
+    function_pointer: &mut FxHashSet<Instance<'tcx>>,
+    dynamic_dispatch: &mut FxHashSet<Instance<'tcx>>,
+    drop_glue: &mut FxHashMap<Instance<'tcx>, FxHashSet<ExistentialTraitRef<'tcx>>>,
 ) {
     debug!("visiting const {:?}", constant);
 
     match constant.val {
         ConstValue::Slice(Scalar::Ptr(ptr), _) |
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
-            collect_miri(tcx, ptr.alloc_id, output),
+            collect_miri(tcx, ptr.alloc_id, output, function_pointer, dynamic_dispatch, drop_glue),
         ConstValue::ByRef(_ptr, alloc) => {
             for &((), id) in alloc.relocations.values() {
-                collect_miri(tcx, id, output);
+                collect_miri(tcx, id, output, function_pointer, dynamic_dispatch, drop_glue);
             }
         }
         ConstValue::Unevaluated(did, substs) => {
@@ -1274,7 +1483,15 @@ fn collect_const<'a, 'tcx>(
                 promoted: None,
             };
             match tcx.const_eval(param_env.and(cid)) {
-                Ok(val) => collect_const(tcx, val, param_substs, output),
+                Ok(val) => collect_const(
+                    tcx,
+                    val,
+                    param_substs,
+                    output,
+                    function_pointer,
+                    dynamic_dispatch,
+                    drop_glue,
+                ),
                 Err(ErrorHandled::Reported) => {},
                 Err(ErrorHandled::TooGeneric) => span_bug!(
                     tcx.def_span(did), "collection encountered polymorphic constant",

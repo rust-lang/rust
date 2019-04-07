@@ -1,10 +1,11 @@
 use crate::llvm::{self, AttributePlace};
 use crate::builder::Builder;
+use crate::common;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::{LayoutLlvmExt, PointerKind};
 use crate::value::Value;
-use rustc_codegen_ssa::MemFlags;
+use rustc_codegen_ssa::{CallKind, MemFlags};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_target::abi::call::ArgType;
@@ -856,9 +857,27 @@ impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn apply_attrs_callsite(
         &mut self,
         ty: &FnType<'tcx, Ty<'tcx>>,
-        callsite: Self::Value
+        callsite: Self::Value,
+        call_kind: CallKind<'tcx>,
     ) {
-        ty.apply_attrs_callsite(self, callsite)
+        ty.apply_attrs_callsite(self, callsite);
+
+        match call_kind {
+            // no extra metadata
+            CallKind::Direct => {}
+
+            CallKind::FnPtr => {
+                common::add_callsite_fn_metadata(self.cx, ty, callsite)
+            }
+
+            CallKind::DynamicDispatch(trait_ref, method) => {
+                common::add_callsite_dyn_metadata(self.cx, trait_ref, method, callsite)
+            }
+
+            CallKind::DropGlue(trait_ref) => {
+                common::add_callsite_drop_metadata(self.cx, trait_ref, callsite)
+            }
+        }
     }
 
     fn get_param(&self, index: usize) -> Self::Value {

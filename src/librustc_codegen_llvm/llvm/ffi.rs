@@ -1820,4 +1820,10 @@ extern "C" {
                              bytecode: *const c_char,
                              bytecode_len: usize) -> bool;
     pub fn LLVMRustLinkerFree(linker: &'a mut Linker<'a>);
+    pub fn LLVMRustCreateMDString(C: &'a Context, S: *const c_char) -> &'a Metadata;
+    pub fn LLVMRustCreateMDTuple(C: &'a Context,
+                                 Ptr: *const &'a Metadata,
+                                 Count: c_uint) -> &'a Metadata;
+    pub fn LLVMRustAddFunctionMetadata(Fn: &Value, Metadata: &Metadata);
+    pub fn LLVMRustAddInstructionMetadata(Instr: &Value, Metadata: &Metadata);
 }

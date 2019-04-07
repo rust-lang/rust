@@ -1444,6 +1444,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          the same values as the target option of the same name"),
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (space separated)"),
+    call_metadata: bool = (false, parse_bool, [UNTRACKED],
+                           "adds call metadata to LLVM IR"),
 }
 
 pub fn default_lib_output() -> CrateType {

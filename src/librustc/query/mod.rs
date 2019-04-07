@@ -861,8 +861,13 @@ rustc_queries! {
     }
 
     Codegen {
-        query collect_and_partition_mono_items(_: CrateNum)
-            -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>) {
+        query collect_and_partition_mono_items(_: CrateNum) -> (
+            Arc<DefIdSet>,
+            Arc<Vec<Arc<CodegenUnit<'tcx>>>>,
+            Arc<FxHashSet<ty::Instance<'tcx>>>,
+            Arc<FxHashSet<ty::Instance<'tcx>>>,
+            Arc<FxHashMap<ty::Instance<'tcx>, Arc<FxHashSet<ty::ExistentialTraitRef<'tcx>>>>>
+        ) {
             eval_always
             desc { "collect_and_partition_mono_items" }
         }
@@ -873,6 +878,24 @@ rustc_queries! {
         }
         query backend_optimization_level(_: CrateNum) -> OptLevel {
             desc { "optimization level used by backend" }
+        }
+
+        // -Z call-metadata
+        // functions that may be called via a function pointer
+        query function_pointer(instance: ty::Instance<'tcx>) -> bool {
+            no_force
+            desc { "checking if `{}` may be called via a function pointer", instance }
+        }
+
+        // trait methods that may be called via dynamic dispatch
+        query dynamic_dispatch(instance: ty::Instance<'tcx>) -> bool {
+            no_force
+            desc { "checking if `{}` may be called via dynamic dispatch", instance }
+        }
+
+        query drop_glue(instance: ty::Instance<'tcx>) -> Option<Arc<FxHashSet<ty::ExistentialTraitRef<'tcx>>>> {
+            no_force
+            desc { "checking if `{}` may be called by a trait object destructor", instance }
         }
     }
 

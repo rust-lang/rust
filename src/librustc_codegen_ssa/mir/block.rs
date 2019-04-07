@@ -1,5 +1,5 @@
 use rustc::middle::lang_items;
-use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable, InstanceDef};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::InterpError;
@@ -7,7 +7,7 @@ use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
 use rustc_mir::monomorphize;
 use crate::base;
-use crate::MemFlags;
+use crate::{CallKind, MemFlags};
 use crate::common::{self, IntPredicate};
 use crate::meth;
 
@@ -111,6 +111,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
+        kind: CallKind<'tcx>,
     ) {
         if let Some(cleanup) = cleanup {
             let ret_bx = if let Some((_, target)) = destination {
@@ -123,7 +124,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
                                       ret_bx,
                                       self.llblock(fx, cleanup),
                                       self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_ty, invokeret);
+            bx.apply_attrs_callsite(&fn_ty, invokeret, kind);
 
             if let Some((ret_dest, target)) = destination {
                 let mut ret_bx = fx.build_block(target);
@@ -132,7 +133,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'a, 'tcx> {
             }
         } else {
             let llret = bx.call(fn_ptr, &llargs, self.funclet(fx));
-            bx.apply_attrs_callsite(&fn_ty, llret);
+            bx.apply_attrs_callsite(&fn_ty, llret, kind);
             if fx.mir[*self.bb].is_cleanup {
                 // Cleanup is always the cold path. Don't inline
                 // drop glue. Also, when there is a deeply-nested
@@ -327,8 +328,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             args1 = [place.llval];
             &args1[..]
         };
-        let (drop_fn, fn_ty) = match ty.sty {
-            ty::Dynamic(..) => {
+        let (drop_fn, fn_ty, call_kind) = match ty.sty {
+            ty::Dynamic(ref trait_data, _) => {
+                let principal = self.cx.tcx().normalize_erasing_late_bound_regions(
+                    ty::ParamEnv::reveal_all(),
+                    &trait_data.principal().unwrap_or_else(|| bug!("trait object has no principal")),
+                );
                 let sig = drop_fn.fn_sig(self.cx.tcx());
                 let sig = self.cx.tcx().normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
@@ -337,16 +342,19 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let fn_ty = bx.new_vtable(sig, &[]);
                 let vtable = args[1];
                 args = &args[..1];
-                (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty), fn_ty)
+                (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty),
+                 fn_ty,
+                 CallKind::DropGlue(principal))
             }
             _ => {
                 (bx.get_fn(drop_fn),
-                 bx.fn_type_of_instance(&drop_fn))
+                 bx.fn_type_of_instance(&drop_fn),
+                 CallKind::Direct)
             }
         };
         helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
                        Some((ReturnDest::Nothing, target)),
-                       unwind);
+                       unwind, call_kind);
     }
 
     fn codegen_assert_terminator<'b>(
@@ -443,7 +451,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let llfn = bx.get_fn(instance);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
+        helper.do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup, CallKind::Direct);
     }
 
     fn codegen_call_terminator<'b>(
@@ -460,16 +468,26 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
         let callee = self.codegen_operand(&mut bx, func);
 
-        let (instance, mut llfn) = match callee.layout.ty.sty {
+        let (instance, mut llfn, call_kind) = match callee.layout.ty.sty {
             ty::FnDef(def_id, substs) => {
-                (Some(ty::Instance::resolve(bx.tcx(),
-                                            ty::ParamEnv::reveal_all(),
-                                            def_id,
-                                            substs).unwrap()),
-                 None)
+                let instance = ty::Instance::resolve(bx.tcx(),
+                                                     ty::ParamEnv::reveal_all(),
+                                                     def_id,
+                                                     substs).unwrap();
+                let call_kind = if let InstanceDef::Virtual(..) = instance.def {
+                    if let Some((trait_ref, method)) = instance.trait_ref_and_method(bx.tcx()) {
+                        CallKind::DynamicDispatch(trait_ref, method)
+                    } else {
+                        bug!("virtual instance is not a trait method {:?}", instance);
+                    }
+                } else {
+                    CallKind::Direct
+                };
+
+                (Some(instance), None, call_kind)
             }
             ty::FnPtr(_) => {
-                (None, Some(callee.immediate()))
+                (None, Some(callee.immediate()), CallKind::FnPtr)
             }
             _ => bug!("{} is not callable", callee.layout.ty),
         };
@@ -568,6 +586,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     &[msg_file_line_col],
                     destination.as_ref().map(|(_, bb)| (ReturnDest::Nothing, *bb)),
                     cleanup,
+                    CallKind::Direct,
                 );
             } else {
                 // a NOP
@@ -713,7 +732,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             };
             let mut op = self.codegen_operand(&mut bx, arg);
 
-            if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
+            if let (0, Some(ty::InstanceDef::Virtual(_method_def_id, idx))) = (i, def) {
                 if let Pair(..) = op.val {
                     // In the case of Rc<Self>, we need to explicitly pass a
                     // *mut RcBox<Self> with a Scalar (not ScalarPair) ABI. This is a hack
@@ -788,7 +807,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         helper.do_call(self, &mut bx, fn_ty, fn_ptr, &llargs,
                        destination.as_ref().map(|&(_, target)| (ret_dest, target)),
-                       cleanup);
+                       cleanup, call_kind);
     }
 }
 

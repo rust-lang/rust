@@ -2597,6 +2597,7 @@ dependencies = [
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_llvm 0.0.0",
+ "smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

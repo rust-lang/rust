@@ -243,7 +243,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let need_visibility = tcx.sess.target.target.options.dynamic_linking &&
                               !tcx.sess.target.target.options.only_cdylib;
 
-        let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (_, cgus, _, _, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
 
         for (mono_item, &(linkage, visibility)) in cgus.iter()
                                                        .flat_map(|cgu| cgu.items().iter()) {

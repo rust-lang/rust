@@ -1,11 +1,12 @@
 use crate::hir::Unsafety;
-use crate::hir::def::Namespace;
+use crate::hir::def::{Def, Namespace};
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, SubstsRef, TyCtxt};
+use crate::ty::{self, AssociatedItemContainer, Ty, PolyFnSig, TypeFoldable, SubstsRef, TyCtxt};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::traits;
 use rustc_target::spec::abi::Abi;
 use rustc_macros::HashStable;
+use syntax::symbol::Symbol;
 
 use std::fmt;
 use std::iter;
@@ -52,6 +53,38 @@ impl<'a, 'tcx> Instance<'tcx> {
             ty::ParamEnv::reveal_all(),
             &ty,
         )
+    }
+
+    pub fn trait_ref_and_method(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    ) -> Option<(ty::ExistentialTraitRef<'tcx>, Symbol)> {
+        let def_id = self.def_id();
+        if let Some(Def::Method(..)) = tcx.describe_def(def_id) {
+            let item = tcx.associated_item(def_id);
+
+            let trait_ref = match item.container {
+                AssociatedItemContainer::TraitContainer(trait_def_id) => {
+                    ty::TraitRef::from_method(tcx, trait_def_id, self.substs)
+                }
+
+                AssociatedItemContainer::ImplContainer(impl_def_id) => {
+                    if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
+                        trait_ref
+                    } else {
+                        // inherent method
+                        return None;
+                    }
+                }
+            };
+
+            Some((
+                ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+                item.ident.name,
+            ))
+        } else {
+            None
+        }
     }
 
     fn fn_sig_noadjust(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> PolyFnSig<'tcx> {

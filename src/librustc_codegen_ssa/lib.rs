@@ -31,6 +31,7 @@
 use std::path::PathBuf;
 use rustc::dep_graph::WorkProduct;
 use rustc::session::config::{OutputFilenames, OutputType};
+use rustc::ty::ExistentialTraitRef;
 use rustc::middle::lang_items::LangItem;
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -120,6 +121,14 @@ pub enum ModuleKind {
     Regular,
     Metadata,
     Allocator,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum CallKind<'tcx> {
+    Direct,
+    DropGlue(ExistentialTraitRef<'tcx>),
+    DynamicDispatch(ExistentialTraitRef<'tcx>, Symbol),
+    FnPtr,
 }
 
 bitflags::bitflags! {

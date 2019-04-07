@@ -5,6 +5,7 @@
 //! closure.
 
 use crate::attributes;
+use crate::common;
 use crate::llvm;
 use crate::monomorphize::Instance;
 use crate::context::CodegenCx;
@@ -16,7 +17,7 @@ use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
-///
+//
 /// # Parameters
 ///
 /// - `cx`: the crate context
@@ -187,6 +188,12 @@ pub fn get_fn(
     };
 
     cx.instances.borrow_mut().insert(instance, llfn);
+
+    common::add_define_metadata(
+        cx,
+        instance,
+        llfn,
+    );
 
     llfn
 }
