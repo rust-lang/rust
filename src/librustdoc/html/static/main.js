@@ -2460,6 +2460,16 @@ if (!DOMTokenList.prototype.remove) {
         onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
             e.remove();
         });
+
+        // Collapse all trait implementors before we show the main container.
+        // Otherwise, on big pages like std::iter::Iterator, showing the whole tree at once
+        // creates *MAMMOTH* reflow/repaint events that can block the main thread for 2+ seconds.
+        const implementors = document.getElementById('implementors-list');
+        if (implementors) {
+            onEachLazy(implementors.getElementsByClassName('collapse-toggle'), function(e) {
+               collapseDocs(e, 'hide');
+            });
+        }
         onEachLazy(main.childNodes, function(e) {
             // Unhide the actual content once loading is complete. Headers get
             // flex treatment for their horizontal layout, divs get block treatment
