@@ -1,5 +1,5 @@
 error: rustc_peek: bit not set
-  --> $DIR/uninits-2.rs:15:14
+  --> $DIR/uninits-2.rs:14:14
    |
 LL |     unsafe { rustc_peek(&x) };
    |              ^^^^^^^^^^^^^^

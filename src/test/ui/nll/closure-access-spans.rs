@@ -1,7 +1,5 @@
 // check that accesses due to a closure capture give a special note
 
-#![feature(nll)]
-
 fn closure_imm_capture_conflict(mut x: i32) {
     let r = &mut x;
     || x; //~ ERROR

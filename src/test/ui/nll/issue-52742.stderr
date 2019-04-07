@@ -1,12 +1,22 @@
-error: lifetime may not live long enough
-  --> $DIR/issue-52742.rs:15:9
+error[E0312]: lifetime of reference outlives lifetime of borrowed content...
+  --> $DIR/issue-52742.rs:14:18
    |
-LL |     fn take_bar(&mut self, b: Bar<'_>) {
-   |                 ---------         -- let's call this `'1`
-   |                 |
-   |                 has type `&mut Foo<'_, '2>`
 LL |         self.y = b.z
-   |         ^^^^^^^^^^^^ assignment requires that `'1` must outlive `'2`
+   |                  ^^^
+   |
+note: ...the reference is valid for the lifetime '_ as defined on the impl at 12:10...
+  --> $DIR/issue-52742.rs:12:10
+   |
+LL | impl Foo<'_, '_> {
+   |          ^^
+note: ...but the borrowed content is only valid for the anonymous lifetime #2 defined on the method body at 13:5
+  --> $DIR/issue-52742.rs:13:5
+   |
+LL | /     fn take_bar(&mut self, b: Bar<'_>) {
+LL | |         self.y = b.z
+LL | |
+LL | |     }
+   | |_____^
 
 error: aborting due to previous error
 

@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(nll)]
-
 struct List<T> {
     value: T,
     next: Option<Box<List<T>>>,

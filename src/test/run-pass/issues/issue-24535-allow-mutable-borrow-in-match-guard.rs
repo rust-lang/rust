@@ -5,7 +5,6 @@
 // See further discussion on rust-lang/rust#24535,
 // rust-lang/rfcs#1006, and rust-lang/rfcs#107
 
-#![feature(nll)]
 #![feature(bind_by_move_pattern_guards)]
 
 fn main() {

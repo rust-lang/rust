@@ -8,8 +8,6 @@
 //
 // compile-pass
 
-#![feature(nll)]
-
 fn creash<'a>() {
     let x: &'a () = &();
 }

@@ -3,8 +3,6 @@
 
 // compile-pass
 
-#![feature(nll)]
-
 fn main() {
     let _s = construct().borrow().consume_borrowed();
 }

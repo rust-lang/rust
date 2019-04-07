@@ -1,8 +1,6 @@
 // compile-pass
 // ignore-emscripten no i128 support
 
-#![feature(nll)]
-
 fn fibs(n: u32) -> impl Iterator<Item=u128> {
     (0 .. n)
     .scan((0, 1), |st, _| {

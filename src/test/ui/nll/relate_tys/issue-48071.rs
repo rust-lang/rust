@@ -6,10 +6,6 @@
 //
 // compile-pass
 
-#![allow(warnings)]
-#![feature(dyn_trait)]
-#![feature(nll)]
-
 trait Foo {
     fn foo(&self) { }
 }

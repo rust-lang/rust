@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 #![allow(dead_code)]
 
 #[derive(Debug)]

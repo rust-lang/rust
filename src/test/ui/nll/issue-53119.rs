@@ -1,7 +1,5 @@
 // compile-pass
 
-#![feature(nll)]
-
 use std::ops::Deref;
 
 pub struct TypeFieldIterator<'a, T: 'a> {

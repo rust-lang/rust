@@ -1,7 +1,5 @@
 // Test that type annotations are checked in promoted constants correctly.
 
-#![feature(nll)]
-
 fn foo<'a>() {
     let x = 0;
     let f = &drop::<&'a i32>;

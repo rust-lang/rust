@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `**other` as mutable more than once at a time
-  --> $DIR/issue-46589.rs:19:21
+  --> $DIR/issue-46589.rs:17:21
    |
 LL |         *other = match (*other).get_self() {
    |                        -------- first mutable borrow occurs here

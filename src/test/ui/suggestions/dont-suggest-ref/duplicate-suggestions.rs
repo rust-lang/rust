@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 #[derive(Clone)]
 enum Either {
     One(X),

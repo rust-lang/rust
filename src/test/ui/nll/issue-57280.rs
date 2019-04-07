@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // compile-pass
 
 trait Foo {

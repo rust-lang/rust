@@ -1,6 +1,4 @@
 // compile-pass
-#![allow(dead_code)]
-#![feature(nll)]
 
 struct MyStruct<'a> {
     field: &'a mut (),

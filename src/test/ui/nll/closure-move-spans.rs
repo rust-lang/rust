@@ -1,7 +1,5 @@
 // check that moves due to a closure capture give a special note
 
-#![feature(nll)]
-
 fn move_after_move(x: String) {
     || x;
     let y = x; //~ ERROR

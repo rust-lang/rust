@@ -6,11 +6,6 @@
 // We will explicitly test NLL, and migration modes; thus we will also skip the
 // automated compare-mode=nll.
 
-// revisions: nll migrate
-// ignore-compare-mode-nll
-
-#![cfg_attr(nll, feature(nll))]
-
 // run-pass
 
 // This test has structs and functions that are by definition unusable

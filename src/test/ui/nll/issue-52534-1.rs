@@ -1,6 +1,3 @@
-#![feature(nll)]
-#![allow(warnings)]
-
 struct Test;
 
 impl Test {

@@ -1,6 +1,4 @@
 // compile-pass
-#![allow(dead_code)]
-#![feature(nll)]
 
 struct WithDrop;
 

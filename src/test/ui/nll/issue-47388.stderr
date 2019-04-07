@@ -1,5 +1,5 @@
 error[E0594]: cannot assign to `fancy_ref.num` which is behind a `&` reference
-  --> $DIR/issue-47388.rs:9:5
+  --> $DIR/issue-47388.rs:8:5
    |
 LL |     let fancy_ref = &(&mut fancy);
    |                     ------------- help: consider changing this to be a mutable reference: `&mut (&mut fancy)`

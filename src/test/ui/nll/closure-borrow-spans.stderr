@@ -1,5 +1,5 @@
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/closure-borrow-spans.rs:7:13
+  --> $DIR/closure-borrow-spans.rs:5:13
    |
 LL |     let f = || x.len();
    |             -- - borrow occurs due to use in closure
@@ -11,7 +11,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
-  --> $DIR/closure-borrow-spans.rs:13:13
+  --> $DIR/closure-borrow-spans.rs:11:13
    |
 LL |     let f = || x;
    |             -- - first borrow occurs due to use of `x` in closure
@@ -23,7 +23,7 @@ LL |     f.use_ref();
    |     - immutable borrow later used here
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/closure-borrow-spans.rs:21:16
+  --> $DIR/closure-borrow-spans.rs:19:16
    |
 LL |         f = || x;
    |             -- ^ borrowed value does not live long enough
@@ -35,7 +35,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/closure-borrow-spans.rs:28:5
+  --> $DIR/closure-borrow-spans.rs:26:5
    |
 LL |     let f = || x;
    |             -- - borrow occurs due to use in closure
@@ -47,7 +47,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0503]: cannot use `x` because it was mutably borrowed
-  --> $DIR/closure-borrow-spans.rs:34:13
+  --> $DIR/closure-borrow-spans.rs:32:13
    |
 LL |     let f = || x = 0;
    |             -- - borrow occurs due to use of `x` in closure
@@ -59,7 +59,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/closure-borrow-spans.rs:40:13
+  --> $DIR/closure-borrow-spans.rs:38:13
    |
 LL |     let f = || x = 0;
    |             -- - first borrow occurs due to use of `x` in closure
@@ -71,7 +71,7 @@ LL |     f.use_ref();
    |     - mutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/closure-borrow-spans.rs:46:13
+  --> $DIR/closure-borrow-spans.rs:44:13
    |
 LL |     let f = || x = 0;
    |             -- - first borrow occurs due to use of `x` in closure
@@ -83,7 +83,7 @@ LL |     f.use_ref();
    |     - first borrow later used here
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/closure-borrow-spans.rs:54:16
+  --> $DIR/closure-borrow-spans.rs:52:16
    |
 LL |         f = || x = 0;
    |             -- ^ borrowed value does not live long enough
@@ -95,7 +95,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/closure-borrow-spans.rs:61:5
+  --> $DIR/closure-borrow-spans.rs:59:5
    |
 LL |     let f = || x = 0;
    |             -- - borrow occurs due to use in closure
@@ -107,7 +107,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0505]: cannot move out of `x` because it is borrowed
-  --> $DIR/closure-borrow-spans.rs:67:13
+  --> $DIR/closure-borrow-spans.rs:65:13
    |
 LL |     let f = || *x = 0;
    |             --  - borrow occurs due to use in closure
@@ -119,7 +119,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0501]: cannot borrow `x` as immutable because previous closure requires unique access
-  --> $DIR/closure-borrow-spans.rs:73:13
+  --> $DIR/closure-borrow-spans.rs:71:13
    |
 LL |     let f = || *x = 0;
    |             --  - first borrow occurs due to use of `x` in closure
@@ -131,7 +131,7 @@ LL |     f.use_ref();
    |     - first borrow later used here
 
 error[E0501]: cannot borrow `x` as mutable because previous closure requires unique access
-  --> $DIR/closure-borrow-spans.rs:79:13
+  --> $DIR/closure-borrow-spans.rs:77:13
    |
 LL |     let f = || *x = 0;
    |             --  - first borrow occurs due to use of `x` in closure
@@ -143,7 +143,7 @@ LL |     f.use_ref();
    |     - first borrow later used here
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/closure-borrow-spans.rs:88:17
+  --> $DIR/closure-borrow-spans.rs:86:17
    |
 LL |         f = || *x = 0;
    |             --  ^ borrowed value does not live long enough
@@ -155,7 +155,7 @@ LL |     f.use_ref();
    |     - borrow later used here
 
 error[E0506]: cannot assign to `*x` because it is borrowed
-  --> $DIR/closure-borrow-spans.rs:95:5
+  --> $DIR/closure-borrow-spans.rs:93:5
    |
 LL |     let f = || *x = 0;
    |             --  - borrow occurs due to use in closure

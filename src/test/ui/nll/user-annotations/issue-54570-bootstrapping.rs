@@ -1,5 +1,4 @@
 // compile-pass
-#![feature(nll)]
 
 // This test is reduced from a scenario pnkfelix encountered while
 // bootstrapping the compiler.

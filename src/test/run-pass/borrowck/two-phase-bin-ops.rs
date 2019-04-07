@@ -1,8 +1,4 @@
 // run-pass
-// revisions: lxl nll
-
-#![cfg_attr(nll, feature(nll))]
-
 use std::ops::{AddAssign, SubAssign, MulAssign, DivAssign, RemAssign};
 use std::ops::{BitAndAssign, BitOrAssign, BitXorAssign, ShlAssign, ShrAssign};
 

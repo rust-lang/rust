@@ -1,6 +1,5 @@
 // run-pass
 
-#![feature(nll)]
 #![allow(unused_variables)]
 
 pub trait TryTransform {

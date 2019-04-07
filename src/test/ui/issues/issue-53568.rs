@@ -3,9 +3,6 @@
 //
 // compile-pass
 
-#![feature(nll)]
-#![allow(dead_code)]
-
 trait Future {
     type Item;
 }

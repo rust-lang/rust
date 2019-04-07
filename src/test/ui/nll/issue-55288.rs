@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // run-pass
 
 struct Slice(&'static [&'static [u8]]);

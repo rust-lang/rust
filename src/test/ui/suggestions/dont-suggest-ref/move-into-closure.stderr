@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:30:21
+  --> $DIR/move-into-closure.rs:28:21
    |
 LL |     let x = X(Y);
    |         - captured outer variable
@@ -12,13 +12,13 @@ LL |         let X(_t) = x;
    |               data moved here
    |
 note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:30:15
+  --> $DIR/move-into-closure.rs:28:15
    |
 LL |         let X(_t) = x;
    |               ^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:34:34
+  --> $DIR/move-into-closure.rs:32:34
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -31,13 +31,13 @@ LL |         if let Either::One(_t) = e { }
    |                            data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:34:28
+  --> $DIR/move-into-closure.rs:32:28
    |
 LL |         if let Either::One(_t) = e { }
    |                            ^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:38:37
+  --> $DIR/move-into-closure.rs:36:37
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -50,13 +50,13 @@ LL |         while let Either::One(_t) = e { }
    |                               data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:38:31
+  --> $DIR/move-into-closure.rs:36:31
    |
 LL |         while let Either::One(_t) = e { }
    |                               ^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:42:15
+  --> $DIR/move-into-closure.rs:40:15
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -71,13 +71,13 @@ LL |             Either::One(_t)
    |                         -- data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:46:25
+  --> $DIR/move-into-closure.rs:44:25
    |
 LL |             Either::One(_t)
    |                         ^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:49:15
+  --> $DIR/move-into-closure.rs:47:15
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -92,13 +92,13 @@ LL |             Either::One(_t) => (),
    |                         -- data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:53:25
+  --> $DIR/move-into-closure.rs:51:25
    |
 LL |             Either::One(_t) => (),
    |                         ^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:58:25
+  --> $DIR/move-into-closure.rs:56:25
    |
 LL |     let x = X(Y);
    |         - captured outer variable
@@ -111,13 +111,13 @@ LL |         let X(mut _t) = x;
    |               data moved here
    |
 note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:58:15
+  --> $DIR/move-into-closure.rs:56:15
    |
 LL |         let X(mut _t) = x;
    |               ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:62:38
+  --> $DIR/move-into-closure.rs:60:38
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -130,13 +130,13 @@ LL |         if let Either::One(mut _t) = em { }
    |                            data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:62:28
+  --> $DIR/move-into-closure.rs:60:28
    |
 LL |         if let Either::One(mut _t) = em { }
    |                            ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:66:41
+  --> $DIR/move-into-closure.rs:64:41
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -149,13 +149,13 @@ LL |         while let Either::One(mut _t) = em { }
    |                               data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:66:31
+  --> $DIR/move-into-closure.rs:64:31
    |
 LL |         while let Either::One(mut _t) = em { }
    |                               ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:70:15
+  --> $DIR/move-into-closure.rs:68:15
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -170,13 +170,13 @@ LL |             Either::One(mut _t)
    |                         ------ data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:74:25
+  --> $DIR/move-into-closure.rs:72:25
    |
 LL |             Either::One(mut _t)
    |                         ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `Fn` closure
-  --> $DIR/move-into-closure.rs:77:15
+  --> $DIR/move-into-closure.rs:75:15
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -191,13 +191,13 @@ LL |             Either::One(mut _t) => (),
    |                         ------ data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:81:25
+  --> $DIR/move-into-closure.rs:79:25
    |
 LL |             Either::One(mut _t) => (),
    |                         ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:97:21
+  --> $DIR/move-into-closure.rs:95:21
    |
 LL |     let x = X(Y);
    |         - captured outer variable
@@ -210,13 +210,13 @@ LL |         let X(_t) = x;
    |               data moved here
    |
 note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:97:15
+  --> $DIR/move-into-closure.rs:95:15
    |
 LL |         let X(_t) = x;
    |               ^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:101:34
+  --> $DIR/move-into-closure.rs:99:34
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -229,13 +229,13 @@ LL |         if let Either::One(_t) = e { }
    |                            data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:101:28
+  --> $DIR/move-into-closure.rs:99:28
    |
 LL |         if let Either::One(_t) = e { }
    |                            ^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:105:37
+  --> $DIR/move-into-closure.rs:103:37
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -248,13 +248,13 @@ LL |         while let Either::One(_t) = e { }
    |                               data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:105:31
+  --> $DIR/move-into-closure.rs:103:31
    |
 LL |         while let Either::One(_t) = e { }
    |                               ^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:109:15
+  --> $DIR/move-into-closure.rs:107:15
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -269,13 +269,13 @@ LL |             Either::One(_t)
    |                         -- data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:113:25
+  --> $DIR/move-into-closure.rs:111:25
    |
 LL |             Either::One(_t)
    |                         ^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:116:15
+  --> $DIR/move-into-closure.rs:114:15
    |
 LL |     let e = Either::One(X(Y));
    |         - captured outer variable
@@ -290,13 +290,13 @@ LL |             Either::One(_t) => (),
    |                         -- data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:120:25
+  --> $DIR/move-into-closure.rs:118:25
    |
 LL |             Either::One(_t) => (),
    |                         ^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:125:25
+  --> $DIR/move-into-closure.rs:123:25
    |
 LL |     let x = X(Y);
    |         - captured outer variable
@@ -309,13 +309,13 @@ LL |         let X(mut _t) = x;
    |               data moved here
    |
 note: move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:125:15
+  --> $DIR/move-into-closure.rs:123:15
    |
 LL |         let X(mut _t) = x;
    |               ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:129:38
+  --> $DIR/move-into-closure.rs:127:38
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -328,13 +328,13 @@ LL |         if let Either::One(mut _t) = em { }
    |                            data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:129:28
+  --> $DIR/move-into-closure.rs:127:28
    |
 LL |         if let Either::One(mut _t) = em { }
    |                            ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:133:41
+  --> $DIR/move-into-closure.rs:131:41
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -347,13 +347,13 @@ LL |         while let Either::One(mut _t) = em { }
    |                               data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:133:31
+  --> $DIR/move-into-closure.rs:131:31
    |
 LL |         while let Either::One(mut _t) = em { }
    |                               ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:137:15
+  --> $DIR/move-into-closure.rs:135:15
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -368,13 +368,13 @@ LL |             Either::One(mut _t)
    |                         ------ data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:141:25
+  --> $DIR/move-into-closure.rs:139:25
    |
 LL |             Either::One(mut _t)
    |                         ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:144:15
+  --> $DIR/move-into-closure.rs:142:15
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -389,13 +389,13 @@ LL |             Either::One(mut _t) => (),
    |                         ------ data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:148:25
+  --> $DIR/move-into-closure.rs:146:25
    |
 LL |             Either::One(mut _t) => (),
    |                         ^^^^^^
 
 error[E0507]: cannot move out of captured variable in an `FnMut` closure
-  --> $DIR/move-into-closure.rs:152:15
+  --> $DIR/move-into-closure.rs:150:15
    |
 LL |     let mut em = Either::One(X(Y));
    |         ------ captured outer variable
@@ -410,7 +410,7 @@ LL |             Either::One(mut _t) => (),
    |                         ------ data moved here
    |
 note: move occurs because `_t` has type `X`, which does not implement the `Copy` trait
-  --> $DIR/move-into-closure.rs:156:25
+  --> $DIR/move-into-closure.rs:154:25
    |
 LL |             Either::One(mut _t) => (),
    |                         ^^^^^^

@@ -1,6 +1,3 @@
-#![allow(warnings)]
-#![feature(nll)]
-
 fn main() {
     let range = 0..1;
     let r = range;

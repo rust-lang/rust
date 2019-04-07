@@ -1,7 +1,5 @@
 // compile-pass
 
-#![feature(nll)]
-
 use std::borrow::Cow;
 
 #[derive(Clone, Debug)]

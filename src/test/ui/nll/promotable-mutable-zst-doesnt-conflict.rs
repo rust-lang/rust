@@ -3,8 +3,6 @@
 
 // run-pass
 
-#![feature(nll)]
-
 pub fn main() {
     let mut x: Vec<&[i32; 0]> = Vec::new();
     for i in 0..10 {

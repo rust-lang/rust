@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 use std::any::Any;
 
 #[derive(Debug, Clone)]

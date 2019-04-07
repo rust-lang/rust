@@ -8,10 +8,6 @@
 //
 // compile-pass
 
-#![feature(nll)]
-#![feature(rustc_attrs)]
-#![allow(dead_code)]
-
 use std::cell::{RefCell, Ref};
 
 trait AnyVec<'a> {

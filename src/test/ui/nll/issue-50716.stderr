@@ -1,11 +1,18 @@
-error: lifetime may not live long enough
-  --> $DIR/issue-50716.rs:16:14
+error[E0308]: mismatched types
+  --> $DIR/issue-50716.rs:14:9
+   |
+LL |     let _x = *s;
+   |         ^^ lifetime mismatch
+   |
+   = note: expected type `std::marker::Sized`
+              found type `std::marker::Sized`
+note: the lifetime 'a as defined on the function body at 9:8...
+  --> $DIR/issue-50716.rs:9:8
    |
 LL | fn foo<'a, T: 'static>(s: Box<<&'a T as A>::X>)
-   |        -- lifetime `'a` defined here
-...
-LL |     let _x = *s;
-   |              ^^ proving this value is `Sized` requires that `'a` must outlive `'static`
+   |        ^^
+   = note: ...does not necessarily outlive the static lifetime
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0308`.

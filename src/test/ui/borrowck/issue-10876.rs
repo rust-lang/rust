@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(nll)]
-
 enum Nat {
     S(Box<Nat>),
     Z

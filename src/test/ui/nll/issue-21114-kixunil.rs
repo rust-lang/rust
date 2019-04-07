@@ -1,6 +1,4 @@
-// (this works, but only in NLL)
 // compile-pass
-#![feature(nll)]
 
 fn from_stdin(min: u64) -> Vec<u64> {
     use std::io::BufRead;

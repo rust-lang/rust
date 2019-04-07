@@ -1,8 +1,5 @@
 // Some cases with closures that might be problems
 
-#![allow(unused)]
-#![feature(nll)]
-
 // Should have one error per assignment
 
 fn one_closure(x: i32) {

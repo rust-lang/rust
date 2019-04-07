@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct A {
     b: B,
 }

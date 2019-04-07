@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 struct Foo<'a> { x: &'a u32 }
 
 impl<'a> Foo<'a> {

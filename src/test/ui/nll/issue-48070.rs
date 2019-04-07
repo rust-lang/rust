@@ -1,8 +1,6 @@
 // run-pass
 // revisions: lxl nll
 
-#![cfg_attr(nll, feature(nll))]
-
 struct Foo {
     x: u32
 }

@@ -1,6 +1,4 @@
-// (this works, but only in NLL)
 // compile-pass
-#![feature(nll)]
 
 use std::collections::HashMap;
 use std::sync::Mutex;
