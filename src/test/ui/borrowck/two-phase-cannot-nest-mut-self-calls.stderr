@@ -7,7 +7,7 @@ LL |     vec.get({
    |     immutable borrow occurs here
 LL | 
 LL |         vec.push(2);
-   |         ^^^^^^^^^^^ mutable borrow occurs here
+   |         ^^^ mutable borrow occurs here
 
 error: aborting due to previous error
 

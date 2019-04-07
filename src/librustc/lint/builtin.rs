@@ -392,6 +392,12 @@ declare_lint! {
     "nested occurrence of `impl Trait` type"
 }
 
+declare_lint! {
+    pub MUTABLE_BORROW_RESERVATION_CONFLICT,
+    Warn,
+    "reservation of a two-phased borrow conflicts with other shared borrows"
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -457,6 +463,7 @@ declare_lint_pass! {
         AMBIGUOUS_ASSOCIATED_ITEMS,
         NESTED_IMPL_TRAIT,
         DUPLICATE_MATCHER_BINDING_NAME,
+        MUTABLE_BORROW_RESERVATION_CONFLICT,
     ]
 }
 

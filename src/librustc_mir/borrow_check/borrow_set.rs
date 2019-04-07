@@ -52,7 +52,7 @@ crate enum TwoPhaseActivation {
     ActivatedAt(Location),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 crate struct BorrowData<'tcx> {
     /// Location where the borrow reservation starts.
     /// In many cases, this will be equal to the activation location but not always.

@@ -164,7 +164,7 @@ impl MirPass for AddRetag {
                         if src_ty.is_region_ptr() {
                             // The only `Misc` casts on references are those creating raw pointers.
                             assert!(dest_ty.is_unsafe_ptr());
-                            (RetagKind::Raw, place)
+                            (RetagKind::Raw, place.clone())
                         } else {
                             // Some other cast, no retag
                             continue
@@ -182,7 +182,7 @@ impl MirPass for AddRetag {
                             _ =>
                                 RetagKind::Default,
                         };
-                        (kind, place)
+                        (kind, place.clone())
                     }
                     // Do nothing for the rest
                     _ => continue,
@@ -191,7 +191,7 @@ impl MirPass for AddRetag {
                 let source_info = block_data.statements[i].source_info;
                 block_data.statements.insert(i+1, Statement {
                     source_info,
-                    kind: StatementKind::Retag(retag_kind, place.clone()),
+                    kind: StatementKind::Retag(retag_kind, place),
                 });
             }
         }

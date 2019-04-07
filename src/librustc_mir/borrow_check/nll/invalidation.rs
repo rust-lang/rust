@@ -428,11 +428,11 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                         // have already taken the reservation
                     }
 
-                    (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow)
-                    | (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
+                    (Read(_), BorrowKind::Shallow)
+                    | (Read(_), BorrowKind::Shared)
                     | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Unique)
                     | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
-                        // Reads/reservations don't invalidate shared or shallow borrows
+                        // Reads don't invalidate shared or shallow borrows
                     }
 
                     (Read(_), BorrowKind::Unique) | (Read(_), BorrowKind::Mut { .. }) => {
@@ -448,16 +448,15 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                         this.generate_invalidates(borrow_index, context.loc);
                     }
 
-                    (Reservation(_), BorrowKind::Unique)
-                        | (Reservation(_), BorrowKind::Mut { .. })
-                        | (Activation(_, _), _)
-                        | (Write(_), _) => {
-                            // unique or mutable borrows are invalidated by writes.
-                            // Reservations count as writes since we need to check
-                            // that activating the borrow will be OK
-                            // FIXME(bob_twinkles) is this actually the right thing to do?
-                            this.generate_invalidates(borrow_index, context.loc);
-                        }
+                    (Reservation(_), _)
+                    | (Activation(_, _), _)
+                    | (Write(_), _) => {
+                        // unique or mutable borrows are invalidated by writes.
+                        // Reservations count as writes since we need to check
+                        // that activating the borrow will be OK
+                        // FIXME(bob_twinkles) is this actually the right thing to do?
+                        this.generate_invalidates(borrow_index, context.loc);
+                    }
                 }
                 Control::Continue
             },

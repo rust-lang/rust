@@ -6,6 +6,7 @@ use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::lint::builtin::UNUSED_MUT;
+use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::middle::borrowck::SignalledError;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
@@ -18,14 +19,15 @@ use rustc::ty::{self, TyCtxt};
 
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, Level};
 use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use smallvec::SmallVec;
 
-use std::rc::Rc;
 use std::collections::BTreeMap;
+use std::mem;
+use std::rc::Rc;
 
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
 use crate::dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError};
@@ -238,6 +240,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         locals_are_invalidated_at_exit,
         access_place_error_reported: Default::default(),
         reservation_error_reported: Default::default(),
+        reservation_warnings: Default::default(),
         move_error_reported: BTreeMap::new(),
         uninitialized_error_reported: Default::default(),
         errors_buffer,
@@ -259,6 +262,29 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         mbcx.report_move_errors(errors);
     }
     mbcx.analyze_results(&mut state); // entry point for DataflowResultsConsumer
+
+    // Convert any reservation warnings into lints.
+    let reservation_warnings = mem::replace(&mut mbcx.reservation_warnings, Default::default());
+    for (_, (place, span, context, bk, borrow)) in reservation_warnings {
+        let mut initial_diag = mbcx.report_conflicting_borrow(context, (&place, span), bk, &borrow);
+
+        let lint_root = if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.source_scope_local_data {
+            let scope = mbcx.mir.source_info(context.loc).scope;
+            vsi[scope].lint_root
+        } else {
+            id
+        };
+
+        // Span and message don't matter; we overwrite them below anyway
+        let mut diag = mbcx.infcx.tcx.struct_span_lint_hir(
+            MUTABLE_BORROW_RESERVATION_CONFLICT, lint_root, DUMMY_SP, "");
+
+        diag.message = initial_diag.styled_message().clone();
+        diag.span = initial_diag.span.clone();
+
+        initial_diag.cancel();
+        diag.buffer(&mut mbcx.errors_buffer);
+    }
 
     // For each non-user used mutable variable, check if it's been assigned from
     // a user-declared local. If so, then put that local into the used_mut set.
@@ -341,18 +367,9 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
                     // if AST-borrowck signalled no errors, then
                     // downgrade all the buffered MIR-borrowck errors
                     // to warnings.
-                    for err in &mut mbcx.errors_buffer {
-                        if err.is_error() {
-                            err.level = Level::Warning;
-                            err.warn(
-                                "this error has been downgraded to a warning for backwards \
-                                 compatibility with previous releases",
-                            );
-                            err.warn(
-                                "this represents potential undefined behavior in your code and \
-                                 this warning will become a hard error in the future",
-                            );
-                        }
+
+                    for err in mbcx.errors_buffer.iter_mut() {
+                        downgrade_if_error(err);
                     }
                 }
                 SignalledError::SawSomeError => {
@@ -376,6 +393,20 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     debug!("do_mir_borrowck: result = {:#?}", result);
 
     result
+}
+
+fn downgrade_if_error(diag: &mut Diagnostic) {
+    if diag.is_error() {
+        diag.level = Level::Warning;
+        diag.warn(
+            "this error has been downgraded to a warning for backwards \
+            compatibility with previous releases",
+        );
+        diag.warn(
+            "this represents potential undefined behavior in your code and \
+            this warning will become a hard error in the future",
+        );
+    }
 }
 
 pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
@@ -410,6 +441,13 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     // but it is currently inconvenient to track down the `BorrowIndex`
     // at the time we detect and report a reservation error.
     reservation_error_reported: FxHashSet<Place<'tcx>>,
+    /// Migration warnings to be reported for #56254. We delay reporting these
+    /// so that we can suppress the warning if there's a corresponding error
+    /// for the activation of the borrow.
+    reservation_warnings: FxHashMap<
+        BorrowIndex,
+        (Place<'tcx>, Span, Context, BorrowKind, BorrowData<'tcx>)
+    >,
     /// This field keeps track of move errors that are to be reported for given move indicies.
     ///
     /// There are situations where many errors can be reported for a single move out (see #53807)
@@ -921,11 +959,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let conflict_error =
             self.check_access_for_conflict(context, place_span, sd, rw, flow_state);
 
+        if let (Activation(_, borrow_idx), true) = (kind.1, conflict_error) {
+            // Suppress this warning when there's an error being emited for the
+            // same borrow: fixing the error is likely to fix the warning.
+            self.reservation_warnings.remove(&borrow_idx);
+        }
+
         if conflict_error || mutability_error {
             debug!(
                 "access_place: logging error place_span=`{:?}` kind=`{:?}`",
                 place_span, kind
             );
+
             self.access_place_error_reported
                 .insert((place_span.0.clone(), place_span.1));
         }
@@ -976,8 +1021,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
-                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow)
+                (Read(_), BorrowKind::Shared)
+                | (Read(_), BorrowKind::Shallow)
                 | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Unique)
                 | (Read(ReadKind::Borrow(BorrowKind::Shallow)), BorrowKind::Mut { .. }) => {
                     Control::Continue
@@ -991,7 +1036,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(&this.dominators, borrow, context.loc) {
-                        assert!(allow_two_phase_borrow(&this.infcx.tcx, borrow.kind));
+                        assert!(allow_two_phase_borrow(&tcx, borrow.kind));
                         return Control::Continue;
                     }
 
@@ -999,20 +1044,45 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     match kind {
                         ReadKind::Copy  => {
                             this.report_use_while_mutably_borrowed(context, place_span, borrow)
+                                .buffer(&mut this.errors_buffer);
                         }
                         ReadKind::Borrow(bk) => {
-                            this.report_conflicting_borrow(context, place_span, bk, &borrow)
+                            this.report_conflicting_borrow(context, place_span, bk, borrow)
+                                .buffer(&mut this.errors_buffer);
                         }
                     }
                     Control::Break
                 }
 
-                (Reservation(kind), BorrowKind::Unique)
-                | (Reservation(kind), BorrowKind::Mut { .. })
+                (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shallow)
+                | (Reservation(WriteKind::MutableBorrow(bk)), BorrowKind::Shared) if {
+                    tcx.migrate_borrowck()
+                } => {
+                    let bi = this.borrow_set.location_map[&context.loc];
+                    debug!(
+                        "recording invalid reservation of place: {:?} with \
+                         borrow index {:?} as warning",
+                        place_span.0,
+                        bi,
+                    );
+                    // rust-lang/rust#56254 - This was previously permitted on
+                    // the 2018 edition so we emit it as a warning. We buffer
+                    // these sepately so that we only emit a warning if borrow
+                    // checking was otherwise successful.
+                    this.reservation_warnings.insert(
+                        bi,
+                        (place_span.0.clone(), place_span.1, context, bk, borrow.clone()),
+                    );
+
+                    // Don't suppress actual errors.
+                    Control::Continue
+                }
+
+                (Reservation(kind), _)
                 | (Activation(kind, _), _)
                 | (Write(kind), _) => {
                     match rw {
-                        Reservation(_) => {
+                        Reservation(..) => {
                             debug!(
                                 "recording invalid reservation of \
                                  place: {:?}",
@@ -1033,7 +1103,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     error_reported = true;
                     match kind {
                         WriteKind::MutableBorrow(bk) => {
-                            this.report_conflicting_borrow(context, place_span, bk, &borrow)
+                            this.report_conflicting_borrow(context, place_span, bk, borrow)
+                                .buffer(&mut this.errors_buffer);
                         }
                         WriteKind::StorageDeadOrDrop => {
                             this.report_borrowed_value_does_not_live_long_enough(
@@ -1046,7 +1117,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             this.report_illegal_mutation_of_borrowed(context, place_span, borrow)
                         }
                         WriteKind::Move => {
-                            this.report_move_out_while_borrowed(context, place_span, &borrow)
+                            this.report_move_out_while_borrowed(context, place_span, borrow)
                         }
                     }
                     Control::Break

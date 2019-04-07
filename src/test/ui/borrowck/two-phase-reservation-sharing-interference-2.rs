@@ -1,24 +1,54 @@
-// compile-flags: -Z borrowck=mir -Z two-phase-borrows
+// Test for #56254, we previously allowed the last example on the 2018
+// editiion. Make sure that we now emit a warning in that case and an error for
+// everyone else.
 
-// This is similar to two-phase-reservation-sharing-interference.rs
-// in that it shows a reservation that overlaps with a shared borrow.
-//
-// Currently, this test fails with lexical lifetimes, but succeeds
-// with non-lexical lifetimes. (The reason is because the activation
-// of the mutable borrow ends up overlapping with a lexically-scoped
-// shared borrow; but a non-lexical shared borrow can end before the
-// activation occurs.)
-//
-// So this test is just making a note of the current behavior.
+//ignore-compare-mode-nll
 
-#![feature(rustc_attrs)]
+//revisions: ast migrate2015 migrate2018 nll2015 nll2018
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+//[migrate2015] compile-flags: -Zborrowck=migrate -Ztwo-phase-borrows
+//[migrate2018] edition:2018
+//[nll2018] edition:2018
+
+#![cfg_attr(any(nll2015, nll2018), feature(nll))]
+
+fn double_conflicts() {
+    let mut v = vec![0, 1, 2];
+    let shared = &v;
+
+    v.extend(shared);
+    //[migrate2015]~^ ERROR cannot borrow `v` as mutable
+    //[nll2015]~^^ ERROR cannot borrow `v` as mutable
+    //[migrate2018]~^^^ ERROR cannot borrow `v` as mutable
+    //[nll2018]~^^^^ ERROR cannot borrow `v` as mutable
+    //[ast]~^^^^^ ERROR cannot borrow `v` as mutable
+}
+
+fn activation_conflict() {
+    let mut v = vec![0, 1, 2];
+
+    v.extend(&v);
+    //[migrate2015]~^ ERROR cannot borrow `v` as mutable
+    //[nll2015]~^^ ERROR cannot borrow `v` as mutable
+    //[migrate2018]~^^^ ERROR cannot borrow `v` as mutable
+    //[nll2018]~^^^^ ERROR cannot borrow `v` as mutable
+    //[ast]~^^^^^ ERROR cannot borrow `v` as immutable
+}
+
+fn reservation_conflict() {
     let mut v = vec![0, 1, 2];
     let shared = &v;
 
     v.push(shared.len());
+    //[nll2015]~^ ERROR cannot borrow `v` as mutable
+    //[nll2018]~^^ ERROR cannot borrow `v` as mutable
+    //[migrate2015]~^^^ WARNING cannot borrow `v` as mutable
+    //[migrate2015]~| WARNING may become a hard error in the future
 
-    assert_eq!(v, [0, 1, 2, 3]);
+    //[migrate2018]~^^^^^^ WARNING cannot borrow `v` as mutable
+    //[migrate2018]~| WARNING may become a hard error in the future
+
+    //[ast]~^^^^^^^^^ ERROR cannot borrow `v` as mutable
 }
+
+fn main() {}
