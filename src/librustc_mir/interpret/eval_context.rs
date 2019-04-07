@@ -698,15 +698,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                 }
                 write!(msg, ":").unwrap();
 
-                match self.stack[frame].locals[local].access() {
-                    Err(err) => {
-                        if let InterpError::DeadLocal = err.kind {
-                            write!(msg, " is dead").unwrap();
-                        } else {
-                            panic!("Failed to access local: {:?}", err);
-                        }
-                    }
-                    Ok(Operand::Indirect(mplace)) => {
+                match self.stack[frame].locals[local].state {
+                    LocalValue::Dead => write!(msg, " is dead").unwrap(),
+                    LocalValue::Uninitialized => write!(msg, " is uninitialized").unwrap(),
+                    LocalValue::Live(Operand::Indirect(mplace)) => {
                         let (ptr, align) = mplace.to_scalar_ptr_align();
                         match ptr {
                             Scalar::Ptr(ptr) => {
@@ -716,13 +711,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                             ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
                         }
                     }
-                    Ok(Operand::Immediate(Immediate::Scalar(val))) => {
+                    LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(msg, " {:?}", val).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val {
                             allocs.push(ptr.alloc_id);
                         }
                     }
-                    Ok(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
+                    LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val1 {
                             allocs.push(ptr.alloc_id);
