@@ -332,7 +332,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             ty::Dynamic(ref trait_data, _) => {
                 let principal = self.cx.tcx().normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
-                    &trait_data.principal().unwrap_or_else(|| bug!("trait object has no principal")),
+                    &trait_data.principal().unwrap_or_else(|| {
+                        bug!("trait object has no principal")
+                    }),
                 );
                 let sig = drop_fn.fn_sig(self.cx.tcx());
                 let sig = self.cx.tcx().normalize_erasing_late_bound_regions(

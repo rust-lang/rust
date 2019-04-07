@@ -893,7 +893,9 @@ rustc_queries! {
             desc { "checking if `{}` may be called via dynamic dispatch", instance }
         }
 
-        query drop_glue(instance: ty::Instance<'tcx>) -> Option<Arc<FxHashSet<ty::ExistentialTraitRef<'tcx>>>> {
+        query drop_glue(instance: ty::Instance<'tcx>) ->
+            Option<Arc<FxHashSet<ty::ExistentialTraitRef<'tcx>>>>
+        {
             no_force
             desc { "checking if `{}` may be called by a trait object destructor", instance }
         }
