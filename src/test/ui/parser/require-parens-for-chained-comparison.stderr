@@ -44,6 +44,7 @@ LL |     f<X>();
    |     -^- X
    |     |
    |     fn() {f::<_>}
+   |     did you forget `()`?
    |
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn() {f::<_>}`
 

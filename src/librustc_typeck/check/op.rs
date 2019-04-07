@@ -3,7 +3,7 @@
 use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::TyKind::{Ref, Adt, Str, Uint, Never, Tuple, Char, Array};
+use rustc::ty::TyKind::{Ref, Adt, FnDef, Str, Uint, Never, Tuple, Char, Array};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors::{self,Applicability};
@@ -334,8 +334,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                             if !lhs_expr.span.eq(&rhs_expr.span) {
                                 err.span_label(lhs_expr.span, lhs_ty.to_string());
+                                if let FnDef(..) = lhs_ty.sty {
+                                    err.span_label(lhs_expr.span, "did you forget `()`?");
+                                }
+
                                 err.span_label(rhs_expr.span, rhs_ty.to_string());
+                                if let FnDef(..) = rhs_ty.sty {
+                                    err.span_label(rhs_expr.span, "did you forget `()`?");
+                                }
                             }
+
 
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
