@@ -40,9 +40,14 @@ fn fn_once_closure_with_multiple_args() -> i64 {
     }
 }
 
+fn boxed(f: Box<dyn FnOnce() -> i32>) -> i32 {
+    f()
+}
+
 fn main() {
     assert_eq!(simple(), 12);
     assert_eq!(crazy_closure(), (84, 10, 10));
     assert_eq!(closure_arg_adjustment_problem(), 3);
     assert_eq!(fn_once_closure_with_multiple_args(), 6);
+    assert_eq!(boxed(Box::new({let x = 13; move || x})), 13);
 }
