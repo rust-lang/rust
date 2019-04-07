@@ -15,10 +15,12 @@ macro_rules! impl_froms {
     }
 }
 
-mod tt_cursor;
+// mod tt_cursor;
 mod mbe_parser;
 mod mbe_expander;
 mod syntax_bridge;
+mod tt_cursor;
+mod subtree_source;
 
 use ra_syntax::SmolStr;
 
