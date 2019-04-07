@@ -11,7 +11,7 @@ use syntax::symbol::keywords;
 use syntax_pos::Span;
 
 use crate::macros::ParentScope;
-use crate::resolve_imports::{ImportDirective, ImportResolver};
+use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{import_candidate_to_enum_paths, is_self_type, is_self_value, path_names_to_string};
 use crate::{AssocSuggestion, CrateLint, ImportSuggestion, ModuleOrUniformRoot, PathResult,
             PathSource, Resolver, Segment, Suggestion};
@@ -610,11 +610,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let resolution = resolutions.get(&(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
         if let Def::Macro(_, MacroKind::Bang) = binding.def() {
-            let name = crate_module.kind.name().unwrap();
+            let module_name = crate_module.kind.name().unwrap();
+            let import = match directive.subclass {
+                ImportDirectiveSubclass::SingleImport { source, target, .. } if source != target =>
+                    format!("{} as {}", source, target),
+                _ => format!("{}", ident),
+            };
             let suggestion = Some((
                 directive.span,
                 String::from("a macro with this name exists at the root of the crate"),
-                format!("{}::{}", name, ident),
+                format!("{}::{}", module_name, import),
                 Applicability::MaybeIncorrect,
             ));
             let note = vec![

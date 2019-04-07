@@ -1111,21 +1111,17 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     }
                 });
 
-                let (suggestion, note) = if let Some((suggestion, note)) =
-                    self.check_for_module_export_macro(directive, module, ident)
-                {
+                let lev_suggestion = find_best_match_for_name(names, &ident.as_str(), None)
+                   .map(|suggestion|
+                        (ident.span, String::from("a similar name exists in the module"),
+                         suggestion.to_string(), Applicability::MaybeIncorrect)
+                    );
 
-                    (
-                        suggestion.or_else(||
-                           find_best_match_for_name(names, &ident.as_str(), None)
-                           .map(|suggestion|
-                                (ident.span, String::from("a similar name exists in the module"),
-                                 suggestion.to_string(), Applicability::MaybeIncorrect)
-                            )),
-                        note,
-                    )
-                } else {
-                    (None, Vec::new())
+                let (suggestion, note) = match self.check_for_module_export_macro(
+                    directive, module, ident,
+                ) {
+                    Some((suggestion, note)) => (suggestion.or(lev_suggestion), note),
+                    _ => (lev_suggestion, Vec::new()),
                 };
 
                 let label = match module {
