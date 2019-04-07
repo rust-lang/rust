@@ -702,10 +702,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                     LocalValue::Dead => write!(msg, " is dead").unwrap(),
                     LocalValue::Uninitialized => write!(msg, " is uninitialized").unwrap(),
                     LocalValue::Live(Operand::Indirect(mplace)) => {
-                        let (ptr, align) = mplace.to_scalar_ptr_align();
-                        match ptr {
+                        match mplace.ptr {
                             Scalar::Ptr(ptr) => {
-                                write!(msg, " by align({}) ref:", align.bytes()).unwrap();
+                                write!(msg, " by align({}){} ref:",
+                                    mplace.align.bytes(),
+                                    match mplace.meta {
+                                        Some(meta) => format!(" meta({:?})", meta),
+                                        None => String::new()
+                                    }
+                                ).unwrap();
                                 allocs.push(ptr.alloc_id);
                             }
                             ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
