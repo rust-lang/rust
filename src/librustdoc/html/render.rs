@@ -153,7 +153,7 @@ struct SharedContext {
     /// If true, it'll lower all type names and handle conflicts.
     pub case_insensitive: bool,
     /// The type name and its url.
-    pub types_urls: FxHashMap<String, (String, bool)>,
+    pub types_urls: RefCell<FxHashMap<String, (String, bool)>>,
 }
 
 impl SharedContext {
@@ -412,19 +412,23 @@ struct IndexItem {
     parent: Option<DefId>,
     parent_idx: Option<usize>,
     search_type: Option<IndexItemFunctionType>,
+    alternative_path: Option<String>,
 }
 
 impl ToJson for IndexItem {
     fn to_json(&self) -> Json {
         assert_eq!(self.parent.is_some(), self.parent_idx.is_some());
 
-        let mut data = Vec::with_capacity(6);
+        let mut data = Vec::with_capacity(7);
         data.push((self.ty as usize).to_json());
         data.push(self.name.to_json());
         data.push(self.path.to_json());
         data.push(self.desc.to_json());
         data.push(self.parent_idx.to_json());
         data.push(self.search_type.to_json());
+        if let Some(ref alternative_path) = self.alternative_path {
+            data.push(alternative_path.to_json());
+        }
 
         Json::Array(data)
     }
@@ -560,7 +564,7 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
-        types_urls: Default::default(),
+        types_urls: RefCell::new(Default::default()),
         case_insensitive,
     };
 
@@ -694,8 +698,26 @@ pub fn run(mut krate: clean::Crate,
         }
     }
 
+    // Generate alternative URLs if the `case-insensitive` option is enabled.
+    cx.generate_urls(&krate)?;
+    if !cx.shared.types_urls.borrow().is_empty() {
+        let types_urls = cx.shared.types_urls.borrow();
+        let s_path = cx.dst.display().to_string();
+
+        for item in cache.search_index.iter_mut() {
+            let path = format!("{}/{}.{}.html",
+                               cx.dst.join(item.path.split("::").collect::<Vec<_>>().join("/"))
+                                     .display(),
+                               item.ty,
+                               item.name);
+            item.alternative_path = match types_urls.get(&path).map(|(x, _)| x) {
+                Some(x) => url_to_path(x, &s_path),
+                None => None,
+            };
+        }
+    }
     // Build our search index
-    let index = build_index(&krate, &mut cache);
+    let index = build_index(&krate, &mut cache, &*cx.shared.types_urls.borrow(), &cx.dst);
 
     // Freeze the cache now that the index has been built. Put an Arc into TLS
     // for future parallelization opportunities
@@ -705,13 +727,38 @@ pub fn run(mut krate: clean::Crate,
 
     write_shared(&cx, &krate, &*cache, index, &md_opts, diag)?;
 
-    cx.generate_urls(&krate)?;
     // And finally render the whole crate's documentation
     cx.krate(krate)
 }
 
+fn url_to_path(url: &str, start_path: &str) -> Option<String> {
+    if let Some(s) = url.splitn(2, start_path).skip(1).next() {
+        let mut s = s.to_owned();
+        if s.starts_with(::std::path::MAIN_SEPARATOR) {
+            s.remove(0);
+        }
+        let mut s = s.split(std::path::MAIN_SEPARATOR).collect::<Vec<_>>();
+        if s.is_empty() {
+            None
+        } else {
+            let pos = s.len() - 1;
+            s[pos] = s[pos].split('.').skip(1).next().unwrap();
+            Some(s.join("::"))
+        }
+    } else {
+        None
+    }
+}
+
 /// Builds the search index from the collected metadata
-fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
+fn build_index(
+    krate: &clean::Crate,
+    cache: &mut Cache,
+    types_urls: &FxHashMap<String, (String, bool)>,
+    output_path: &Path,
+) -> String {
+    let s_path = output_path.display().to_string();
+
     let mut nodeid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = Vec::<Json>::new();
@@ -723,7 +770,11 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
     // Attach all orphan items to the type's definition if the type
     // has since been learned.
     for &(did, ref item) in orphan_impl_items {
-        if let Some(&(ref fqp, _)) = paths.get(&did) {
+        if let Some(&(ref fqp, typ)) = paths.get(&did) {
+            let path = format!("{}/{}.{}.html",
+                               output_path.join(fqp[..fqp.len() - 1].join("/")).display(),
+                               typ,
+                               fqp[fqp.len() - 1]);
             search_index.push(IndexItem {
                 ty: item.type_(),
                 name: item.name.clone().unwrap(),
@@ -732,6 +783,10 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
                 parent: Some(did),
                 parent_idx: None,
                 search_type: get_index_search_type(&item),
+                alternative_path: match types_urls.get(&path).map(|(x, _)| x) {
+                    Some(x) => url_to_path(x, &s_path),
+                    None => None,
+                },
             });
         }
     }
@@ -1606,6 +1661,7 @@ impl DocFolder for Cache {
                             parent,
                             parent_idx: None,
                             search_type: get_index_search_type(&item),
+                            alternative_path: None,
                         });
                     }
                 }
@@ -1800,6 +1856,7 @@ impl<'a> Cache {
                                 parent: None,
                                 parent_idx: None,
                                 search_type: get_index_search_type(&item),
+                                alternative_path: None,
                             });
             }
         }
@@ -1883,34 +1940,25 @@ impl AllTypes {
         }
     }
 
-    fn append(&mut self, item_name: String, item_type: &ItemType, context: &Context) {
-        let mut url: Vec<_> = item_name.split("::").skip(1).collect();
-        if let Some(name) = url.pop() {
-            let n = format!("{}/{}.{}.html", url.join("/"), item_type, name);
-            let new_url = {
-                if !context.shared.types_urls.is_empty() {
-                    context.shared.types_urls.get(&n).expect("cannot find item URL...").0.clone()
-                } else {
-                    n
-                }
-            };
-            url.push(name);
-            let name = url.join("::");
-            match *item_type {
-                ItemType::Struct => self.structs.insert(ItemEntry::new(new_url, name)),
-                ItemType::Enum => self.enums.insert(ItemEntry::new(new_url, name)),
-                ItemType::Union => self.unions.insert(ItemEntry::new(new_url, name)),
-                ItemType::Primitive => self.primitives.insert(ItemEntry::new(new_url, name)),
-                ItemType::Trait => self.traits.insert(ItemEntry::new(new_url, name)),
-                ItemType::Macro => self.macros.insert(ItemEntry::new(new_url, name)),
-                ItemType::Function => self.functions.insert(ItemEntry::new(new_url, name)),
-                ItemType::Typedef => self.typedefs.insert(ItemEntry::new(new_url, name)),
-                ItemType::Existential => self.existentials.insert(ItemEntry::new(new_url, name)),
-                ItemType::Static => self.statics.insert(ItemEntry::new(new_url, name)),
-                ItemType::Constant => self.constants.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(new_url, name)),
-                ItemType::ProcDerive => self.derives.insert(ItemEntry::new(new_url, name)),
-                ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(new_url, name)),
+    fn append(&mut self, item_path: String, url: String, item_type: ItemType) {
+        let full_path: Vec<_> = item_path.split("::").skip(1).collect();
+        if !full_path.is_empty() {
+            let name = full_path.join("::");
+            match item_type {
+                ItemType::Struct => self.structs.insert(ItemEntry::new(url, name)),
+                ItemType::Enum => self.enums.insert(ItemEntry::new(url, name)),
+                ItemType::Union => self.unions.insert(ItemEntry::new(url, name)),
+                ItemType::Primitive => self.primitives.insert(ItemEntry::new(url, name)),
+                ItemType::Trait => self.traits.insert(ItemEntry::new(url, name)),
+                ItemType::Macro => self.macros.insert(ItemEntry::new(url, name)),
+                ItemType::Function => self.functions.insert(ItemEntry::new(url, name)),
+                ItemType::Typedef => self.typedefs.insert(ItemEntry::new(url, name)),
+                ItemType::Existential => self.existentials.insert(ItemEntry::new(url, name)),
+                ItemType::Static => self.statics.insert(ItemEntry::new(url, name)),
+                ItemType::Constant => self.constants.insert(ItemEntry::new(url, name)),
+                ItemType::ProcAttribute => self.attributes.insert(ItemEntry::new(url, name)),
+                ItemType::ProcDerive => self.derives.insert(ItemEntry::new(url, name)),
+                ItemType::TraitAlias => self.trait_aliases.insert(ItemEntry::new(url, name)),
                 _ => true,
             };
         }
@@ -2052,45 +2100,42 @@ impl Context {
         /*if !self.shared.case_insensitive {
             return Ok(());
         }*/
-        println!("step 1");
         let mut item = match krate.module {
             Some(ref i) => i.clone(),
             None => return Ok(()),
         };
-        println!("step 2");
         item.name = Some(krate.name.clone());
 
         {
             let mut all = AllTypes::new();
-            let mut work = vec![item];
+            let mut work = vec![(self.clone(), item)];
 
-            println!("step 3");
-            while let Some(item) = work.pop() {
-                self.item(item, &mut all, |cx, item, check_path| {
+            while let Some((mut cx, item)) = work.pop() {
+                cx.item(item, &mut all, |icx, item, check_path| {
                     if item.name.is_some() && check_path {
-                        let shared = Arc::get_mut(&mut cx.shared).expect("Arc::get_mut failed");
-                        let name = cx.dst.join(item_path_without_extension(&item));
-                        get_real_path(&mut shared.types_urls, name.display().to_string(),
+                        let mut types_urls = icx.shared.types_urls.borrow_mut();
+                        let name = icx.dst.join(item_path_without_extension(&item));
+                        get_real_path(&mut *types_urls, name.display().to_string(),
                                       item.is_mod());
                     }
-                    work.push(item);
+                    work.push((icx.clone(), item));
                 }, false)?
             }
-            println!("step 4");
         }
-        let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
-        shared.types_urls = shared.types_urls.iter()
-                                             .map(|(k, (v, is_mod))| {
-                                                 let (add, m) = if *is_mod {
-                                                     ("index.html", "/")
-                                                 } else {
-                                                     (".html", "")
-                                                 };
-                                                 (format!("{}{}{}", v, m, add),
-                                                  (format!("{}{}{}", k, m, add), *is_mod))
-                                             })
-                                             .collect::<FxHashMap<_, _>>();
-        //println!("===> {:?}", shared.types_urls);
+        let mut types_urls = self.shared.types_urls.borrow_mut();
+        *types_urls = types_urls.iter()
+                                .map(|(k, (v, is_mod))| {
+                                    let add = if *is_mod {
+                                        "/index.html"
+                                    } else {
+                                        ".html"
+                                    };
+                                    (format!("{}{}", v, add),
+                                     (format!("{}{}", k, add), *is_mod))
+                                })
+                                .filter(|(k, (v, _))| k != v)
+                                .collect::<FxHashMap<_, _>>();
+
         Ok(())
     }
 
@@ -2103,15 +2148,14 @@ impl Context {
         let name = item.name.as_ref().expect("no name for module").to_owned();
         let s = if !render {
             let name = self.dst.join(&name).display().to_string();
-            let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
-            Path::new(&get_real_path(&mut shared.types_urls, name, true))
+            let mut types_urls = self.shared.types_urls.borrow_mut();
+            Path::new(&get_real_path(&mut *types_urls, name, true))
                  .file_name()
                  .expect("no file name found")
                  .to_str()
                  .expect("conversion to str failed")
                  .to_owned()
         } else {
-            println!("1");
             Path::new(&item_path(&self.shared, &self.dst, item.type_(), &name))
                  .parent()
                  .expect("no parent found")
@@ -2141,15 +2185,13 @@ impl Context {
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn krate(mut self, mut krate: clean::Crate) -> Result<(), Error> {
+    fn krate(self, mut krate: clean::Crate) -> Result<(), Error> {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(()),
         };
-        let final_file = self.dst.join("all.html");
-        let settings_file = self.dst.parent()
-                                    .expect("no parent found for crate")
-                                    .join("settings.html");
+        let final_file = self.dst.join(&krate.name).join("all.html");
+        let settings_file = self.dst.join("settings.html");
 
         let crate_name = krate.name.clone();
         item.name = Some(krate.name);
@@ -2158,12 +2200,12 @@ impl Context {
 
         {
             // Generate URLs if needed.
-            let mut work = vec![item];
+            let mut work = vec![(self.clone(), item)];
 
             // Render the crate documentation.
-            while let Some(item) = work.pop() {
-                self.item(item, &mut all, |_, item, _| {
-                    work.push(item)
+            while let Some((mut cx, item)) = work.pop() {
+                cx.item(item, &mut all, |icx, item, _| {
+                    work.push((icx.clone(), item))
                 }, true)?
             }
         }
@@ -2246,7 +2288,7 @@ impl Context {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
             self.recurse(item, render, |this, item| {
-                let path = Path::new(&this.dst).parent().expect("no parent");
+                let path = Path::new(&this.dst);
                 if render {
                     let mut buf = Vec::new();
                     this.render_item(&mut buf, &item, false).expect("failed to render...");
@@ -2254,7 +2296,6 @@ impl Context {
                     if !buf.is_empty() {
                         try_err!(this.shared.ensure_dir(path), path);
                         let dst = Path::new(&this.dst).join("index.html");
-                        println!("|||> writing into {:?}", dst);
                         try_err!(fs::write(&dst, buf), &dst);
                     }
                 }
@@ -2270,7 +2311,6 @@ impl Context {
                         let items = this.build_sidebar_items(&m);
                         let js_dst = path.join("sidebar-items.js");
                         let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
-                        println!("|||2> writing into {:?}", js_dst);
                         try_err!(write!(&mut js_out, "initSidebarItems({});",
                                         as_json(&items)), &js_dst);
                     }
@@ -2293,12 +2333,11 @@ impl Context {
                 let file_name = item_path(&self.shared, &self.dst, item_type, name);
                 let path = Path::new(&file_name).parent().expect("no parent for item...");
                 try_err!(self.shared.ensure_dir(path), path);
-                println!("|||3> writing into {:?}", file_name);
                 try_err!(fs::write(&file_name, buf), Path::new(&file_name));
 
                 if !self.render_redirect_pages {
                     let full_name = full_path(self, &item);
-                    all.append(full_name, &item_type, self);
+                    all.append(full_name, file_name.clone(), item_type);
                 }
                 if self.shared.generate_redirect_pages {
                     // Redirect from a sane URL using the namespace to Rustdoc's
@@ -2614,9 +2653,11 @@ fn item_path(scx: &SharedContext, path: &Path, ty: ItemType, name: &str) -> Stri
         ItemType::Module => path.join(format!("{}/index.html", name)),
         _ => path.join(format!("{}.{}.html", ty.css_class(), name)),
     }.display().to_string();
-    if !scx.types_urls.is_empty() {
-        println!("=> {:?}", x);
-        scx.types_urls.get(&x).map(|(x, _)| x.to_owned()).expect("failed to find type's url...")
+    let types_urls = scx.types_urls.borrow();
+    if !types_urls.is_empty() {
+        types_urls.get(&x)
+                  .map(|(x, _)| x.to_owned())
+                  .unwrap_or_else(|| x)
     } else {
         x
     }
@@ -2927,7 +2968,6 @@ fn item_module(w: &mut fmt::Formatter<'_>, cx: &Context,
                 };
 
                 let doc_value = myitem.doc_value().unwrap_or("");
-                println!("3");
                 write!(w, "\
                        <tr class='{stab}{add}module-item'>\
                            <td><a class=\"{class}\" href=\"{href}\" \

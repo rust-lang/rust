@@ -486,7 +486,7 @@ if (!DOMTokenList.prototype.remove) {
                             var res = buildHrefAndPath(obj);
                             obj.displayPath = pathSplitter(res[0]);
                             obj.fullPath = obj.displayPath + obj.name;
-                            // To be sure than it some items aren't considered as duplicate.
+                            // To be sure that some items aren't considered as duplicate.
                             obj.fullPath += "|" + obj.ty;
                             obj.href = res[1];
                             out.push(obj);
@@ -1269,14 +1269,15 @@ if (!DOMTokenList.prototype.remove) {
             var href;
             var type = itemTypes[item.ty];
             var name = item.name;
+            var path = item.alternative_path || item.path;
 
             if (type === "mod") {
-                displayPath = item.path + "::";
-                href = rootPath + item.path.replace(/::/g, "/") + "/" +
+                displayPath = path + "::";
+                href = rootPath + path.replace(/::/g, "/") + "/" +
                        name + "/index.html";
             } else if (type === "primitive" || type === "keyword") {
                 displayPath = "";
-                href = rootPath + item.path.replace(/::/g, "/") +
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             } else if (type === "externcrate") {
                 displayPath = "";
@@ -1288,15 +1289,15 @@ if (!DOMTokenList.prototype.remove) {
                 if (parentType === "primitive") {
                     displayPath = myparent.name + "::";
                 } else {
-                    displayPath = item.path + "::" + myparent.name + "::";
+                    displayPath = path + "::" + myparent.name + "::";
                 }
-                href = rootPath + item.path.replace(/::/g, "/") +
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + parentType +
                        "." + myparent.name +
                        ".html" + anchor;
             } else {
-                displayPath = item.path + "::";
-                href = rootPath + item.path.replace(/::/g, "/") +
+                displayPath = path + "::";
+                href = rootPath + path.replace(/::/g, "/") +
                        "/" + type + "." + name + ".html";
             }
             return [displayPath, href];
@@ -1593,7 +1594,8 @@ if (!DOMTokenList.prototype.remove) {
                     var rawRow = items[i];
                     var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
                                path: rawRow[2] || lastPath, desc: rawRow[3],
-                               parent: paths[rawRow[4]], type: rawRow[5]};
+                               parent: paths[rawRow[4]], type: rawRow[5],
+                               alternative_path: rawRow[6]};
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
                         var word = row.name.toLowerCase();
