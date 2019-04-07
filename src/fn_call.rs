@@ -93,6 +93,28 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
                 }
             }
+            "calloc" => {
+                let items = this.read_scalar(args[0])?.to_usize(this)?;
+                let count = this.read_scalar(args[1])?.to_usize(this)?;
+                let size = if let Some(size) = items.checked_add(count) {
+                    size
+                } else {
+                    return err!(MachineError(format!(
+                        "calloc: overflow of items * size: {} * {}",
+                        items, size,
+                    )));
+                };
+                if size == 0 {
+                    this.write_null(dest)?;
+                } else {
+                    let align = this.tcx.data_layout.pointer_align.abi;
+                    let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
+                    this.memory_mut()
+                        .get_mut(ptr.alloc_id)?
+                        .write_repeat(tcx, ptr, 0, Size::from_bytes(size))?;
+                    this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
+                }
+            }
             "posix_memalign" => {
                 let ret = this.deref_operand(args[0])?;
                 let align = this.read_scalar(args[1])?.to_usize(this)?;
