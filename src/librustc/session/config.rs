@@ -283,26 +283,24 @@ impl OutputTypes {
 // DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
 // would break dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
-pub struct Externs(BTreeMap<String, BTreeSet<ExternEntry>>);
+pub struct Externs(BTreeMap<String, ExternEntry>);
 
 #[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub struct ExternEntry {
-    pub location: Option<String>,
-    pub public: bool
+    pub locations: BTreeSet<Option<String>>,
+    pub is_private_dep: bool
 }
 
-
-
 impl Externs {
-    pub fn new(data: BTreeMap<String, BTreeSet<ExternEntry>>) -> Externs {
+    pub fn new(data: BTreeMap<String, ExternEntry>) -> Externs {
         Externs(data)
     }
 
-    pub fn get(&self, key: &str) -> Option<&BTreeSet<ExternEntry>> {
+    pub fn get(&self, key: &str) -> Option<&ExternEntry> {
         self.0.get(key)
     }
 
-    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<ExternEntry>> {
+    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, ExternEntry> {
         self.0.iter()
     }
 }
@@ -2323,9 +2321,9 @@ pub fn build_session_options_and_crate_config(
     // and later convert it into a BTreeSet<(Option<String>, bool)>
     // This allows to modify entries in-place to set their correct
     // 'public' value
-    let mut externs: BTreeMap<_, BTreeMap<Option<String>, bool>> = BTreeMap::new();
-    for (arg, public) in matches.opt_strs("extern").into_iter().map(|v| (v, true))
-        .chain(matches.opt_strs("extern-private").into_iter().map(|v| (v, false))) {
+    let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
+    for (arg, private) in matches.opt_strs("extern").into_iter().map(|v| (v, false))
+        .chain(matches.opt_strs("extern-private").into_iter().map(|v| (v, true))) {
 
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().unwrap_or_else(||
@@ -2340,36 +2338,26 @@ pub fn build_session_options_and_crate_config(
         };
 
 
-        // Extern crates start out public,
-        // and become private if we later see
-        // an '--extern-private' key. They never
-        // go back to being public once we've seen
-        // '--extern-private', so we logical-AND
-        // their current and new 'public' value together
-
         externs
             .entry(name.to_owned())
-            .or_default()
-            .entry(location)
-            .and_modify(|e| *e &= public)
-            .or_insert(public);
-    }
+            .and_modify(|e| {
+                e.locations.insert(location.clone());
 
-    // Now that we've determined the 'public' status of each extern,
-    // collect them into a set of ExternEntry
-    let externs: BTreeMap<String, BTreeSet<ExternEntry>> = externs.into_iter()
-        .map(|(k, v)| {
-            let values =v.into_iter().map(|(location, public)| {
+                // Crates start out being not private,
+                // and go to being private if we see an '--extern-private'
+                // flag
+                e.is_private_dep |= private;
+            })
+            .or_insert_with(|| {
+                let mut locations = BTreeSet::new();
+                locations.insert(location);
+
                 ExternEntry {
-                    location,
-                    public
+                    locations: locations,
+                    is_private_dep: private
                 }
-            }).collect::<BTreeSet<ExternEntry>>();
-            (k, values)
-        })
-        .collect();
-
-
+            });
+    }
 
     let crate_name = matches.opt_str("crate-name");
 
@@ -2699,9 +2687,11 @@ mod tests {
 
     impl ExternEntry {
         fn new_public(location: Option<String>) -> ExternEntry {
+            let mut locations = BTreeSet::new();
+            locations.insert(location);
             ExternEntry {
-                location,
-                public: true
+                locations,
+                is_private_dep: false
             }
         }
     }
