@@ -4,7 +4,7 @@ use ra_syntax::{
     ast, SyntaxKind::*, TextUnit
 };
 
-use crate::subtree_source::{SubtreeTokenSource, SubtreeSourceQuerier};
+use crate::subtree_source::{SubtreeTokenSource, Querier};
 
 /// Maps `tt::TokenId` to the relative range of the original token.
 #[derive(Default)]
@@ -107,14 +107,14 @@ fn convert_tt(
 
 struct TtTreeSink<'a> {
     buf: String,
-    src_querier: SubtreeSourceQuerier<'a>,
+    src_querier: Querier<'a>,
     text_pos: TextUnit,
     token_pos: usize,
     inner: SyntaxTreeBuilder,
 }
 
 impl<'a> TtTreeSink<'a> {
-    fn new(src_querier: SubtreeSourceQuerier<'a>) -> TtTreeSink {
+    fn new(src_querier: Querier<'a>) -> TtTreeSink {
         TtTreeSink {
             buf: String::new(),
             src_querier,

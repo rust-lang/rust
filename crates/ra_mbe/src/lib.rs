@@ -21,6 +21,7 @@ mod mbe_expander;
 mod syntax_bridge;
 mod tt_cursor;
 mod subtree_source;
+mod subtree_parser;
 
 use ra_syntax::SmolStr;
 

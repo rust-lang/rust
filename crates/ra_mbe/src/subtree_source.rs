@@ -9,12 +9,12 @@ struct TtToken {
     pub n_tokens: usize,
 }
 
-/// SubtreeSourceQuerier let outside to query internal tokens as string
-pub(crate) struct SubtreeSourceQuerier<'a> {
+/// Querier let outside to query internal tokens as string
+pub(crate) struct Querier<'a> {
     src: &'a SubtreeTokenSource<'a>,
 }
 
-impl<'a> SubtreeSourceQuerier<'a> {
+impl<'a> Querier<'a> {
     pub(crate) fn token(&self, uidx: usize) -> (SyntaxKind, &SmolStr) {
         let tkn = &self.src.tokens[uidx];
         (tkn.kind, &tkn.text)
@@ -32,7 +32,8 @@ impl<'a> SubtreeTokenSource<'a> {
         SubtreeTokenSource { tokens: TtTokenBuilder::build(subtree), tt_pos: 0, subtree }
     }
 
-    pub fn advance(&mut self, curr: usize, skip_first_delimiter: bool) {
+    // Advance token source and skip the first delimiter
+    pub fn advance(&mut self, n_token: usize, skip_first_delimiter: bool) {
         if skip_first_delimiter {
             self.tt_pos += 1;
         }
@@ -47,32 +48,20 @@ impl<'a> SubtreeTokenSource<'a> {
         // Such that we cannot simpliy advance the cursor
         // We have to bump it one by one
         let mut pos = 0;
-        while pos < curr {
+        while pos < n_token {
             pos += self.bump(&self.subtree.token_trees[pos]);
         }
     }
 
-    pub fn querier(&self) -> SubtreeSourceQuerier {
-        SubtreeSourceQuerier { src: self }
-    }
-
-    fn count(&self, tt: &tt::TokenTree) -> usize {
-        assert!(!self.tokens.is_empty());
-        TtTokenBuilder::count_tt_tokens(tt, None)
-    }
-
-    pub(crate) fn bump(&mut self, tt: &tt::TokenTree) -> usize {
-        let cur = &self.tokens[self.tt_pos];
-        let n_tokens = cur.n_tokens;
-        self.tt_pos += self.count(tt);
-        n_tokens
+    pub fn querier(&self) -> Querier {
+        Querier { src: self }
     }
 
     pub(crate) fn bump_n(
         &mut self,
-        n_tokens: usize,
-        mut token_pos: usize,
-    ) -> (usize, Vec<&tt::TokenTree>) {
+        n_tt_tokens: usize,
+        token_pos: &mut usize,
+    ) -> Vec<&tt::TokenTree> {
         let mut res = vec![];
         // Matching `TtToken` cursor to `tt::TokenTree` cursor
         // It is because TtToken is not One to One mapping to tt::Token
@@ -83,17 +72,28 @@ impl<'a> SubtreeTokenSource<'a> {
         //
         // Such that we cannot simpliy advance the cursor
         // We have to bump it one by one
-        let next_pos = self.tt_pos + n_tokens;
-        let old_token_pos = token_pos;
+        let next_pos = self.tt_pos + n_tt_tokens;
 
         while self.tt_pos < next_pos {
-            let current = &self.subtree.token_trees[token_pos];
+            let current = &self.subtree.token_trees[*token_pos];
             let n = self.bump(current);
-            res.extend((0..n).map(|i| &self.subtree.token_trees[token_pos + i]));
-            token_pos += n;
+            res.extend((0..n).map(|i| &self.subtree.token_trees[*token_pos + i]));
+            *token_pos += n;
         }
 
-        (token_pos - old_token_pos, res)
+        res
+    }
+
+    fn count(&self, tt: &tt::TokenTree) -> usize {
+        assert!(!self.tokens.is_empty());
+        TtTokenBuilder::count_tt_tokens(tt, None)
+    }
+
+    fn bump(&mut self, tt: &tt::TokenTree) -> usize {
+        let cur = &self.tokens[self.tt_pos];
+        let n_tokens = cur.n_tokens;
+        self.tt_pos += self.count(tt);
+        n_tokens
     }
 }
 

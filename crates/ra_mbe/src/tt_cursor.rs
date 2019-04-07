@@ -1,25 +1,5 @@
 use crate::ParseError;
-use crate::subtree_source::SubtreeTokenSource;
-
-use ra_parser::{TokenSource, TreeSink};
-
-use ra_syntax::{
-    SyntaxKind
-};
-
-struct SubtreeTokenSink {
-    token_pos: usize,
-}
-
-impl TreeSink for SubtreeTokenSink {
-    fn token(&mut self, _kind: SyntaxKind, n_tokens: u8) {
-        self.token_pos += n_tokens as usize;
-    }
-
-    fn start_node(&mut self, _kind: SyntaxKind) {}
-    fn finish_node(&mut self) {}
-    fn error(&mut self, _error: ra_parser::ParseError) {}
-}
+use crate::subtree_parser::Parser;
 
 #[derive(Clone)]
 pub(crate) struct TtCursor<'a> {
@@ -99,41 +79,9 @@ impl<'a> TtCursor<'a> {
         })
     }
 
-    fn eat_parse_result(
-        &mut self,
-        parsed_token: usize,
-        src: &mut SubtreeTokenSource,
-    ) -> Option<tt::TokenTree> {
-        let (adv, res) = src.bump_n(parsed_token, self.pos);
-        self.pos += adv;
-
-        let res: Vec<_> = res.into_iter().cloned().collect();
-
-        match res.len() {
-            0 => None,
-            1 => Some(res[0].clone()),
-            _ => Some(tt::TokenTree::Subtree(tt::Subtree {
-                delimiter: tt::Delimiter::None,
-                token_trees: res,
-            })),
-        }
-    }
-
-    fn eat_parse<F>(&mut self, f: F) -> Option<tt::TokenTree>
-    where
-        F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),
-    {
-        let mut src = SubtreeTokenSource::new(self.subtree);
-        src.advance(self.pos, true);
-        let mut sink = SubtreeTokenSink { token_pos: 0 };
-
-        f(&src, &mut sink);
-
-        self.eat_parse_result(sink.token_pos, &mut src)
-    }
-
     pub(crate) fn eat_path(&mut self) -> Option<tt::TokenTree> {
-        self.eat_parse(ra_parser::parse_path)
+        let parser = Parser::new(&mut self.pos, self.subtree);
+        parser.parse_path()
     }
 
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {
