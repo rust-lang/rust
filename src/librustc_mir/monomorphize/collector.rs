@@ -1036,6 +1036,13 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(
         if let Some(principal) = trait_sty.principal() {
             let drop_glue = drop_glue.entry(drop_glue_instance).or_default();
 
+            // the principal trait may not have any method but we must consider it in drop glue call
+            // metadata
+            drop_glue.insert(tcx.normalize_erasing_late_bound_regions(
+                ty::ParamEnv::reveal_all(),
+                &principal,
+            ));
+
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());
 
@@ -1348,6 +1355,8 @@ fn collect_miri<'a, 'tcx>(
             }).next();
 
             if let Some(drop_glue_instance) = drop_glue_instance {
+                // FIXME(japaric) if the principal trait happens to have no methods the `for` loop
+                // below won't insert it into `drop_glue`; we must include it separately here
                 let drop_glue = drop_glue.entry(drop_glue_instance).or_default();
 
                 // trait object in const / static context
