@@ -1,7 +1,7 @@
 // edition:2018
 // aux-build:arc_wake.rs
 
-#![feature(arbitrary_self_types, async_await, await_macro, futures_api)]
+#![feature(async_await, await_macro, futures_api)]
 
 extern crate arc_wake;
 
@@ -11,9 +11,7 @@ use std::sync::{
     Arc,
     atomic::{self, AtomicUsize},
 };
-use std::task::{
-    Poll, Waker,
-};
+use std::task::{Context, Poll};
 use arc_wake::ArcWake;
 
 struct Counter {
@@ -32,11 +30,11 @@ fn wake_and_yield_once() -> WakeOnceThenComplete { WakeOnceThenComplete(false) }
 
 impl Future for WakeOnceThenComplete {
     type Output = ();
-    fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<()> {
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<()> {
         if self.0 {
             Poll::Ready(())
         } else {
-            waker.wake();
+            cx.waker().wake();
             self.0 = true;
             Poll::Pending
         }
@@ -146,10 +144,11 @@ where
     let mut fut = Box::pin(f(9));
     let counter = Arc::new(Counter { wakes: AtomicUsize::new(0) });
     let waker = ArcWake::into_waker(counter.clone());
+    let mut cx = Context::from_waker(&waker);
     assert_eq!(0, counter.wakes.load(atomic::Ordering::SeqCst));
-    assert_eq!(Poll::Pending, fut.as_mut().poll(&waker));
+    assert_eq!(Poll::Pending, fut.as_mut().poll(&mut cx));
     assert_eq!(1, counter.wakes.load(atomic::Ordering::SeqCst));
-    assert_eq!(Poll::Ready(9), fut.as_mut().poll(&waker));
+    assert_eq!(Poll::Ready(9), fut.as_mut().poll(&mut cx));
 }
 
 fn main() {

@@ -81,7 +81,7 @@ use core::ops::{
     CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
 };
 use core::ptr::{self, NonNull, Unique};
-use core::task::{Waker, Poll};
+use core::task::{Context, Poll};
 
 use crate::vec::Vec;
 use crate::raw_vec::RawVec;
@@ -912,7 +912,7 @@ impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
 impl<F: ?Sized + Future + Unpin> Future for Box<F> {
     type Output = F::Output;
 
-    fn poll(mut self: Pin<&mut Self>, waker: &Waker) -> Poll<Self::Output> {
-        F::poll(Pin::new(&mut *self), waker)
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        F::poll(Pin::new(&mut *self), cx)
     }
 }
