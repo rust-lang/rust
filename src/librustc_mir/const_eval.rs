@@ -615,22 +615,9 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     let cid = key.value;
     let def_id = cid.instance.def.def_id();
 
-    if let Some(id) = tcx.hir().as_local_hir_id(def_id) {
-        let tables = tcx.typeck_tables_of(def_id);
-
-        // Do match-check before building MIR
-        // FIXME(#59378) check_match may have errored but we're not checking for that anymore
-        tcx.check_match(def_id);
-
-        if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind_by_hir_id(id) {
-            tcx.mir_const_qualif(def_id);
-        }
-
-        // Do not continue into miri if typeck errors occurred; it will fail horribly
-        if tables.tainted_by_errors {
-            return Err(ErrorHandled::Reported)
-        }
-    };
+    if def_id.is_local() && tcx.typeck_tables_of(def_id).tainted_by_errors {
+        return Err(ErrorHandled::Reported);
+    }
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
     res.and_then(|place| {
