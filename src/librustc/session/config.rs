@@ -291,14 +291,7 @@ pub struct ExternEntry {
     pub public: bool
 }
 
-impl ExternEntry {
-    pub fn new_public(location: Option<String>) -> ExternEntry {
-        ExternEntry {
-            location,
-            public: true
-        }
-    }
-}
+
 
 impl Externs {
     pub fn new(data: BTreeMap<String, BTreeSet<ExternEntry>>) -> Externs {
@@ -2703,6 +2696,15 @@ mod tests {
     use syntax::edition::{Edition, DEFAULT_EDITION};
     use syntax;
     use super::Options;
+
+    impl ExternEntry {
+        fn new_public(location: Option<String>) -> ExternEntry {
+            ExternEntry {
+                location,
+                public: true
+            }
+        }
+    }
 
     fn optgroups() -> getopts::Options {
         let mut opts = getopts::Options::new();
