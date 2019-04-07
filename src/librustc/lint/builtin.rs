@@ -125,7 +125,7 @@ declare_lint! {
     "detects trivial casts of numeric types which could be removed"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub PRIVATE_IN_PUBLIC,
     Warn,
     "detect private items in public interfaces not caught by the old implementation"
@@ -143,7 +143,7 @@ declare_lint! {
     "detect public re-exports of private extern crates"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub INVALID_TYPE_PARAM_DEFAULT,
     Deny,
     "type parameter default erroneously allowed in invalid location"
@@ -155,62 +155,62 @@ declare_lint! {
     "lints that have been renamed or removed"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub SAFE_EXTERN_STATICS,
     Deny,
     "safe access to extern statics was erroneously allowed"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub SAFE_PACKED_BORROWS,
     Warn,
     "safe borrows of fields of packed structs were was erroneously allowed"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub PATTERNS_IN_FNS_WITHOUT_BODY,
     Warn,
     "patterns in functions without body were erroneously allowed"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub LEGACY_DIRECTORY_OWNERSHIP,
     Deny,
     "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
      not named `mod.rs`"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub LEGACY_CONSTRUCTOR_VISIBILITY,
     Deny,
     "detects use of struct constructors that would be invisible with new visibility rules"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub MISSING_FRAGMENT_SPECIFIER,
     Deny,
     "detects missing fragment specifiers in unused `macro_rules!` patterns"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
     Deny,
     "detects parenthesized generic parameters in type and module names"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub LATE_BOUND_LIFETIME_ARGUMENTS,
     Warn,
     "detects generic lifetime arguments in path segments with late bound lifetime parameters"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub INCOHERENT_FUNDAMENTAL_IMPLS,
     Deny,
     "potentially-conflicting impls were erroneously allowed"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub ORDER_DEPENDENT_TRAIT_OBJECTS,
     Deny,
     "trait-object types were treated as different depending on marker-trait order"
@@ -253,7 +253,7 @@ declare_lint! {
     "detects lifetime parameters that are never used"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub TYVAR_BEHIND_RAW_POINTER,
     Warn,
     "raw pointer to an inference variable"
@@ -278,7 +278,7 @@ declare_lint! {
      instead of `crate`, `self`, or an extern crate name"
 }
 
-declare_lint! {
+declare_unsuppressable_lint! {
     pub ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
     Warn,
     "floating-point literals cannot be used in patterns"
@@ -326,7 +326,7 @@ declare_lint! {
     "detects code samples in docs of private items not documented by rustdoc"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub WHERE_CLAUSES_OBJECT_SAFETY,
     Warn,
     "checks the object safety of where clauses"
@@ -358,7 +358,7 @@ declare_lint! {
     "outlives requirements can be inferred"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub DUPLICATE_MATCHER_BINDING_NAME,
     Deny,
     "duplicate macro matcher binding name"
@@ -372,7 +372,7 @@ pub mod parser {
         "detects the use of `?` as a macro separator"
     }
 
-    declare_lint! {
+    declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
         pub ILL_FORMED_ATTRIBUTE_INPUT,
         Warn,
         "ill-formed attribute inputs that were previously accepted and used in practice"
@@ -386,13 +386,13 @@ declare_lint! {
     report_in_external_macro: true
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
     Warn,
     "ambiguous associated items"
 }
 
-declare_lint! {
+declare_lint! { // FIXME(centril): consider using `declare_unsuppressable_lint`
     pub NESTED_IMPL_TRAIT,
     Warn,
     "nested occurrence of `impl Trait` type"
