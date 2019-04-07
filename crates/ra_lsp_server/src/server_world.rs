@@ -11,12 +11,14 @@ use ra_ide_api::{
 use ra_vfs::{Vfs, VfsChange, VfsFile, VfsRoot};
 use relative_path::RelativePathBuf;
 use parking_lot::RwLock;
-use failure::format_err;
+use failure::{Error, format_err};
+use gen_lsp_server::ErrorCode;
 
 use crate::{
     project_model::ProjectWorkspace,
     vfs_filter::IncludeRustFiles,
     Result,
+    LspError,
 };
 
 #[derive(Debug)]
@@ -152,11 +154,13 @@ impl ServerWorld {
 
     pub fn uri_to_file_id(&self, uri: &Url) -> Result<FileId> {
         let path = uri.to_file_path().map_err(|()| format_err!("invalid uri: {}", uri))?;
-        let file = self
-            .vfs
-            .read()
-            .path2file(&path)
-            .ok_or_else(|| format_err!("unknown file: {}", path.display()))?;
+        let file = self.vfs.read().path2file(&path).ok_or_else(|| {
+            // Show warning as this file is outside current workspace
+            Error::from(LspError {
+                code: ErrorCode::InvalidRequest as i32,
+                message: "Rust file outside current workspace is not supported yet.".to_string(),
+            })
+        })?;
         Ok(FileId(file.0.into()))
     }
 
