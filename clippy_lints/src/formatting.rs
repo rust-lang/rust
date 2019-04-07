@@ -1,5 +1,5 @@
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
-use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
+use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 use syntax::ptr::P;
@@ -149,7 +149,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
         if (is_block(else_) || unsugar_if(else_).is_some())
             && !differing_macro_contexts(then.span, else_.span)
-            && !in_macro(then.span)
+            && !in_macro(then.span) && !in_external_macro(cx.sess, expr.span)
         {
             // workaround for rust-lang/rust#43081
             if expr.span.lo().0 == 0 && expr.span.hi().0 == 0 {
