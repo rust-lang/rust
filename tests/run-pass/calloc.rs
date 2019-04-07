@@ -17,10 +17,10 @@ fn main() {
         let p3 = libc::calloc(0, 20);
         assert!(p3.is_null());
 
-        let p4 = libc::calloc(4, 8) as *const u8;
+        let p4 = libc::calloc(4, 8);
         assert!(!p4.is_null());
-
-        let slice = slice::from_raw_parts(p4, 4 * 8);
+        let slice = slice::from_raw_parts(p4 as *const u8, 4 * 8);
         assert_eq!(&slice, &[0_u8; 4 * 8]);
+        libc::free(p4);
     }
 }
