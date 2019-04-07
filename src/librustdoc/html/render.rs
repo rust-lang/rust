@@ -153,7 +153,7 @@ struct SharedContext {
     /// If true, it'll lower all type names and handle conflicts.
     pub case_insensitive: bool,
     /// The type name and its url.
-    pub types_urls: FxHashMap<String, String>,
+    pub types_urls: FxHashMap<String, (String, bool)>,
 }
 
 impl SharedContext {
@@ -1884,10 +1884,17 @@ impl AllTypes {
         }
     }
 
-    fn append(&mut self, item_name: String, item_type: &ItemType) {
+    fn append(&mut self, item_name: String, item_type: &ItemType, context: &Context) {
         let mut url: Vec<_> = item_name.split("::").skip(1).collect();
         if let Some(name) = url.pop() {
-            let new_url = format!("{}/{}.{}.html", url.join("/"), item_type, name);
+            let n = format!("{}/{}.{}.html", url.join("/"), item_type, name);
+            let new_url = {
+                if !context.shared.types_urls.is_empty() {
+                    context.shared.types_urls.get(&n).expect("cannot find item URL...").0.clone()
+                } else {
+                    n
+                }
+            };
             url.push(name);
             let name = url.join("::");
             match *item_type {
@@ -2010,7 +2017,7 @@ fn get_real_path(
     types_urls: &mut FxHashMap<String, (String, bool)>,
     full_name: String,
     is_mod: bool,
-) {
+) -> String {
     let mut real_path = full_name.to_lowercase();
     if is_mod && real_path.ends_with('/') {
         real_path.pop();
@@ -2020,7 +2027,8 @@ fn get_real_path(
         real_path = format!("{}{}", real_path, inc);
         inc += 1;
     }
-    types_urls.insert(real_path, (full_name, is_mod));
+    types_urls.insert(real_path.clone(), (full_name, is_mod));
+    real_path
 }
 
 impl Context {
@@ -2035,21 +2043,88 @@ impl Context {
         "../".repeat(self.current.len())
     }
 
+    fn generate_urls(
+        &mut self,
+        krate: &clean::Crate,
+    ) -> Result<(), Error> {
+        /*if !self.shared.case_insensitive {
+            return Ok(());
+        }*/
+        println!("step 1");
+        let mut item = match krate.module {
+            Some(ref i) => i.clone(),
+            None => return Ok(()),
+        };
+        println!("step 2");
+        item.name = Some(krate.name.clone());
+
+        {
+            let mut all = AllTypes::new();
+            let mut work = vec![item];
+
+            println!("step 3");
+            while let Some(item) = work.pop() {
+                self.item(item, &mut all, |cx, item, check_path| {
+                    if item.name.is_some() && check_path {
+                        let shared = Arc::get_mut(&mut cx.shared).expect("Arc::get_mut failed");
+                        let name = cx.dst.join(item_path_without_extension(&item));
+                        get_real_path(&mut shared.types_urls, name.display().to_string(),
+                                      item.is_mod());
+                    }
+                    work.push(item);
+                }, false)?
+            }
+            println!("step 4");
+        }
+        let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
+        shared.types_urls = shared.types_urls.iter()
+                                             .map(|(k, (v, is_mod))| {
+                                                 let (add, m) = if *is_mod {
+                                                     ("index.html", "/")
+                                                 } else {
+                                                     (".html", "")
+                                                 };
+                                                 (format!("{}{}{}", v, m, add),
+                                                  (format!("{}{}{}", k, m, add), *is_mod))
+                                             })
+                                             .collect::<FxHashMap<_, _>>();
+        println!("===> {:?}", shared.types_urls);
+        Ok(())
+    }
+
     /// Recurse in the directory structure and change the "root path" to make
     /// sure it always points to the top (relatively).
-    fn recurse<T, F>(&mut self, s: String, f: F) -> T where
-        F: FnOnce(&mut Context) -> T,
+    fn recurse<T, F>(&mut self, item: clean::Item, render: bool, f: F) -> T where
+        F: FnOnce(&mut Context, clean::Item) -> T,
     {
-        if s.is_empty() {
-            panic!("Unexpected empty destination: {:?}", self.current);
-        }
         let prev = self.dst.clone();
+        let name = item.name.as_ref().expect("no name for module").to_owned();
+        let s = if !render {
+            let name = self.dst.join(&name).display().to_string();
+            let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
+            Path::new(&get_real_path(&mut shared.types_urls, name, true))
+                 .file_name()
+                 .expect("no file name found")
+                 .to_str()
+                 .expect("conversion to str failed")
+                 .to_owned()
+        } else {
+            println!("1");
+            Path::new(&item_path(&self.shared, &self.dst, item.type_(), &name))
+                 .parent()
+                 .expect("no parent found")
+                 .file_name()
+                 .expect("no file name found")
+                 .to_str()
+                 .expect("conversion to str failed")
+                 .to_owned()
+        };
         self.dst.push(&s);
         self.current.push(s);
 
         info!("Recursing into {}", self.dst.display());
 
-        let ret = f(self);
+        let ret = f(self, item);
 
         info!("Recursed; leaving {}", self.dst.display());
 
@@ -2060,56 +2135,11 @@ impl Context {
         ret
     }
 
-    fn generate_urls(
-        &mut self,
-        krate: &clean::Crate,
-    ) -> Result<(), Error> {
-        /*if !self.shared.case_insensitive {
-            return Ok(());
-        }*/
-        let mut item = match krate.module {
-            Some(ref i) => i.clone(),
-            None => return Ok(()),
-        };
-        item.name = Some(krate.name.clone());
-
-        let mut types_urls = FxHashMap::default();
-        {
-            let mut all = AllTypes::new();
-            let mut work = vec![(self.clone(), item)];
-
-            while let Some((mut cx, item)) = work.pop() {
-                cx.item(item, &mut all, |icx, item, push| {
-                    if item.name.is_some() {
-                        let name = icx.dst.join(item_path_without_extension(&item));
-                        get_real_path(&mut types_urls, name.display().to_string(), item.is_mod());
-                    }
-                    if push {
-                        work.push((icx.clone(), item));
-                    }
-                }, false)?
-            }
-        }
-        let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
-        shared.types_urls = types_urls.into_iter()
-                                      .map(|(k, (v, is_mod))| {
-                                          let (add, m) = if is_mod {
-                                              ("index.html", "/")
-                                          } else {
-                                              (".html", "")
-                                          };
-                                          (format!("{}{}", v, add), format!("{}{}{}", k, m, add))
-                                      })
-                                      .collect::<FxHashMap<_, _>>();
-        eprintln!("{:?}", shared.types_urls);
-        Ok(())
-    }
-
     /// Main method for rendering a crate.
     ///
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
-    fn krate(self, mut krate: clean::Crate) -> Result<(), Error> {
+    fn krate(mut self, mut krate: clean::Crate) -> Result<(), Error> {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(()),
@@ -2118,6 +2148,13 @@ impl Context {
                                  .join("all.html");
         let settings_file = self.dst.join("settings.html");
 
+
+        {
+            let full_path = self.dst.join(&krate.name).display().to_string();
+            let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
+            get_real_path(&mut shared.types_urls, full_path, true);
+        }
+
         let crate_name = krate.name.clone();
         item.name = Some(krate.name);
 
@@ -2125,12 +2162,12 @@ impl Context {
 
         {
             // Generate URLs if needed.
-            let mut work = vec![(self.clone(), item)];
+            let mut work = vec![item];
 
             // Render the crate documentation.
-            while let Some((mut cx, item)) = work.pop() {
-                cx.item(item, &mut all, |icx, item, _| {
-                    work.push((icx.clone(), item))
+            while let Some(item) = work.pop() {
+                self.item(item, &mut all, |_, item, _| {
+                    work.push(item)
                 }, true)?
             }
         }
@@ -2186,6 +2223,109 @@ impl Context {
                                 self.shared.generate_search_filter),
                  &settings_file);
 
+        Ok(())
+    }
+
+    /// Non-parallelized version of rendering an item. This will take the input
+    /// item, render its contents, and then invoke the specified closure with
+    /// all sub-items which need to be rendered.
+    ///
+    /// The rendering driver uses this closure to queue up more work.
+    fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F,
+               render: bool) -> Result<(), Error>
+        where F: FnMut(&mut Context, clean::Item, bool),
+    {
+        // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
+        // if they contain impls for public types. These modules can also
+        // contain items such as publicly re-exported structures.
+        //
+        // External crates will provide links to these structures, so
+        // these modules are recursed into, but not rendered normally
+        // (a flag on the context).
+        if !self.render_redirect_pages {
+            self.render_redirect_pages = item.is_stripped();
+        }
+
+        if item.is_mod() {
+            // modules are special because they add a namespace. We also need to
+            // recurse into the items of the module as well.
+            let dst = self.dst.clone();
+            self.recurse(item, render, |this, item| {
+                if render {
+                    let mut buf = Vec::new();
+                    this.render_item(&mut buf, &item, false).expect("failed to render...");
+                    // buf will be empty if the module is stripped and there is no redirect for it
+                    if !buf.is_empty() {                        let path = Path::new(&dst).parent().expect("no parent");
+                        try_err!(this.shared.ensure_dir(path), path);
+                        try_err!(fs::write(&dst, buf), Path::new(&dst));
+                    }
+                }
+                let m = match item.inner {
+                    clean::StrippedItem(box clean::ModuleItem(m)) |
+                    clean::ModuleItem(m) => m,
+                    _ => unreachable!()
+                };
+                if render {
+                    // Render sidebar-items.js used throughout this module.
+                    if !this.render_redirect_pages {
+                        // FIXME: generate correct url for sidebar items.
+                        let items = this.build_sidebar_items(&m);
+                        let js_dst = Path::new(&dst).parent()
+                                                    .expect("no parent found for js")
+                                                    .join("sidebar-items.js");
+                        let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
+                        try_err!(write!(&mut js_out, "initSidebarItems({});",
+                                        as_json(&items)), &js_dst);
+                    }
+                }
+
+                for item in m.items {
+                    let check_path = !item.is_mod();
+                    f(this, item, check_path);
+                }
+
+                Ok(())
+            })?;
+        } else if item.name.is_some() && render {
+            let mut buf = Vec::new();
+            self.render_item(&mut buf, &item, true).expect("failed to render 2");
+            // buf will be empty if the item is stripped and there is no redirect for it
+            if !buf.is_empty() {
+                let name = item.name.as_ref().expect("name is unavailable 2");
+                let item_type = item.type_();
+                println!("2");
+                let file_name = item_path(&self.shared, &self.dst, item_type, name);
+                let path = Path::new(&file_name).parent().expect("no parent for item...");
+                try_err!(self.shared.ensure_dir(path), path);
+                try_err!(fs::write(&file_name, buf), Path::new(&file_name));
+
+                if !self.render_redirect_pages {
+                    let full_name = full_path(self, &item);
+                    all.append(full_name, &item_type, self);
+                }
+                if self.shared.generate_redirect_pages {
+                    // Redirect from a sane URL using the namespace to Rustdoc's
+                    // URL for the page.
+                    let redir_name = format!("{}.{}.html", name, item_type.name_space());
+                    let redir_dst = self.dst.join(redir_name);
+                    if let Ok(redirect_out) = OpenOptions::new().create_new(true)
+                                                                .write(true)
+                                                                .open(&redir_dst) {
+                        let mut redirect_out = BufWriter::new(redirect_out);
+                        try_err!(layout::redirect(&mut redirect_out, &file_name), &redir_dst);
+                    }
+                }
+                // If the item is a macro, redirect from the old macro URL (with !)
+                // to the new one (without).
+                if item_type == ItemType::Macro {
+                    let redir_name = format!("{}.{}!.html", item_type, name);
+                    let redir_dst = self.dst.join(redir_name);
+                    let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
+                    let mut redirect_out = BufWriter::new(redirect_out);
+                    try_err!(layout::redirect(&mut redirect_out, &file_name), &redir_dst);
+                }
+            }
+        }
         Ok(())
     }
 
@@ -2256,118 +2396,6 @@ impl Context {
                 url.push_str(&format!("{}.{}.html",
                                       ty, &names.last().expect("name is empty")));
                 layout::redirect(writer, &url)?;
-            }
-        }
-        Ok(())
-    }
-
-    /// Non-parallelized version of rendering an item. This will take the input
-    /// item, render its contents, and then invoke the specified closure with
-    /// all sub-items which need to be rendered.
-    ///
-    /// The rendering driver uses this closure to queue up more work.
-    fn item<F>(&mut self, item: clean::Item, all: &mut AllTypes, mut f: F,
-               render: bool) -> Result<(), Error>
-        where F: FnMut(&mut Context, clean::Item, bool),
-    {
-        // Stripped modules survive the rustdoc passes (i.e., `strip-private`)
-        // if they contain impls for public types. These modules can also
-        // contain items such as publicly re-exported structures.
-        //
-        // External crates will provide links to these structures, so
-        // these modules are recursed into, but not rendered normally
-        // (a flag on the context).
-        if !self.render_redirect_pages {
-            self.render_redirect_pages = item.is_stripped();
-        }
-
-        if item.is_mod() {
-            // modules are special because they add a namespace. We also need to
-            // recurse into the items of the module as well.
-            let name = item.name.as_ref().expect("module name empty").to_string();
-            if !render {
-                f(self, item.clone(), false);
-            }
-            let mut item = Some(item);
-            let dst = self.dst.clone();
-            self.recurse(name, |this| {
-                let item = item.take().expect("item unavailable");
-
-                println!("1");
-                let dst = item_path(&this.shared, &dst, item.type_(),
-                                    item.name.as_ref().expect("module name empty"));
-                if render {
-                    let mut buf = Vec::new();
-                    this.render_item(&mut buf, &item, false).expect("failed to render...");
-                    // buf will be empty if the module is stripped and there is no redirect for it
-                    if !buf.is_empty() {                        let path = Path::new(&dst).parent().expect("no parent");
-                        try_err!(this.shared.ensure_dir(path), path);
-                        try_err!(fs::write(&dst, buf), Path::new(&dst));
-                    }
-                }
-                let m = match item.inner {
-                    clean::StrippedItem(box clean::ModuleItem(m)) |
-                    clean::ModuleItem(m) => m,
-                    _ => unreachable!()
-                };
-                if render {
-                    // Render sidebar-items.js used throughout this module.
-                    if !this.render_redirect_pages {
-                        // FIXME: generate correct url for sidebar items.
-                        let items = this.build_sidebar_items(&m);
-                        let js_dst = Path::new(&dst).parent()
-                                                    .expect("no parent found for js")
-                                                    .join("sidebar-items.js");
-                        let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
-                        try_err!(write!(&mut js_out, "initSidebarItems({});",
-                                        as_json(&items)), &js_dst);
-                    }
-                }
-
-                for item in m.items {
-                    f(this, item, true);
-                }
-
-                Ok(())
-            })?;
-        } else if item.name.is_some() && render {
-            let mut buf = Vec::new();
-            self.render_item(&mut buf, &item, true).expect("failed to render 2");
-            // buf will be empty if the item is stripped and there is no redirect for it
-            if !buf.is_empty() {
-                let name = item.name.as_ref().expect("name is unavailable 2");
-                let item_type = item.type_();
-                println!("2");
-                let file_name = item_path(&self.shared, &self.dst, item_type, name);
-                let path = Path::new(&file_name).parent().expect("no parent for item...");
-                try_err!(self.shared.ensure_dir(path), path);
-                try_err!(fs::write(&file_name, buf), Path::new(&file_name));
-
-                if !self.render_redirect_pages {
-                    let full_name = full_path(self, &item);
-                    all.append(full_name, &item_type);
-                }
-                if self.shared.generate_redirect_pages {
-                    // Redirect from a sane URL using the namespace to Rustdoc's
-                    // URL for the page.
-                    let redir_name = format!("{}.{}.html", name, item_type.name_space());
-                    let redir_dst = self.dst.join(redir_name);
-                    if let Ok(redirect_out) = OpenOptions::new().create_new(true)
-                                                                .write(true)
-                                                                .open(&redir_dst) {
-                        let mut redirect_out = BufWriter::new(redirect_out);
-                        try_err!(layout::redirect(&mut redirect_out, &file_name), &redir_dst);
-                    }
-                }
-                // If the item is a macro, redirect from the old macro URL (with !)
-                // to the new one (without).
-                if item_type == ItemType::Macro {
-                    let redir_name = format!("{}.{}!.html", item_type, name);
-                    let redir_dst = self.dst.join(redir_name);
-                    let redirect_out = try_err!(File::create(&redir_dst), &redir_dst);
-                    let mut redirect_out = BufWriter::new(redirect_out);
-                    try_err!(layout::redirect(&mut redirect_out, &file_name), &redir_dst);
-                }
             }
         }
         Ok(())
@@ -2591,7 +2619,7 @@ fn item_path(scx: &SharedContext, path: &Path, ty: ItemType, name: &str) -> Stri
     }.display().to_string();
     if !scx.types_urls.is_empty() {
         println!("=> {:?}", x);
-        scx.types_urls.get(&x).map(|x| x.to_owned()).expect("failed to find type's url...")
+        scx.types_urls.get(&x).map(|(x, _)| x.to_owned()).expect("failed to find type's url...")
     } else {
         x
     }
