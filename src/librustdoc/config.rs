@@ -578,7 +578,7 @@ fn parse_extern_html_roots(
 /// error message.
 // FIXME(eddyb) This shouldn't be duplicated with `rustc::session`.
 fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
-    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+    let mut externs: BTreeMap<_, ExternEntry> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
@@ -589,7 +589,13 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
         }
         let name = name.to_string();
         // For Rustdoc purposes, we can treat all externs as public
-        externs.entry(name).or_default().insert(ExternEntry { location, public: true });
+        externs.entry(name)
+            .and_modify(|e| { e.locations.insert(location.clone()); } )
+            .or_insert_with(|| {
+                let mut locations = BTreeSet::new();
+                locations.insert(location);
+                ExternEntry { locations, is_private_dep: false }
+            });
     }
     Ok(Externs::new(externs))
 }
