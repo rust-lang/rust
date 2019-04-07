@@ -216,8 +216,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 //
                 // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                 // is called if a `HashMap` is created the regular way.
-                match this.read_scalar(args[0])?.to_usize(this)? {
-                    318 | 511 => {
+                match this.read_scalar(args[0])?.to_usize(this)? as i64 {
+                    libc::SYS_getrandom => {
                         match this.machine.rng.as_ref() {
                             Some(rng) => {
                                 let ptr = this.read_scalar(args[1])?.to_ptr()?;
