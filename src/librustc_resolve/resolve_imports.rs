@@ -145,7 +145,7 @@ pub struct NameResolution<'a> {
 
 impl<'a> NameResolution<'a> {
     // Returns the binding for the name if it is known or None if it not known.
-    fn binding(&self) -> Option<&'a NameBinding<'a>> {
+    pub(crate) fn binding(&self) -> Option<&'a NameBinding<'a>> {
         self.binding.and_then(|binding| {
             if !binding.is_glob_import() ||
                self.single_imports.is_empty() { Some(binding) } else { None }
@@ -636,7 +636,7 @@ impl<'a> Resolver<'a> {
 struct UnresolvedImportError {
     span: Span,
     label: Option<String>,
-    note: Option<String>,
+    note: Vec<String>,
     suggestion: Option<Suggestion>,
 }
 
@@ -756,8 +756,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         /// Upper limit on the number of `span_label` messages.
         const MAX_LABEL_COUNT: usize = 10;
 
-        let (span, msg, note) = if errors.is_empty() {
-            (span.unwrap(), "unresolved import".to_string(), None)
+        let (span, msg) = if errors.is_empty() {
+            (span.unwrap(), "unresolved import".to_string())
         } else {
             let span = MultiSpan::from_spans(
                 errors
@@ -765,11 +765,6 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     .map(|(_, err)| err.span)
                     .collect(),
             );
-
-            let note = errors
-                .iter()
-                .filter_map(|(_, err)| err.note.as_ref())
-                .last();
 
             let paths = errors
                 .iter()
@@ -782,13 +777,15 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 paths.join(", "),
             );
 
-            (span, msg, note)
+            (span, msg)
         };
 
         let mut diag = struct_span_err!(self.resolver.session, span, E0432, "{}", &msg);
 
-        if let Some(note) = &note {
-            diag.note(note);
+        if let Some((_, UnresolvedImportError { note, .. })) = errors.iter().last() {
+            for message in note {
+                diag.note(&message);
+            }
         }
 
         for (_, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
@@ -961,7 +958,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                             UnresolvedImportError {
                                 span,
                                 label: Some(label),
-                                note: None,
+                                note: Vec::new(),
                                 suggestion,
                             }
                         }
@@ -1006,7 +1003,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         return Some(UnresolvedImportError {
                             span: directive.span,
                             label: Some(String::from("cannot glob-import a module into itself")),
-                            note: None,
+                            note: Vec::new(),
                             suggestion: None,
                         });
                     }
@@ -1114,15 +1111,22 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     }
                 });
 
-                let lev_suggestion =
-                    find_best_match_for_name(names, &ident.as_str(), None).map(|suggestion| {
-                        (
-                            ident.span,
-                            String::from("a similar name exists in the module"),
-                            suggestion.to_string(),
-                            Applicability::MaybeIncorrect,
-                        )
-                    });
+                let (suggestion, note) = if let Some((suggestion, note)) =
+                    self.check_for_module_export_macro(directive, module, ident)
+                {
+
+                    (
+                        suggestion.or_else(||
+                           find_best_match_for_name(names, &ident.as_str(), None)
+                           .map(|suggestion|
+                                (ident.span, String::from("a similar name exists in the module"),
+                                 suggestion.to_string(), Applicability::MaybeIncorrect)
+                            )),
+                        note,
+                    )
+                } else {
+                    (None, Vec::new())
+                };
 
                 let label = match module {
                     ModuleOrUniformRoot::Module(module) => {
@@ -1143,11 +1147,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         }
                     }
                 };
+
                 Some(UnresolvedImportError {
                     span: directive.span,
                     label: Some(label),
-                    note: None,
-                    suggestion: lev_suggestion,
+                    note,
+                    suggestion,
                 })
             } else {
                 // `resolve_ident_in_module` reported a privacy error.

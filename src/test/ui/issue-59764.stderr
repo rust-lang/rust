@@ -1,11 +1,17 @@
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:5:5
+  --> $DIR/issue-59764.rs:6:5
    |
 LL | use issue_59764::foo::makro;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ no `makro` in `foo`
+   |
+   = note: this could be because a macro annotated with `#[macro_export]` will be exported at the root of the crate instead of the module where it is defined
+help: a macro with this name exists at the root of the crate
+   |
+LL | use issue_59764::makro;
+   |     ^^^^^^^^^^^^^^^^^^
 
 error: cannot determine resolution for the macro `makro`
-  --> $DIR/issue-59764.rs:8:1
+  --> $DIR/issue-59764.rs:9:1
    |
 LL | makro!(bar);
    | ^^^^^
@@ -13,7 +19,7 @@ LL | makro!(bar);
    = note: import resolution is stuck, try simplifying macro imports
 
 error[E0425]: cannot find function `bar` in this scope
-  --> $DIR/issue-59764.rs:12:5
+  --> $DIR/issue-59764.rs:13:5
    |
 LL |     bar();
    |     ^^^ not found in this scope

@@ -1091,6 +1091,16 @@ enum ModuleKind {
     Def(Def, Name),
 }
 
+impl ModuleKind {
+    /// Get name of the module.
+    pub fn name(&self) -> Option<Name> {
+        match self {
+            ModuleKind::Block(..) => None,
+            ModuleKind::Def(_, name) => Some(*name),
+        }
+    }
+}
+
 /// One node in the tree of modules.
 pub struct ModuleData<'a> {
     parent: Option<Module<'a>>,

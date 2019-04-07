@@ -5,15 +5,16 @@ use log::debug;
 use rustc::hir::def::{Def, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::config::nightly_options;
-use syntax::ast::{Expr, ExprKind};
+use syntax::ast::{Expr, ExprKind, Ident};
+use syntax::ext::base::MacroKind;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
 use crate::macros::ParentScope;
-use crate::resolve_imports::ImportResolver;
+use crate::resolve_imports::{ImportDirective, ImportResolver};
 use crate::{import_candidate_to_enum_paths, is_self_type, is_self_value, path_names_to_string};
 use crate::{AssocSuggestion, CrateLint, ImportSuggestion, ModuleOrUniformRoot, PathResult,
-            PathSource, Resolver, Segment};
+            PathSource, Resolver, Segment, Suggestion};
 
 impl<'a> Resolver<'a> {
     /// Handles error reporting for `smart_resolve_path_fragment` function.
@@ -428,7 +429,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
         match (path.get(0), path.get(1)) {
@@ -463,13 +464,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = keywords::SelfLower.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some((path, None))
+            Some((path, Vec::new()))
         } else {
             None
         }
@@ -487,7 +488,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = keywords::Crate.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
@@ -495,11 +496,11 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if let PathResult::Module(..) = result {
             Some((
                 path,
-                Some(
+                vec![
                     "`use` statements changed in Rust 2018; read more at \
                      <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
                      clarity.html>".to_string()
-                ),
+                ],
             ))
         } else {
             None
@@ -518,13 +519,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = keywords::Super.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some((path, None))
+            Some((path, Vec::new()))
         } else {
             None
         }
@@ -545,7 +546,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         if path[1].ident.span.rust_2015() {
             return None;
         }
@@ -564,10 +565,65 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
             if let PathResult::Module(..) = result {
-                return Some((path, None));
+                return Some((path, Vec::new()));
             }
         }
 
         None
+    }
+
+    /// Suggests importing a macro from the root of the crate rather than a module within
+    /// the crate.
+    ///
+    /// ```
+    /// help: a macro with this name exists at the root of the crate
+    ///    |
+    /// LL | use issue_59764::makro;
+    ///    |     ^^^^^^^^^^^^^^^^^^
+    ///    |
+    ///    = note: this could be because a macro annotated with `#[macro_export]` will be exported
+    ///            at the root of the crate instead of the module where it is defined
+    /// ```
+    pub(crate) fn check_for_module_export_macro(
+        &self,
+        directive: &'b ImportDirective<'b>,
+        module: ModuleOrUniformRoot<'b>,
+        ident: Ident,
+    ) -> Option<(Option<Suggestion>, Vec<String>)> {
+        let mut crate_module = if let ModuleOrUniformRoot::Module(module) = module {
+            module
+        } else {
+            return None;
+        };
+
+        while let Some(parent) = crate_module.parent {
+            crate_module = parent;
+        }
+
+        if ModuleOrUniformRoot::same_def(ModuleOrUniformRoot::Module(crate_module), module) {
+            // Don't make a suggestion if the import was already from the root of the
+            // crate.
+            return None;
+        }
+
+        let resolutions = crate_module.resolutions.borrow();
+        let resolution = resolutions.get(&(ident, MacroNS))?;
+        let binding = resolution.borrow().binding()?;
+        if let Def::Macro(_, MacroKind::Bang) = binding.def() {
+            let name = crate_module.kind.name().unwrap();
+            let suggestion = Some((
+                directive.span,
+                String::from("a macro with this name exists at the root of the crate"),
+                format!("{}::{}", name, ident),
+                Applicability::MaybeIncorrect,
+            ));
+            let note = vec![
+                "this could be because a macro annotated with `#[macro_export]` will be exported \
+                 at the root of the crate instead of the module where it is defined".to_string(),
+            ];
+            Some((suggestion, note))
+        } else {
+            None
+        }
     }
 }

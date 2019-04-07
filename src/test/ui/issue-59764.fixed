@@ -3,7 +3,7 @@
 // edition:2018
 // run-rustfix
 
-use issue_59764::foo::makro;
+use issue_59764::makro;
 //~^ ERROR unresolved import `issue_59764::foo::makro` [E0432]
 
 makro!(bar);
