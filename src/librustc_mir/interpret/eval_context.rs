@@ -131,6 +131,22 @@ pub enum LocalValue<Tag=(), Id=AllocId> {
     Live(Operand<Tag, Id>),
 }
 
+impl<Tag: Copy> LocalValue<Tag> {
+    /// The initial value of a local: ZST get "initialized" because they can be read from without
+    /// ever having been written to.
+    fn uninit_local(
+        layout: TyLayout<'_>
+    ) -> LocalValue<Tag> {
+        // FIXME: Can we avoid this ZST special case? That would likely require MIR
+        // generation changes.
+        if layout.is_zst() {
+            LocalValue::Live(Operand::Immediate(Immediate::Scalar(Scalar::zst().into())))
+        } else {
+            LocalValue::Uninitialized
+        }
+    }
+}
+
 impl<'tcx, Tag: Copy> LocalState<'tcx, Tag> {
     pub fn access(&self) -> EvalResult<'tcx, &Operand<Tag>> {
         match self.state {
@@ -518,19 +534,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                     }
                 },
             }
-            // FIXME: We initialize live ZST here.  This should not be needed if MIR was
-            // consistently generated for ZST, but that seems to not be the case -- there
-            // is MIR (around promoteds in particular) that reads local ZSTs that never
-            // were written to.
+            // The remaining locals are uninitialized, fill them with `uninit_local`.
+            // (For ZST this is not a NOP.)
             for (idx, local) in locals.iter_enumerated_mut() {
                 match local.state {
                     LocalValue::Uninitialized => {
                         // This needs to be properly initialized.
                         let ty = self.monomorphize(mir.local_decls[idx].ty)?;
                         let layout = self.layout_of(ty)?;
-                        if layout.is_zst() {
-                            local.state = LocalValue::Live(self.uninit_operand(layout)?);
-                        }
+                        local.state = LocalValue::uninit_local(layout);
                         local.layout = Cell::new(Some(layout));
                     }
                     LocalValue::Dead => {
@@ -622,9 +634,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         trace!("{:?} is now live", local);
 
         let layout = self.layout_of_local(self.frame(), local, None)?;
-        let init = LocalValue::Live(self.uninit_operand(layout)?);
+        let local_val = LocalValue::uninit_local(layout);
         // StorageLive *always* kills the value that's currently stored
-        Ok(mem::replace(&mut self.frame_mut().locals[local].state, init))
+        Ok(mem::replace(&mut self.frame_mut().locals[local].state, local_val))
     }
 
     /// Returns the old value of the local.
