@@ -193,6 +193,28 @@ impl ast::BinExpr {
     }
 }
 
+pub enum ArrayExprKind<'a> {
+    Repeat { initializer: Option<&'a ast::Expr>, repeat: Option<&'a ast::Expr> },
+    ElementList(AstChildren<'a, ast::Expr>),
+}
+
+impl ast::ArrayExpr {
+    pub fn kind(&self) -> ArrayExprKind {
+        if self.is_repeat() {
+            ArrayExprKind::Repeat {
+                initializer: children(self).nth(0),
+                repeat: children(self).nth(1),
+            }
+        } else {
+            ArrayExprKind::ElementList(children(self))
+        }
+    }
+
+    fn is_repeat(&self) -> bool {
+        self.syntax().children_with_tokens().any(|it| it.kind() == SEMI)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum LiteralKind {
     String,

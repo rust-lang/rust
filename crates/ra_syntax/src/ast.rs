@@ -17,8 +17,8 @@ pub use self::{
     generated::*,
     traits::*,
     tokens::*,
-    extensions::{PathSegmentKind, StructKind, FieldKind, SelfParamKind},
-    expr_extensions::{ElseBranch, PrefixOp, BinOp, LiteralKind},
+    extensions::{PathSegmentKind, StructKind,FieldKind, SelfParamKind},
+    expr_extensions::{ElseBranch, PrefixOp, BinOp, LiteralKind,ArrayExprKind},
 };
 
 /// The main trait to go from untyped `SyntaxNode`  to a typed ast. The
