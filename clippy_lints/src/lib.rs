@@ -279,7 +279,7 @@ mod reexport {
 ///
 /// Pre-expansion lints run before any macro expansion has happened.
 ///
-/// Note that due to the architechture of the compiler, currently `cfg_attr` attributes on crate
+/// Note that due to the architecture of the compiler, currently `cfg_attr` attributes on crate
 /// level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
 ///
 /// Used in `./src/driver.rs`.

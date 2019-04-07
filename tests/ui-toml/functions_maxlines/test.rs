@@ -38,7 +38,7 @@ fn comment_after_code() {
 fn comment_before_code() {
     let _ = "test";
     /* This comment extends to the front of
-    teh code but this line should still count. */ let _ = 5;
+    the code but this line should still count. */ let _ = 5;
 }
 
 // This should be considered one line.
