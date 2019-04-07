@@ -87,22 +87,6 @@ fn miri_pass(path: &str, target: &str, opt: bool) {
     compiletest::run_tests(&config);
 }
 
-/// Ensures that the `MIRI_SYSROOT` env var is set.
-fn set_sysroot() {
-    if std::env::var("MIRI_SYSROOT").is_ok() {
-        // Nothing to do.
-        return;
-    }
-    let sysroot = std::process::Command::new("rustc")
-        .arg("--print")
-        .arg("sysroot")
-        .output()
-        .expect("rustc not found")
-        .stdout;
-    let sysroot = String::from_utf8(sysroot).expect("sysroot is not utf8");
-    std::env::set_var("MIRI_SYSROOT", sysroot.trim());
-}
-
 fn get_host() -> String {
     let rustc = rustc_test_suite().unwrap_or(PathBuf::from("rustc"));
     let rustc_version = std::process::Command::new(rustc)
@@ -117,7 +101,7 @@ fn get_host() -> String {
 }
 
 fn get_target() -> String {
-    std::env::var("MIRI_TARGET").unwrap_or_else(|_| get_host())
+    std::env::var("MIRI_COMPILETEST_TARGET").unwrap_or_else(|_| get_host())
 }
 
 fn run_pass_miri(opt: bool) {
@@ -129,8 +113,6 @@ fn compile_fail_miri(opt: bool) {
 }
 
 fn test_runner(_tests: &[&()]) {
-    set_sysroot();
-
     run_pass_miri(false);
     run_pass_miri(true);
 
