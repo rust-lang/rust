@@ -598,14 +598,13 @@ pub fn run(mut krate: clean::Crate,
             }
         }
     }
-    let dst = output;
-    try_err!(fs::create_dir_all(&dst), &dst);
+    try_err!(fs::create_dir_all(&output), &output);
     krate = {
-        render_sources(&dst, &mut scx, krate)?
+        render_sources(&output, &mut scx, krate)?
     };
     let mut cx = Context {
         current: Vec::new(),
-        dst,
+        dst: output,
         render_redirect_pages: false,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         id_map: Rc::new(RefCell::new(id_map)),
@@ -2023,7 +2022,10 @@ fn get_real_path(
         real_path.pop();
     }
     let mut inc = 1;
-    while types_urls.contains_key(&real_path) {
+    while match types_urls.get(&real_path) {
+        Some((n, _)) => n != &full_name,
+        None => false,
+    } {
         real_path = format!("{}{}", real_path, inc);
         inc += 1;
     }
@@ -2088,7 +2090,7 @@ impl Context {
                                                   (format!("{}{}{}", k, m, add), *is_mod))
                                              })
                                              .collect::<FxHashMap<_, _>>();
-        println!("===> {:?}", shared.types_urls);
+        //println!("===> {:?}", shared.types_urls);
         Ok(())
     }
 
@@ -2144,16 +2146,10 @@ impl Context {
             Some(i) => i,
             None => return Ok(()),
         };
-        let final_file = self.dst.join(&krate.name)
-                                 .join("all.html");
-        let settings_file = self.dst.join("settings.html");
-
-
-        {
-            let full_path = self.dst.join(&krate.name).display().to_string();
-            let shared = Arc::get_mut(&mut self.shared).expect("Arc::get_mut failed");
-            get_real_path(&mut shared.types_urls, full_path, true);
-        }
+        let final_file = self.dst.join("all.html");
+        let settings_file = self.dst.parent()
+                                    .expect("no parent found for crate")
+                                    .join("settings.html");
 
         let crate_name = krate.name.clone();
         item.name = Some(krate.name);
@@ -2249,15 +2245,17 @@ impl Context {
         if item.is_mod() {
             // modules are special because they add a namespace. We also need to
             // recurse into the items of the module as well.
-            let dst = self.dst.clone();
             self.recurse(item, render, |this, item| {
+                let path = Path::new(&this.dst).parent().expect("no parent");
                 if render {
                     let mut buf = Vec::new();
                     this.render_item(&mut buf, &item, false).expect("failed to render...");
                     // buf will be empty if the module is stripped and there is no redirect for it
-                    if !buf.is_empty() {                        let path = Path::new(&dst).parent().expect("no parent");
+                    if !buf.is_empty() {
                         try_err!(this.shared.ensure_dir(path), path);
-                        try_err!(fs::write(&dst, buf), Path::new(&dst));
+                        let dst = Path::new(&this.dst).join("index.html");
+                        println!("|||> writing into {:?}", dst);
+                        try_err!(fs::write(&dst, buf), &dst);
                     }
                 }
                 let m = match item.inner {
@@ -2270,10 +2268,9 @@ impl Context {
                     if !this.render_redirect_pages {
                         // FIXME: generate correct url for sidebar items.
                         let items = this.build_sidebar_items(&m);
-                        let js_dst = Path::new(&dst).parent()
-                                                    .expect("no parent found for js")
-                                                    .join("sidebar-items.js");
+                        let js_dst = path.join("sidebar-items.js");
                         let mut js_out = BufWriter::new(try_err!(File::create(&js_dst), &js_dst));
+                        println!("|||2> writing into {:?}", js_dst);
                         try_err!(write!(&mut js_out, "initSidebarItems({});",
                                         as_json(&items)), &js_dst);
                     }
@@ -2293,10 +2290,10 @@ impl Context {
             if !buf.is_empty() {
                 let name = item.name.as_ref().expect("name is unavailable 2");
                 let item_type = item.type_();
-                println!("2");
                 let file_name = item_path(&self.shared, &self.dst, item_type, name);
                 let path = Path::new(&file_name).parent().expect("no parent for item...");
                 try_err!(self.shared.ensure_dir(path), path);
+                println!("|||3> writing into {:?}", file_name);
                 try_err!(fs::write(&file_name, buf), Path::new(&file_name));
 
                 if !self.render_redirect_pages {
