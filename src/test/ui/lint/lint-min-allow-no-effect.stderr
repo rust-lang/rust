@@ -1,0 +1,33 @@
+error: #[allow(illegal_floating_point_literal_pattern)] has no effect
+  --> $DIR/lint-min-allow-no-effect.rs:4:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-min-allow-no-effect.rs:1:9
+   |
+LL | #![deny(unused_attributes)]
+   |         ^^^^^^^^^^^^^^^^^
+   = note: the minimum lint level for `illegal_floating_point_literal_pattern` is `warn`
+   = note: the lint level cannot be reduced to `allow`
+   = help: remove the #[allow(illegal_floating_point_literal_pattern)] directive
+   = warning: `illegal_floating_point_literal_pattern` was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: #[allow(illegal_floating_point_literal_pattern)] has no effect
+  --> $DIR/lint-min-allow-no-effect.rs:4:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the minimum lint level for `illegal_floating_point_literal_pattern` is `warn`
+   = note: the lint level cannot be reduced to `allow`
+   = help: remove the #[allow(illegal_floating_point_literal_pattern)] directive
+   = warning: `illegal_floating_point_literal_pattern` was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+error: aborting due to 2 previous errors
+

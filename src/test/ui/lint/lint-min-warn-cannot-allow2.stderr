@@ -1,0 +1,27 @@
+warning: floating-point types cannot be used in patterns
+  --> $DIR/lint-min-warn-cannot-allow2.rs:10:12
+   |
+LL |     if let 0.0 = 0.0 {}
+   |            ^^^
+   |
+note: lint level defined here
+  --> $DIR/lint-min-warn-cannot-allow2.rs:7:10
+   |
+LL | #![allow(illegal_floating_point_literal_pattern)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: #[warn(illegal_floating_point_literal_pattern)] is the minimum lint level
+   = note: the lint level cannot be reduced to `allow`
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
+warning: floating-point types cannot be used in patterns
+  --> $DIR/lint-min-warn-cannot-allow2.rs:10:12
+   |
+LL |     if let 0.0 = 0.0 {}
+   |            ^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out
+   = warning: it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
