@@ -24,7 +24,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
             );
 
             self.bencher.iter(|| {
-                let config = miri::MiriConfig { validate: true, args: vec![] };
+                let config = miri::MiriConfig { validate: true, args: vec![], seed: None };
                 eval_main(tcx, entry_def_id, config);
             });
         });
