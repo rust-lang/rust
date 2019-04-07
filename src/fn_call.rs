@@ -95,25 +95,16 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
             "calloc" => {
                 let items = this.read_scalar(args[0])?.to_usize(this)?;
-                let count = this.read_scalar(args[1])?.to_usize(this)?;
-                let size = if let Some(size) = items.checked_add(count) {
-                    size
-                } else {
-                    return err!(MachineError(format!(
-                        "calloc: overflow of items * count: {} * {}",
-                        items, count,
-                    )));
-                };
-                if size == 0 {
+                let len = this.read_scalar(args[1])?.to_usize(this)?;
+                let bytes = items.checked_mul(len).ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
+
+                if bytes== 0 {
                     this.write_null(dest)?;
                 } else {
+                    let size = Size::from_bytes(bytes);
                     let align = this.tcx.data_layout.pointer_align.abi;
-                    let ptr = this.memory_mut()
-                        .allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into())
-                        .with_default_tag();
-                    this.memory_mut()
-                        .get_mut(ptr.alloc_id)?
-                        .write_repeat(tcx, ptr, 0, Size::from_bytes(size))?;
+                    let ptr = this.memory_mut().allocate(size, align, MiriMemoryKind::C.into()).with_default_tag();
+                    this.memory_mut().get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, size)?;
                     this.write_scalar(Scalar::Ptr(ptr), dest)?;
                 }
             }
