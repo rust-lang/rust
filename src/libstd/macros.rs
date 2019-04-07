@@ -836,8 +836,10 @@ mod builtin {
     /// boolean expression evaluation of configuration flags. This frequently
     /// leads to less duplicated code.
     ///
-    /// The syntax given to this macro is the same syntax as the `cfg`
+    /// The syntax given to this macro is the same syntax as the [`cfg`]
     /// attribute.
+    ///
+    /// [`cfg`]: ../reference/conditional-compilation.html#the-cfg-attribute
     ///
     /// # Examples
     ///
