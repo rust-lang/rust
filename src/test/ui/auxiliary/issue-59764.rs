@@ -5,4 +5,14 @@ pub mod foo {
             fn $foo() { }
         }
     }
+
+    pub fn baz() {}
+
+    pub fn foobar() {}
+
+    pub mod barbaz {
+        pub fn barfoo() {}
+    }
 }
+
+pub fn foobaz() {}

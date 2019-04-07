@@ -4,11 +4,11 @@ use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
 use rustc::hir::def::{Def, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
-use rustc::session::config::nightly_options;
+use rustc::session::{Session, config::nightly_options};
 use syntax::ast::{Expr, ExprKind, Ident};
 use syntax::ext::base::MacroKind;
-use syntax::symbol::keywords;
-use syntax_pos::Span;
+use syntax::symbol::{Symbol, keywords};
+use syntax_pos::{BytePos, Span};
 
 use crate::macros::ParentScope;
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
@@ -616,10 +616,84 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     format!("{} as {}", source, target),
                 _ => format!("{}", ident),
             };
+
+            // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
+            // intermediate segments.
+            let (mut span, mut correction) = (directive.span,
+                                              format!("{}::{}", module_name, import));
+
+            if directive.is_nested() {
+                span = directive.use_span;
+
+                // Find the binding span (and any trailing commas and spaces).
+                //   ie. `use a::b::{c, d, e};`
+                //                      ^^^
+                let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
+                    self.resolver.session, directive.span, directive.use_span,
+                );
+                debug!("check_for_module_export_macro: found_closing_brace={:?} binding_span={:?}",
+                       found_closing_brace, binding_span);
+
+                let mut removal_span = binding_span;
+                if found_closing_brace {
+                    // If the binding span ended with a closing brace, as in the below example:
+                    //   ie. `use a::b::{c, d};`
+                    //                      ^
+                    // Then expand the span of characters to remove to include the previous
+                    // binding's trailing comma.
+                    //   ie. `use a::b::{c, d};`
+                    //                    ^^^
+                    if let Some(previous_span) = extend_span_to_previous_binding(
+                        self.resolver.session, binding_span,
+                    ) {
+                        debug!("check_for_module_export_macro: previous_span={:?}", previous_span);
+                        removal_span = removal_span.with_lo(previous_span.lo());
+                    }
+                }
+                debug!("check_for_module_export_macro: removal_span={:?}", removal_span);
+
+                // Find the span after the crate name and if it has nested imports immediatately
+                // after the crate name already.
+                //   ie. `use a::b::{c, d};`
+                //               ^^^^^^^^^
+                //   or  `use a::{b, c, d}};`
+                //               ^^^^^^^^^^^
+                let (has_nested, after_crate_name) = find_span_immediately_after_crate_name(
+                    self.resolver.session, module_name, directive.use_span,
+                );
+                debug!("check_for_module_export_macro: has_nested={:?} after_crate_name={:?}",
+                       has_nested, after_crate_name);
+
+                let source_map = self.resolver.session.source_map();
+
+                // Remove two bytes at the end to keep all but the `};` characters.
+                //   ie. `{b::{c, d}, e::{f, g}};`
+                //        ^^^^^^^^^^^^^^^^^^^^^
+                let end_bytes = BytePos(if has_nested { 2 } else { 1 });
+                let mut remaining_span = after_crate_name.with_hi(
+                    after_crate_name.hi() - end_bytes);
+                if has_nested {
+                    // Remove two bytes at the start to keep all but the initial `{` character.
+                    //   ie. `{b::{c, d}, e::{f, g}`
+                    //         ^^^^^^^^^^^^^^^^^^^^
+                    remaining_span = remaining_span.with_lo(after_crate_name.lo() + BytePos(1));
+                }
+
+                // Calculate the number of characters into a snippet to remove the removal
+                // span.
+                let lo = removal_span.lo() - remaining_span.lo();
+                let hi = lo + (removal_span.hi() - removal_span.lo());
+                if let Ok(mut remaining) = source_map.span_to_snippet(remaining_span) {
+                    // Remove the original location of the binding.
+                    remaining.replace_range((lo.0 as usize)..(hi.0 as usize), "");
+                    correction = format!("use {}::{{{}, {}}};", module_name, import, remaining);
+                }
+            }
+
             let suggestion = Some((
-                directive.span,
+                span,
                 String::from("a macro with this name exists at the root of the crate"),
-                format!("{}::{}", module_name, import),
+                correction,
                 Applicability::MaybeIncorrect,
             ));
             let note = vec![
@@ -631,4 +705,150 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             None
         }
     }
+}
+
+/// Given a `binding_span` of a binding within a use statement:
+///
+/// ```
+/// use foo::{a, b, c};
+///              ^
+/// ```
+///
+/// then return the span until the next binding or the end of the statement:
+///
+/// ```
+/// use foo::{a, b, c};
+///              ^^^
+/// ```
+pub(crate) fn find_span_of_binding_until_next_binding(
+    sess: &Session,
+    binding_span: Span,
+    use_span: Span,
+) -> (bool, Span) {
+    let source_map = sess.source_map();
+
+    // Find the span of everything after the binding.
+    //   ie. `a, e};` or `a};`
+    let binding_until_end = binding_span.with_hi(use_span.hi());
+
+    // Find everything after the binding but not including the binding.
+    //   ie. `, e};` or `};`
+    let after_binding_until_end = binding_until_end.with_lo(binding_span.hi());
+
+    // Keep characters in the span until we encounter something that isn't a comma or
+    // whitespace.
+    //   ie. `, ` or ``.
+    //
+    // Also note whether a closing brace character was encountered. If there
+    // was, then later go backwards to remove any trailing commas that are left.
+    let mut found_closing_brace = false;
+    let after_binding_until_next_binding = source_map.span_take_while(
+        after_binding_until_end,
+        |&ch| {
+            if ch == '}' { found_closing_brace = true; }
+            ch == ' ' || ch == ','
+        }
+    );
+
+    // Combine the two spans.
+    //   ie. `a, ` or `a`.
+    //
+    // Removing these would leave `issue_52891::{d, e};` or `issue_52891::{d, e, };`
+    let span = binding_span.with_hi(after_binding_until_next_binding.hi());
+
+    (found_closing_brace, span)
+}
+
+/// Given a `binding_span`, return the span through to the comma or opening brace of the previous
+/// binding.
+///
+/// ```
+/// use foo::a::{a, b, c};
+///               ^^--- binding span
+///               |
+///               returned span
+///
+/// use foo::{a, b, c};
+///           --- binding span
+/// ```
+pub(crate) fn extend_span_to_previous_binding(
+    sess: &Session,
+    binding_span: Span,
+) -> Option<Span> {
+    let source_map = sess.source_map();
+
+    // `prev_source` will contain all of the source that came before the span.
+    // Then split based on a command and take the first (ie. closest to our span)
+    // snippet. In the example, this is a space.
+    let prev_source = source_map.span_to_prev_source(binding_span).ok()?;
+
+    let prev_comma = prev_source.rsplit(',').collect::<Vec<_>>();
+    let prev_starting_brace = prev_source.rsplit('{').collect::<Vec<_>>();
+    if prev_comma.len() <= 1 || prev_starting_brace.len() <= 1 {
+        return None;
+    }
+
+    let prev_comma = prev_comma.first().unwrap();
+    let prev_starting_brace = prev_starting_brace.first().unwrap();
+
+    // If the amount of source code before the comma is greater than
+    // the amount of source code before the starting brace then we've only
+    // got one item in the nested item (eg. `issue_52891::{self}`).
+    if prev_comma.len() > prev_starting_brace.len() {
+        return None;
+    }
+
+    Some(binding_span.with_lo(BytePos(
+        // Take away the number of bytes for the characters we've found and an
+        // extra for the comma.
+        binding_span.lo().0 - (prev_comma.as_bytes().len() as u32) - 1
+    )))
+}
+
+/// Given a `use_span` of a binding within a use statement, returns the highlighted span and if
+/// it is a nested use tree.
+///
+/// ```
+/// use foo::a::{b, c};
+///          ^^^^^^^^^^ // false
+///
+/// use foo::{a, b, c};
+///          ^^^^^^^^^^ // true
+///
+/// use foo::{a, b::{c, d}};
+///          ^^^^^^^^^^^^^^^ // true
+/// ```
+fn find_span_immediately_after_crate_name(
+    sess: &Session,
+    module_name: Symbol,
+    use_span: Span,
+) -> (bool, Span) {
+    debug!("find_span_immediately_after_crate_name: module_name={:?} use_span={:?}",
+           module_name, use_span);
+    let source_map = sess.source_map();
+
+    // Get position of the first `{` character for the use statement.
+    //  ie. `use foo::{a, b::{c, d}};`
+    //                ^
+    let pos_of_use_tree_left_bracket = source_map.span_until_char(use_span, '{').hi();
+    debug!("find_span_immediately_after_crate_name: pos_of_use_tree_left_bracket={:?}",
+           pos_of_use_tree_left_bracket);
+
+    // Calculate the expected difference between the first `{` character and the start of a
+    // use statement.
+    //  ie. `use foo::{..};`
+    //       ^^^^
+    //       |   ^^^
+    //       4   |  ^^
+    //           3  |
+    //              2
+    let expected_difference = BytePos((module_name.as_str().len() + 4 + 2) as u32);
+    debug!("find_span_immediately_after_crate_name: expected_difference={:?}",
+           expected_difference);
+    let actual_difference = pos_of_use_tree_left_bracket - use_span.lo();
+    debug!("find_span_immediately_after_crate_name: actual_difference={:?}",
+           actual_difference);
+
+    (expected_difference == actual_difference,
+     use_span.with_lo(use_span.lo() + expected_difference))
 }
