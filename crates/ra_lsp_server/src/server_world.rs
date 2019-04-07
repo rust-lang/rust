@@ -160,7 +160,8 @@ impl ServerWorld {
             if path.exists() {
                 LspError {
                     code: ErrorCode::InvalidRequest as i32,
-                    message: "Rust file outside current workspace is not supported yet.".to_string(),
+                    message: "Rust file outside current workspace is not supported yet."
+                        .to_string(),
                 }
                 .into()
             } else {
