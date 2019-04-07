@@ -100,19 +100,21 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     size
                 } else {
                     return err!(MachineError(format!(
-                        "calloc: overflow of items * size: {} * {}",
-                        items, size,
+                        "calloc: overflow of items * count: {} * {}",
+                        items, count,
                     )));
                 };
                 if size == 0 {
                     this.write_null(dest)?;
                 } else {
                     let align = this.tcx.data_layout.pointer_align.abi;
-                    let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
+                    let ptr = this.memory_mut()
+                        .allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into())
+                        .with_default_tag();
                     this.memory_mut()
                         .get_mut(ptr.alloc_id)?
                         .write_repeat(tcx, ptr, 0, Size::from_bytes(size))?;
-                    this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
+                    this.write_scalar(Scalar::Ptr(ptr), dest)?;
                 }
             }
             "posix_memalign" => {
