@@ -74,6 +74,7 @@ fn run_mode(mode: &str, dir: PathBuf) {
     compiletest::run_tests(&cfg);
 }
 
+#[allow(clippy::identity_conversion)]
 fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDescAndFn>) -> Result<bool, io::Error> {
     let mut result = true;
     let opts = compiletest::test_opts(config);
