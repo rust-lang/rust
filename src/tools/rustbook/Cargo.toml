@@ -7,6 +7,8 @@ edition = "2018"
 
 [dependencies]
 clap = "2.25.0"
+mdbook-linkcheck = "0.3.0"
+failure = "0.1"
 
 [dependencies.mdbook]
 version = "0.3.0"

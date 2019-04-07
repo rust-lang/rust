@@ -1446,7 +1446,6 @@ test_book!(
     TheBook, "src/doc/book", "book", default=false;
     UnstableBook, "src/doc/unstable-book", "unstable-book", default=true;
     EditionGuide, "src/doc/edition-guide", "edition-guide", default=false;
-    RustcGuide, "src/doc/rustc-guide", "rustc-guide", default=false;
 );
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -1528,6 +1527,31 @@ fn markdown_test(builder: &Builder<'_>, compiler: Compiler, markdown: &Path) -> 
         try_run(builder, &mut cmd)
     } else {
         try_run_quiet(builder, &mut cmd)
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustcGuide;
+
+impl Step for RustcGuide {
+    type Output = ();
+    const DEFAULT: bool = false;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/doc/rustc-guide")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustcGuide);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let src = builder.src.join("src/doc/rustc-guide");
+        let mut rustbook_cmd = builder.tool_cmd(Tool::Rustbook);
+        builder.run(rustbook_cmd
+                       .arg("linkcheck")
+                       .arg(&src));
     }
 }
 
