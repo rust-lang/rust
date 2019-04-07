@@ -1,5 +1,5 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
+use crate::utils::{is_expn_of, match_type, paths, span_help_and_lint, span_lint};
 use if_chain::if_chain;
 use regex_syntax;
 use rustc::hir::*;
@@ -120,15 +120,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if args.len() == 1;
             if let Some(def_id) = cx.tables.qpath_def(qpath, fun.hir_id).opt_def_id();
             then {
-                if match_def_path(cx.tcx, def_id, &paths::REGEX_NEW) ||
-                   match_def_path(cx.tcx, def_id, &paths::REGEX_BUILDER_NEW) {
+                if cx.match_def_path(def_id, &paths::REGEX_NEW) ||
+                   cx.match_def_path(def_id, &paths::REGEX_BUILDER_NEW) {
                     check_regex(cx, &args[0], true);
-                } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_NEW) ||
-                   match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
+                } else if cx.match_def_path(def_id, &paths::REGEX_BYTES_NEW) ||
+                   cx.match_def_path(def_id, &paths::REGEX_BYTES_BUILDER_NEW) {
                     check_regex(cx, &args[0], false);
-                } else if match_def_path(cx.tcx, def_id, &paths::REGEX_SET_NEW) {
+                } else if cx.match_def_path(def_id, &paths::REGEX_SET_NEW) {
                     check_set(cx, &args[0], true);
-                } else if match_def_path(cx.tcx, def_id, &paths::REGEX_BYTES_SET_NEW) {
+                } else if cx.match_def_path(def_id, &paths::REGEX_BYTES_SET_NEW) {
                     check_set(cx, &args[0], false);
                 }
             }

@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, match_type, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
+use crate::utils::{match_type, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::Def;
@@ -144,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             if_chain! {
                 if let hir::TraitRef{path, ..} = trait_ref;
                 if let Def::Trait(def_id) = path.def;
-                if match_def_path(cx.tcx, def_id, &paths::LINT_PASS);
+                if cx.match_def_path(def_id, &paths::LINT_PASS);
                 then {
                     let mut collector = LintCollector {
                         output: &mut self.registered_lints,
@@ -196,7 +196,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
     {
         if let TyKind::Path(ref path) = inner.node {
             if let Def::Struct(def_id) = cx.tables.qpath_def(path, inner.hir_id) {
-                return match_def_path(cx.tcx, def_id, &paths::LINT);
+                return cx.match_def_path(def_id, &paths::LINT);
             }
         }
     }

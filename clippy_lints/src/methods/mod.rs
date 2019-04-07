@@ -21,10 +21,10 @@ use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy, is_expn_of,
-    is_self, is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath,
-    match_trait_method, match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys,
-    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
-    span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    is_self, is_self_ty, iter_input_pats, last_path_segment, match_path, match_qpath, match_trait_method, match_type,
+    match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet,
+    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg, span_lint_and_then,
+    span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 #[derive(Clone)]
@@ -1464,7 +1464,7 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, new: &hir::Ex
         if args.len() == 1;
         if let hir::ExprKind::Path(ref path) = fun.node;
         if let Def::Method(did) = cx.tables.qpath_def(path, fun.hir_id);
-        if match_def_path(cx.tcx, did, &paths::CSTRING_NEW);
+        if cx.match_def_path(did, &paths::CSTRING_NEW);
         then {
             span_lint_and_then(
                 cx,

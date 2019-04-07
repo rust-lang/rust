@@ -2,7 +2,7 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, paths, snippet_opt, span_lint, span_lint_and_sugg, span_lint_and_then,
+    in_macro, last_line_of_span, paths, snippet_opt, span_lint, span_lint_and_sugg, span_lint_and_then,
     without_block_comments,
 };
 use if_chain::if_chain;
@@ -11,7 +11,7 @@ use rustc::lint::{
     in_external_macro, CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray,
     LintContext, LintPass,
 };
-use rustc::ty::{self, TyCtxt};
+use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use semver::Version;
@@ -234,7 +234,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if is_relevant_item(cx.tcx, item) {
+        if is_relevant_item(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
         match item.node {
@@ -302,13 +302,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx ImplItem) {
-        if is_relevant_impl(cx.tcx, item) {
+        if is_relevant_impl(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
-        if is_relevant_trait(cx.tcx, item) {
+        if is_relevant_trait(cx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
     }
@@ -361,52 +361,52 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     }
 }
 
-fn is_relevant_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &Item) -> bool {
+fn is_relevant_item(cx: &LateContext<'_, '_>, item: &Item) -> bool {
     if let ItemKind::Fn(_, _, _, eid) = item.node {
-        is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value)
+        is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
     } else {
         true
     }
 }
 
-fn is_relevant_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &ImplItem) -> bool {
+fn is_relevant_impl(cx: &LateContext<'_, '_>, item: &ImplItem) -> bool {
     match item.node {
-        ImplItemKind::Method(_, eid) => is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value),
+        ImplItemKind::Method(_, eid) => is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value),
         _ => false,
     }
 }
 
-fn is_relevant_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &TraitItem) -> bool {
+fn is_relevant_trait(cx: &LateContext<'_, '_>, item: &TraitItem) -> bool {
     match item.node {
         TraitItemKind::Method(_, TraitMethod::Required(_)) => true,
         TraitItemKind::Method(_, TraitMethod::Provided(eid)) => {
-            is_relevant_expr(tcx, tcx.body_tables(eid), &tcx.hir().body(eid).value)
+            is_relevant_expr(cx, cx.tcx.body_tables(eid), &cx.tcx.hir().body(eid).value)
         },
         _ => false,
     }
 }
 
-fn is_relevant_block<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
+fn is_relevant_block(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, block: &Block) -> bool {
     if let Some(stmt) = block.stmts.first() {
         match &stmt.node {
             StmtKind::Local(_) => true,
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(tcx, tables, expr),
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => is_relevant_expr(cx, tables, expr),
             _ => false,
         }
     } else {
-        block.expr.as_ref().map_or(false, |e| is_relevant_expr(tcx, tables, e))
+        block.expr.as_ref().map_or(false, |e| is_relevant_expr(cx, tables, e))
     }
 }
 
-fn is_relevant_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
+fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, expr: &Expr) -> bool {
     match &expr.node {
-        ExprKind::Block(block, _) => is_relevant_block(tcx, tables, block),
-        ExprKind::Ret(Some(e)) => is_relevant_expr(tcx, tables, e),
+        ExprKind::Block(block, _) => is_relevant_block(cx, tables, block),
+        ExprKind::Ret(Some(e)) => is_relevant_expr(cx, tables, e),
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
             if let ExprKind::Path(qpath) = &path_expr.node {
                 if let Some(fun_id) = tables.qpath_def(qpath, path_expr.hir_id).opt_def_id() {
-                    !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
+                    !cx.match_def_path(fun_id, &paths::BEGIN_PANIC)
                 } else {
                     true
                 }

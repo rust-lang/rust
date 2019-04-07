@@ -96,7 +96,7 @@ pub fn in_macro(span: Span) -> bool {
 /// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
-        ty::Adt(adt, _) => match_def_path(cx.tcx, adt.did, path),
+        ty::Adt(adt, _) => cx.match_def_path(adt.did, path),
         _ => false,
     }
 }
@@ -106,7 +106,7 @@ pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) 
     let def_id = cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
     if let Some(trt_id) = trt_id {
-        match_def_path(cx.tcx, trt_id, path)
+        cx.match_def_path(trt_id, path)
     } else {
         false
     }
@@ -989,7 +989,7 @@ pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Opt
     };
 
     for path in &INTO_ITER_COLLECTIONS {
-        if match_def_path(cx.tcx, def_id, path) {
+        if cx.match_def_path(def_id, path) {
             return Some(path.last().unwrap());
         }
     }

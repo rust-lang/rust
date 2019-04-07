@@ -1,4 +1,4 @@
-use crate::utils::{match_def_path, span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::Def;
@@ -48,7 +48,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
             if let Def::Const(def_id) = cx.tables.qpath_def(qp, expr.hir_id);
             then {
                 for &(const_path, repl_snip) in REPLACEMENTS {
-                    if match_def_path(cx.tcx, def_id, const_path) {
+                    if cx.match_def_path(def_id, const_path) {
                         span_lint_and_sugg(
                             cx,
                             REPLACE_CONSTS,

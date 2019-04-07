@@ -1,6 +1,4 @@
-use crate::utils::{
-    in_macro, match_def_path, match_trait_method, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then,
-};
+use crate::utils::{in_macro, match_trait_method, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then};
 use crate::utils::{paths, resolve_node};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -99,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
             ExprKind::Call(ref path, ref args) => {
                 if let ExprKind::Path(ref qpath) = path.node {
                     if let Some(def_id) = resolve_node(cx, qpath, path.hir_id).opt_def_id() {
-                        if match_def_path(cx.tcx, def_id, &paths::FROM_FROM[..]) {
+                        if cx.match_def_path(def_id, &paths::FROM_FROM[..]) {
                             let a = cx.tables.expr_ty(e);
                             let b = cx.tables.expr_ty(&args[0]);
                             if same_tys(cx, a, b) {

@@ -1,6 +1,6 @@
 #![allow(clippy::float_cmp)]
 
-use crate::utils::{clip, get_def_path, sext, unsext};
+use crate::utils::{clip, sext, unsext};
 use if_chain::if_chain;
 use rustc::hir::def::Def;
 use rustc::hir::*;
@@ -180,7 +180,7 @@ pub fn constant<'c, 'cc>(
     e: &Expr,
 ) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
-        tcx: lcx.tcx,
+        lcx,
         tables,
         param_env: lcx.param_env,
         needed_resolution: false,
@@ -199,11 +199,11 @@ pub fn constant_simple<'c, 'cc>(
 
 /// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`.
 pub fn constant_context<'c, 'cc>(
-    lcx: &LateContext<'c, 'cc>,
+    lcx: &'c LateContext<'c, 'cc>,
     tables: &'c ty::TypeckTables<'cc>,
 ) -> ConstEvalLateContext<'c, 'cc> {
     ConstEvalLateContext {
-        tcx: lcx.tcx,
+        lcx,
         tables,
         param_env: lcx.param_env,
         needed_resolution: false,
@@ -212,7 +212,7 @@ pub fn constant_context<'c, 'cc>(
 }
 
 pub struct ConstEvalLateContext<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    lcx: &'a LateContext<'a, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     needed_resolution: bool,
@@ -231,7 +231,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprKind::Tup(ref tup) => self.multi(tup).map(Constant::Tuple),
             ExprKind::Repeat(ref value, _) => {
                 let n = match self.tables.expr_ty(e).sty {
-                    ty::Array(_, n) => n.assert_usize(self.tcx).expect("array length"),
+                    ty::Array(_, n) => n.assert_usize(self.lcx.tcx).expect("array length"),
                     _ => span_bug!(e.span, "typeck error"),
                 };
                 self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
@@ -249,7 +249,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     if let ExprKind::Path(qpath) = &callee.node;
                     let def = self.tables.qpath_def(qpath, callee.hir_id);
                     if let Some(def_id) = def.opt_def_id();
-                    let def_path = get_def_path(self.tcx, def_id)
+                    let def_path = self.lcx.get_def_path(def_id)
                         .iter()
                         .map(LocalInternedString::get)
                         .collect::<Vec<_>>();
@@ -283,8 +283,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             Int(value) => {
                 let value = !value;
                 match ty.sty {
-                    ty::Int(ity) => Some(Int(unsext(self.tcx, value as i128, ity))),
-                    ty::Uint(ity) => Some(Int(clip(self.tcx, value, ity))),
+                    ty::Int(ity) => Some(Int(unsext(self.lcx.tcx, value as i128, ity))),
+                    ty::Uint(ity) => Some(Int(clip(self.lcx.tcx, value, ity))),
                     _ => None,
                 }
             },
@@ -301,10 +301,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     _ => return None,
                 };
                 // sign extend
-                let value = sext(self.tcx, value, ity);
+                let value = sext(self.lcx.tcx, value, ity);
                 let value = value.checked_neg()?;
                 // clear unused bits
-                Some(Int(unsext(self.tcx, value, ity)))
+                Some(Int(unsext(self.lcx.tcx, value, ity)))
             },
             F32(f) => Some(F32(-f)),
             F64(f) => Some(F64(-f)),
@@ -329,16 +329,16 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 let substs = if self.substs.is_empty() {
                     substs
                 } else {
-                    substs.subst(self.tcx, self.substs)
+                    substs.subst(self.lcx.tcx, self.substs)
                 };
-                let instance = Instance::resolve(self.tcx, self.param_env, def_id, substs)?;
+                let instance = Instance::resolve(self.lcx.tcx, self.param_env, def_id, substs)?;
                 let gid = GlobalId {
                     instance,
                     promoted: None,
                 };
 
-                let result = self.tcx.const_eval(self.param_env.and(gid)).ok()?;
-                let ret = miri_to_const(self.tcx, &result);
+                let result = self.lcx.tcx.const_eval(self.param_env.and(gid)).ok()?;
+                let ret = miri_to_const(self.lcx.tcx, &result);
                 if ret.is_some() {
                     self.needed_resolution = true;
                 }
@@ -376,9 +376,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         match (l, r) {
             (Constant::Int(l), Some(Constant::Int(r))) => match self.tables.expr_ty(left).sty {
                 ty::Int(ity) => {
-                    let l = sext(self.tcx, l, ity);
-                    let r = sext(self.tcx, r, ity);
-                    let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
+                    let l = sext(self.lcx.tcx, l, ity);
+                    let r = sext(self.lcx.tcx, r, ity);
+                    let zext = |n: i128| Constant::Int(unsext(self.lcx.tcx, n, ity));
                     match op.node {
                         BinOpKind::Add => l.checked_add(r).map(zext),
                         BinOpKind::Sub => l.checked_sub(r).map(zext),

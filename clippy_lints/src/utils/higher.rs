@@ -3,7 +3,7 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node};
+use crate::utils::{is_expn_of, match_qpath, paths, resolve_node};
 use if_chain::if_chain;
 use rustc::lint::LateContext;
 use rustc::{hir, ty};
@@ -216,11 +216,11 @@ pub fn vec_macro<'e>(cx: &LateContext<'_, '_>, expr: &'e hir::Expr) -> Option<Ve
         if is_expn_of(fun.span, "vec").is_some();
         if let Some(fun_def_id) = resolve_node(cx, path, fun.hir_id).opt_def_id();
         then {
-            return if match_def_path(cx.tcx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
+            return if cx.match_def_path(fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
                 // `vec![elem; size]` case
                 Some(VecArgs::Repeat(&args[0], &args[1]))
             }
-            else if match_def_path(cx.tcx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
+            else if cx.match_def_path(fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
                 // `vec![a, b, c]` case
                 if_chain! {
                     if let hir::ExprKind::Box(ref boxed) = args[0].node;
