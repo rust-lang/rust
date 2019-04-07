@@ -1,8 +1,9 @@
-use std::collections::{self, HashMap};
-use std::hash::BuildHasherDefault;
+// compile-flags: -Zmiri-seed=0000000000000000
 
-fn main() {
-    let mut map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = Default::default();
+use std::collections::{self, HashMap};
+use std::hash::{BuildHasherDefault, BuildHasher};
+
+fn test_map<S: BuildHasher>(mut map: HashMap<i32, i32, S>) {
     map.insert(0, 0);
     assert_eq!(map.values().fold(0, |x, y| x+y), 0);
 
@@ -22,4 +23,13 @@ fn main() {
     assert_eq!(map.values().fold(0, |x, y| x+y), num*(num-1)/2);
 
     // TODO: Test Entry API, Iterators, ...
+
+}
+
+fn main() {
+    let map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = Default::default();
+    let map_normal: HashMap<i32, i32> = HashMap::new();
+
+    test_map(map);
+    test_map(map_normal);
 }

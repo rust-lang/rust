@@ -4,6 +4,8 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use syntax::attr;
 
+use rand::RngCore;
+
 use crate::*;
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
@@ -216,9 +218,32 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 // is called if a `HashMap` is created the regular way.
                 match this.read_scalar(args[0])?.to_usize(this)? {
                     318 | 511 => {
-                        return err!(Unimplemented(
-                            "miri does not support random number generators".to_owned(),
-                        ))
+                        match this.machine.rng.as_ref() {
+                            Some(rng) => {
+                                let ptr = this.read_scalar(args[1])?.to_ptr()?;
+                                let len = this.read_scalar(args[2])?.to_usize(this)?;
+
+                                // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
+                                // neither of which have any effect on our current PRNG
+                                let _flags = this.read_scalar(args[3])?.to_i32()?;
+
+                                let mut data = vec![0; len as usize];
+                                rng.borrow_mut().fill_bytes(&mut data);
+
+                                this.memory_mut().get_mut(ptr.alloc_id)?
+                                    .write_bytes(tcx, ptr, &data)?;
+
+                                this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
+
+                            },
+                            None => {
+                                return err!(Unimplemented(
+                                    "miri does not support random number generators in deterministic mode!
+                                    Use '-Zmiri-seed=<seed>' to enable random number generation".to_owned(),
+                                ))
+                            }
+                        }
+
                     }
                     id => {
                         return err!(Unimplemented(

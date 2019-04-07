@@ -126,6 +126,7 @@ fn main() {
 
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut validate = true;
+    let mut seed: Option<u64> = None;
     let mut rustc_args = vec![];
     let mut miri_args = vec![];
     let mut after_dashdash = false;
@@ -146,7 +147,22 @@ fn main() {
                     after_dashdash = true;
                 }
                 _ => {
-                    rustc_args.push(arg);
+                    let split: Vec<String> = arg.split("-Zmiri-seed=").map(|s| s.to_owned()).collect();
+                    if split.len() == 2 {
+                        if seed.is_some() {
+                            panic!("Cannot specify -Zmiri-seed multiple times!");
+                        }
+                        let seed_raw = hex::decode(&split[1]).unwrap();
+                        if seed_raw.len() > 8 {
+                            panic!(format!("-Zmiri-seed must be at most 8 bytes, was {}", seed_raw.len()));
+                        }
+
+                        let mut bytes = [0; 8];
+                        bytes[..seed_raw.len()].copy_from_slice(&hex::decode(&split[1]).unwrap());
+                        seed = Some(u64::from_be_bytes(bytes));
+                    } else {
+                        rustc_args.push(arg);
+                    }
                 }
             }
         }
@@ -163,7 +179,7 @@ fn main() {
 
     debug!("rustc arguments: {:?}", rustc_args);
     debug!("miri arguments: {:?}", miri_args);
-    let miri_config = miri::MiriConfig { validate, args: miri_args };
+    let miri_config = miri::MiriConfig { validate, args: miri_args, seed };
     let result = rustc_driver::report_ices_to_stderr_if_any(move || {
         rustc_driver::run_compiler(&rustc_args, &mut MiriCompilerCalls { miri_config }, None, None)
     }).and_then(|result| result);
