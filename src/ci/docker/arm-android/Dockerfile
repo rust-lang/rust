@@ -23,7 +23,7 @@ RUN dpkg --add-architecture i386 && \
 
 COPY scripts/android-sdk.sh /scripts/
 RUN . /scripts/android-sdk.sh && \
-    download_and_create_avd 4333796 armeabi-v7a 18
+    download_and_create_avd 4333796 armeabi-v7a 18 5264690
 
 ENV PATH=$PATH:/android/sdk/emulator
 ENV PATH=$PATH:/android/sdk/tools
