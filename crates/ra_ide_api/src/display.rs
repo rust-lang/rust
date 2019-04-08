@@ -1,5 +1,9 @@
 //! This module contains utilities for turning SyntaxNodes and HIR types
 //! into things that may be used to render in a UI.
+
+mod navigation_target;
+mod structure;
+
 use super::*;
 use std::fmt::{self, Display};
 use join_to_string::join;
@@ -7,11 +11,8 @@ use ra_syntax::{ast::{self, AstNode, NameOwner, VisibilityOwner, TypeParamsOwner
 use std::convert::From;
 use hir::Docs;
 
-pub mod navigation_target;
-pub mod structure;
-
 pub use navigation_target::NavigationTarget;
-pub use structure::StructureNode;
+pub use structure::{StructureNode, file_structure};
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     FunctionSignature::from(node).to_string()

@@ -69,7 +69,7 @@ pub use crate::{
     folding_ranges::{Fold, FoldKind},
     syntax_highlighting::HighlightedRange,
     diagnostics::Severity,
-    display::{FunctionSignature, NavigationTarget, structure::{StructureNode, file_structure}},
+    display::{FunctionSignature, NavigationTarget, StructureNode, file_structure},
 };
 
 pub use ra_db::{
