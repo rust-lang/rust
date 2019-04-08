@@ -548,7 +548,9 @@ macro_rules! static_assert_seq_qualifs {
         static_assert!(SEQ_QUALIFS: QUALIF_COUNT == $i);
     };
 }
-static_assert_seq_qualifs!(0 => HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable);
+static_assert_seq_qualifs!(
+    0 => HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
+);
 
 impl ConstCx<'_, 'tcx> {
     fn qualifs_in_any_value_of_ty(&self, ty: Ty<'tcx>) -> PerQualif<bool> {
@@ -556,7 +558,8 @@ impl ConstCx<'_, 'tcx> {
         qualifs[HasMutInterior] = HasMutInterior::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[NeedsDrop] = NeedsDrop::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[IsNotPromotable] = IsNotPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
+        qualifs[IsNotImplicitlyPromotable] =
+            IsNotImplicitlyPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs
     }
 
