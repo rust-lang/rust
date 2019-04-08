@@ -5,7 +5,7 @@ use rustc::lint::{LateContext, Lint, LintContext};
 use rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart, SuggestionStyle};
 use std::env;
 use syntax::errors::DiagnosticBuilder;
-use syntax::source_map::Span;
+use syntax::source_map::{MultiSpan, Span};
 
 /// Wrapper around `DiagnosticBuilder` that adds a link to Clippy documentation for the emitted lint
 struct DiagnosticWrapper<'a>(DiagnosticBuilder<'a>);
@@ -48,7 +48,7 @@ impl<'a> DiagnosticWrapper<'a> {
 /// 17 |     std::mem::forget(seven);
 ///    |     ^^^^^^^^^^^^^^^^^^^^^^^
 /// ```
-pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: Span, msg: &str) {
+pub fn span_lint<'a, T: LintContext<'a>>(cx: &T, lint: &'static Lint, sp: impl Into<MultiSpan>, msg: &str) {
     DiagnosticWrapper(cx.struct_span_lint(lint, sp, msg)).docs_link(lint);
 }
 
