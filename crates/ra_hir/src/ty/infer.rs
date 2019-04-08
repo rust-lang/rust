@@ -489,8 +489,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Some(ty)
             }
             Resolution::LocalBinding(pat) => {
-                let ty = self.type_of_pat.get(pat)?;
-                let ty = self.resolve_ty_as_possible(&mut vec![], ty.clone());
+                let ty = self.type_of_pat.get(pat)?.clone();
+                let ty = self.resolve_ty_as_possible(&mut vec![], ty);
                 Some(ty)
             }
             Resolution::GenericParam(..) => {
