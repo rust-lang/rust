@@ -910,7 +910,7 @@ where
     /// create such an allocation.
     /// This is essentially `force_to_memplace`.
     ///
-    /// This supports unsized types and returnes the computed size to avoid some
+    /// This supports unsized types and returns the computed size to avoid some
     /// redundant computation when copying; use `force_allocation` for a simpler, sized-only
     /// version.
     pub fn force_allocation_maybe_sized(

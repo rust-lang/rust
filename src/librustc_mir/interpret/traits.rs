@@ -76,7 +76,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
-                // resolve for vtable: insert thims where needed
+                // resolve for vtable: insert shims where needed
                 let substs = self.subst_and_normalize_erasing_regions(substs)?;
                 let instance = ty::Instance::resolve_for_vtable(
                     *self.tcx,
