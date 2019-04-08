@@ -109,16 +109,28 @@ LL |     x.split("/n");
    |             ^^^^ help: try using a char instead: `'/n'`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:48:31
+  --> $DIR/single_char_pattern.rs:44:13
+   |
+LL |     x.split("'");
+   |             ^^^ help: try using a char instead: `'/''`
+
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:45:13
+   |
+LL |     x.split("/'");
+   |             ^^^^ help: try using a char instead: `'/''`
+
+error: single-character string constant used as pattern
+  --> $DIR/single_char_pattern.rs:50:31
    |
 LL |     x.replace(";", ",").split(","); // issue #2978
    |                               ^^^ help: try using a char instead: `','`
 
 error: single-character string constant used as pattern
-  --> $DIR/single_char_pattern.rs:49:19
+  --> $DIR/single_char_pattern.rs:51:19
    |
 LL |     x.starts_with("/x03"); // issue #2996
    |                   ^^^^^^ help: try using a char instead: `'/x03'`
 
-error: aborting due to 20 previous errors
+error: aborting due to 22 previous errors
 

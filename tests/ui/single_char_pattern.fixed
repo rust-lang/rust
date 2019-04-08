@@ -41,6 +41,8 @@ fn main() {
     x.trim_end_matches('x');
     // Make sure we escape characters correctly.
     x.split('\n');
+    x.split('\'');
+    x.split('\'');
 
     let h = HashSet::<String>::new();
     h.contains("X"); // should not warn

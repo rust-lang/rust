@@ -2143,7 +2143,8 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx h
         then {
             let mut applicability = Applicability::MachineApplicable;
             let snip = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
-            let hint = format!("'{}'", &snip[1..snip.len() - 1]);
+            let c = &snip[1..snip.len() - 1];
+            let hint = format!("'{}'", if c == "'" { "\\'" } else { c });
             span_lint_and_sugg(
                 cx,
                 SINGLE_CHAR_PATTERN,
