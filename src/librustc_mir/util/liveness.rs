@@ -55,8 +55,7 @@ pub struct LivenessResult {
 }
 
 /// Computes which local variables are live within the given function
-/// `mir`. The liveness mode `mode` determines what sorts of uses are
-/// considered to make a variable live (e.g., do drops count?).
+/// `mir`, including drops.
 pub fn liveness_of_locals<'tcx>(
     mir: &Mir<'tcx>,
 ) -> LivenessResult {
