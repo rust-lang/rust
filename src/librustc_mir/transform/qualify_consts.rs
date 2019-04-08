@@ -508,13 +508,11 @@ impl Qualif for IsNotConst {
     }
 }
 
-// Refers to temporaries which cannot be promoted as
-// promote_consts decided they weren't simple enough.
-// FIXME(oli-obk,eddyb): Remove this flag entirely and
-// solely process this information via `IsNotConst`.
-struct IsNotPromotable;
+/// Refers to temporaries which cannot be promoted *implicitly*.
+/// Explicit promotion e.g. for constant arguments declared via `rustc_args_required_const`.
+struct IsNotImplicitlyPromotable;
 
-impl Qualif for IsNotPromotable {
+impl Qualif for IsNotImplicitlyPromotable {
     const IDX: usize = 3;
 
     fn in_call(
@@ -550,7 +548,7 @@ macro_rules! static_assert_seq_qualifs {
         static_assert!(SEQ_QUALIFS: QUALIF_COUNT == $i);
     };
 }
-static_assert_seq_qualifs!(0 => HasMutInterior, NeedsDrop, IsNotConst, IsNotPromotable);
+static_assert_seq_qualifs!(0 => HasMutInterior, NeedsDrop, IsNotConst, IsNotImplicitlyPromotable);
 
 impl ConstCx<'_, 'tcx> {
     fn qualifs_in_any_value_of_ty(&self, ty: Ty<'tcx>) -> PerQualif<bool> {
@@ -558,7 +556,7 @@ impl ConstCx<'_, 'tcx> {
         qualifs[HasMutInterior] = HasMutInterior::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[NeedsDrop] = NeedsDrop::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[IsNotConst] = IsNotConst::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
+        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs
     }
 
@@ -567,7 +565,7 @@ impl ConstCx<'_, 'tcx> {
         qualifs[HasMutInterior] = HasMutInterior::in_local(self, local);
         qualifs[NeedsDrop] = NeedsDrop::in_local(self, local);
         qualifs[IsNotConst] = IsNotConst::in_local(self, local);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_local(self, local);
+        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_local(self, local);
         qualifs
     }
 
@@ -576,7 +574,7 @@ impl ConstCx<'_, 'tcx> {
         qualifs[HasMutInterior] = HasMutInterior::in_value(self, source);
         qualifs[NeedsDrop] = NeedsDrop::in_value(self, source);
         qualifs[IsNotConst] = IsNotConst::in_value(self, source);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_value(self, source);
+        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_value(self, source);
         qualifs
     }
 }
