@@ -639,7 +639,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                             per_local.insert(local);
                         }
                     }
-                    cx.per_local[IsNotPromotable].insert(local);
+                    cx.per_local[IsNotConst].insert(local);
                 }
 
                 LocalKind::Var if mode == Mode::Fn => {
@@ -647,7 +647,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 }
 
                 LocalKind::Temp if !temps[local].is_promotable() => {
-                    cx.per_local[IsNotPromotable].insert(local);
+                    cx.per_local[IsNotConst].insert(local);
                 }
 
                 _ => {}
@@ -817,7 +817,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        // Ensure the `IsNotPromotable` qualification is preserved.
+        // Ensure the `IsNotConst` qualification is preserved.
         // NOTE(eddyb) this is actually unnecessary right now, as
         // we never replace the local's qualif, but we might in
         // the future, and so it serves to catch changes that unset
@@ -825,7 +825,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // be replaced with calling `insert` to re-set the bit).
         if kind == LocalKind::Temp {
             if !self.temp_promotion_state[index].is_promotable() {
-                assert!(self.cx.per_local[IsNotPromotable].contains(index));
+                assert!(self.cx.per_local[IsNotConst].contains(index));
             }
         }
     }
