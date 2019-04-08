@@ -1,5 +1,5 @@
-//! This module contains utilities for rendering turning things into something
-//! that may be used to render in UI.
+//! This module contains utilities for turning SyntaxNodes and HIR types
+//! into things that may be used to render in a UI.
 use super::*;
 use std::fmt::{self, Display};
 use join_to_string::join;
@@ -8,8 +8,10 @@ use std::convert::From;
 use hir::Docs;
 
 pub mod navigation_target;
+pub mod structure;
 
 pub use navigation_target::NavigationTarget;
+pub use structure::StructureNode;
 
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     FunctionSignature::from(node).to_string()

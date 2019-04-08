@@ -33,7 +33,6 @@ mod folding_ranges;
 mod line_index;
 mod line_index_utils;
 mod join_lines;
-mod structure;
 mod typing;
 mod matching_brace;
 mod display;
@@ -69,9 +68,8 @@ pub use crate::{
     line_index_utils::translate_offset_with_edit,
     folding_ranges::{Fold, FoldKind},
     syntax_highlighting::HighlightedRange,
-    structure::{StructureNode, file_structure},
     diagnostics::Severity,
-    display::{FunctionSignature, NavigationTarget},
+    display::{FunctionSignature, NavigationTarget, structure::{StructureNode, file_structure}},
 };
 
 pub use ra_db::{
@@ -385,7 +383,7 @@ impl Analysis {
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let file = self.db.parse(file_id);
-        structure::file_structure(&file)
+        file_structure(&file)
     }
 
     /// Returns the set of folding ranges.
