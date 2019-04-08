@@ -264,9 +264,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 trace!("Frame {}", i);
                 trace!("    return: {:#?}", frame.return_place);
                 for (i, local) in frame.locals.iter().enumerate() {
-                    if let Ok(local) = local.access() {
-                        trace!("    local {}: {:?}", i, local);
-                    }
+                    trace!("    local {}: {:?}", i, local.value);
                 }
             }
         }
