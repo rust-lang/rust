@@ -509,7 +509,10 @@ impl Qualif for IsNotPromotable {
 }
 
 /// Refers to temporaries which cannot be promoted *implicitly*.
-/// Explicit promotion e.g. for constant arguments declared via `rustc_args_required_const`.
+/// Explicit promotion e.g. for constant arguments declared via `rustc_args_required_const` or by
+/// happening inside a constant, static or const fn. Inside a const context all constness rules
+/// apply, so implicit promotion simply has to follow the regular constant rules (modulo interior
+/// mutability or `Drop` rules which are handled `HasMutInterior` and `NeedsDrop` respectively)
 struct IsNotImplicitlyPromotable;
 
 impl Qualif for IsNotImplicitlyPromotable {
