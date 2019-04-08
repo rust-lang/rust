@@ -363,13 +363,13 @@ impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalState<'tcx>
     type Item = LocalValue<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let LocalState { state, layout: _ } = self;
-        state.snapshot(ctx)
+        let LocalState { value, layout: _ } = self;
+        value.snapshot(ctx)
     }
 }
 
 impl_stable_hash_for!(struct LocalState<'tcx> {
-    state,
+    value,
     layout -> _,
 });
 

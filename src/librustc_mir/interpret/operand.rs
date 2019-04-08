@@ -459,8 +459,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         assert_ne!(local, mir::RETURN_PLACE);
-        let op = *frame.locals[local].access()?;
         let layout = self.layout_of_local(frame, local, layout)?;
+        let op = if layout.is_zst() {
+            // Do not read from ZST, they might not be initialized
+            Operand::Immediate(Immediate::Scalar(Scalar::zst().into()))
+        } else {
+            frame.locals[local].access()?
+        };
         Ok(OpTy { op, layout })
     }
 
@@ -475,7 +480,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 Operand::Indirect(mplace)
             }
             Place::Local { frame, local } =>
-                *self.stack[frame].locals[local].access()?
+                *self.access_local(&self.stack[frame], local, None)?
         };
         Ok(OpTy { op, layout: place.layout })
     }
