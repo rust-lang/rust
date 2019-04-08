@@ -2,7 +2,7 @@ error[E0599]: no method named `deref_err` found for type `std::result::Result<_,
   --> $DIR/result-deref-err.rs:4:28
    |
 LL |     let _result = &Err(41).deref_err();
-   |                            ^^^^^^^^^ help: did you mean: `deref_ok`
+   |                            ^^^^^^^^^ help: there is a method with a similar name: `deref_ok`
    |
    = note: the method `deref_err` exists but the following trait bounds were not satisfied:
            `{integer} : std::ops::Deref`

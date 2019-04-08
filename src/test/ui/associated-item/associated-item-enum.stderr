@@ -1,0 +1,36 @@
+error[E0599]: no variant or associated item named `mispellable` found for type `Enum` in the current scope
+  --> $DIR/associated-item-enum.rs:17:11
+   |
+LL | enum Enum { Variant }
+   | --------- variant or associated item `mispellable` not found here
+...
+LL |     Enum::mispellable();
+   |           ^^^^^^^^^^^
+   |           |
+   |           variant or associated item not found in `Enum`
+   |           help: there is a method with a similar name: `misspellable`
+
+error[E0599]: no variant or associated item named `mispellable_trait` found for type `Enum` in the current scope
+  --> $DIR/associated-item-enum.rs:18:11
+   |
+LL | enum Enum { Variant }
+   | --------- variant or associated item `mispellable_trait` not found here
+...
+LL |     Enum::mispellable_trait();
+   |           ^^^^^^^^^^^^^^^^^ variant or associated item not found in `Enum`
+
+error[E0599]: no variant or associated item named `MISPELLABLE` found for type `Enum` in the current scope
+  --> $DIR/associated-item-enum.rs:19:11
+   |
+LL | enum Enum { Variant }
+   | --------- variant or associated item `MISPELLABLE` not found here
+...
+LL |     Enum::MISPELLABLE;
+   |           ^^^^^^^^^^^
+   |           |
+   |           variant or associated item not found in `Enum`
+   |           help: there is an associated constant with a similar name: `MISSPELLABLE`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

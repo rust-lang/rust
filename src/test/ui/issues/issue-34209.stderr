@@ -1,8 +1,11 @@
-error: no variant `B` on enum `S`
-  --> $DIR/issue-34209.rs:7:9
+error: no variant `B` in enum `S`
+  --> $DIR/issue-34209.rs:7:12
    |
-LL |         S::B { } => { },
-   |         ^^^^ help: did you mean: `S::A`
+LL | enum S {
+   | ------ variant `B` not found here
+...
+LL |         S::B {} => {},
+   |            ^ help: there is a variant with a similar name: `A`
 
 error: aborting due to previous error
 

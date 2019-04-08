@@ -1,14 +1,14 @@
-error[E0599]: no variant named `Baz` found for type `Foo` in the current scope
-  --> $DIR/issue-28971.rs:9:18
+error[E0599]: no variant or associated item named `Baz` found for type `Foo` in the current scope
+  --> $DIR/issue-28971.rs:7:18
    |
 LL | enum Foo {
-   | -------- variant `Baz` not found here
+   | -------- variant or associated item `Baz` not found here
 ...
 LL |             Foo::Baz(..) => (),
    |                  ^^^
    |                  |
-   |                  variant not found in `Foo`
-   |                  help: did you mean: `Bar`
+   |                  variant or associated item not found in `Foo`
+   |                  help: there is a variant with a similar name: `Bar`
 
 error: aborting due to previous error
 
