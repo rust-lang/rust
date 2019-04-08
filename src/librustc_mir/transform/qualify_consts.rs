@@ -631,26 +631,21 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         };
 
         for (local, decl) in mir.local_decls.iter_enumerated() {
-            match mir.local_kind(local) {
-                LocalKind::Arg => {
-                    let qualifs = cx.qualifs_in_any_value_of_ty(decl.ty);
-                    for (per_local, qualif) in &mut cx.per_local.as_mut().zip(qualifs).0 {
-                        if *qualif {
-                            per_local.insert(local);
-                        }
+            if let LocalKind::Arg = mir.local_kind(local) {
+                let qualifs = cx.qualifs_in_any_value_of_ty(decl.ty);
+                for (per_local, qualif) in &mut cx.per_local.as_mut().zip(qualifs).0 {
+                    if *qualif {
+                        per_local.insert(local);
                     }
-                    cx.per_local[IsNotConst].insert(local);
                 }
-
-                LocalKind::Var if mode == Mode::Fn => {
-                    cx.per_local[IsNotConst].insert(local);
-                }
-
-                LocalKind::Temp if !temps[local].is_promotable() => {
-                    cx.per_local[IsNotConst].insert(local);
-                }
-
-                _ => {}
+            }
+            if !temps[local].is_promotable() {
+                cx.per_local[IsNotConst].insert(local);
+            }
+            if let LocalKind::Var = mir.local_kind(local) {
+                // Sanity check to prevent implicit and explicit promotion of
+                // named locals
+                assert!(cx.per_local[IsNotConst].contains(local));
             }
         }
 
