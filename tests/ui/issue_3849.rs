@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(clippy::zero_ptr)]
 #![allow(clippy::transmute_ptr_to_ref)]
+#![allow(clippy::transmuting_null)]
 
 pub const ZPTR: *const usize = 0 as *const _;
 
