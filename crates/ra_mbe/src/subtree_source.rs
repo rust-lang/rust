@@ -237,34 +237,13 @@ pub(crate) trait Querier {
 pub(crate) struct WalkerOwner<'a> {
     walker: RefCell<SubTreeWalker<'a>>,
     offset: usize,
-    temp: RefCell<std::collections::HashMap<usize, Option<TtToken>>>,
 }
 
 impl<'a> WalkerOwner<'a> {
     fn token_idx<'b>(&self, pos: usize) -> Option<TtToken> {
         self.set_walker_pos(pos);
         let walker = self.walker.borrow();
-        let r = walker.current().cloned();
-
-        if walker.subtree.token_trees.len() == 1 {
-            if let tt::TokenTree::Leaf(_) = &walker.subtree.token_trees[0] {
-                let mut temp = self.temp.borrow_mut();
-
-                if r.is_none() {
-                    if let Some(Some(p)) = temp.get(&pos) {
-                        unreachable!(
-                            "nWWWWWWWWWWWW~~~~~~~~~~~~~~,\n{:#?}\n{:#?}\n{:#?}",
-                            pos, p, self
-                        );
-                    }
-                }
-
-                // eprintln!("===>{:#?}\n{:#?}\n{:#?}", pos, r, self);
-                temp.insert(pos, r.clone());
-            }
-        }
-
-        r
+        walker.current().cloned()
     }
 
     fn start_from_nth(&mut self, pos: usize) {
@@ -275,21 +254,16 @@ impl<'a> WalkerOwner<'a> {
     fn set_walker_pos(&self, mut pos: usize) {
         pos += self.offset;
         let mut walker = self.walker.borrow_mut();
-        while pos > walker.pos {
+        while pos > walker.pos && walker.idx != WalkIndex::Eof {
             walker.forward();
         }
         while pos < walker.pos {
             walker.backward();
         }
-        assert!(pos == walker.pos);
     }
 
     fn new(subtree: &'a tt::Subtree) -> Self {
-        WalkerOwner {
-            walker: RefCell::new(SubTreeWalker::new(subtree)),
-            offset: 0,
-            temp: RefCell::new(Default::default()),
-        }
+        WalkerOwner { walker: RefCell::new(SubTreeWalker::new(subtree)), offset: 0 }
     }
 
     fn collect_token_tree(&mut self, n: usize) -> Vec<&tt::TokenTree> {
@@ -501,7 +475,7 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
 }
 
 fn convert_punct(p: &tt::Punct, parent: &tt::Subtree, next: usize) -> TtToken {
-    let iter = parent.token_trees[next..].iter();
+    let iter = parent.token_trees[next + 1..].iter();
     let mut peek = TokenPeek::new(iter);
 
     if let Some((kind, is_joint_to_next, text, size)) = convert_multi_char_punct(p, &mut peek) {
