@@ -101,7 +101,6 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
         if *temp == TempState::Undefined {
             match context {
                 PlaceContext::MutatingUse(MutatingUseContext::Store) |
-                PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
                 PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                     *temp = TempState::Defined {
                         location,
