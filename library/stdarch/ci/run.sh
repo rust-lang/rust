@@ -23,6 +23,10 @@ case ${TARGET} in
     i686-* | i586-*)
         export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static -Z plt=yes"
         ;;
+    #Unoptimized build uses fast-isel which breaks with msa
+    mips-* | mipsel-*)
+	export RUSTFLAGS="${RUSTFLAGS} -C llvm-args=-fast-isel=false"
+	;;
 esac
 
 echo "RUSTFLAGS=${RUSTFLAGS}"
@@ -75,6 +79,12 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128,+unimplemented-simd128"
         cargo_test "--release --no-run"
         ;;
+    mips-*gnu* | mipsel-*gnu*)
+	export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa,+fp64,+mips32r5"
+	;;
+    mips64*)
+	export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa"
+	;;
     *)
         ;;
 
