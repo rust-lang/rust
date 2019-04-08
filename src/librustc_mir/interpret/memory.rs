@@ -448,7 +448,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                         "allocation missing in dead_alloc_map"
                     ))
                 },
-                _ => err!(DanglingPointerDeref),
+                InboundsCheck::Live => err!(DanglingPointerDeref),
             },
         }
     }
