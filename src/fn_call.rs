@@ -93,6 +93,21 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
                 }
             }
+            "calloc" => {
+                let items = this.read_scalar(args[0])?.to_usize(this)?;
+                let len = this.read_scalar(args[1])?.to_usize(this)?;
+                let bytes = items.checked_mul(len).ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
+
+                if bytes == 0 {
+                    this.write_null(dest)?;
+                } else {
+                    let size = Size::from_bytes(bytes);
+                    let align = this.tcx.data_layout.pointer_align.abi;
+                    let ptr = this.memory_mut().allocate(size, align, MiriMemoryKind::C.into()).with_default_tag();
+                    this.memory_mut().get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, size)?;
+                    this.write_scalar(Scalar::Ptr(ptr), dest)?;
+                }
+            }
             "posix_memalign" => {
                 let ret = this.deref_operand(args[0])?;
                 let align = this.read_scalar(args[1])?.to_usize(this)?;
