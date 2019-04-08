@@ -13,12 +13,10 @@ mod complete_scope;
 mod complete_postfix;
 
 use ra_db::SourceDatabase;
-use ra_syntax::{ast::{self, AstNode}, SyntaxKind::{ATTR, COMMENT}};
 
 use crate::{
     db,
     FilePosition,
-    FunctionSignature,
     completion::{
         completion_item::{Completions, CompletionKind},
         completion_context::CompletionContext,
@@ -70,30 +68,4 @@ pub(crate) fn completions(db: &db::RootDatabase, position: FilePosition) -> Opti
     complete_pattern::complete_pattern(&mut acc, &ctx);
     complete_postfix::complete_postfix(&mut acc, &ctx);
     Some(acc)
-}
-
-pub fn function_label(node: &ast::FnDef) -> Option<String> {
-    Some(FunctionSignature::from(node).to_string())
-}
-
-pub fn const_label(node: &ast::ConstDef) -> String {
-    let label: String = node
-        .syntax()
-        .children_with_tokens()
-        .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR))
-        .map(|node| node.to_string())
-        .collect();
-
-    label.trim().to_owned()
-}
-
-pub fn type_label(node: &ast::TypeAliasDef) -> String {
-    let label: String = node
-        .syntax()
-        .children_with_tokens()
-        .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR))
-        .map(|node| node.to_string())
-        .collect();
-
-    label.trim().to_owned()
 }

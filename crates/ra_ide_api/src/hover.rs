@@ -235,7 +235,7 @@ impl NavigationTarget {
         }
 
         visitor()
-            .visit(crate::completion::function_label)
+            .visit(|node: &ast::FnDef| Some(crate::display::function_label(node)))
             .visit(|node: &ast::StructDef| visit_node(node, "struct "))
             .visit(|node: &ast::EnumDef| visit_node(node, "enum "))
             .visit(|node: &ast::TraitDef| visit_node(node, "trait "))

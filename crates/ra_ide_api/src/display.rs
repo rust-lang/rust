@@ -3,9 +3,35 @@
 use super::*;
 use std::fmt::{self, Display};
 use join_to_string::join;
-use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner, TypeParamsOwner};
+use ra_syntax::{ast::{self, AstNode, NameOwner, VisibilityOwner, TypeParamsOwner}, SyntaxKind::{ATTR, COMMENT}};
 use std::convert::From;
 use hir::Docs;
+
+pub(crate) fn function_label(node: &ast::FnDef) -> String {
+    FunctionSignature::from(node).to_string()
+}
+
+pub(crate) fn const_label(node: &ast::ConstDef) -> String {
+    let label: String = node
+        .syntax()
+        .children_with_tokens()
+        .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR))
+        .map(|node| node.to_string())
+        .collect();
+
+    label.trim().to_owned()
+}
+
+pub(crate) fn type_label(node: &ast::TypeAliasDef) -> String {
+    let label: String = node
+        .syntax()
+        .children_with_tokens()
+        .filter(|child| !(child.kind() == COMMENT || child.kind() == ATTR))
+        .map(|node| node.to_string())
+        .collect();
+
+    label.trim().to_owned()
+}
 
 /// Contains information about a function signature
 #[derive(Debug)]
