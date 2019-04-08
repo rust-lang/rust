@@ -18,6 +18,15 @@ enum WalkIndex {
     Eof,
 }
 
+#[derive(Debug)]
+struct SubTreeWalker<'a> {
+    pos: usize,
+    stack: Vec<(&'a tt::Subtree, Option<usize>)>,
+    idx: WalkIndex,
+    last_steps: Vec<usize>,
+    subtree: &'a tt::Subtree,
+}
+
 impl<'a> SubTreeWalker<'a> {
     fn new(subtree: &tt::Subtree) -> SubTreeWalker {
         let mut res = SubTreeWalker {
@@ -84,6 +93,13 @@ impl<'a> SubTreeWalker<'a> {
                 break;
             }
         }
+
+        // Move forward a little bit
+        if self.last_steps.is_empty() {
+            while self.is_empty_delimiter() {
+                self.forward_unchecked();
+            }
+        }
     }
 
     fn backward_unchecked(&mut self) {
@@ -133,6 +149,10 @@ impl<'a> SubTreeWalker<'a> {
     }
 
     fn forward(&mut self) {
+        if self.idx == WalkIndex::Eof {
+            return;
+        }
+
         self.pos += 1;
         loop {
             self.forward_unchecked();
@@ -213,15 +233,38 @@ pub(crate) trait Querier {
 }
 
 // A wrapper class for ref cell
+#[derive(Debug)]
 pub(crate) struct WalkerOwner<'a> {
     walker: RefCell<SubTreeWalker<'a>>,
     offset: usize,
+    temp: RefCell<std::collections::HashMap<usize, Option<TtToken>>>,
 }
 
 impl<'a> WalkerOwner<'a> {
     fn token_idx<'b>(&self, pos: usize) -> Option<TtToken> {
         self.set_walker_pos(pos);
-        self.walker.borrow().current().cloned()
+        let walker = self.walker.borrow();
+        let r = walker.current().cloned();
+
+        if walker.subtree.token_trees.len() == 1 {
+            if let tt::TokenTree::Leaf(_) = &walker.subtree.token_trees[0] {
+                let mut temp = self.temp.borrow_mut();
+
+                if r.is_none() {
+                    if let Some(Some(p)) = temp.get(&pos) {
+                        unreachable!(
+                            "nWWWWWWWWWWWW~~~~~~~~~~~~~~,\n{:#?}\n{:#?}\n{:#?}",
+                            pos, p, self
+                        );
+                    }
+                }
+
+                // eprintln!("===>{:#?}\n{:#?}\n{:#?}", pos, r, self);
+                temp.insert(pos, r.clone());
+            }
+        }
+
+        r
     }
 
     fn start_from_nth(&mut self, pos: usize) {
@@ -242,7 +285,11 @@ impl<'a> WalkerOwner<'a> {
     }
 
     fn new(subtree: &'a tt::Subtree) -> Self {
-        WalkerOwner { walker: RefCell::new(SubTreeWalker::new(subtree)), offset: 0 }
+        WalkerOwner {
+            walker: RefCell::new(SubTreeWalker::new(subtree)),
+            offset: 0,
+            temp: RefCell::new(Default::default()),
+        }
     }
 
     fn collect_token_tree(&mut self, n: usize) -> Vec<&tt::TokenTree> {
@@ -423,14 +470,6 @@ where
     }
 
     None
-}
-
-struct SubTreeWalker<'a> {
-    pos: usize,
-    stack: Vec<(&'a tt::Subtree, Option<usize>)>,
-    idx: WalkIndex,
-    last_steps: Vec<usize>,
-    subtree: &'a tt::Subtree,
 }
 
 fn convert_delim(d: tt::Delimiter, closing: bool) -> Option<TtToken> {
