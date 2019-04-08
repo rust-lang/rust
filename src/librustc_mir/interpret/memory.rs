@@ -20,7 +20,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     EvalResult, Scalar, InterpError, AllocKind, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg,
+    Machine, AllocMap, MayLeak, ErrorHandled, CheckInAllocMsg, InboundsCheck,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -252,7 +252,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
-                let align = self.check_bounds_ptr(ptr, CheckInAllocMsg::NullPointer)?;
+                let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead, CheckInAllocMsg::NullPointer)?;
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
@@ -292,9 +292,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn check_bounds_ptr(
         &self,
         ptr: Pointer<M::PointerTag>,
+        liveness: InboundsCheck,
         msg: CheckInAllocMsg,
     ) -> EvalResult<'tcx, Align> {
-        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, msg)?;
+        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id, liveness)?;
         ptr.check_in_alloc(allocation_size, msg)?;
         Ok(align)
     }
@@ -419,11 +420,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// Obtain the size and alignment of an allocation, even if that allocation has been deallocated
     ///
-    /// If `liveness` is `InboundsCheck::Dead`, this function always returns `Ok`
+    /// If `liveness` is `InboundsCheck::MaybeDead`, this function always returns `Ok`
     pub fn get_size_and_align(
         &self,
         id: AllocId,
-        msg: CheckInAllocMsg,
+        liveness: InboundsCheck,
     ) -> EvalResult<'static, (Size, Align)> {
         if let Ok(alloc) = self.get(id) {
             return Ok((Size::from_bytes(alloc.bytes.len() as u64), alloc.align));
@@ -439,8 +440,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
                 Ok((layout.size, layout.align.abi))
             }
-            _ => match msg {
-                CheckInAllocMsg::NullPointer | CheckInAllocMsg::OutOfBounds => {
+            _ => match liveness {
+                InboundsCheck::MaybeDead => {
                     // Must be a deallocated pointer
                     Ok(*self.dead_alloc_map.get(&id).expect(
                         "allocation missing in dead_alloc_map"

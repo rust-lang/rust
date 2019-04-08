@@ -9,7 +9,7 @@ use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerEx
 use rustc::mir::interpret::{
     GlobalId, AllocId, CheckInAllocMsg,
     ConstValue, Pointer, Scalar,
-    EvalResult, InterpError,
+    EvalResult, InterpError, InboundsCheck,
     sign_extend, truncate,
 };
 use super::{
@@ -667,7 +667,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
-                            self.memory.check_bounds_ptr(ptr,
+                            self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead,
                                                          CheckInAllocMsg::OutOfBounds).is_ok();
                         if !ptr_valid {
                             return err!(InvalidDiscriminant(raw_discr.erase_tag()));
