@@ -692,8 +692,8 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         PassMode::NoPass => {}
         PassMode::ByVal(_) => {
             if let Some(ret_place) = ret_place {
-                let results = fx.bcx.inst_results(call_inst);
-                ret_place.write_cvalue(fx, CValue::ByVal(results[0], ret_layout));
+                let ret_val = fx.bcx.inst_results(call_inst)[0];
+                ret_place.write_cvalue(fx, CValue::ByVal(ret_val, ret_layout));
             }
         }
         PassMode::ByRef => {}
