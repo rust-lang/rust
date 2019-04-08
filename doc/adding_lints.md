@@ -116,7 +116,7 @@ where all the lint code is. We are going to call the file
 
 ```rust
 use rustc::lint::{LintArray, LintPass, EarlyLintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 ```
 
 The next step is to provide a lint declaration. Lints are declared using the
@@ -147,22 +147,9 @@ lint pass:
 
 // .. imports and lint declaration ..
 
-#[derive(Copy, Clone)]
-pub struct FooFunctionsPass;
+declare_lint_pass!(FooFunctions => [FOO_FUNCTIONS]);
 
-impl LintPass for FooFunctionsPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            FOO_FUNCTIONS,
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "FooFunctions"
-    }
-}
-
-impl EarlyLintPass for FooFunctionsPass {}
+impl EarlyLintPass for FooFunctions {}
 ```
 
 Don't worry about the `name` method here. As long as it includes the name of the
@@ -176,7 +163,7 @@ will have to register our lint pass manually in the `register_plugins` function
 in `clippy_lints/src/lib.rs`:
 
 ```rust
-reg.register_early_lint_pass(box foo_functions::FooFunctionsPass);
+reg.register_early_lint_pass(box foo_functions::FooFunctions);
 ```
 
 This should fix the `unknown clippy lint: clippy::foo_functions` error that we
@@ -211,10 +198,10 @@ use rustc::{declare_tool_lint, lint_array};
 With UI tests and the lint declaration in place, we can start working on the
 implementation of the lint logic.
 
-Let's start by implementing the `EarlyLintPass` for our `FooFunctionsPass`:
+Let's start by implementing the `EarlyLintPass` for our `FooFunctions`:
 
 ```rust
-impl EarlyLintPass for FooFunctionsPass {
+impl EarlyLintPass for FooFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
         // TODO: Emit lint here
     }
@@ -236,7 +223,7 @@ provide an extra help message and we can't really suggest a better name
 automatically. This is how it looks:
 
 ```rust
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for FooFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, _: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
         span_help_and_lint(
             cx,
@@ -263,7 +250,7 @@ Both provide access to the name of the function/method via an [`Ident`][ident].
 With that we can expand our `check_fn` method to:
 
 ```rust
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for FooFunctions {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, fn_kind: FnKind<'_>, _: &FnDecl, span: Span, _: NodeId) {
         if is_foo_fn(fn_kind) {
             span_help_and_lint(
@@ -303,16 +290,6 @@ running `cargo test` should produce the expected output. Remember to run
 
 `cargo test` (as opposed to `cargo uitest`) will also ensure that our lint
 implementation is not violating any Clippy lints itself.
-
-If you are still following the example, you will see that `FooFunctionsPass`
-violates a Clippy lint. So we are going to rename that struct to just `Pass`:
-
-```rust
-#[derive(Copy, Clone)]
-pub struct Pass;
-
-impl LintPass for Pass { /* .. */ }
-```
 
 That should be it for the lint implementation. Running `cargo test` should now
 pass.
