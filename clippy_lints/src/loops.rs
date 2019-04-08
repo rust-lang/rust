@@ -777,7 +777,7 @@ fn check_for_loop<'a, 'tcx>(
     check_for_loop_range(cx, pat, arg, body, expr);
     check_for_loop_reverse_range(cx, arg, expr);
     check_for_loop_arg(cx, pat, arg, expr);
-    check_for_loop_explicit_counter(cx, arg, body, expr);
+    check_for_loop_explicit_counter(cx, pat, arg, body, expr);
     check_for_loop_over_map_kv(cx, pat, arg, body, expr);
     check_for_mut_range_bound(cx, arg, body);
     detect_manual_memcpy(cx, pat, arg, body, expr);
@@ -1453,6 +1453,7 @@ fn check_arg_type(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr) {
 
 fn check_for_loop_explicit_counter<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
+    pat: &'tcx Pat,
     arg: &'tcx Expr,
     body: &'tcx Expr,
     expr: &'tcx Expr,
@@ -1489,16 +1490,31 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
 
                 if visitor2.state == VarState::Warn {
                     if let Some(name) = visitor2.name {
-                        span_lint(
+                        let mut applicability = Applicability::MachineApplicable;
+                        span_lint_and_sugg(
                             cx,
                             EXPLICIT_COUNTER_LOOP,
                             expr.span,
-                            &format!(
-                                "the variable `{0}` is used as a loop counter. Consider using `for ({0}, \
-                                 item) in {1}.enumerate()` or similar iterators",
+                            &format!("the variable `{}` is used as a loop counter.", name),
+                            "consider using",
+                            format!(
+                                "for ({}, {}) in {}.enumerate()",
                                 name,
-                                snippet(cx, arg.span, "_")
+                                snippet_with_applicability(cx, pat.span, "item", &mut applicability),
+                                if higher::range(cx, arg).is_some() {
+                                    format!(
+                                        "({})",
+                                        snippet_with_applicability(cx, arg.span, "_", &mut applicability)
+                                    )
+                                } else {
+                                    format!(
+                                        "{}",
+                                        sugg::Sugg::hir_with_applicability(cx, arg, "_", &mut applicability)
+                                            .maybe_par()
+                                    )
+                                }
                             ),
+                            applicability,
                         );
                     }
                 }

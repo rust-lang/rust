@@ -1,28 +1,34 @@
-error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
+error: the variable `_index` is used as a loop counter.
   --> $DIR/explicit_counter_loop.rs:6:15
    |
 LL |     for _v in &vec {
-   |               ^^^^
+   |               ^^^^ help: consider using: `for (_index, _v) in (&vec).enumerate()`
    |
    = note: `-D clippy::explicit-counter-loop` implied by `-D warnings`
 
-error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
+error: the variable `_index` is used as a loop counter.
   --> $DIR/explicit_counter_loop.rs:12:15
    |
 LL |     for _v in &vec {
-   |               ^^^^
+   |               ^^^^ help: consider using: `for (_index, _v) in (&vec).enumerate()`
 
-error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
+error: the variable `count` is used as a loop counter.
   --> $DIR/explicit_counter_loop.rs:51:19
    |
 LL |         for ch in text.chars() {
-   |                   ^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
 
-error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
+error: the variable `count` is used as a loop counter.
   --> $DIR/explicit_counter_loop.rs:62:19
    |
 LL |         for ch in text.chars() {
-   |                   ^^^^^^^^^^^^
+   |                   ^^^^^^^^^^^^ help: consider using: `for (count, ch) in text.chars().enumerate()`
 
-error: aborting due to 4 previous errors
+error: the variable `count` is used as a loop counter.
+  --> $DIR/explicit_counter_loop.rs:120:19
+   |
+LL |         for _i in 3..10 {
+   |                   ^^^^^ help: consider using: `for (count, _i) in (3..10).enumerate()`
+
+error: aborting due to 5 previous errors
 

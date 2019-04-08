@@ -113,3 +113,12 @@ mod issue_3308 {
         }
     }
 }
+
+mod issue_1670 {
+    pub fn test() {
+        let mut count = 0;
+        for _i in 3..10 {
+            count += 1;
+        }
+    }
+}
