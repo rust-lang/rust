@@ -15,7 +15,7 @@ use rowan::TransparentNewType;
 
 use crate::{
     SyntaxNode, SyntaxKind::*,
-    syntax_node::{RaTypes, TreeArc},
+    syntax_node::{TreeArc},
     ast::{self, AstNode},
 };
 {% for node, methods in ast %}
@@ -28,7 +28,7 @@ pub struct {{ node }} {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for {{ node }} {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,7 +81,7 @@ pub struct {{ node }} {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for {{ node }} {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for {{ node }} {

@@ -7,6 +7,7 @@ use super::SyntaxInfo;
 
 /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT_DEF`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[repr(u16)]
 pub enum SyntaxKind {
     // Technical SyntaxKinds: they appear temporally during parsing,
     // but never end up in the final tree
@@ -230,8 +231,24 @@ pub enum SyntaxKind {
     ARG_LIST,
     TYPE_BOUND,
     TYPE_BOUND_LIST,
+    // Technical kind so that we can cast from u16 safely
+    #[doc(hidden)]
+    __LAST,
 }
 use self::SyntaxKind::*;
+
+impl From<u16> for SyntaxKind {
+    fn from(d: u16) -> SyntaxKind {
+        assert!(d <= (__LAST as u16));
+        unsafe { std::mem::transmute::<u16, SyntaxKind>(d) }
+    }
+}
+
+impl From<SyntaxKind> for u16 {
+    fn from(k: SyntaxKind) -> u16 {
+        k as u16
+    }
+}
 
 impl SyntaxKind {
     pub fn is_keyword(self) -> bool {
@@ -573,6 +590,7 @@ impl SyntaxKind {
             TYPE_BOUND_LIST => &SyntaxInfo { name: "TYPE_BOUND_LIST" },
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },
+            __LAST => &SyntaxInfo { name: "__LAST" },
         }
     }
     pub fn from_keyword(ident: &str) -> Option<SyntaxKind> {

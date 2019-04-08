@@ -13,7 +13,7 @@ use rowan::TransparentNewType;
 
 use crate::{
     SyntaxNode, SyntaxKind::*,
-    syntax_node::{RaTypes, TreeArc},
+    syntax_node::{TreeArc},
     ast::{self, AstNode},
 };
 
@@ -24,7 +24,7 @@ pub struct Alias {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Alias {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Alias {
@@ -53,7 +53,7 @@ pub struct ArgList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ArgList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ArgList {
@@ -85,7 +85,7 @@ pub struct ArrayExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ArrayExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ArrayExpr {
@@ -117,7 +117,7 @@ pub struct ArrayType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ArrayType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ArrayType {
@@ -153,7 +153,7 @@ pub struct AssocTypeArg {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for AssocTypeArg {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for AssocTypeArg {
@@ -189,7 +189,7 @@ pub struct Attr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Attr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Attr {
@@ -221,7 +221,7 @@ pub struct BinExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for BinExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for BinExpr {
@@ -249,7 +249,7 @@ pub struct BindPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for BindPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for BindPat {
@@ -282,7 +282,7 @@ pub struct Block {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Block {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Block {
@@ -319,7 +319,7 @@ pub struct BlockExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for BlockExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for BlockExpr {
@@ -351,7 +351,7 @@ pub struct BreakExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for BreakExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for BreakExpr {
@@ -383,7 +383,7 @@ pub struct CallExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for CallExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for CallExpr {
@@ -416,7 +416,7 @@ pub struct CastExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for CastExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for CastExpr {
@@ -452,7 +452,7 @@ pub struct Condition {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Condition {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Condition {
@@ -488,7 +488,7 @@ pub struct ConstDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ConstDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ConstDef {
@@ -526,7 +526,7 @@ pub struct ContinueExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ContinueExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ContinueExpr {
@@ -554,7 +554,7 @@ pub struct DynTraitType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for DynTraitType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for DynTraitType {
@@ -583,7 +583,7 @@ pub struct EnumDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for EnumDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for EnumDef {
@@ -620,7 +620,7 @@ pub struct EnumVariant {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for EnumVariant {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for EnumVariant {
@@ -655,7 +655,7 @@ pub struct EnumVariantList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for EnumVariantList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for EnumVariantList {
@@ -687,7 +687,7 @@ pub struct Expr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Expr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -950,7 +950,7 @@ pub struct ExprStmt {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ExprStmt {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ExprStmt {
@@ -982,7 +982,7 @@ pub struct ExternCrateItem {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ExternCrateItem {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ExternCrateItem {
@@ -1018,7 +1018,7 @@ pub struct FieldExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for FieldExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for FieldExpr {
@@ -1054,7 +1054,7 @@ pub struct FieldPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for FieldPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for FieldPat {
@@ -1087,7 +1087,7 @@ pub struct FieldPatList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for FieldPatList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for FieldPatList {
@@ -1123,7 +1123,7 @@ pub struct FnDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for FnDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for FnDef {
@@ -1168,7 +1168,7 @@ pub struct FnPointerType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for FnPointerType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for FnPointerType {
@@ -1204,7 +1204,7 @@ pub struct ForExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ForExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ForExpr {
@@ -1241,7 +1241,7 @@ pub struct ForType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ForType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ForType {
@@ -1273,7 +1273,7 @@ pub struct IfExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for IfExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for IfExpr {
@@ -1305,7 +1305,7 @@ pub struct ImplBlock {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ImplBlock {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ImplBlock {
@@ -1338,7 +1338,7 @@ pub struct ImplItem {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ImplItem {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1401,7 +1401,7 @@ pub struct ImplTraitType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ImplTraitType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ImplTraitType {
@@ -1430,7 +1430,7 @@ pub struct IndexExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for IndexExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for IndexExpr {
@@ -1458,7 +1458,7 @@ pub struct ItemList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ItemList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ItemList {
@@ -1492,7 +1492,7 @@ pub struct Label {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Label {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Label {
@@ -1520,7 +1520,7 @@ pub struct LambdaExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for LambdaExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for LambdaExpr {
@@ -1556,7 +1556,7 @@ pub struct LetStmt {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for LetStmt {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for LetStmt {
@@ -1593,7 +1593,7 @@ pub struct LifetimeArg {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for LifetimeArg {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for LifetimeArg {
@@ -1621,7 +1621,7 @@ pub struct LifetimeParam {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for LifetimeParam {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for LifetimeParam {
@@ -1650,7 +1650,7 @@ pub struct Literal {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Literal {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Literal {
@@ -1678,7 +1678,7 @@ pub struct LiteralPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for LiteralPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for LiteralPat {
@@ -1710,7 +1710,7 @@ pub struct LoopExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for LoopExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for LoopExpr {
@@ -1739,7 +1739,7 @@ pub struct MacroCall {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for MacroCall {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for MacroCall {
@@ -1777,7 +1777,7 @@ pub struct MatchArm {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for MatchArm {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for MatchArm {
@@ -1818,7 +1818,7 @@ pub struct MatchArmList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for MatchArmList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for MatchArmList {
@@ -1851,7 +1851,7 @@ pub struct MatchExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for MatchExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for MatchExpr {
@@ -1887,7 +1887,7 @@ pub struct MatchGuard {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for MatchGuard {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for MatchGuard {
@@ -1919,7 +1919,7 @@ pub struct MethodCallExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for MethodCallExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for MethodCallExpr {
@@ -1960,7 +1960,7 @@ pub struct Module {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Module {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Module {
@@ -1996,7 +1996,7 @@ pub struct ModuleItem {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ModuleItem {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2123,7 +2123,7 @@ pub struct Name {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Name {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Name {
@@ -2151,7 +2151,7 @@ pub struct NameRef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for NameRef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for NameRef {
@@ -2179,7 +2179,7 @@ pub struct NamedField {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for NamedField {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for NamedField {
@@ -2215,7 +2215,7 @@ pub struct NamedFieldDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for NamedFieldDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for NamedFieldDef {
@@ -2248,7 +2248,7 @@ pub struct NamedFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for NamedFieldDefList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for NamedFieldDefList {
@@ -2280,7 +2280,7 @@ pub struct NamedFieldList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for NamedFieldList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for NamedFieldList {
@@ -2312,7 +2312,7 @@ pub struct NeverType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for NeverType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for NeverType {
@@ -2340,7 +2340,7 @@ pub struct NominalDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for NominalDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2398,7 +2398,7 @@ pub struct Param {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Param {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Param {
@@ -2431,7 +2431,7 @@ pub struct ParamList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ParamList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ParamList {
@@ -2467,7 +2467,7 @@ pub struct ParenExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ParenExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ParenExpr {
@@ -2499,7 +2499,7 @@ pub struct ParenType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ParenType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ParenType {
@@ -2531,7 +2531,7 @@ pub struct Pat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Pat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2650,7 +2650,7 @@ pub struct Path {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Path {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Path {
@@ -2686,7 +2686,7 @@ pub struct PathExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PathExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PathExpr {
@@ -2718,7 +2718,7 @@ pub struct PathPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PathPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PathPat {
@@ -2750,7 +2750,7 @@ pub struct PathSegment {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PathSegment {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PathSegment {
@@ -2786,7 +2786,7 @@ pub struct PathType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PathType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PathType {
@@ -2818,7 +2818,7 @@ pub struct PlaceholderPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PlaceholderPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PlaceholderPat {
@@ -2846,7 +2846,7 @@ pub struct PlaceholderType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PlaceholderType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PlaceholderType {
@@ -2874,7 +2874,7 @@ pub struct PointerType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PointerType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PointerType {
@@ -2906,7 +2906,7 @@ pub struct PosFieldDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PosFieldDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PosFieldDef {
@@ -2940,7 +2940,7 @@ pub struct PosFieldDefList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PosFieldDefList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PosFieldDefList {
@@ -2972,7 +2972,7 @@ pub struct PrefixExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for PrefixExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for PrefixExpr {
@@ -3004,7 +3004,7 @@ pub struct RangeExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for RangeExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for RangeExpr {
@@ -3032,7 +3032,7 @@ pub struct RangePat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for RangePat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for RangePat {
@@ -3060,7 +3060,7 @@ pub struct RefExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for RefExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for RefExpr {
@@ -3092,7 +3092,7 @@ pub struct RefPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for RefPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for RefPat {
@@ -3124,7 +3124,7 @@ pub struct ReferenceType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ReferenceType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ReferenceType {
@@ -3156,7 +3156,7 @@ pub struct RetType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for RetType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for RetType {
@@ -3188,7 +3188,7 @@ pub struct ReturnExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for ReturnExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for ReturnExpr {
@@ -3220,7 +3220,7 @@ pub struct SelfParam {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for SelfParam {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for SelfParam {
@@ -3249,7 +3249,7 @@ pub struct SlicePat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for SlicePat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for SlicePat {
@@ -3277,7 +3277,7 @@ pub struct SliceType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for SliceType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for SliceType {
@@ -3309,7 +3309,7 @@ pub struct SourceFile {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for SourceFile {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for SourceFile {
@@ -3343,7 +3343,7 @@ pub struct StaticDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for StaticDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for StaticDef {
@@ -3381,7 +3381,7 @@ pub struct Stmt {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Stmt {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -3436,7 +3436,7 @@ pub struct StructDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for StructDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for StructDef {
@@ -3469,7 +3469,7 @@ pub struct StructLit {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for StructLit {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for StructLit {
@@ -3509,7 +3509,7 @@ pub struct StructPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for StructPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for StructPat {
@@ -3545,7 +3545,7 @@ pub struct TokenTree {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TokenTree {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TokenTree {
@@ -3573,7 +3573,7 @@ pub struct TraitDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TraitDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TraitDef {
@@ -3611,7 +3611,7 @@ pub struct TryExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TryExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TryExpr {
@@ -3643,7 +3643,7 @@ pub struct TupleExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TupleExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TupleExpr {
@@ -3675,7 +3675,7 @@ pub struct TuplePat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TuplePat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TuplePat {
@@ -3707,7 +3707,7 @@ pub struct TupleStructPat {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TupleStructPat {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TupleStructPat {
@@ -3743,7 +3743,7 @@ pub struct TupleType {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TupleType {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TupleType {
@@ -3775,7 +3775,7 @@ pub struct TypeAliasDef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeAliasDef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TypeAliasDef {
@@ -3813,7 +3813,7 @@ pub struct TypeArg {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeArg {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TypeArg {
@@ -3845,7 +3845,7 @@ pub struct TypeArgList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeArgList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TypeArgList {
@@ -3885,7 +3885,7 @@ pub struct TypeBound {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeBound {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TypeBound {
@@ -3917,7 +3917,7 @@ pub struct TypeBoundList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeBoundList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TypeBoundList {
@@ -3949,7 +3949,7 @@ pub struct TypeParam {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeParam {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TypeParam {
@@ -3980,7 +3980,7 @@ pub struct TypeParamList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeParamList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for TypeParamList {
@@ -4016,7 +4016,7 @@ pub struct TypeRef {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for TypeRef {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -4159,7 +4159,7 @@ pub struct UseItem {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for UseItem {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for UseItem {
@@ -4192,7 +4192,7 @@ pub struct UseTree {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for UseTree {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for UseTree {
@@ -4232,7 +4232,7 @@ pub struct UseTreeList {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for UseTreeList {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for UseTreeList {
@@ -4264,7 +4264,7 @@ pub struct Visibility {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for Visibility {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for Visibility {
@@ -4292,7 +4292,7 @@ pub struct WhereClause {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for WhereClause {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for WhereClause {
@@ -4324,7 +4324,7 @@ pub struct WherePred {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for WherePred {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for WherePred {
@@ -4357,7 +4357,7 @@ pub struct WhileExpr {
     pub(crate) syntax: SyntaxNode,
 }
 unsafe impl TransparentNewType for WhileExpr {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl AstNode for WhileExpr {

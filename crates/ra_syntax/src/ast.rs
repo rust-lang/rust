@@ -9,7 +9,7 @@ mod expr_extensions;
 use std::marker::PhantomData;
 
 use crate::{
-    syntax_node::{SyntaxNode, SyntaxNodeChildren, TreeArc, RaTypes, SyntaxToken},
+    syntax_node::{SyntaxNode, SyntaxNodeChildren, TreeArc, SyntaxToken},
     SmolStr,
 };
 
@@ -26,7 +26,7 @@ pub use self::{
 /// the same representation: a pointer to the tree root and a pointer to the
 /// node itself.
 pub trait AstNode:
-    rowan::TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>> + ToOwned<Owned = TreeArc<Self>>
+    rowan::TransparentNewType<Repr = rowan::SyntaxNode> + ToOwned<Owned = TreeArc<Self>>
 {
     fn cast(syntax: &SyntaxNode) -> Option<&Self>
     where
