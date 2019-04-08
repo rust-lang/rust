@@ -11,7 +11,7 @@ struct TtToken {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum WalkIndex {
+enum WalkCursor {
     DelimiterBegin(Option<TtToken>),
     Token(usize, Option<TtToken>),
     DelimiterEnd(Option<TtToken>),
@@ -22,7 +22,7 @@ enum WalkIndex {
 struct SubTreeWalker<'a> {
     pos: usize,
     stack: Vec<(&'a tt::Subtree, Option<usize>)>,
-    idx: WalkIndex,
+    cursor: WalkCursor,
     last_steps: Vec<usize>,
     subtree: &'a tt::Subtree,
 }
@@ -32,7 +32,7 @@ impl<'a> SubTreeWalker<'a> {
         let mut res = SubTreeWalker {
             pos: 0,
             stack: vec![],
-            idx: WalkIndex::Eof,
+            cursor: WalkCursor::Eof,
             last_steps: vec![],
             subtree,
         };
@@ -41,10 +41,14 @@ impl<'a> SubTreeWalker<'a> {
         res
     }
 
+    fn is_eof(&self) -> bool {
+        self.cursor == WalkCursor::Eof
+    }
+
     fn reset(&mut self) {
         self.pos = 0;
         self.stack = vec![(self.subtree, None)];
-        self.idx = WalkIndex::DelimiterBegin(convert_delim(self.subtree.delimiter, false));
+        self.cursor = WalkCursor::DelimiterBegin(convert_delim(self.subtree.delimiter, false));
         self.last_steps = vec![];
 
         while self.is_empty_delimiter() {
@@ -52,12 +56,12 @@ impl<'a> SubTreeWalker<'a> {
         }
     }
 
-    // This funciton will fast forward the pos cursor,
+    // This funciton will fast forward the cursor,
     // Such that backward will stop at `start_pos` point
     fn start_from_nth(&mut self, start_pos: usize) {
         self.reset();
         self.pos = start_pos;
-        self.idx = self.walk_token(start_pos, false);
+        self.cursor = self.walk_token(start_pos, 0, false);
 
         while self.is_empty_delimiter() {
             self.forward_unchecked();
@@ -65,22 +69,23 @@ impl<'a> SubTreeWalker<'a> {
     }
 
     fn current(&self) -> Option<&TtToken> {
-        match &self.idx {
-            WalkIndex::DelimiterBegin(t) => t.as_ref(),
-            WalkIndex::Token(_, t) => t.as_ref(),
-            WalkIndex::DelimiterEnd(t) => t.as_ref(),
-            WalkIndex::Eof => None,
+        match &self.cursor {
+            WalkCursor::DelimiterBegin(t) => t.as_ref(),
+            WalkCursor::Token(_, t) => t.as_ref(),
+            WalkCursor::DelimiterEnd(t) => t.as_ref(),
+            WalkCursor::Eof => None,
         }
     }
 
     fn is_empty_delimiter(&self) -> bool {
-        match &self.idx {
-            WalkIndex::DelimiterBegin(None) => true,
-            WalkIndex::DelimiterEnd(None) => true,
+        match &self.cursor {
+            WalkCursor::DelimiterBegin(None) => true,
+            WalkCursor::DelimiterEnd(None) => true,
             _ => false,
         }
     }
 
+    /// Move cursor backward by 1 step with empty checking
     fn backward(&mut self) {
         if self.last_steps.is_empty() {
             return;
@@ -94,7 +99,7 @@ impl<'a> SubTreeWalker<'a> {
             }
         }
 
-        // Move forward a little bit
+        // Move forward if it is empty delimiter
         if self.last_steps.is_empty() {
             while self.is_empty_delimiter() {
                 self.forward_unchecked();
@@ -102,54 +107,53 @@ impl<'a> SubTreeWalker<'a> {
         }
     }
 
+    /// Move cursor backward by 1 step without empty check
+    ///
+    /// Depends on the current state of cursor:
+    ///
+    /// * Delimiter Begin => Pop the stack, goto last walking token  (`walk_token`)
+    /// * Token => Goto prev token  (`walk_token`)
+    /// * Delimiter End => Goto the last child token (`walk_token`)
+    /// * Eof => push the root subtree, and set it as Delimiter End
     fn backward_unchecked(&mut self) {
         if self.last_steps.is_empty() {
             return;
         }
 
         let last_step = self.last_steps.pop().unwrap();
-        let do_walk_token = match self.idx {
-            WalkIndex::DelimiterBegin(_) => None,
-            WalkIndex::Token(u, _) => Some(u),
-            WalkIndex::DelimiterEnd(_) => {
+        let do_walk_token = match self.cursor {
+            WalkCursor::DelimiterBegin(_) => None,
+            WalkCursor::Token(u, _) => Some(u),
+            WalkCursor::DelimiterEnd(_) => {
                 let (top, _) = self.stack.last().unwrap();
                 Some(top.token_trees.len())
             }
-            WalkIndex::Eof => None,
+            WalkCursor::Eof => None,
         };
 
-        self.idx = match do_walk_token {
-            Some(u) if last_step > u => WalkIndex::DelimiterBegin(convert_delim(
-                self.stack.last().unwrap().0.delimiter,
-                false,
-            )),
-            Some(u) => self.walk_token(u - last_step, true),
-            None => match self.idx {
-                WalkIndex::Eof => {
+        self.cursor = match do_walk_token {
+            Some(u) => self.walk_token(u, last_step, true),
+            None => match self.cursor {
+                WalkCursor::Eof => {
                     self.stack.push((self.subtree, None));
-                    WalkIndex::DelimiterEnd(convert_delim(
+                    WalkCursor::DelimiterEnd(convert_delim(
                         self.stack.last().unwrap().0.delimiter,
                         true,
                     ))
                 }
                 _ => {
-                    let (_, last_top_idx) = self.stack.pop().unwrap();
+                    let (_, last_top_cursor) = self.stack.pop().unwrap();
                     assert!(!self.stack.is_empty());
 
-                    match last_top_idx.unwrap() {
-                        0 => WalkIndex::DelimiterBegin(convert_delim(
-                            self.stack.last().unwrap().0.delimiter,
-                            false,
-                        )),
-                        c => self.walk_token(c - 1, true),
-                    }
+                    self.walk_token(last_top_cursor.unwrap(), last_step, true)
                 }
             },
         };
     }
 
+    /// Move cursor forward by 1 step with empty checking
     fn forward(&mut self) {
-        if self.idx == WalkIndex::Eof {
+        if self.is_eof() {
             return;
         }
 
@@ -162,57 +166,80 @@ impl<'a> SubTreeWalker<'a> {
         }
     }
 
+    /// Move cursor forward by 1 step without empty checking
+    ///
+    /// Depends on the current state of cursor:
+    ///
+    /// * Delimiter Begin => Goto the first child token (`walk_token`)
+    /// * Token => Goto next token  (`walk_token`)
+    /// * Delimiter End => Pop the stack, goto last walking token  (`walk_token`)
+    ///   
     fn forward_unchecked(&mut self) {
-        if self.idx == WalkIndex::Eof {
+        if self.is_eof() {
             return;
         }
 
         let step = self.current().map(|x| x.n_tokens).unwrap_or(1);
         self.last_steps.push(step);
 
-        let do_walk_token = match self.idx {
-            WalkIndex::DelimiterBegin(_) => Some(0),
-            WalkIndex::Token(u, _) => Some(u + step),
-            WalkIndex::DelimiterEnd(_) => None,
+        let do_walk_token = match self.cursor {
+            WalkCursor::DelimiterBegin(_) => Some((0, 0)),
+            WalkCursor::Token(u, _) => Some((u, step)),
+            WalkCursor::DelimiterEnd(_) => None,
             _ => unreachable!(),
         };
 
-        let (top, _) = self.stack.last().unwrap();
-
-        self.idx = match do_walk_token {
-            Some(u) if u >= top.token_trees.len() => {
-                WalkIndex::DelimiterEnd(convert_delim(self.stack.last().unwrap().0.delimiter, true))
-            }
-            Some(u) => self.walk_token(u, false),
+        self.cursor = match do_walk_token {
+            Some((u, step)) => self.walk_token(u, step, false),
             None => {
                 let (_, last_top_idx) = self.stack.pop().unwrap();
                 match self.stack.last() {
-                    Some(top) => match last_top_idx.unwrap() {
-                        idx if idx + 1 >= top.0.token_trees.len() => {
-                            WalkIndex::DelimiterEnd(convert_delim(top.0.delimiter, true))
-                        }
-                        idx => self.walk_token(idx + 1, false),
-                    },
-
-                    None => WalkIndex::Eof,
+                    Some(_) => self.walk_token(last_top_idx.unwrap(), 1, false),
+                    None => WalkCursor::Eof,
                 }
             }
         };
     }
 
-    fn walk_token(&mut self, pos: usize, backward: bool) -> WalkIndex {
+    /// Traversal child token
+    /// Depends on the new position, it returns:
+    ///
+    /// * new position < 0 => DelimiterBegin
+    /// * new position > token_tree.len() => DelimiterEnd
+    /// * if new position is a subtree, depends on traversal direction:
+    /// ** backward => DelimiterEnd
+    /// ** forward => DelimiterBegin
+    /// * if new psoition is a leaf, return walk_leaf()
+    fn walk_token(&mut self, pos: usize, offset: usize, backward: bool) -> WalkCursor {
         let (top, _) = self.stack.last().unwrap();
+
+        if backward && pos < offset {
+            return WalkCursor::DelimiterBegin(convert_delim(
+                self.stack.last().unwrap().0.delimiter,
+                false,
+            ));
+        }
+
+        if !backward && pos + offset >= top.token_trees.len() {
+            return WalkCursor::DelimiterEnd(convert_delim(
+                self.stack.last().unwrap().0.delimiter,
+                true,
+            ));
+        }
+
+        let pos = if backward { pos - offset } else { pos + offset };
+
         match &top.token_trees[pos] {
             tt::TokenTree::Subtree(subtree) => {
                 self.stack.push((subtree, Some(pos)));
                 let delim = convert_delim(self.stack.last().unwrap().0.delimiter, backward);
                 if backward {
-                    WalkIndex::DelimiterEnd(delim)
+                    WalkCursor::DelimiterEnd(delim)
                 } else {
-                    WalkIndex::DelimiterBegin(delim)
+                    WalkCursor::DelimiterBegin(delim)
                 }
             }
-            tt::TokenTree::Leaf(leaf) => WalkIndex::Token(pos, Some(self.walk_leaf(leaf, pos))),
+            tt::TokenTree::Leaf(leaf) => WalkCursor::Token(pos, Some(self.walk_leaf(leaf, pos))),
         }
     }
 
@@ -240,7 +267,11 @@ pub(crate) struct WalkerOwner<'a> {
 }
 
 impl<'a> WalkerOwner<'a> {
-    fn token_idx<'b>(&self, pos: usize) -> Option<TtToken> {
+    fn new(subtree: &'a tt::Subtree) -> Self {
+        WalkerOwner { walker: RefCell::new(SubTreeWalker::new(subtree)), offset: 0 }
+    }
+
+    fn get<'b>(&self, pos: usize) -> Option<TtToken> {
         self.set_walker_pos(pos);
         let walker = self.walker.borrow();
         walker.current().cloned()
@@ -254,7 +285,7 @@ impl<'a> WalkerOwner<'a> {
     fn set_walker_pos(&self, mut pos: usize) {
         pos += self.offset;
         let mut walker = self.walker.borrow_mut();
-        while pos > walker.pos && walker.idx != WalkIndex::Eof {
+        while pos > walker.pos && !walker.is_eof() {
             walker.forward();
         }
         while pos < walker.pos {
@@ -262,18 +293,14 @@ impl<'a> WalkerOwner<'a> {
         }
     }
 
-    fn new(subtree: &'a tt::Subtree) -> Self {
-        WalkerOwner { walker: RefCell::new(SubTreeWalker::new(subtree)), offset: 0 }
-    }
-
-    fn collect_token_tree(&mut self, n: usize) -> Vec<&tt::TokenTree> {
+    fn collect_token_trees(&mut self, n: usize) -> Vec<&tt::TokenTree> {
         self.start_from_nth(self.offset);
 
         let mut res = vec![];
         let mut walker = self.walker.borrow_mut();
 
         while walker.pos - self.offset < n {
-            if let WalkIndex::Token(u, tt) = &walker.idx {
+            if let WalkCursor::Token(u, tt) = &walker.cursor {
                 if walker.stack.len() == 1 {
                     // We only collect the topmost child
                     res.push(&walker.stack[0].0.token_trees[*u]);
@@ -294,7 +321,7 @@ impl<'a> WalkerOwner<'a> {
 
 impl<'a> Querier for WalkerOwner<'a> {
     fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr) {
-        let tkn = self.token_idx(uidx).unwrap();
+        let tkn = self.get(uidx).unwrap();
         (tkn.kind, tkn.text)
     }
 }
@@ -319,31 +346,25 @@ impl<'a> SubtreeTokenSource<'a> {
         &self.walker
     }
 
-    pub(crate) fn bump_n(
-        &mut self,
-        parsed_tokens: usize,
-        cursor_pos: &mut usize,
-    ) -> Vec<&tt::TokenTree> {
-        let res = self.walker.collect_token_tree(parsed_tokens);
-        *cursor_pos += res.len();
-
+    pub(crate) fn bump_n(&mut self, parsed_tokens: usize) -> Vec<&tt::TokenTree> {
+        let res = self.walker.collect_token_trees(parsed_tokens);
         res
     }
 }
 
 impl<'a> TokenSource for SubtreeTokenSource<'a> {
     fn token_kind(&self, pos: usize) -> SyntaxKind {
-        if let Some(tok) = self.walker.token_idx(pos) {
+        if let Some(tok) = self.walker.get(pos) {
             tok.kind
         } else {
             SyntaxKind::EOF
         }
     }
     fn is_token_joint_to_next(&self, pos: usize) -> bool {
-        self.walker.token_idx(pos).unwrap().is_joint_to_next
+        self.walker.get(pos).unwrap().is_joint_to_next
     }
     fn is_keyword(&self, pos: usize, kw: &str) -> bool {
-        self.walker.token_idx(pos).unwrap().text == *kw
+        self.walker.get(pos).unwrap().text == *kw
     }
 }
 

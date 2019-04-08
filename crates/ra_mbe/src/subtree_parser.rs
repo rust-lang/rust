@@ -44,7 +44,9 @@ impl<'a> Parser<'a> {
     }
 
     fn finish(self, parsed_token: usize, src: &mut SubtreeTokenSource) -> Option<tt::TokenTree> {
-        let res = src.bump_n(parsed_token, self.cur_pos);
+        let res = src.bump_n(parsed_token);
+        *self.cur_pos += res.len();
+
         let res: Vec<_> = res.into_iter().cloned().collect();
 
         match res.len() {
