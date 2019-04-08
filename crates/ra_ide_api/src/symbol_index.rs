@@ -275,7 +275,7 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
 mod tests {
     use ra_syntax::SmolStr;
     use crate::{
-        navigation_target::NavigationTarget,
+        display::NavigationTarget,
         mock_analysis::single_file,
         Query,
 };

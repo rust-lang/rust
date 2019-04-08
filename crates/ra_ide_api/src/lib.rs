@@ -13,7 +13,6 @@
 mod db;
 pub mod mock_analysis;
 mod symbol_index;
-mod navigation_target;
 mod change;
 
 mod status;
@@ -63,7 +62,6 @@ pub use crate::{
     change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     runnables::{Runnable, RunnableKind},
-    navigation_target::NavigationTarget,
     references::ReferenceSearchResult,
     assists::{Assist, AssistId},
     hover::{HoverResult},
@@ -73,7 +71,7 @@ pub use crate::{
     syntax_highlighting::HighlightedRange,
     structure::{StructureNode, file_structure},
     diagnostics::Severity,
-    display::FunctionSignature,
+    display::{FunctionSignature, NavigationTarget},
 };
 
 pub use ra_db::{

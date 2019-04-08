@@ -7,6 +7,10 @@ use ra_syntax::{ast::{self, AstNode, NameOwner, VisibilityOwner, TypeParamsOwner
 use std::convert::From;
 use hir::Docs;
 
+pub mod navigation_target;
+
+pub use navigation_target::NavigationTarget;
+
 pub(crate) fn function_label(node: &ast::FnDef) -> String {
     FunctionSignature::from(node).to_string()
 }
