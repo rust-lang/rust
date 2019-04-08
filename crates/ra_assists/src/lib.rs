@@ -86,6 +86,7 @@ where
 }
 
 mod add_derive;
+mod add_explicit_type;
 mod add_impl;
 mod flip_comma;
 mod flip_binexpr;
@@ -103,6 +104,7 @@ mod add_missing_impl_members;
 fn all_assists<DB: HirDatabase>() -> &'static [fn(AssistCtx<DB>) -> Option<Assist>] {
     &[
         add_derive::add_derive,
+        add_explicit_type::add_explicit_type,
         add_impl::add_impl,
         change_visibility::change_visibility,
         fill_match_arms::fill_match_arms,
