@@ -1,7 +1,7 @@
 use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use std::char;
@@ -172,27 +172,16 @@ declare_clippy_lint! {
     "shadowing a builtin type"
 }
 
-#[derive(Copy, Clone)]
-pub struct MiscEarly;
-
-impl LintPass for MiscEarly {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            UNNEEDED_FIELD_PATTERN,
-            DUPLICATE_UNDERSCORE_ARGUMENT,
-            REDUNDANT_CLOSURE_CALL,
-            DOUBLE_NEG,
-            MIXED_CASE_HEX_LITERALS,
-            UNSEPARATED_LITERAL_SUFFIX,
-            ZERO_PREFIXED_LITERAL,
-            BUILTIN_TYPE_SHADOW
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "MiscEarlyLints"
-    }
-}
+declare_lint_pass!(MiscEarlyLints => [
+    UNNEEDED_FIELD_PATTERN,
+    DUPLICATE_UNDERSCORE_ARGUMENT,
+    REDUNDANT_CLOSURE_CALL,
+    DOUBLE_NEG,
+    MIXED_CASE_HEX_LITERALS,
+    UNSEPARATED_LITERAL_SUFFIX,
+    ZERO_PREFIXED_LITERAL,
+    BUILTIN_TYPE_SHADOW
+]);
 
 // Used to find `return` statements or equivalents e.g., `?`
 struct ReturnVisitor {
@@ -217,7 +206,7 @@ impl<'ast> Visitor<'ast> for ReturnVisitor {
     }
 }
 
-impl EarlyLintPass for MiscEarly {
+impl EarlyLintPass for MiscEarlyLints {
     fn check_generics(&mut self, cx: &EarlyContext<'_>, gen: &Generics) {
         for param in &gen.params {
             if let GenericParamKind::Type { .. } = param.kind {
@@ -398,7 +387,7 @@ impl EarlyLintPass for MiscEarly {
     }
 }
 
-impl MiscEarly {
+impl MiscEarlyLints {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         if_chain! {
             if let LitKind::Int(value, ..) = lit.node;

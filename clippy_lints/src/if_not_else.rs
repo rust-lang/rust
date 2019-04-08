@@ -2,7 +2,7 @@
 //! on the condition
 
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 
 use crate::utils::span_help_and_lint;
@@ -38,17 +38,7 @@ declare_clippy_lint! {
     "`if` branches that could be swapped so no negation operation is necessary on the condition"
 }
 
-pub struct IfNotElse;
-
-impl LintPass for IfNotElse {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(IF_NOT_ELSE)
-    }
-
-    fn name(&self) -> &'static str {
-        "IfNotElse"
-    }
-}
+declare_lint_pass!(IfNotElse => [IF_NOT_ELSE]);
 
 impl EarlyLintPass for IfNotElse {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, item: &Expr) {

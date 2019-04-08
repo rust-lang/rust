@@ -4,7 +4,7 @@ use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::source_map::Span;
 
 declare_clippy_lint! {
@@ -75,20 +75,9 @@ declare_clippy_lint! {
     "rebinding a name without even using the original value"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(Shadow => [SHADOW_SAME, SHADOW_REUSE, SHADOW_UNRELATED]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(SHADOW_SAME, SHADOW_REUSE, SHADOW_UNRELATED)
-    }
-
-    fn name(&self) -> &'static str {
-        "Shadow"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Shadow {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,

@@ -6,7 +6,7 @@ use crate::utils::sugg::Sugg;
 use crate::utils::{in_macro, span_lint, span_lint_and_sugg};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Spanned;
@@ -54,18 +54,7 @@ declare_clippy_lint! {
     "comparing a variable to a boolean, e.g., `if x == true` or `if x != true`"
 }
 
-#[derive(Copy, Clone)]
-pub struct NeedlessBool;
-
-impl LintPass for NeedlessBool {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_BOOL)
-    }
-
-    fn name(&self) -> &'static str {
-        "NeedlessBool"
-    }
-}
+declare_lint_pass!(NeedlessBool => [NEEDLESS_BOOL]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
@@ -138,18 +127,7 @@ fn parent_node_is_if_expr<'a, 'b>(expr: &Expr, cx: &LateContext<'a, 'b>) -> bool
     false
 }
 
-#[derive(Copy, Clone)]
-pub struct BoolComparison;
-
-impl LintPass for BoolComparison {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(BOOL_COMPARISON)
-    }
-
-    fn name(&self) -> &'static str {
-        "BoolComparison"
-    }
-}
+declare_lint_pass!(BoolComparison => [BOOL_COMPARISON]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

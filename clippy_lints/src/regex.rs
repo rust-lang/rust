@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use regex_syntax;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashSet;
 use std::convert::TryFrom;
 use syntax::ast::{LitKind, StrStyle};
@@ -67,22 +67,14 @@ declare_clippy_lint! {
 }
 
 #[derive(Clone, Default)]
-pub struct Pass {
+pub struct Regex {
     spans: FxHashSet<Span>,
     last: Option<HirId>,
 }
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INVALID_REGEX, REGEX_MACRO, TRIVIAL_REGEX)
-    }
+impl_lint_pass!(Regex => [INVALID_REGEX, REGEX_MACRO, TRIVIAL_REGEX]);
 
-    fn name(&self) -> &'static str {
-        "Regex"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Regex {
     fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx Crate) {
         self.spans.clear();
     }

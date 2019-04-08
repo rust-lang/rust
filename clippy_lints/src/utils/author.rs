@@ -7,7 +7,7 @@ use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::session::Session;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Attribute, LitKind};
 
@@ -48,17 +48,7 @@ declare_clippy_lint! {
     "helper for writing lints"
 }
 
-pub struct Pass;
-
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(LINT_AUTHOR)
-    }
-
-    fn name(&self) -> &'static str {
-        "Author"
-    }
-}
+declare_lint_pass!(Author => [LINT_AUTHOR]);
 
 fn prelude() {
     println!("if_chain! {{");
@@ -71,7 +61,7 @@ fn done() {
     println!("}}");
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Author {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         if !has_attr(cx.sess(), &item.attrs) {
             return;

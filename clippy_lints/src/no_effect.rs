@@ -2,7 +2,7 @@ use crate::utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sug
 use rustc::hir::def::Def;
 use rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::ops::Deref;
 
@@ -93,20 +93,9 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(NoEffect => [NO_EFFECT, UNNECESSARY_OPERATION]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NO_EFFECT, UNNECESSARY_OPERATION)
-    }
-
-    fn name(&self) -> &'static str {
-        "NoEffect"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoEffect {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtKind::Semi(ref expr) = stmt.node {
             if has_no_effect(cx, expr) {

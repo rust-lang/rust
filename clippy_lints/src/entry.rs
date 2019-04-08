@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
 
@@ -37,20 +37,9 @@ declare_clippy_lint! {
     "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`"
 }
 
-#[derive(Copy, Clone)]
-pub struct HashMapLint;
+declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
-impl LintPass for HashMapLint {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MAP_ENTRY)
-    }
-
-    fn name(&self) -> &'static str {
-        "HashMap"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::If(ref check, ref then_block, ref else_block) = expr.node {
             if let ExprKind::Unary(UnOp::UnNot, ref check) = check.node {

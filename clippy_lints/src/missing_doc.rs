@@ -10,7 +10,7 @@ use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::ast::{self, MetaItem, MetaItemKind};
 use syntax::attr;
 use syntax::source_map::Span;
@@ -103,15 +103,7 @@ impl MissingDoc {
     }
 }
 
-impl LintPass for MissingDoc {
-    fn get_lints(&self) -> LintArray {
-        lint_array![MISSING_DOCS_IN_PRIVATE_ITEMS]
-    }
-
-    fn name(&self) -> &'static str {
-        "MissingDoc"
-    }
-}
+impl_lint_pass!(MissingDoc => [MISSING_DOCS_IN_PRIVATE_ITEMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, attrs: &'tcx [ast::Attribute]) {

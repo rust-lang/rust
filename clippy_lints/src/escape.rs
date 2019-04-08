@@ -6,12 +6,13 @@ use rustc::middle::mem_categorization::{cmt_, Categorization};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use rustc::util::nodemap::HirIdSet;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::source_map::Span;
 
 use crate::utils::span_lint;
 
-pub struct Pass {
+#[derive(Copy, Clone)]
+pub struct BoxedLocal {
     pub too_large_for_stack: u64,
 }
 
@@ -48,17 +49,9 @@ struct EscapeDelegate<'a, 'tcx: 'a> {
     too_large_for_stack: u64,
 }
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(BOXED_LOCAL)
-    }
+impl_lint_pass!(BoxedLocal => [BOXED_LOCAL]);
 
-    fn name(&self) -> &'static str {
-        "BoxedLocal"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,

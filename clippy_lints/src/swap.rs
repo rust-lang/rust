@@ -7,7 +7,7 @@ use matches::matches;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -52,18 +52,7 @@ declare_clippy_lint! {
     "`foo = bar; bar = foo` sequence"
 }
 
-#[derive(Copy, Clone)]
-pub struct Swap;
-
-impl LintPass for Swap {
-    fn get_lints(&self) -> LintArray {
-        lint_array![MANUAL_SWAP, ALMOST_SWAPPED]
-    }
-
-    fn name(&self) -> &'static str {
-        "Swap"
-    }
-}
+declare_lint_pass!(Swap => [MANUAL_SWAP, ALMOST_SWAPPED]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Swap {
     fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx Block) {

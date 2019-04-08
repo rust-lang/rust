@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::source_map::{Span, Spanned};
 
 use crate::consts::{self, Constant};
@@ -23,18 +23,7 @@ declare_clippy_lint! {
     "multiplying integers with -1"
 }
 
-#[derive(Copy, Clone)]
-pub struct NegMultiply;
-
-impl LintPass for NegMultiply {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEG_MULTIPLY)
-    }
-
-    fn name(&self) -> &'static str {
-        "NegMultiply"
-    }
-}
+declare_lint_pass!(NegMultiply => [NEG_MULTIPLY]);
 
 #[allow(clippy::match_same_arms)]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {

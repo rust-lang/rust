@@ -1,6 +1,6 @@
 use crate::utils::{snippet_opt, span_help_and_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::source_map::Span;
@@ -27,20 +27,9 @@ declare_clippy_lint! {
     "`dbg!` macro is intended as a debugging tool"
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Pass;
+declare_lint_pass!(DbgMacro => [DBG_MACRO]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DBG_MACRO)
-    }
-
-    fn name(&self) -> &'static str {
-        "DbgMacro"
-    }
-}
-
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for DbgMacro {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
         if mac.node.path == "dbg" {
             if let Some(sugg) = tts_span(mac.node.tts.clone()).and_then(|span| snippet_opt(cx, span)) {

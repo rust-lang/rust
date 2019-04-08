@@ -3,7 +3,7 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Detects giving a mutable reference to a function that only
@@ -23,18 +23,7 @@ declare_clippy_lint! {
     "an argument passed as a mutable reference although the callee only demands an immutable reference"
 }
 
-#[derive(Copy, Clone)]
-pub struct UnnecessaryMutPassed;
-
-impl LintPass for UnnecessaryMutPassed {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNNECESSARY_MUT_PASSED)
-    }
-
-    fn name(&self) -> &'static str {
-        "UnneccessaryMutPassed"
-    }
-}
+declare_lint_pass!(UnnecessaryMutPassed => [UNNECESSARY_MUT_PASSED]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnecessaryMutPassed {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

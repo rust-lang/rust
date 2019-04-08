@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::source_map::Span;
@@ -31,8 +31,8 @@ declare_clippy_lint! {
     /// putting a lint to a `LintPass::get_lints()`'s return, the compiler will not
     /// know the name of the lint.
     ///
-    /// **Known problems:** Only checks for lints associated using the `lint_array!`
-    /// macro.
+    /// **Known problems:** Only checks for lints associated using the
+    /// `declare_lint_pass!`, `impl_lint_pass!`, and `lint_array!` macros.
     ///
     /// **Example:**
     /// ```rust
@@ -40,13 +40,8 @@ declare_clippy_lint! {
     /// declare_lint! { pub LINT_2, ... }
     /// declare_lint! { pub FORGOTTEN_LINT, ... }
     /// // ...
-    /// pub struct Pass;
-    /// impl LintPass for Pass {
-    ///     fn get_lints(&self) -> LintArray {
-    ///         lint_array![LINT_1, LINT_2]
-    ///         // missing FORGOTTEN_LINT
-    ///     }
-    /// }
+    /// declare_lint_pass!(Pass => [LINT_1, LINT_2]);
+    /// // missing FORGOTTEN_LINT
     /// ```
     pub LINT_WITHOUT_LINT_PASS,
     internal,
@@ -77,20 +72,9 @@ declare_clippy_lint! {
     "usage of the lint functions of the compiler instead of the utils::* variant"
 }
 
-#[derive(Copy, Clone)]
-pub struct Clippy;
+declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
-impl LintPass for Clippy {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(CLIPPY_LINTS_INTERNAL)
-    }
-
-    fn name(&self) -> &'static str {
-        "ClippyLintsInternal"
-    }
-}
-
-impl EarlyLintPass for Clippy {
+impl EarlyLintPass for ClippyLintsInternal {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
         if let Some(utils) = krate.module.items.iter().find(|item| item.ident.name == "utils") {
             if let ItemKind::Mod(ref utils_mod) = utils.node {
@@ -125,14 +109,7 @@ pub struct LintWithoutLintPass {
     registered_lints: FxHashSet<Name>,
 }
 
-impl LintPass for LintWithoutLintPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(LINT_WITHOUT_LINT_PASS)
-    }
-    fn name(&self) -> &'static str {
-        "LintWithoutLintPass"
-    }
-}
+impl_lint_pass!(LintWithoutLintPass => [LINT_WITHOUT_LINT_PASS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
@@ -247,15 +224,7 @@ impl CompilerLintFunctions {
     }
 }
 
-impl LintPass for CompilerLintFunctions {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(COMPILER_LINT_FUNCTIONS)
-    }
-
-    fn name(&self) -> &'static str {
-        "CompileLintFunctions"
-    }
-}
+impl_lint_pass!(CompilerLintFunctions => [COMPILER_LINT_FUNCTIONS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

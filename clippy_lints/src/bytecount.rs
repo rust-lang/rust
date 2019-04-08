@@ -6,7 +6,7 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::{Name, UintTy};
 
@@ -31,18 +31,7 @@ declare_clippy_lint! {
     "use of naive `<slice>.filter(|&x| x == y).count()` to count byte values"
 }
 
-#[derive(Copy, Clone)]
-pub struct ByteCount;
-
-impl LintPass for ByteCount {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NAIVE_BYTECOUNT)
-    }
-
-    fn name(&self) -> &'static str {
-        "ByteCount"
-    }
-}
+declare_lint_pass!(ByteCount => [NAIVE_BYTECOUNT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {

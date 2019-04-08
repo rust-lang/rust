@@ -12,7 +12,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::traits;
 use rustc::ty::{self, RegionKind, TypeFoldable};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
@@ -50,17 +50,7 @@ declare_clippy_lint! {
     "functions taking arguments by value, but not consuming them in its body"
 }
 
-pub struct NeedlessPassByValue;
-
-impl LintPass for NeedlessPassByValue {
-    fn get_lints(&self) -> LintArray {
-        lint_array![NEEDLESS_PASS_BY_VALUE]
-    }
-
-    fn name(&self) -> &'static str {
-        "NeedlessPassByValue"
-    }
-}
+declare_lint_pass!(NeedlessPassByValue => [NEEDLESS_PASS_BY_VALUE]);
 
 macro_rules! need {
     ($e: expr) => {

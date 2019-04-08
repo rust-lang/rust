@@ -4,7 +4,7 @@ use crate::utils::{snippet_opt, span_lint_and_then};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::layout::LayoutOf;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -42,15 +42,7 @@ impl LargeEnumVariant {
     }
 }
 
-impl LintPass for LargeEnumVariant {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(LARGE_ENUM_VARIANT)
-    }
-
-    fn name(&self) -> &'static str {
-        "LargeEnumVariant"
-    }
-}
+impl_lint_pass!(LargeEnumVariant => [LARGE_ENUM_VARIANT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item) {

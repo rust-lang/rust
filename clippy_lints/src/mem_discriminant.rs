@@ -2,7 +2,7 @@ use crate::utils::{paths, snippet, span_lint_and_then, walk_ptrs_ty_depth};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 use std::iter;
@@ -27,17 +27,7 @@ declare_clippy_lint! {
     "calling mem::descriminant on non-enum type"
 }
 
-pub struct MemDiscriminant;
-
-impl LintPass for MemDiscriminant {
-    fn get_lints(&self) -> LintArray {
-        lint_array![MEM_DISCRIMINANT_NON_ENUM]
-    }
-
-    fn name(&self) -> &'static str {
-        "MemDiscriminant"
-    }
-}
+declare_lint_pass!(MemDiscriminant => [MEM_DISCRIMINANT_NON_ENUM]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

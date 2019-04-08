@@ -4,7 +4,7 @@ use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for a read and a write to the same variable where
@@ -53,18 +53,7 @@ declare_clippy_lint! {
     "whether an expression contains a diverging sub expression"
 }
 
-#[derive(Copy, Clone)]
-pub struct EvalOrderDependence;
-
-impl LintPass for EvalOrderDependence {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_EXPRESSION)
-    }
-
-    fn name(&self) -> &'static str {
-        "EvalOrderDependence"
-    }
-}
+declare_lint_pass!(EvalOrderDependence => [EVAL_ORDER_DEPENDENCE, DIVERGING_SUB_EXPRESSION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

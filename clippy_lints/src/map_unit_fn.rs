@@ -4,12 +4,9 @@ use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
-
-#[derive(Clone)]
-pub struct Pass;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `option.map(f)` where f is a function
@@ -77,15 +74,7 @@ declare_clippy_lint! {
     "using `result.map(f)`, where f is a function or closure that returns ()"
 }
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN)
-    }
-
-    fn name(&self) -> &'static str {
-        "MapUnit"
-    }
-}
+declare_lint_pass!(MapUnit => [OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN]);
 
 fn is_unit_type(ty: Ty<'_>) -> bool {
     match ty.sty {
@@ -249,7 +238,7 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapUnit {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, stmt: &hir::Stmt) {
         if in_macro(stmt.span) {
             return;

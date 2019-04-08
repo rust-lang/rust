@@ -3,7 +3,7 @@ use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::Ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
 use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
@@ -103,18 +103,7 @@ declare_clippy_lint! {
     "`match` with identical arm bodies"
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct CopyAndPaste;
-
-impl LintPass for CopyAndPaste {
-    fn get_lints(&self) -> LintArray {
-        lint_array![IFS_SAME_COND, IF_SAME_THEN_ELSE, MATCH_SAME_ARMS]
-    }
-
-    fn name(&self) -> &'static str {
-        "CopyAndPaste"
-    }
-}
+declare_lint_pass!(CopyAndPaste => [IFS_SAME_COND, IF_SAME_THEN_ELSE, MATCH_SAME_ARMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

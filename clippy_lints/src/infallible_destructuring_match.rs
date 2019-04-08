@@ -2,7 +2,7 @@ use super::utils::{get_arg_name, match_var, remove_blocks, snippet_with_applicab
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -40,20 +40,9 @@ declare_clippy_lint! {
     "a match statement with a single infallible arm instead of a `let`"
 }
 
-#[derive(Copy, Clone, Default)]
-pub struct Pass;
+declare_lint_pass!(InfallibleDestructingMatch => [INFALLIBLE_DESTRUCTURING_MATCH]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INFALLIBLE_DESTRUCTURING_MATCH)
-    }
-
-    fn name(&self) -> &'static str {
-        "InfallibleDestructingMatch"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InfallibleDestructingMatch {
     fn check_local(&mut self, cx: &LateContext<'a, 'tcx>, local: &'tcx Local) {
         if_chain! {
             if let Some(ref expr) = local.init;

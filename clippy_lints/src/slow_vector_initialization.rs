@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_block, walk_expr, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax_pos::symbol::Symbol;
@@ -30,18 +30,7 @@ declare_clippy_lint! {
     "slow vector initialization"
 }
 
-#[derive(Copy, Clone, Default)]
-pub struct Pass;
-
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(SLOW_VECTOR_INITIALIZATION,)
-    }
-
-    fn name(&self) -> &'static str {
-        "SlowVectorInit"
-    }
-}
+declare_lint_pass!(SlowVectorInit => [SLOW_VECTOR_INITIALIZATION]);
 
 /// `VecAllocation` contains data regarding a vector allocated with `with_capacity` and then
 /// assigned to a variable. For example, `let mut vec = Vec::with_capacity(0)` or
@@ -67,7 +56,7 @@ enum InitializationType<'tcx> {
     Resize(&'tcx Expr),
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SlowVectorInit {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Matches initialization on reassignements. For example: `vec = Vec::with_capacity(100)`
         if_chain! {
@@ -113,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-impl Pass {
+impl SlowVectorInit {
     /// Checks if the given expression is `Vec::with_capacity(..)`. It will return the expression
     /// of the first argument of `with_capacity` call if it matches or `None` if it does not.
     fn is_vec_with_capacity(expr: &Expr) -> Option<&Expr> {

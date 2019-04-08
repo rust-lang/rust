@@ -2,7 +2,7 @@ use crate::utils::{is_expn_of, resolve_node, span_lint, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 
@@ -24,20 +24,9 @@ declare_clippy_lint! {
     "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Pass;
+declare_lint_pass!(ExplicitWrite => [EXPLICIT_WRITE]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(EXPLICIT_WRITE)
-    }
-
-    fn name(&self) -> &'static str {
-        "ExplicitWrite"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             // match call to unwrap

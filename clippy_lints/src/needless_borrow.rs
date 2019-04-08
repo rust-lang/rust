@@ -8,7 +8,7 @@ use rustc::hir::{BindingAnnotation, Expr, ExprKind, HirId, Item, MutImmutable, P
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc::ty::adjustment::{Adjust, Adjustment};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -34,15 +34,7 @@ pub struct NeedlessBorrow {
     derived_item: Option<HirId>,
 }
 
-impl LintPass for NeedlessBorrow {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_BORROW)
-    }
-
-    fn name(&self) -> &'static str {
-        "NeedlessBorrow"
-    }
-}
+impl_lint_pass!(NeedlessBorrow => [NEEDLESS_BORROW]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

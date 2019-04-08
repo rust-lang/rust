@@ -1,6 +1,6 @@
 use if_chain::if_chain;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;
@@ -53,8 +53,6 @@ declare_clippy_lint! {
     nursery,
     "checks for calls of unwrap[_err]() that will always fail"
 }
-
-pub struct Pass;
 
 /// Visitor that keeps track of which variables are unwrappable.
 struct UnwrappableVariablesVisitor<'a, 'tcx: 'a> {
@@ -179,17 +177,9 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a> LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(PANICKING_UNWRAP, UNNECESSARY_UNWRAP)
-    }
+declare_lint_pass!(Unwrap => [PANICKING_UNWRAP, UNNECESSARY_UNWRAP]);
 
-    fn name(&self) -> &'static str {
-        "Unwrap"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unwrap {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,

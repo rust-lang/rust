@@ -6,13 +6,10 @@ use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::Ident;
 use syntax::source_map::Span;
-
-#[derive(Clone)]
-pub struct Pass;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `iterator.map(|x| x.clone())` and suggests
@@ -42,17 +39,9 @@ declare_clippy_lint! {
     "using `iterator.map(|x| x.clone())`, or dereferencing closures for `Copy` types"
 }
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MAP_CLONE)
-    }
+declare_lint_pass!(MapClone => [MAP_CLONE]);
 
-    fn name(&self) -> &'static str {
-        "MapClone"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
         if in_macro(e.span) {
             return;

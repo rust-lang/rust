@@ -13,7 +13,7 @@ use rustc::mir::{
     TerminatorKind,
 };
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::convert::TryFrom;
 use syntax::source_map::{BytePos, Span};
@@ -64,17 +64,7 @@ declare_clippy_lint! {
     "`clone()` of an owned value that is going to be dropped immediately"
 }
 
-pub struct RedundantClone;
-
-impl LintPass for RedundantClone {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(REDUNDANT_CLONE)
-    }
-
-    fn name(&self) -> &'static str {
-        "RedundantClone"
-    }
-}
+declare_lint_pass!(RedundantClone => [REDUNDANT_CLONE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
     #[allow(clippy::too_many_lines)]

@@ -5,7 +5,7 @@ use rustc::hir;
 use rustc::hir::print;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::session::Session;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::Attribute;
 
 declare_clippy_lint! {
@@ -30,19 +30,9 @@ declare_clippy_lint! {
     "helper to dump info about code"
 }
 
-pub struct Pass;
+declare_lint_pass!(DeepCodeInspector => [DEEP_CODE_INSPECTION]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DEEP_CODE_INSPECTION)
-    }
-
-    fn name(&self) -> &'static str {
-        "DeepCodeInspector"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DeepCodeInspector {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         if !has_attr(cx.sess(), &item.attrs) {
             return;

@@ -4,7 +4,7 @@
 use crate::utils::{snippet_opt, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 use syntax::ast::*;
 use syntax_pos;
@@ -334,23 +334,12 @@ impl WarningType {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct LiteralDigitGrouping;
-
-impl LintPass for LiteralDigitGrouping {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            UNREADABLE_LITERAL,
-            INCONSISTENT_DIGIT_GROUPING,
-            LARGE_DIGIT_GROUPS,
-            MISTYPED_LITERAL_SUFFIXES,
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "LiteralDigitGrouping"
-    }
-}
+declare_lint_pass!(LiteralDigitGrouping => [
+    UNREADABLE_LITERAL,
+    INCONSISTENT_DIGIT_GROUPING,
+    LARGE_DIGIT_GROUPS,
+    MISTYPED_LITERAL_SUFFIXES,
+]);
 
 impl EarlyLintPass for LiteralDigitGrouping {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
@@ -488,22 +477,15 @@ impl LiteralDigitGrouping {
     }
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Copy, Clone)]
-pub struct LiteralRepresentation {
+pub struct DecimalLiteralRepresentation {
     threshold: u64,
 }
 
-impl LintPass for LiteralRepresentation {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DECIMAL_LITERAL_REPRESENTATION)
-    }
+impl_lint_pass!(DecimalLiteralRepresentation => [DECIMAL_LITERAL_REPRESENTATION]);
 
-    fn name(&self) -> &'static str {
-        "DecimalLiteralRepresentation"
-    }
-}
-
-impl EarlyLintPass for LiteralRepresentation {
+impl EarlyLintPass for DecimalLiteralRepresentation {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if in_external_macro(cx.sess(), expr.span) {
             return;
@@ -515,7 +497,7 @@ impl EarlyLintPass for LiteralRepresentation {
     }
 }
 
-impl LiteralRepresentation {
+impl DecimalLiteralRepresentation {
     pub fn new(threshold: u64) -> Self {
         Self { threshold }
     }

@@ -5,7 +5,7 @@ use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::ty::DefIdTree;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::keywords::SelfUpper;
 
@@ -46,18 +46,7 @@ declare_clippy_lint! {
     "Unnecessary structure name repetition whereas `Self` is applicable"
 }
 
-#[derive(Copy, Clone, Default)]
-pub struct UseSelf;
-
-impl LintPass for UseSelf {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(USE_SELF)
-    }
-
-    fn name(&self) -> &'static str {
-        "UseSelf"
-    }
-}
+declare_lint_pass!(UseSelf => [USE_SELF]);
 
 const SEGMENTS_MSG: &str = "segments should be composed of at least 1 element";
 

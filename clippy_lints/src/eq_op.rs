@@ -3,7 +3,7 @@ use crate::utils::{
 };
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -46,18 +46,7 @@ declare_clippy_lint! {
     "taking a reference to satisfy the type constraints on `==`"
 }
 
-#[derive(Copy, Clone)]
-pub struct EqOp;
-
-impl LintPass for EqOp {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(EQ_OP, OP_REF)
-    }
-
-    fn name(&self) -> &'static str {
-        "EqOp"
-    }
-}
+declare_lint_pass!(EqOp => [EQ_OP, OP_REF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     #[allow(clippy::similar_names, clippy::too_many_lines)]

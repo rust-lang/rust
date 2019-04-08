@@ -4,7 +4,7 @@ use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::{ExpnFormat, Span};
@@ -232,31 +232,20 @@ declare_clippy_lint! {
     "using `==` or `!=` on float constants instead of comparing difference with an epsilon"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(MiscLints => [
+    TOPLEVEL_REF_ARG,
+    CMP_NAN,
+    FLOAT_CMP,
+    CMP_OWNED,
+    MODULO_ONE,
+    REDUNDANT_PATTERN,
+    USED_UNDERSCORE_BINDING,
+    SHORT_CIRCUIT_STATEMENT,
+    ZERO_PTR,
+    FLOAT_CMP_CONST
+]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            TOPLEVEL_REF_ARG,
-            CMP_NAN,
-            FLOAT_CMP,
-            CMP_OWNED,
-            MODULO_ONE,
-            REDUNDANT_PATTERN,
-            USED_UNDERSCORE_BINDING,
-            SHORT_CIRCUIT_STATEMENT,
-            ZERO_PTR,
-            FLOAT_CMP_CONST
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "MiscLints"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,

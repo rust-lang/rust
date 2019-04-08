@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::ast;
@@ -203,27 +203,17 @@ declare_clippy_lint! {
     "transmutes from a pointer to a pointer / a reference to a reference"
 }
 
-pub struct Transmute;
-
-impl LintPass for Transmute {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            CROSSPOINTER_TRANSMUTE,
-            TRANSMUTE_PTR_TO_REF,
-            TRANSMUTE_PTR_TO_PTR,
-            USELESS_TRANSMUTE,
-            WRONG_TRANSMUTE,
-            TRANSMUTE_INT_TO_CHAR,
-            TRANSMUTE_BYTES_TO_STR,
-            TRANSMUTE_INT_TO_BOOL,
-            TRANSMUTE_INT_TO_FLOAT,
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "Transmute"
-    }
-}
+declare_lint_pass!(Transmute => [
+    CROSSPOINTER_TRANSMUTE,
+    TRANSMUTE_PTR_TO_REF,
+    TRANSMUTE_PTR_TO_PTR,
+    USELESS_TRANSMUTE,
+    WRONG_TRANSMUTE,
+    TRANSMUTE_INT_TO_CHAR,
+    TRANSMUTE_BYTES_TO_STR,
+    TRANSMUTE_INT_TO_BOOL,
+    TRANSMUTE_INT_TO_FLOAT,
+]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
     #[allow(clippy::similar_names, clippy::too_many_lines)]

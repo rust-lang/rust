@@ -4,7 +4,7 @@ use crate::utils::{span_lint, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
@@ -107,14 +107,7 @@ impl BitMask {
     }
 }
 
-impl LintPass for BitMask {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(BAD_BIT_MASK, INEFFECTIVE_BIT_MASK, VERBOSE_BIT_MASK)
-    }
-    fn name(&self) -> &'static str {
-        "BitMask"
-    }
-}
+impl_lint_pass!(BitMask => [BAD_BIT_MASK, INEFFECTIVE_BIT_MASK, VERBOSE_BIT_MASK]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BitMask {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

@@ -1,7 +1,7 @@
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::source_map::Span;
 
 use crate::consts::{constant_simple, Constant};
@@ -24,18 +24,7 @@ declare_clippy_lint! {
     "using identity operations, e.g., `x + 0` or `y / 1`"
 }
 
-#[derive(Copy, Clone)]
-pub struct IdentityOp;
-
-impl LintPass for IdentityOp {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(IDENTITY_OP)
-    }
-
-    fn name(&self) -> &'static str {
-        "IdentityOp"
-    }
-}
+declare_lint_pass!(IdentityOp => [IDENTITY_OP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

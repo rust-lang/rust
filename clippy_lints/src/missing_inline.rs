@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast;
 use syntax::source_map::Span;
 
@@ -56,8 +56,6 @@ declare_clippy_lint! {
     "detects missing #[inline] attribute for public callables (functions, trait methods, methods...)"
 }
 
-pub struct MissingInline;
-
 fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
     let has_inline = attrs.iter().any(|a| a.check_name("inline"));
     if !has_inline {
@@ -79,15 +77,7 @@ fn is_executable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>) -> bool {
     })
 }
 
-impl LintPass for MissingInline {
-    fn get_lints(&self) -> LintArray {
-        lint_array![MISSING_INLINE_IN_PUBLIC_ITEMS]
-    }
-
-    fn name(&self) -> &'static str {
-        "MissingInline"
-    }
-}
+declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {

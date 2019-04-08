@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::RangeLimits;
 use syntax::source_map::Spanned;
@@ -86,25 +86,14 @@ declare_clippy_lint! {
     "`x..=(y-1)` reads better as `x..y`"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(Ranges => [
+    ITERATOR_STEP_BY_ZERO,
+    RANGE_ZIP_WITH_LEN,
+    RANGE_PLUS_ONE,
+    RANGE_MINUS_ONE
+]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            ITERATOR_STEP_BY_ZERO,
-            RANGE_ZIP_WITH_LEN,
-            RANGE_PLUS_ONE,
-            RANGE_MINUS_ONE
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "Ranges"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::MethodCall(ref path, _, ref args) = expr.node {
             let name = path.ident.as_str();

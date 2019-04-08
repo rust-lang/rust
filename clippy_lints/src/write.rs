@@ -1,6 +1,6 @@
 use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::ast::*;
@@ -168,29 +168,18 @@ declare_clippy_lint! {
     "writing a literal with a format string"
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Pass;
+declare_lint_pass!(Write => [
+    PRINT_WITH_NEWLINE,
+    PRINTLN_EMPTY_STRING,
+    PRINT_STDOUT,
+    USE_DEBUG,
+    PRINT_LITERAL,
+    WRITE_WITH_NEWLINE,
+    WRITELN_EMPTY_STRING,
+    WRITE_LITERAL
+]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            PRINT_WITH_NEWLINE,
-            PRINTLN_EMPTY_STRING,
-            PRINT_STDOUT,
-            USE_DEBUG,
-            PRINT_LITERAL,
-            WRITE_WITH_NEWLINE,
-            WRITELN_EMPTY_STRING,
-            WRITE_LITERAL
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "Write"
-    }
-}
-
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for Write {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &Mac) {
         if mac.node.path == "println" {
             span_lint(cx, PRINT_STDOUT, mac.span, "use of `println!`");

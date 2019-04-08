@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::intravisit;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for instances of `mut mut` references.
@@ -23,18 +23,7 @@ declare_clippy_lint! {
     "usage of double-mut refs, e.g., `&mut &mut ...`"
 }
 
-#[derive(Copy, Clone)]
-pub struct MutMut;
-
-impl LintPass for MutMut {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MUT_MUT)
-    }
-
-    fn name(&self) -> &'static str {
-        "MutMut"
-    }
-}
+declare_lint_pass!(MutMut => [MUT_MUT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutMut {
     fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {

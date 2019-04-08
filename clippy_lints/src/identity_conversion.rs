@@ -2,7 +2,7 @@ use crate::utils::{in_macro, match_trait_method, same_tys, snippet, snippet_with
 use crate::utils::{paths, resolve_node};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -27,15 +27,7 @@ pub struct IdentityConversion {
     try_desugar_arm: Vec<HirId>,
 }
 
-impl LintPass for IdentityConversion {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(IDENTITY_CONVERSION)
-    }
-
-    fn name(&self) -> &'static str {
-        "IdentityConversion"
-    }
-}
+impl_lint_pass!(IdentityConversion => [IDENTITY_CONVERSION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

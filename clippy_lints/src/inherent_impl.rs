@@ -3,9 +3,8 @@
 use crate::utils::span_lint_and_then;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashMap;
-use std::default::Default;
 use syntax_pos::Span;
 
 declare_clippy_lint! {
@@ -40,29 +39,15 @@ declare_clippy_lint! {
     "Multiple inherent impl that could be grouped"
 }
 
-pub struct Pass {
+#[allow(clippy::module_name_repetitions)]
+#[derive(Default)]
+pub struct MultipleInherentImpl {
     impls: FxHashMap<def_id::DefId, (Span, Generics)>,
 }
 
-impl Default for Pass {
-    fn default() -> Self {
-        Self {
-            impls: FxHashMap::default(),
-        }
-    }
-}
+impl_lint_pass!(MultipleInherentImpl => [MULTIPLE_INHERENT_IMPL]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MULTIPLE_INHERENT_IMPL)
-    }
-
-    fn name(&self) -> &'static str {
-        "MultipleInherientImpl"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MultipleInherentImpl {
     fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Impl(_, _, _, ref generics, None, _, _) = item.node {
             // Remember for each inherent implementation encoutered its span and generics

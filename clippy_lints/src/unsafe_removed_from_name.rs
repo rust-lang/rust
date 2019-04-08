@@ -1,6 +1,6 @@
 use crate::utils::span_lint;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
@@ -26,17 +26,7 @@ declare_clippy_lint! {
     "`unsafe` removed from API names on import"
 }
 
-pub struct UnsafeNameRemoval;
-
-impl LintPass for UnsafeNameRemoval {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNSAFE_REMOVED_FROM_NAME)
-    }
-
-    fn name(&self) -> &'static str {
-        "UnsafeNameRemoval"
-    }
-}
+declare_lint_pass!(UnsafeNameRemoval => [UNSAFE_REMOVED_FROM_NAME]);
 
 impl EarlyLintPass for UnsafeNameRemoval {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {

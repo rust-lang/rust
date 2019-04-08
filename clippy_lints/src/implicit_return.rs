@@ -1,7 +1,7 @@
 use crate::utils::{in_macro, is_expn_of, snippet_opt, span_lint_and_then};
 use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, MatchSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::source_map::Span;
 
@@ -33,9 +33,9 @@ declare_clippy_lint! {
     "use a return statement like `return expr` instead of an expression"
 }
 
-pub struct Pass;
+declare_lint_pass!(ImplicitReturn => [IMPLICIT_RETURN]);
 
-impl Pass {
+impl ImplicitReturn {
     fn lint(cx: &LateContext<'_, '_>, outer_span: syntax_pos::Span, inner_span: syntax_pos::Span, msg: &str) {
         span_lint_and_then(cx, IMPLICIT_RETURN, outer_span, "missing return statement", |db| {
             if let Some(snippet) = snippet_opt(cx, inner_span) {
@@ -110,17 +110,7 @@ impl Pass {
     }
 }
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(IMPLICIT_RETURN)
-    }
-
-    fn name(&self) -> &'static str {
-        "ImplicitReturn"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,

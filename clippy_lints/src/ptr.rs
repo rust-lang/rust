@@ -7,7 +7,7 @@ use rustc::hir::QPath;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::borrow::Cow;
 use syntax::source_map::Span;
@@ -94,20 +94,9 @@ declare_clippy_lint! {
     "fns that create mutable refs from immutable ref args"
 }
 
-#[derive(Copy, Clone)]
-pub struct PointerPass;
+declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF]);
 
-impl LintPass for PointerPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(PTR_ARG, CMP_NULL, MUT_FROM_REF)
-    }
-
-    fn name(&self) -> &'static str {
-        "Ptr"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ptr {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Fn(ref decl, _, _, body_id) = item.node {
             check_fn(cx, decl, item.hir_id, Some(body_id));
