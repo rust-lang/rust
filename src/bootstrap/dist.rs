@@ -901,6 +901,7 @@ impl Step for Src {
             "src/libstd",
             "src/libunwind",
             "src/libtest",
+            "src/libterm",
             "src/libprofiler_builtins",
             "src/stdsimd",
             "src/libproc_macro",

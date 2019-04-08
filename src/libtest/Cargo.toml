@@ -10,7 +10,8 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
-libtest = { version = "0.0.1" }
+getopts = "0.2"
+term = { path = "../libterm" }
 
 # not actually used but needed to always have proc_macro in the sysroot
 proc_macro = { path = "../libproc_macro" }
