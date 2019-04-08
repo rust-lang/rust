@@ -1,4 +1,5 @@
 use crate::ParseError;
+use crate::subtree_parser::Parser;
 
 #[derive(Clone)]
 pub(crate) struct TtCursor<'a> {
@@ -76,6 +77,11 @@ impl<'a> TtCursor<'a> {
             self.bump();
             i
         })
+    }
+
+    pub(crate) fn eat_path(&mut self) -> Option<tt::TokenTree> {
+        let parser = Parser::new(&mut self.pos, self.subtree);
+        parser.parse_path()
     }
 
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {

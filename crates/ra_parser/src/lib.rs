@@ -61,6 +61,14 @@ pub fn parse(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     event::process(tree_sink, events);
 }
 
+/// Parse given tokens into the given sink as a path
+pub fn parse_path(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    let mut p = parser::Parser::new(token_source);
+    grammar::path(&mut p);
+    let events = p.finish();
+    event::process(tree_sink, events);
+}
+
 /// A parsing function for a specific braced-block.
 pub struct Reparser(fn(&mut parser::Parser));
 

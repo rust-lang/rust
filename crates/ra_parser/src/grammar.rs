@@ -49,6 +49,10 @@ pub(crate) fn root(p: &mut Parser) {
     m.complete(p, SOURCE_FILE);
 }
 
+pub(crate) fn path(p: &mut Parser) {
+    paths::type_path(p);
+}
+
 pub(crate) fn reparser(
     node: SyntaxKind,
     first_child: Option<SyntaxKind>,
