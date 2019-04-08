@@ -658,14 +658,6 @@ impl<'a, 'tcx> CrateMetadata {
         tcx.alloc_adt_def(did, adt_kind, variants, repr)
     }
 
-    crate fn get_predicates(
-        &self,
-        item_id: DefIndex,
-        tcx: TyCtxt<'tcx>,
-    ) -> ty::GenericPredicates<'tcx> {
-        self.root.per_def.predicates.get(self, item_id).unwrap().decode((self, tcx))
-    }
-
     crate fn get_predicates_defined_on(
         &self,
         item_id: DefIndex,

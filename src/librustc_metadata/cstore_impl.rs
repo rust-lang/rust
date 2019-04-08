@@ -95,7 +95,6 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     generics_of => {
         tcx.arena.alloc(cdata.get_generics(def_id.index, tcx.sess))
     }
-    predicates_of => { cdata.get_predicates(def_id.index, tcx) }
     predicates_defined_on => { cdata.get_predicates_defined_on(def_id.index, tcx) }
     super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
     trait_def => {

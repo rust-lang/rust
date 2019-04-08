@@ -76,7 +76,6 @@ struct PerDefTables<'tcx> {
     inherent_impls: PerDefTable<Lazy<[DefIndex]>>,
     variances: PerDefTable<Lazy<[ty::Variance]>>,
     generics: PerDefTable<Lazy<ty::Generics>>,
-    predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
     predicates_defined_on: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
     super_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
 
@@ -524,7 +523,6 @@ impl<'tcx> EncodeContext<'tcx> {
             inherent_impls: self.per_def.inherent_impls.encode(&mut self.opaque),
             variances: self.per_def.variances.encode(&mut self.opaque),
             generics: self.per_def.generics.encode(&mut self.opaque),
-            predicates: self.per_def.predicates.encode(&mut self.opaque),
             predicates_defined_on: self.per_def.predicates_defined_on.encode(&mut self.opaque),
             super_predicates: self.per_def.super_predicates.encode(&mut self.opaque),
 
@@ -676,7 +674,7 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -719,7 +717,7 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -777,7 +775,7 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
     }
 
     fn encode_struct_ctor(&mut self, adt_def_id: DefId, def_id: DefId) {
@@ -820,7 +818,7 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -828,11 +826,6 @@ impl EncodeContext<'tcx> {
     fn encode_generics(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_generics({:?})", def_id);
         record!(self.per_def.generics[def_id] <- self.tcx.generics_of(def_id));
-    }
-
-    fn encode_predicates(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_predicates({:?})", def_id);
-        record!(self.per_def.predicates[def_id] <- self.tcx.predicates_of(def_id));
     }
 
     fn encode_predicates_defined_on(&mut self, def_id: DefId) {
@@ -920,7 +913,7 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -987,7 +980,7 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
         let mir = match ast_item.kind {
             hir::ImplItemKind::Const(..) => true,
             hir::ImplItemKind::Method(ref sig, _) => {
@@ -1261,21 +1254,9 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Trait(..) |
             hir::ItemKind::TraitAlias(..) => {
                 self.encode_generics(def_id);
-                self.encode_predicates(def_id);
-            }
-            _ => {}
-        }
-        // The only time that `predicates_defined_on` is used (on
-        // an external item) is for traits, during chalk lowering,
-        // so only encode it in that case as an efficiency
-        // hack. (No reason not to expand it in the future if
-        // necessary.)
-        match item.kind {
-            hir::ItemKind::Trait(..) |
-            hir::ItemKind::TraitAlias(..) => {
                 self.encode_predicates_defined_on(def_id);
             }
-            _ => {} // not *wrong* for other kinds of items, but not needed
+            _ => {}
         }
         match item.kind {
             hir::ItemKind::Trait(..) |
@@ -1378,7 +1359,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
         self.encode_item_type(def_id);
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -1589,7 +1570,7 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates(def_id);
+        self.encode_predicates_defined_on(def_id);
     }
 }
 

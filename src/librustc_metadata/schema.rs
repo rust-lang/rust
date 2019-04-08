@@ -244,7 +244,6 @@ crate struct LazyPerDefTables<'tcx> {
     pub inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
     pub variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
     pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
-    pub predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
     pub predicates_defined_on: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
     pub super_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
 
