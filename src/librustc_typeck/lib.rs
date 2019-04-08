@@ -109,8 +109,6 @@ use util::common::time;
 use std::iter;
 
 use astconv::{AstConv, Bounds};
-pub use collect::checked_type_of;
-
 pub struct TypeAndSubsts<'tcx> {
     substs: SubstsRef<'tcx>,
     ty: Ty<'tcx>,
