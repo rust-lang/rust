@@ -98,7 +98,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
                 let bytes = items.checked_mul(len).ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
 
-                if bytes== 0 {
+                if bytes == 0 {
                     this.write_null(dest)?;
                 } else {
                     let size = Size::from_bytes(bytes);
