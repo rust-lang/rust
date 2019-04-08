@@ -6,7 +6,6 @@ use ra_syntax::{
     ast::{self, ArgListOwner},
     algo::find_node_at_offset,
 };
-use hir::Docs;
 
 use crate::{FilePosition, CallInfo, FunctionSignature, db::RootDatabase};
 
@@ -27,7 +26,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let fn_def = ast::FnDef::cast(fn_def).unwrap();
     let function = hir::source_binder::function_from_source(db, symbol.file_id, fn_def)?;
 
-    let mut call_info = CallInfo::new(db, function, fn_def)?;
+    let mut call_info = CallInfo::new(db, function);
 
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters().len();
@@ -107,11 +106,10 @@ impl<'a> FnCallNode<'a> {
 }
 
 impl CallInfo {
-    fn new(db: &RootDatabase, function: hir::Function, node: &ast::FnDef) -> Option<Self> {
-        let doc = function.docs(db);
-        let signature = FunctionSignature::from(node).with_doc_opt(doc);
+    fn new(db: &RootDatabase, function: hir::Function) -> Self {
+        let signature = FunctionSignature::from_hir(db, function);
 
-        Some(CallInfo { signature, active_parameter: None })
+        CallInfo { signature, active_parameter: None }
     }
 
     fn parameters(&self) -> &[String] {

@@ -5,6 +5,7 @@ use std::fmt::{self, Display};
 use join_to_string::join;
 use ra_syntax::ast::{self, AstNode, NameOwner, VisibilityOwner, TypeParamsOwner};
 use std::convert::From;
+use hir::Docs;
 
 /// Contains information about a function signature
 #[derive(Debug)]
@@ -29,6 +30,12 @@ impl FunctionSignature {
     pub(crate) fn with_doc_opt(mut self, doc: Option<Documentation>) -> Self {
         self.doc = doc;
         self
+    }
+
+    pub(crate) fn from_hir(db: &db::RootDatabase, function: hir::Function) -> Self {
+        let doc = function.docs(db);
+        let (_, ast_node) = function.source(db);
+        FunctionSignature::from(&*ast_node).with_doc_opt(doc)
     }
 }
 
