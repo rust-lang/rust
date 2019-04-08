@@ -378,7 +378,8 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // get_bytes_unchecked tests relocation edges
-        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size, CheckInAllocMsg::PointerArithmetic)?;
+        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size,
+                                                      CheckInAllocMsg::PointerArithmetic)?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
