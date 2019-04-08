@@ -1419,7 +1419,7 @@ fn slice_pat_covered_by_const<'tcx>(
             }
             let n = n.assert_usize(tcx).unwrap();
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n),
-                            CheckInAllocMsg::SlicePatCoveredByConst).unwrap()
+                            CheckInAllocMsg::OutOfBounds).unwrap()
         },
         // a slice fat pointer to a zero length slice
         (ConstValue::Slice(Scalar::Bits { .. }, 0), ty::Slice(t)) => {
@@ -1444,7 +1444,7 @@ fn slice_pat_covered_by_const<'tcx>(
             tcx.alloc_map
                 .lock()
                 .unwrap_memory(ptr.alloc_id)
-                .get_bytes(&tcx, ptr, Size::from_bytes(n), CheckInAllocMsg::SlicePatCoveredByConst)
+                .get_bytes(&tcx, ptr, Size::from_bytes(n), CheckInAllocMsg::OutOfBounds)
                 .unwrap()
         },
         _ => bug!(

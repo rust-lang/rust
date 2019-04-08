@@ -252,7 +252,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
-                let align = self.check_bounds_ptr(ptr, CheckInAllocMsg::CheckAlign)?;
+                let align = self.check_bounds_ptr(ptr, CheckInAllocMsg::NullPointer)?;
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
@@ -440,7 +440,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 Ok((layout.size, layout.align.abi))
             }
             _ => match msg {
-                CheckInAllocMsg::CheckAlign | CheckInAllocMsg::ReadDiscriminant => {
+                CheckInAllocMsg::NullPointer | CheckInAllocMsg::OutOfBounds => {
                     // Must be a deallocated pointer
                     Ok(*self.dead_alloc_map.get(&id).expect(
                         "allocation missing in dead_alloc_map"
@@ -604,7 +604,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Ok(&[])
         } else {
             let ptr = ptr.to_ptr()?;
-            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size, CheckInAllocMsg::ReadBytes)
+            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size, CheckInAllocMsg::MemoryAccess)
         }
     }
 }
@@ -729,10 +729,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         // This checks relocation edges on the src.
         let src_bytes = self.get(src.alloc_id)?
-            .get_bytes_with_undef_and_ptr(&tcx, src, size, CheckInAllocMsg::CopyRepeatedly)?
+            .get_bytes_with_undef_and_ptr(&tcx, src, size, CheckInAllocMsg::MemoryAccess)?
             .as_ptr();
         let dest_bytes = self.get_mut(dest.alloc_id)?
-            .get_bytes_mut(&tcx, dest, size * length, CheckInAllocMsg::CopyRepeatedly)?
+            .get_bytes_mut(&tcx, dest, size * length, CheckInAllocMsg::MemoryAccess)?
             .as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes

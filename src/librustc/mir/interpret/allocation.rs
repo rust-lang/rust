@@ -25,35 +25,19 @@ pub enum InboundsCheck {
 /// Used by `check_in_alloc` to indicate context of check
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum CheckInAllocMsg {
-    ReadCStr,
-    CheckBytes,
-    WriteBytes,
-    WriteRepeat,
-    ReadScalar,
-    WriteScalar,
-    SlicePatCoveredByConst,
-    ReadDiscriminant,
-    CheckAlign,
-    ReadBytes,
-    CopyRepeatedly,
-    CheckBounds,
+    MemoryAccess,
+    NullPointer,
+    PointerArithmetic,
+    OutOfBounds,
 }
 
 impl Display for CheckInAllocMsg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", match *self {
-            CheckInAllocMsg::ReadCStr => "read C str",
-            CheckInAllocMsg::CheckBytes => "check bytes",
-            CheckInAllocMsg::WriteBytes => "write bytes",
-            CheckInAllocMsg::WriteRepeat => "write repeat",
-            CheckInAllocMsg::ReadScalar => "read scalar",
-            CheckInAllocMsg::WriteScalar => "write scalar",
-            CheckInAllocMsg::SlicePatCoveredByConst => "slice pat covered by const",
-            CheckInAllocMsg::ReadDiscriminant => "read discriminant",
-            CheckInAllocMsg::CheckAlign => "check align",
-            CheckInAllocMsg::ReadBytes => "read bytes",
-            CheckInAllocMsg::CopyRepeatedly => "copy repeatedly",
-            CheckInAllocMsg::CheckBounds => "check bounds",
+            CheckInAllocMsg::MemoryAccess => "memory access",
+            CheckInAllocMsg::NullPointer => "null pointer",
+            CheckInAllocMsg::PointerArithmetic => "pointer arithmetic",
+            CheckInAllocMsg::OutOfBounds => "out of bounds",
         })
     }
 }
@@ -311,7 +295,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
                 // from the result!
-                Ok(&self.get_bytes(cx, ptr, size_with_null, CheckInAllocMsg::ReadCStr)?[..size])
+                Ok(&self.get_bytes(cx, ptr, size_with_null, CheckInAllocMsg::NullPointer)?[..size])
             }
             None => err!(UnterminatedCString(ptr.erase_tag())),
         }
@@ -331,7 +315,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // Check bounds and relocations on the edges
-        self.get_bytes_with_undef_and_ptr(cx, ptr, size, CheckInAllocMsg::CheckBytes)?;
+        self.get_bytes_with_undef_and_ptr(cx, ptr, size, CheckInAllocMsg::OutOfBounds)?;
         // Check undef and ptr
         if !allow_ptr_and_undef {
             self.check_defined(ptr, size)?;
@@ -353,7 +337,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64),
-                                       CheckInAllocMsg::WriteBytes)?;
+                                       CheckInAllocMsg::MemoryAccess)?;
         bytes.clone_from_slice(src);
         Ok(())
     }
@@ -369,7 +353,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        let bytes = self.get_bytes_mut(cx, ptr, count, CheckInAllocMsg::WriteRepeat)?;
+        let bytes = self.get_bytes_mut(cx, ptr, count, CheckInAllocMsg::MemoryAccess)?;
         for b in bytes {
             *b = val;
         }
@@ -394,7 +378,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // get_bytes_unchecked tests relocation edges
-        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size, CheckInAllocMsg::ReadScalar)?;
+        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size, CheckInAllocMsg::PointerArithmetic)?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
@@ -471,7 +455,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         };
 
         let endian = cx.data_layout().endian;
-        let dst = self.get_bytes_mut(cx, ptr, type_size, CheckInAllocMsg::WriteScalar)?;
+        let dst = self.get_bytes_mut(cx, ptr, type_size, CheckInAllocMsg::PointerArithmetic)?;
         write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation
