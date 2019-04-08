@@ -105,16 +105,16 @@ fn convert_tt(
     Some(res)
 }
 
-struct TtTreeSink<'a> {
+struct TtTreeSink<'a, Q: Querier> {
     buf: String,
-    src_querier: Querier<'a>,
+    src_querier: &'a Q,
     text_pos: TextUnit,
     token_pos: usize,
     inner: SyntaxTreeBuilder,
 }
 
-impl<'a> TtTreeSink<'a> {
-    fn new(src_querier: Querier<'a>) -> TtTreeSink {
+impl<'a, Q: Querier> TtTreeSink<'a, Q> {
+    fn new(src_querier: &'a Q) -> Self {
         TtTreeSink {
             buf: String::new(),
             src_querier,
@@ -125,10 +125,10 @@ impl<'a> TtTreeSink<'a> {
     }
 }
 
-impl<'a> TreeSink for TtTreeSink<'a> {
+impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
     fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         for _ in 0..n_tokens {
-            self.buf += self.src_querier.token(self.token_pos).1;
+            self.buf += &self.src_querier.token(self.token_pos).1;
             self.token_pos += 1;
         }
         self.text_pos += TextUnit::of_str(&self.buf);

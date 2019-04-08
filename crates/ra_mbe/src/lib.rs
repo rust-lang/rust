@@ -383,8 +383,22 @@ SOURCE_FILE@[0; 40)
         assert_eq!(to_literal(&stm_tokens[15 + 3]).text, "\"rust1\"");
     }
 
-    /// The following tests are port from intellij-rust directly
-    /// https://github.com/intellij-rust/intellij-rust/blob/c4e9feee4ad46e7953b1948c112533360b6087bb/src/test/kotlin/org/rust/lang/core/macros/RsMacroExpansionTest.kt
+    #[test]
+    fn test_two_idents() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:ident, $ j:ident) => {
+                fn foo() { let a = $ i; let b = $j; }
+            }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
+    }
+
+    // The following tests are port from intellij-rust directly
+    // https://github.com/intellij-rust/intellij-rust/blob/c4e9feee4ad46e7953b1948c112533360b6087bb/src/test/kotlin/org/rust/lang/core/macros/RsMacroExpansionTest.kt
 
     #[test]
     fn test_path() {
@@ -401,7 +415,21 @@ SOURCE_FILE@[0; 40)
         assert_expansion(
             &rules,
             "foo! { bar::<u8>::baz::<u8> }",
-            "fn foo () {let a = bar :: < u8 > :: baz :: < u8 > ;}",
+            "fn foo () {let a = bar ::< u8 > ::baz ::< u8 > ;}",
         );
+    }
+
+    #[test]
+    fn test_two_paths() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:path, $ j:path) => {
+                fn foo() { let a = $ i; let b = $j; }
+            }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
     }
 }

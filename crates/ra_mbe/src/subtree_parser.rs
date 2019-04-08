@@ -18,12 +18,12 @@ impl TreeSink for OffsetTokenSink {
 
 pub(crate) struct Parser<'a> {
     subtree: &'a tt::Subtree,
-    pos: &'a mut usize,
+    cur_pos: &'a mut usize,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(pos: &'a mut usize, subtree: &'a tt::Subtree) -> Parser<'a> {
-        Parser { pos, subtree }
+    pub fn new(cur_pos: &'a mut usize, subtree: &'a tt::Subtree) -> Parser<'a> {
+        Parser { cur_pos, subtree }
     }
 
     pub fn parse_path(self) -> Option<tt::TokenTree> {
@@ -35,7 +35,7 @@ impl<'a> Parser<'a> {
         F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),
     {
         let mut src = SubtreeTokenSource::new(self.subtree);
-        src.advance(*self.pos, true);
+        src.start_from_nth(*self.cur_pos);
         let mut sink = OffsetTokenSink { token_pos: 0 };
 
         f(&src, &mut sink);
@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
     }
 
     fn finish(self, parsed_token: usize, src: &mut SubtreeTokenSource) -> Option<tt::TokenTree> {
-        let res = src.bump_n(parsed_token, self.pos);
+        let res = src.bump_n(parsed_token, self.cur_pos);
         let res: Vec<_> = res.into_iter().cloned().collect();
 
         match res.len() {
