@@ -224,12 +224,11 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        msg: CheckInAllocMsg,
     ) -> EvalResult<'tcx, &[u8]>
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        self.get_bytes_internal(cx, ptr, size, true, msg)
+        self.get_bytes_internal(cx, ptr, size, true, CheckInAllocMsg::MemoryAccess)
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
@@ -295,7 +294,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
                 // We read the null, so we include it in the request, but we want it removed
                 // from the result!
-                Ok(&self.get_bytes(cx, ptr, size_with_null, CheckInAllocMsg::NullPointer)?[..size])
+                Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
             }
             None => err!(UnterminatedCString(ptr.erase_tag())),
         }
@@ -379,7 +378,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     {
         // get_bytes_unchecked tests relocation edges
         let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size,
-                                                      CheckInAllocMsg::PointerArithmetic)?;
+                                                      CheckInAllocMsg::MemoryAccess)?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
@@ -456,7 +455,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         };
 
         let endian = cx.data_layout().endian;
-        let dst = self.get_bytes_mut(cx, ptr, type_size, CheckInAllocMsg::PointerArithmetic)?;
+        let dst = self.get_bytes_mut(cx, ptr, type_size, CheckInAllocMsg::MemoryAccess)?;
         write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation

@@ -172,7 +172,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
-use rustc::mir::interpret::{ConstValue, Scalar, truncate, CheckInAllocMsg};
+use rustc::mir::interpret::{ConstValue, Scalar, truncate};
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -1418,8 +1418,7 @@ fn slice_pat_covered_by_const<'tcx>(
                 return Ok(false);
             }
             let n = n.assert_usize(tcx).unwrap();
-            alloc.get_bytes(&tcx, ptr, Size::from_bytes(n),
-                            CheckInAllocMsg::OutOfBounds).unwrap()
+            alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
         },
         // a slice fat pointer to a zero length slice
         (ConstValue::Slice(Scalar::Bits { .. }, 0), ty::Slice(t)) => {
@@ -1444,7 +1443,7 @@ fn slice_pat_covered_by_const<'tcx>(
             tcx.alloc_map
                 .lock()
                 .unwrap_memory(ptr.alloc_id)
-                .get_bytes(&tcx, ptr, Size::from_bytes(n), CheckInAllocMsg::OutOfBounds)
+                .get_bytes(&tcx, ptr, Size::from_bytes(n))
                 .unwrap()
         },
         _ => bug!(

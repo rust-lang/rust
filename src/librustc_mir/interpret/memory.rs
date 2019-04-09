@@ -606,7 +606,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Ok(&[])
         } else {
             let ptr = ptr.to_ptr()?;
-            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size, CheckInAllocMsg::MemoryAccess)
+            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
         }
     }
 }
