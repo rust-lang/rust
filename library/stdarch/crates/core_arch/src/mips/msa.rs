@@ -1141,7 +1141,7 @@ extern "C" {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.b))]
-unsafe fn __msa_add_a_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_add_a_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_add_a_b(a, ::mem::transmute(b))
 }
 
@@ -1154,7 +1154,7 @@ unsafe fn __msa_add_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.h))]
-unsafe fn __msa_add_a_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_add_a_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_add_a_h(a, ::mem::transmute(b))
 }
 
@@ -1167,7 +1167,7 @@ unsafe fn __msa_add_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.w))]
-unsafe fn __msa_add_a_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_add_a_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_add_a_w(a, ::mem::transmute(b))
 }
 
@@ -1180,7 +1180,7 @@ unsafe fn __msa_add_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.d))]
-unsafe fn __msa_add_a_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_add_a_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_add_a_d(a, ::mem::transmute(b))
 }
 
@@ -1193,7 +1193,7 @@ unsafe fn __msa_add_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.b))]
-unsafe fn __msa_adds_a_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_adds_a_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_adds_a_b(a, ::mem::transmute(b))
 }
 
@@ -1206,7 +1206,7 @@ unsafe fn __msa_adds_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.h))]
-unsafe fn __msa_adds_a_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_adds_a_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_adds_a_h(a, ::mem::transmute(b))
 }
 
@@ -1219,7 +1219,7 @@ unsafe fn __msa_adds_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.w))]
-unsafe fn __msa_adds_a_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_adds_a_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_adds_a_w(a, ::mem::transmute(b))
 }
 
@@ -1232,7 +1232,7 @@ unsafe fn __msa_adds_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.d))]
-unsafe fn __msa_adds_a_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_adds_a_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_adds_a_d(a, ::mem::transmute(b))
 }
 
@@ -1246,7 +1246,7 @@ unsafe fn __msa_adds_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.b))]
-unsafe fn __msa_adds_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_adds_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_adds_s_b(a, ::mem::transmute(b))
 }
 
@@ -1260,7 +1260,7 @@ unsafe fn __msa_adds_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.h))]
-unsafe fn __msa_adds_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_adds_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_adds_s_h(a, ::mem::transmute(b))
 }
 
@@ -1274,7 +1274,7 @@ unsafe fn __msa_adds_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.w))]
-unsafe fn __msa_adds_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_adds_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_adds_s_w(a, ::mem::transmute(b))
 }
 
@@ -1288,7 +1288,7 @@ unsafe fn __msa_adds_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.d))]
-unsafe fn __msa_adds_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_adds_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_adds_s_d(a, ::mem::transmute(b))
 }
 
@@ -1302,7 +1302,7 @@ unsafe fn __msa_adds_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.b))]
-unsafe fn __msa_adds_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_adds_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_adds_u_b(a, ::mem::transmute(b))
 }
 
@@ -1316,7 +1316,7 @@ unsafe fn __msa_adds_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.h))]
-unsafe fn __msa_adds_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_adds_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_adds_u_h(a, ::mem::transmute(b))
 }
 
@@ -1330,7 +1330,7 @@ unsafe fn __msa_adds_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.w))]
-unsafe fn __msa_adds_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_adds_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_adds_u_w(a, ::mem::transmute(b))
 }
 
@@ -1344,7 +1344,7 @@ unsafe fn __msa_adds_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.d))]
-unsafe fn __msa_adds_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_adds_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_adds_u_d(a, ::mem::transmute(b))
 }
 
@@ -1357,7 +1357,7 @@ unsafe fn __msa_adds_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.b))]
-unsafe fn __msa_addv_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_addv_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_addv_b(a, ::mem::transmute(b))
 }
 
@@ -1370,7 +1370,7 @@ unsafe fn __msa_addv_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.h))]
-unsafe fn __msa_addv_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_addv_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_addv_h(a, ::mem::transmute(b))
 }
 
@@ -1383,7 +1383,7 @@ unsafe fn __msa_addv_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.w))]
-unsafe fn __msa_addv_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_addv_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_addv_w(a, ::mem::transmute(b))
 }
 
@@ -1396,7 +1396,7 @@ unsafe fn __msa_addv_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.d))]
-unsafe fn __msa_addv_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_addv_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_addv_d(a, ::mem::transmute(b))
 }
 
@@ -1410,7 +1410,7 @@ unsafe fn __msa_addv_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.b, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_addvi_b(a: v16i8, imm5: u32) -> v16i8 {
+pub unsafe fn __msa_addvi_b(a: v16i8, imm5: u32) -> v16i8 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_b(a, $imm5)
@@ -1429,7 +1429,7 @@ unsafe fn __msa_addvi_b(a: v16i8, imm5: u32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.h, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_addvi_h(a: v8i16, imm5: u32) -> v8i16 {
+pub unsafe fn __msa_addvi_h(a: v8i16, imm5: u32) -> v8i16 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_h(a, $imm5)
@@ -1448,7 +1448,7 @@ unsafe fn __msa_addvi_h(a: v8i16, imm5: u32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.w, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_addvi_w(a: v4i32, imm5: u32) -> v4i32 {
+pub unsafe fn __msa_addvi_w(a: v4i32, imm5: u32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_w(a, $imm5)
@@ -1467,7 +1467,7 @@ unsafe fn __msa_addvi_w(a: v4i32, imm5: u32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.d, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_addvi_d(a: v2i64, imm5: u32) -> v2i64 {
+pub unsafe fn __msa_addvi_d(a: v2i64, imm5: u32) -> v2i64 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_d(a, $imm5)
@@ -1486,7 +1486,7 @@ unsafe fn __msa_addvi_d(a: v2i64, imm5: u32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(and.v))]
-unsafe fn __msa_and_v(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_and_v(a: v16u8, b: v16u8) -> v16u8 {
     msa_and_v(a, ::mem::transmute(b))
 }
 
@@ -1500,7 +1500,7 @@ unsafe fn __msa_and_v(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(andi.b, imm8 = 0b10010111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_andi_b(a: v16u8, imm8: u32) -> v16u8 {
+pub unsafe fn __msa_andi_b(a: v16u8, imm8: u32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_andi_b(a, $imm8)
@@ -1518,7 +1518,7 @@ unsafe fn __msa_andi_b(a: v16u8, imm8: u32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.b))]
-unsafe fn __msa_asub_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_asub_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_asub_s_b(a, ::mem::transmute(b))
 }
 
@@ -1531,7 +1531,7 @@ unsafe fn __msa_asub_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.h))]
-unsafe fn __msa_asub_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_asub_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_asub_s_h(a, ::mem::transmute(b))
 }
 
@@ -1544,7 +1544,7 @@ unsafe fn __msa_asub_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.w))]
-unsafe fn __msa_asub_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_asub_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_asub_s_w(a, ::mem::transmute(b))
 }
 
@@ -1557,7 +1557,7 @@ unsafe fn __msa_asub_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.d))]
-unsafe fn __msa_asub_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_asub_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_asub_s_d(a, ::mem::transmute(b))
 }
 
@@ -1570,7 +1570,7 @@ unsafe fn __msa_asub_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.b))]
-unsafe fn __msa_asub_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_asub_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_asub_u_b(a, ::mem::transmute(b))
 }
 
@@ -1583,7 +1583,7 @@ unsafe fn __msa_asub_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.h))]
-unsafe fn __msa_asub_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_asub_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_asub_u_h(a, ::mem::transmute(b))
 }
 
@@ -1596,7 +1596,7 @@ unsafe fn __msa_asub_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.w))]
-unsafe fn __msa_asub_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_asub_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_asub_u_w(a, ::mem::transmute(b))
 }
 
@@ -1609,7 +1609,7 @@ unsafe fn __msa_asub_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.d))]
-unsafe fn __msa_asub_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_asub_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_asub_u_d(a, ::mem::transmute(b))
 }
 
@@ -1624,7 +1624,7 @@ unsafe fn __msa_asub_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.b))]
-unsafe fn __msa_ave_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_ave_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_ave_s_b(a, ::mem::transmute(b))
 }
 
@@ -1639,7 +1639,7 @@ unsafe fn __msa_ave_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.h))]
-unsafe fn __msa_ave_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_ave_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_ave_s_h(a, ::mem::transmute(b))
 }
 
@@ -1654,7 +1654,7 @@ unsafe fn __msa_ave_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.w))]
-unsafe fn __msa_ave_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_ave_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_ave_s_w(a, ::mem::transmute(b))
 }
 
@@ -1669,7 +1669,7 @@ unsafe fn __msa_ave_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.d))]
-unsafe fn __msa_ave_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_ave_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_ave_s_d(a, ::mem::transmute(b))
 }
 
@@ -1684,7 +1684,7 @@ unsafe fn __msa_ave_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.b))]
-unsafe fn __msa_ave_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_ave_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_ave_u_b(a, ::mem::transmute(b))
 }
 
@@ -1699,7 +1699,7 @@ unsafe fn __msa_ave_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.h))]
-unsafe fn __msa_ave_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_ave_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_ave_u_h(a, ::mem::transmute(b))
 }
 
@@ -1714,7 +1714,7 @@ unsafe fn __msa_ave_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.w))]
-unsafe fn __msa_ave_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_ave_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_ave_u_w(a, ::mem::transmute(b))
 }
 
@@ -1729,7 +1729,7 @@ unsafe fn __msa_ave_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.d))]
-unsafe fn __msa_ave_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_ave_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_ave_u_d(a, ::mem::transmute(b))
 }
 
@@ -1745,7 +1745,7 @@ unsafe fn __msa_ave_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.b))]
-unsafe fn __msa_aver_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_aver_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_aver_s_b(a, ::mem::transmute(b))
 }
 
@@ -1761,7 +1761,7 @@ unsafe fn __msa_aver_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.h))]
-unsafe fn __msa_aver_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_aver_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_aver_s_h(a, ::mem::transmute(b))
 }
 
@@ -1777,7 +1777,7 @@ unsafe fn __msa_aver_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.w))]
-unsafe fn __msa_aver_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_aver_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_aver_s_w(a, ::mem::transmute(b))
 }
 
@@ -1793,7 +1793,7 @@ unsafe fn __msa_aver_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.d))]
-unsafe fn __msa_aver_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_aver_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_aver_s_d(a, ::mem::transmute(b))
 }
 
@@ -1809,7 +1809,7 @@ unsafe fn __msa_aver_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.b))]
-unsafe fn __msa_aver_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_aver_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_aver_u_b(a, ::mem::transmute(b))
 }
 
@@ -1825,7 +1825,7 @@ unsafe fn __msa_aver_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.h))]
-unsafe fn __msa_aver_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_aver_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_aver_u_h(a, ::mem::transmute(b))
 }
 
@@ -1841,7 +1841,7 @@ unsafe fn __msa_aver_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.w))]
-unsafe fn __msa_aver_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_aver_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_aver_u_w(a, ::mem::transmute(b))
 }
 
@@ -1857,7 +1857,7 @@ unsafe fn __msa_aver_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.d))]
-unsafe fn __msa_aver_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_aver_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_aver_u_d(a, ::mem::transmute(b))
 }
 
@@ -1871,7 +1871,7 @@ unsafe fn __msa_aver_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.b))]
-unsafe fn __msa_bclr_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_bclr_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_bclr_b(a, ::mem::transmute(b))
 }
 
@@ -1885,7 +1885,7 @@ unsafe fn __msa_bclr_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.h))]
-unsafe fn __msa_bclr_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_bclr_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_bclr_h(a, ::mem::transmute(b))
 }
 
@@ -1899,7 +1899,7 @@ unsafe fn __msa_bclr_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.w))]
-unsafe fn __msa_bclr_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_bclr_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_bclr_w(a, ::mem::transmute(b))
 }
 
@@ -1913,7 +1913,7 @@ unsafe fn __msa_bclr_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.d))]
-unsafe fn __msa_bclr_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_bclr_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_bclr_d(a, ::mem::transmute(b))
 }
 
@@ -1927,7 +1927,7 @@ unsafe fn __msa_bclr_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.b, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bclri_b(a: v16u8, imm3: i32) -> v16u8 {
+pub unsafe fn __msa_bclri_b(a: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_bclri_b(a, $imm3)
@@ -1946,7 +1946,7 @@ unsafe fn __msa_bclri_b(a: v16u8, imm3: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.h, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bclri_h(a: v8u16, imm4: i32) -> v8u16 {
+pub unsafe fn __msa_bclri_h(a: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_bclri_h(a, $imm4)
@@ -1965,7 +1965,7 @@ unsafe fn __msa_bclri_h(a: v8u16, imm4: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bclri_w(a: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_bclri_w(a: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_bclri_w(a, $imm5)
@@ -1984,7 +1984,7 @@ unsafe fn __msa_bclri_w(a: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclri.d, imm6 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bclri_d(a: v2u64, imm6: i32) -> v2u64 {
+pub unsafe fn __msa_bclri_d(a: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_bclri_d(a, $imm6)
@@ -2003,7 +2003,7 @@ unsafe fn __msa_bclri_d(a: v2u64, imm6: i32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.b))]
-unsafe fn __msa_binsl_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
+pub unsafe fn __msa_binsl_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
     msa_binsl_b(a, ::mem::transmute(b), c)
 }
 
@@ -2017,7 +2017,7 @@ unsafe fn __msa_binsl_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.h))]
-unsafe fn __msa_binsl_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
+pub unsafe fn __msa_binsl_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
     msa_binsl_h(a, ::mem::transmute(b), c)
 }
 
@@ -2031,7 +2031,7 @@ unsafe fn __msa_binsl_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.w))]
-unsafe fn __msa_binsl_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
+pub unsafe fn __msa_binsl_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
     msa_binsl_w(a, ::mem::transmute(b), c)
 }
 
@@ -2045,7 +2045,7 @@ unsafe fn __msa_binsl_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.d))]
-unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
+pub unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
     msa_binsl_d(a, ::mem::transmute(b), c)
 }
 
@@ -2059,7 +2059,7 @@ unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.b, imm3 = 0b111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsli_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
+pub unsafe fn __msa_binsli_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_binsli_b(a, ::mem::transmute(b), $imm3)
@@ -2078,7 +2078,7 @@ unsafe fn __msa_binsli_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.h, imm4 = 0b1111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsli_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
+pub unsafe fn __msa_binsli_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_binsli_h(a, ::mem::transmute(b), $imm4)
@@ -2097,7 +2097,7 @@ unsafe fn __msa_binsli_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.w, imm5 = 0b11111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsli_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_binsli_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_binsli_w(a, ::mem::transmute(b), $imm5)
@@ -2116,7 +2116,7 @@ unsafe fn __msa_binsli_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsli.d, imm6 = 0b111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsli_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
+pub unsafe fn __msa_binsli_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_binsli_d(a, ::mem::transmute(b), $imm6)
@@ -2135,7 +2135,7 @@ unsafe fn __msa_binsli_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.b))]
-unsafe fn __msa_binsr_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
+pub unsafe fn __msa_binsr_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
     msa_binsr_b(a, ::mem::transmute(b), c)
 }
 
@@ -2149,7 +2149,7 @@ unsafe fn __msa_binsr_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.h))]
-unsafe fn __msa_binsr_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
+pub unsafe fn __msa_binsr_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
     msa_binsr_h(a, ::mem::transmute(b), c)
 }
 
@@ -2163,7 +2163,7 @@ unsafe fn __msa_binsr_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.w))]
-unsafe fn __msa_binsr_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
+pub unsafe fn __msa_binsr_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
     msa_binsr_w(a, ::mem::transmute(b), c)
 }
 
@@ -2177,7 +2177,7 @@ unsafe fn __msa_binsr_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.d))]
-unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
+pub unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
     msa_binsr_d(a, ::mem::transmute(b), c)
 }
 
@@ -2191,7 +2191,7 @@ unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.b, imm3 = 0b111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsri_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
+pub unsafe fn __msa_binsri_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_binsri_b(a, ::mem::transmute(b), $imm3)
@@ -2210,7 +2210,7 @@ unsafe fn __msa_binsri_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.h, imm4 = 0b1111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsri_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
+pub unsafe fn __msa_binsri_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_binsri_h(a, ::mem::transmute(b), $imm4)
@@ -2229,7 +2229,7 @@ unsafe fn __msa_binsri_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.w, imm5 = 0b11111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsri_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_binsri_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_binsri_w(a, ::mem::transmute(b), $imm5)
@@ -2248,7 +2248,7 @@ unsafe fn __msa_binsri_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsri.d, imm6 = 0b111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_binsri_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
+pub unsafe fn __msa_binsri_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_binsri_d(a, ::mem::transmute(b), $imm6)
@@ -2267,7 +2267,7 @@ unsafe fn __msa_binsri_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmnz.v))]
-unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
+pub unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
     msa_bmnz_v(a, ::mem::transmute(b), c)
 }
 
@@ -2281,7 +2281,7 @@ unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmnzi.b, imm8 = 0b11111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_bmnzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
+pub unsafe fn __msa_bmnzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_bmnzi_b(a, ::mem::transmute(b), $imm8)
@@ -2300,7 +2300,7 @@ unsafe fn __msa_bmnzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmz.v))]
-unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
+pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
     msa_bmz_v(a, ::mem::transmute(b), c)
 }
 
@@ -2314,7 +2314,7 @@ unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmzi.b, imm8 = 0b11111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_bmzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
+pub unsafe fn __msa_bmzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_bmzi_b(a, ::mem::transmute(b), $imm8)
@@ -2333,7 +2333,7 @@ unsafe fn __msa_bmzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.b))]
-unsafe fn __msa_bneg_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_bneg_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_bneg_b(a, ::mem::transmute(b))
 }
 
@@ -2347,7 +2347,7 @@ unsafe fn __msa_bneg_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.h))]
-unsafe fn __msa_bneg_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_bneg_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_bneg_h(a, ::mem::transmute(b))
 }
 
@@ -2361,7 +2361,7 @@ unsafe fn __msa_bneg_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.w))]
-unsafe fn __msa_bneg_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_bneg_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_bneg_w(a, ::mem::transmute(b))
 }
 
@@ -2375,7 +2375,7 @@ unsafe fn __msa_bneg_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.d))]
-unsafe fn __msa_bneg_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_bneg_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_bneg_d(a, ::mem::transmute(b))
 }
 
@@ -2389,7 +2389,7 @@ unsafe fn __msa_bneg_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.b, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bnegi_b(a: v16u8, imm3: i32) -> v16u8 {
+pub unsafe fn __msa_bnegi_b(a: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_bnegi_b(a, $imm3)
@@ -2408,7 +2408,7 @@ unsafe fn __msa_bnegi_b(a: v16u8, imm3: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.h, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bnegi_h(a: v8u16, imm4: i32) -> v8u16 {
+pub unsafe fn __msa_bnegi_h(a: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_bnegi_h(a, $imm4)
@@ -2427,7 +2427,7 @@ unsafe fn __msa_bnegi_h(a: v8u16, imm4: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bnegi_w(a: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_bnegi_w(a: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_bnegi_w(a, $imm5)
@@ -2446,7 +2446,7 @@ unsafe fn __msa_bnegi_w(a: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnegi.d, imm6 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bnegi_d(a: v2u64, imm6: i32) -> v2u64 {
+pub unsafe fn __msa_bnegi_d(a: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_bnegi_d(a, $imm6)
@@ -2462,7 +2462,7 @@ unsafe fn __msa_bnegi_d(a: v2u64, imm6: i32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnz.b))]
-unsafe fn __msa_bnz_b(a: v16u8) -> i32 {
+pub unsafe fn __msa_bnz_b(a: v16u8) -> i32 {
     msa_bnz_b(a)
 }
 
@@ -2473,7 +2473,7 @@ unsafe fn __msa_bnz_b(a: v16u8) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnz.h))]
-unsafe fn __msa_bnz_h(a: v8u16) -> i32 {
+pub unsafe fn __msa_bnz_h(a: v8u16) -> i32 {
     msa_bnz_h(a)
 }
 
@@ -2484,7 +2484,7 @@ unsafe fn __msa_bnz_h(a: v8u16) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnz.w))]
-unsafe fn __msa_bnz_w(a: v4u32) -> i32 {
+pub unsafe fn __msa_bnz_w(a: v4u32) -> i32 {
     msa_bnz_w(a)
 }
 
@@ -2495,7 +2495,7 @@ unsafe fn __msa_bnz_w(a: v4u32) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnz.d))]
-unsafe fn __msa_bnz_d(a: v2u64) -> i32 {
+pub unsafe fn __msa_bnz_d(a: v2u64) -> i32 {
     msa_bnz_d(a)
 }
 
@@ -2507,7 +2507,7 @@ unsafe fn __msa_bnz_d(a: v2u64) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bnz.v))]
-unsafe fn __msa_bnz_v(a: v16u8) -> i32 {
+pub unsafe fn __msa_bnz_v(a: v16u8) -> i32 {
     msa_bnz_v(a)
 }
 
@@ -2521,7 +2521,7 @@ unsafe fn __msa_bnz_v(a: v16u8) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bsel.v))]
-unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
+pub unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
     msa_bsel_v(a, ::mem::transmute(b), c)
 }
 
@@ -2535,7 +2535,7 @@ unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseli.b, imm8 = 0b11111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_bseli_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
+pub unsafe fn __msa_bseli_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_bseli_b(a, ::mem::transmute(b), $imm8)
@@ -2554,7 +2554,7 @@ unsafe fn __msa_bseli_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.b))]
-unsafe fn __msa_bset_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_bset_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_bset_b(a, ::mem::transmute(b))
 }
 
@@ -2568,7 +2568,7 @@ unsafe fn __msa_bset_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.h))]
-unsafe fn __msa_bset_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_bset_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_bset_h(a, ::mem::transmute(b))
 }
 
@@ -2582,7 +2582,7 @@ unsafe fn __msa_bset_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.w))]
-unsafe fn __msa_bset_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_bset_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_bset_w(a, ::mem::transmute(b))
 }
 
@@ -2596,7 +2596,7 @@ unsafe fn __msa_bset_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.d))]
-unsafe fn __msa_bset_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_bset_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_bset_d(a, ::mem::transmute(b))
 }
 
@@ -2610,7 +2610,7 @@ unsafe fn __msa_bset_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.b, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bseti_b(a: v16u8, imm3: i32) -> v16u8 {
+pub unsafe fn __msa_bseti_b(a: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_bseti_b(a, $imm3)
@@ -2629,7 +2629,7 @@ unsafe fn __msa_bseti_b(a: v16u8, imm3: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.h, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bseti_h(a: v8u16, imm4: i32) -> v8u16 {
+pub unsafe fn __msa_bseti_h(a: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_bseti_h(a, $imm4)
@@ -2648,7 +2648,7 @@ unsafe fn __msa_bseti_h(a: v8u16, imm4: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bseti_w(a: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_bseti_w(a: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_bseti_w(a, $imm5)
@@ -2667,7 +2667,7 @@ unsafe fn __msa_bseti_w(a: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bseti.d, imm6 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_bseti_d(a: v2u64, imm6: i32) -> v2u64 {
+pub unsafe fn __msa_bseti_d(a: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_bseti_d(a, $imm6)
@@ -2683,7 +2683,7 @@ unsafe fn __msa_bseti_d(a: v2u64, imm6: i32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bz.b))]
-unsafe fn __msa_bz_b(a: v16u8) -> i32 {
+pub unsafe fn __msa_bz_b(a: v16u8) -> i32 {
     msa_bz_b(a)
 }
 
@@ -2694,7 +2694,7 @@ unsafe fn __msa_bz_b(a: v16u8) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bz.h))]
-unsafe fn __msa_bz_h(a: v8u16) -> i32 {
+pub unsafe fn __msa_bz_h(a: v8u16) -> i32 {
     msa_bz_h(a)
 }
 
@@ -2705,7 +2705,7 @@ unsafe fn __msa_bz_h(a: v8u16) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bz.w))]
-unsafe fn __msa_bz_w(a: v4u32) -> i32 {
+pub unsafe fn __msa_bz_w(a: v4u32) -> i32 {
     msa_bz_w(a)
 }
 
@@ -2716,7 +2716,7 @@ unsafe fn __msa_bz_w(a: v4u32) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bz.d))]
-unsafe fn __msa_bz_d(a: v2u64) -> i32 {
+pub unsafe fn __msa_bz_d(a: v2u64) -> i32 {
     msa_bz_d(a)
 }
 
@@ -2728,7 +2728,7 @@ unsafe fn __msa_bz_d(a: v2u64) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bz.v))]
-unsafe fn __msa_bz_v(a: v16u8) -> i32 {
+pub unsafe fn __msa_bz_v(a: v16u8) -> i32 {
     msa_bz_v(a)
 }
 
@@ -2741,7 +2741,7 @@ unsafe fn __msa_bz_v(a: v16u8) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.b))]
-unsafe fn __msa_ceq_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_ceq_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_ceq_b(a, ::mem::transmute(b))
 }
 
@@ -2754,7 +2754,7 @@ unsafe fn __msa_ceq_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.h))]
-unsafe fn __msa_ceq_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_ceq_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_ceq_h(a, ::mem::transmute(b))
 }
 
@@ -2767,7 +2767,7 @@ unsafe fn __msa_ceq_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.w))]
-unsafe fn __msa_ceq_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_ceq_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_ceq_w(a, ::mem::transmute(b))
 }
 
@@ -2780,7 +2780,7 @@ unsafe fn __msa_ceq_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.d))]
-unsafe fn __msa_ceq_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_ceq_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_ceq_d(a, ::mem::transmute(b))
 }
 
@@ -2794,7 +2794,7 @@ unsafe fn __msa_ceq_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.b, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ceqi_b(a: v16i8, imm_s5: i32) -> v16i8 {
+pub unsafe fn __msa_ceqi_b(a: v16i8, imm_s5: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_ceqi_b(a, $imm_s5)
@@ -2813,7 +2813,7 @@ unsafe fn __msa_ceqi_b(a: v16i8, imm_s5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.h, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ceqi_h(a: v8i16, imm_s5: i32) -> v8i16 {
+pub unsafe fn __msa_ceqi_h(a: v8i16, imm_s5: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_ceqi_h(a, $imm_s5)
@@ -2832,7 +2832,7 @@ unsafe fn __msa_ceqi_h(a: v8i16, imm_s5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.w, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ceqi_w(a: v4i32, imm_s5: i32) -> v4i32 {
+pub unsafe fn __msa_ceqi_w(a: v4i32, imm_s5: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_ceqi_w(a, $imm_s5)
@@ -2851,7 +2851,7 @@ unsafe fn __msa_ceqi_w(a: v4i32, imm_s5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceqi.d, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ceqi_d(a: v2i64, imm_s5: i32) -> v2i64 {
+pub unsafe fn __msa_ceqi_d(a: v2i64, imm_s5: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_ceqi_d(a, $imm_s5)
@@ -2869,7 +2869,7 @@ unsafe fn __msa_ceqi_d(a: v2i64, imm_s5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cfcmsa, imm5 = 0b11111))]
 #[rustc_args_required_const(0)]
-unsafe fn __msa_cfcmsa(imm5: i32) -> i32 {
+pub unsafe fn __msa_cfcmsa(imm5: i32) -> i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_cfcmsa($imm5)
@@ -2888,7 +2888,7 @@ unsafe fn __msa_cfcmsa(imm5: i32) -> i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.b))]
-unsafe fn __msa_cle_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_cle_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_cle_s_b(a, ::mem::transmute(b))
 }
 
@@ -2902,7 +2902,7 @@ unsafe fn __msa_cle_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.h))]
-unsafe fn __msa_cle_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_cle_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_cle_s_h(a, ::mem::transmute(b))
 }
 
@@ -2916,7 +2916,7 @@ unsafe fn __msa_cle_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.w))]
-unsafe fn __msa_cle_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_cle_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_cle_s_w(a, ::mem::transmute(b))
 }
 
@@ -2930,7 +2930,7 @@ unsafe fn __msa_cle_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.d))]
-unsafe fn __msa_cle_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_cle_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_cle_s_d(a, ::mem::transmute(b))
 }
 
@@ -2944,7 +2944,7 @@ unsafe fn __msa_cle_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.b))]
-unsafe fn __msa_cle_u_b(a: v16u8, b: v16u8) -> v16i8 {
+pub unsafe fn __msa_cle_u_b(a: v16u8, b: v16u8) -> v16i8 {
     msa_cle_u_b(a, ::mem::transmute(b))
 }
 
@@ -2958,7 +2958,7 @@ unsafe fn __msa_cle_u_b(a: v16u8, b: v16u8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.h))]
-unsafe fn __msa_cle_u_h(a: v8u16, b: v8u16) -> v8i16 {
+pub unsafe fn __msa_cle_u_h(a: v8u16, b: v8u16) -> v8i16 {
     msa_cle_u_h(a, ::mem::transmute(b))
 }
 
@@ -2972,7 +2972,7 @@ unsafe fn __msa_cle_u_h(a: v8u16, b: v8u16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.w))]
-unsafe fn __msa_cle_u_w(a: v4u32, b: v4u32) -> v4i32 {
+pub unsafe fn __msa_cle_u_w(a: v4u32, b: v4u32) -> v4i32 {
     msa_cle_u_w(a, ::mem::transmute(b))
 }
 
@@ -2986,7 +2986,7 @@ unsafe fn __msa_cle_u_w(a: v4u32, b: v4u32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.d))]
-unsafe fn __msa_cle_u_d(a: v2u64, b: v2u64) -> v2i64 {
+pub unsafe fn __msa_cle_u_d(a: v2u64, b: v2u64) -> v2i64 {
     msa_cle_u_d(a, ::mem::transmute(b))
 }
 
@@ -3001,7 +3001,7 @@ unsafe fn __msa_cle_u_d(a: v2u64, b: v2u64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.b, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
+pub unsafe fn __msa_clei_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clei_s_b(a, $imm_s5)
@@ -3021,7 +3021,7 @@ unsafe fn __msa_clei_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.h, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
+pub unsafe fn __msa_clei_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clei_s_h(a, $imm_s5)
@@ -3041,7 +3041,7 @@ unsafe fn __msa_clei_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.w, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
+pub unsafe fn __msa_clei_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clei_s_w(a, $imm_s5)
@@ -3061,7 +3061,7 @@ unsafe fn __msa_clei_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_s.d, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
+pub unsafe fn __msa_clei_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clei_s_d(a, $imm_s5)
@@ -3081,7 +3081,7 @@ unsafe fn __msa_clei_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.b, imm5 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_u_b(a: v16u8, imm5: i32) -> v16i8 {
+pub unsafe fn __msa_clei_u_b(a: v16u8, imm5: i32) -> v16i8 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clei_u_b(a, $imm5)
@@ -3101,7 +3101,7 @@ unsafe fn __msa_clei_u_b(a: v16u8, imm5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.h, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_u_h(a: v8u16, imm5: i32) -> v8i16 {
+pub unsafe fn __msa_clei_u_h(a: v8u16, imm5: i32) -> v8i16 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clei_u_h(a, $imm5)
@@ -3121,7 +3121,7 @@ unsafe fn __msa_clei_u_h(a: v8u16, imm5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_u_w(a: v4u32, imm5: i32) -> v4i32 {
+pub unsafe fn __msa_clei_u_w(a: v4u32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clei_u_w(a, $imm5)
@@ -3141,7 +3141,7 @@ unsafe fn __msa_clei_u_w(a: v4u32, imm5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clei_u.d, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clei_u_d(a: v2u64, imm5: i32) -> v2i64 {
+pub unsafe fn __msa_clei_u_d(a: v2u64, imm5: i32) -> v2i64 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clei_u_d(a, $imm5)
@@ -3160,7 +3160,7 @@ unsafe fn __msa_clei_u_d(a: v2u64, imm5: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.b))]
-unsafe fn __msa_clt_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_clt_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_clt_s_b(a, ::mem::transmute(b))
 }
 
@@ -3174,7 +3174,7 @@ unsafe fn __msa_clt_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.h))]
-unsafe fn __msa_clt_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_clt_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_clt_s_h(a, ::mem::transmute(b))
 }
 
@@ -3188,7 +3188,7 @@ unsafe fn __msa_clt_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.w))]
-unsafe fn __msa_clt_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_clt_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_clt_s_w(a, ::mem::transmute(b))
 }
 
@@ -3202,7 +3202,7 @@ unsafe fn __msa_clt_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.d))]
-unsafe fn __msa_clt_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_clt_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_clt_s_d(a, ::mem::transmute(b))
 }
 
@@ -3216,7 +3216,7 @@ unsafe fn __msa_clt_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.b))]
-unsafe fn __msa_clt_u_b(a: v16u8, b: v16u8) -> v16i8 {
+pub unsafe fn __msa_clt_u_b(a: v16u8, b: v16u8) -> v16i8 {
     msa_clt_u_b(a, ::mem::transmute(b))
 }
 
@@ -3230,7 +3230,7 @@ unsafe fn __msa_clt_u_b(a: v16u8, b: v16u8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.h))]
-unsafe fn __msa_clt_u_h(a: v8u16, b: v8u16) -> v8i16 {
+pub unsafe fn __msa_clt_u_h(a: v8u16, b: v8u16) -> v8i16 {
     msa_clt_u_h(a, ::mem::transmute(b))
 }
 
@@ -3244,7 +3244,7 @@ unsafe fn __msa_clt_u_h(a: v8u16, b: v8u16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.w))]
-unsafe fn __msa_clt_u_w(a: v4u32, b: v4u32) -> v4i32 {
+pub unsafe fn __msa_clt_u_w(a: v4u32, b: v4u32) -> v4i32 {
     msa_clt_u_w(a, ::mem::transmute(b))
 }
 
@@ -3258,7 +3258,7 @@ unsafe fn __msa_clt_u_w(a: v4u32, b: v4u32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.d))]
-unsafe fn __msa_clt_u_d(a: v2u64, b: v2u64) -> v2i64 {
+pub unsafe fn __msa_clt_u_d(a: v2u64, b: v2u64) -> v2i64 {
     msa_clt_u_d(a, ::mem::transmute(b))
 }
 
@@ -3273,7 +3273,7 @@ unsafe fn __msa_clt_u_d(a: v2u64, b: v2u64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.b, imm_s5 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
+pub unsafe fn __msa_clti_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clti_s_b(a, $imm_s5)
@@ -3293,7 +3293,7 @@ unsafe fn __msa_clti_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.h, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
+pub unsafe fn __msa_clti_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clti_s_h(a, $imm_s5)
@@ -3313,7 +3313,7 @@ unsafe fn __msa_clti_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.w, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
+pub unsafe fn __msa_clti_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clti_s_w(a, $imm_s5)
@@ -3333,7 +3333,7 @@ unsafe fn __msa_clti_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_s.d, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
+pub unsafe fn __msa_clti_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_clti_s_d(a, $imm_s5)
@@ -3353,7 +3353,7 @@ unsafe fn __msa_clti_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.b, imm5 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_u_b(a: v16u8, imm5: i32) -> v16i8 {
+pub unsafe fn __msa_clti_u_b(a: v16u8, imm5: i32) -> v16i8 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clti_u_b(a, $imm5)
@@ -3373,7 +3373,7 @@ unsafe fn __msa_clti_u_b(a: v16u8, imm5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.h, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_u_h(a: v8u16, imm5: i32) -> v8i16 {
+pub unsafe fn __msa_clti_u_h(a: v8u16, imm5: i32) -> v8i16 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clti_u_h(a, $imm5)
@@ -3393,7 +3393,7 @@ unsafe fn __msa_clti_u_h(a: v8u16, imm5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_u_w(a: v4u32, imm5: i32) -> v4i32 {
+pub unsafe fn __msa_clti_u_w(a: v4u32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clti_u_w(a, $imm5)
@@ -3413,7 +3413,7 @@ unsafe fn __msa_clti_u_w(a: v4u32, imm5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clti_u.d, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_clti_u_d(a: v2u64, imm5: i32) -> v2i64 {
+pub unsafe fn __msa_clti_u_d(a: v2u64, imm5: i32) -> v2i64 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_clti_u_d(a, $imm5)
@@ -3431,7 +3431,7 @@ unsafe fn __msa_clti_u_d(a: v2u64, imm5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.b, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_s_b(a: v16i8, imm4: i32) -> i32 {
+pub unsafe fn __msa_copy_s_b(a: v16i8, imm4: i32) -> i32 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_copy_s_b(a, $imm4)
@@ -3449,7 +3449,7 @@ unsafe fn __msa_copy_s_b(a: v16i8, imm4: i32) -> i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.h, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_s_h(a: v8i16, imm3: i32) -> i32 {
+pub unsafe fn __msa_copy_s_h(a: v8i16, imm3: i32) -> i32 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_copy_s_h(a, $imm3)
@@ -3467,7 +3467,7 @@ unsafe fn __msa_copy_s_h(a: v8i16, imm3: i32) -> i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.w, imm2 = 0b11))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_s_w(a: v4i32, imm2: i32) -> i32 {
+pub unsafe fn __msa_copy_s_w(a: v4i32, imm2: i32) -> i32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_copy_s_w(a, $imm2)
@@ -3485,7 +3485,7 @@ unsafe fn __msa_copy_s_w(a: v4i32, imm2: i32) -> i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_s.d, imm1 = 0b1))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_s_d(a: v2i64, imm1: i32) -> i64 {
+pub unsafe fn __msa_copy_s_d(a: v2i64, imm1: i32) -> i64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_copy_s_d(a, $imm1)
@@ -3503,7 +3503,7 @@ unsafe fn __msa_copy_s_d(a: v2i64, imm1: i32) -> i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.b, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_u_b(a: v16i8, imm4: i32) -> u32 {
+pub unsafe fn __msa_copy_u_b(a: v16i8, imm4: i32) -> u32 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_copy_u_b(a, $imm4)
@@ -3521,7 +3521,7 @@ unsafe fn __msa_copy_u_b(a: v16i8, imm4: i32) -> u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.h, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_u_h(a: v8i16, imm3: i32) -> u32 {
+pub unsafe fn __msa_copy_u_h(a: v8i16, imm3: i32) -> u32 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_copy_u_h(a, $imm3)
@@ -3539,7 +3539,7 @@ unsafe fn __msa_copy_u_h(a: v8i16, imm3: i32) -> u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.w, imm2 = 0b11))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_u_w(a: v4i32, imm2: i32) -> u32 {
+pub unsafe fn __msa_copy_u_w(a: v4i32, imm2: i32) -> u32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_copy_u_w(a, $imm2)
@@ -3557,7 +3557,7 @@ unsafe fn __msa_copy_u_w(a: v4i32, imm2: i32) -> u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(copy_u.d, imm1 = 0b1))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_copy_u_d(a: v2i64, imm1: i32) -> u64 {
+pub unsafe fn __msa_copy_u_d(a: v2i64, imm1: i32) -> u64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_copy_u_d(a, $imm1)
@@ -3574,7 +3574,7 @@ unsafe fn __msa_copy_u_d(a: v2i64, imm1: i32) -> u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ctcmsa, imm1 = 0b1))]
 #[rustc_args_required_const(0)]
-unsafe fn __msa_ctcmsa(imm5: i32, a: i32) -> () {
+pub unsafe fn __msa_ctcmsa(imm5: i32, a: i32) -> () {
     macro_rules! call {
         ($imm5:expr) => {
             msa_ctcmsa($imm5, a)
@@ -3592,7 +3592,7 @@ unsafe fn __msa_ctcmsa(imm5: i32, a: i32) -> () {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.b))]
-unsafe fn __msa_div_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_div_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_div_s_b(a, ::mem::transmute(b))
 }
 
@@ -3605,7 +3605,7 @@ unsafe fn __msa_div_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.h))]
-unsafe fn __msa_div_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_div_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_div_s_h(a, ::mem::transmute(b))
 }
 
@@ -3618,7 +3618,7 @@ unsafe fn __msa_div_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.w))]
-unsafe fn __msa_div_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_div_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_div_s_w(a, ::mem::transmute(b))
 }
 
@@ -3631,7 +3631,7 @@ unsafe fn __msa_div_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.d))]
-unsafe fn __msa_div_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_div_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_div_s_d(a, ::mem::transmute(b))
 }
 
@@ -3644,7 +3644,7 @@ unsafe fn __msa_div_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.b))]
-unsafe fn __msa_div_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_div_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_div_u_b(a, ::mem::transmute(b))
 }
 
@@ -3657,7 +3657,7 @@ unsafe fn __msa_div_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.h))]
-unsafe fn __msa_div_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_div_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_div_u_h(a, ::mem::transmute(b))
 }
 
@@ -3670,7 +3670,7 @@ unsafe fn __msa_div_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.w))]
-unsafe fn __msa_div_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_div_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_div_u_w(a, ::mem::transmute(b))
 }
 
@@ -3683,7 +3683,7 @@ unsafe fn __msa_div_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.d))]
-unsafe fn __msa_div_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_div_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_div_u_d(a, ::mem::transmute(b))
 }
 
@@ -3698,7 +3698,7 @@ unsafe fn __msa_div_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_s.h))]
-unsafe fn __msa_dotp_s_h(a: v16i8, b: v16i8) -> v8i16 {
+pub unsafe fn __msa_dotp_s_h(a: v16i8, b: v16i8) -> v8i16 {
     msa_dotp_s_h(a, ::mem::transmute(b))
 }
 
@@ -3713,7 +3713,7 @@ unsafe fn __msa_dotp_s_h(a: v16i8, b: v16i8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_s.w))]
-unsafe fn __msa_dotp_s_w(a: v8i16, b: v8i16) -> v4i32 {
+pub unsafe fn __msa_dotp_s_w(a: v8i16, b: v8i16) -> v4i32 {
     msa_dotp_s_w(a, ::mem::transmute(b))
 }
 
@@ -3728,7 +3728,7 @@ unsafe fn __msa_dotp_s_w(a: v8i16, b: v8i16) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_s.d))]
-unsafe fn __msa_dotp_s_d(a: v4i32, b: v4i32) -> v2i64 {
+pub unsafe fn __msa_dotp_s_d(a: v4i32, b: v4i32) -> v2i64 {
     msa_dotp_s_d(a, ::mem::transmute(b))
 }
 
@@ -3743,7 +3743,7 @@ unsafe fn __msa_dotp_s_d(a: v4i32, b: v4i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_u.h))]
-unsafe fn __msa_dotp_u_h(a: v16u8, b: v16u8) -> v8u16 {
+pub unsafe fn __msa_dotp_u_h(a: v16u8, b: v16u8) -> v8u16 {
     msa_dotp_u_h(a, ::mem::transmute(b))
 }
 
@@ -3758,7 +3758,7 @@ unsafe fn __msa_dotp_u_h(a: v16u8, b: v16u8) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_u.w))]
-unsafe fn __msa_dotp_u_w(a: v8u16, b: v8u16) -> v4u32 {
+pub unsafe fn __msa_dotp_u_w(a: v8u16, b: v8u16) -> v4u32 {
     msa_dotp_u_w(a, ::mem::transmute(b))
 }
 
@@ -3773,7 +3773,7 @@ unsafe fn __msa_dotp_u_w(a: v8u16, b: v8u16) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_u.d))]
-unsafe fn __msa_dotp_u_d(a: v4u32, b: v4u32) -> v2u64 {
+pub unsafe fn __msa_dotp_u_d(a: v4u32, b: v4u32) -> v2u64 {
     msa_dotp_u_d(a, ::mem::transmute(b))
 }
 
@@ -3787,7 +3787,7 @@ unsafe fn __msa_dotp_u_d(a: v4u32, b: v4u32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_s.h))]
-unsafe fn __msa_dpadd_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
+pub unsafe fn __msa_dpadd_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
     msa_dpadd_s_h(a, ::mem::transmute(b), c)
 }
 
@@ -3801,7 +3801,7 @@ unsafe fn __msa_dpadd_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_s.w))]
-unsafe fn __msa_dpadd_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
+pub unsafe fn __msa_dpadd_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
     msa_dpadd_s_w(a, ::mem::transmute(b), c)
 }
 
@@ -3815,7 +3815,7 @@ unsafe fn __msa_dpadd_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_s.d))]
-unsafe fn __msa_dpadd_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
+pub unsafe fn __msa_dpadd_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
     msa_dpadd_s_d(a, ::mem::transmute(b), c)
 }
 
@@ -3829,7 +3829,7 @@ unsafe fn __msa_dpadd_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_u.h))]
-unsafe fn __msa_dpadd_u_h(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
+pub unsafe fn __msa_dpadd_u_h(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
     msa_dpadd_u_h(a, ::mem::transmute(b), c)
 }
 
@@ -3843,7 +3843,7 @@ unsafe fn __msa_dpadd_u_h(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_u.w))]
-unsafe fn __msa_dpadd_u_w(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
+pub unsafe fn __msa_dpadd_u_w(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
     msa_dpadd_u_w(a, ::mem::transmute(b), c)
 }
 
@@ -3857,7 +3857,7 @@ unsafe fn __msa_dpadd_u_w(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_u.d))]
-unsafe fn __msa_dpadd_u_d(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
+pub unsafe fn __msa_dpadd_u_d(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
     msa_dpadd_u_d(a, ::mem::transmute(b), c)
 }
 
@@ -3872,7 +3872,7 @@ unsafe fn __msa_dpadd_u_d(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_s.h))]
-unsafe fn __msa_dpsub_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
+pub unsafe fn __msa_dpsub_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
     msa_dpsub_s_h(a, ::mem::transmute(b), c)
 }
 
@@ -3887,7 +3887,7 @@ unsafe fn __msa_dpsub_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_s.w))]
-unsafe fn __msa_dpsub_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
+pub unsafe fn __msa_dpsub_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
     msa_dpsub_s_w(a, ::mem::transmute(b), c)
 }
 
@@ -3902,7 +3902,7 @@ unsafe fn __msa_dpsub_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_s.d))]
-unsafe fn __msa_dpsub_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
+pub unsafe fn __msa_dpsub_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
     msa_dpsub_s_d(a, ::mem::transmute(b), c)
 }
 
@@ -3917,7 +3917,7 @@ unsafe fn __msa_dpsub_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_u.h))]
-unsafe fn __msa_dpsub_u_h(a: v8i16, b: v16u8, c: v16u8) -> v8i16 {
+pub unsafe fn __msa_dpsub_u_h(a: v8i16, b: v16u8, c: v16u8) -> v8i16 {
     msa_dpsub_u_h(a, ::mem::transmute(b), c)
 }
 
@@ -3932,7 +3932,7 @@ unsafe fn __msa_dpsub_u_h(a: v8i16, b: v16u8, c: v16u8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_u.w))]
-unsafe fn __msa_dpsub_u_w(a: v4i32, b: v8u16, c: v8u16) -> v4i32 {
+pub unsafe fn __msa_dpsub_u_w(a: v4i32, b: v8u16, c: v8u16) -> v4i32 {
     msa_dpsub_u_w(a, ::mem::transmute(b), c)
 }
 
@@ -3947,7 +3947,7 @@ unsafe fn __msa_dpsub_u_w(a: v4i32, b: v8u16, c: v8u16) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_u.d))]
-unsafe fn __msa_dpsub_u_d(a: v2i64, b: v4u32, c: v4u32) -> v2i64 {
+pub unsafe fn __msa_dpsub_u_d(a: v2i64, b: v4u32, c: v4u32) -> v2i64 {
     msa_dpsub_u_d(a, ::mem::transmute(b), c)
 }
 
@@ -3960,7 +3960,7 @@ unsafe fn __msa_dpsub_u_d(a: v2i64, b: v4u32, c: v4u32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fadd.w))]
-unsafe fn __msa_fadd_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fadd_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fadd_w(a, ::mem::transmute(b))
 }
 
@@ -3973,7 +3973,7 @@ unsafe fn __msa_fadd_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fadd.d))]
-unsafe fn __msa_fadd_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fadd_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fadd_d(a, ::mem::transmute(b))
 }
 
@@ -3986,7 +3986,7 @@ unsafe fn __msa_fadd_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcaf.w))]
-unsafe fn __msa_fcaf_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcaf_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcaf_w(a, ::mem::transmute(b))
 }
 
@@ -3999,7 +3999,7 @@ unsafe fn __msa_fcaf_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcaf.d))]
-unsafe fn __msa_fcaf_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcaf_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcaf_d(a, ::mem::transmute(b))
 }
 
@@ -4013,7 +4013,7 @@ unsafe fn __msa_fcaf_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fceq.w))]
-unsafe fn __msa_fceq_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fceq_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fceq_w(a, ::mem::transmute(b))
 }
 
@@ -4027,7 +4027,7 @@ unsafe fn __msa_fceq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fceq.d))]
-unsafe fn __msa_fceq_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fceq_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fceq_d(a, ::mem::transmute(b))
 }
 
@@ -4043,7 +4043,7 @@ unsafe fn __msa_fceq_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fclass.w))]
-unsafe fn __msa_fclass_w(a: v4f32) -> v4i32 {
+pub unsafe fn __msa_fclass_w(a: v4f32) -> v4i32 {
     msa_fclass_w(a)
 }
 
@@ -4059,7 +4059,7 @@ unsafe fn __msa_fclass_w(a: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fclass.d))]
-unsafe fn __msa_fclass_d(a: v2f64) -> v2i64 {
+pub unsafe fn __msa_fclass_d(a: v2f64) -> v2i64 {
     msa_fclass_d(a)
 }
 
@@ -4073,7 +4073,7 @@ unsafe fn __msa_fclass_d(a: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcle.w))]
-unsafe fn __msa_fcle_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcle_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcle_w(a, ::mem::transmute(b))
 }
 
@@ -4087,7 +4087,7 @@ unsafe fn __msa_fcle_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcle.d))]
-unsafe fn __msa_fcle_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcle_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcle_d(a, ::mem::transmute(b))
 }
 
@@ -4101,7 +4101,7 @@ unsafe fn __msa_fcle_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fclt.w))]
-unsafe fn __msa_fclt_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fclt_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fclt_w(a, ::mem::transmute(b))
 }
 
@@ -4115,7 +4115,7 @@ unsafe fn __msa_fclt_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fclt.d))]
-unsafe fn __msa_fclt_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fclt_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fclt_d(a, ::mem::transmute(b))
 }
 
@@ -4129,7 +4129,7 @@ unsafe fn __msa_fclt_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcne.w))]
-unsafe fn __msa_fcne_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcne_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcne_w(a, ::mem::transmute(b))
 }
 
@@ -4143,7 +4143,7 @@ unsafe fn __msa_fcne_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcne.d))]
-unsafe fn __msa_fcne_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcne_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcne_d(a, ::mem::transmute(b))
 }
 
@@ -4157,7 +4157,7 @@ unsafe fn __msa_fcne_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcor.w))]
-unsafe fn __msa_fcor_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcor_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcor_w(a, ::mem::transmute(b))
 }
 
@@ -4171,7 +4171,7 @@ unsafe fn __msa_fcor_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcor.d))]
-unsafe fn __msa_fcor_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcor_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcor_d(a, ::mem::transmute(b))
 }
 
@@ -4185,7 +4185,7 @@ unsafe fn __msa_fcor_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcueq.w))]
-unsafe fn __msa_fcueq_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcueq_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcueq_w(a, ::mem::transmute(b))
 }
 
@@ -4199,7 +4199,7 @@ unsafe fn __msa_fcueq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcueq.d))]
-unsafe fn __msa_fcueq_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcueq_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcueq_d(a, ::mem::transmute(b))
 }
 
@@ -4213,7 +4213,7 @@ unsafe fn __msa_fcueq_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcule.w))]
-unsafe fn __msa_fcule_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcule_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcule_w(a, ::mem::transmute(b))
 }
 
@@ -4227,7 +4227,7 @@ unsafe fn __msa_fcule_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcule.d))]
-unsafe fn __msa_fcule_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcule_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcule_d(a, ::mem::transmute(b))
 }
 
@@ -4241,7 +4241,7 @@ unsafe fn __msa_fcule_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcult.w))]
-unsafe fn __msa_fcult_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcult_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcult_w(a, ::mem::transmute(b))
 }
 
@@ -4255,7 +4255,7 @@ unsafe fn __msa_fcult_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcult.d))]
-unsafe fn __msa_fcult_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcult_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcult_d(a, ::mem::transmute(b))
 }
 
@@ -4269,7 +4269,7 @@ unsafe fn __msa_fcult_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcun.w))]
-unsafe fn __msa_fcun_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcun_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcun_w(a, ::mem::transmute(b))
 }
 
@@ -4283,7 +4283,7 @@ unsafe fn __msa_fcun_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcun.d))]
-unsafe fn __msa_fcun_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcun_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcun_d(a, ::mem::transmute(b))
 }
 
@@ -4297,7 +4297,7 @@ unsafe fn __msa_fcun_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcune.w))]
-unsafe fn __msa_fcune_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fcune_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fcune_w(a, ::mem::transmute(b))
 }
 
@@ -4311,7 +4311,7 @@ unsafe fn __msa_fcune_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcune.d))]
-unsafe fn __msa_fcune_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fcune_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fcune_d(a, ::mem::transmute(b))
 }
 
@@ -4324,7 +4324,7 @@ unsafe fn __msa_fcune_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fdiv.w))]
-unsafe fn __msa_fdiv_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fdiv_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fdiv_w(a, ::mem::transmute(b))
 }
 
@@ -4337,7 +4337,7 @@ unsafe fn __msa_fdiv_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fdiv.d))]
-unsafe fn __msa_fdiv_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fdiv_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fdiv_d(a, ::mem::transmute(b))
 }
 
@@ -4352,7 +4352,7 @@ unsafe fn __msa_fdiv_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexdo.h))]
-unsafe fn __msa_fexdo_h(a: v4f32, b: v4f32) -> f16x8 {
+pub unsafe fn __msa_fexdo_h(a: v4f32, b: v4f32) -> f16x8 {
     msa_fexdo_h(a, ::mem::transmute(b))
 }*/
 
@@ -4366,7 +4366,7 @@ unsafe fn __msa_fexdo_h(a: v4f32, b: v4f32) -> f16x8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexdo.w))]
-unsafe fn __msa_fexdo_w(a: v2f64, b: v2f64) -> v4f32 {
+pub unsafe fn __msa_fexdo_w(a: v2f64, b: v2f64) -> v4f32 {
     msa_fexdo_w(a, ::mem::transmute(b))
 }
 
@@ -4380,7 +4380,7 @@ unsafe fn __msa_fexdo_w(a: v2f64, b: v2f64) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexp2.w))]
-unsafe fn __msa_fexp2_w(a: v4f32, b: v4i32) -> v4f32 {
+pub unsafe fn __msa_fexp2_w(a: v4f32, b: v4i32) -> v4f32 {
     msa_fexp2_w(a, ::mem::transmute(b))
 }
 
@@ -4394,7 +4394,7 @@ unsafe fn __msa_fexp2_w(a: v4f32, b: v4i32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexp2.d))]
-unsafe fn __msa_fexp2_d(a: v2f64, b: v2i64) -> v2f64 {
+pub unsafe fn __msa_fexp2_d(a: v2f64, b: v2i64) -> v2f64 {
     msa_fexp2_d(a, ::mem::transmute(b))
 }
 
@@ -4409,7 +4409,7 @@ unsafe fn __msa_fexp2_d(a: v2f64, b: v2i64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexupl.w))]
-unsafe fn __msa_fexupl_w(a: f16x8) -> v4f32 {
+pub unsafe fn __msa_fexupl_w(a: f16x8) -> v4f32 {
     msa_fexupl_w(a)
 }*/
 
@@ -4423,7 +4423,7 @@ unsafe fn __msa_fexupl_w(a: f16x8) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexupl.d))]
-unsafe fn __msa_fexupl_d(a: v4f32) -> v2f64 {
+pub unsafe fn __msa_fexupl_d(a: v4f32) -> v2f64 {
     msa_fexupl_d(a)
 }
 
@@ -4438,7 +4438,7 @@ unsafe fn __msa_fexupl_d(a: v4f32) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexupr.w))]
-unsafe fn __msa_fexupr_w(a: f16x8) -> v4f32 {
+pub unsafe fn __msa_fexupr_w(a: f16x8) -> v4f32 {
     msa_fexupr_w(a)
 } */
 
@@ -4452,7 +4452,7 @@ unsafe fn __msa_fexupr_w(a: f16x8) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexupr.d))]
-unsafe fn __msa_fexupr_d(a: v4f32) -> v2f64 {
+pub unsafe fn __msa_fexupr_d(a: v4f32) -> v2f64 {
     msa_fexupr_d(a)
 }
 
@@ -4465,7 +4465,7 @@ unsafe fn __msa_fexupr_d(a: v4f32) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffint_s.w))]
-unsafe fn __msa_ffint_s_w(a: v4i32) -> v4f32 {
+pub unsafe fn __msa_ffint_s_w(a: v4i32) -> v4f32 {
     msa_ffint_s_w(a)
 }
 
@@ -4478,7 +4478,7 @@ unsafe fn __msa_ffint_s_w(a: v4i32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffint_s.d))]
-unsafe fn __msa_ffint_s_d(a: v2i64) -> v2f64 {
+pub unsafe fn __msa_ffint_s_d(a: v2i64) -> v2f64 {
     msa_ffint_s_d(a)
 }
 
@@ -4491,7 +4491,7 @@ unsafe fn __msa_ffint_s_d(a: v2i64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffint_u.w))]
-unsafe fn __msa_ffint_u_w(a: v4u32) -> v4f32 {
+pub unsafe fn __msa_ffint_u_w(a: v4u32) -> v4f32 {
     msa_ffint_u_w(a)
 }
 
@@ -4504,7 +4504,7 @@ unsafe fn __msa_ffint_u_w(a: v4u32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffint_u.d))]
-unsafe fn __msa_ffint_u_d(a: v2u64) -> v2f64 {
+pub unsafe fn __msa_ffint_u_d(a: v2u64) -> v2f64 {
     msa_ffint_u_d(a)
 }
 
@@ -4518,7 +4518,7 @@ unsafe fn __msa_ffint_u_d(a: v2u64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffql.w))]
-unsafe fn __msa_ffql_w(a: v8i16) -> v4f32 {
+pub unsafe fn __msa_ffql_w(a: v8i16) -> v4f32 {
     msa_ffql_w(a)
 }
 
@@ -4532,7 +4532,7 @@ unsafe fn __msa_ffql_w(a: v8i16) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffql.d))]
-unsafe fn __msa_ffql_d(a: v4i32) -> v2f64 {
+pub unsafe fn __msa_ffql_d(a: v4i32) -> v2f64 {
     msa_ffql_d(a)
 }
 
@@ -4546,7 +4546,7 @@ unsafe fn __msa_ffql_d(a: v4i32) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffqr.w))]
-unsafe fn __msa_ffqr_w(a: v8i16) -> v4f32 {
+pub unsafe fn __msa_ffqr_w(a: v8i16) -> v4f32 {
     msa_ffqr_w(a)
 }
 
@@ -4560,7 +4560,7 @@ unsafe fn __msa_ffqr_w(a: v8i16) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ffqr.d))]
-unsafe fn __msa_ffqr_d(a: v4i32) -> v2f64 {
+pub unsafe fn __msa_ffqr_d(a: v4i32) -> v2f64 {
     msa_ffqr_d(a)
 }
 
@@ -4573,7 +4573,7 @@ unsafe fn __msa_ffqr_d(a: v4i32) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fill.b))]
-unsafe fn __msa_fill_b(a: i32) -> v16i8 {
+pub unsafe fn __msa_fill_b(a: i32) -> v16i8 {
     msa_fill_b(a)
 }
 
@@ -4586,7 +4586,7 @@ unsafe fn __msa_fill_b(a: i32) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fill.h))]
-unsafe fn __msa_fill_h(a: i32) -> v8i16 {
+pub unsafe fn __msa_fill_h(a: i32) -> v8i16 {
     msa_fill_h(a)
 }
 
@@ -4599,7 +4599,7 @@ unsafe fn __msa_fill_h(a: i32) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fill.w))]
-unsafe fn __msa_fill_w(a: i32) -> v4i32 {
+pub unsafe fn __msa_fill_w(a: i32) -> v4i32 {
     msa_fill_w(a)
 }
 
@@ -4612,7 +4612,7 @@ unsafe fn __msa_fill_w(a: i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fill.d))]
-unsafe fn __msa_fill_d(a: i64) -> v2i64 {
+pub unsafe fn __msa_fill_d(a: i64) -> v2i64 {
     msa_fill_d(a)
 }
 
@@ -4625,7 +4625,7 @@ unsafe fn __msa_fill_d(a: i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(flog2.w))]
-unsafe fn __msa_flog2_w(a: v4f32) -> v4f32 {
+pub unsafe fn __msa_flog2_w(a: v4f32) -> v4f32 {
     msa_flog2_w(a)
 }
 
@@ -4638,7 +4638,7 @@ unsafe fn __msa_flog2_w(a: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(flog2.d))]
-unsafe fn __msa_flog2_d(a: v2f64) -> v2f64 {
+pub unsafe fn __msa_flog2_d(a: v2f64) -> v2f64 {
     msa_flog2_d(a)
 }
 
@@ -4651,7 +4651,7 @@ unsafe fn __msa_flog2_d(a: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmadd.w))]
-unsafe fn __msa_fmadd_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
+pub unsafe fn __msa_fmadd_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
     msa_fmadd_w(a, ::mem::transmute(b), c)
 }
 
@@ -4664,7 +4664,7 @@ unsafe fn __msa_fmadd_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmadd.d))]
-unsafe fn __msa_fmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
+pub unsafe fn __msa_fmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
     msa_fmadd_d(a, ::mem::transmute(b), c)
 }
 
@@ -4677,7 +4677,7 @@ unsafe fn __msa_fmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax.w))]
-unsafe fn __msa_fmax_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fmax_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fmax_w(a, ::mem::transmute(b))
 }
 
@@ -4690,7 +4690,7 @@ unsafe fn __msa_fmax_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax.d))]
-unsafe fn __msa_fmax_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fmax_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fmax_d(a, ::mem::transmute(b))
 }
 
@@ -4704,7 +4704,7 @@ unsafe fn __msa_fmax_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax_a.w))]
-unsafe fn __msa_fmax_a_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fmax_a_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fmax_a_w(a, ::mem::transmute(b))
 }
 
@@ -4718,7 +4718,7 @@ unsafe fn __msa_fmax_a_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax_a.d))]
-unsafe fn __msa_fmax_a_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fmax_a_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fmax_a_d(a, ::mem::transmute(b))
 }
 
@@ -4731,7 +4731,7 @@ unsafe fn __msa_fmax_a_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin.w))]
-unsafe fn __msa_fmin_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fmin_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fmin_w(a, ::mem::transmute(b))
 }
 
@@ -4744,7 +4744,7 @@ unsafe fn __msa_fmin_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin.d))]
-unsafe fn __msa_fmin_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fmin_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fmin_d(a, ::mem::transmute(b))
 }
 
@@ -4758,7 +4758,7 @@ unsafe fn __msa_fmin_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin_a.w))]
-unsafe fn __msa_fmin_a_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fmin_a_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fmin_a_w(a, ::mem::transmute(b))
 }
 
@@ -4772,7 +4772,7 @@ unsafe fn __msa_fmin_a_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin_a.d))]
-unsafe fn __msa_fmin_a_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fmin_a_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fmin_a_d(a, ::mem::transmute(b))
 }
 
@@ -4785,7 +4785,7 @@ unsafe fn __msa_fmin_a_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmsub.w))]
-unsafe fn __msa_fmsub_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
+pub unsafe fn __msa_fmsub_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
     msa_fmsub_w(a, ::mem::transmute(b), c)
 }
 
@@ -4798,7 +4798,7 @@ unsafe fn __msa_fmsub_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmsub.d))]
-unsafe fn __msa_fmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
+pub unsafe fn __msa_fmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
     msa_fmsub_d(a, ::mem::transmute(b), c)
 }
 
@@ -4810,7 +4810,7 @@ unsafe fn __msa_fmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmul.w))]
-unsafe fn __msa_fmul_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fmul_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fmul_w(a, ::mem::transmute(b))
 }
 
@@ -4822,7 +4822,7 @@ unsafe fn __msa_fmul_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmul.d))]
-unsafe fn __msa_fmul_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fmul_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fmul_d(a, ::mem::transmute(b))
 }
 
@@ -4835,7 +4835,7 @@ unsafe fn __msa_fmul_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(frint.w))]
-unsafe fn __msa_frint_w(a: v4f32) -> v4f32 {
+pub unsafe fn __msa_frint_w(a: v4f32) -> v4f32 {
     msa_frint_w(a)
 }
 
@@ -4848,7 +4848,7 @@ unsafe fn __msa_frint_w(a: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(frint.d))]
-unsafe fn __msa_frint_d(a: v2f64) -> v2f64 {
+pub unsafe fn __msa_frint_d(a: v2f64) -> v2f64 {
     msa_frint_d(a)
 }
 
@@ -4860,7 +4860,7 @@ unsafe fn __msa_frint_d(a: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(frcp.w))]
-unsafe fn __msa_frcp_w(a: v4f32) -> v4f32 {
+pub unsafe fn __msa_frcp_w(a: v4f32) -> v4f32 {
     msa_frcp_w(a)
 }
 
@@ -4872,7 +4872,7 @@ unsafe fn __msa_frcp_w(a: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(frcp.d))]
-unsafe fn __msa_frcp_d(a: v2f64) -> v2f64 {
+pub unsafe fn __msa_frcp_d(a: v2f64) -> v2f64 {
     msa_frcp_d(a)
 }
 
@@ -4884,7 +4884,7 @@ unsafe fn __msa_frcp_d(a: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(frsqrt.w))]
-unsafe fn __msa_frsqrt_w(a: v4f32) -> v4f32 {
+pub unsafe fn __msa_frsqrt_w(a: v4f32) -> v4f32 {
     msa_frsqrt_w(a)
 }
 
@@ -4896,7 +4896,7 @@ unsafe fn __msa_frsqrt_w(a: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(frsqrt.d))]
-unsafe fn __msa_frsqrt_d(a: v2f64) -> v2f64 {
+pub unsafe fn __msa_frsqrt_d(a: v2f64) -> v2f64 {
     msa_frsqrt_d(a)
 }
 
@@ -4910,7 +4910,7 @@ unsafe fn __msa_frsqrt_d(a: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsaf.w))]
-unsafe fn __msa_fsaf_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsaf_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsaf_w(a, ::mem::transmute(b))
 }
 
@@ -4924,7 +4924,7 @@ unsafe fn __msa_fsaf_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsaf.d))]
-unsafe fn __msa_fsaf_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsaf_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsaf_d(a, ::mem::transmute(b))
 }
 
@@ -4937,7 +4937,7 @@ unsafe fn __msa_fsaf_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fseq.w))]
-unsafe fn __msa_fseq_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fseq_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fseq_w(a, ::mem::transmute(b))
 }
 
@@ -4950,7 +4950,7 @@ unsafe fn __msa_fseq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fseq.d))]
-unsafe fn __msa_fseq_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fseq_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fseq_d(a, ::mem::transmute(b))
 }
 
@@ -4963,7 +4963,7 @@ unsafe fn __msa_fseq_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsle.w))]
-unsafe fn __msa_fsle_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsle_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsle_w(a, ::mem::transmute(b))
 }
 
@@ -4976,7 +4976,7 @@ unsafe fn __msa_fsle_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsle.d))]
-unsafe fn __msa_fsle_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsle_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsle_d(a, ::mem::transmute(b))
 }
 
@@ -4989,7 +4989,7 @@ unsafe fn __msa_fsle_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fslt.w))]
-unsafe fn __msa_fslt_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fslt_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fslt_w(a, ::mem::transmute(b))
 }
 
@@ -5002,7 +5002,7 @@ unsafe fn __msa_fslt_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fslt.d))]
-unsafe fn __msa_fslt_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fslt_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fslt_d(a, ::mem::transmute(b))
 }
 
@@ -5015,7 +5015,7 @@ unsafe fn __msa_fslt_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsne.w))]
-unsafe fn __msa_fsne_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsne_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsne_w(a, ::mem::transmute(b))
 }
 
@@ -5028,7 +5028,7 @@ unsafe fn __msa_fsne_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsne.d))]
-unsafe fn __msa_fsne_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsne_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsne_d(a, ::mem::transmute(b))
 }
 
@@ -5042,7 +5042,7 @@ unsafe fn __msa_fsne_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsor.w))]
-unsafe fn __msa_fsor_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsor_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsor_w(a, ::mem::transmute(b))
 }
 
@@ -5056,7 +5056,7 @@ unsafe fn __msa_fsor_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsor.d))]
-unsafe fn __msa_fsor_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsor_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsor_d(a, ::mem::transmute(b))
 }
 
@@ -5069,7 +5069,7 @@ unsafe fn __msa_fsor_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsqrt.w))]
-unsafe fn __msa_fsqrt_w(a: v4f32) -> v4f32 {
+pub unsafe fn __msa_fsqrt_w(a: v4f32) -> v4f32 {
     msa_fsqrt_w(a)
 }
 
@@ -5082,7 +5082,7 @@ unsafe fn __msa_fsqrt_w(a: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsqrt.d))]
-unsafe fn __msa_fsqrt_d(a: v2f64) -> v2f64 {
+pub unsafe fn __msa_fsqrt_d(a: v2f64) -> v2f64 {
     msa_fsqrt_d(a)
 }
 
@@ -5096,7 +5096,7 @@ unsafe fn __msa_fsqrt_d(a: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsub.w))]
-unsafe fn __msa_fsub_w(a: v4f32, b: v4f32) -> v4f32 {
+pub unsafe fn __msa_fsub_w(a: v4f32, b: v4f32) -> v4f32 {
     msa_fsub_w(a, ::mem::transmute(b))
 }
 
@@ -5110,7 +5110,7 @@ unsafe fn __msa_fsub_w(a: v4f32, b: v4f32) -> v4f32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsub.d))]
-unsafe fn __msa_fsub_d(a: v2f64, b: v2f64) -> v2f64 {
+pub unsafe fn __msa_fsub_d(a: v2f64, b: v2f64) -> v2f64 {
     msa_fsub_d(a, ::mem::transmute(b))
 }
 
@@ -5124,7 +5124,7 @@ unsafe fn __msa_fsub_d(a: v2f64, b: v2f64) -> v2f64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsueq.w))]
-unsafe fn __msa_fsueq_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsueq_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsueq_w(a, ::mem::transmute(b))
 }
 
@@ -5138,7 +5138,7 @@ unsafe fn __msa_fsueq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsueq.d))]
-unsafe fn __msa_fsueq_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsueq_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsueq_d(a, ::mem::transmute(b))
 }
 
@@ -5152,7 +5152,7 @@ unsafe fn __msa_fsueq_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsule.w))]
-unsafe fn __msa_fsule_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsule_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsule_w(a, ::mem::transmute(b))
 }
 
@@ -5166,7 +5166,7 @@ unsafe fn __msa_fsule_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsule.d))]
-unsafe fn __msa_fsule_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsule_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsule_d(a, ::mem::transmute(b))
 }
 
@@ -5180,7 +5180,7 @@ unsafe fn __msa_fsule_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsult.w))]
-unsafe fn __msa_fsult_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsult_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsult_w(a, ::mem::transmute(b))
 }
 
@@ -5194,7 +5194,7 @@ unsafe fn __msa_fsult_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsult.d))]
-unsafe fn __msa_fsult_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsult_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsult_d(a, ::mem::transmute(b))
 }
 
@@ -5208,7 +5208,7 @@ unsafe fn __msa_fsult_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsun.w))]
-unsafe fn __msa_fsun_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsun_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsun_w(a, ::mem::transmute(b))
 }
 
@@ -5222,7 +5222,7 @@ unsafe fn __msa_fsun_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsun.d))]
-unsafe fn __msa_fsun_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsun_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsun_d(a, ::mem::transmute(b))
 }
 
@@ -5236,7 +5236,7 @@ unsafe fn __msa_fsun_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsune.w))]
-unsafe fn __msa_fsune_w(a: v4f32, b: v4f32) -> v4i32 {
+pub unsafe fn __msa_fsune_w(a: v4f32, b: v4f32) -> v4i32 {
     msa_fsune_w(a, ::mem::transmute(b))
 }
 
@@ -5250,7 +5250,7 @@ unsafe fn __msa_fsune_w(a: v4f32, b: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsune.d))]
-unsafe fn __msa_fsune_d(a: v2f64, b: v2f64) -> v2i64 {
+pub unsafe fn __msa_fsune_d(a: v2f64, b: v2f64) -> v2i64 {
     msa_fsune_d(a, ::mem::transmute(b))
 }
 
@@ -5264,7 +5264,7 @@ unsafe fn __msa_fsune_d(a: v2f64, b: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftint_s.w))]
-unsafe fn __msa_ftint_s_w(a: v4f32) -> v4i32 {
+pub unsafe fn __msa_ftint_s_w(a: v4f32) -> v4i32 {
     msa_ftint_s_w(a)
 }
 
@@ -5278,7 +5278,7 @@ unsafe fn __msa_ftint_s_w(a: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftint_s.d))]
-unsafe fn __msa_ftint_s_d(a: v2f64) -> v2i64 {
+pub unsafe fn __msa_ftint_s_d(a: v2f64) -> v2i64 {
     msa_ftint_s_d(a)
 }
 
@@ -5292,7 +5292,7 @@ unsafe fn __msa_ftint_s_d(a: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftint_u.w))]
-unsafe fn __msa_ftint_u_w(a: v4f32) -> v4u32 {
+pub unsafe fn __msa_ftint_u_w(a: v4f32) -> v4u32 {
     msa_ftint_u_w(a)
 }
 
@@ -5306,7 +5306,7 @@ unsafe fn __msa_ftint_u_w(a: v4f32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftint_u.d))]
-unsafe fn __msa_ftint_u_d(a: v2f64) -> v2u64 {
+pub unsafe fn __msa_ftint_u_d(a: v2f64) -> v2u64 {
     msa_ftint_u_d(a)
 }
 
@@ -5321,7 +5321,7 @@ unsafe fn __msa_ftint_u_d(a: v2f64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftq.h))]
-unsafe fn __msa_ftq_h(a: v4f32, b: v4f32) -> v8i16 {
+pub unsafe fn __msa_ftq_h(a: v4f32, b: v4f32) -> v8i16 {
     msa_ftq_h(a, ::mem::transmute(b))
 }
 
@@ -5336,7 +5336,7 @@ unsafe fn __msa_ftq_h(a: v4f32, b: v4f32) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftq.w))]
-unsafe fn __msa_ftq_w(a: v2f64, b: v2f64) -> v4i32 {
+pub unsafe fn __msa_ftq_w(a: v2f64, b: v2f64) -> v4i32 {
     msa_ftq_w(a, ::mem::transmute(b))
 }
 
@@ -5349,7 +5349,7 @@ unsafe fn __msa_ftq_w(a: v2f64, b: v2f64) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftrunc_s.w))]
-unsafe fn __msa_ftrunc_s_w(a: v4f32) -> v4i32 {
+pub unsafe fn __msa_ftrunc_s_w(a: v4f32) -> v4i32 {
     msa_ftrunc_s_w(a)
 }
 
@@ -5362,7 +5362,7 @@ unsafe fn __msa_ftrunc_s_w(a: v4f32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftrunc_s.d))]
-unsafe fn __msa_ftrunc_s_d(a: v2f64) -> v2i64 {
+pub unsafe fn __msa_ftrunc_s_d(a: v2f64) -> v2i64 {
     msa_ftrunc_s_d(a)
 }
 
@@ -5375,7 +5375,7 @@ unsafe fn __msa_ftrunc_s_d(a: v2f64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftrunc_u.w))]
-unsafe fn __msa_ftrunc_u_w(a: v4f32) -> v4u32 {
+pub unsafe fn __msa_ftrunc_u_w(a: v4f32) -> v4u32 {
     msa_ftrunc_u_w(a)
 }
 
@@ -5388,7 +5388,7 @@ unsafe fn __msa_ftrunc_u_w(a: v4f32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftrunc_u.d))]
-unsafe fn __msa_ftrunc_u_d(a: v2f64) -> v2u64 {
+pub unsafe fn __msa_ftrunc_u_d(a: v2f64) -> v2u64 {
     msa_ftrunc_u_d(a)
 }
 
@@ -5402,7 +5402,7 @@ unsafe fn __msa_ftrunc_u_d(a: v2f64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_s.h))]
-unsafe fn __msa_hadd_s_h(a: v16i8, b: v16i8) -> v8i16 {
+pub unsafe fn __msa_hadd_s_h(a: v16i8, b: v16i8) -> v8i16 {
     msa_hadd_s_h(a, ::mem::transmute(b))
 }
 
@@ -5416,7 +5416,7 @@ unsafe fn __msa_hadd_s_h(a: v16i8, b: v16i8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_s.w))]
-unsafe fn __msa_hadd_s_w(a: v8i16, b: v8i16) -> v4i32 {
+pub unsafe fn __msa_hadd_s_w(a: v8i16, b: v8i16) -> v4i32 {
     msa_hadd_s_w(a, ::mem::transmute(b))
 }
 
@@ -5430,7 +5430,7 @@ unsafe fn __msa_hadd_s_w(a: v8i16, b: v8i16) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_s.d))]
-unsafe fn __msa_hadd_s_d(a: v4i32, b: v4i32) -> v2i64 {
+pub unsafe fn __msa_hadd_s_d(a: v4i32, b: v4i32) -> v2i64 {
     msa_hadd_s_d(a, ::mem::transmute(b))
 }
 
@@ -5444,7 +5444,7 @@ unsafe fn __msa_hadd_s_d(a: v4i32, b: v4i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_u.h))]
-unsafe fn __msa_hadd_u_h(a: v16u8, b: v16u8) -> v8u16 {
+pub unsafe fn __msa_hadd_u_h(a: v16u8, b: v16u8) -> v8u16 {
     msa_hadd_u_h(a, ::mem::transmute(b))
 }
 
@@ -5458,7 +5458,7 @@ unsafe fn __msa_hadd_u_h(a: v16u8, b: v16u8) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_u.w))]
-unsafe fn __msa_hadd_u_w(a: v8u16, b: v8u16) -> v4u32 {
+pub unsafe fn __msa_hadd_u_w(a: v8u16, b: v8u16) -> v4u32 {
     msa_hadd_u_w(a, ::mem::transmute(b))
 }
 
@@ -5472,7 +5472,7 @@ unsafe fn __msa_hadd_u_w(a: v8u16, b: v8u16) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_u.d))]
-unsafe fn __msa_hadd_u_d(a: v4u32, b: v4u32) -> v2u64 {
+pub unsafe fn __msa_hadd_u_d(a: v4u32, b: v4u32) -> v2u64 {
     msa_hadd_u_d(a, ::mem::transmute(b))
 }
 
@@ -5486,7 +5486,7 @@ unsafe fn __msa_hadd_u_d(a: v4u32, b: v4u32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_s.h))]
-unsafe fn __msa_hsub_s_h(a: v16i8, b: v16i8) -> v8i16 {
+pub unsafe fn __msa_hsub_s_h(a: v16i8, b: v16i8) -> v8i16 {
     msa_hsub_s_h(a, ::mem::transmute(b))
 }
 
@@ -5500,7 +5500,7 @@ unsafe fn __msa_hsub_s_h(a: v16i8, b: v16i8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_s.w))]
-unsafe fn __msa_hsub_s_w(a: v8i16, b: v8i16) -> v4i32 {
+pub unsafe fn __msa_hsub_s_w(a: v8i16, b: v8i16) -> v4i32 {
     msa_hsub_s_w(a, ::mem::transmute(b))
 }
 
@@ -5514,7 +5514,7 @@ unsafe fn __msa_hsub_s_w(a: v8i16, b: v8i16) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_s.d))]
-unsafe fn __msa_hsub_s_d(a: v4i32, b: v4i32) -> v2i64 {
+pub unsafe fn __msa_hsub_s_d(a: v4i32, b: v4i32) -> v2i64 {
     msa_hsub_s_d(a, ::mem::transmute(b))
 }
 
@@ -5528,7 +5528,7 @@ unsafe fn __msa_hsub_s_d(a: v4i32, b: v4i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_u.h))]
-unsafe fn __msa_hsub_u_h(a: v16u8, b: v16u8) -> v8i16 {
+pub unsafe fn __msa_hsub_u_h(a: v16u8, b: v16u8) -> v8i16 {
     msa_hsub_u_h(a, ::mem::transmute(b))
 }
 
@@ -5542,7 +5542,7 @@ unsafe fn __msa_hsub_u_h(a: v16u8, b: v16u8) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_u.w))]
-unsafe fn __msa_hsub_u_w(a: v8u16, b: v8u16) -> v4i32 {
+pub unsafe fn __msa_hsub_u_w(a: v8u16, b: v8u16) -> v4i32 {
     msa_hsub_u_w(a, ::mem::transmute(b))
 }
 
@@ -5556,7 +5556,7 @@ unsafe fn __msa_hsub_u_w(a: v8u16, b: v8u16) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_u.d))]
-unsafe fn __msa_hsub_u_d(a: v4u32, b: v4u32) -> v2i64 {
+pub unsafe fn __msa_hsub_u_d(a: v4u32, b: v4u32) -> v2i64 {
     msa_hsub_u_d(a, ::mem::transmute(b))
 }
 
@@ -5570,7 +5570,7 @@ unsafe fn __msa_hsub_u_d(a: v4u32, b: v4u32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.b))]
-unsafe fn __msa_ilvev_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_ilvev_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_ilvev_b(a, ::mem::transmute(b))
 }
 
@@ -5584,7 +5584,7 @@ unsafe fn __msa_ilvev_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.h))]
-unsafe fn __msa_ilvev_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_ilvev_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_ilvev_h(a, ::mem::transmute(b))
 }
 
@@ -5598,7 +5598,7 @@ unsafe fn __msa_ilvev_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.w))]
-unsafe fn __msa_ilvev_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_ilvev_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_ilvev_w(a, ::mem::transmute(b))
 }
 
@@ -5612,7 +5612,7 @@ unsafe fn __msa_ilvev_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.d))]
-unsafe fn __msa_ilvev_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_ilvev_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_ilvev_d(a, ::mem::transmute(b))
 }
 
@@ -5626,7 +5626,7 @@ unsafe fn __msa_ilvev_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.b))]
-unsafe fn __msa_ilvl_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_ilvl_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_ilvl_b(a, ::mem::transmute(b))
 }
 
@@ -5640,7 +5640,7 @@ unsafe fn __msa_ilvl_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.h))]
-unsafe fn __msa_ilvl_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_ilvl_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_ilvl_h(a, ::mem::transmute(b))
 }
 
@@ -5654,7 +5654,7 @@ unsafe fn __msa_ilvl_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.w))]
-unsafe fn __msa_ilvl_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_ilvl_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_ilvl_w(a, ::mem::transmute(b))
 }
 
@@ -5668,7 +5668,7 @@ unsafe fn __msa_ilvl_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.d))]
-unsafe fn __msa_ilvl_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_ilvl_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_ilvl_d(a, ::mem::transmute(b))
 }
 
@@ -5682,7 +5682,7 @@ unsafe fn __msa_ilvl_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.b))]
-unsafe fn __msa_ilvod_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_ilvod_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_ilvod_b(a, ::mem::transmute(b))
 }
 
@@ -5696,7 +5696,7 @@ unsafe fn __msa_ilvod_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.h))]
-unsafe fn __msa_ilvod_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_ilvod_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_ilvod_h(a, ::mem::transmute(b))
 }
 
@@ -5710,7 +5710,7 @@ unsafe fn __msa_ilvod_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.w))]
-unsafe fn __msa_ilvod_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_ilvod_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_ilvod_w(a, ::mem::transmute(b))
 }
 
@@ -5724,7 +5724,7 @@ unsafe fn __msa_ilvod_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.d))]
-unsafe fn __msa_ilvod_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_ilvod_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_ilvod_d(a, ::mem::transmute(b))
 }
 
@@ -5738,7 +5738,7 @@ unsafe fn __msa_ilvod_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.b))]
-unsafe fn __msa_ilvr_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_ilvr_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_ilvr_b(a, ::mem::transmute(b))
 }
 
@@ -5752,7 +5752,7 @@ unsafe fn __msa_ilvr_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.h))]
-unsafe fn __msa_ilvr_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_ilvr_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_ilvr_h(a, ::mem::transmute(b))
 }
 
@@ -5766,7 +5766,7 @@ unsafe fn __msa_ilvr_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.w))]
-unsafe fn __msa_ilvr_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_ilvr_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_ilvr_w(a, ::mem::transmute(b))
 }
 
@@ -5780,7 +5780,7 @@ unsafe fn __msa_ilvr_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.d))]
-unsafe fn __msa_ilvr_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_ilvr_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_ilvr_d(a, ::mem::transmute(b))
 }
 
@@ -5794,7 +5794,7 @@ unsafe fn __msa_ilvr_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.b, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insert_b(a: v16i8, imm4: i32, c: i32) -> v16i8 {
+pub unsafe fn __msa_insert_b(a: v16i8, imm4: i32, c: i32) -> v16i8 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_insert_b(a, $imm4, c)
@@ -5813,7 +5813,7 @@ unsafe fn __msa_insert_b(a: v16i8, imm4: i32, c: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.h, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insert_h(a: v8i16, imm3: i32, c: i32) -> v8i16 {
+pub unsafe fn __msa_insert_h(a: v8i16, imm3: i32, c: i32) -> v8i16 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_insert_h(a, $imm3, c)
@@ -5832,7 +5832,7 @@ unsafe fn __msa_insert_h(a: v8i16, imm3: i32, c: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.w, imm2 = 0b11))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insert_w(a: v4i32, imm2: i32, c: i32) -> v4i32 {
+pub unsafe fn __msa_insert_w(a: v4i32, imm2: i32, c: i32) -> v4i32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_insert_w(a, $imm2, c)
@@ -5851,7 +5851,7 @@ unsafe fn __msa_insert_w(a: v4i32, imm2: i32, c: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insert.d, imm1 = 0b1))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insert_d(a: v2i64, imm1: i32, c: i64) -> v2i64 {
+pub unsafe fn __msa_insert_d(a: v2i64, imm1: i32, c: i64) -> v2i64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_insert_d(a, $imm1, c)
@@ -5870,7 +5870,7 @@ unsafe fn __msa_insert_d(a: v2i64, imm1: i32, c: i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.b, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insve_b(a: v16i8, imm4: i32, c: v16i8) -> v16i8 {
+pub unsafe fn __msa_insve_b(a: v16i8, imm4: i32, c: v16i8) -> v16i8 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_insve_b(a, $imm4, c)
@@ -5889,7 +5889,7 @@ unsafe fn __msa_insve_b(a: v16i8, imm4: i32, c: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.h, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insve_h(a: v8i16, imm3: i32, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_insve_h(a: v8i16, imm3: i32, c: v8i16) -> v8i16 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_insve_h(a, $imm3, c)
@@ -5908,7 +5908,7 @@ unsafe fn __msa_insve_h(a: v8i16, imm3: i32, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.w, imm2 = 0b11))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insve_w(a: v4i32, imm2: i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_insve_w(a: v4i32, imm2: i32, c: v4i32) -> v4i32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_insve_w(a, $imm2, c)
@@ -5927,7 +5927,7 @@ unsafe fn __msa_insve_w(a: v4i32, imm2: i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(insve.d, imm1 = 0b1))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_insve_d(a: v2i64, imm1: i32, c: v2i64) -> v2i64 {
+pub unsafe fn __msa_insve_d(a: v2i64, imm1: i32, c: v2i64) -> v2i64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_insve_d(a, $imm1, c)
@@ -5946,7 +5946,7 @@ unsafe fn __msa_insve_d(a: v2i64, imm1: i32, c: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.b, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ld_b(mem_addr: *mut i8, imm_s10: i32) -> v16i8 {
+pub unsafe fn __msa_ld_b(mem_addr: *mut i8, imm_s10: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_ld_b(mem_addr, $imm_s10)
@@ -5965,7 +5965,7 @@ unsafe fn __msa_ld_b(mem_addr: *mut i8, imm_s10: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.h, imm_s11 = 0b11111111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ld_h(mem_addr: *mut i8, imm_s11: i32) -> v8i16 {
+pub unsafe fn __msa_ld_h(mem_addr: *mut i8, imm_s11: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s11:expr) => {
             msa_ld_h(mem_addr, $imm_s11)
@@ -5984,7 +5984,7 @@ unsafe fn __msa_ld_h(mem_addr: *mut i8, imm_s11: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.w, imm_s12 = 0b111111111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ld_w(mem_addr: *mut i8, imm_s12: i32) -> v4i32 {
+pub unsafe fn __msa_ld_w(mem_addr: *mut i8, imm_s12: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s12:expr) => {
             msa_ld_w(mem_addr, $imm_s12)
@@ -6003,7 +6003,7 @@ unsafe fn __msa_ld_w(mem_addr: *mut i8, imm_s12: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.d, imm_s13 = 0b1111111111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ld_d(mem_addr: *mut i8, imm_s13: i32) -> v2i64 {
+pub unsafe fn __msa_ld_d(mem_addr: *mut i8, imm_s13: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s13:expr) => {
             msa_ld_d(mem_addr, $imm_s13)
@@ -6022,7 +6022,7 @@ unsafe fn __msa_ld_d(mem_addr: *mut i8, imm_s13: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.b, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(0)]
-unsafe fn __msa_ldi_b(imm_s10: i32) -> v16i8 {
+pub unsafe fn __msa_ldi_b(imm_s10: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_ldi_b($imm_s10)
@@ -6041,7 +6041,7 @@ unsafe fn __msa_ldi_b(imm_s10: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.h, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(0)]
-unsafe fn __msa_ldi_h(imm_s10: i32) -> v8i16 {
+pub unsafe fn __msa_ldi_h(imm_s10: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_ldi_h($imm_s10)
@@ -6060,7 +6060,7 @@ unsafe fn __msa_ldi_h(imm_s10: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.w, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(0)]
-unsafe fn __msa_ldi_w(imm_s10: i32) -> v4i32 {
+pub unsafe fn __msa_ldi_w(imm_s10: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_ldi_w($imm_s10)
@@ -6079,7 +6079,7 @@ unsafe fn __msa_ldi_w(imm_s10: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ldi.d, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(0)]
-unsafe fn __msa_ldi_d(imm_s10: i32) -> v2i64 {
+pub unsafe fn __msa_ldi_d(imm_s10: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_ldi_d($imm_s10)
@@ -6099,7 +6099,7 @@ unsafe fn __msa_ldi_d(imm_s10: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(madd_q.h))]
-unsafe fn __msa_madd_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_madd_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
     msa_madd_q_h(a, ::mem::transmute(b), c)
 }
 
@@ -6114,7 +6114,7 @@ unsafe fn __msa_madd_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(madd_q.w))]
-unsafe fn __msa_madd_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_madd_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
     msa_madd_q_w(a, ::mem::transmute(b), c)
 }
 
@@ -6129,7 +6129,7 @@ unsafe fn __msa_madd_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddr_q.h))]
-unsafe fn __msa_maddr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_maddr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
     msa_maddr_q_h(a, ::mem::transmute(b), c)
 }
 
@@ -6144,7 +6144,7 @@ unsafe fn __msa_maddr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddr_q.w))]
-unsafe fn __msa_maddr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_maddr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
     msa_maddr_q_w(a, ::mem::transmute(b), c)
 }
 
@@ -6158,7 +6158,7 @@ unsafe fn __msa_maddr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.b))]
-unsafe fn __msa_maddv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
+pub unsafe fn __msa_maddv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
     msa_maddv_b(a, ::mem::transmute(b), c)
 }
 
@@ -6172,7 +6172,7 @@ unsafe fn __msa_maddv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.h))]
-unsafe fn __msa_maddv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_maddv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
     msa_maddv_h(a, ::mem::transmute(b), c)
 }
 
@@ -6186,7 +6186,7 @@ unsafe fn __msa_maddv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.w))]
-unsafe fn __msa_maddv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_maddv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
     msa_maddv_w(a, ::mem::transmute(b), c)
 }
 
@@ -6200,7 +6200,7 @@ unsafe fn __msa_maddv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.d))]
-unsafe fn __msa_maddv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+pub unsafe fn __msa_maddv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
     msa_maddv_d(a, ::mem::transmute(b), c)
 }
 
@@ -6214,7 +6214,7 @@ unsafe fn __msa_maddv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.b))]
-unsafe fn __msa_max_a_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_max_a_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_max_a_b(a, ::mem::transmute(b))
 }
 
@@ -6228,7 +6228,7 @@ unsafe fn __msa_max_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.h))]
-unsafe fn __msa_max_a_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_max_a_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_max_a_h(a, ::mem::transmute(b))
 }
 
@@ -6242,7 +6242,7 @@ unsafe fn __msa_max_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.w))]
-unsafe fn __msa_max_a_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_max_a_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_max_a_w(a, ::mem::transmute(b))
 }
 
@@ -6256,7 +6256,7 @@ unsafe fn __msa_max_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.d))]
-unsafe fn __msa_max_a_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_max_a_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_max_a_d(a, ::mem::transmute(b))
 }
 
@@ -6269,7 +6269,7 @@ unsafe fn __msa_max_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.b))]
-unsafe fn __msa_max_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_max_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_max_s_b(a, ::mem::transmute(b))
 }
 
@@ -6282,7 +6282,7 @@ unsafe fn __msa_max_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.h))]
-unsafe fn __msa_max_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_max_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_max_s_h(a, ::mem::transmute(b))
 }
 
@@ -6295,7 +6295,7 @@ unsafe fn __msa_max_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.w))]
-unsafe fn __msa_max_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_max_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_max_s_w(a, ::mem::transmute(b))
 }
 
@@ -6308,7 +6308,7 @@ unsafe fn __msa_max_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.d))]
-unsafe fn __msa_max_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_max_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_max_s_d(a, ::mem::transmute(b))
 }
 
@@ -6321,7 +6321,7 @@ unsafe fn __msa_max_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.b))]
-unsafe fn __msa_max_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_max_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_max_u_b(a, ::mem::transmute(b))
 }
 
@@ -6334,7 +6334,7 @@ unsafe fn __msa_max_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.h))]
-unsafe fn __msa_max_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_max_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_max_u_h(a, ::mem::transmute(b))
 }
 
@@ -6347,7 +6347,7 @@ unsafe fn __msa_max_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.w))]
-unsafe fn __msa_max_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_max_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_max_u_w(a, ::mem::transmute(b))
 }
 
@@ -6360,7 +6360,7 @@ unsafe fn __msa_max_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.d))]
-unsafe fn __msa_max_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_max_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_max_u_d(a, ::mem::transmute(b))
 }
 
@@ -6374,7 +6374,7 @@ unsafe fn __msa_max_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.b, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
+pub unsafe fn __msa_maxi_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_maxi_s_b(a, $imm_s5)
@@ -6393,7 +6393,7 @@ unsafe fn __msa_maxi_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.h, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
+pub unsafe fn __msa_maxi_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_maxi_s_h(a, $imm_s5)
@@ -6412,7 +6412,7 @@ unsafe fn __msa_maxi_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.w, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
+pub unsafe fn __msa_maxi_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_maxi_s_w(a, $imm_s5)
@@ -6431,7 +6431,7 @@ unsafe fn __msa_maxi_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_s.d, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
+pub unsafe fn __msa_maxi_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_maxi_s_d(a, $imm_s5)
@@ -6450,7 +6450,7 @@ unsafe fn __msa_maxi_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.b, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_u_b(a: v16u8, imm5: i32) -> v16u8 {
+pub unsafe fn __msa_maxi_u_b(a: v16u8, imm5: i32) -> v16u8 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_maxi_u_b(a, $imm5)
@@ -6469,7 +6469,7 @@ unsafe fn __msa_maxi_u_b(a: v16u8, imm5: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.h, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_u_h(a: v8u16, imm5: i32) -> v8u16 {
+pub unsafe fn __msa_maxi_u_h(a: v8u16, imm5: i32) -> v8u16 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_maxi_u_h(a, $imm5)
@@ -6488,7 +6488,7 @@ unsafe fn __msa_maxi_u_h(a: v8u16, imm5: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_u_w(a: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_maxi_u_w(a: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_maxi_u_w(a, $imm5)
@@ -6507,7 +6507,7 @@ unsafe fn __msa_maxi_u_w(a: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maxi_u.d, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_maxi_u_d(a: v2u64, imm5: i32) -> v2u64 {
+pub unsafe fn __msa_maxi_u_d(a: v2u64, imm5: i32) -> v2u64 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_maxi_u_d(a, $imm5)
@@ -6526,7 +6526,7 @@ unsafe fn __msa_maxi_u_d(a: v2u64, imm5: i32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.b))]
-unsafe fn __msa_min_a_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_min_a_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_min_a_b(a, ::mem::transmute(b))
 }
 
@@ -6540,7 +6540,7 @@ unsafe fn __msa_min_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.h))]
-unsafe fn __msa_min_a_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_min_a_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_min_a_h(a, ::mem::transmute(b))
 }
 
@@ -6554,7 +6554,7 @@ unsafe fn __msa_min_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.w))]
-unsafe fn __msa_min_a_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_min_a_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_min_a_w(a, ::mem::transmute(b))
 }
 
@@ -6568,7 +6568,7 @@ unsafe fn __msa_min_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.d))]
-unsafe fn __msa_min_a_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_min_a_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_min_a_d(a, ::mem::transmute(b))
 }
 
@@ -6581,7 +6581,7 @@ unsafe fn __msa_min_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.b))]
-unsafe fn __msa_min_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_min_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_min_s_b(a, ::mem::transmute(b))
 }
 
@@ -6594,7 +6594,7 @@ unsafe fn __msa_min_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.h))]
-unsafe fn __msa_min_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_min_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_min_s_h(a, ::mem::transmute(b))
 }
 
@@ -6607,7 +6607,7 @@ unsafe fn __msa_min_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.w))]
-unsafe fn __msa_min_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_min_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_min_s_w(a, ::mem::transmute(b))
 }
 
@@ -6620,7 +6620,7 @@ unsafe fn __msa_min_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.d))]
-unsafe fn __msa_min_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_min_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_min_s_d(a, ::mem::transmute(b))
 }
 
@@ -6634,7 +6634,7 @@ unsafe fn __msa_min_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.b, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
+pub unsafe fn __msa_mini_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_mini_s_b(a, $imm_s5)
@@ -6653,7 +6653,7 @@ unsafe fn __msa_mini_s_b(a: v16i8, imm_s5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.h, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
+pub unsafe fn __msa_mini_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_mini_s_h(a, $imm_s5)
@@ -6672,7 +6672,7 @@ unsafe fn __msa_mini_s_h(a: v8i16, imm_s5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.w, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
+pub unsafe fn __msa_mini_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_mini_s_w(a, $imm_s5)
@@ -6691,7 +6691,7 @@ unsafe fn __msa_mini_s_w(a: v4i32, imm_s5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_s.d, imm_s5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
+pub unsafe fn __msa_mini_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s5:expr) => {
             msa_mini_s_d(a, $imm_s5)
@@ -6709,7 +6709,7 @@ unsafe fn __msa_mini_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.b))]
-unsafe fn __msa_min_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_min_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_min_u_b(a, ::mem::transmute(b))
 }
 
@@ -6722,7 +6722,7 @@ unsafe fn __msa_min_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.h))]
-unsafe fn __msa_min_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_min_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_min_u_h(a, ::mem::transmute(b))
 }
 
@@ -6735,7 +6735,7 @@ unsafe fn __msa_min_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.w))]
-unsafe fn __msa_min_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_min_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_min_u_w(a, ::mem::transmute(b))
 }
 
@@ -6748,7 +6748,7 @@ unsafe fn __msa_min_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.d))]
-unsafe fn __msa_min_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_min_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_min_u_d(a, ::mem::transmute(b))
 }
 
@@ -6762,7 +6762,7 @@ unsafe fn __msa_min_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.b, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_u_b(a: v16u8, imm5: i32) -> v16u8 {
+pub unsafe fn __msa_mini_u_b(a: v16u8, imm5: i32) -> v16u8 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_mini_u_b(a, $imm5)
@@ -6781,7 +6781,7 @@ unsafe fn __msa_mini_u_b(a: v16u8, imm5: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.h, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_u_h(a: v8u16, imm5: i32) -> v8u16 {
+pub unsafe fn __msa_mini_u_h(a: v8u16, imm5: i32) -> v8u16 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_mini_u_h(a, $imm5)
@@ -6800,7 +6800,7 @@ unsafe fn __msa_mini_u_h(a: v8u16, imm5: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_u_w(a: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_mini_u_w(a: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_mini_u_w(a, $imm5)
@@ -6819,7 +6819,7 @@ unsafe fn __msa_mini_u_w(a: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mini_u.d, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_mini_u_d(a: v2u64, imm5: i32) -> v2u64 {
+pub unsafe fn __msa_mini_u_d(a: v2u64, imm5: i32) -> v2u64 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_mini_u_d(a, $imm5)
@@ -6839,7 +6839,7 @@ unsafe fn __msa_mini_u_d(a: v2u64, imm5: i32) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.b))]
-unsafe fn __msa_mod_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_mod_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_mod_s_b(a, ::mem::transmute(b))
 }
 
@@ -6854,7 +6854,7 @@ unsafe fn __msa_mod_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.h))]
-unsafe fn __msa_mod_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_mod_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_mod_s_h(a, ::mem::transmute(b))
 }
 
@@ -6869,7 +6869,7 @@ unsafe fn __msa_mod_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.w))]
-unsafe fn __msa_mod_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_mod_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_mod_s_w(a, ::mem::transmute(b))
 }
 
@@ -6884,7 +6884,7 @@ unsafe fn __msa_mod_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.d))]
-unsafe fn __msa_mod_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_mod_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_mod_s_d(a, ::mem::transmute(b))
 }
 
@@ -6899,7 +6899,7 @@ unsafe fn __msa_mod_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.b))]
-unsafe fn __msa_mod_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_mod_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_mod_u_b(a, ::mem::transmute(b))
 }
 
@@ -6914,7 +6914,7 @@ unsafe fn __msa_mod_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.h))]
-unsafe fn __msa_mod_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_mod_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_mod_u_h(a, ::mem::transmute(b))
 }
 
@@ -6929,7 +6929,7 @@ unsafe fn __msa_mod_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.w))]
-unsafe fn __msa_mod_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_mod_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_mod_u_w(a, ::mem::transmute(b))
 }
 
@@ -6944,7 +6944,7 @@ unsafe fn __msa_mod_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.d))]
-unsafe fn __msa_mod_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_mod_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_mod_u_d(a, ::mem::transmute(b))
 }
 
@@ -6956,7 +6956,7 @@ unsafe fn __msa_mod_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(move.v))]
-unsafe fn __msa_move_v(a: v16i8) -> v16i8 {
+pub unsafe fn __msa_move_v(a: v16i8) -> v16i8 {
     msa_move_v(a)
 }
 
@@ -6972,7 +6972,7 @@ unsafe fn __msa_move_v(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msub_q.h))]
-unsafe fn __msa_msub_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_msub_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
     msa_msub_q_h(a, ::mem::transmute(b), c)
 }
 
@@ -6988,7 +6988,7 @@ unsafe fn __msa_msub_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msub_q.w))]
-unsafe fn __msa_msub_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_msub_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
     msa_msub_q_w(a, ::mem::transmute(b), c)
 }
 
@@ -7004,7 +7004,7 @@ unsafe fn __msa_msub_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubr_q.h))]
-unsafe fn __msa_msubr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_msubr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
     msa_msubr_q_h(a, ::mem::transmute(b), c)
 }
 
@@ -7020,7 +7020,7 @@ unsafe fn __msa_msubr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubr_q.w))]
-unsafe fn __msa_msubr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_msubr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
     msa_msubr_q_w(a, ::mem::transmute(b), c)
 }
 
@@ -7034,7 +7034,7 @@ unsafe fn __msa_msubr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.b))]
-unsafe fn __msa_msubv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
+pub unsafe fn __msa_msubv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
     msa_msubv_b(a, ::mem::transmute(b), c)
 }
 
@@ -7048,7 +7048,7 @@ unsafe fn __msa_msubv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.h))]
-unsafe fn __msa_msubv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_msubv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
     msa_msubv_h(a, ::mem::transmute(b), c)
 }
 
@@ -7062,7 +7062,7 @@ unsafe fn __msa_msubv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.w))]
-unsafe fn __msa_msubv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_msubv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
     msa_msubv_w(a, ::mem::transmute(b), c)
 }
 
@@ -7076,7 +7076,7 @@ unsafe fn __msa_msubv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.d))]
-unsafe fn __msa_msubv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+pub unsafe fn __msa_msubv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
     msa_msubv_d(a, ::mem::transmute(b), c)
 }
 
@@ -7089,7 +7089,7 @@ unsafe fn __msa_msubv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mul_q.h))]
-unsafe fn __msa_mul_q_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_mul_q_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_mul_q_h(a, ::mem::transmute(b))
 }
 
@@ -7102,7 +7102,7 @@ unsafe fn __msa_mul_q_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mul_q.w))]
-unsafe fn __msa_mul_q_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_mul_q_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_mul_q_w(a, ::mem::transmute(b))
 }
 
@@ -7115,7 +7115,7 @@ unsafe fn __msa_mul_q_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulr_q.h))]
-unsafe fn __msa_mulr_q_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_mulr_q_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_mulr_q_h(a, ::mem::transmute(b))
 }
 
@@ -7128,7 +7128,7 @@ unsafe fn __msa_mulr_q_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulr_q.w))]
-unsafe fn __msa_mulr_q_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_mulr_q_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_mulr_q_w(a, ::mem::transmute(b))
 }
 
@@ -7142,7 +7142,7 @@ unsafe fn __msa_mulr_q_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.b))]
-unsafe fn __msa_mulv_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_mulv_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_mulv_b(a, ::mem::transmute(b))
 }
 
@@ -7156,7 +7156,7 @@ unsafe fn __msa_mulv_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.h))]
-unsafe fn __msa_mulv_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_mulv_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_mulv_h(a, ::mem::transmute(b))
 }
 
@@ -7170,7 +7170,7 @@ unsafe fn __msa_mulv_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.w))]
-unsafe fn __msa_mulv_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_mulv_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_mulv_w(a, ::mem::transmute(b))
 }
 
@@ -7184,7 +7184,7 @@ unsafe fn __msa_mulv_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.d))]
-unsafe fn __msa_mulv_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_mulv_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_mulv_d(a, ::mem::transmute(b))
 }
 
@@ -7196,7 +7196,7 @@ unsafe fn __msa_mulv_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nloc.b))]
-unsafe fn __msa_nloc_b(a: v16i8) -> v16i8 {
+pub unsafe fn __msa_nloc_b(a: v16i8) -> v16i8 {
     msa_nloc_b(a)
 }
 
@@ -7208,7 +7208,7 @@ unsafe fn __msa_nloc_b(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nloc.h))]
-unsafe fn __msa_nloc_h(a: v8i16) -> v8i16 {
+pub unsafe fn __msa_nloc_h(a: v8i16) -> v8i16 {
     msa_nloc_h(a)
 }
 
@@ -7220,7 +7220,7 @@ unsafe fn __msa_nloc_h(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nloc.w))]
-unsafe fn __msa_nloc_w(a: v4i32) -> v4i32 {
+pub unsafe fn __msa_nloc_w(a: v4i32) -> v4i32 {
     msa_nloc_w(a)
 }
 
@@ -7232,7 +7232,7 @@ unsafe fn __msa_nloc_w(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nloc.d))]
-unsafe fn __msa_nloc_d(a: v2i64) -> v2i64 {
+pub unsafe fn __msa_nloc_d(a: v2i64) -> v2i64 {
     msa_nloc_d(a)
 }
 
@@ -7244,7 +7244,7 @@ unsafe fn __msa_nloc_d(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nlzc.b))]
-unsafe fn __msa_nlzc_b(a: v16i8) -> v16i8 {
+pub unsafe fn __msa_nlzc_b(a: v16i8) -> v16i8 {
     msa_nlzc_b(a)
 }
 
@@ -7256,7 +7256,7 @@ unsafe fn __msa_nlzc_b(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nlzc.h))]
-unsafe fn __msa_nlzc_h(a: v8i16) -> v8i16 {
+pub unsafe fn __msa_nlzc_h(a: v8i16) -> v8i16 {
     msa_nlzc_h(a)
 }
 
@@ -7268,7 +7268,7 @@ unsafe fn __msa_nlzc_h(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nlzc.w))]
-unsafe fn __msa_nlzc_w(a: v4i32) -> v4i32 {
+pub unsafe fn __msa_nlzc_w(a: v4i32) -> v4i32 {
     msa_nlzc_w(a)
 }
 
@@ -7280,7 +7280,7 @@ unsafe fn __msa_nlzc_w(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nlzc.d))]
-unsafe fn __msa_nlzc_d(a: v2i64) -> v2i64 {
+pub unsafe fn __msa_nlzc_d(a: v2i64) -> v2i64 {
     msa_nlzc_d(a)
 }
 
@@ -7294,7 +7294,7 @@ unsafe fn __msa_nlzc_d(a: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nor.v))]
-unsafe fn __msa_nor_v(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_nor_v(a: v16u8, b: v16u8) -> v16u8 {
     msa_nor_v(a, ::mem::transmute(b))
 }
 
@@ -7309,7 +7309,7 @@ unsafe fn __msa_nor_v(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nori.b, imm8 = 0b11111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_nori_b(a: v16u8, imm8: i32) -> v16u8 {
+pub unsafe fn __msa_nori_b(a: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_nori_b(a, $imm8)
@@ -7328,7 +7328,7 @@ unsafe fn __msa_nori_b(a: v16u8, imm8: i32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(or.v))]
-unsafe fn __msa_or_v(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_or_v(a: v16u8, b: v16u8) -> v16u8 {
     msa_or_v(a, ::mem::transmute(b))
 }
 
@@ -7343,7 +7343,7 @@ unsafe fn __msa_or_v(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ori.b, imm8 = 0b11111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_ori_b(a: v16u8, imm8: i32) -> v16u8 {
+pub unsafe fn __msa_ori_b(a: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_ori_b(a, $imm8)
@@ -7361,7 +7361,7 @@ unsafe fn __msa_ori_b(a: v16u8, imm8: i32) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.b))]
-unsafe fn __msa_pckev_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_pckev_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_pckev_b(a, ::mem::transmute(b))
 }
 
@@ -7374,7 +7374,7 @@ unsafe fn __msa_pckev_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.h))]
-unsafe fn __msa_pckev_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_pckev_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_pckev_h(a, ::mem::transmute(b))
 }
 
@@ -7387,7 +7387,7 @@ unsafe fn __msa_pckev_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.w))]
-unsafe fn __msa_pckev_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_pckev_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_pckev_w(a, ::mem::transmute(b))
 }
 
@@ -7400,7 +7400,7 @@ unsafe fn __msa_pckev_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.d))]
-unsafe fn __msa_pckev_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_pckev_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_pckev_d(a, ::mem::transmute(b))
 }
 
@@ -7413,7 +7413,7 @@ unsafe fn __msa_pckev_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.b))]
-unsafe fn __msa_pckod_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_pckod_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_pckod_b(a, ::mem::transmute(b))
 }
 
@@ -7426,7 +7426,7 @@ unsafe fn __msa_pckod_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.h))]
-unsafe fn __msa_pckod_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_pckod_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_pckod_h(a, ::mem::transmute(b))
 }
 
@@ -7439,7 +7439,7 @@ unsafe fn __msa_pckod_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.w))]
-unsafe fn __msa_pckod_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_pckod_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_pckod_w(a, ::mem::transmute(b))
 }
 
@@ -7452,7 +7452,7 @@ unsafe fn __msa_pckod_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.d))]
-unsafe fn __msa_pckod_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_pckod_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_pckod_d(a, ::mem::transmute(b))
 }
 
@@ -7464,7 +7464,7 @@ unsafe fn __msa_pckod_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pcnt.b))]
-unsafe fn __msa_pcnt_b(a: v16i8) -> v16i8 {
+pub unsafe fn __msa_pcnt_b(a: v16i8) -> v16i8 {
     msa_pcnt_b(a)
 }
 
@@ -7476,7 +7476,7 @@ unsafe fn __msa_pcnt_b(a: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pcnt.h))]
-unsafe fn __msa_pcnt_h(a: v8i16) -> v8i16 {
+pub unsafe fn __msa_pcnt_h(a: v8i16) -> v8i16 {
     msa_pcnt_h(a)
 }
 
@@ -7488,7 +7488,7 @@ unsafe fn __msa_pcnt_h(a: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pcnt.w))]
-unsafe fn __msa_pcnt_w(a: v4i32) -> v4i32 {
+pub unsafe fn __msa_pcnt_w(a: v4i32) -> v4i32 {
     msa_pcnt_w(a)
 }
 
@@ -7500,7 +7500,7 @@ unsafe fn __msa_pcnt_w(a: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pcnt.d))]
-unsafe fn __msa_pcnt_d(a: v2i64) -> v2i64 {
+pub unsafe fn __msa_pcnt_d(a: v2i64) -> v2i64 {
     msa_pcnt_d(a)
 }
 
@@ -7514,7 +7514,7 @@ unsafe fn __msa_pcnt_d(a: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.b, imm4 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_s_b(a: v16i8, imm3: i32) -> v16i8 {
+pub unsafe fn __msa_sat_s_b(a: v16i8, imm3: i32) -> v16i8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_sat_s_b(a, $imm3)
@@ -7533,7 +7533,7 @@ unsafe fn __msa_sat_s_b(a: v16i8, imm3: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.h, imm3 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_s_h(a: v8i16, imm4: i32) -> v8i16 {
+pub unsafe fn __msa_sat_s_h(a: v8i16, imm4: i32) -> v8i16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_sat_s_h(a, $imm4)
@@ -7552,7 +7552,7 @@ unsafe fn __msa_sat_s_h(a: v8i16, imm4: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.w, imm2 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_s_w(a: v4i32, imm5: i32) -> v4i32 {
+pub unsafe fn __msa_sat_s_w(a: v4i32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_sat_s_w(a, $imm5)
@@ -7571,7 +7571,7 @@ unsafe fn __msa_sat_s_w(a: v4i32, imm5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_s.d, imm1 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_s_d(a: v2i64, imm6: i32) -> v2i64 {
+pub unsafe fn __msa_sat_s_d(a: v2i64, imm6: i32) -> v2i64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_sat_s_d(a, $imm6)
@@ -7590,7 +7590,7 @@ unsafe fn __msa_sat_s_d(a: v2i64, imm6: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.b, imm4 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_u_b(a: v16u8, imm3: i32) -> v16u8 {
+pub unsafe fn __msa_sat_u_b(a: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_sat_u_b(a, $imm3)
@@ -7609,7 +7609,7 @@ unsafe fn __msa_sat_u_b(a: v16u8, imm3: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.h, imm3 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_u_h(a: v8u16, imm4: i32) -> v8u16 {
+pub unsafe fn __msa_sat_u_h(a: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_sat_u_h(a, $imm4)
@@ -7628,7 +7628,7 @@ unsafe fn __msa_sat_u_h(a: v8u16, imm4: i32) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.w, imm2 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_u_w(a: v4u32, imm5: i32) -> v4u32 {
+pub unsafe fn __msa_sat_u_w(a: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_sat_u_w(a, $imm5)
@@ -7647,7 +7647,7 @@ unsafe fn __msa_sat_u_w(a: v4u32, imm5: i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sat_u.d, imm1 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_sat_u_d(a: v2u64, imm6: i32) -> v2u64 {
+pub unsafe fn __msa_sat_u_d(a: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_sat_u_d(a, $imm6)
@@ -7667,7 +7667,7 @@ unsafe fn __msa_sat_u_d(a: v2u64, imm6: i32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(shf.b, imm8 = 0b11111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_shf_b(a: v16i8, imm8: i32) -> v16i8 {
+pub unsafe fn __msa_shf_b(a: v16i8, imm8: i32) -> v16i8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_shf_b(a, $imm8)
@@ -7687,7 +7687,7 @@ unsafe fn __msa_shf_b(a: v16i8, imm8: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(shf.h, imm8 = 0b11111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_shf_h(a: v8i16, imm8: i32) -> v8i16 {
+pub unsafe fn __msa_shf_h(a: v8i16, imm8: i32) -> v8i16 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_shf_h(a, $imm8)
@@ -7707,7 +7707,7 @@ unsafe fn __msa_shf_h(a: v8i16, imm8: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(shf.w, imm8 = 0b11111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_shf_w(a: v4i32, imm8: i32) -> v4i32 {
+pub unsafe fn __msa_shf_w(a: v4i32, imm8: i32) -> v4i32 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_shf_w(a, $imm8)
@@ -7732,7 +7732,7 @@ unsafe fn __msa_shf_w(a: v4i32, imm8: i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.b))]
-unsafe fn __msa_sld_b(a: v16i8, b: v16i8, c: i32) -> v16i8 {
+pub unsafe fn __msa_sld_b(a: v16i8, b: v16i8, c: i32) -> v16i8 {
     msa_sld_b(a, ::mem::transmute(b), c)
 }
 
@@ -7752,7 +7752,7 @@ unsafe fn __msa_sld_b(a: v16i8, b: v16i8, c: i32) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.h))]
-unsafe fn __msa_sld_h(a: v8i16, b: v8i16, c: i32) -> v8i16 {
+pub unsafe fn __msa_sld_h(a: v8i16, b: v8i16, c: i32) -> v8i16 {
     msa_sld_h(a, ::mem::transmute(b), c)
 }
 
@@ -7772,7 +7772,7 @@ unsafe fn __msa_sld_h(a: v8i16, b: v8i16, c: i32) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.w))]
-unsafe fn __msa_sld_w(a: v4i32, b: v4i32, c: i32) -> v4i32 {
+pub unsafe fn __msa_sld_w(a: v4i32, b: v4i32, c: i32) -> v4i32 {
     msa_sld_w(a, ::mem::transmute(b), c)
 }
 
@@ -7792,7 +7792,7 @@ unsafe fn __msa_sld_w(a: v4i32, b: v4i32, c: i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.d))]
-unsafe fn __msa_sld_d(a: v2i64, b: v2i64, c: i32) -> v2i64 {
+pub unsafe fn __msa_sld_d(a: v2i64, b: v2i64, c: i32) -> v2i64 {
     msa_sld_d(a, ::mem::transmute(b), c)
 }
 
@@ -7811,7 +7811,7 @@ unsafe fn __msa_sld_d(a: v2i64, b: v2i64, c: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.b, imm4 = 0b1111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_sldi_b(a: v16i8, b: v16i8, imm4: i32) -> v16i8 {
+pub unsafe fn __msa_sldi_b(a: v16i8, b: v16i8, imm4: i32) -> v16i8 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_sldi_b(a, ::mem::transmute(b), $imm4)
@@ -7835,7 +7835,7 @@ unsafe fn __msa_sldi_b(a: v16i8, b: v16i8, imm4: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.h, imm3 = 0b111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_sldi_h(a: v8i16, b: v8i16, imm3: i32) -> v8i16 {
+pub unsafe fn __msa_sldi_h(a: v8i16, b: v8i16, imm3: i32) -> v8i16 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_sldi_h(a, ::mem::transmute(b), $imm3)
@@ -7859,7 +7859,7 @@ unsafe fn __msa_sldi_h(a: v8i16, b: v8i16, imm3: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.w, imm2 = 0b11))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_sldi_w(a: v4i32, b: v4i32, imm2: i32) -> v4i32 {
+pub unsafe fn __msa_sldi_w(a: v4i32, b: v4i32, imm2: i32) -> v4i32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_sldi_w(a, ::mem::transmute(b), $imm2)
@@ -7883,7 +7883,7 @@ unsafe fn __msa_sldi_w(a: v4i32, b: v4i32, imm2: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sldi.d, imm1 = 0b1))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_sldi_d(a: v2i64, b: v2i64, imm1: i32) -> v2i64 {
+pub unsafe fn __msa_sldi_d(a: v2i64, b: v2i64, imm1: i32) -> v2i64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_sldi_d(a, ::mem::transmute(b), $imm1)
@@ -7902,7 +7902,7 @@ unsafe fn __msa_sldi_d(a: v2i64, b: v2i64, imm1: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.b))]
-unsafe fn __msa_sll_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_sll_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_sll_b(a, ::mem::transmute(b))
 }
 
@@ -7916,7 +7916,7 @@ unsafe fn __msa_sll_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.h))]
-unsafe fn __msa_sll_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_sll_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_sll_h(a, ::mem::transmute(b))
 }
 
@@ -7930,7 +7930,7 @@ unsafe fn __msa_sll_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.w))]
-unsafe fn __msa_sll_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_sll_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_sll_w(a, ::mem::transmute(b))
 }
 
@@ -7944,7 +7944,7 @@ unsafe fn __msa_sll_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.d))]
-unsafe fn __msa_sll_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_sll_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_sll_d(a, ::mem::transmute(b))
 }
 
@@ -7958,7 +7958,7 @@ unsafe fn __msa_sll_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.b, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_slli_b(a: v16i8, imm4: i32) -> v16i8 {
+pub unsafe fn __msa_slli_b(a: v16i8, imm4: i32) -> v16i8 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_slli_b(a, $imm4)
@@ -7977,7 +7977,7 @@ unsafe fn __msa_slli_b(a: v16i8, imm4: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.h, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_slli_h(a: v8i16, imm3: i32) -> v8i16 {
+pub unsafe fn __msa_slli_h(a: v8i16, imm3: i32) -> v8i16 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_slli_h(a, $imm3)
@@ -7996,7 +7996,7 @@ unsafe fn __msa_slli_h(a: v8i16, imm3: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.w, imm2 = 0b11))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_slli_w(a: v4i32, imm2: i32) -> v4i32 {
+pub unsafe fn __msa_slli_w(a: v4i32, imm2: i32) -> v4i32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_slli_w(a, $imm2)
@@ -8015,7 +8015,7 @@ unsafe fn __msa_slli_w(a: v4i32, imm2: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(slli.d, imm1 = 0b1))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_slli_d(a: v2i64, imm1: i32) -> v2i64 {
+pub unsafe fn __msa_slli_d(a: v2i64, imm1: i32) -> v2i64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_slli_d(a, $imm1)
@@ -8034,7 +8034,7 @@ unsafe fn __msa_slli_d(a: v2i64, imm1: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.b))]
-unsafe fn __msa_splat_b(a: v16i8, b: i32) -> v16i8 {
+pub unsafe fn __msa_splat_b(a: v16i8, b: i32) -> v16i8 {
     msa_splat_b(a, ::mem::transmute(b))
 }
 
@@ -8048,7 +8048,7 @@ unsafe fn __msa_splat_b(a: v16i8, b: i32) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.h))]
-unsafe fn __msa_splat_h(a: v8i16, b: i32) -> v8i16 {
+pub unsafe fn __msa_splat_h(a: v8i16, b: i32) -> v8i16 {
     msa_splat_h(a, ::mem::transmute(b))
 }
 
@@ -8062,7 +8062,7 @@ unsafe fn __msa_splat_h(a: v8i16, b: i32) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.w))]
-unsafe fn __msa_splat_w(a: v4i32, b: i32) -> v4i32 {
+pub unsafe fn __msa_splat_w(a: v4i32, b: i32) -> v4i32 {
     msa_splat_w(a, ::mem::transmute(b))
 }
 
@@ -8076,7 +8076,7 @@ unsafe fn __msa_splat_w(a: v4i32, b: i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.d))]
-unsafe fn __msa_splat_d(a: v2i64, b: i32) -> v2i64 {
+pub unsafe fn __msa_splat_d(a: v2i64, b: i32) -> v2i64 {
     msa_splat_d(a, ::mem::transmute(b))
 }
 
@@ -8089,7 +8089,7 @@ unsafe fn __msa_splat_d(a: v2i64, b: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.b, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_splati_b(a: v16i8, imm4: i32) -> v16i8 {
+pub unsafe fn __msa_splati_b(a: v16i8, imm4: i32) -> v16i8 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_splati_b(a, $imm4)
@@ -8107,7 +8107,7 @@ unsafe fn __msa_splati_b(a: v16i8, imm4: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.h, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_splati_h(a: v8i16, imm3: i32) -> v8i16 {
+pub unsafe fn __msa_splati_h(a: v8i16, imm3: i32) -> v8i16 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_splati_h(a, $imm3)
@@ -8125,7 +8125,7 @@ unsafe fn __msa_splati_h(a: v8i16, imm3: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.w, imm2 = 0b11))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_splati_w(a: v4i32, imm2: i32) -> v4i32 {
+pub unsafe fn __msa_splati_w(a: v4i32, imm2: i32) -> v4i32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_splati_w(a, $imm2)
@@ -8143,7 +8143,7 @@ unsafe fn __msa_splati_w(a: v4i32, imm2: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splati.d, imm1 = 0b1))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_splati_d(a: v2i64, imm1: i32) -> v2i64 {
+pub unsafe fn __msa_splati_d(a: v2i64, imm1: i32) -> v2i64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_splati_d(a, $imm1)
@@ -8162,7 +8162,7 @@ unsafe fn __msa_splati_d(a: v2i64, imm1: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.b))]
-unsafe fn __msa_sra_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_sra_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_sra_b(a, ::mem::transmute(b))
 }
 
@@ -8176,7 +8176,7 @@ unsafe fn __msa_sra_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.h))]
-unsafe fn __msa_sra_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_sra_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_sra_h(a, ::mem::transmute(b))
 }
 
@@ -8190,7 +8190,7 @@ unsafe fn __msa_sra_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.w))]
-unsafe fn __msa_sra_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_sra_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_sra_w(a, ::mem::transmute(b))
 }
 
@@ -8204,7 +8204,7 @@ unsafe fn __msa_sra_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.d))]
-unsafe fn __msa_sra_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_sra_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_sra_d(a, ::mem::transmute(b))
 }
 
@@ -8218,7 +8218,7 @@ unsafe fn __msa_sra_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.b, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srai_b(a: v16i8, imm3: i32) -> v16i8 {
+pub unsafe fn __msa_srai_b(a: v16i8, imm3: i32) -> v16i8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_srai_b(a, $imm3)
@@ -8237,7 +8237,7 @@ unsafe fn __msa_srai_b(a: v16i8, imm3: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.h, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srai_h(a: v8i16, imm4: i32) -> v8i16 {
+pub unsafe fn __msa_srai_h(a: v8i16, imm4: i32) -> v8i16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_srai_h(a, $imm4)
@@ -8256,7 +8256,7 @@ unsafe fn __msa_srai_h(a: v8i16, imm4: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srai_w(a: v4i32, imm5: i32) -> v4i32 {
+pub unsafe fn __msa_srai_w(a: v4i32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_srai_w(a, $imm5)
@@ -8275,7 +8275,7 @@ unsafe fn __msa_srai_w(a: v4i32, imm5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srai.d, imm6 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srai_d(a: v2i64, imm6: i32) -> v2i64 {
+pub unsafe fn __msa_srai_d(a: v2i64, imm6: i32) -> v2i64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_srai_d(a, $imm6)
@@ -8295,7 +8295,7 @@ unsafe fn __msa_srai_d(a: v2i64, imm6: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.b))]
-unsafe fn __msa_srar_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_srar_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_srar_b(a, ::mem::transmute(b))
 }
 
@@ -8310,7 +8310,7 @@ unsafe fn __msa_srar_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.h))]
-unsafe fn __msa_srar_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_srar_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_srar_h(a, ::mem::transmute(b))
 }
 
@@ -8325,7 +8325,7 @@ unsafe fn __msa_srar_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.w))]
-unsafe fn __msa_srar_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_srar_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_srar_w(a, ::mem::transmute(b))
 }
 
@@ -8340,7 +8340,7 @@ unsafe fn __msa_srar_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.d))]
-unsafe fn __msa_srar_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_srar_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_srar_d(a, ::mem::transmute(b))
 }
 
@@ -8355,7 +8355,7 @@ unsafe fn __msa_srar_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.b, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srari_b(a: v16i8, imm3: i32) -> v16i8 {
+pub unsafe fn __msa_srari_b(a: v16i8, imm3: i32) -> v16i8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_srari_b(a, $imm3)
@@ -8375,7 +8375,7 @@ unsafe fn __msa_srari_b(a: v16i8, imm3: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.h, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srari_h(a: v8i16, imm4: i32) -> v8i16 {
+pub unsafe fn __msa_srari_h(a: v8i16, imm4: i32) -> v8i16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_srari_h(a, $imm4)
@@ -8395,7 +8395,7 @@ unsafe fn __msa_srari_h(a: v8i16, imm4: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srari_w(a: v4i32, imm5: i32) -> v4i32 {
+pub unsafe fn __msa_srari_w(a: v4i32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_srari_w(a, $imm5)
@@ -8415,7 +8415,7 @@ unsafe fn __msa_srari_w(a: v4i32, imm5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srari.d, imm6 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srari_d(a: v2i64, imm6: i32) -> v2i64 {
+pub unsafe fn __msa_srari_d(a: v2i64, imm6: i32) -> v2i64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_srari_d(a, $imm6)
@@ -8434,7 +8434,7 @@ unsafe fn __msa_srari_d(a: v2i64, imm6: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.b))]
-unsafe fn __msa_srl_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_srl_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_srl_b(a, ::mem::transmute(b))
 }
 
@@ -8448,7 +8448,7 @@ unsafe fn __msa_srl_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.h))]
-unsafe fn __msa_srl_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_srl_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_srl_h(a, ::mem::transmute(b))
 }
 
@@ -8462,7 +8462,7 @@ unsafe fn __msa_srl_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.w))]
-unsafe fn __msa_srl_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_srl_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_srl_w(a, ::mem::transmute(b))
 }
 
@@ -8476,7 +8476,7 @@ unsafe fn __msa_srl_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.d))]
-unsafe fn __msa_srl_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_srl_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_srl_d(a, ::mem::transmute(b))
 }
 
@@ -8490,7 +8490,7 @@ unsafe fn __msa_srl_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.b, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srli_b(a: v16i8, imm4: i32) -> v16i8 {
+pub unsafe fn __msa_srli_b(a: v16i8, imm4: i32) -> v16i8 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_srli_b(a, $imm4)
@@ -8509,7 +8509,7 @@ unsafe fn __msa_srli_b(a: v16i8, imm4: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.h, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srli_h(a: v8i16, imm3: i32) -> v8i16 {
+pub unsafe fn __msa_srli_h(a: v8i16, imm3: i32) -> v8i16 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_srli_h(a, $imm3)
@@ -8528,7 +8528,7 @@ unsafe fn __msa_srli_h(a: v8i16, imm3: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.w, imm2 = 0b11))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srli_w(a: v4i32, imm2: i32) -> v4i32 {
+pub unsafe fn __msa_srli_w(a: v4i32, imm2: i32) -> v4i32 {
     macro_rules! call {
         ($imm2:expr) => {
             msa_srli_w(a, $imm2)
@@ -8547,7 +8547,7 @@ unsafe fn __msa_srli_w(a: v4i32, imm2: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srli.d, imm1 = 0b1))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srli_d(a: v2i64, imm1: i32) -> v2i64 {
+pub unsafe fn __msa_srli_d(a: v2i64, imm1: i32) -> v2i64 {
     macro_rules! call {
         ($imm1:expr) => {
             msa_srli_d(a, $imm1)
@@ -8567,7 +8567,7 @@ unsafe fn __msa_srli_d(a: v2i64, imm1: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.b))]
-unsafe fn __msa_srlr_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_srlr_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_srlr_b(a, ::mem::transmute(b))
 }
 
@@ -8582,7 +8582,7 @@ unsafe fn __msa_srlr_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.h))]
-unsafe fn __msa_srlr_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_srlr_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_srlr_h(a, ::mem::transmute(b))
 }
 
@@ -8597,7 +8597,7 @@ unsafe fn __msa_srlr_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.w))]
-unsafe fn __msa_srlr_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_srlr_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_srlr_w(a, ::mem::transmute(b))
 }
 
@@ -8612,7 +8612,7 @@ unsafe fn __msa_srlr_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.d))]
-unsafe fn __msa_srlr_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_srlr_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_srlr_d(a, ::mem::transmute(b))
 }
 
@@ -8627,7 +8627,7 @@ unsafe fn __msa_srlr_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.b, imm3 = 0b111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srlri_b(a: v16i8, imm3: i32) -> v16i8 {
+pub unsafe fn __msa_srlri_b(a: v16i8, imm3: i32) -> v16i8 {
     macro_rules! call {
         ($imm3:expr) => {
             msa_srlri_b(a, $imm3)
@@ -8647,7 +8647,7 @@ unsafe fn __msa_srlri_b(a: v16i8, imm3: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.h, imm4 = 0b1111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srlri_h(a: v8i16, imm4: i32) -> v8i16 {
+pub unsafe fn __msa_srlri_h(a: v8i16, imm4: i32) -> v8i16 {
     macro_rules! call {
         ($imm4:expr) => {
             msa_srlri_h(a, $imm4)
@@ -8667,7 +8667,7 @@ unsafe fn __msa_srlri_h(a: v8i16, imm4: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.w, imm5 = 0b11111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srlri_w(a: v4i32, imm5: i32) -> v4i32 {
+pub unsafe fn __msa_srlri_w(a: v4i32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_srlri_w(a, $imm5)
@@ -8687,7 +8687,7 @@ unsafe fn __msa_srlri_w(a: v4i32, imm5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlri.d, imm6 = 0b111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_srlri_d(a: v2i64, imm6: i32) -> v2i64 {
+pub unsafe fn __msa_srlri_d(a: v2i64, imm6: i32) -> v2i64 {
     macro_rules! call {
         ($imm6:expr) => {
             msa_srlri_d(a, $imm6)
@@ -8706,7 +8706,7 @@ unsafe fn __msa_srlri_d(a: v2i64, imm6: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.b, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut i8, imm_s10: i32) -> () {
+pub unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut i8, imm_s10: i32) -> () {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_st_b(a, mem_addr, $imm_s10)
@@ -8725,7 +8725,7 @@ unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut i8, imm_s10: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.h, imm_s11 = 0b11111111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut i8, imm_s11: i32) -> () {
+pub unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut i8, imm_s11: i32) -> () {
     macro_rules! call {
         ($imm_s11:expr) => {
             msa_st_h(a, mem_addr, $imm_s11)
@@ -8744,7 +8744,7 @@ unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut i8, imm_s11: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.w, imm_s12 = 0b111111111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut i8, imm_s12: i32) -> () {
+pub unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut i8, imm_s12: i32) -> () {
     macro_rules! call {
         ($imm_s12:expr) => {
             msa_st_w(a, mem_addr, $imm_s12)
@@ -8763,7 +8763,7 @@ unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut i8, imm_s12: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.d, imm_s13 = 0b1111111111111))]
 #[rustc_args_required_const(2)]
-unsafe fn __msa_st_d(a: v2i64, mem_addr: *mut i8, imm_s13: i32) -> () {
+pub unsafe fn __msa_st_d(a: v2i64, mem_addr: *mut i8, imm_s13: i32) -> () {
     macro_rules! call {
         ($imm_s13:expr) => {
             msa_st_d(a, mem_addr, $imm_s13)
@@ -8782,7 +8782,7 @@ unsafe fn __msa_st_d(a: v2i64, mem_addr: *mut i8, imm_s13: i32) -> () {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.b))]
-unsafe fn __msa_subs_s_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_subs_s_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_subs_s_b(a, ::mem::transmute(b))
 }
 
@@ -8796,7 +8796,7 @@ unsafe fn __msa_subs_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.h))]
-unsafe fn __msa_subs_s_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_subs_s_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_subs_s_h(a, ::mem::transmute(b))
 }
 
@@ -8810,7 +8810,7 @@ unsafe fn __msa_subs_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.w))]
-unsafe fn __msa_subs_s_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_subs_s_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_subs_s_w(a, ::mem::transmute(b))
 }
 
@@ -8824,7 +8824,7 @@ unsafe fn __msa_subs_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.d))]
-unsafe fn __msa_subs_s_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_subs_s_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_subs_s_d(a, ::mem::transmute(b))
 }
 
@@ -8838,7 +8838,7 @@ unsafe fn __msa_subs_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.b))]
-unsafe fn __msa_subs_u_b(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_subs_u_b(a: v16u8, b: v16u8) -> v16u8 {
     msa_subs_u_b(a, ::mem::transmute(b))
 }
 
@@ -8852,7 +8852,7 @@ unsafe fn __msa_subs_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.h))]
-unsafe fn __msa_subs_u_h(a: v8u16, b: v8u16) -> v8u16 {
+pub unsafe fn __msa_subs_u_h(a: v8u16, b: v8u16) -> v8u16 {
     msa_subs_u_h(a, ::mem::transmute(b))
 }
 
@@ -8866,7 +8866,7 @@ unsafe fn __msa_subs_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.w))]
-unsafe fn __msa_subs_u_w(a: v4u32, b: v4u32) -> v4u32 {
+pub unsafe fn __msa_subs_u_w(a: v4u32, b: v4u32) -> v4u32 {
     msa_subs_u_w(a, ::mem::transmute(b))
 }
 
@@ -8880,7 +8880,7 @@ unsafe fn __msa_subs_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.d))]
-unsafe fn __msa_subs_u_d(a: v2u64, b: v2u64) -> v2u64 {
+pub unsafe fn __msa_subs_u_d(a: v2u64, b: v2u64) -> v2u64 {
     msa_subs_u_d(a, ::mem::transmute(b))
 }
 
@@ -8894,7 +8894,7 @@ unsafe fn __msa_subs_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.b))]
-unsafe fn __msa_subsus_u_b(a: v16u8, b: v16i8) -> v16u8 {
+pub unsafe fn __msa_subsus_u_b(a: v16u8, b: v16i8) -> v16u8 {
     msa_subsus_u_b(a, ::mem::transmute(b))
 }
 
@@ -8908,7 +8908,7 @@ unsafe fn __msa_subsus_u_b(a: v16u8, b: v16i8) -> v16u8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.h))]
-unsafe fn __msa_subsus_u_h(a: v8u16, b: v8i16) -> v8u16 {
+pub unsafe fn __msa_subsus_u_h(a: v8u16, b: v8i16) -> v8u16 {
     msa_subsus_u_h(a, ::mem::transmute(b))
 }
 
@@ -8922,7 +8922,7 @@ unsafe fn __msa_subsus_u_h(a: v8u16, b: v8i16) -> v8u16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.w))]
-unsafe fn __msa_subsus_u_w(a: v4u32, b: v4i32) -> v4u32 {
+pub unsafe fn __msa_subsus_u_w(a: v4u32, b: v4i32) -> v4u32 {
     msa_subsus_u_w(a, ::mem::transmute(b))
 }
 
@@ -8936,7 +8936,7 @@ unsafe fn __msa_subsus_u_w(a: v4u32, b: v4i32) -> v4u32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.d))]
-unsafe fn __msa_subsus_u_d(a: v2u64, b: v2i64) -> v2u64 {
+pub unsafe fn __msa_subsus_u_d(a: v2u64, b: v2i64) -> v2u64 {
     msa_subsus_u_d(a, ::mem::transmute(b))
 }
 
@@ -8950,7 +8950,7 @@ unsafe fn __msa_subsus_u_d(a: v2u64, b: v2i64) -> v2u64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.b))]
-unsafe fn __msa_subsuu_s_b(a: v16u8, b: v16u8) -> v16i8 {
+pub unsafe fn __msa_subsuu_s_b(a: v16u8, b: v16u8) -> v16i8 {
     msa_subsuu_s_b(a, ::mem::transmute(b))
 }
 
@@ -8964,7 +8964,7 @@ unsafe fn __msa_subsuu_s_b(a: v16u8, b: v16u8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.h))]
-unsafe fn __msa_subsuu_s_h(a: v8u16, b: v8u16) -> v8i16 {
+pub unsafe fn __msa_subsuu_s_h(a: v8u16, b: v8u16) -> v8i16 {
     msa_subsuu_s_h(a, ::mem::transmute(b))
 }
 
@@ -8978,7 +8978,7 @@ unsafe fn __msa_subsuu_s_h(a: v8u16, b: v8u16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.w))]
-unsafe fn __msa_subsuu_s_w(a: v4u32, b: v4u32) -> v4i32 {
+pub unsafe fn __msa_subsuu_s_w(a: v4u32, b: v4u32) -> v4i32 {
     msa_subsuu_s_w(a, ::mem::transmute(b))
 }
 
@@ -8992,7 +8992,7 @@ unsafe fn __msa_subsuu_s_w(a: v4u32, b: v4u32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.d))]
-unsafe fn __msa_subsuu_s_d(a: v2u64, b: v2u64) -> v2i64 {
+pub unsafe fn __msa_subsuu_s_d(a: v2u64, b: v2u64) -> v2i64 {
     msa_subsuu_s_d(a, ::mem::transmute(b))
 }
 
@@ -9005,7 +9005,7 @@ unsafe fn __msa_subsuu_s_d(a: v2u64, b: v2u64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.b))]
-unsafe fn __msa_subv_b(a: v16i8, b: v16i8) -> v16i8 {
+pub unsafe fn __msa_subv_b(a: v16i8, b: v16i8) -> v16i8 {
     msa_subv_b(a, ::mem::transmute(b))
 }
 
@@ -9018,7 +9018,7 @@ unsafe fn __msa_subv_b(a: v16i8, b: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.h))]
-unsafe fn __msa_subv_h(a: v8i16, b: v8i16) -> v8i16 {
+pub unsafe fn __msa_subv_h(a: v8i16, b: v8i16) -> v8i16 {
     msa_subv_h(a, ::mem::transmute(b))
 }
 
@@ -9031,7 +9031,7 @@ unsafe fn __msa_subv_h(a: v8i16, b: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.w))]
-unsafe fn __msa_subv_w(a: v4i32, b: v4i32) -> v4i32 {
+pub unsafe fn __msa_subv_w(a: v4i32, b: v4i32) -> v4i32 {
     msa_subv_w(a, ::mem::transmute(b))
 }
 
@@ -9044,7 +9044,7 @@ unsafe fn __msa_subv_w(a: v4i32, b: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.d))]
-unsafe fn __msa_subv_d(a: v2i64, b: v2i64) -> v2i64 {
+pub unsafe fn __msa_subv_d(a: v2i64, b: v2i64) -> v2i64 {
     msa_subv_d(a, ::mem::transmute(b))
 }
 
@@ -9058,7 +9058,7 @@ unsafe fn __msa_subv_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.b, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_subvi_b(a: v16i8, imm5: i32) -> v16i8 {
+pub unsafe fn __msa_subvi_b(a: v16i8, imm5: i32) -> v16i8 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_subvi_b(a, $imm5)
@@ -9077,7 +9077,7 @@ unsafe fn __msa_subvi_b(a: v16i8, imm5: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.h, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_subvi_h(a: v8i16, imm5: i32) -> v8i16 {
+pub unsafe fn __msa_subvi_h(a: v8i16, imm5: i32) -> v8i16 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_subvi_h(a, $imm5)
@@ -9096,7 +9096,7 @@ unsafe fn __msa_subvi_h(a: v8i16, imm5: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.w, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_subvi_w(a: v4i32, imm5: i32) -> v4i32 {
+pub unsafe fn __msa_subvi_w(a: v4i32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_subvi_w(a, $imm5)
@@ -9115,7 +9115,7 @@ unsafe fn __msa_subvi_w(a: v4i32, imm5: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subvi.d, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_subvi_d(a: v2i64, imm5: i32) -> v2i64 {
+pub unsafe fn __msa_subvi_d(a: v2i64, imm5: i32) -> v2i64 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_subvi_d(a, $imm5)
@@ -9137,7 +9137,7 @@ unsafe fn __msa_subvi_d(a: v2i64, imm5: i32) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.b))]
-unsafe fn __msa_vshf_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
+pub unsafe fn __msa_vshf_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
     msa_vshf_b(a, ::mem::transmute(b), c)
 }
 
@@ -9154,7 +9154,7 @@ unsafe fn __msa_vshf_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.h))]
-unsafe fn __msa_vshf_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
+pub unsafe fn __msa_vshf_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
     msa_vshf_h(a, ::mem::transmute(b), c)
 }
 
@@ -9171,7 +9171,7 @@ unsafe fn __msa_vshf_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.w))]
-unsafe fn __msa_vshf_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
+pub unsafe fn __msa_vshf_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
     msa_vshf_w(a, ::mem::transmute(b), c)
 }
 
@@ -9188,7 +9188,7 @@ unsafe fn __msa_vshf_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.d))]
-unsafe fn __msa_vshf_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
+pub unsafe fn __msa_vshf_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
     msa_vshf_d(a, ::mem::transmute(b), c)
 }
 
@@ -9202,7 +9202,7 @@ unsafe fn __msa_vshf_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
 #[inline]
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(xor.v))]
-unsafe fn __msa_xor_v(a: v16u8, b: v16u8) -> v16u8 {
+pub unsafe fn __msa_xor_v(a: v16u8, b: v16u8) -> v16u8 {
     msa_xor_v(a, ::mem::transmute(b))
 }
 
@@ -9217,7 +9217,7 @@ unsafe fn __msa_xor_v(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(xori.b, imm8 = 0b11111111))]
 #[rustc_args_required_const(1)]
-unsafe fn __msa_xori_b(a: v16u8, imm8: i32) -> v16u8 {
+pub unsafe fn __msa_xori_b(a: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_xori_b(a, $imm8)
