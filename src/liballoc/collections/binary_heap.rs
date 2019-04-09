@@ -165,8 +165,10 @@ use super::SpecExtend;
 /// trait, changes while it is in the heap. This is normally only possible
 /// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
 ///
-/// Both `push` and `pop` operations can be performed in `O(log(n))` time,
-/// whereas `peek` can be performed in `O(1)` time.
+/// The costs of `push` and `pop` operations are `O(log(n))` whereas `peek`
+/// can be performed in `O(1)` time. Note that the cost of a `push`
+/// operation is an amortized cost which does not take into account potential
+/// re-allocations when the current buffer cannot hold more elements.
 ///
 /// # Examples
 ///
