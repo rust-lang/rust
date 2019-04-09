@@ -27,9 +27,8 @@ fn test_map<S: BuildHasher>(mut map: HashMap<i32, i32, S>) {
 }
 
 fn main() {
-    let map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = Default::default();
+    let _map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = Default::default();
     let map_normal: HashMap<i32, i32> = HashMap::new();
 
-    test_map(map);
     test_map(map_normal);
 }
