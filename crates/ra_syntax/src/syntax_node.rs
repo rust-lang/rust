@@ -8,11 +8,12 @@
 
 use std::{
     fmt::{self, Write},
+    any::Any,
     borrow::Borrow,
 };
 
 use ra_parser::ParseError;
-use rowan::{Types, TransparentNewType, GreenNodeBuilder};
+use rowan::{TransparentNewType, GreenNodeBuilder};
 
 use crate::{
     SmolStr, SyntaxKind, TextUnit, TextRange, SyntaxText, SourceFile, AstNode,
@@ -20,26 +21,15 @@ use crate::{
 };
 
 pub use rowan::WalkEvent;
-
-#[derive(Debug, Clone, Copy)]
-pub enum RaTypes {}
-impl Types for RaTypes {
-    type Kind = SyntaxKind;
-    type RootData = Vec<SyntaxError>;
-}
-
-pub(crate) type GreenNode = rowan::GreenNode<RaTypes>;
-pub(crate) type GreenToken = rowan::GreenToken<RaTypes>;
-#[allow(unused)]
-pub(crate) type GreenElement = rowan::GreenElement<RaTypes>;
+pub(crate) use rowan::{GreenNode, GreenToken};
 
 /// Marker trait for CST and AST nodes
-pub trait SyntaxNodeWrapper: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>> {}
-impl<T: TransparentNewType<Repr = rowan::SyntaxNode<RaTypes>>> SyntaxNodeWrapper for T {}
+pub trait SyntaxNodeWrapper: TransparentNewType<Repr = rowan::SyntaxNode> {}
+impl<T: TransparentNewType<Repr = rowan::SyntaxNode>> SyntaxNodeWrapper for T {}
 
 /// An owning smart pointer for CST or AST node.
 #[derive(PartialEq, Eq, Hash)]
-pub struct TreeArc<T: SyntaxNodeWrapper>(pub(crate) rowan::TreeArc<RaTypes, T>);
+pub struct TreeArc<T: SyntaxNodeWrapper>(pub(crate) rowan::TreeArc<T>);
 
 impl<T: SyntaxNodeWrapper> Borrow<T> for TreeArc<T> {
     fn borrow(&self) -> &T {
@@ -101,9 +91,9 @@ where
 
 #[derive(PartialEq, Eq, Hash)]
 #[repr(transparent)]
-pub struct SyntaxNode(pub(crate) rowan::SyntaxNode<RaTypes>);
+pub struct SyntaxNode(pub(crate) rowan::SyntaxNode);
 unsafe impl TransparentNewType for SyntaxNode {
-    type Repr = rowan::SyntaxNode<RaTypes>;
+    type Repr = rowan::SyntaxNode;
 }
 
 impl ToOwned for SyntaxNode {
@@ -134,12 +124,14 @@ pub enum Direction {
 
 impl SyntaxNode {
     pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreeArc<SyntaxNode> {
+        let errors: Option<Box<Any + Send + Sync>> =
+            if errors.is_empty() { None } else { Some(Box::new(errors)) };
         let ptr = TreeArc(rowan::SyntaxNode::new(green, errors));
         TreeArc::cast(ptr)
     }
 
     pub fn kind(&self) -> SyntaxKind {
-        self.0.kind()
+        self.0.kind().0.into()
     }
 
     pub fn range(&self) -> TextRange {
@@ -303,8 +295,14 @@ impl SyntaxNode {
         buf
     }
 
-    pub(crate) fn root_data(&self) -> &Vec<SyntaxError> {
-        self.0.root_data()
+    pub(crate) fn root_data(&self) -> &[SyntaxError] {
+        match self.0.root_data() {
+            None => &[],
+            Some(data) => {
+                let data: &Vec<SyntaxError> = std::any::Any::downcast_ref(data).unwrap();
+                data.as_slice()
+            }
+        }
     }
 
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
@@ -313,7 +311,7 @@ impl SyntaxNode {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct SyntaxToken<'a>(pub(crate) rowan::SyntaxToken<'a, RaTypes>);
+pub struct SyntaxToken<'a>(pub(crate) rowan::SyntaxToken<'a>);
 
 //FIXME: always output text
 impl<'a> fmt::Debug for SyntaxToken<'a> {
@@ -339,15 +337,15 @@ impl<'a> fmt::Display for SyntaxToken<'a> {
     }
 }
 
-impl<'a> From<rowan::SyntaxToken<'a, RaTypes>> for SyntaxToken<'a> {
-    fn from(t: rowan::SyntaxToken<'a, RaTypes>) -> Self {
+impl<'a> From<rowan::SyntaxToken<'a>> for SyntaxToken<'a> {
+    fn from(t: rowan::SyntaxToken<'a>) -> Self {
         SyntaxToken(t)
     }
 }
 
 impl<'a> SyntaxToken<'a> {
     pub fn kind(&self) -> SyntaxKind {
-        self.0.kind()
+        self.0.kind().0.into()
     }
 
     pub fn text(&self) -> &'a SmolStr {
@@ -454,8 +452,8 @@ impl<'a> SyntaxElement<'a> {
     }
 }
 
-impl<'a> From<rowan::SyntaxElement<'a, RaTypes>> for SyntaxElement<'a> {
-    fn from(el: rowan::SyntaxElement<'a, RaTypes>) -> Self {
+impl<'a> From<rowan::SyntaxElement<'a>> for SyntaxElement<'a> {
+    fn from(el: rowan::SyntaxElement<'a>) -> Self {
         match el {
             rowan::SyntaxElement::Node(n) => SyntaxElement::Node(SyntaxNode::from_repr(n)),
             rowan::SyntaxElement::Token(t) => SyntaxElement::Token(t.into()),
@@ -485,7 +483,7 @@ impl<'a> SyntaxElement<'a> {
 }
 
 #[derive(Debug)]
-pub struct SyntaxNodeChildren<'a>(rowan::SyntaxNodeChildren<'a, RaTypes>);
+pub struct SyntaxNodeChildren<'a>(rowan::SyntaxNodeChildren<'a>);
 
 impl<'a> Iterator for SyntaxNodeChildren<'a> {
     type Item = &'a SyntaxNode;
@@ -496,7 +494,7 @@ impl<'a> Iterator for SyntaxNodeChildren<'a> {
 }
 
 #[derive(Debug)]
-pub struct SyntaxElementChildren<'a>(rowan::SyntaxElementChildren<'a, RaTypes>);
+pub struct SyntaxElementChildren<'a>(rowan::SyntaxElementChildren<'a>);
 
 impl<'a> Iterator for SyntaxElementChildren<'a> {
     type Item = SyntaxElement<'a>;
@@ -508,7 +506,7 @@ impl<'a> Iterator for SyntaxElementChildren<'a> {
 
 pub struct SyntaxTreeBuilder {
     errors: Vec<SyntaxError>,
-    inner: GreenNodeBuilder<RaTypes>,
+    inner: GreenNodeBuilder,
 }
 
 impl Default for SyntaxTreeBuilder {
@@ -533,11 +531,11 @@ impl SyntaxTreeBuilder {
     }
 
     pub fn token(&mut self, kind: SyntaxKind, text: SmolStr) {
-        self.inner.token(kind, text)
+        self.inner.token(rowan::SyntaxKind(kind.into()), text)
     }
 
     pub fn start_node(&mut self, kind: SyntaxKind) {
-        self.inner.start_node(kind)
+        self.inner.start_node(rowan::SyntaxKind(kind.into()))
     }
 
     pub fn finish_node(&mut self) {

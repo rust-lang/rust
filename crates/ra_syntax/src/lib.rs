@@ -79,7 +79,7 @@ impl SourceFile {
     }
 
     pub fn errors(&self) -> Vec<SyntaxError> {
-        let mut errors = self.syntax.root_data().clone();
+        let mut errors = self.syntax.root_data().to_vec();
         errors.extend(validation::validate(self));
         errors
     }
