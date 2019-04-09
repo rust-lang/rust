@@ -85,7 +85,7 @@ matrix:
         - cd ..
         # Pull the target spec up into the current directory and then build
         - mv ci/gba.json gba.json
-        - xargo build --all --target=gba
+        - xargo build --all --target=gba.json
     - name: "Documentation"
       install: true
       script: ci/dox.sh
