@@ -756,8 +756,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
             // The actual name of 'RtlGenRandom'
             "SystemFunction036" => {
-                let ptr = this.read_scalar(args[1])?.to_ptr()?;
-                let len = this.read_scalar(args[2])?.to_usize(this)?;
+                let ptr = this.read_scalar(args[0])?.to_ptr()?;
+                let len = this.read_scalar(args[1])?.to_usize(this)?;
 
                 let data = gen_random(this, len as usize)?;
                 this.memory_mut().get_mut(ptr.alloc_id)?
