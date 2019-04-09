@@ -2686,9 +2686,11 @@ mod tests {
     use super::Options;
 
     impl ExternEntry {
-        fn new_public(location: Option<String>) -> ExternEntry {
-            let mut locations = BTreeSet::new();
-            locations.insert(location);
+        fn new_public<S: Into<String>,
+                      I: IntoIterator<Item = Option<S>>>(locations: I) -> ExternEntry {
+            let locations: BTreeSet<_> = locations.into_iter().map(|o| o.map(|s| s.into()))
+                .collect();
+
             ExternEntry {
                 locations,
                 is_private_dep: false
@@ -2706,10 +2708,6 @@ mod tests {
 
     fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V> {
         BTreeMap::from_iter(entries.into_iter())
-    }
-
-    fn mk_set<V: Ord>(entries: Vec<V>) -> BTreeSet<V> {
-        BTreeSet::from_iter(entries.into_iter())
     }
 
     // When the user supplies --test we should implicitly supply --cfg test
@@ -2829,45 +2827,33 @@ mod tests {
         v1.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![ExternEntry::new_public(Some(String::from("b"))),
-                            ExternEntry::new_public(Some(String::from("c")))
-                            ]),
+                ExternEntry::new_public(vec![Some("b"), Some("c")])
             ),
             (
                 String::from("d"),
-                mk_set(vec![ExternEntry::new_public(Some(String::from("e"))),
-                            ExternEntry::new_public(Some(String::from("f")))
-                            ]),
+                ExternEntry::new_public(vec![Some("e"), Some("f")])
             ),
         ]));
 
         v2.externs = Externs::new(mk_map(vec![
             (
                 String::from("d"),
-                mk_set(vec![ExternEntry::new_public(Some(String::from("e"))),
-                            ExternEntry::new_public(Some(String::from("f")))
-                            ]),
+                ExternEntry::new_public(vec![Some("e"), Some("f")])
             ),
             (
                 String::from("a"),
-                mk_set(vec![ExternEntry::new_public(Some(String::from("b"))),
-                            ExternEntry::new_public(Some(String::from("c")))
-                            ]),
+                ExternEntry::new_public(vec![Some("b"), Some("c")])
             ),
         ]));
 
         v3.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![ExternEntry::new_public(Some(String::from("b"))),
-                            ExternEntry::new_public(Some(String::from("c")))
-                            ]),
+                ExternEntry::new_public(vec![Some("b"), Some("c")])
             ),
             (
                 String::from("d"),
-                mk_set(vec![ExternEntry::new_public(Some(String::from("f"))),
-                            ExternEntry::new_public(Some(String::from("e")))
-                            ]),
+                ExternEntry::new_public(vec![Some("f"), Some("e")])
             ),
         ]));
 
