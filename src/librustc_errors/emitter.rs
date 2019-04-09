@@ -146,7 +146,7 @@ impl ColorConfig {
             ColorConfig::Auto => ColorChoice::Never,
         }
     }
-    pub fn suggests_using_colors(self) -> bool {
+    fn suggests_using_colors(self) -> bool {
         match self {
             | ColorConfig::Always
             | ColorConfig::Auto

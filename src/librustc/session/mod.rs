@@ -1050,8 +1050,8 @@ fn default_emitter(
                     dst,
                     Some(source_map.clone()),
                     short,
-                    false,
-                    color_config.suggests_using_colors(),
+                    false, // no teach messages when writing to a buffer
+                    false, // no colors when writing to a buffer
                 ),
             };
             Box::new(emitter.ui_testing(sopts.debugging_opts.ui_testing))
