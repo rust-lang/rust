@@ -68,7 +68,7 @@ matrix:
       env: NORUN=1 NOSTD=1 NO_DOCKER=1
       install:
         - rustup component add rust-src
-        - cargo install xargo
+        - (test -x $HOME/.cargo/bin/cargo-xbuild || cargo install cargo-xbuild)
       script:
         # Obtain the devkitPro tools, using `target/` as a temp directory. This
         # is required because we need to use their linker. `lld` uses the `BLX`
@@ -85,7 +85,7 @@ matrix:
         - cd ..
         # Pull the target spec up into the current directory and then build
         - mv ci/gba.json gba.json
-        - xargo build --lib --target=gba.json
+        - cargo xbuild --lib --target gba.json
     - name: "Documentation"
       install: true
       script: ci/dox.sh
