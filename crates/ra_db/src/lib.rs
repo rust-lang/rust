@@ -1,11 +1,8 @@
 //! ra_db defines basic database traits. The concrete DB is defined by ra_ide_api.
 mod cancellation;
 mod input;
-mod loc2id;
 
-use std::{
-    panic, sync::Arc,
-};
+use std::{panic, sync::Arc};
 
 use ra_syntax::{TextUnit, TextRange, SourceFile, TreeArc};
 use relative_path::RelativePathBuf;
@@ -16,7 +13,6 @@ pub use crate::{
     input::{
         FileId, CrateId, SourceRoot, SourceRootId, CrateGraph, Dependency, Edition,
     },
-    loc2id::LocationInterner,
 };
 
 pub trait CheckCanceled: panic::RefUnwindSafe {
