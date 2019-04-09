@@ -1,4 +1,5 @@
-// only-linux
+// ignore-macos
+// ignore-windows
 
 #![feature(rustc_private)]
 extern crate libc;
