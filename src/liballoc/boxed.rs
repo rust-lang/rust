@@ -63,6 +63,8 @@
 //!
 //! [dereferencing]: ../../std/ops/trait.Deref.html
 //! [`Box`]: struct.Box.html
+//! [`Global`]: ../alloc/struct.Global.html
+//! [`Layout`]: ../alloc/struct.Layout.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
