@@ -406,6 +406,34 @@ impl Interner {
     }
 }
 
+pub mod keywords {
+    use super::{Symbol, Ident};
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct Keyword {
+        ident: Ident,
+    }
+
+    impl Keyword {
+        #[inline]
+        pub fn ident(self) -> Ident {
+            self.ident
+        }
+
+        #[inline]
+        pub fn name(self) -> Symbol {
+            self.ident.name
+        }
+    }
+
+    keywords!();
+}
+
+pub mod symbols {
+    use super::Symbol;
+    symbols!();
+}
+
 impl Symbol {
     fn is_used_keyword_2018(self) -> bool {
         self == keywords::Dyn.name()
