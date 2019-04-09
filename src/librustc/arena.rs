@@ -140,7 +140,7 @@ impl Drop for DropType {
 /// An arena which can be used to allocate any type.
 /// Allocating in this arena is unsafe since the type system
 /// doesn't know which types it contains. In order to
-/// allocate safetly, you must store a PhantomData<T>
+/// allocate safely, you must store a PhantomData<T>
 /// alongside this arena for each type T you allocate.
 #[derive(Default)]
 struct DropArena {
