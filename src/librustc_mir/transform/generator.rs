@@ -166,6 +166,9 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     // The index of the generator state in the generator struct
     state_field: usize,
 
+    // The type of the generator state in the generator struct
+    discr_ty: Ty<'tcx>,
+
     // Mapping from Local to (type of local, generator struct index)
     // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
     remap: FxHashMap<Local, (Ty<'tcx>, usize)>,
@@ -200,15 +203,15 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
 
     // Create a statement which changes the generator state
     fn set_state(&self, state_disc: u32, source_info: SourceInfo) -> Statement<'tcx> {
-        let state = self.make_field(self.state_field, self.tcx.types.u32);
+        let state = self.make_field(self.state_field, self.discr_ty);
         let val = Operand::Constant(box Constant {
             span: source_info.span,
-            ty: self.tcx.types.u32,
+            ty: self.discr_ty,
             user_ty: None,
             literal: self.tcx.mk_const(ty::Const::from_bits(
                 self.tcx,
                 state_disc.into(),
-                ty::ParamEnv::empty().and(self.tcx.types.u32)
+                ty::ParamEnv::empty().and(self.discr_ty)
             )),
         });
         Statement {
@@ -889,10 +892,11 @@ impl MirPass for StateTransform {
         let gen_ty = mir.local_decls.raw[1].ty;
 
         // Get the interior types and substs which typeck computed
-        let (upvars, interior, movable) = match gen_ty.sty {
+        let (upvars, interior, discr_ty, movable) = match gen_ty.sty {
             ty::Generator(_, substs, movability) => {
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),
+                 substs.discr_ty(tcx),
                  movability == hir::GeneratorMovability::Movable)
             }
             _ => bug!(),
@@ -937,6 +941,7 @@ impl MirPass for StateTransform {
             suspension_points: Vec::new(),
             new_ret_local,
             state_field,
+            discr_ty,
         };
         transform.visit_mir(mir);
 

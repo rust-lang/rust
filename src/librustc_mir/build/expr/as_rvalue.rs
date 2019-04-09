@@ -255,15 +255,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         let movability = movability.unwrap();
                         // Add the state operand since it follows the upvars in the generator
                         // struct. See librustc_mir/transform/generator.rs for more details.
+                        let discr_ty = substs.discr_ty(this.hir.tcx());
                         operands.push(Operand::Constant(box Constant {
                             span: expr_span,
-                            ty: this.hir.tcx().types.u32,
+                            ty: discr_ty,
                             user_ty: None,
                             literal: this.hir.tcx().mk_const(
                                 ty::Const::from_bits(
                                     this.hir.tcx(),
                                     0,
-                                    ty::ParamEnv::empty().and(this.hir.tcx().types.u32),
+                                    ty::ParamEnv::empty().and(discr_ty),
                                 ),
                             ),
                         }));
