@@ -60,7 +60,7 @@
 
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
-#![warn(intra_doc_link_resolution_failure)]
+#![deny(intra_doc_link_resolution_failure)]
 #![warn(missing_debug_implementations)]
 
 #![feature(allow_internal_unstable)]
