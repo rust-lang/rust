@@ -21,6 +21,11 @@ pub fn arm_functions(input: TokenStream) -> TokenStream {
     functions(input, &["core_arch/src/arm", "core_arch/src/aarch64"])
 }
 
+#[proc_macro]
+pub fn mips_functions(input: TokenStream) -> TokenStream {
+    functions(input, &["core_arch/src/mips"])
+}
+
 fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let root = dir.parent().expect("root-dir not found");
@@ -176,6 +181,18 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
             "poly8x16_t" => quote! { &POLY8X16 },
             "poly16x4_t" => quote! { &POLY16X4 },
             "poly16x8_t" => quote! { &POLY16X8 },
+
+            "v16i8" => quote! { &v16i8 },
+            "v8i16" => quote! { &v8i16 },
+            "v4i32" => quote! { &v4i32 },
+            "v2i64" => quote! { &v2i64 },
+            "v16u8" => quote! { &v16u8 },
+            "v8u16" => quote! { &v8u16 },
+            "v4u32" => quote! { &v4u32 },
+            "v2u64" => quote! { &v2u64 },
+            "v8f16" => quote! { &v8f16 },
+            "v4f32" => quote! { &v4f32 },
+            "v2f64" => quote! { &v2f64 },
 
             s => panic!("unspported type: \"{}\"", s),
         },

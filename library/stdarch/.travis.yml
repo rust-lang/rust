@@ -89,7 +89,7 @@ matrix:
     - name: "Documentation"
       install: true
       script: ci/dox.sh
-    - name: "Automatic verification: x86 and x86_64"
+    - name: "Automatic verification: x86 / x86_64 / arm / aarch64 / mips*"
       script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
       install: true
     - name: "rustfmt"
