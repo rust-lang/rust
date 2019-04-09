@@ -30,7 +30,7 @@ fn main() {
     let _map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = Default::default();
 
     // TODO: Implement random number generation on OS X
-    if cfg!(not(target_os = "darwin")) {
+    if cfg!(not(target_os = "macos")) {
         let map_normal: HashMap<i32, i32> = HashMap::new();
         test_map(map_normal);
     } else {
