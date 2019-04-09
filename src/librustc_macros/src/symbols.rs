@@ -22,7 +22,7 @@ struct Keyword {
 impl Parse for Keyword {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let name = input.parse()?;
-        input.parse::<Token![,]>()?;
+        input.parse::<Token![:]>()?;
         let value = input.parse()?;
         input.parse::<Token![,]>()?;
 
