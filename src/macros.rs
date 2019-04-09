@@ -274,6 +274,9 @@ pub fn rewrite_macro_inner(
             DelimToken::Paren if position == MacroPosition::Item => {
                 Some(format!("{}();", macro_name))
             }
+            DelimToken::Bracket if position == MacroPosition::Item => {
+                Some(format!("{}[];", macro_name))
+            }
             DelimToken::Paren => Some(format!("{}()", macro_name)),
             DelimToken::Bracket => Some(format!("{}[]", macro_name)),
             DelimToken::Brace => Some(format!("{} {{}}", macro_name)),
