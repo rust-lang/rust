@@ -6,9 +6,8 @@ use ra_syntax::{
     ast::{self, ArgListOwner},
     algo::find_node_at_offset,
 };
-use hir::Docs;
 
-use crate::{FilePosition, CallInfo, db::RootDatabase};
+use crate::{FilePosition, CallInfo, FunctionSignature, db::RootDatabase};
 
 /// Computes parameter information for the given call expression.
 pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<CallInfo> {
@@ -27,10 +26,10 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let fn_def = ast::FnDef::cast(fn_def).unwrap();
     let function = hir::source_binder::function_from_source(db, symbol.file_id, fn_def)?;
 
-    let mut call_info = CallInfo::new(db, function, fn_def)?;
+    let mut call_info = CallInfo::new(db, function);
 
     // If we have a calling expression let's find which argument we are on
-    let num_params = call_info.parameters.len();
+    let num_params = call_info.parameters().len();
     let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
 
     if num_params == 1 {
@@ -107,28 +106,15 @@ impl<'a> FnCallNode<'a> {
 }
 
 impl CallInfo {
-    fn new(db: &RootDatabase, function: hir::Function, node: &ast::FnDef) -> Option<Self> {
-        let label = crate::completion::function_label(node)?;
-        let doc = function.docs(db);
+    fn new(db: &RootDatabase, function: hir::Function) -> Self {
+        let signature = FunctionSignature::from_hir(db, function);
 
-        Some(CallInfo { parameters: param_list(node), label, doc, active_parameter: None })
+        CallInfo { signature, active_parameter: None }
     }
-}
 
-fn param_list(node: &ast::FnDef) -> Vec<String> {
-    let mut res = vec![];
-    if let Some(param_list) = node.param_list() {
-        if let Some(self_param) = param_list.self_param() {
-            res.push(self_param.syntax().text().to_string())
-        }
-
-        // Maybe use param.pat here? See if we can just extract the name?
-        //res.extend(param_list.params().map(|p| p.syntax().text().to_string()));
-        res.extend(
-            param_list.params().filter_map(|p| p.pat()).map(|pat| pat.syntax().text().to_string()),
-        );
+    fn parameters(&self) -> &[String] {
+        &self.signature.parameters
     }
-    res
 }
 
 #[cfg(test)]
@@ -138,6 +124,17 @@ mod tests {
     use crate::mock_analysis::single_file_with_position;
 
     use super::*;
+
+    // These are only used when testing
+    impl CallInfo {
+        fn doc(&self) -> Option<hir::Documentation> {
+            self.signature.doc.clone()
+        }
+
+        fn label(&self) -> String {
+            self.signature.to_string()
+        }
+    }
 
     fn call_info(text: &str) -> CallInfo {
         let (analysis, position) = single_file_with_position(text);
@@ -151,7 +148,7 @@ mod tests {
 fn bar() { foo(<|>3, ); }"#,
         );
 
-        assert_eq!(info.parameters, vec!("x".to_string(), "y".to_string()));
+        assert_eq!(info.parameters(), ["x: u32", "y: u32"]);
         assert_eq!(info.active_parameter, Some(0));
     }
 
@@ -162,7 +159,7 @@ fn bar() { foo(<|>3, ); }"#,
 fn bar() { foo(3, <|>); }"#,
         );
 
-        assert_eq!(info.parameters, vec!("x".to_string(), "y".to_string()));
+        assert_eq!(info.parameters(), ["x: u32", "y: u32"]);
         assert_eq!(info.active_parameter, Some(1));
     }
 
@@ -173,8 +170,47 @@ fn bar() { foo(3, <|>); }"#,
 fn bar() { foo(<|>); }"#,
         );
 
-        assert_eq!(info.parameters, vec!("x".to_string(), "y".to_string()));
+        assert_eq!(info.parameters(), ["x: u32", "y: u32"]);
         assert_eq!(info.active_parameter, Some(0));
+    }
+
+    #[test]
+    fn test_fn_signature_two_args_first_generics() {
+        let info = call_info(
+            r#"fn foo<T, U: Copy + Display>(x: T, y: U) -> u32 where T: Copy + Display, U: Debug {x + y}
+fn bar() { foo(<|>3, ); }"#,
+        );
+
+        assert_eq!(info.parameters(), ["x: T", "y: U"]);
+        assert_eq!(
+            info.label(),
+            r#"
+fn foo<T, U: Copy + Display>(x: T, y: U) -> u32
+where T: Copy + Display,
+      U: Debug
+    "#
+            .trim()
+        );
+        assert_eq!(info.active_parameter, Some(0));
+    }
+
+    #[test]
+    fn test_fn_signature_no_params() {
+        let info = call_info(
+            r#"fn foo<T>() -> T where T: Copy + Display {}
+fn bar() { foo(<|>); }"#,
+        );
+
+        assert!(info.parameters().is_empty());
+        assert_eq!(
+            info.label(),
+            r#"
+fn foo<T>() -> T
+where T: Copy + Display
+    "#
+            .trim()
+        );
+        assert!(info.active_parameter.is_none());
     }
 
     #[test]
@@ -184,7 +220,7 @@ fn bar() { foo(<|>); }"#,
 fn bar() {let _ : F = F::new(<|>);}"#,
         );
 
-        assert_eq!(info.parameters, Vec::<String>::new());
+        assert!(info.parameters().is_empty());
         assert_eq!(info.active_parameter, None);
     }
 
@@ -206,7 +242,7 @@ fn bar() {
 }"#,
         );
 
-        assert_eq!(info.parameters, vec!["&self".to_string()]);
+        assert_eq!(info.parameters(), ["&self"]);
         assert_eq!(info.active_parameter, None);
     }
 
@@ -228,7 +264,7 @@ fn bar() {
 }"#,
         );
 
-        assert_eq!(info.parameters, vec!["&self".to_string(), "x".to_string()]);
+        assert_eq!(info.parameters(), ["&self", "x: i32"]);
         assert_eq!(info.active_parameter, Some(1));
     }
 
@@ -248,10 +284,10 @@ fn bar() {
 "#,
         );
 
-        assert_eq!(info.parameters, vec!["j".to_string()]);
+        assert_eq!(info.parameters(), ["j: u32"]);
         assert_eq!(info.active_parameter, Some(0));
-        assert_eq!(info.label, "fn foo(j: u32) -> u32".to_string());
-        assert_eq!(info.doc.map(|it| it.into()), Some("test".to_string()));
+        assert_eq!(info.label(), "fn foo(j: u32) -> u32");
+        assert_eq!(info.doc().map(|it| it.into()), Some("test".to_string()));
     }
 
     #[test]
@@ -276,11 +312,11 @@ pub fn do() {
 }"#,
         );
 
-        assert_eq!(info.parameters, vec!["x".to_string()]);
+        assert_eq!(info.parameters(), ["x: i32"]);
         assert_eq!(info.active_parameter, Some(0));
-        assert_eq!(info.label, "pub fn add_one(x: i32) -> i32".to_string());
+        assert_eq!(info.label(), "pub fn add_one(x: i32) -> i32");
         assert_eq!(
-            info.doc.map(|it| it.into()),
+            info.doc().map(|it| it.into()),
             Some(
                 r#"Adds one to the number given.
 
@@ -322,11 +358,11 @@ pub fn do_it() {
 }"#,
         );
 
-        assert_eq!(info.parameters, vec!["x".to_string()]);
+        assert_eq!(info.parameters(), ["x: i32"]);
         assert_eq!(info.active_parameter, Some(0));
-        assert_eq!(info.label, "pub fn add_one(x: i32) -> i32".to_string());
+        assert_eq!(info.label(), "pub fn add_one(x: i32) -> i32");
         assert_eq!(
-            info.doc.map(|it| it.into()),
+            info.doc().map(|it| it.into()),
             Some(
                 r#"Adds one to the number given.
 
@@ -375,10 +411,10 @@ pub fn foo() {
 "#,
         );
 
-        assert_eq!(info.parameters, vec!["&mut self".to_string(), "ctx".to_string()]);
+        assert_eq!(info.parameters(), ["&mut self", "ctx: &mut Self::Context"]);
         assert_eq!(info.active_parameter, Some(1));
         assert_eq!(
-            info.doc.map(|it| it.into()),
+            info.doc().map(|it| it.into()),
             Some(
                 r#"Method is called when writer finishes.
 

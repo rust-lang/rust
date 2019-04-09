@@ -1,23 +1,23 @@
 ---
-created: "2019-02-18T09:22:24.188564584Z"
-creator: insta@0.6.2
+created: "2019-04-04T14:52:24.531844100Z"
+creator: insta@0.7.4
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
 [
     CompletionItem {
         label: "bar",
-        source_range: [129; 129),
-        delete: [129; 129),
+        source_range: [126; 126),
+        delete: [126; 126),
         insert: "bar",
         kind: Binding
     },
     CompletionItem {
         label: "foo",
-        source_range: [129; 129),
-        delete: [129; 129),
+        source_range: [126; 126),
+        delete: [126; 126),
         insert: "foo()$0",
         kind: Function,
-        detail: "fn foo() ->"
+        detail: "fn foo()"
     }
 ]

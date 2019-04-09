@@ -3,8 +3,8 @@ use lsp_types::{
     CodeActionResponse, CodeLens, Command, Diagnostic, DiagnosticSeverity, CodeAction,
     DocumentFormattingParams, DocumentHighlight, DocumentSymbol, FoldingRange,
     FoldingRangeKind, FoldingRangeParams, Hover, HoverContents, Location, MarkupContent,
-    MarkupKind, ParameterInformation, ParameterLabel, Position, PrepareRenameResponse, Range,
-    RenameParams, SignatureInformation, SymbolInformation, TextDocumentIdentifier, TextEdit,
+    MarkupKind, Position, PrepareRenameResponse, Range,
+    RenameParams,SymbolInformation, TextDocumentIdentifier, TextEdit,
     WorkspaceEdit,
 };
 use ra_ide_api::{
@@ -403,26 +403,13 @@ pub fn handle_signature_help(
 ) -> Result<Option<req::SignatureHelp>> {
     let position = params.try_conv_with(&world)?;
     if let Some(call_info) = world.analysis().call_info(position)? {
-        let parameters: Vec<ParameterInformation> = call_info
-            .parameters
-            .into_iter()
-            .map(|param| ParameterInformation {
-                label: ParameterLabel::Simple(param.clone()),
-                documentation: None,
-            })
-            .collect();
+        let active_parameter = call_info.active_parameter.map(|it| it as i64);
+        let sig_info = call_info.signature.conv();
 
-        let documentation = call_info.doc.map(|it| it.conv());
-
-        let sig_info = SignatureInformation {
-            label: call_info.label,
-            documentation,
-            parameters: Some(parameters),
-        };
         Ok(Some(req::SignatureHelp {
             signatures: vec![sig_info],
             active_signature: Some(0),
-            active_parameter: call_info.active_parameter.map(|it| it as i64),
+            active_parameter,
         }))
     } else {
         Ok(None)

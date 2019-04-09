@@ -174,6 +174,28 @@ impl Conv for ra_ide_api::Documentation {
     }
 }
 
+impl Conv for ra_ide_api::FunctionSignature {
+    type Output = lsp_types::SignatureInformation;
+    fn conv(self) -> Self::Output {
+        use lsp_types::{ParameterInformation, ParameterLabel, SignatureInformation};
+
+        let label = self.to_string();
+
+        let documentation = self.doc.map(|it| it.conv());
+
+        let parameters: Vec<ParameterInformation> = self
+            .parameters
+            .into_iter()
+            .map(|param| ParameterInformation {
+                label: ParameterLabel::Simple(param),
+                documentation: None,
+            })
+            .collect();
+
+        SignatureInformation { label, documentation, parameters: Some(parameters) }
+    }
+}
+
 impl ConvWith for TextEdit {
     type Ctx = LineIndex;
     type Output = Vec<lsp_types::TextEdit>;

@@ -145,7 +145,7 @@ mod tests {
         check_reference_completion(
             "dont_show_both_completions_for_shadowing",
             r"
-            fn foo() -> {
+            fn foo() {
                 let bar = 92;
                 {
                     let bar = 62;

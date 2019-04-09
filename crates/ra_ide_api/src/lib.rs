@@ -13,7 +13,6 @@
 mod db;
 pub mod mock_analysis;
 mod symbol_index;
-mod navigation_target;
 mod change;
 
 mod status;
@@ -34,9 +33,9 @@ mod folding_ranges;
 mod line_index;
 mod line_index_utils;
 mod join_lines;
-mod structure;
 mod typing;
 mod matching_brace;
+mod display;
 
 #[cfg(test)]
 mod marks;
@@ -62,7 +61,6 @@ pub use crate::{
     change::{AnalysisChange, LibraryData},
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     runnables::{Runnable, RunnableKind},
-    navigation_target::NavigationTarget,
     references::ReferenceSearchResult,
     assists::{Assist, AssistId},
     hover::{HoverResult},
@@ -70,8 +68,8 @@ pub use crate::{
     line_index_utils::translate_offset_with_edit,
     folding_ranges::{Fold, FoldKind},
     syntax_highlighting::HighlightedRange,
-    structure::{StructureNode, file_structure},
     diagnostics::Severity,
+    display::{FunctionSignature, NavigationTarget, StructureNode, file_structure},
 };
 
 pub use ra_db::{
@@ -243,9 +241,7 @@ impl<T> RangeInfo<T> {
 
 #[derive(Debug)]
 pub struct CallInfo {
-    pub label: String,
-    pub doc: Option<Documentation>,
-    pub parameters: Vec<String>,
+    pub signature: FunctionSignature,
     pub active_parameter: Option<usize>,
 }
 
@@ -387,7 +383,7 @@ impl Analysis {
     /// file outline.
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
         let file = self.db.parse(file_id);
-        structure::file_structure(&file)
+        file_structure(&file)
     }
 
     /// Returns the set of folding ranges.

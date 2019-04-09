@@ -6,6 +6,9 @@ use ra_syntax::ast::NameOwner;
 
 use crate::completion::{
     Completions, CompletionKind, CompletionItemKind, CompletionContext, CompletionItem,
+};
+
+use crate::display::{
     function_label, const_label, type_label,
 };
 
@@ -101,7 +104,7 @@ impl Completions {
                 CompletionItemKind::Function
             })
             .set_documentation(func.docs(ctx.db))
-            .set_detail(detail);
+            .detail(detail);
         // If not an import, add parenthesis automatically.
         if ctx.use_item_syntax.is_none() && !ctx.is_call {
             tested_by!(inserts_parens_for_function_calls);
