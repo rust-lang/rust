@@ -333,8 +333,38 @@ impl VariantData {
 ```rust
 // before:
 use algo:<|>:visitor::{Visitor, visit};
-//after:
+// after:
 use algo::{<|>visitor::{Visitor, visit}};
+```
+
+- Flip binary expression
+
+```rust
+// before:
+fn foo() {
+    if 1 <<|> 2 {
+        println!("Who would have thought?");
+    }
+}
+// after:
+fn foo() {
+    if 2 ><|> 1 {
+        println!("Who would have thought?");
+    }
+}
+```
+
+- Add explicit type
+
+```rust
+// before:
+fn foo() {
+    let t<|> = (&2, Some(1));
+}
+// after:
+fn foo() {
+    let t<|>: (&i32, Option<i32>) = (&2, Some(1));
+}
 ```
 
 ### Magic Completions

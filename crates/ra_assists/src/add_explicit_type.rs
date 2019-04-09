@@ -18,9 +18,7 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
     // Must be a binding
     let pat = match pat.kind() {
         PatKind::BindPat(bind_pat) => bind_pat,
-        _ => {
-            return None;
-        }
+        _ => return None,
     };
     let pat_range = pat.syntax().range();
     // The binding must have a name
@@ -31,20 +29,20 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
         return None;
     }
     // Infer type
-    let func = function_from_child_node(ctx.db, ctx.frange.file_id, pat.syntax())?;
-    let inference_res = func.infer(ctx.db);
-    let source_map = func.body_source_map(ctx.db);
+    let db = ctx.db;
+    let func = function_from_child_node(db, ctx.frange.file_id, pat.syntax())?;
+    let inference_res = func.infer(db);
+    let source_map = func.body_source_map(db);
     let expr_id = source_map.node_expr(expr.into())?;
     let ty = inference_res[expr_id].clone();
     // Assist not applicable if the type is unknown
     if is_unknown(&ty) {
         return None;
     }
-    let ty_str = ty.display(ctx.db).to_string();
 
     ctx.add_action(AssistId("add_explicit_type"), "add explicit type", |edit| {
         edit.target(pat_range);
-        edit.insert(name_range.end(), format!(": {}", ty_str));
+        edit.insert(name_range.end(), format!(": {}", ty.display(db)));
     });
     ctx.build()
 }
