@@ -23,16 +23,11 @@ pub(crate) fn status(db: &RootDatabase) -> String {
     let files_stats = db.query(FileTextQuery).entries::<FilesStats>();
     let syntax_tree_stats = syntax_tree_stats(db);
     let symbols_stats = db.query(LibrarySymbolsQuery).entries::<LibrarySymbolsStats>();
-    let n_defs = {
-        let interner: &hir::HirInterner = db.as_ref();
-        interner.len()
-    };
     format!(
-        "{}\n{}\n{}\n{} defs\n\nmemory:\n{}\ngc {:?} seconds ago",
+        "{}\n{}\n{}\n\n\nmemory:\n{}\ngc {:?} seconds ago",
         files_stats,
         symbols_stats,
         syntax_tree_stats,
-        n_defs,
         MemoryStats::current(),
         db.last_gc.elapsed().as_secs(),
     )
