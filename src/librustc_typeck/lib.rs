@@ -176,7 +176,7 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     })
 }
 
-pub fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, main_def_id: DefId) {
+fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, main_def_id: DefId) {
     let main_id = tcx.hir().as_local_hir_id(main_def_id).unwrap();
     let main_span = tcx.def_span(main_def_id);
     let main_t = tcx.type_of(main_def_id);
@@ -241,7 +241,7 @@ pub fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, main_def_id: DefI
     }
 }
 
-pub fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, start_def_id: DefId) {
+fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, start_def_id: DefId) {
     let start_id = tcx.hir().as_local_hir_id(start_def_id).unwrap();
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id);
@@ -298,7 +298,7 @@ pub fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, start_def_id: De
     }
 }
 
-pub fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     match tcx.entry_fn(LOCAL_CRATE) {
         Some((def_id, EntryFnType::Main)) => check_main_fn_ty(tcx, def_id),
         Some((def_id, EntryFnType::Start)) => check_start_fn_ty(tcx, def_id),
