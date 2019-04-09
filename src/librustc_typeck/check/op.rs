@@ -333,17 +333,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 lhs_ty);
 
                             if !lhs_expr.span.eq(&rhs_expr.span) {
-                                err.span_label(lhs_expr.span, lhs_ty.to_string());
-                                if let FnDef(..) = lhs_ty.sty {
-                                    err.span_label(lhs_expr.span, "did you forget `()`?");
-                                }
-
-                                err.span_label(rhs_expr.span, rhs_ty.to_string());
-                                if let FnDef(..) = rhs_ty.sty {
-                                    err.span_label(rhs_expr.span, "did you forget `()`?");
-                                }
+                                self.add_type_neq_err_label(&mut err, lhs_expr.span, lhs_ty);
+                                self.add_type_neq_err_label(&mut err, rhs_expr.span, rhs_ty);
                             }
-
 
                             let mut suggested_deref = false;
                             if let Ref(_, mut rty, _) = lhs_ty.sty {
@@ -421,6 +413,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         (lhs_ty, rhs_ty, return_ty)
+    }
+
+    fn add_type_neq_err_label(
+        &self,
+        err: &mut errors::DiagnosticBuilder<'_>,
+        span: Span,
+        ty: Ty<'tcx>,
+    ) {
+        err.span_label(span, ty.to_string());
+        if let FnDef(..) = ty.sty {
+            err.span_label(span, "did you forget `()`?");
+        }
     }
 
     fn check_str_addition(
