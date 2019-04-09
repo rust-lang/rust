@@ -129,37 +129,27 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     }
 
     TokenStream::from(quote! {
-        #[allow(non_upper_case_globals)]
-        pub mod keywords {
-            use super::{Symbol, Ident};
-            #[derive(Clone, Copy, PartialEq, Eq)]
-            pub struct Keyword {
-                ident: Ident,
-            }
-            impl Keyword {
-                #[inline] pub fn ident(self) -> Ident { self.ident }
-                #[inline] pub fn name(self) -> Symbol { self.ident.name }
-            }
+        macro_rules! keywords {
+            () => {
+                #keyword_stream
 
-            #keyword_stream
+                impl std::str::FromStr for Keyword {
+                    type Err = ();
 
-            impl std::str::FromStr for Keyword {
-                type Err = ();
-
-                fn from_str(s: &str) -> Result<Self, ()> {
-                    match s {
-                        #from_str_stream
-                        _ => Err(()),
+                    fn from_str(s: &str) -> Result<Self, ()> {
+                        match s {
+                            #from_str_stream
+                            _ => Err(()),
+                        }
                     }
                 }
             }
         }
 
-        #[allow(non_upper_case_globals)]
-        pub mod symbols {
-            use super::Symbol;
-
-            #symbols_stream
+        macro_rules! symbols {
+            () => {
+                #symbols_stream
+            }
         }
 
         impl Interner {
