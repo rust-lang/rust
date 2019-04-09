@@ -146,23 +146,22 @@ fn main() {
                 "--" => {
                     after_dashdash = true;
                 }
-                _ => {
-                    let split: Vec<String> = arg.split("-Zmiri-seed=").map(|s| s.to_owned()).collect();
-                    if split.len() == 2 {
-                        if seed.is_some() {
-                            panic!("Cannot specify -Zmiri-seed multiple times!");
-                        }
-                        let seed_raw = hex::decode(&split[1]).unwrap();
-                        if seed_raw.len() > 8 {
-                            panic!(format!("-Zmiri-seed must be at most 8 bytes, was {}", seed_raw.len()));
-                        }
-
-                        let mut bytes = [0; 8];
-                        bytes[..seed_raw.len()].copy_from_slice(&hex::decode(&split[1]).unwrap());
-                        seed = Some(u64::from_be_bytes(bytes));
-                    } else {
-                        rustc_args.push(arg);
+                arg if arg.starts_with("-Zmiri-seed=") => {
+                    if seed.is_some() {
+                        panic!("Cannot specify -Zmiri-seed multiple times!");
                     }
+                    let seed_raw = hex::decode(arg.trim_start_matches("-Zmiri-seed=")).unwrap();
+                    if seed_raw.len() > 8 {
+                        panic!(format!("-Zmiri-seed must be at most 8 bytes, was {}", seed_raw.len()));
+                    }
+
+                    let mut bytes = [0; 8];
+                    bytes[..seed_raw.len()].copy_from_slice(&seed_raw);
+                    seed = Some(u64::from_be_bytes(bytes));
+
+                },
+                _ => {
+                    rustc_args.push(arg);
                 }
             }
         }
