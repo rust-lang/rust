@@ -166,7 +166,7 @@ pub struct Session {
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
     /// `Span`s of trait methods that weren't found to avoid emitting object safety errors
-    pub trait_methods_not_found: OneThread<RefCell<FxHashSet<Span>>>,
+    pub trait_methods_not_found: Lock<FxHashSet<Span>>,
 }
 
 pub struct PerfStats {
@@ -1236,7 +1236,7 @@ fn build_session_(
         has_global_allocator: Once::new(),
         has_panic_handler: Once::new(),
         driver_lint_caps,
-        trait_methods_not_found: OneThread::new(RefCell::new(Default::default())),
+        trait_methods_not_found: Lock::new(Default::default()),
     };
 
     validate_commandline_args_with_session_available(&sess);
