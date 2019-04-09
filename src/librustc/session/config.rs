@@ -285,7 +285,7 @@ impl OutputTypes {
 #[derive(Clone, Hash)]
 pub struct Externs(BTreeMap<String, ExternEntry>);
 
-#[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug, Default)]
 pub struct ExternEntry {
     pub locations: BTreeSet<Option<String>>,
     pub is_private_dep: bool
@@ -2337,26 +2337,17 @@ pub fn build_session_options_and_crate_config(
             );
         };
 
-
-        externs
+        let entry = externs
             .entry(name.to_owned())
-            .and_modify(|e| {
-                e.locations.insert(location.clone());
+            .or_default();
 
-                // Crates start out being not private,
-                // and go to being private if we see an '--extern-private'
-                // flag
-                e.is_private_dep |= private;
-            })
-            .or_insert_with(|| {
-                let mut locations = BTreeSet::new();
-                locations.insert(location);
 
-                ExternEntry {
-                    locations: locations,
-                    is_private_dep: private
-                }
-            });
+        entry.locations.insert(location.clone());
+
+        // Crates start out being not private,
+        // and go to being private if we see an '--extern-private'
+        // flag
+        entry.is_private_dep |= private;
     }
 
     let crate_name = matches.opt_str("crate-name");

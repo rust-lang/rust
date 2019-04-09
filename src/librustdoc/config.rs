@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -590,12 +590,8 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
         let name = name.to_string();
         // For Rustdoc purposes, we can treat all externs as public
         externs.entry(name)
-            .and_modify(|e| { e.locations.insert(location.clone()); } )
-            .or_insert_with(|| {
-                let mut locations = BTreeSet::new();
-                locations.insert(location);
-                ExternEntry { locations, is_private_dep: false }
-            });
+            .or_default()
+            .locations.insert(location.clone());
     }
     Ok(Externs::new(externs))
 }
