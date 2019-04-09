@@ -211,14 +211,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
 
             "syscall" => {
-                // TODO: read `syscall` IDs like `sysconf` IDs and
-                // figure out some way to actually process some of them.
-                //
+                let sys_getrandom = this.eval_path_scalar(&["libc", "SYS_getrandom"])?
+                    .expect("Failed to get libc::SYS_getrandom")
+                    .to_usize(this)? as i64;
+
                 // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                 // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
-                match (this.read_scalar(args[0])?.to_usize(this)? as i64, tcx.data_layout.pointer_size.bits()) {
-                    // SYS_getrandom on x86_64 and x86 respectively
-                    (318, 64) | (355, 32) => {
+                match this.read_scalar(args[0])?.to_usize(this)? as i64 {
+                    id if id == sys_getrandom => {
                         let ptr = this.read_scalar(args[1])?.to_ptr()?;
                         let len = this.read_scalar(args[2])?.to_usize(this)?;
 
@@ -232,7 +232,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
-                    (id, _size) => {
+                    id => {
                         return err!(Unimplemented(
                             format!("miri does not support syscall ID {}", id),
                         ))
@@ -496,18 +496,13 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 ];
                 let mut result = None;
                 for &(path, path_value) in paths {
-                    if let Ok(instance) = this.resolve_path(path) {
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None,
-                        };
-                        let const_val = this.const_eval_raw(cid)?;
-                        let const_val = this.read_scalar(const_val.into())?;
-                        let value = const_val.to_i32()?;
-                        if value == name {
+                    if let Some(val) = this.eval_path_scalar(path)? {
+                        let val = val.to_i32()?;
+                        if val == name {
                             result = Some(path_value);
                             break;
                         }
+
                     }
                 }
                 if let Some(result) = result {
@@ -781,6 +776,22 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 
     fn write_null(&mut self, dest: PlaceTy<'tcx, Borrow>) -> EvalResult<'tcx> {
         self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
+    }
+
+    /// Evaluates the scalar at the specified path. Returns Some(val)
+    /// if the path could be resolved, and None otherwise
+    fn eval_path_scalar(&mut self, path: &[&str]) -> EvalResult<'tcx, Option<ScalarMaybeUndef<stacked_borrows::Borrow>>> {
+        let this = self.eval_context_mut();
+        if let Ok(instance) = this.resolve_path(path) {
+            let cid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            let const_val = this.const_eval_raw(cid)?;
+            let const_val = this.read_scalar(const_val.into())?;
+            return Ok(Some(const_val));
+        }
+        return Ok(None);
     }
 }
 
