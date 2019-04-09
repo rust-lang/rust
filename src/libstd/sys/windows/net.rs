@@ -97,12 +97,12 @@ impl Socket {
         };
         let socket = unsafe {
             match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
-                                c::WSA_FLAG_OVERLAPPED) {
+                                c::WSA_FLAG_OVERLAPPED |
+                                c::WSA_FLAG_NO_HANDLE_INHERIT) {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -168,7 +168,6 @@ impl Socket {
                 n => Ok(Socket(n)),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -182,12 +181,12 @@ impl Socket {
                                 info.iSocketType,
                                 info.iProtocol,
                                 &mut info, 0,
-                                c::WSA_FLAG_OVERLAPPED) {
+                                c::WSA_FLAG_OVERLAPPED |
+                                c::WSA_FLAG_NO_HANDLE_INHERIT) {
                 c::INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -310,13 +309,6 @@ impl Socket {
             let nsec = (raw % 1000) * 1000000;
             Ok(Some(Duration::new(secs as u64, nsec as u32)))
         }
-    }
-
-    fn set_no_inherit(&self) -> io::Result<()> {
-        sys::cvt(unsafe {
-            c::SetHandleInformation(self.0 as c::HANDLE,
-                                    c::HANDLE_FLAG_INHERIT, 0)
-        }).map(|_| ())
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
