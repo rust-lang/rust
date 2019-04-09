@@ -59,7 +59,9 @@ rustup override set nightly
 # avoid loop spam and allow cmds with exit status != 0
 set +ex
 
-for file in `find tests | grep "\.rs$"` ; do
+# Excluding `ice-3891.rs` because the code triggers a rustc parse error which
+# makes rustfmt fail.
+for file in `find tests -not -path "tests/ui/crashes/ice-3891.rs" | grep "\.rs$"` ; do
   rustfmt ${file} --check
   if [ $? -ne 0 ]; then
     echo "${file} needs reformatting!"
