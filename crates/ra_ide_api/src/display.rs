@@ -1,5 +1,5 @@
 //! This module contains utilities for turning SyntaxNodes and HIR types
-//! into things that may be used to render in a UI.
+//! into types that may be used to render in a UI.
 
 mod function_signature;
 mod navigation_target;
