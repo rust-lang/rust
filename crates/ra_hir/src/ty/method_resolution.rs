@@ -233,15 +233,16 @@ impl Ty {
     }
 }
 
+/// This creates Substs for a trait with the given Self type and type variables
+/// for all other parameters. This is kind of a hack since these aren't 'real'
+/// type variables; the resulting trait reference is just used for the
+/// preliminary method candidate check.
 fn fresh_substs_for_trait(db: &impl HirDatabase, tr: Trait, self_ty: Ty) -> Substs {
     let mut substs = Vec::new();
-    let mut counter = 0;
     let generics = tr.generic_params(db);
     substs.push(self_ty);
-    substs.extend(generics.params_including_parent().into_iter().skip(1).map(|_p| {
-        let fresh_var = Ty::Infer(super::infer::InferTy::TypeVar(super::infer::TypeVarId(counter)));
-        counter += 1;
-        fresh_var
-    }));
+    substs.extend(generics.params_including_parent().into_iter().skip(1).enumerate().map(
+        |(i, _p)| Ty::Infer(super::infer::InferTy::TypeVar(super::infer::TypeVarId(i as u32))),
+    ));
     substs.into()
 }

@@ -5,6 +5,7 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
+use std::iter;
 
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path,
@@ -172,16 +173,18 @@ pub(super) fn substs_from_path_segment(
 ) -> Substs {
     let mut substs = Vec::new();
     let parent_param_count = def_generics.count_parent_params();
-    substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
+    substs.extend(iter::repeat(Ty::Unknown).take(parent_param_count));
     if add_self_param {
         // FIXME this add_self_param argument is kind of a hack: Traits have the
         // Self type as an implicit first type parameter, but it can't be
         // actually provided in the type arguments
+        // (well, actually sometimes it can, in the form of type-relative paths: `<Foo as Default>::default()`)
         substs.push(Ty::Unknown);
     }
     if let Some(generic_args) = &segment.args_and_bindings {
         // if args are provided, it should be all of them, but we can't rely on that
-        let param_count = def_generics.params.len();
+        let self_param_correction = if add_self_param { 1 } else { 0 };
+        let param_count = def_generics.params.len() - self_param_correction;
         for arg in generic_args.args.iter().take(param_count) {
             match arg {
                 GenericArg::Type(type_ref) => {

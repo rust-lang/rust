@@ -461,6 +461,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for segment in &path.segments[remaining_index..] {
             let ty = match resolved {
                 Resolution::Def(def) => {
+                    // FIXME resolve associated items from traits as well
                     let typable: Option<TypableDef> = def.into();
                     let typable = typable?;
 
@@ -750,12 +751,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn substs_for_method_call(
         &mut self,
         def_generics: Option<Arc<GenericParams>>,
-        generic_args: &Option<GenericArgs>,
+        generic_args: Option<&GenericArgs>,
         receiver_ty: &Ty,
     ) -> Substs {
         let (parent_param_count, param_count) =
             def_generics.as_ref().map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
         let mut substs = Vec::with_capacity(parent_param_count + param_count);
+        // Parent arguments are unknown, except for the receiver type
         if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
             for param in &parent_generics.params {
                 if param.name.as_known_name() == Some(crate::KnownName::SelfType) {
@@ -783,6 +785,100 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
         assert_eq!(substs.len(), parent_param_count + param_count);
         Substs(substs.into())
+    }
+
+    fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
+        match callable_ty {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::FnDef(def) => {
+                    // add obligation for trait implementation, if this is a trait method
+                    // FIXME also register obligations from where clauses from the trait or impl and method
+                    match def {
+                        CallableDef::Function(f) => {
+                            if let Some(trait_) = f.parent_trait(self.db) {
+                                // construct a TraitDef
+                                let substs = a_ty.parameters.prefix(
+                                    trait_.generic_params(self.db).count_params_including_parent(),
+                                );
+                                self.obligations
+                                    .push(Obligation::Trait(TraitRef { trait_, substs }));
+                            }
+                        }
+                        CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    fn infer_method_call(
+        &mut self,
+        tgt_expr: ExprId,
+        receiver: ExprId,
+        args: &[ExprId],
+        method_name: &Name,
+        generic_args: Option<&GenericArgs>,
+    ) -> Ty {
+        let receiver_ty = self.infer_expr(receiver, &Expectation::none());
+        let resolved = receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
+        let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
+            Some((ty, func)) => {
+                self.write_method_resolution(tgt_expr, func);
+                (
+                    ty,
+                    self.db.type_for_def(func.into(), Namespace::Values),
+                    Some(func.generic_params(self.db)),
+                )
+            }
+            None => (receiver_ty, Ty::Unknown, None),
+        };
+        let substs =
+            self.substs_for_method_call(def_generics.clone(), generic_args, &derefed_receiver_ty);
+        let method_ty = method_ty.apply_substs(substs);
+        let method_ty = self.insert_type_vars(method_ty);
+        self.register_obligations_for_call(&method_ty);
+        let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::FnPtr => {
+                    let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
+                    if !sig.params().is_empty() {
+                        (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
+                    } else {
+                        (Ty::Unknown, Vec::new(), sig.ret().clone())
+                    }
+                }
+                TypeCtor::FnDef(def) => {
+                    let sig = self.db.callable_item_signature(def);
+                    let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
+
+                    if !sig.params().is_empty() {
+                        let mut params_iter =
+                            sig.params().iter().map(|ty| ty.clone().subst(&a_ty.parameters));
+                        let receiver_ty = params_iter.next().unwrap();
+                        (receiver_ty, params_iter.collect(), ret_ty)
+                    } else {
+                        (Ty::Unknown, Vec::new(), ret_ty)
+                    }
+                }
+                _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
+            },
+            _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
+        };
+        // Apply autoref so the below unification works correctly
+        // FIXME: return correct autorefs from lookup_method
+        let actual_receiver_ty = match expected_receiver_ty.as_reference() {
+            Some((_, mutability)) => Ty::apply_one(TypeCtor::Ref(mutability), derefed_receiver_ty),
+            _ => derefed_receiver_ty,
+        };
+        self.unify(&expected_receiver_ty, &actual_receiver_ty);
+
+        let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
+        for (arg, param) in args.iter().zip(param_iter) {
+            self.infer_expr(*arg, &Expectation::has_type(param));
+        }
+        ret_ty
     }
 
     fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -872,95 +968,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 ret_ty
             }
-            Expr::MethodCall { receiver, args, method_name, generic_args } => {
-                let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
-                let resolved =
-                    receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
-                let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
-                    Some((ty, func)) => {
-                        self.write_method_resolution(tgt_expr, func);
-                        (
-                            ty,
-                            self.db.type_for_def(func.into(), Namespace::Values),
-                            Some(func.generic_params(self.db)),
-                        )
-                    }
-                    None => (receiver_ty, Ty::Unknown, None),
-                };
-                let substs = self.substs_for_method_call(
-                    def_generics.clone(),
-                    generic_args,
-                    &derefed_receiver_ty,
-                );
-                let method_ty = method_ty.apply_substs(substs);
-                let method_ty = self.insert_type_vars(method_ty);
-                let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
-                    Ty::Apply(a_ty) => match a_ty.ctor {
-                        TypeCtor::FnPtr => {
-                            let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
-                            if !sig.params().is_empty() {
-                                (
-                                    sig.params()[0].clone(),
-                                    sig.params()[1..].to_vec(),
-                                    sig.ret().clone(),
-                                )
-                            } else {
-                                (Ty::Unknown, Vec::new(), sig.ret().clone())
-                            }
-                        }
-                        TypeCtor::FnDef(def) => {
-                            let sig = self.db.callable_item_signature(def);
-                            let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
-
-                            // add obligation for trait implementation, if this is a trait method
-                            // FIXME also register obligations from where clauses from the trait or impl and method
-                            match def {
-                                CallableDef::Function(f) => {
-                                    if let Some(trait_) = f.parent_trait(self.db) {
-                                        // construct a TraitDef
-                                        let substs = a_ty.parameters.prefix(
-                                            def_generics
-                                                .expect("trait parent should always have generics")
-                                                .count_parent_params(),
-                                        );
-                                        self.obligations
-                                            .push(Obligation::Trait(TraitRef { trait_, substs }));
-                                    }
-                                }
-                                CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
-                            }
-
-                            if !sig.params().is_empty() {
-                                let mut params_iter = sig
-                                    .params()
-                                    .iter()
-                                    .map(|ty| ty.clone().subst(&a_ty.parameters));
-                                let receiver_ty = params_iter.next().unwrap();
-                                (receiver_ty, params_iter.collect(), ret_ty)
-                            } else {
-                                (Ty::Unknown, Vec::new(), ret_ty)
-                            }
-                        }
-                        _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
-                    },
-                    _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
-                };
-                // Apply autoref so the below unification works correctly
-                // FIXME: return correct autorefs/derefs from lookup_method
-                let actual_receiver_ty = match expected_receiver_ty.as_reference() {
-                    Some((_, mutability)) => {
-                        Ty::apply_one(TypeCtor::Ref(mutability), derefed_receiver_ty)
-                    }
-                    _ => derefed_receiver_ty,
-                };
-                self.unify(&expected_receiver_ty, &actual_receiver_ty);
-
-                let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
-                for (arg, param) in args.iter().zip(param_iter) {
-                    self.infer_expr(*arg, &Expectation::has_type(param));
-                }
-                ret_ty
-            }
+            Expr::MethodCall { receiver, args, method_name, generic_args } => self
+                .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
             Expr::Match { expr, arms } => {
                 let expected = if expected.ty == Ty::Unknown {
                     Expectation::has_type(self.new_type_var())
