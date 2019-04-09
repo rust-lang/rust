@@ -795,8 +795,10 @@ fn gen_random<'a, 'mir, 'tcx>(this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
         }
         None => {
             err!(Unimplemented(
-                "miri does not support random number generators in deterministic mode!
-                Use '-Zmiri-seed=<seed>' to enable random number generation".to_owned(),
+                "miri does not support gathering system entropy in deterministic mode!
+                Use '-Zmiri-seed=<seed>' to enable random number generation.
+                WARNING: Miri does *not* generate cryptographically secure entropy -
+                do not use Miri to run any program that need secure random number generation".to_owned(),
             ))
         }
     }
