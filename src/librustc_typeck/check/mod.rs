@@ -1079,7 +1079,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         fcx.check_pat_walk(
             &arg.pat,
             arg_ty,
-            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
+            ty::BindingMode::BindByValue{mutability: hir::Mutability::MutImmutable, coerced: false},
             None,
         );
 
@@ -4876,7 +4876,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.check_pat_walk(
             &local.pat,
             t,
-            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
+            ty::BindingMode::BindByValue{mutability: hir::Mutability::MutImmutable, coerced: false},
             None,
         );
         let pat_ty = self.node_ty(local.pat.hir_id);

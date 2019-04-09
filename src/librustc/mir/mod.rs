@@ -876,7 +876,7 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn can_be_made_mutable(&self) -> bool {
         match self.is_user_variable {
             Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(_),
+                binding_mode: ty::BindingMode::BindByValue{..},
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
@@ -895,7 +895,7 @@ impl<'tcx> LocalDecl<'tcx> {
     pub fn is_nonref_binding(&self) -> bool {
         match self.is_user_variable {
             Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode: ty::BindingMode::BindByValue(_),
+                binding_mode: ty::BindingMode::BindByValue{..},
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,

@@ -567,9 +567,9 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
                 let (mutability, mode) = match bm {
-                    ty::BindByValue(hir::MutMutable) =>
+                    ty::BindByValue{mutability: hir::MutMutable, ..} =>
                         (Mutability::Mut, BindingMode::ByValue),
-                    ty::BindByValue(hir::MutImmutable) =>
+                    ty::BindByValue{mutability: hir::MutImmutable, ..} =>
                         (Mutability::Not, BindingMode::ByValue),
                     ty::BindByReference(hir::MutMutable) =>
                         (Mutability::Not, BindingMode::ByRef(

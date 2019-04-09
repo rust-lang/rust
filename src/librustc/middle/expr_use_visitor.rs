@@ -828,7 +828,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 match bm {
                     ty::BindByReference(..) =>
                         mode.lub(BorrowingMatch),
-                    ty::BindByValue(..) => {
+                    ty::BindByValue{..} => {
                         match copy_or_move(&self.mc, self.param_env, &cmt_pat, PatBindingMove) {
                             Copy => mode.lub(CopyingMatch),
                             Move(..) => mode.lub(MovingMatch),
@@ -877,7 +877,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                 delegate.borrow(pat.hir_id, pat.span, &cmt_pat, r, bk, RefBinding);
                             }
                         }
-                        ty::BindByValue(..) => {
+                        ty::BindByValue{..} => {
                             let mode = copy_or_move(mc, param_env, &cmt_pat, PatBindingMove);
                             debug!("walk_pat binding consuming pat");
                             delegate.consume_pat(pat, &cmt_pat, mode);

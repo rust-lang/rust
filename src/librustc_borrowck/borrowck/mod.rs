@@ -1252,7 +1252,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             );
                         }
                     }
-                    ty::BindByValue(..) => {
+                    ty::BindByValue{..} => {
                         if let (Some(local_ty), is_implicit_self) = self.local_ty(hir_id) {
                             if let Some(msg) =
                                  self.suggest_mut_for_immutable(local_ty, is_implicit_self) {
@@ -1285,7 +1285,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             borrowed_hir_id: hir::HirId,
                             binding_hir_id: hir::HirId) {
         let let_span = self.tcx.hir().span_by_hir_id(binding_hir_id);
-        if let ty::BindByValue(..) = self.local_binding_mode(binding_hir_id) {
+        if let ty::BindByValue{..} = self.local_binding_mode(binding_hir_id) {
             if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(let_span) {
                 let (ty, is_implicit_self) = self.local_ty(binding_hir_id);
                 if is_implicit_self && snippet != "self" {

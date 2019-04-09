@@ -380,7 +380,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                        binding_mode: ty::BindingMode::BindByValue(_),
+                        binding_mode: ty::BindingMode::BindByValue{..},
                         opt_ty_info,
                         ..
                     })) => Some(suggest_ampmut(

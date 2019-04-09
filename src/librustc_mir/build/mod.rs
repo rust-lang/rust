@@ -652,10 +652,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
                     decl.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
-                        if bm == ty::BindByValue(hir::MutMutable) {
-                            decl.mutability = Mutability::Mut;
-                        } else {
-                            decl.mutability = Mutability::Not;
+                        match bm {
+                            ty::BindByReference(_) => { decl.mutability = Mutability::Not; },
+                            ty::BindByValue{mutability: hir::MutImmutable, ..} => {
+                                decl.mutability = Mutability::Not;
+                            },
+                            ty::BindByValue{mutability: hir::MutMutable, ..} => {
+                                decl.mutability = Mutability::Mut;
+                            },
                         }
                     } else {
                         tcx.sess.delay_span_bug(pat.span, "missing binding mode");
@@ -906,7 +910,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             if let Some(kind) = self_binding {
                                 Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
                             } else {
-                                let binding_mode = ty::BindingMode::BindByValue(mutability.into());
+                                let binding_mode = ty::BindingMode::BindByValue{
+                                    mutability: mutability.into(), coerced: false,
+                                };
                                 Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                                     binding_mode,
                                     opt_ty_info,

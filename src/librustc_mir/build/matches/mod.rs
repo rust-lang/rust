@@ -1714,7 +1714,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let tcx = self.hir.tcx();
         let binding_mode = match mode {
-            BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
+            BindingMode::ByValue => ty::BindingMode::BindByValue{
+                mutability: mutability.into(), coerced: false,
+            },
             BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability.into()),
         };
         debug!("declare_binding: user_ty={:?}", user_ty);

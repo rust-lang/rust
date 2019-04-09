@@ -344,7 +344,7 @@ impl MutabilityCategory {
                     let bm = *tables.pat_binding_modes()
                                     .get(p.hir_id)
                                     .expect("missing binding mode");
-                    if bm == ty::BindByValue(hir::MutMutable) {
+                    if let ty::BindByValue{mutability: hir::MutMutable, ..} = bm {
                         McDeclared
                     } else {
                         McImmutable

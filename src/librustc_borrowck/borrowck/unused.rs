@@ -47,7 +47,7 @@ impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
                 // for by-value bindings
                 if let Some(&bm) = self.bccx.tables.pat_binding_modes().get(hir_id) {
                     match bm {
-                        ty::BindByValue(hir::MutMutable) => {}
+                        ty::BindByValue{mutability: hir::MutMutable, ..} => {}
                         _ => return,
                     }
 

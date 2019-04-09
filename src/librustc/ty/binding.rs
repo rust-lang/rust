@@ -5,7 +5,10 @@ use crate::hir::Mutability;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BindingMode {
     BindByReference(Mutability),
-    BindByValue(Mutability),
+    BindByValue {
+        coerced: bool,
+        mutability: Mutability,
+    },
 }
 
 CloneTypeFoldableAndLiftImpls! { BindingMode, }
@@ -13,8 +16,12 @@ CloneTypeFoldableAndLiftImpls! { BindingMode, }
 impl BindingMode {
     pub fn convert(ba: BindingAnnotation) -> BindingMode {
         match ba {
-            Unannotated => BindingMode::BindByValue(Mutability::MutImmutable),
-            Mutable => BindingMode::BindByValue(Mutability::MutMutable),
+            Unannotated => BindingMode::BindByValue{
+                mutability: Mutability::MutImmutable, coerced: false
+            },
+            Mutable => BindingMode::BindByValue{
+                mutability: Mutability::MutMutable, coerced: false
+            },
             Ref => BindingMode::BindByReference(Mutability::MutImmutable),
             RefMut => BindingMode::BindByReference(Mutability::MutMutable),
         }
@@ -23,5 +30,5 @@ impl BindingMode {
 
 impl_stable_hash_for!(enum self::BindingMode {
     BindByReference(mutability),
-    BindByValue(mutability)
+    BindByValue{ mutability, coerced },
 });

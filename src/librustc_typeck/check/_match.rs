@@ -98,7 +98,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 def_bm = match def_bm {
                     // If default binding mode is by value, make it `ref` or `ref mut`
                     // (depending on whether we observe `&` or `&mut`).
-                    ty::BindByValue(_) =>
+                    ty::BindByValue{..} =>
                         ty::BindByReference(inner_mutability),
 
                     // Once a `ref`, always a `ref`. This is because a `& &mut` can't mutate
@@ -132,7 +132,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // ```
             //
             // cc #46688
-            def_bm = ty::BindByValue(hir::MutImmutable);
+            def_bm = ty::BindByValue{mutability: hir::MutImmutable, coerced: false};
         }
 
         // Lose mutability now that we know binding mode and discriminant type.
@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.demand_eqtype_pat(pat.span, region_ty, local_ty, match_discrim_span);
                     }
                     // otherwise the type of x is the expected type T
-                    ty::BindByValue(_) => {
+                    ty::BindByValue{..} => {
                         // As above, `T <: typeof(x)` is required but we
                         // use equality, see (*) below.
                         self.demand_eqtype_pat(pat.span, expected, local_ty, match_discrim_span);
@@ -648,7 +648,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 self.check_pat_walk(
                     &p,
                     discrim_ty,
-                    ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
+                    ty::BindingMode::BindByValue{
+                        mutability: hir::Mutability::MutImmutable, coerced: false
+                    },
                     Some(discrim.span),
                 );
                 all_pats_diverge &= self.diverges.get();

@@ -304,8 +304,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
     pat.walk(|p| {
         if let PatKind::Binding(_, _, ident, None) = p.node {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
-                if bm != ty::BindByValue(hir::MutImmutable) {
-                    // Nothing to check.
+                if let ty::BindByValue{mutability: hir::MutImmutable, coerced: _} = bm {
                     return true;
                 }
                 let pat_ty = cx.tables.pat_ty(p);
@@ -580,7 +579,7 @@ fn check_legality_of_move_bindings(
             if let PatKind::Binding(_, _, _, ref sub) = p.node {
                 if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {
                     match bm {
-                        ty::BindByValue(..) => {
+                        ty::BindByValue{..} => {
                             let pat_ty = cx.tables.node_type(p.hir_id);
                             if !pat_ty.is_copy_modulo_regions(cx.tcx, cx.param_env, pat.span) {
                                 check_move(p, sub.as_ref().map(|p| &**p), span_vec);
