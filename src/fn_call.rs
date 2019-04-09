@@ -213,11 +213,11 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             "syscall" => {
                 let sys_getrandom = this.eval_path_scalar(&["libc", "SYS_getrandom"])?
                     .expect("Failed to get libc::SYS_getrandom")
-                    .to_usize(this)? as i64;
+                    .to_usize(this)?;
 
                 // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
                 // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
-                match this.read_scalar(args[0])?.to_usize(this)? as i64 {
+                match this.read_scalar(args[0])?.to_usize(this)? {
                     id if id == sys_getrandom => {
                         let ptr = this.read_scalar(args[1])?.to_ptr()?;
                         let len = this.read_scalar(args[2])?.to_usize(this)?;
@@ -795,13 +795,15 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
     }
 }
 
-fn gen_random<'a, 'mir, 'tcx>(this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
-                                 len: usize) -> Result<Vec<u8>, EvalError<'tcx>>  {
+fn gen_random<'a, 'mir, 'tcx>(
+    this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
+    len: usize,
+) -> Result<Vec<u8>, EvalError<'tcx>>  {
 
-    match this.machine.rng.as_ref() {
+    match &mut this.machine.rng {
         Some(rng) => {
             let mut data = vec![0; len];
-            rng.borrow_mut().fill_bytes(&mut data);
+            rng.fill_bytes(&mut data);
             Ok(data)
         }
         None => {

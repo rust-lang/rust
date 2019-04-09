@@ -23,7 +23,6 @@ mod stacked_borrows;
 
 use std::collections::HashMap;
 use std::borrow::Cow;
-use std::cell::RefCell;
 
 use rand::rngs::StdRng;
 use rand::SeedableRng;
@@ -336,7 +335,7 @@ pub struct Evaluator<'tcx> {
 
     /// The random number generator to use if Miri
     /// is running in non-deterministic mode
-    pub(crate) rng: Option<RefCell<StdRng>>
+    pub(crate) rng: Option<StdRng>
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -350,7 +349,7 @@ impl<'tcx> Evaluator<'tcx> {
             tls: TlsData::default(),
             validate,
             stacked_borrows: stacked_borrows::State::default(),
-            rng: seed.map(|s| RefCell::new(StdRng::seed_from_u64(s)))
+            rng: seed.map(|s| StdRng::seed_from_u64(s))
         }
     }
 }
