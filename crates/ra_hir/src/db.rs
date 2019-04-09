@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
-use ra_syntax::{SyntaxNode, TreeArc, SourceFile};
+use ra_syntax::{SyntaxNode, TreeArc, SourceFile, ast};
 use ra_db::{SourceDatabase, salsa};
 
 use crate::{
-    HirFileId, MacroDefId, AstIdMap, ErasedFileAstId, Crate, Module, HirInterner,
+    HirFileId, MacroDefId, AstIdMap, ErasedFileAstId, Crate, Module, MacroCallLoc,
     Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
@@ -15,11 +15,29 @@ use crate::{
     impl_block::{ModuleImplBlocks, ImplSourceMap},
     generics::{GenericParams, GenericDef},
     type_ref::TypeRef,
-    traits::TraitData, Trait, ty::TraitRef
+    traits::TraitData, Trait, ty::TraitRef,
+    ids
 };
 
 #[salsa::query_group(DefDatabaseStorage)]
-pub trait DefDatabase: SourceDatabase + AsRef<HirInterner> {
+pub trait DefDatabase: SourceDatabase {
+    #[salsa::interned]
+    fn intern_macro(&self, macro_call: MacroCallLoc) -> ids::MacroCallId;
+    #[salsa::interned]
+    fn intern_function(&self, loc: ids::ItemLoc<ast::FnDef>) -> ids::FunctionId;
+    #[salsa::interned]
+    fn intern_struct(&self, loc: ids::ItemLoc<ast::StructDef>) -> ids::StructId;
+    #[salsa::interned]
+    fn intern_enum(&self, loc: ids::ItemLoc<ast::EnumDef>) -> ids::EnumId;
+    #[salsa::interned]
+    fn intern_const(&self, loc: ids::ItemLoc<ast::ConstDef>) -> ids::ConstId;
+    #[salsa::interned]
+    fn intern_static(&self, loc: ids::ItemLoc<ast::StaticDef>) -> ids::StaticId;
+    #[salsa::interned]
+    fn intern_trait(&self, loc: ids::ItemLoc<ast::TraitDef>) -> ids::TraitId;
+    #[salsa::interned]
+    fn intern_type_alias(&self, loc: ids::ItemLoc<ast::TypeAliasDef>) -> ids::TypeAliasId;
+
     #[salsa::invoke(crate::ids::macro_def_query)]
     fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
 

@@ -294,9 +294,9 @@ pub struct ReferenceDescriptor {
 
 #[cfg(test)]
 mod tests {
+    use ra_db::salsa::InternKey;
     use ra_syntax::{SourceFile, algo::find_node_at_offset};
     use test_utils::{extract_offset, assert_eq_text};
-    use ra_arena::ArenaId;
     use crate::Function;
 
     use crate::expr::{ExprCollector};
@@ -316,7 +316,8 @@ mod tests {
         let file = SourceFile::parse(&code);
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
-        let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
+        let irrelevant_function =
+            Function { id: crate::ids::FunctionId::from_intern_id(0u32.into()) };
         let (body, source_map) = collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
         let scopes =
@@ -421,7 +422,8 @@ mod tests {
         let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 
-        let irrelevant_function = Function { id: crate::ids::FunctionId::from_raw(0.into()) };
+        let irrelevant_function =
+            Function { id: crate::ids::FunctionId::from_intern_id(0u32.into()) };
         let (body, source_map) = collect_fn_body_syntax(irrelevant_function, fn_def);
         let scopes = ExprScopes::new(Arc::new(body));
         let scopes =

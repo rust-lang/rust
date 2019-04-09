@@ -3,39 +3,13 @@ use std::{
     sync::Arc,
 };
 
-use ra_db::{LocationInterner, FileId};
+use ra_db::{FileId, salsa};
 use ra_syntax::{TreeArc, SourceFile, AstNode, ast};
-use ra_arena::{RawId, ArenaId, impl_arena_id};
 use mbe::MacroRules;
 
 use crate::{
     Module, DefDatabase, AstId, FileAstId,
 };
-
-#[derive(Debug, Default)]
-pub struct HirInterner {
-    macros: LocationInterner<MacroCallLoc, MacroCallId>,
-    fns: LocationInterner<ItemLoc<ast::FnDef>, FunctionId>,
-    structs: LocationInterner<ItemLoc<ast::StructDef>, StructId>,
-    enums: LocationInterner<ItemLoc<ast::EnumDef>, EnumId>,
-    consts: LocationInterner<ItemLoc<ast::ConstDef>, ConstId>,
-    statics: LocationInterner<ItemLoc<ast::StaticDef>, StaticId>,
-    traits: LocationInterner<ItemLoc<ast::TraitDef>, TraitId>,
-    types: LocationInterner<ItemLoc<ast::TypeAliasDef>, TypeAliasId>,
-}
-
-impl HirInterner {
-    pub fn len(&self) -> usize {
-        self.macros.len()
-            + self.fns.len()
-            + self.structs.len()
-            + self.enums.len()
-            + self.consts.len()
-            + self.statics.len()
-            + self.traits.len()
-            + self.types.len()
-    }
-}
 
 /// hir makes heavy use of ids: integer (u32) handlers to various things. You
 /// can think of id as a pointer (but without a lifetime) or a file descriptor
@@ -135,11 +109,24 @@ pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<A
     Some(Arc::new(rules))
 }
 
+macro_rules! impl_intern_key {
+    ($name:ident) => {
+        impl salsa::InternKey for $name {
+            fn from_intern_id(v: salsa::InternId) -> Self {
+                $name(v)
+            }
+            fn as_intern_id(&self) -> salsa::InternId {
+                self.0
+            }
+        }
+    };
+}
+
 /// `MacroCallId` identifies a particular macro invocation, like
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct MacroCallId(RawId);
-impl_arena_id!(MacroCallId);
+pub struct MacroCallId(salsa::InternId);
+impl_intern_key!(MacroCallId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
@@ -148,14 +135,14 @@ pub struct MacroCallLoc {
 }
 
 impl MacroCallId {
-    pub(crate) fn loc(self, db: &impl AsRef<HirInterner>) -> MacroCallLoc {
-        db.as_ref().macros.id2loc(self)
+    pub(crate) fn loc(self, db: &impl DefDatabase) -> MacroCallLoc {
+        db.lookup_intern_macro(self)
     }
 }
 
 impl MacroCallLoc {
-    pub(crate) fn id(&self, db: &impl AsRef<HirInterner>) -> MacroCallId {
-        db.as_ref().macros.loc2id(&self)
+    pub(crate) fn id(self, db: &impl DefDatabase) -> MacroCallId {
+        db.intern_macro(self)
     }
 }
 
@@ -204,8 +191,10 @@ impl<'a, DB: DefDatabase> LocationCtx<&'a DB> {
     }
 }
 
-pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<N>, Self>;
+pub(crate) trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<N>) -> Self;
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<N>;
+
     fn from_ast(ctx: LocationCtx<&impl DefDatabase>, ast: &N) -> Self {
         let items = ctx.db.ast_id_map(ctx.file_id);
         let item_id = items.ast_id(ast);
@@ -213,80 +202,100 @@ pub(crate) trait AstItemDef<N: AstNode>: ArenaId + Clone {
     }
     fn from_ast_id(ctx: LocationCtx<&impl DefDatabase>, ast_id: FileAstId<N>) -> Self {
         let loc = ItemLoc { module: ctx.module, ast_id: ast_id.with_file_id(ctx.file_id) };
-        Self::interner(ctx.db.as_ref()).loc2id(&loc)
+        Self::intern(ctx.db, loc)
     }
     fn source(self, db: &impl DefDatabase) -> (HirFileId, TreeArc<N>) {
-        let int = Self::interner(db.as_ref());
-        let loc = int.id2loc(self);
+        let loc = self.lookup_intern(db);
         let ast = loc.ast_id.to_node(db);
         (loc.ast_id.file_id(), ast)
     }
     fn module(self, db: &impl DefDatabase) -> Module {
-        let int = Self::interner(db.as_ref());
-        let loc = int.id2loc(self);
+        let loc = self.lookup_intern(db);
         loc.module
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct FunctionId(RawId);
-impl_arena_id!(FunctionId);
+pub struct FunctionId(salsa::InternId);
+impl_intern_key!(FunctionId);
+
 impl AstItemDef<ast::FnDef> for FunctionId {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::FnDef>, Self> {
-        &interner.fns
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::FnDef>) -> Self {
+        db.intern_function(loc)
+    }
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::FnDef> {
+        db.lookup_intern_function(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct StructId(RawId);
-impl_arena_id!(StructId);
+pub struct StructId(salsa::InternId);
+impl_intern_key!(StructId);
 impl AstItemDef<ast::StructDef> for StructId {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StructDef>, Self> {
-        &interner.structs
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::StructDef>) -> Self {
+        db.intern_struct(loc)
+    }
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::StructDef> {
+        db.lookup_intern_struct(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct EnumId(RawId);
-impl_arena_id!(EnumId);
+pub struct EnumId(salsa::InternId);
+impl_intern_key!(EnumId);
 impl AstItemDef<ast::EnumDef> for EnumId {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::EnumDef>, Self> {
-        &interner.enums
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::EnumDef>) -> Self {
+        db.intern_enum(loc)
+    }
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::EnumDef> {
+        db.lookup_intern_enum(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct ConstId(RawId);
-impl_arena_id!(ConstId);
+pub struct ConstId(salsa::InternId);
+impl_intern_key!(ConstId);
 impl AstItemDef<ast::ConstDef> for ConstId {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::ConstDef>, Self> {
-        &interner.consts
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::ConstDef>) -> Self {
+        db.intern_const(loc)
+    }
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::ConstDef> {
+        db.lookup_intern_const(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct StaticId(RawId);
-impl_arena_id!(StaticId);
+pub struct StaticId(salsa::InternId);
+impl_intern_key!(StaticId);
 impl AstItemDef<ast::StaticDef> for StaticId {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::StaticDef>, Self> {
-        &interner.statics
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::StaticDef>) -> Self {
+        db.intern_static(loc)
+    }
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::StaticDef> {
+        db.lookup_intern_static(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct TraitId(RawId);
-impl_arena_id!(TraitId);
+pub struct TraitId(salsa::InternId);
+impl_intern_key!(TraitId);
 impl AstItemDef<ast::TraitDef> for TraitId {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TraitDef>, Self> {
-        &interner.traits
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::TraitDef>) -> Self {
+        db.intern_trait(loc)
+    }
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::TraitDef> {
+        db.lookup_intern_trait(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct TypeAliasId(RawId);
-impl_arena_id!(TypeAliasId);
+pub struct TypeAliasId(salsa::InternId);
+impl_intern_key!(TypeAliasId);
 impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
-    fn interner(interner: &HirInterner) -> &LocationInterner<ItemLoc<ast::TypeAliasDef>, Self> {
-        &interner.types
+    fn intern(db: &impl DefDatabase, loc: ItemLoc<ast::TypeAliasDef>) -> Self {
+        db.intern_type_alias(loc)
+    }
+    fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::TypeAliasDef> {
+        db.lookup_intern_type_alias(self)
     }
 }

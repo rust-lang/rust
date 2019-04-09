@@ -9,7 +9,7 @@ use relative_path::RelativePathBuf;
 use test_utils::{parse_fixture, CURSOR_MARKER, extract_offset};
 use rustc_hash::FxHashMap;
 
-use crate::{db, HirInterner, diagnostics::DiagnosticSink};
+use crate::{db, diagnostics::DiagnosticSink};
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
 
@@ -18,7 +18,6 @@ pub const WORKSPACE: SourceRootId = SourceRootId(0);
 pub struct MockDatabase {
     events: Mutex<Option<Vec<salsa::Event<MockDatabase>>>>,
     runtime: salsa::Runtime<MockDatabase>,
-    interner: Arc<HirInterner>,
     files: FxHashMap<String, FileId>,
 }
 
@@ -195,7 +194,6 @@ impl Default for MockDatabase {
         let mut db = MockDatabase {
             events: Default::default(),
             runtime: salsa::Runtime::default(),
-            interner: Default::default(),
             files: FxHashMap::default(),
         };
         db.set_crate_graph(Default::default());
@@ -208,16 +206,9 @@ impl salsa::ParallelDatabase for MockDatabase {
         salsa::Snapshot::new(MockDatabase {
             events: Default::default(),
             runtime: self.runtime.snapshot(self),
-            interner: Arc::clone(&self.interner),
             // only the root database can be used to get file_id by path.
             files: FxHashMap::default(),
         })
-    }
-}
-
-impl AsRef<HirInterner> for MockDatabase {
-    fn as_ref(&self) -> &HirInterner {
-        &self.interner
     }
 }
 
