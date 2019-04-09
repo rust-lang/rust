@@ -221,6 +221,14 @@ impl FnSig {
         &self.params_and_return[self.params_and_return.len() - 1]
     }
 
+    /// Applies the given substitutions to all types in this signature and
+    /// returns the result.
+    pub fn subst(&self, substs: &Substs) -> FnSig {
+        let result: Vec<_> =
+            self.params_and_return.iter().map(|ty| ty.clone().subst(substs)).collect();
+        FnSig { params_and_return: result.into() }
+    }
+
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         // Without an Arc::make_mut_slice, we can't avoid the clone here:
         let mut v: Vec<_> = self.params_and_return.iter().cloned().collect();
@@ -314,6 +322,20 @@ impl Ty {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::Ref(..) => Some(Ty::clone(a_ty.parameters.as_single())),
                 TypeCtor::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn callable_sig(&self, db: &impl HirDatabase) -> Option<FnSig> {
+        match self {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::FnPtr => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
+                TypeCtor::FnDef(def) => {
+                    let sig = db.callable_item_signature(def);
+                    Some(sig.subst(&a_ty.parameters))
+                }
                 _ => None,
             },
             _ => None,

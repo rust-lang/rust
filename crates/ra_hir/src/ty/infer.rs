@@ -41,7 +41,7 @@ use crate::{
     ty::infer::diagnostics::InferenceDiagnostic,
     diagnostics::DiagnosticSink,
 };
-use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor, traits::{ Solution, Obligation, Guidance}, CallableDef, TraitRef};
+use super::{Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, traits::{ Solution, Obligation, Guidance}, CallableDef, TraitRef};
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
@@ -839,32 +839,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let method_ty = method_ty.apply_substs(substs);
         let method_ty = self.insert_type_vars(method_ty);
         self.register_obligations_for_call(&method_ty);
-        let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
-            Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::FnPtr => {
-                    let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
-                    if !sig.params().is_empty() {
-                        (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
-                    } else {
-                        (Ty::Unknown, Vec::new(), sig.ret().clone())
-                    }
+        let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
+            Some(sig) => {
+                if !sig.params().is_empty() {
+                    (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
+                } else {
+                    (Ty::Unknown, Vec::new(), sig.ret().clone())
                 }
-                TypeCtor::FnDef(def) => {
-                    let sig = self.db.callable_item_signature(def);
-                    let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
-
-                    if !sig.params().is_empty() {
-                        let mut params_iter =
-                            sig.params().iter().map(|ty| ty.clone().subst(&a_ty.parameters));
-                        let receiver_ty = params_iter.next().unwrap();
-                        (receiver_ty, params_iter.collect(), ret_ty)
-                    } else {
-                        (Ty::Unknown, Vec::new(), ret_ty)
-                    }
-                }
-                _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
-            },
-            _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
+            }
+            None => (Ty::Unknown, Vec::new(), Ty::Unknown),
         };
         // Apply autoref so the below unification works correctly
         // FIXME: return correct autorefs from lookup_method
@@ -937,27 +920,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let (param_tys, ret_ty) = match &callee_ty {
-                    Ty::Apply(a_ty) => match a_ty.ctor {
-                        TypeCtor::FnPtr => {
-                            let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
-                            (sig.params().to_vec(), sig.ret().clone())
-                        }
-                        TypeCtor::FnDef(def) => {
-                            let sig = self.db.callable_item_signature(def);
-                            let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
-                            let param_tys = sig
-                                .params()
-                                .iter()
-                                .map(|ty| ty.clone().subst(&a_ty.parameters))
-                                .collect();
-                            (param_tys, ret_ty)
-                        }
-                        _ => (Vec::new(), Ty::Unknown),
-                    },
-                    _ => {
-                        // not callable
-                        // FIXME report an error?
+                let (param_tys, ret_ty) = match callee_ty.callable_sig(self.db) {
+                    Some(sig) => (sig.params().to_vec(), sig.ret().clone()),
+                    None => {
+                        // Not callable
+                        // FIXME: report an error
                         (Vec::new(), Ty::Unknown)
                     }
                 };
