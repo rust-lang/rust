@@ -76,7 +76,8 @@ struct PerDefTables<'tcx> {
     inherent_impls: PerDefTable<Lazy<[DefIndex]>>,
     variances: PerDefTable<Lazy<[ty::Variance]>>,
     generics: PerDefTable<Lazy<ty::Generics>>,
-    predicates_defined_on: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
+    explicit_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
+    inferred_outlives: PerDefTable<Lazy<&'tcx [(ty::Predicate<'tcx>, Span)]>>,
     super_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
 
     mir: PerDefTable<Lazy<mir::Body<'tcx>>>,
@@ -523,7 +524,8 @@ impl<'tcx> EncodeContext<'tcx> {
             inherent_impls: self.per_def.inherent_impls.encode(&mut self.opaque),
             variances: self.per_def.variances.encode(&mut self.opaque),
             generics: self.per_def.generics.encode(&mut self.opaque),
-            predicates_defined_on: self.per_def.predicates_defined_on.encode(&mut self.opaque),
+            explicit_predicates: self.per_def.explicit_predicates.encode(&mut self.opaque),
+            inferred_outlives: self.per_def.inferred_outlives.encode(&mut self.opaque),
             super_predicates: self.per_def.super_predicates.encode(&mut self.opaque),
 
             mir: self.per_def.mir.encode(&mut self.opaque),
@@ -674,7 +676,8 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -717,7 +720,8 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -775,7 +779,8 @@ impl EncodeContext<'tcx> {
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
     }
 
     fn encode_struct_ctor(&mut self, adt_def_id: DefId, def_id: DefId) {
@@ -818,7 +823,8 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -828,10 +834,16 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.generics[def_id] <- self.tcx.generics_of(def_id));
     }
 
-    fn encode_predicates_defined_on(&mut self, def_id: DefId) {
-        debug!("EncodeContext::encode_predicates_defined_on({:?})", def_id);
-        record!(self.per_def.predicates_defined_on[def_id] <-
-            self.tcx.predicates_defined_on(def_id))
+    fn encode_explicit_predicates(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_explicit_predicates({:?})", def_id);
+        record!(self.per_def.explicit_predicates[def_id] <-
+            self.tcx.explicit_predicates_of(def_id));
+    }
+
+    fn encode_inferred_outlives(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_inferred_outlives({:?})", def_id);
+        record!(self.per_def.inferred_outlives[def_id] <-
+            self.tcx.inferred_outlives_of(def_id));
     }
 
     fn encode_super_predicates(&mut self, def_id: DefId) {
@@ -913,7 +925,8 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -980,7 +993,8 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
         let mir = match ast_item.kind {
             hir::ImplItemKind::Const(..) => true,
             hir::ImplItemKind::Method(ref sig, _) => {
@@ -1254,7 +1268,8 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Trait(..) |
             hir::ItemKind::TraitAlias(..) => {
                 self.encode_generics(def_id);
-                self.encode_predicates_defined_on(def_id);
+                self.encode_explicit_predicates(def_id);
+                self.encode_inferred_outlives(def_id);
             }
             _ => {}
         }
@@ -1359,7 +1374,8 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
         self.encode_item_type(def_id);
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
         self.encode_optimized_mir(def_id);
         self.encode_promoted_mir(def_id);
     }
@@ -1570,7 +1586,8 @@ impl EncodeContext<'tcx> {
             self.encode_variances_of(def_id);
         }
         self.encode_generics(def_id);
-        self.encode_predicates_defined_on(def_id);
+        self.encode_explicit_predicates(def_id);
+        self.encode_inferred_outlives(def_id);
     }
 }
 
