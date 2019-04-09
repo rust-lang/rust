@@ -314,6 +314,13 @@ macro_rules! eprintln {
 /// You can also use `dbg!()` without a value to just print the
 /// file and line whenever it's reached.
 ///
+/// Finally, if you want to `dbg!(..)` multiple values, it will treat them as
+/// a tuple (and return it, too):
+///
+/// ```
+/// assert_eq!(dbg!(1usize, 2u32), (1, 2));
+/// ```
+///
 /// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
 /// [`debug!`]: https://docs.rs/log/*/log/macro.debug.html
 /// [`log`]: https://crates.io/crates/log
@@ -333,6 +340,9 @@ macro_rules! dbg {
                 tmp
             }
         }
+    };
+    ($val:expr, $($more:expr),+) => {
+        dbg!(($val, $($more),*))
     }
 }
 
