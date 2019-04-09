@@ -108,17 +108,17 @@ extern "C" {
     #[link_name = "llvm.mips.addv.d"]
     fn msa_addv_d(a: v2i64, b: v2i64) -> v2i64;
     #[link_name = "llvm.mips.addvi.b"]
-    fn msa_addvi_b(a: v16i8, b: u32) -> v16i8;
+    fn msa_addvi_b(a: v16i8, b: i32) -> v16i8;
     #[link_name = "llvm.mips.addvi.h"]
-    fn msa_addvi_h(a: v8i16, b: u32) -> v8i16;
+    fn msa_addvi_h(a: v8i16, b: i32) -> v8i16;
     #[link_name = "llvm.mips.addvi.w"]
-    fn msa_addvi_w(a: v4i32, b: u32) -> v4i32;
+    fn msa_addvi_w(a: v4i32, b: i32) -> v4i32;
     #[link_name = "llvm.mips.addvi.d"]
-    fn msa_addvi_d(a: v2i64, b: u32) -> v2i64;
+    fn msa_addvi_d(a: v2i64, b: i32) -> v2i64;
     #[link_name = "llvm.mips.and.v"]
     fn msa_and_v(a: v16u8, b: v16u8) -> v16u8;
     #[link_name = "llvm.mips.andi.b"]
-    fn msa_andi_b(a: v16u8, b: u32) -> v16u8;
+    fn msa_andi_b(a: v16u8, b: i32) -> v16u8;
     #[link_name = "llvm.mips.asub.s.b"]
     fn msa_asub_s_b(a: v16i8, b: v16i8) -> v16i8;
     #[link_name = "llvm.mips.asub.s.h"]
@@ -719,13 +719,13 @@ extern "C" {
     #[link_name = "llvm.mips.insve.d"]
     fn msa_insve_d(a: v2i64, b: i32, c: v2i64) -> v2i64;
     #[link_name = "llvm.mips.ld.b"]
-    fn msa_ld_b(mem_addr: *mut i8, b: i32) -> v16i8;
+    fn msa_ld_b(mem_addr: *mut u8, b: i32) -> v16i8;
     #[link_name = "llvm.mips.ld.h"]
-    fn msa_ld_h(mem_addr: *mut i8, b: i32) -> v8i16;
+    fn msa_ld_h(mem_addr: *mut u8, b: i32) -> v8i16;
     #[link_name = "llvm.mips.ld.w"]
-    fn msa_ld_w(mem_addr: *mut i8, b: i32) -> v4i32;
+    fn msa_ld_w(mem_addr: *mut u8, b: i32) -> v4i32;
     #[link_name = "llvm.mips.ld.d"]
-    fn msa_ld_d(mem_addr: *mut i8, b: i32) -> v2i64;
+    fn msa_ld_d(mem_addr: *mut u8, b: i32) -> v2i64;
     #[link_name = "llvm.mips.ldi.b"]
     fn msa_ldi_b(a: i32) -> v16i8;
     #[link_name = "llvm.mips.ldi.h"]
@@ -1063,13 +1063,13 @@ extern "C" {
     #[link_name = "llvm.mips.srlri.d"]
     fn msa_srlri_d(a: v2i64, b: i32) -> v2i64;
     #[link_name = "llvm.mips.st.b"]
-    fn msa_st_b(a: v16i8, mem_addr: *mut i8, imm_s10: i32) -> ();
+    fn msa_st_b(a: v16i8, mem_addr: *mut u8, imm_s10: i32) -> ();
     #[link_name = "llvm.mips.st.h"]
-    fn msa_st_h(a: v8i16, mem_addr: *mut i8, imm_s11: i32) -> ();
+    fn msa_st_h(a: v8i16, mem_addr: *mut u8, imm_s11: i32) -> ();
     #[link_name = "llvm.mips.st.w"]
-    fn msa_st_w(a: v4i32, mem_addr: *mut i8, imm_s12: i32) -> ();
+    fn msa_st_w(a: v4i32, mem_addr: *mut u8, imm_s12: i32) -> ();
     #[link_name = "llvm.mips.st.d"]
-    fn msa_st_d(a: v2i64, mem_addr: *mut i8, imm_s13: i32) -> ();
+    fn msa_st_d(a: v2i64, mem_addr: *mut u8, imm_s13: i32) -> ();
     #[link_name = "llvm.mips.subs.s.b"]
     fn msa_subs_s_b(a: v16i8, b: v16i8) -> v16i8;
     #[link_name = "llvm.mips.subs.s.h"]
@@ -1410,7 +1410,7 @@ pub unsafe fn __msa_addv_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.b, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_addvi_b(a: v16i8, imm5: u32) -> v16i8 {
+pub unsafe fn __msa_addvi_b(a: v16i8, imm5: i32) -> v16i8 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_b(a, $imm5)
@@ -1429,7 +1429,7 @@ pub unsafe fn __msa_addvi_b(a: v16i8, imm5: u32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.h, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_addvi_h(a: v8i16, imm5: u32) -> v8i16 {
+pub unsafe fn __msa_addvi_h(a: v8i16, imm5: i32) -> v8i16 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_h(a, $imm5)
@@ -1448,7 +1448,7 @@ pub unsafe fn __msa_addvi_h(a: v8i16, imm5: u32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.w, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_addvi_w(a: v4i32, imm5: u32) -> v4i32 {
+pub unsafe fn __msa_addvi_w(a: v4i32, imm5: i32) -> v4i32 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_w(a, $imm5)
@@ -1467,7 +1467,7 @@ pub unsafe fn __msa_addvi_w(a: v4i32, imm5: u32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addvi.d, imm5 = 0b10111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_addvi_d(a: v2i64, imm5: u32) -> v2i64 {
+pub unsafe fn __msa_addvi_d(a: v2i64, imm5: i32) -> v2i64 {
     macro_rules! call {
         ($imm5:expr) => {
             msa_addvi_d(a, $imm5)
@@ -1500,7 +1500,7 @@ pub unsafe fn __msa_and_v(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(andi.b, imm8 = 0b10010111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_andi_b(a: v16u8, imm8: u32) -> v16u8 {
+pub unsafe fn __msa_andi_b(a: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
             msa_andi_b(a, $imm8)
@@ -5946,7 +5946,7 @@ pub unsafe fn __msa_insve_d(a: v2i64, imm1: i32, c: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.b, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_ld_b(mem_addr: *mut i8, imm_s10: i32) -> v16i8 {
+pub unsafe fn __msa_ld_b(mem_addr: *mut u8, imm_s10: i32) -> v16i8 {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_ld_b(mem_addr, $imm_s10)
@@ -5965,7 +5965,7 @@ pub unsafe fn __msa_ld_b(mem_addr: *mut i8, imm_s10: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.h, imm_s11 = 0b11111111111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_ld_h(mem_addr: *mut i8, imm_s11: i32) -> v8i16 {
+pub unsafe fn __msa_ld_h(mem_addr: *mut u8, imm_s11: i32) -> v8i16 {
     macro_rules! call {
         ($imm_s11:expr) => {
             msa_ld_h(mem_addr, $imm_s11)
@@ -5984,7 +5984,7 @@ pub unsafe fn __msa_ld_h(mem_addr: *mut i8, imm_s11: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.w, imm_s12 = 0b111111111111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_ld_w(mem_addr: *mut i8, imm_s12: i32) -> v4i32 {
+pub unsafe fn __msa_ld_w(mem_addr: *mut u8, imm_s12: i32) -> v4i32 {
     macro_rules! call {
         ($imm_s12:expr) => {
             msa_ld_w(mem_addr, $imm_s12)
@@ -6003,7 +6003,7 @@ pub unsafe fn __msa_ld_w(mem_addr: *mut i8, imm_s12: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ld.d, imm_s13 = 0b1111111111111))]
 #[rustc_args_required_const(1)]
-pub unsafe fn __msa_ld_d(mem_addr: *mut i8, imm_s13: i32) -> v2i64 {
+pub unsafe fn __msa_ld_d(mem_addr: *mut u8, imm_s13: i32) -> v2i64 {
     macro_rules! call {
         ($imm_s13:expr) => {
             msa_ld_d(mem_addr, $imm_s13)
@@ -8706,7 +8706,7 @@ pub unsafe fn __msa_srlri_d(a: v2i64, imm6: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.b, imm_s10 = 0b1111111111))]
 #[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut i8, imm_s10: i32) -> () {
+pub unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut u8, imm_s10: i32) -> () {
     macro_rules! call {
         ($imm_s10:expr) => {
             msa_st_b(a, mem_addr, $imm_s10)
@@ -8725,7 +8725,7 @@ pub unsafe fn __msa_st_b(a: v16i8, mem_addr: *mut i8, imm_s10: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.h, imm_s11 = 0b11111111111))]
 #[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut i8, imm_s11: i32) -> () {
+pub unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut u8, imm_s11: i32) -> () {
     macro_rules! call {
         ($imm_s11:expr) => {
             msa_st_h(a, mem_addr, $imm_s11)
@@ -8744,7 +8744,7 @@ pub unsafe fn __msa_st_h(a: v8i16, mem_addr: *mut i8, imm_s11: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.w, imm_s12 = 0b111111111111))]
 #[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut i8, imm_s12: i32) -> () {
+pub unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut u8, imm_s12: i32) -> () {
     macro_rules! call {
         ($imm_s12:expr) => {
             msa_st_w(a, mem_addr, $imm_s12)
@@ -8763,7 +8763,7 @@ pub unsafe fn __msa_st_w(a: v4i32, mem_addr: *mut i8, imm_s12: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(st.d, imm_s13 = 0b1111111111111))]
 #[rustc_args_required_const(2)]
-pub unsafe fn __msa_st_d(a: v2i64, mem_addr: *mut i8, imm_s13: i32) -> () {
+pub unsafe fn __msa_st_d(a: v2i64, mem_addr: *mut u8, imm_s13: i32) -> () {
     macro_rules! call {
         ($imm_s13:expr) => {
             msa_st_d(a, mem_addr, $imm_s13)
@@ -14811,7 +14811,7 @@ mod tests {
             16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31
         ];
-        let p = &mut a[4] as *mut _ as *mut i8;
+        let p = &mut a[4] as *mut _ as *mut u8;
         #[rustfmt::skip]
         let r = i8x16::new(
             13, 14, 15, 16, 
@@ -14830,7 +14830,7 @@ mod tests {
             0, 1, 2, 3, 4, 5, 6, 7, 
             8, 9, 10, 11, 12, 13, 14, 15
         ];
-        let p = &mut a[4] as *mut _ as *mut i8;
+        let p = &mut a[4] as *mut _ as *mut u8;
         #[rustfmt::skip]
         let r = i16x8::new(3, 4, 5, 6, 7, 8, 9, 10);
 
@@ -14841,7 +14841,7 @@ mod tests {
     unsafe fn test_msa_ld_w() {
         #[rustfmt::skip]
         let mut a : [i32; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
-        let p = &mut a[3] as *mut _ as *mut i8;
+        let p = &mut a[3] as *mut _ as *mut u8;
         #[rustfmt::skip]
         let r = i32x4::new(2, 3, 4, 5);
 
@@ -14852,7 +14852,7 @@ mod tests {
     unsafe fn test_msa_ld_d() {
         #[rustfmt::skip]
         let mut a : [i64; 8] = [0, 1, 2, 3, 4, 5, 6, 7];
-        let p = &mut a[4] as *mut _ as *mut i8;
+        let p = &mut a[4] as *mut _ as *mut u8;
         #[rustfmt::skip]
         let r = i64x2::new(0, 1);
 
@@ -17825,7 +17825,7 @@ mod tests {
         let mut arr: [i16; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
         #[rustfmt::skip]
         let r  : [i16; 8] = [13, 14, 15, 16, 17, 18, 19, 20];
-        __msa_st_h(::mem::transmute(a), arr.as_mut_ptr() as *mut i8, 0);
+        __msa_st_h(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
@@ -17836,7 +17836,7 @@ mod tests {
         let mut arr: [i32; 4] = [0, 0, 0, 0];
         #[rustfmt::skip]
         let r  : [i32; 4] = [13, 14, 15, 16];
-        __msa_st_w(::mem::transmute(a), arr.as_mut_ptr() as *mut i8, 0);
+        __msa_st_w(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
@@ -17847,7 +17847,7 @@ mod tests {
         let mut arr: [i64; 2] = [0, 0];
         #[rustfmt::skip]
         let r : [i64; 2] = [13, 14];
-        __msa_st_d(::mem::transmute(a), arr.as_mut_ptr() as *mut i8, 0);
+        __msa_st_d(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
