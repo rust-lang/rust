@@ -91,7 +91,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 ExprKind::Match(ref matchee, _, _) => {
                     if let ExprKind::Tup(ref tup) = matchee.node {
                         if tup.is_empty() {
-                            let sugg = format!("{}.to_string()", snippet(cx, expr.span, "<expr>").into_owned());
+                            let actual_snippet = snippet(cx, expr.span, "<expr>").to_string();
+                            let actual_snippet = actual_snippet.replace("{{}}", "{}");
+                            let sugg = format!("{}.to_string()", actual_snippet);
                             span_useless_format(cx, span, "consider using .to_string()", sugg);
                         }
                     }

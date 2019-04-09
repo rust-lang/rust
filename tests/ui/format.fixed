@@ -11,6 +11,8 @@ macro_rules! foo {
 
 fn main() {
     "foo".to_string();
+    "{}".to_string();
+    "{} abc {}".to_string();
 
     "foo".to_string();
     format!("{:?}", "foo"); // Don't warn about `Debug`.
