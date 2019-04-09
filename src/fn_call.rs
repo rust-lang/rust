@@ -215,36 +215,22 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 // figure out some way to actually process some of them.
                 //
                 // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
-                // is called if a `HashMap` is created the regular way.
+                // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                 match this.read_scalar(args[0])?.to_usize(this)? as i64 {
                     // SYS_getrandom on x86_64 and x86 respectively
                     318 | 355 => {
-                        match this.machine.rng.as_ref() {
-                            Some(rng) => {
-                                let ptr = this.read_scalar(args[1])?.to_ptr()?;
-                                let len = this.read_scalar(args[2])?.to_usize(this)?;
+                        let ptr = this.read_scalar(args[1])?.to_ptr()?;
+                        let len = this.read_scalar(args[2])?.to_usize(this)?;
 
-                                // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
-                                // neither of which have any effect on our current PRNG
-                                let _flags = this.read_scalar(args[3])?.to_i32()?;
+                        // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
+                        // neither of which have any effect on our current PRNG
+                        let _flags = this.read_scalar(args[3])?.to_i32()?;
 
-                                let mut data = vec![0; len as usize];
-                                rng.borrow_mut().fill_bytes(&mut data);
-
-                                this.memory_mut().get_mut(ptr.alloc_id)?
+                        let data = gen_random(this, len as usize)?;
+                        this.memory_mut().get_mut(ptr.alloc_id)?
                                     .write_bytes(tcx, ptr, &data)?;
 
-                                this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
-
-                            },
-                            None => {
-                                return err!(Unimplemented(
-                                    "miri does not support random number generators in deterministic mode!
-                                    Use '-Zmiri-seed=<seed>' to enable random number generation".to_owned(),
-                                ))
-                            }
-                        }
-
+                        this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
                         return err!(Unimplemented(
@@ -768,6 +754,17 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             "GetCommandLineW" => {
                 this.write_scalar(Scalar::Ptr(this.machine.cmd_line.unwrap()), dest)?;
             }
+            // The actual name of 'RtlGenRandom'
+            "SystemFunction036" => {
+                let ptr = this.read_scalar(args[1])?.to_ptr()?;
+                let len = this.read_scalar(args[2])?.to_usize(this)?;
+
+                let data = gen_random(this, len as usize)?;
+                this.memory_mut().get_mut(ptr.alloc_id)?
+                    .write_bytes(tcx, ptr, &data)?;
+
+                this.write_scalar(Scalar::from_bool(true), dest)?;
+            }
 
             // We can't execute anything else.
             _ => {
@@ -784,5 +781,23 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 
     fn write_null(&mut self, dest: PlaceTy<'tcx, Borrow>) -> EvalResult<'tcx> {
         self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
+    }
+}
+
+fn gen_random<'a, 'mir, 'tcx>(this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
+                                 len: usize) -> Result<Vec<u8>, EvalError<'tcx>>  {
+
+    match this.machine.rng.as_ref() {
+        Some(rng) => {
+            let mut data = vec![0; len];
+            rng.borrow_mut().fill_bytes(&mut data);
+            Ok(data)
+        }
+        None => {
+            err!(Unimplemented(
+                "miri does not support random number generators in deterministic mode!
+                Use '-Zmiri-seed=<seed>' to enable random number generation".to_owned(),
+            ))
+        }
     }
 }
