@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use syntax::source_map::{BytePos, Pos, Span};
 
-use crate::comment::{rewrite_comment, CodeCharKind, CommentCodeSlices};
+use crate::comment::{is_last_comment_block, rewrite_comment, CodeCharKind, CommentCodeSlices};
 use crate::config::file_lines::FileLines;
 use crate::config::{EmitMode, FileName};
 use crate::shape::{Indent, Shape};
@@ -288,7 +288,7 @@ impl<'a> FmtVisitor<'a> {
                 .next()
             {
                 Some('\n') | Some('\r') => {
-                    if !subslice.trim_end().ends_with("*/") {
+                    if !is_last_comment_block(subslice) {
                         self.push_str("\n");
                     }
                 }
