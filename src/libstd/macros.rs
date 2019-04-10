@@ -341,8 +341,8 @@ macro_rules! dbg {
             }
         }
     };
-    ($val:expr, $($more:expr),+) => {
-        dbg!(($val, $($more),*))
+    ($($val:expr),+ $(,)?) => {
+        ($(dbg!($val)),+,)
     }
 }
 
