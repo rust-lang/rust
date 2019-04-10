@@ -55,29 +55,41 @@ fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{check_completion, CompletionKind};
+    use crate::completion::{do_completion, CompletionKind, CompletionItem};
+    use insta::assert_debug_snapshot_matches;
 
-    fn check_ref_completion(name: &str, code: &str) {
-        check_completion(name, code, CompletionKind::Reference);
+    fn do_ref_completion(code: &str) -> Vec<CompletionItem> {
+        do_completion(code, CompletionKind::Reference)
     }
 
     #[test]
     fn test_struct_field_completion() {
-        check_ref_completion(
-            "struct_field_completion",
-            r"
-            struct A { the_field: u32 }
-            fn foo(a: A) {
-               a.<|>
-            }
-            ",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
+                r"
+                struct A { the_field: u32 }
+                fn foo(a: A) {
+                a.<|>
+                }
+                ",
+        ),
+            @r###"[
+    CompletionItem {
+        label: "the_field",
+        source_range: [94; 94),
+        delete: [94; 94),
+        insert: "the_field",
+        kind: Field,
+        detail: "u32"
+    }
+]"###
         );
     }
 
     #[test]
     fn test_struct_field_completion_self() {
-        check_ref_completion(
-            "struct_field_completion_self",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             struct A {
                 /// This is the_field
@@ -89,13 +101,35 @@ mod tests {
                 }
             }
             ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "foo",
+        source_range: [187; 187),
+        delete: [187; 187),
+        insert: "foo()$0",
+        kind: Method,
+        detail: "fn foo(self)"
+    },
+    CompletionItem {
+        label: "the_field",
+        source_range: [187; 187),
+        delete: [187; 187),
+        insert: "the_field",
+        kind: Field,
+        detail: "(u32,)",
+        documentation: Documentation(
+            "This is the_field"
+        )
+    }
+]"###
         );
     }
 
     #[test]
     fn test_struct_field_completion_autoderef() {
-        check_ref_completion(
-            "struct_field_completion_autoderef",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             struct A { the_field: (u32, i32) }
             impl A {
@@ -104,26 +138,47 @@ mod tests {
                 }
             }
             ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "foo",
+        source_range: [126; 126),
+        delete: [126; 126),
+        insert: "foo()$0",
+        kind: Method,
+        detail: "fn foo(&self)"
+    },
+    CompletionItem {
+        label: "the_field",
+        source_range: [126; 126),
+        delete: [126; 126),
+        insert: "the_field",
+        kind: Field,
+        detail: "(u32, i32)"
+    }
+]"###
         );
     }
 
     #[test]
     fn test_no_struct_field_completion_for_method_call() {
-        check_ref_completion(
-            "no_struct_field_completion_for_method_call",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             struct A { the_field: u32 }
             fn foo(a: A) {
                a.<|>()
             }
             ",
+        ),
+        @"[]"
         );
     }
 
     #[test]
     fn test_method_completion() {
-        check_ref_completion(
-            "method_completion",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             struct A {}
             impl A {
@@ -133,13 +188,24 @@ mod tests {
                a.<|>
             }
             ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "the_method",
+        source_range: [144; 144),
+        delete: [144; 144),
+        insert: "the_method()$0",
+        kind: Method,
+        detail: "fn the_method(&self)"
+    }
+]"###
         );
     }
 
     #[test]
     fn test_no_non_self_method() {
-        check_ref_completion(
-            "no_non_self_method",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             struct A {}
             impl A {
@@ -149,13 +215,15 @@ mod tests {
                a.<|>
             }
             ",
+        ),
+        @"[]"
         );
     }
 
     #[test]
     fn test_method_attr_filtering() {
-        check_ref_completion(
-            "method_attr_filtering",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             struct A {}
             impl A {
@@ -169,26 +237,56 @@ mod tests {
                a.<|>
             }
             ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "the_method",
+        source_range: [249; 249),
+        delete: [249; 249),
+        insert: "the_method()$0",
+        kind: Method,
+        detail: "fn the_method(&self)"
+    }
+]"###
         );
     }
 
     #[test]
     fn test_tuple_field_completion() {
-        check_ref_completion(
-            "tuple_field_completion",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             fn foo() {
                let b = (0, 3.14);
                b.<|>
             }
             ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "0",
+        source_range: [75; 75),
+        delete: [75; 75),
+        insert: "0",
+        kind: Field,
+        detail: "i32"
+    },
+    CompletionItem {
+        label: "1",
+        source_range: [75; 75),
+        delete: [75; 75),
+        insert: "1",
+        kind: Field,
+        detail: "f64"
+    }
+]"###
         );
     }
 
     #[test]
     fn test_tuple_field_inference() {
-        check_ref_completion(
-            "tuple_field_inference",
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
             r"
             pub struct S;
             impl S {
@@ -204,6 +302,17 @@ mod tests {
                 }
             }
             ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "blah",
+        source_range: [299; 300),
+        delete: [299; 300),
+        insert: "blah()$0",
+        kind: Method,
+        detail: "pub fn blah(&self)"
+    }
+]"###
         );
     }
 }
