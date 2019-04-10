@@ -2324,7 +2324,7 @@ fn infer(content: &str) -> String {
 
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
-                Some(sp) => sp,
+                Some(sp) => sp.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr()),
                 None => continue,
             };
             types.push((syntax_ptr, ty));

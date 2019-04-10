@@ -3,14 +3,14 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
-    AstNode, SyntaxNode, TextUnit, TextRange, SyntaxNodePtr,
+    AstNode, SyntaxNode, TextUnit, TextRange, SyntaxNodePtr, AstPtr,
     algo::generate,
     ast,
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    Name, AsName,DefWithBody,
+    Name, AsName,DefWithBody, Either,
     expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySourceMap},
     HirDatabase,
 };
@@ -116,7 +116,7 @@ pub struct ScopesWithSourceMap {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeEntryWithSyntax {
     name: Name,
-    ptr: SyntaxNodePtr,
+    ptr: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
 }
 
 impl ScopeEntryWithSyntax {
@@ -124,7 +124,7 @@ impl ScopeEntryWithSyntax {
         &self.name
     }
 
-    pub fn ptr(&self) -> SyntaxNodePtr {
+    pub fn ptr(&self) -> Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>> {
         self.ptr
     }
 }
@@ -192,14 +192,14 @@ impl ScopesWithSourceMap {
 
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
-        let name_ptr = SyntaxNodePtr::new(pat.syntax());
+        let ptr = Either::A(AstPtr::new(pat.into()));
         fn_def
             .syntax()
             .descendants()
             .filter_map(ast::NameRef::cast)
             .filter(|name_ref| match self.resolve_local_name(*name_ref) {
                 None => false,
-                Some(entry) => entry.ptr() == name_ptr,
+                Some(entry) => entry.ptr() == ptr,
             })
             .map(|name_ref| ReferenceDescriptor {
                 name: name_ref.syntax().text().to_string(),
@@ -429,7 +429,8 @@ mod tests {
         let scopes =
             ScopesWithSourceMap { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
         let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
-        let local_name = local_name_entry.ptr();
+        let local_name =
+            local_name_entry.ptr().either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
         assert_eq!(local_name.range(), expected_name.syntax().range());
     }
 

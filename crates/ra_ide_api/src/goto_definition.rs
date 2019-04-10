@@ -113,6 +113,7 @@ pub(crate) fn reference_definition(
                 let ptr = source_map.pat_syntax(pat).expect("pattern not found in syntax mapping");
                 let name =
                     path.as_ident().cloned().expect("local binding from a multi-segment path");
+                let ptr = ptr.either(|it| it.into(), |it| it.into());
                 let nav = NavigationTarget::from_scope_entry(file_id, name, ptr);
                 return Exact(nav);
             }
