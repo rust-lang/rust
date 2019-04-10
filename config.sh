@@ -18,6 +18,6 @@ else
     cargo build
 fi
 
-export RUSTFLAGS='-Zalways-encode-mir -Cpanic=abort -Cdebuginfo=2 -Zcodegen-backend='$(pwd)'/target/'$channel'/librustc_codegen_cranelift.'$dylib_ext
+export RUSTFLAGS='-Zalways-encode-mir -Cpanic=abort -Cdebuginfo=2 -Zcodegen-backend='$(pwd)'/target/'$channel'/librustc_codegen_cranelift.'$dylib_ext' --sysroot '$(pwd)'/build_sysroot/sysroot'
 RUSTC="rustc $RUSTFLAGS -L crate=target/out --out-dir target/out"
 export RUST_LOG=warn # display metadata load errors

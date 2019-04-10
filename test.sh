@@ -25,21 +25,21 @@ echo "[BUILD] sysroot"
 time ./build_sysroot/build_sysroot.sh
 
 echo "[BUILD+RUN] alloc_example"
-$RUSTC --sysroot ./build_sysroot/sysroot example/alloc_example.rs --crate-type bin
+$RUSTC example/alloc_example.rs --crate-type bin
 ./target/out/alloc_example
 
 echo "[BUILD+RUN] std_example"
-$RUSTC --sysroot ./build_sysroot/sysroot example/std_example.rs --crate-type bin
+$RUSTC example/std_example.rs --crate-type bin
 ./target/out/std_example
 
 echo "[BUILD] mod_bench"
-$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin
+$RUSTC example/mod_bench.rs --crate-type bin
 
 # FIXME linker gives multiple definitions error on Linux
 #echo "[BUILD] sysroot in release mode"
 #./build_sysroot/build_sysroot.sh --release
 
-COMPILE_MOD_BENCH_INLINE="$RUSTC --sysroot ./build_sysroot/sysroot example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -O --crate-name mod_bench_inline"
+COMPILE_MOD_BENCH_INLINE="$RUSTC example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -O --crate-name mod_bench_inline"
 COMPILE_MOD_BENCH_LLVM_0="rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o target/out/mod_bench_llvm_0 -Cpanic=abort"
 COMPILE_MOD_BENCH_LLVM_1="rustc example/mod_bench.rs --crate-type bin -Copt-level=1 -o target/out/mod_bench_llvm_1 -Cpanic=abort"
 COMPILE_MOD_BENCH_LLVM_2="rustc example/mod_bench.rs --crate-type bin -Copt-level=2 -o target/out/mod_bench_llvm_2 -Cpanic=abort"
