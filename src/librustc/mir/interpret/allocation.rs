@@ -239,12 +239,11 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        msg: CheckInAllocMsg,
     ) -> EvalResult<'tcx, &[u8]>
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        self.get_bytes_internal(cx, ptr, size, false, msg)
+        self.get_bytes_internal(cx, ptr, size, false, CheckInAllocMsg::MemoryAccess)
     }
 
     /// Just calling this already marks everything as defined and removes relocations,
@@ -254,13 +253,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        msg: CheckInAllocMsg,
     ) -> EvalResult<'tcx, &mut [u8]>
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
-        self.check_bounds(cx, ptr, size, msg)?;
+        self.check_bounds(cx, ptr, size, CheckInAllocMsg::MemoryAccess)?;
 
         self.mark_definedness(ptr, size, true)?;
         self.clear_relocations(cx, ptr, size)?;
@@ -314,7 +312,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // Check bounds and relocations on the edges
-        self.get_bytes_with_undef_and_ptr(cx, ptr, size, CheckInAllocMsg::OutOfBounds)?;
+        self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Check undef and ptr
         if !allow_ptr_and_undef {
             self.check_defined(ptr, size)?;
@@ -335,8 +333,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64),
-                                       CheckInAllocMsg::MemoryAccess)?;
+        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
         bytes.clone_from_slice(src);
         Ok(())
     }
@@ -352,7 +349,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        let bytes = self.get_bytes_mut(cx, ptr, count, CheckInAllocMsg::MemoryAccess)?;
+        let bytes = self.get_bytes_mut(cx, ptr, count)?;
         for b in bytes {
             *b = val;
         }
@@ -377,8 +374,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // get_bytes_unchecked tests relocation edges
-        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size,
-                                                      CheckInAllocMsg::MemoryAccess)?;
+        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
@@ -455,7 +451,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         };
 
         let endian = cx.data_layout().endian;
-        let dst = self.get_bytes_mut(cx, ptr, type_size, CheckInAllocMsg::MemoryAccess)?;
+        let dst = self.get_bytes_mut(cx, ptr, type_size)?;
         write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation

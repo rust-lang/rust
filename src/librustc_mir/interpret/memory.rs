@@ -731,10 +731,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         // This checks relocation edges on the src.
         let src_bytes = self.get(src.alloc_id)?
-            .get_bytes_with_undef_and_ptr(&tcx, src, size, CheckInAllocMsg::MemoryAccess)?
+            .get_bytes_with_undef_and_ptr(&tcx, src, size)?
             .as_ptr();
         let dest_bytes = self.get_mut(dest.alloc_id)?
-            .get_bytes_mut(&tcx, dest, size * length, CheckInAllocMsg::MemoryAccess)?
+            .get_bytes_mut(&tcx, dest, size * length)?
             .as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
