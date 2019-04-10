@@ -9,7 +9,7 @@ impl FnOnce<(u32, u32)> for Test {
     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
         a + b
     }
-    //~^^^ ERROR rust-call ABI is subject to change (see issue #29625)
+    //~^^^ ERROR rust-call ABI is subject to change
 }
 
 fn main() {

@@ -8,7 +8,7 @@ use stability_attribute_issue::*;
 
 fn main() {
     unstable();
-    //~^ ERROR use of unstable library feature 'unstable_test_feature' (see issue #1)
+    //~^ ERROR use of unstable library feature 'unstable_test_feature'
     unstable_msg();
-    //~^ ERROR use of unstable library feature 'unstable_test_feature': message (see issue #2)
+    //~^ ERROR use of unstable library feature 'unstable_test_feature': message
 }

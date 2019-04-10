@@ -7,7 +7,7 @@ extern crate cfg_target_thread_local;
 
 extern {
     #[cfg_attr(target_thread_local, thread_local)]
-    //~^ `cfg(target_thread_local)` is experimental and subject to change (see issue #29594)
+    //~^ `cfg(target_thread_local)` is experimental and subject to change
 
     static FOO: u32;
 }

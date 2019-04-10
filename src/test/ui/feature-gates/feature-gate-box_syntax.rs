@@ -2,5 +2,5 @@
 
 fn main() {
     let x = box 3;
-    //~^ ERROR box expression syntax is experimental; you can call `Box::new` instead.
+    //~^ ERROR box expression syntax is experimental; you can call `Box::new` instead
 }
