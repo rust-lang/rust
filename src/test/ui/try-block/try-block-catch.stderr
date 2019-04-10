@@ -1,5 +1,5 @@
 error: `try {} catch` is not a valid syntax
-  --> $DIR/try-block-catch.rs:8:4
+  --> $DIR/try-block-catch.rs:8:7
    |
 LL |     } catch { }; //~ ERROR `try {} catch` is not a valid syntax
    |       ^^^^^
