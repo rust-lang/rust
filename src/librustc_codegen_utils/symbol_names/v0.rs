@@ -17,7 +17,6 @@ pub(super) fn mangle(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     instance: Instance<'tcx>,
     instantiating_crate: Option<CrateNum>,
-    compress: bool,
 ) -> String {
     let def_id = instance.def_id();
     // FIXME(eddyb) this should ideally not be needed.
@@ -27,17 +26,13 @@ pub(super) fn mangle(
     let prefix = "_R";
     let mut cx = SymbolMangler {
         tcx,
-        compress: if compress {
-            Some(Box::new(CompressionCaches {
-                start_offset: prefix.len(),
+        compress: Some(Box::new(CompressionCaches {
+            start_offset: prefix.len(),
 
-                paths: FxHashMap::default(),
-                types: FxHashMap::default(),
-                consts: FxHashMap::default(),
-            }))
-        } else {
-            None
-        },
+            paths: FxHashMap::default(),
+            types: FxHashMap::default(),
+            consts: FxHashMap::default(),
+        })),
         binders: vec![],
         out: String::from(prefix),
     };

@@ -2699,7 +2699,6 @@ dependencies = [
  "rustc_metadata 0.0.0",
  "rustc_mir 0.0.0",
  "rustc_target 0.0.0",
- "std-mangle-rs 0.1.0 (git+https://github.com/michaelwoerister/std-mangle-rs?rev=e884304cfcb2f636db4d59ca8ad8fa95b983281c)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -3337,14 +3336,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "std-mangle-rs"
-version = "0.1.0"
-source = "git+https://github.com/michaelwoerister/std-mangle-rs?rev=e884304cfcb2f636db4d59ca8ad8fa95b983281c#e884304cfcb2f636db4d59ca8ad8fa95b983281c"
-dependencies = [
- "unic-idna-punycode 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "string_cache"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3859,11 +3850,6 @@ version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
-name = "unic-idna-punycode"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "unicase"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4368,7 +4354,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum smallvec 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)" = "b73ea3738b47563803ef814925e69be00799a8c07420be8b996f8e98fb2336db"
 "checksum socket2 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)" = "c4d11a52082057d87cb5caa31ad812f4504b97ab44732cd8359df2e9ff9f48e7"
 "checksum stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ffbc596e092fe5f598b12ef46cc03754085ac2f4d8c739ad61c4ae266cc3b3fa"
-"checksum std-mangle-rs 0.1.0 (git+https://github.com/michaelwoerister/std-mangle-rs?rev=e884304cfcb2f636db4d59ca8ad8fa95b983281c)" = "<none>"
 "checksum string_cache 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)" = "25d70109977172b127fe834e5449e5ab1740b9ba49fa18a2020f509174f25423"
 "checksum string_cache_codegen 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "1eea1eee654ef80933142157fdad9dd8bc43cf7c74e999e369263496f04ff4da"
 "checksum string_cache_shared 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b1884d1bc09741d466d9b14e6d37ac89d6909cbcac41dd9ae982d4d063bbedfc"
@@ -4412,7 +4397,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum typenum 1.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "612d636f949607bdf9b123b4a6f6d966dedf3ff669f7f045890d3a4a73948169"
 "checksum ucd-trie 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "71a9c5b1fe77426cf144cc30e49e955270f5086e31a6441dfa8b32efc09b9d77"
 "checksum ucd-util 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "535c204ee4d8434478593480b8f86ab45ec9aae0e83c568ca81abf0fd0e88f86"
-"checksum unic-idna-punycode 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1b0366615c248bc56ea5ceafe6f71a682f6591e653b1ce61814999302617b8c0"
 "checksum unicase 2.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "a84e5511b2a947f3ae965dcb29b13b7b1691b6e7332cf5dbc1744138d5acb7f6"
 "checksum unicode-bidi 0.3.4 (registry+https://github.com/rust-lang/crates.io-index)" = "49f2bd0c6468a8230e1db229cff8029217cf623c767ea5d60bfbd42729ea54d5"
 "checksum unicode-normalization 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "6a0180bc61fc5a987082bfa111f4cc95c4caff7f9799f3e46df09163a937aa25"

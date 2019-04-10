@@ -100,9 +100,7 @@ use syntax_pos::symbol::InternedString;
 
 use log::debug;
 
-mod dump;
 mod legacy;
-mod mw;
 mod v0;
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -221,19 +219,9 @@ fn symbol_name(tcx: TyCtxt<'_, 'tcx, 'tcx>, instance: Instance<'tcx>) -> Interne
     };
 
     let mangled = match mangling_version {
-        SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate, false),
-        SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate, true),
+        SymbolManglingVersion::Legacy => legacy::mangle(tcx, instance, instantiating_crate),
+        SymbolManglingVersion::V0 => v0::mangle(tcx, instance, instantiating_crate),
     };
 
-    let r = InternedString::intern(&mangled);
-
-    dump::record(
-        tcx,
-        instance,
-        instantiating_crate,
-        mangling_version,
-        mangled,
-    );
-
-    r
+    InternedString::intern(&mangled)
 }
