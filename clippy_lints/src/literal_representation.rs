@@ -538,13 +538,10 @@ impl LiteralRepresentation {
                             return
                         }
                         let hex = format!("{:#X}", val);
-                        let digit_info = DigitInfo::new(&hex[..], false);
+                        let digit_info = DigitInfo::new(&hex, false);
                         let _ = Self::do_lint(digit_info.digits).map_err(|warning_type| {
                             warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
                         });
-                    }
-                    else {
-                        return
                     };
                 }
             }
