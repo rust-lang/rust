@@ -3,6 +3,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::{Command, exit};
 use std::collections::HashSet;
+use std::sync::Mutex;
 
 use crate::Mode;
 use crate::Compiler;
@@ -436,6 +437,7 @@ pub struct Rustdoc {
     pub compiler: Compiler,
 }
 
+
 impl Step for Rustdoc {
     type Output = PathBuf;
     const DEFAULT: bool = true;
@@ -452,6 +454,21 @@ impl Step for Rustdoc {
     }
 
     fn run(self, builder: &Builder<'_>) -> PathBuf {
+        lazy_static! {
+            static ref BUILT_RUSTDOC_IN: Mutex<Vec<u32>> = Mutex::new(Vec::new());
+        }
+        {
+            let mut built = BUILT_RUSTDOC_IN.lock().unwrap();
+            if !built.contains(&self.compiler.stage) {
+                built.push(self.compiler.stage);
+                assert_eq!(
+                    built.len(),
+                    1,
+                    "Only ever build one copy of rustdoc per run, currently built in stages {:?}",
+                    built,
+                );
+            }
+        }
         let target_compiler = self.compiler;
         if target_compiler.stage == 0 {
             if !target_compiler.is_snapshot(builder) {
