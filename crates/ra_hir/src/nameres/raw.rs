@@ -12,7 +12,7 @@ use ra_syntax::{
 
 use crate::{
     DefDatabase, Name, AsName, Path, HirFileId, ModuleSource,
-    AstIdMap, FileAstId,
+    AstIdMap, FileAstId, Either,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -34,26 +34,13 @@ pub struct ImportSourceMap {
     map: ArenaMap<ImportId, ImportSourcePtr>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum ImportSourcePtr {
-    UseTree(AstPtr<ast::UseTree>),
-    ExternCrate(AstPtr<ast::ExternCrateItem>),
-}
+type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
+type ImportSource = Either<TreeArc<ast::UseTree>, TreeArc<ast::ExternCrateItem>>;
 
 impl ImportSourcePtr {
     fn to_node(self, file: &SourceFile) -> ImportSource {
-        match self {
-            ImportSourcePtr::UseTree(ptr) => ImportSource::UseTree(ptr.to_node(file).to_owned()),
-            ImportSourcePtr::ExternCrate(ptr) => {
-                ImportSource::ExternCrate(ptr.to_node(file).to_owned())
-            }
-        }
+        self.map(|ptr| ptr.to_node(file).to_owned(), |ptr| ptr.to_node(file).to_owned())
     }
-}
-
-pub enum ImportSource {
-    UseTree(TreeArc<ast::UseTree>),
-    ExternCrate(TreeArc<ast::ExternCrateItem>),
 }
 
 impl ImportSourceMap {
@@ -281,11 +268,7 @@ impl RawItemsCollector {
         Path::expand_use_item(use_item, |path, use_tree, is_glob, alias| {
             let import_data =
                 ImportData { path, alias, is_glob, is_prelude, is_extern_crate: false };
-            self.push_import(
-                current_module,
-                import_data,
-                ImportSourcePtr::UseTree(AstPtr::new(use_tree)),
-            );
+            self.push_import(current_module, import_data, Either::A(AstPtr::new(use_tree)));
         })
     }
 
@@ -304,11 +287,7 @@ impl RawItemsCollector {
                 is_prelude: false,
                 is_extern_crate: true,
             };
-            self.push_import(
-                current_module,
-                import_data,
-                ImportSourcePtr::ExternCrate(AstPtr::new(extern_crate)),
-            );
+            self.push_import(current_module, import_data, Either::B(AstPtr::new(extern_crate)));
         }
     }
 

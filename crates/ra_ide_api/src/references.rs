@@ -1,5 +1,5 @@
 use relative_path::{RelativePath, RelativePathBuf};
-use hir::{ModuleSource, source_binder};
+use hir::{ModuleSource, source_binder, Either};
 use ra_db::{SourceDatabase};
 use ra_syntax::{
     AstNode, SyntaxNode, SourceFile,
@@ -89,9 +89,12 @@ pub(crate) fn find_all_refs(
             source_binder::function_from_child_node(db, position.file_id, name_ref.syntax())?;
         let scope = descr.scopes(db);
         let resolved = scope.resolve_local_name(name_ref)?;
-        let resolved = resolved.ptr().to_node(source_file);
-        let binding = find_node_at_offset::<ast::BindPat>(syntax, resolved.range().end())?;
-        Some((binding, descr))
+        if let Either::A(ptr) = resolved.ptr() {
+            if let ast::PatKind::BindPat(binding) = ptr.to_node(source_file).kind() {
+                return Some((binding, descr));
+            }
+        }
+        None
     }
 }
 

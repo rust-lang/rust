@@ -75,7 +75,7 @@ pub(crate) use self::raw::{RawItems, ImportSourceMap};
 
 pub use self::{
     per_ns::{PerNs, Namespace},
-    raw::{ImportId, ImportSource},
+    raw::ImportId,
 };
 
 /// Contans all top-level defs from a macro-expanded crate

@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Path, Name, HirDatabase, Resolver,DefWithBody,
+    Path, Name, HirDatabase, Resolver,DefWithBody, Either,
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
@@ -51,10 +51,12 @@ pub struct Body {
 pub struct BodySourceMap {
     expr_map: FxHashMap<SyntaxNodePtr, ExprId>,
     expr_map_back: ArenaMap<ExprId, SyntaxNodePtr>,
-    pat_map: FxHashMap<SyntaxNodePtr, PatId>,
-    pat_map_back: ArenaMap<PatId, SyntaxNodePtr>,
+    pat_map: FxHashMap<PatPrr, PatId>,
+    pat_map_back: ArenaMap<PatId, PatPrr>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::NamedField>>,
 }
+
+type PatPrr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
 
 impl Body {
     pub fn params(&self) -> &[PatId] {
@@ -127,16 +129,16 @@ impl BodySourceMap {
         self.expr_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Option<SyntaxNodePtr> {
+    pub fn pat_syntax(&self, pat: PatId) -> Option<PatPrr> {
         self.pat_map_back.get(pat).cloned()
     }
 
-    pub fn syntax_pat(&self, ptr: SyntaxNodePtr) -> Option<PatId> {
+    pub fn syntax_pat(&self, ptr: PatPrr) -> Option<PatId> {
         self.pat_map.get(&ptr).cloned()
     }
 
     pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
-        self.pat_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
+        self.pat_map.get(&Either::A(AstPtr::new(node))).cloned()
     }
 
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::NamedField> {
@@ -504,10 +506,10 @@ impl ExprCollector {
         id
     }
 
-    fn alloc_pat(&mut self, pat: Pat, syntax_ptr: SyntaxNodePtr) -> PatId {
+    fn alloc_pat(&mut self, pat: Pat, ptr: PatPrr) -> PatId {
         let id = self.pats.alloc(pat);
-        self.source_map.pat_map.insert(syntax_ptr, id);
-        self.source_map.pat_map_back.insert(id, syntax_ptr);
+        self.source_map.pat_map.insert(ptr, id);
+        self.source_map.pat_map_back.insert(id, ptr);
         id
     }
 
@@ -886,8 +888,8 @@ impl ExprCollector {
             ast::PatKind::LiteralPat(_) => Pat::Missing,
             ast::PatKind::SlicePat(_) | ast::PatKind::RangePat(_) => Pat::Missing,
         };
-        let syntax_ptr = SyntaxNodePtr::new(pat.syntax());
-        self.alloc_pat(pattern, syntax_ptr)
+        let ptr = AstPtr::new(pat);
+        self.alloc_pat(pattern, Either::A(ptr))
     }
 
     fn collect_pat_opt(&mut self, pat: Option<&ast::Pat>) -> PatId {
@@ -911,14 +913,14 @@ impl ExprCollector {
     fn collect_fn_body(&mut self, node: &ast::FnDef) {
         if let Some(param_list) = node.param_list() {
             if let Some(self_param) = param_list.self_param() {
-                let self_param = SyntaxNodePtr::new(self_param.syntax());
+                let ptr = AstPtr::new(self_param);
                 let param_pat = self.alloc_pat(
                     Pat::Bind {
                         name: Name::self_param(),
                         mode: BindingAnnotation::Unannotated,
                         subpat: None,
                     },
-                    self_param,
+                    Either::B(ptr),
                 );
                 self.params.push(param_pat);
             }

@@ -1,4 +1,4 @@
-use hir::Resolution;
+use hir::{Resolution, Either};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -19,10 +19,8 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             for (name, res) in module_scope.entries() {
                 if Some(module) == ctx.module {
                     if let Some(import) = res.import {
-                        if let hir::ImportSource::UseTree(tree) =
-                            module.import_source(ctx.db, import)
-                        {
-                            if tree.syntax().range().contains_inclusive(ctx.offset) {
+                        if let Either::A(use_tree) = module.import_source(ctx.db, import) {
+                            if use_tree.syntax().range().contains_inclusive(ctx.offset) {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
                                 tested_by!(dont_complete_current_use);
                                 continue;
