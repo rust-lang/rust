@@ -3117,7 +3117,6 @@ fn item_trait(
             // FIXME: we should be using a derived_id for the Anchors here
             write!(w, "{{\n")?;
             for t in &types {
-                write!(w, "    ")?;
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
                 write!(w, ";\n")?;
             }
@@ -3125,7 +3124,6 @@ fn item_trait(
                 w.write_str("\n")?;
             }
             for t in &consts {
-                write!(w, "    ")?;
                 render_assoc_item(w, t, AssocItemLink::Anchor(None), ItemType::Trait)?;
                 write!(w, ";\n")?;
             }
@@ -3133,7 +3131,6 @@ fn item_trait(
                 w.write_str("\n")?;
             }
             for (pos, m) in required.iter().enumerate() {
-                write!(w, "    ")?;
                 render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
                 write!(w, ";\n")?;
 
@@ -3145,7 +3142,6 @@ fn item_trait(
                 w.write_str("\n")?;
             }
             for (pos, m) in provided.iter().enumerate() {
-                write!(w, "    ")?;
                 render_assoc_item(w, m, AssocItemLink::Anchor(None), ItemType::Trait)?;
                 match m.inner {
                     clean::MethodItem(ref inner) if !inner.generics.where_predicates.is_empty() => {
@@ -3454,8 +3450,9 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
             (0, true)
         };
         render_attributes(w, meth)?;
-        write!(w, "{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
+        write!(w, "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
+               if parent == ItemType::Trait { "    " } else { "" },
                VisSpace(&meth.visibility),
                ConstnessSpace(header.constness),
                UnsafetySpace(header.unsafety),
@@ -3755,7 +3752,7 @@ const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "non_exhaustive"
 ];
 
-fn render_attributes(w: &mut fmt::Formatter<'_>, it: &clean::Item) -> fmt::Result {
+fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
