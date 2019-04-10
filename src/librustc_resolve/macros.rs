@@ -360,8 +360,8 @@ impl<'a> Resolver<'a> {
 
         let attr_candidates = BUILTIN_ATTRIBUTES
             .iter()
-            .filter_map(|(name, _, _, gate)| {
-                if name.starts_with("rustc_") && !features.rustc_attrs {
+            .filter_map(|&(name, _, _, ref gate)| {
+                if name.as_str().starts_with("rustc_") && !features.rustc_attrs {
                     return None;
                 }
 
@@ -376,7 +376,6 @@ impl<'a> Resolver<'a> {
                     _ => None,
                 }
             })
-            .map(|name| Symbol::intern(name))
             .chain(
                 // Add built-in macro attributes as well.
                 self.builtin_macros.iter().filter_map(|(name, binding)| {
