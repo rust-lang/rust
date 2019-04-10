@@ -3385,6 +3385,7 @@ version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
  "cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
  "scoped-tls 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",

@@ -73,6 +73,7 @@ use syntax::edition::Edition;
 use syntax::feature_gate;
 use syntax::symbol::{Symbol, keywords, InternedString};
 use syntax_pos::Span;
+use parking_lot;
 
 use crate::hir;
 
@@ -107,7 +108,7 @@ pub struct GlobalArenas<'tcx> {
     const_allocs: TypedArena<interpret::Allocation>,
 }
 
-type InternedSet<'tcx, T> = Lock<FxHashMap<Interned<'tcx, T>, ()>>;
+type InternedSet<'tcx, T> = parking_lot::Mutex<FxHashMap<Interned<'tcx, T>, ()>>;
 
 pub struct CtxtInterners<'tcx> {
     /// The arena that types, regions, etc are allocated from
@@ -161,7 +162,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
         // determine that all contents are in the global tcx.
         // See comments on Lift for why we can't use that.
         if flags.flags.intersects(ty::TypeFlags::KEEP_IN_LOCAL_TCX) {
-            local.type_.borrow_mut().intern(st, |st| {
+            local.type_.lock().intern(st, |st| {
                 let ty_struct = TyS {
                     sty: st,
                     flags: flags.flags,
@@ -179,7 +180,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
                 Interned(local.arena.alloc(ty_struct))
             }).0
         } else {
-            global.type_.borrow_mut().intern(st, |st| {
+            global.type_.lock().intern(st, |st| {
                 let ty_struct = TyS {
                     sty: st,
                     flags: flags.flags,
@@ -934,7 +935,7 @@ impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         let mk = |sty| CtxtInterners::intern_ty(interners, interners, sty);
         let mk_region = |r| {
-            interners.region.borrow_mut().intern(r, |r| {
+            interners.region.lock().intern(r, |r| {
                 Interned(interners.arena.alloc(r))
             }).0
         };
@@ -2144,7 +2145,7 @@ macro_rules! sty_debug_print {
                 };
                 $(let mut $variant = total;)*
 
-                for &Interned(t) in tcx.interners.type_.borrow().keys() {
+                for &Interned(t) in tcx.interners.type_.lock().keys() {
                     let variant = match t.sty {
                         ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                             ty::Float(..) | ty::Str | ty::Never => continue,
@@ -2195,11 +2196,11 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             Generator, GeneratorWitness, Dynamic, Closure, Tuple, Bound,
             Param, Infer, UnnormalizedProjection, Projection, Opaque, Foreign);
 
-        println!("InternalSubsts interner: #{}", self.interners.substs.borrow().len());
-        println!("Region interner: #{}", self.interners.region.borrow().len());
-        println!("Stability interner: #{}", self.stability_interner.borrow().len());
-        println!("Allocation interner: #{}", self.allocation_interner.borrow().len());
-        println!("Layout interner: #{}", self.layout_interner.borrow().len());
+        println!("InternalSubsts interner: #{}", self.interners.substs.lock().len());
+        println!("Region interner: #{}", self.interners.region.lock().len());
+        println!("Stability interner: #{}", self.stability_interner.lock().len());
+        println!("Allocation interner: #{}", self.allocation_interner.lock().len());
+        println!("Layout interner: #{}", self.layout_interner.lock().len());
     }
 }
 
@@ -2334,7 +2335,7 @@ macro_rules! intern_method {
                 // determine that all contents are in the global tcx.
                 // See comments on Lift for why we can't use that.
                 if ($keep_in_local_tcx)(&v) {
-                    self.interners.$name.borrow_mut().intern_ref(key, || {
+                    self.interners.$name.lock().intern_ref(key, || {
                         // Make sure we don't end up with inference
                         // types/regions in the global tcx.
                         if self.is_global() {
@@ -2346,7 +2347,7 @@ macro_rules! intern_method {
                         Interned($alloc_method(&self.interners.arena, v))
                     }).0
                 } else {
-                    self.global_interners.$name.borrow_mut().intern_ref(key, || {
+                    self.global_interners.$name.lock().intern_ref(key, || {
                         // This transmutes $alloc<'tcx> to $alloc<'gcx>
                         let v = unsafe {
                             mem::transmute(v)

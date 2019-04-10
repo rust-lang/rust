@@ -226,7 +226,7 @@ impl<'sess> OnDiskCache<'sess> {
 
                 // const eval is special, it only encodes successfully evaluated constants
                 use crate::ty::query::QueryAccessors;
-                let cache = const_eval::query_cache(tcx).borrow();
+                let cache = const_eval::query_cache(tcx).lock();
                 assert!(cache.active.is_empty());
                 for (key, entry) in cache.results.iter() {
                     use crate::ty::query::config::QueryDescription;
@@ -1081,7 +1081,7 @@ fn encode_query_results<'enc, 'a, 'tcx, Q, E>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         unsafe { ::std::intrinsics::type_name::<Q>() });
 
     time_ext(tcx.sess.time_extended(), Some(tcx.sess), desc, || {
-        let map = Q::query_cache(tcx).borrow();
+        let map = Q::query_cache(tcx).lock();
         assert!(map.active.is_empty());
         for (key, entry) in map.results.iter() {
             if Q::cache_on_disk(tcx, key.clone()) {

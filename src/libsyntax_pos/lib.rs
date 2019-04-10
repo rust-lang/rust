@@ -37,6 +37,7 @@ mod analyze_source_file;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lrc, Lock};
+use parking_lot::Mutex;
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -47,7 +48,7 @@ use std::ops::{Add, Sub};
 use std::path::PathBuf;
 
 pub struct Globals {
-    symbol_interner: Lock<symbol::Interner>,
+    symbol_interner: Mutex<symbol::Interner>,
     span_interner: Lock<span_encoding::SpanInterner>,
     hygiene_data: Lock<hygiene::HygieneData>,
 }
@@ -55,7 +56,7 @@ pub struct Globals {
 impl Globals {
     pub fn new() -> Globals {
         Globals {
-            symbol_interner: Lock::new(symbol::Interner::fresh()),
+            symbol_interner: Mutex::new(symbol::Interner::fresh()),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new()),
         }

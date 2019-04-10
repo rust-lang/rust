@@ -90,7 +90,7 @@ macro_rules! profq_query_msg {
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
 pub(super) struct JobOwner<'a, 'tcx: 'a, Q: QueryDescription<'tcx> + 'a> {
-    cache: &'a Lock<QueryCache<'tcx, Q>>,
+    cache: &'a parking_lot::Mutex<QueryCache<'tcx, Q>>,
     key: Q::Key,
     job: Lrc<QueryJob<'tcx>>,
 }
@@ -111,7 +111,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     ) -> TryGetJob<'a, 'tcx, Q> {
         let cache = Q::query_cache(tcx);
         loop {
-            let mut lock = cache.borrow_mut();
+            let mut lock = cache.lock();
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
                 tcx.sess.profiler(|p| p.record_query_hit(Q::NAME, Q::CATEGORY));
@@ -195,7 +195,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
 
         let value = QueryValue::new(result.clone(), dep_node_index);
         {
-            let mut lock = cache.borrow_mut();
+            let mut lock = cache.lock();
             lock.active.remove(&key);
             lock.results.insert(key, value);
         }
@@ -219,7 +219,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> Drop for JobOwner<'a, 'tcx, Q> {
     #[cold]
     fn drop(&mut self) {
         // Poison the query so jobs waiting on it panic
-        self.cache.borrow_mut().active.insert(self.key.clone(), QueryResult::Poisoned);
+        self.cache.lock().active.insert(self.key.clone(), QueryResult::Poisoned);
         // Also signal the completion of the job, so waiters
         // will continue execution
         self.job.signal_complete();
@@ -697,7 +697,6 @@ macro_rules! define_queries_inner {
         use std::mem;
         #[cfg(parallel_compiler)]
         use ty::query::job::QueryResult;
-        use rustc_data_structures::sync::Lock;
         use crate::{
             rustc_data_structures::stable_hasher::HashStable,
             rustc_data_structures::stable_hasher::StableHasherResult,
@@ -941,7 +940,9 @@ macro_rules! define_queries_inner {
             }
 
             #[inline(always)]
-            fn query_cache<'a>(tcx: TyCtxt<'a, $tcx, '_>) -> &'a Lock<QueryCache<$tcx, Self>> {
+            fn query_cache<'a>(
+                tcx: TyCtxt<'a, $tcx, '_>
+            ) -> &'a parking_lot::Mutex<QueryCache<$tcx, Self>> {
                 &tcx.queries.$name
             }
 
@@ -1068,7 +1069,7 @@ macro_rules! define_queries_struct {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
             fallback_extern_providers: Box<Providers<$tcx>>,
 
-            $($(#[$attr])*  $name: Lock<QueryCache<$tcx, queries::$name<$tcx>>>,)*
+            $($(#[$attr])*  $name: parking_lot::Mutex<QueryCache<$tcx, queries::$name<$tcx>>>,)*
         }
     };
 }

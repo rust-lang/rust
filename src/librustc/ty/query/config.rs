@@ -7,11 +7,11 @@ use crate::ty::query::Query;
 use crate::ty::query::QueryCache;
 use crate::ty::query::plumbing::CycleError;
 use crate::util::profiling::ProfileCategory;
+use parking_lot;
 
 use std::borrow::Cow;
 use std::hash::Hash;
 use std::fmt::Debug;
-use rustc_data_structures::sync::Lock;
 use rustc_data_structures::fingerprint::Fingerprint;
 use crate::ich::StableHashingContext;
 
@@ -29,7 +29,7 @@ pub(crate) trait QueryAccessors<'tcx>: QueryConfig<'tcx> {
     fn query(key: Self::Key) -> Query<'tcx>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_cache<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a Lock<QueryCache<'tcx, Self>>;
+    fn query_cache<'a>(tcx: TyCtxt<'a, 'tcx, '_>) -> &'a parking_lot::Mutex<QueryCache<'tcx, Self>>;
 
     fn to_dep_node(tcx: TyCtxt<'_, 'tcx, '_>, key: &Self::Key) -> DepNode;
 
