@@ -8,7 +8,8 @@ use crate::utils::{
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{
-    CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
+    in_external_macro, CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray,
+    LintContext, LintPass,
 };
 use rustc::ty::{self, TyCtxt};
 use rustc::{declare_tool_lint, lint_array};
@@ -241,6 +242,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                 let skip_unused_imports = item.attrs.iter().any(|attr| attr.check_name("macro_use"));
 
                 for attr in &item.attrs {
+                    if in_external_macro(cx.sess(), attr.span) {
+                        return;
+                    }
                     if let Some(lint_list) = &attr.meta_item_list() {
                         if let Some(ident) = attr.ident() {
                             match &*ident.as_str() {
