@@ -150,7 +150,7 @@ impl std::convert::TryFrom<&'static str> for MsaIntrinsic {
 
         let first_parentheses = line.find('(')?;
         assert!(first_parentheses > first_whitespace);
-        let id = &line[first_whitespace+1..first_parentheses].trim();
+        let id = &line[first_whitespace + 1..first_parentheses].trim();
         assert!(id.starts_with("__builtin"));
         let mut id_str = "_".to_string();
         id_str += &id[9..];
@@ -159,7 +159,7 @@ impl std::convert::TryFrom<&'static str> for MsaIntrinsic {
         let mut arg_tys = Vec::new();
 
         let last_parentheses = line.find(')')?;
-        for arg in (&line[first_parentheses+1..last_parentheses]).split(',') {
+        for arg in (&line[first_parentheses + 1..last_parentheses]).split(',') {
             let arg = arg.trim();
             arg_tys.push(MsaTy::from(arg));
         }
@@ -169,19 +169,17 @@ impl std::convert::TryFrom<&'static str> for MsaIntrinsic {
         let mut instruction = instruction.to_string();
         // With all underscores but the first one replaced with a `.`
         if let Some(first_underscore) = instruction.find('_') {
-            let postfix = instruction[first_underscore+1 ..].replace('_', ".");
+            let postfix = instruction[first_underscore + 1..].replace('_', ".");
             instruction = instruction[0..=first_underscore].to_string();
             instruction += &postfix;
         }
 
-        Ok(
-            MsaIntrinsic {
-                id,
-                ret_ty,
-                arg_tys,
-                instruction,
-            }
-        )
+        Ok(MsaIntrinsic {
+            id,
+            ret_ty,
+            arg_tys,
+            instruction,
+        })
     }
 }
 
@@ -195,9 +193,8 @@ fn verify_all_signatures() {
         }
 
         use std::convert::TryFrom;
-        let intrinsic: MsaIntrinsic = TryFrom::try_from(line).expect(
-            &format!("failed to parse line: \"{}\"", line)
-        );
+        let intrinsic: MsaIntrinsic =
+            TryFrom::try_from(line).expect(&format!("failed to parse line: \"{}\"", line));
         assert!(!intrinsics.contains_key(&intrinsic.id));
         intrinsics.insert(intrinsic.id.clone(), intrinsic);
     }
@@ -244,67 +241,69 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
     }
 
     let mut nconst = 0;
-    for (i, (rust_arg, mips_arg))
-        in rust.arguments.iter().zip(mips.arg_tys.iter()).enumerate() {
-            match mips_arg {
-                MsaTy::v16i8 if **rust_arg == v16i8 => (),
-                MsaTy::v8i16 if **rust_arg == v8i16 => (),
-                MsaTy::v4i32 if **rust_arg == v4i32 => (),
-                MsaTy::v2i64 if **rust_arg == v2i64 => (),
-                MsaTy::v16u8 if **rust_arg == v16u8 => (),
-                MsaTy::v8u16 if **rust_arg == v8u16 => (),
-                MsaTy::v4u32 if **rust_arg == v4u32 => (),
-                MsaTy::v2u64 if **rust_arg == v2u64 => (),
-                MsaTy::v4f32 if **rust_arg == v4f32 => (),
-                MsaTy::v2f64 if **rust_arg == v2f64 => (),
-                MsaTy::imm0_1 |
-                MsaTy::imm0_3 |
-                MsaTy::imm0_7 |
-                MsaTy::imm0_15 |
-                MsaTy::imm0_31 |
-                MsaTy::imm0_63 |
-                MsaTy::imm0_255 |
-                MsaTy::imm_n16_15 |
-                MsaTy::imm_n512_511 |
-                MsaTy::imm_n1024_1022 |
-                MsaTy::imm_n2048_2044 |
-                MsaTy::imm_n4096_4088
-                    if  **rust_arg == I32 => (),
-                MsaTy::i32 if  **rust_arg == I32 => (),
-                MsaTy::i64 if  **rust_arg == I64 => (),
-                MsaTy::u32 if  **rust_arg == U32 => (),
-                MsaTy::u64 if  **rust_arg == U64 => (),
-                MsaTy::VoidPtr if **rust_arg == Type::Ptr(&U8) => (),
-                m => {
-                    bail!(
-                        "mismatched argument \"{}\"= \"{:?}\" != \"{:?}\"",
-                        i, m, *rust_arg
-                    )
-                }
+    for (i, (rust_arg, mips_arg)) in rust.arguments.iter().zip(mips.arg_tys.iter()).enumerate() {
+        match mips_arg {
+            MsaTy::v16i8 if **rust_arg == v16i8 => (),
+            MsaTy::v8i16 if **rust_arg == v8i16 => (),
+            MsaTy::v4i32 if **rust_arg == v4i32 => (),
+            MsaTy::v2i64 if **rust_arg == v2i64 => (),
+            MsaTy::v16u8 if **rust_arg == v16u8 => (),
+            MsaTy::v8u16 if **rust_arg == v8u16 => (),
+            MsaTy::v4u32 if **rust_arg == v4u32 => (),
+            MsaTy::v2u64 if **rust_arg == v2u64 => (),
+            MsaTy::v4f32 if **rust_arg == v4f32 => (),
+            MsaTy::v2f64 if **rust_arg == v2f64 => (),
+            MsaTy::imm0_1
+            | MsaTy::imm0_3
+            | MsaTy::imm0_7
+            | MsaTy::imm0_15
+            | MsaTy::imm0_31
+            | MsaTy::imm0_63
+            | MsaTy::imm0_255
+            | MsaTy::imm_n16_15
+            | MsaTy::imm_n512_511
+            | MsaTy::imm_n1024_1022
+            | MsaTy::imm_n2048_2044
+            | MsaTy::imm_n4096_4088
+                if **rust_arg == I32 =>
+            {
+                ()
             }
+            MsaTy::i32 if **rust_arg == I32 => (),
+            MsaTy::i64 if **rust_arg == I64 => (),
+            MsaTy::u32 if **rust_arg == U32 => (),
+            MsaTy::u64 if **rust_arg == U64 => (),
+            MsaTy::VoidPtr if **rust_arg == Type::Ptr(&U8) => (),
+            m => bail!(
+                "mismatched argument \"{}\"= \"{:?}\" != \"{:?}\"",
+                i,
+                m,
+                *rust_arg
+            ),
+        }
 
-            let is_const = match mips_arg {
-                MsaTy::imm0_1 |
-                MsaTy::imm0_3 |
-                MsaTy::imm0_7 |
-                MsaTy::imm0_15 |
-                MsaTy::imm0_31 |
-                MsaTy::imm0_63 |
-                MsaTy::imm0_255 |
-                MsaTy::imm_n16_15 |
-                MsaTy::imm_n512_511 |
-                MsaTy::imm_n1024_1022 |
-                MsaTy::imm_n2048_2044 |
-                MsaTy::imm_n4096_4088 => true,
-                _ => false,
-            };
-            if is_const {
-                nconst += 1;
-                if !rust.required_const.contains(&i) {
-                    bail!("argument const mismatch");
-                }
+        let is_const = match mips_arg {
+            MsaTy::imm0_1
+            | MsaTy::imm0_3
+            | MsaTy::imm0_7
+            | MsaTy::imm0_15
+            | MsaTy::imm0_31
+            | MsaTy::imm0_63
+            | MsaTy::imm0_255
+            | MsaTy::imm_n16_15
+            | MsaTy::imm_n512_511
+            | MsaTy::imm_n1024_1022
+            | MsaTy::imm_n2048_2044
+            | MsaTy::imm_n4096_4088 => true,
+            _ => false,
+        };
+        if is_const {
+            nconst += 1;
+            if !rust.required_const.contains(&i) {
+                bail!("argument const mismatch");
             }
         }
+    }
 
     if nconst != rust.required_const.len() {
         bail!("wrong number of const arguments");
