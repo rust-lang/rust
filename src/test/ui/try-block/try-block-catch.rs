@@ -3,7 +3,7 @@
 #![feature(try_blocks)]
 
 fn main() {
-	let res: Option<bool> = try {
-		true
-	} catch { }; //~ ERROR `try {} catch` is not a valid syntax
+    let res: Option<bool> = try {
+        true
+    } catch { }; //~ ERROR `try {} catch` is not a valid syntax
 }
