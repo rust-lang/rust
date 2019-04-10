@@ -164,6 +164,7 @@ pub unsafe fn v128_store(m: *mut v128, a: v128) {
 /// The `v128.const` instruction is encoded with 16 immediate bytes
 /// `imm` which provide the bits of the vector directly.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[rustc_args_required_const(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15)]
 #[cfg_attr(test, assert_instr(
     v128.const,
@@ -243,6 +244,7 @@ pub unsafe fn i8x16_extract_lane(a: v128, imm: usize) -> i8 {
         unsafe { i8x16_extract_lane(a, 0) as i32 }
     }
     #[cfg(test)]
+    #[cfg(not(only_node_compatible_functions))]
     #[assert_instr(i8x16.extract_lane_u)]
     fn extract_lane_u(a: v128) -> u32 {
         unsafe { i8x16_extract_lane(a, 0) as u32 }
@@ -270,7 +272,7 @@ pub unsafe fn i8x16_replace_lane(a: v128, imm: usize, val: i8) -> v128 {
 ///
 /// Construct a vector with `x` replicated to all 8 lanes.
 #[inline]
-#[cfg_attr(test, assert_instr(i8x16.splat))]
+#[cfg_attr(test, assert_instr(i16x8.splat))]
 pub fn i16x8_splat(a: i16) -> v128 {
     unsafe { transmute(i16x8::splat(a)) }
 }
@@ -293,6 +295,7 @@ pub unsafe fn i16x8_extract_lane(a: v128, imm: usize) -> i16 {
         unsafe { i16x8_extract_lane(a, 0) as i32 }
     }
     #[cfg(test)]
+    #[cfg(not(only_node_compatible_functions))]
     #[assert_instr(i16x8.extract_lane_u)]
     fn extract_lane_u(a: v128) -> u32 {
         unsafe { i16x8_extract_lane(a, 0) as u32 }
@@ -320,7 +323,7 @@ pub unsafe fn i16x8_replace_lane(a: v128, imm: usize, val: i16) -> v128 {
 ///
 /// Constructs a vector with `x` replicated to all 4 lanes.
 #[inline]
-#[cfg_attr(test, assert_instr(i8x16.splat))]
+#[cfg_attr(test, assert_instr(i32x4.splat))]
 pub fn i32x4_splat(a: i32) -> v128 {
     unsafe { transmute(i32x4::splat(a)) }
 }
@@ -335,7 +338,7 @@ pub fn i32x4_splat(a: i32) -> v128 {
 /// This function has undefined behavior if `imm` is greater than or equal to
 /// 4.
 #[inline]
-#[cfg_attr(test, assert_instr(i32x4.extract_lane_s, imm = 0))]
+#[cfg_attr(test, assert_instr(i32x4.extract_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn i32x4_extract_lane(a: v128, imm: usize) -> i32 {
     simd_extract(a.as_i32x4(), imm as u32)
@@ -361,6 +364,7 @@ pub unsafe fn i32x4_replace_lane(a: v128, imm: usize, val: i32) -> v128 {
 ///
 /// Construct a vector with `x` replicated to all 2 lanes.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i8x16.splat))]
 pub fn i64x2_splat(a: i64) -> v128 {
     unsafe { transmute(i64x2::splat(a)) }
@@ -376,6 +380,7 @@ pub fn i64x2_splat(a: i64) -> v128 {
 /// This function has undefined behavior if `imm` is greater than or equal to
 /// 2.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.extract_lane_s, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn i64x2_extract_lane(a: v128, imm: usize) -> i64 {
@@ -392,6 +397,7 @@ pub unsafe fn i64x2_extract_lane(a: v128, imm: usize) -> i64 {
 /// This function has undefined behavior if `imm` is greater than or equal to
 /// 2.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn i64x2_replace_lane(a: v128, imm: usize, val: i64) -> v128 {
@@ -402,7 +408,7 @@ pub unsafe fn i64x2_replace_lane(a: v128, imm: usize, val: i64) -> v128 {
 ///
 /// Constructs a vector with `x` replicated to all 4 lanes.
 #[inline]
-#[cfg_attr(test, assert_instr(i8x16.splat))]
+#[cfg_attr(test, assert_instr(f32x4.splat))]
 pub fn f32x4_splat(a: f32) -> v128 {
     unsafe { transmute(f32x4::splat(a)) }
 }
@@ -417,7 +423,7 @@ pub fn f32x4_splat(a: f32) -> v128 {
 /// This function has undefined behavior if `imm` is greater than or equal to
 /// 4.
 #[inline]
-#[cfg_attr(test, assert_instr(f32x4.extract_lane_s, imm = 0))]
+#[cfg_attr(test, assert_instr(f32x4.extract_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn f32x4_extract_lane(a: v128, imm: usize) -> f32 {
     simd_extract(a.as_f32x4(), imm as u32)
@@ -443,7 +449,8 @@ pub unsafe fn f32x4_replace_lane(a: v128, imm: usize, val: f32) -> v128 {
 ///
 /// Constructs a vector with `x` replicated to all 2 lanes.
 #[inline]
-#[cfg_attr(test, assert_instr(i8x16.splat))]
+#[cfg(not(only_node_compatible_functions))]
+#[cfg_attr(test, assert_instr(f64x2.splat))]
 pub fn f64x2_splat(a: f64) -> v128 {
     unsafe { transmute(f64x2::splat(a)) }
 }
@@ -458,6 +465,7 @@ pub fn f64x2_splat(a: f64) -> v128 {
 /// This function has undefined behavior if `imm` is greater than or equal to
 /// 2.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.extract_lane_s, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn f64x2_extract_lane(a: v128, imm: usize) -> f64 {
@@ -474,6 +482,7 @@ pub unsafe fn f64x2_extract_lane(a: v128, imm: usize) -> f64 {
 /// This function has undefined behavior if `imm` is greater than or equal to
 /// 2.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.replace_lane, imm = 0))]
 #[rustc_args_required_const(1)]
 pub unsafe fn f64x2_replace_lane(a: v128, imm: usize, val: f64) -> v128 {
@@ -882,6 +891,7 @@ pub fn f32x4_ge(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise elements
 /// were equal, or all zeros if the elements were not equal.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.eq))]
 pub fn f64x2_eq(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_eq::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
@@ -893,6 +903,7 @@ pub fn f64x2_eq(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise elements
 /// were not equal, or all zeros if the elements were equal.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.ne))]
 pub fn f64x2_ne(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_ne::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
@@ -904,6 +915,7 @@ pub fn f64x2_ne(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is less than the pairwise right element, or all zeros otherwise.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.lt))]
 pub fn f64x2_lt(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_lt::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
@@ -915,6 +927,7 @@ pub fn f64x2_lt(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is greater than the pairwise right element, or all zeros otherwise.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.gt))]
 pub fn f64x2_gt(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_gt::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
@@ -926,6 +939,7 @@ pub fn f64x2_gt(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is less than the pairwise right element, or all zeros otherwise.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.le))]
 pub fn f64x2_le(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_le::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
@@ -937,6 +951,7 @@ pub fn f64x2_le(a: v128, b: v128) -> v128 {
 /// Returns a new vector where each lane is all ones if the pairwise left
 /// element is greater than the pairwise right element, or all zeros otherwise.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.ge))]
 pub fn f64x2_ge(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_ge::<_, i64x2>(a.as_f64x2(), b.as_f64x2())) }
@@ -1006,6 +1021,7 @@ pub fn i8x16_all_true(a: v128) -> i32 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i8x16.shl))]
 pub fn i8x16_shl(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shl(a.as_i8x16(), i8x16::splat(amt as i8))) }
@@ -1017,6 +1033,7 @@ pub fn i8x16_shl(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i8x16.shl))]
 pub fn i8x16_shr_s(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_i8x16(), i8x16::splat(amt as i8))) }
@@ -1028,6 +1045,7 @@ pub fn i8x16_shr_s(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i8x16.shl))]
 pub fn i8x16_shr_u(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_u8x16(), u8x16::splat(amt as u8))) }
@@ -1113,6 +1131,7 @@ pub fn i16x8_all_true(a: v128) -> i32 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i16x8.shl))]
 pub fn i16x8_shl(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shl(a.as_i16x8(), i16x8::splat(amt as i16))) }
@@ -1124,6 +1143,7 @@ pub fn i16x8_shl(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i16x8.shl))]
 pub fn i16x8_shr_s(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_i16x8(), i16x8::splat(amt as i16))) }
@@ -1135,6 +1155,7 @@ pub fn i16x8_shr_s(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i16x8.shl))]
 pub fn i16x8_shr_u(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_u16x8(), u16x8::splat(amt as u16))) }
@@ -1220,6 +1241,7 @@ pub fn i32x4_all_true(a: v128) -> i32 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i32x4.shl))]
 pub fn i32x4_shl(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shl(a.as_i32x4(), i32x4::splat(amt as i32))) }
@@ -1231,6 +1253,7 @@ pub fn i32x4_shl(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i32x4.shl))]
 pub fn i32x4_shr_s(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_i32x4(), i32x4::splat(amt as i32))) }
@@ -1242,6 +1265,7 @@ pub fn i32x4_shr_s(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i32x4.shl))]
 pub fn i32x4_shr_u(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_u32x4(), u32x4::splat(amt as u32))) }
@@ -1271,6 +1295,7 @@ pub fn i32x4_mul(a: v128, b: v128) -> v128 {
 
 /// Negates a 128-bit vectors intepreted as two 64-bit signed integers
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i32x4.neg))]
 pub fn i64x2_neg(a: v128) -> v128 {
     unsafe { transmute(simd_mul(a.as_i64x2(), i64x2::splat(-1))) }
@@ -1278,6 +1303,7 @@ pub fn i64x2_neg(a: v128) -> v128 {
 
 /// Returns 1 if any lane is nonzero or 0 if all lanes are zero.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.any_true))]
 pub fn i64x2_any_true(a: v128) -> i32 {
     unsafe { llvm_i64x2_any_true(a.as_i64x2()) }
@@ -1285,6 +1311,7 @@ pub fn i64x2_any_true(a: v128) -> i32 {
 
 /// Returns 1 if all lanes are nonzero or 0 if any lane is nonzero.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.all_true))]
 pub fn i64x2_all_true(a: v128) -> i32 {
     unsafe { llvm_i64x2_all_true(a.as_i64x2()) }
@@ -1295,6 +1322,7 @@ pub fn i64x2_all_true(a: v128) -> i32 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.shl))]
 pub fn i64x2_shl(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shl(a.as_i64x2(), i64x2::splat(amt as i64))) }
@@ -1306,6 +1334,7 @@ pub fn i64x2_shl(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.shl))]
 pub fn i64x2_shr_s(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_i64x2(), i64x2::splat(amt as i64))) }
@@ -1317,6 +1346,7 @@ pub fn i64x2_shr_s(a: v128, amt: u32) -> v128 {
 /// Only the low bits of the shift amount are used if the shift amount is
 /// greater than the lane width.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.shl))]
 pub fn i64x2_shr_u(a: v128, amt: u32) -> v128 {
     unsafe { transmute(simd_shr(a.as_u64x2(), u64x2::splat(amt as u64))) }
@@ -1324,6 +1354,7 @@ pub fn i64x2_shr_u(a: v128, amt: u32) -> v128 {
 
 /// Adds two 128-bit vectors as if they were two packed two 64-bit integers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.add))]
 pub fn i64x2_add(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_add(a.as_i64x2(), b.as_i64x2())) }
@@ -1331,6 +1362,7 @@ pub fn i64x2_add(a: v128, b: v128) -> v128 {
 
 /// Subtracts two 128-bit vectors as if they were two packed two 64-bit integers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(i64x2.sub))]
 pub fn i64x2_sub(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_sub(a.as_i64x2(), b.as_i64x2())) }
@@ -1347,7 +1379,7 @@ pub fn f32x4_abs(a: v128) -> v128 {
 /// Negates each lane of a 128-bit vector interpreted as four 32-bit floating
 /// point numbers.
 #[inline]
-#[cfg_attr(test, assert_instr(f32x4.abs))]
+#[cfg_attr(test, assert_instr(f32x4.neg))]
 pub fn f32x4_neg(a: v128) -> v128 {
     unsafe { f32x4_mul(a, transmute(f32x4(-1.0, -1.0, -1.0, -1.0))) }
 }
@@ -1355,6 +1387,7 @@ pub fn f32x4_neg(a: v128) -> v128 {
 /// Calculates the square root of each lane of a 128-bit vector interpreted as
 /// four 32-bit floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f32x4.sqrt))]
 pub fn f32x4_sqrt(a: v128) -> v128 {
     unsafe { transmute(llvm_f32x4_sqrt(a.as_f32x4())) }
@@ -1387,6 +1420,7 @@ pub fn f32x4_mul(a: v128, b: v128) -> v128 {
 /// Divides pairwise lanes of two 128-bit vectors interpreted as four 32-bit
 /// floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f32x4.div))]
 pub fn f32x4_div(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_div(a.as_f32x4(), b.as_f32x4())) }
@@ -1411,6 +1445,7 @@ pub fn f32x4_max(a: v128, b: v128) -> v128 {
 /// Calculates the absolute value of each lane of a 128-bit vector interpreted
 /// as two 64-bit floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.abs))]
 pub fn f64x2_abs(a: v128) -> v128 {
     unsafe { transmute(llvm_f64x2_abs(a.as_f64x2())) }
@@ -1419,6 +1454,7 @@ pub fn f64x2_abs(a: v128) -> v128 {
 /// Negates each lane of a 128-bit vector interpreted as two 64-bit floating
 /// point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.abs))]
 pub fn f64x2_neg(a: v128) -> v128 {
     unsafe { f64x2_mul(a, transmute(f64x2(-1.0, -1.0))) }
@@ -1427,6 +1463,7 @@ pub fn f64x2_neg(a: v128) -> v128 {
 /// Calculates the square root of each lane of a 128-bit vector interpreted as
 /// two 64-bit floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.sqrt))]
 pub fn f64x2_sqrt(a: v128) -> v128 {
     unsafe { transmute(llvm_f64x2_sqrt(a.as_f64x2())) }
@@ -1435,6 +1472,7 @@ pub fn f64x2_sqrt(a: v128) -> v128 {
 /// Adds pairwise lanes of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.add))]
 pub fn f64x2_add(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_add(a.as_f64x2(), b.as_f64x2())) }
@@ -1443,6 +1481,7 @@ pub fn f64x2_add(a: v128, b: v128) -> v128 {
 /// Subtracts pairwise lanes of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.sub))]
 pub fn f64x2_sub(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_sub(a.as_f64x2(), b.as_f64x2())) }
@@ -1451,6 +1490,7 @@ pub fn f64x2_sub(a: v128, b: v128) -> v128 {
 /// Multiplies pairwise lanes of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.mul))]
 pub fn f64x2_mul(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_mul(a.as_f64x2(), b.as_f64x2())) }
@@ -1459,6 +1499,7 @@ pub fn f64x2_mul(a: v128, b: v128) -> v128 {
 /// Divides pairwise lanes of two 128-bit vectors interpreted as two 64-bit
 /// floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.div))]
 pub fn f64x2_div(a: v128, b: v128) -> v128 {
     unsafe { transmute(simd_div(a.as_f64x2(), b.as_f64x2())) }
@@ -1467,6 +1508,7 @@ pub fn f64x2_div(a: v128, b: v128) -> v128 {
 /// Calculates the minimum of pairwise lanes of two 128-bit vectors interpreted
 /// as two 64-bit floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.min))]
 pub fn f64x2_min(a: v128, b: v128) -> v128 {
     unsafe { transmute(llvm_f64x2_min(a.as_f64x2(), b.as_f64x2())) }
@@ -1475,6 +1517,7 @@ pub fn f64x2_min(a: v128, b: v128) -> v128 {
 /// Calculates the maximum of pairwise lanes of two 128-bit vectors interpreted
 /// as two 64-bit floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr(f64x2.max))]
 pub fn f64x2_max(a: v128, b: v128) -> v128 {
     unsafe { transmute(llvm_f64x2_max(a.as_f64x2(), b.as_f64x2())) }
@@ -1486,7 +1529,7 @@ pub fn f64x2_max(a: v128, b: v128) -> v128 {
 /// NaN is converted to 0 and if it's out of bounds it becomes the nearest
 /// representable intger.
 #[inline]
-#[cfg_attr(test, assert_instr("i32x4.trunc_s/f32x4:sat"))]
+#[cfg_attr(test, assert_instr("i32x4.trunc_sat_f32x4_s"))]
 pub fn i32x4_trunc_s_f32x4_sat(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, i32x4>(a.as_f32x4())) }
 }
@@ -1497,7 +1540,7 @@ pub fn i32x4_trunc_s_f32x4_sat(a: v128) -> v128 {
 /// NaN is converted to 0 and if it's out of bounds it becomes the nearest
 /// representable intger.
 #[inline]
-#[cfg_attr(test, assert_instr("i32x4.trunc_u/f32x4:sat"))]
+#[cfg_attr(test, assert_instr("i32x4.trunc_sat_f32x4_u"))]
 pub fn i32x4_trunc_u_f32x4_sat(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, u32x4>(a.as_f32x4())) }
 }
@@ -1508,7 +1551,8 @@ pub fn i32x4_trunc_u_f32x4_sat(a: v128) -> v128 {
 /// NaN is converted to 0 and if it's out of bounds it becomes the nearest
 /// representable intger.
 #[inline]
-#[cfg_attr(test, assert_instr("i32x4.trunc_s/f32x4:sat"))]
+#[cfg(not(only_node_compatible_functions))]
+#[cfg_attr(test, assert_instr("i64x2.trunc_s/f64x2:sat"))]
 pub fn i64x2_trunc_s_f64x2_sat(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, i64x2>(a.as_f64x2())) }
 }
@@ -1519,6 +1563,7 @@ pub fn i64x2_trunc_s_f64x2_sat(a: v128) -> v128 {
 /// NaN is converted to 0 and if it's out of bounds it becomes the nearest
 /// representable intger.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr("i64x2.trunc_u/f64x2:sat"))]
 pub fn i64x2_trunc_u_f64x2_sat(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, u64x2>(a.as_f64x2())) }
@@ -1527,22 +1572,23 @@ pub fn i64x2_trunc_u_f64x2_sat(a: v128) -> v128 {
 /// Converts a 128-bit vector interpreted as four 32-bit signed integers into a
 /// 128-bit vector of four 32-bit floating point numbers.
 #[inline]
-#[cfg_attr(test, assert_instr("f32x4.convert_s/i32x4"))]
-pub fn f32x4_convert_s_i32x4(a: v128) -> v128 {
+#[cfg_attr(test, assert_instr("f32x4.convert_i32x4_s"))]
+pub fn f32x4_convert_i32x4_s(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, f32x4>(a.as_i32x4())) }
 }
 
 /// Converts a 128-bit vector interpreted as four 32-bit unsigned integers into a
 /// 128-bit vector of four 32-bit floating point numbers.
 #[inline]
-#[cfg_attr(test, assert_instr("f32x4.convert_u/i32x4"))]
-pub fn f32x4_convert_u_i32x4(a: v128) -> v128 {
+#[cfg_attr(test, assert_instr("f32x4.convert_i32x4_u"))]
+pub fn f32x4_convert_i32x4_u(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, f32x4>(a.as_u32x4())) }
 }
 
 /// Converts a 128-bit vector interpreted as two 64-bit signed integers into a
 /// 128-bit vector of two 64-bit floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr("f64x2.convert_s/i64x2"))]
 pub fn f64x2_convert_s_i64x2(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, f64x2>(a.as_i64x2())) }
@@ -1551,6 +1597,7 @@ pub fn f64x2_convert_s_i64x2(a: v128) -> v128 {
 /// Converts a 128-bit vector interpreted as two 64-bit unsigned integers into a
 /// 128-bit vector of two 64-bit floating point numbers.
 #[inline]
+#[cfg(not(only_node_compatible_functions))]
 #[cfg_attr(test, assert_instr("f64x2.convert_u/i64x2"))]
 pub fn f64x2_convert_u_i64x2(a: v128) -> v128 {
     unsafe { transmute(simd_cast::<_, f64x2>(a.as_u64x2())) }

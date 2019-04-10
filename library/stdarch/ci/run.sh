@@ -51,6 +51,7 @@ STD_DETECT="--manifest-path=crates/std_detect/Cargo.toml"
 STDSIMD_EXAMPLES="--manifest-path=examples/Cargo.toml"
 cargo_test "${CORE_ARCH}"
 cargo_test "${CORE_ARCH} --release"
+
 if [ "$NOSTD" != "1" ]; then
     cargo_test "${STD_DETECT}"
     cargo_test "${STD_DETECT} --release"
@@ -72,10 +73,15 @@ case ${TARGET} in
         cargo_test "--release"
         ;;
     wasm32-unknown-unknown*)
-        # There's no node or other runtime which supports the most recent SIMD
-        # proposal, but hopefully that's coming soon! For now just test that we
-        # can codegen with no LLVM faults, and we'll remove `--no-run` at a
-        # later date.
+        # Attempt to actually run some SIMD tests in node.js. Unfortunately
+        # though node.js (transitively through v8) doesn't have support for the
+        # full SIMD spec yet, only some functions. As a result only pass in
+        # some target features and a special `--cfg`
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128 --cfg only_node_compatible_functions"
+        cargo_test "--release"
+
+        # After that passes make sure that all intrinsics compile, passing in
+        # the extra feature to compile in non-node-compatible SIMD.
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+simd128,+unimplemented-simd128"
         cargo_test "--release --no-run"
         ;;

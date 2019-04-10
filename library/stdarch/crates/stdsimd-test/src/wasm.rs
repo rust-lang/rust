@@ -1,12 +1,13 @@
 //! Disassembly calling function for `wasm32` targets.
 use wasm_bindgen::prelude::*;
 
-use ::*;
+use crate::{Function, Instruction};
+use std::collections::HashMap;
 
 #[wasm_bindgen(module = "child_process")]
 extern "C" {
-    #[wasm_bindgen(js_name = execSync)]
-    fn exec_sync(cmd: &str) -> Buffer;
+    #[wasm_bindgen(js_name = execFileSync)]
+    fn exec_file_sync(cmd: &str, args: &js_sys::Array, opts: &js_sys::Object) -> Buffer;
 }
 
 #[wasm_bindgen(module = "buffer")]
@@ -35,9 +36,15 @@ pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
     let js_shim = Path::new(&js_shim).with_extension("wasm");
 
     // Execute `wasm2wat` synchronously, waiting for and capturing all of its
-    // output.
-    let output =
-        exec_sync(&format!("wasm2wat {}", js_shim.display())).to_string();
+    // output. Note that we pass in a custom `maxBuffer` parameter because we're
+    // generating a ton of output that needs to be buffered.
+    let args = js_sys::Array::new();
+    args.push(&js_shim.display().to_string().into());
+    args.push(&"--enable-simd".into());
+    let opts = js_sys::Object::new();
+    js_sys::Reflect::set(&opts, &"maxBuffer".into(), &(200 * 1024 * 1024).into())
+        .unwrap();
+    let output = exec_file_sync("wasm2wat", &args, &opts).to_string();
 
     let mut ret: HashMap<String, Vec<Function>> = HashMap::new();
     let mut lines = output.lines().map(|s| s.trim());

@@ -1,3 +1,18 @@
+FROM ubuntu:18.04 as node
+
+RUN apt-get update -y && apt-get install -y \
+  g++ \
+  git \
+  make \
+  python
+
+
+# Install `node`
+RUN git clone https://github.com/nodejs/node --depth 1
+WORKDIR node
+RUN ./configure --prefix=/node-install
+RUN make -j$(nproc) install
+
 FROM ubuntu:18.04
 
 RUN apt-get update -y && apt-get install -y --no-install-recommends \
@@ -16,12 +31,8 @@ RUN git clone --recursive https://github.com/WebAssembly/wabt
 RUN make -C wabt -j$(nproc)
 ENV PATH=$PATH:/wabt/bin
 
-# Install `wasm-bindgen-test-runner`
-RUN curl -L https://github.com/rustwasm/wasm-bindgen/releases/download/0.2.19/wasm-bindgen-0.2.19-x86_64-unknown-linux-musl.tar.gz \
-  | tar xzf -
-ENV PATH=$PATH:/wasm-bindgen-0.2.19-x86_64-unknown-linux-musl
-ENV CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner
+COPY --from=node /node-install /
+ENV PATH=$PATH:/node-install/bin
 
-# Install `node`
-RUN curl https://nodejs.org/dist/v10.8.0/node-v10.8.0-linux-x64.tar.xz | tar xJf -
-ENV PATH=$PATH:/node-v10.8.0-linux-x64/bin
+COPY docker/wasm32-unknown-unknown/wasm-entrypoint.sh /wasm-entrypoint.sh
+ENTRYPOINT ["/wasm-entrypoint.sh"]
