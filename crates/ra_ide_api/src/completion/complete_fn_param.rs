@@ -54,48 +54,79 @@ pub(super) fn complete_fn_param(acc: &mut Completions, ctx: &CompletionContext) 
 
 #[cfg(test)]
 mod tests {
-    use crate::completion::{check_completion, CompletionKind};
+    use crate::completion::{do_completion, CompletionItem, CompletionKind};
+    use insta::assert_debug_snapshot_matches;
 
-    fn check_magic_completion(name: &str, code: &str) {
-        check_completion(name, code, CompletionKind::Magic);
+    fn do_magic_completion(code: &str) -> Vec<CompletionItem> {
+        do_completion(code, CompletionKind::Magic)
     }
 
     #[test]
     fn test_param_completion_last_param() {
-        check_magic_completion(
-            "param_completion_last_param",
-            r"
-            fn foo(file_id: FileId) {}
-            fn bar(file_id: FileId) {}
-            fn baz(file<|>) {}
-            ",
+        assert_debug_snapshot_matches!(
+        do_magic_completion(
+                r"
+                fn foo(file_id: FileId) {}
+                fn bar(file_id: FileId) {}
+                fn baz(file<|>) {}
+                ",
+        ),
+            @r###"[
+    CompletionItem {
+        label: "file_id: FileId",
+        source_range: [110; 114),
+        delete: [110; 114),
+        insert: "file_id: FileId",
+        lookup: "file_id"
+    }
+]"###
         );
     }
 
     #[test]
     fn test_param_completion_nth_param() {
-        check_magic_completion(
-            "param_completion_nth_param",
-            r"
-            fn foo(file_id: FileId) {}
-            fn bar(file_id: FileId) {}
-            fn baz(file<|>, x: i32) {}
-            ",
+        assert_debug_snapshot_matches!(
+        do_magic_completion(
+                r"
+                fn foo(file_id: FileId) {}
+                fn bar(file_id: FileId) {}
+                fn baz(file<|>, x: i32) {}
+                ",
+        ),
+            @r###"[
+    CompletionItem {
+        label: "file_id: FileId",
+        source_range: [110; 114),
+        delete: [110; 114),
+        insert: "file_id: FileId",
+        lookup: "file_id"
+    }
+]"###
         );
     }
 
     #[test]
     fn test_param_completion_trait_param() {
-        check_magic_completion(
-            "param_completion_trait_param",
-            r"
-            pub(crate) trait SourceRoot {
-                pub fn contains(&self, file_id: FileId) -> bool;
-                pub fn module_map(&self) -> &ModuleMap;
-                pub fn lines(&self, file_id: FileId) -> &LineIndex;
-                pub fn syntax(&self, file<|>)
-            }
-            ",
+        assert_debug_snapshot_matches!(
+        do_magic_completion(
+                r"
+                pub(crate) trait SourceRoot {
+                    pub fn contains(&self, file_id: FileId) -> bool;
+                    pub fn module_map(&self) -> &ModuleMap;
+                    pub fn lines(&self, file_id: FileId) -> &LineIndex;
+                    pub fn syntax(&self, file<|>)
+                }
+                ",
+        ),
+            @r###"[
+    CompletionItem {
+        label: "file_id: FileId",
+        source_range: [289; 293),
+        delete: [289; 293),
+        insert: "file_id: FileId",
+        lookup: "file_id"
+    }
+]"###
         );
     }
 }
