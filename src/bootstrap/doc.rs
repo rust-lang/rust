@@ -22,6 +22,20 @@ use crate::compile;
 use crate::cache::{INTERNER, Interned};
 use crate::config::Config;
 
+fn doc_dir(
+    builder: &Builder<'_>,
+    compiler: Compiler,
+    target: Interned<String>,
+    mode: Mode,
+) -> PathBuf {
+    let compiler = if builder.force_use_stage1(compiler, target) {
+        builder.compiler(1, compiler.host)
+    } else {
+        compiler
+    };
+    builder.stage_out(compiler, mode).join(target).join("doc")
+}
+
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $book_ver:expr;)+) => {
         $(
@@ -476,15 +490,9 @@ impl Step for Std {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
 
         builder.ensure(compile::Std { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Std)
-                           .join(target).join("doc");
+        let out_dir = doc_dir(builder, compiler, target, Mode::Std);
 
         // Here what we're doing is creating a *symlink* (directory junction on
         // Windows) to the final output location. This is not done as an
@@ -564,18 +572,12 @@ impl Step for Test {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
 
         // Build libstd docs so that we generate relative links
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Test { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Test)
-                           .join(target).join("doc");
+        let out_dir = doc_dir(builder, compiler, target, Mode::Test);
 
         // See docs in std above for why we symlink
         let my_out = builder.crate_doc_out(target);
@@ -633,18 +635,12 @@ impl Step for WhitelistedRustc {
         let out = builder.doc_out(target);
         t!(fs::create_dir_all(&out));
         let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
 
         // Build libstd docs so that we generate relative links
         builder.ensure(Std { stage, target });
 
         builder.ensure(compile::Rustc { compiler, target });
-        let out_dir = builder.stage_out(compiler, Mode::Rustc)
-                           .join(target).join("doc");
+        let out_dir = doc_dir(builder, compiler, target, Mode::Rustc);
 
         // See docs in std above for why we symlink
         let my_out = builder.crate_doc_out(target);
@@ -707,11 +703,6 @@ impl Step for Rustc {
 
         // Get the correct compiler for this stage.
         let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -723,7 +714,7 @@ impl Step for Rustc {
 
         // We do not symlink to the same shared folder that already contains std library
         // documentation from previous steps as we do not want to include that.
-        let out_dir = builder.stage_out(compiler, Mode::Rustc).join(target).join("doc");
+        let out_dir = doc_dir(builder, compiler, target, Mode::Rustc);
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
         // Build cargo command.
@@ -808,11 +799,6 @@ impl Step for Rustdoc {
 
         // Get the correct compiler for this stage.
         let compiler = builder.compiler(stage, builder.config.build);
-        let compiler = if builder.force_use_stage1(compiler, target) {
-            builder.compiler(1, compiler.host)
-        } else {
-            compiler
-        };
 
         if !builder.config.compiler_docs {
             builder.info("\tskipping - compiler/librustdoc docs disabled");
@@ -826,9 +812,7 @@ impl Step for Rustdoc {
         builder.ensure(tool::Rustdoc { compiler: compiler });
 
         // Symlink compiler docs to the output directory of rustdoc documentation.
-        let out_dir = builder.stage_out(compiler, Mode::ToolRustc)
-            .join(target)
-            .join("doc");
+        let out_dir = doc_dir(builder, compiler, target, Mode::ToolRustc);
         t!(fs::create_dir_all(&out_dir));
         t!(symlink_dir_force(&builder.config, &out, &out_dir));
 
