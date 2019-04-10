@@ -377,6 +377,8 @@ let m = ", $rot_result, ";
 assert_eq!(n.rotate_left(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
                 (self as $UnsignedT).rotate_left(n) as Self
@@ -401,6 +403,8 @@ let m = ", $rot_op, ";
 assert_eq!(n.rotate_right(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {
                 (self as $UnsignedT).rotate_right(n) as Self
@@ -598,6 +602,8 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
@@ -620,6 +626,8 @@ assert_eq!((", stringify!($SelfT), "::min_value() + 2).checked_sub(3), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
@@ -642,6 +650,8 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
@@ -665,6 +675,8 @@ assert_eq!((1", stringify!($SelfT), ").checked_div(0), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_div(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
@@ -691,6 +703,8 @@ assert_eq!(", stringify!($SelfT), "::min_value().checked_div_euclid(-1), None);
 assert_eq!((1", stringify!($SelfT), ").checked_div_euclid(0), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
@@ -718,6 +732,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.checked_rem(-1), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
@@ -745,6 +761,8 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 assert_eq!(", stringify!($SelfT), "::MIN.checked_rem_euclid(-1), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
@@ -791,6 +809,8 @@ assert_eq!(0x1", stringify!($SelfT), ".checked_shl(129), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
@@ -812,6 +832,8 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(128), None);",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
@@ -860,6 +882,8 @@ $EndFeature, "
 ```"),
 
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
@@ -901,6 +925,8 @@ $EndFeature, "
 
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn saturating_add(self, rhs: Self) -> Self {
                 intrinsics::saturating_add(self, rhs)
@@ -924,6 +950,8 @@ $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
             #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn saturating_sub(self, rhs: Self) -> Self {
                 intrinsics::saturating_sub(self, rhs)
@@ -947,6 +975,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_mul(10), ", stringify!($Self
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or_else(|| {
@@ -976,6 +1006,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.saturating_pow(3), ", stringify!($SelfT
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
@@ -1001,6 +1033,8 @@ assert_eq!(", stringify!($SelfT), "::max_value().wrapping_add(2), ", stringify!(
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
                 intrinsics::overflowing_add(self, rhs)
@@ -1022,6 +1056,8 @@ stringify!($SelfT), "::max_value());",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
                 intrinsics::overflowing_sub(self, rhs)
@@ -1042,6 +1078,8 @@ assert_eq!(11i8.wrapping_mul(12), -124);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_mul(self, rhs: Self) -> Self {
                 intrinsics::overflowing_mul(self, rhs)
@@ -1070,6 +1108,8 @@ assert_eq!((-128i8).wrapping_div(-1), -128);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_div(self, rhs: Self) -> Self {
                 self.overflowing_div(rhs).0
@@ -1098,6 +1138,8 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 assert_eq!((-128i8).wrapping_div_euclid(-1), -128);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self.overflowing_div_euclid(rhs).0
@@ -1126,6 +1168,8 @@ assert_eq!((-128i8).wrapping_rem(-1), 0);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_rem(self, rhs: Self) -> Self {
                 self.overflowing_rem(rhs).0
@@ -1153,6 +1197,8 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 assert_eq!((-128i8).wrapping_rem_euclid(-1), 0);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self.overflowing_rem_euclid(rhs).0
@@ -1203,6 +1249,8 @@ assert_eq!((-1", stringify!($SelfT), ").wrapping_shl(128), -1);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
                 unsafe {
@@ -1230,6 +1278,8 @@ assert_eq!((-128i16).wrapping_shr(64), -128);",
 $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
                 unsafe {
@@ -1284,6 +1334,8 @@ assert_eq!(3i8.wrapping_pow(6), -39);",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
@@ -1326,6 +1378,8 @@ assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (", stringify!($Sel
 "::MIN, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
                 let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
@@ -1351,6 +1405,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_sub(1), (", stringify!($Sel
 "::MAX, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
                 let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
@@ -1374,6 +1430,8 @@ assert_eq!(1_000_000_000i32.overflowing_mul(10), (1410065408, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
                 let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
@@ -1405,6 +1463,8 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
@@ -1438,6 +1498,8 @@ assert_eq!(", stringify!($SelfT), "::MIN.overflowing_div_euclid(-1), (", stringi
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
@@ -1470,6 +1532,8 @@ $EndFeature, "
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
@@ -1502,6 +1566,8 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 assert_eq!(", stringify!($SelfT), "::MIN.overflowing_rem_euclid(-1), (0, true));
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
@@ -1555,6 +1621,8 @@ assert_eq!(0x1i32.overflowing_shl(36), (0x10, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
@@ -1578,6 +1646,8 @@ assert_eq!(0x10i32.overflowing_shr(36), (0x1, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
@@ -1630,6 +1700,8 @@ assert_eq!(3i8.overflowing_pow(5), (-13, true));",
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;
@@ -1677,6 +1749,8 @@ assert_eq!(x.pow(5), 32);",
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub fn pow(self, mut exp: u32) -> Self {
@@ -1732,6 +1806,8 @@ assert_eq!((-a).div_euclid(b), -2); // -7 >= 4 * -2
 assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub fn div_euclid(self, rhs: Self) -> Self {
@@ -1770,6 +1846,8 @@ assert_eq!(a.rem_euclid(-b), 3);
 assert_eq!((-a).rem_euclid(-b), 1);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub fn rem_euclid(self, rhs: Self) -> Self {
@@ -2277,6 +2355,8 @@ let m = ", $rot_result, ";
 assert_eq!(n.rotate_left(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
                 intrinsics::rotate_left(self, n as $SelfT)
@@ -2301,6 +2381,8 @@ let m = ", $rot_op, ";
 assert_eq!(n.rotate_right(", $rot, "), m);
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {
                 intrinsics::rotate_right(self, n as $SelfT)
@@ -2496,6 +2578,8 @@ Basic usage:
 assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
@@ -2516,6 +2600,8 @@ Basic usage:
 assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
@@ -2536,6 +2622,8 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
@@ -2556,6 +2644,8 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_div(self, rhs: Self) -> Option<Self> {
                 match rhs {
@@ -2579,6 +2669,8 @@ assert_eq!(128", stringify!($SelfT), ".checked_div_euclid(2), Some(64));
 assert_eq!(1", stringify!($SelfT), ".checked_div_euclid(0), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
@@ -2603,6 +2695,8 @@ Basic usage:
 assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
@@ -2627,6 +2721,8 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(2), Some(1));
 assert_eq!(5", stringify!($SelfT), ".checked_rem_euclid(0), None);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
@@ -2672,6 +2768,8 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
@@ -2692,6 +2790,8 @@ Basic usage:
 assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
@@ -2712,6 +2812,8 @@ Basic usage:
 assert_eq!(", stringify!($SelfT), "::max_value().checked_pow(2), None);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn checked_pow(self, mut exp: u32) -> Option<Self> {
                 let mut base = self;
@@ -2750,6 +2852,8 @@ assert_eq!(200u8.saturating_add(127), 255);", $EndFeature, "
 ```"),
 
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[rustc_const_unstable(feature = "const_saturating_int_methods")]
             #[inline]
             pub const fn saturating_add(self, rhs: Self) -> Self {
@@ -2770,6 +2874,8 @@ Basic usage:
 assert_eq!(13", stringify!($SelfT), ".saturating_sub(127), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[rustc_const_unstable(feature = "const_saturating_int_methods")]
             #[inline]
             pub const fn saturating_sub(self, rhs: Self) -> Self {
@@ -2793,6 +2899,8 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
 "::MAX);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or(Self::max_value())
@@ -2815,6 +2923,8 @@ assert_eq!(", stringify!($SelfT), "::MAX.saturating_pow(2), ", stringify!($SelfT
 $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn saturating_pow(self, exp: u32) -> Self {
                 match self.checked_pow(exp) {
@@ -2838,6 +2948,8 @@ assert_eq!(200", stringify!($SelfT), ".wrapping_add(", stringify!($SelfT), "::ma
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_add(self, rhs: Self) -> Self {
                 intrinsics::overflowing_add(self, rhs)
@@ -2858,6 +2970,8 @@ assert_eq!(100", stringify!($SelfT), ".wrapping_sub(", stringify!($SelfT), "::ma
 $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_sub(self, rhs: Self) -> Self {
                 intrinsics::overflowing_sub(self, rhs)
@@ -2879,6 +2993,8 @@ $EndFeature, "
         /// assert_eq!(25u8.wrapping_mul(12), 44);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
             intrinsics::overflowing_mul(self, rhs)
@@ -2899,6 +3015,8 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_div(10), 10);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_div(self, rhs: Self) -> Self {
                 self / rhs
@@ -2924,6 +3042,8 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_div_euclid(10), 10);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_div_euclid(self, rhs: Self) -> Self {
                 self / rhs
@@ -2946,6 +3066,8 @@ Basic usage:
 ", $Feature, "assert_eq!(100", stringify!($SelfT), ".wrapping_rem(10), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_rem(self, rhs: Self) -> Self {
                 self % rhs
@@ -2972,6 +3094,8 @@ Basic usage:
 assert_eq!(100", stringify!($SelfT), ".wrapping_rem_euclid(10), 0);
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
@@ -3026,6 +3150,8 @@ Basic usage:
 assert_eq!(1", stringify!($SelfT), ".wrapping_shl(128), 1);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_shl(self, rhs: u32) -> Self {
                 unsafe {
@@ -3055,6 +3181,8 @@ Basic usage:
 assert_eq!(128", stringify!($SelfT), ".wrapping_shr(128), 128);", $EndFeature, "
 ```"),
             #[stable(feature = "num_wrapping", since = "1.2.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn wrapping_shr(self, rhs: u32) -> Self {
                 unsafe {
@@ -3076,6 +3204,8 @@ Basic usage:
 assert_eq!(3u8.wrapping_pow(6), 217);", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn wrapping_pow(self, mut exp: u32) -> Self {
                 let mut base = self;
@@ -3118,6 +3248,8 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_add(2), (7, false));
 assert_eq!(", stringify!($SelfT), "::MAX.overflowing_add(1), (0, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_add(self, rhs: Self) -> (Self, bool) {
                 let (a, b) = intrinsics::add_with_overflow(self as $ActualT, rhs as $ActualT);
@@ -3144,6 +3276,8 @@ assert_eq!(0", stringify!($SelfT), ".overflowing_sub(1), (", stringify!($SelfT),
 $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_sub(self, rhs: Self) -> (Self, bool) {
                 let (a, b) = intrinsics::sub_with_overflow(self as $ActualT, rhs as $ActualT);
@@ -3169,6 +3303,8 @@ $EndFeature, "
         /// assert_eq!(1_000_000_000u32.overflowing_mul(10), (1410065408, true));
         /// ```
         #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
         #[inline]
         pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
@@ -3196,6 +3332,8 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
@@ -3226,6 +3364,8 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_div_euclid(2), (2, false));
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn overflowing_div_euclid(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
@@ -3252,6 +3392,8 @@ Basic usage
 ```"),
             #[inline]
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
@@ -3282,6 +3424,8 @@ assert_eq!(5", stringify!($SelfT), ".overflowing_rem_euclid(2), (1, false));
 ```"),
             #[inline]
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             pub fn overflowing_rem_euclid(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
@@ -3329,6 +3473,8 @@ Basic usage
 assert_eq!(0x1", stringify!($SelfT), ".overflowing_shl(132), (0x10, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
@@ -3353,6 +3499,8 @@ Basic usage
 assert_eq!(0x10", stringify!($SelfT), ".overflowing_shr(132), (0x1, true));", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub const fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
                 (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
@@ -3374,6 +3522,8 @@ Basic usage:
 assert_eq!(3u8.overflowing_pow(6), (217, true));", $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_pow", since = "1.34.0")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             pub fn overflowing_pow(self, mut exp: u32) -> (Self, bool) {
                 let mut base = self;
@@ -3418,6 +3568,8 @@ Basic usage:
 ", $Feature, "assert_eq!(2", stringify!($SelfT), ".pow(5), 32);", $EndFeature, "
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub fn pow(self, mut exp: u32) -> Self {
@@ -3459,6 +3611,8 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".div_euclid(4), 1); // or any other integer type
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub fn div_euclid(self, rhs: Self) -> Self {
@@ -3483,6 +3637,8 @@ Basic usage:
 assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer type
 ```"),
             #[unstable(feature = "euclidean_division", issue = "49048")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
             pub fn rem_euclid(self, rhs: Self) -> Self {
