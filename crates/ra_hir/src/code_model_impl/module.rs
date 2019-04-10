@@ -3,9 +3,9 @@ use ra_syntax::{ast, TreeArc};
 
 use crate::{
     Module, ModuleSource, Name, AstId,
-    nameres::{CrateModuleId, ImportId},
+    nameres::CrateModuleId,
     HirDatabase, DefDatabase,
-    HirFileId, ImportSource,
+    HirFileId,
 };
 
 impl ModuleSource {
@@ -66,16 +66,6 @@ impl Module {
         let decl = def_map[self.module_id].declaration?;
         let ast = decl.to_node(db);
         Some((decl.file_id(), ast))
-    }
-
-    pub(crate) fn import_source_impl(
-        &self,
-        db: &impl HirDatabase,
-        import: ImportId,
-    ) -> ImportSource {
-        let (file_id, source) = self.definition_source(db);
-        let (_, source_map) = db.raw_items_with_source_map(file_id);
-        source_map.get(&source, import)
     }
 
     pub(crate) fn crate_root_impl(&self, db: &impl DefDatabase) -> Module {

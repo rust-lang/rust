@@ -17,6 +17,8 @@ macro_rules! impl_froms {
     }
 }
 
+mod either;
+
 pub mod db;
 #[macro_use]
 pub mod mock;
@@ -52,11 +54,12 @@ use crate::{
 };
 
 pub use self::{
+    either::Either,
     path::{Path, PathKind},
     name::Name,
     source_id::{AstIdMap, ErasedFileAstId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc},
-    nameres::{PerNs, Namespace, ImportId, ImportSource},
+    nameres::{PerNs, Namespace, ImportId},
     ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
