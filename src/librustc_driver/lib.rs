@@ -743,7 +743,7 @@ fn usage(verbose: bool, include_unstable_options: bool) {
     }
     let message = "Usage: rustc [OPTIONS] INPUT";
     let nightly_help = if nightly_options::is_nightly_build() {
-        "\n    -Z help             Print internal options for debugging rustc"
+        "\n    -Z help             Print unstable compiler options"
     } else {
         ""
     };
@@ -891,7 +891,7 @@ Available lint options:
 }
 
 fn describe_debug_flags() {
-    println!("\nAvailable debug options:\n");
+    println!("\nAvailable options:\n");
     print_flag_list("-Z", config::DB_OPTIONS);
 }
 
