@@ -109,7 +109,7 @@ impl ExprScopes {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopesWithSourceMap {
-    pub source_map: Arc<BodySourceMap>,
+    pub(crate) source_map: Arc<BodySourceMap>,
     pub scopes: Arc<ExprScopes>,
 }
 

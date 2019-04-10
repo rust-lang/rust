@@ -450,10 +450,6 @@ impl DefWithBody {
         db.infer(*self)
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(*self).1
-    }
-
     pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
         db.body_hir(*self)
     }
@@ -523,7 +519,7 @@ impl Function {
         self.signature(db).name.clone()
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+    pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map((*self).into()).1
     }
 
@@ -606,7 +602,7 @@ impl Const {
         db.infer((*self).into())
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+    pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map((*self).into()).1
     }
 
@@ -679,7 +675,7 @@ impl Static {
         db.infer((*self).into())
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+    pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map((*self).into()).1
     }
 }

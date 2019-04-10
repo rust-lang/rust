@@ -5,15 +5,17 @@
 ///
 /// So, this modules should not be used during hir construction, it exists
 /// purely for "IDE needs".
+use std::sync::Arc;
+
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SyntaxNode,
+    SyntaxNode, AstPtr,
     ast::{self, AstNode, NameOwner},
     algo::{find_node_at_offset, find_token_at_offset},
 };
 
 use crate::{
-    HirDatabase, Function, Struct, Enum,Const,Static,
+    HirDatabase, Function, Struct, Enum, Const, Static, Either,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
     ids::LocationCtx,
     expr, AstId
@@ -256,5 +258,99 @@ fn try_get_resolver_for_node(
     } else {
         // FIXME add missing cases
         None
+    }
+}
+
+// Name is bad, don't use inside HIR
+#[derive(Debug)]
+pub struct SourceAnalyser {
+    resolver: Resolver,
+    body_source_map: Option<Arc<crate::expr::BodySourceMap>>,
+    infer: Option<Arc<crate::ty::InferenceResult>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PathResolution {
+    /// An item
+    Def(crate::ModuleDef),
+    /// A local binding (only value namespace)
+    LocalBinding(crate::expr::PatId),
+    /// A generic parameter
+    GenericParam(u32),
+    SelfType(crate::ImplBlock),
+    AssocItem(crate::ImplItem),
+}
+
+impl SourceAnalyser {
+    pub fn new(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> SourceAnalyser {
+        let resolver = resolver_for_node(db, file_id, node);
+        let function = function_from_child_node(db, file_id, node);
+        if let Some(function) = function {
+            SourceAnalyser {
+                resolver,
+                body_source_map: Some(function.body_source_map(db)),
+                infer: Some(function.infer(db)),
+            }
+        } else {
+            SourceAnalyser { resolver, body_source_map: None, infer: None }
+        }
+    }
+
+    pub fn type_of(&self, _db: &impl HirDatabase, expr: &ast::Expr) -> Option<crate::Ty> {
+        let expr_id = self.body_source_map.as_ref()?.node_expr(expr)?;
+        Some(self.infer.as_ref()?[expr_id].clone())
+    }
+
+    pub fn type_of_pat(&self, _db: &impl HirDatabase, pat: &ast::Pat) -> Option<crate::Ty> {
+        let pat_id = self.body_source_map.as_ref()?.node_pat(pat)?;
+        Some(self.infer.as_ref()?[pat_id].clone())
+    }
+
+    pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
+        let expr_id = self.body_source_map.as_ref()?.node_expr(call.into())?;
+        self.infer.as_ref()?.method_resolution(expr_id)
+    }
+
+    pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
+        let expr_id = self.body_source_map.as_ref()?.node_expr(field.into())?;
+        self.infer.as_ref()?.field_resolution(expr_id)
+    }
+
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {
+        if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
+            let expr_id = self.body_source_map.as_ref()?.node_expr(path_expr.into())?;
+            if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
+                return Some(PathResolution::AssocItem(assoc));
+            }
+        }
+        if let Some(path_pat) = path.syntax().parent().and_then(ast::PathPat::cast) {
+            let pat_id = self.body_source_map.as_ref()?.node_pat(path_pat.into())?;
+            if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
+                return Some(PathResolution::AssocItem(assoc));
+            }
+        }
+        let hir_path = crate::Path::from_ast(path)?;
+        let res = self.resolver.resolve_path(db, &hir_path);
+        let res = res.clone().take_types().or_else(|| res.take_values())?;
+        Some(res.into())
+    }
+
+    pub fn pat_syntax(
+        &self,
+        _db: &impl HirDatabase,
+        pat: crate::expr::PatId,
+    ) -> Option<Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>> {
+        self.body_source_map.as_ref()?.pat_syntax(pat)
+    }
+}
+
+impl From<crate::Resolution> for PathResolution {
+    fn from(res: crate::Resolution) -> PathResolution {
+        match res {
+            crate::Resolution::Def(it) => PathResolution::Def(it),
+            crate::Resolution::LocalBinding(it) => PathResolution::LocalBinding(it),
+            crate::Resolution::GenericParam(it) => PathResolution::GenericParam(it),
+            crate::Resolution::SelfType(it) => PathResolution::SelfType(it),
+        }
     }
 }

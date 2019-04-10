@@ -66,6 +66,7 @@ pub use self::{
     adt::AdtDef,
     expr::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax},
     resolve::{Resolver, Resolution},
+    source_binder::{SourceAnalyser, PathResolution},
 };
 
 pub use self::code_model_api::{

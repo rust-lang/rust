@@ -2,7 +2,6 @@ use std::fmt::Write;
 
 use crate::{Assist, AssistId, AssistCtx};
 
-use hir::Resolver;
 use hir::db::HirDatabase;
 use ra_syntax::{SmolStr, SyntaxKind, TextRange, TextUnit, TreeArc};
 use ra_syntax::ast::{self, AstNode, AstToken, FnDef, ImplItem, ImplItemKind, NameOwner};
@@ -46,9 +45,9 @@ fn add_missing_impl_members_inner(
     let trait_def = {
         let file_id = ctx.frange.file_id;
         let position = FilePosition { file_id, offset: impl_node.syntax().range().start() };
-        let resolver = hir::source_binder::resolver_for_position(ctx.db, position);
+        let analyser = hir::SourceAnalyser::new(ctx.db, position.file_id, impl_node.syntax());
 
-        resolve_target_trait_def(ctx.db, &resolver, impl_node)?
+        resolve_target_trait_def(ctx.db, &analyser, impl_node)?
     };
 
     let missing_fns: Vec<_> = {
@@ -122,14 +121,14 @@ fn add_missing_impl_members_inner(
 /// implemented) to a `ast::TraitDef`.
 fn resolve_target_trait_def(
     db: &impl HirDatabase,
-    resolver: &Resolver,
+    binder: &hir::SourceAnalyser,
     impl_block: &ast::ImplBlock,
 ) -> Option<TreeArc<ast::TraitDef>> {
-    let ast_path = impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?;
-    let hir_path = ast_path.path().and_then(hir::Path::from_ast)?;
+    let ast_path =
+        impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?.path()?;
 
-    match resolver.resolve_path(db, &hir_path).take_types() {
-        Some(hir::Resolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
+    match binder.resolve_path(db, &ast_path) {
+        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
         _ => None,
     }
 }

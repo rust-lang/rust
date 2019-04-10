@@ -5,7 +5,6 @@ use ra_syntax::{
     SyntaxNode,
 };
 use test_utils::tested_by;
-use hir::Resolution;
 
 use crate::{FilePosition, NavigationTarget, db::RootDatabase, RangeInfo};
 
@@ -48,127 +47,72 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let function = hir::source_binder::function_from_child_node(db, file_id, name_ref.syntax());
+    let analyzer = hir::SourceAnalyser::new(db, file_id, name_ref.syntax());
 
-    if let Some(function) = function {
-        // Check if it is a method
-        if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
-            tested_by!(goto_definition_works_for_methods);
-            let infer_result = function.infer(db);
-            let source_map = function.body_source_map(db);
-            let expr = ast::Expr::cast(method_call.syntax()).unwrap();
-            if let Some(func) =
-                source_map.node_expr(expr).and_then(|it| infer_result.method_resolution(it))
-            {
-                return Exact(NavigationTarget::from_function(db, func));
-            };
+    // Special cases:
+
+    // Check if it is a method
+    if let Some(method_call) = name_ref.syntax().parent().and_then(ast::MethodCallExpr::cast) {
+        tested_by!(goto_definition_works_for_methods);
+        if let Some(func) = analyzer.resolve_method_call(method_call) {
+            return Exact(NavigationTarget::from_function(db, func));
         }
-        // It could also be a field access
-        if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
-            tested_by!(goto_definition_works_for_fields);
-            let infer_result = function.infer(db);
-            let source_map = function.body_source_map(db);
-            let expr = ast::Expr::cast(field_expr.syntax()).unwrap();
-            if let Some(field) =
-                source_map.node_expr(expr).and_then(|it| infer_result.field_resolution(it))
-            {
-                return Exact(NavigationTarget::from_field(db, field));
-            };
-        }
+    }
+    // It could also be a field access
+    if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
+        tested_by!(goto_definition_works_for_fields);
+        if let Some(field) = analyzer.resolve_field(field_expr) {
+            return Exact(NavigationTarget::from_field(db, field));
+        };
+    }
 
-        // It could also be a named field
-        if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::NamedField::cast) {
-            tested_by!(goto_definition_works_for_named_fields);
+    // It could also be a named field
+    if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::NamedField::cast) {
+        tested_by!(goto_definition_works_for_named_fields);
 
-            let infer_result = function.infer(db);
-            let source_map = function.body_source_map(db);
+        let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
 
-            let struct_lit = field_expr.syntax().ancestors().find_map(ast::StructLit::cast);
+        if let Some(ty) = struct_lit.and_then(|lit| analyzer.type_of(db, lit.into())) {
+            if let Some((hir::AdtDef::Struct(s), _)) = ty.as_adt() {
+                let hir_path = hir::Path::from_name_ref(name_ref);
+                let hir_name = hir_path.as_ident().unwrap();
 
-            if let Some(expr) = struct_lit.and_then(|lit| source_map.node_expr(lit.into())) {
-                let ty = infer_result[expr].clone();
-                if let Some((hir::AdtDef::Struct(s), _)) = ty.as_adt() {
-                    let hir_path = hir::Path::from_name_ref(name_ref);
-                    let hir_name = hir_path.as_ident().unwrap();
-
-                    if let Some(field) = s.field(db, hir_name) {
-                        return Exact(NavigationTarget::from_field(db, field));
-                    }
+                if let Some(field) = s.field(db, hir_name) {
+                    return Exact(NavigationTarget::from_field(db, field));
                 }
             }
         }
     }
 
-    // Try name resolution
-    let resolver = hir::source_binder::resolver_for_node(db, file_id, name_ref.syntax());
-    if let Some(path) =
-        name_ref.syntax().ancestors().find_map(ast::Path::cast).and_then(hir::Path::from_ast)
-    {
-        let resolved = resolver.resolve_path(db, &path);
-        match resolved.clone().take_types().or_else(|| resolved.take_values()) {
-            Some(Resolution::Def(def)) => return Exact(NavigationTarget::from_def(db, def)),
-            Some(Resolution::LocalBinding(pat)) => {
-                let body = resolver.body().expect("no body for local binding");
-                let source_map = body.owner().body_source_map(db);
-                let ptr = source_map.pat_syntax(pat).expect("pattern not found in syntax mapping");
-                let name =
-                    path.as_ident().cloned().expect("local binding from a multi-segment path");
-                let ptr = ptr.either(|it| it.into(), |it| it.into());
-                let nav = NavigationTarget::from_scope_entry(file_id, name, ptr);
-                return Exact(nav);
-            }
-            Some(Resolution::GenericParam(..)) => {
-                // FIXME: go to the generic param def
-            }
-            Some(Resolution::SelfType(impl_block)) => {
-                let ty = impl_block.target_ty(db);
-
-                if let Some((def_id, _)) = ty.as_adt() {
-                    return Exact(NavigationTarget::from_adt_def(db, def_id));
+    // General case, a path or a local:
+    if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
+        if let Some(resolved) = analyzer.resolve_path(db, path) {
+            match resolved {
+                hir::PathResolution::Def(def) => return Exact(NavigationTarget::from_def(db, def)),
+                hir::PathResolution::LocalBinding(pat) => {
+                    if let Some(pat) = analyzer.pat_syntax(db, pat) {
+                        let nav = NavigationTarget::from_pat(db, file_id, pat);
+                        return Exact(nav);
+                    }
                 }
-            }
-            None => {
-                // If we failed to resolve then check associated items
-                if let Some(function) = function {
-                    // Resolve associated item for path expressions
-                    if let Some(path_expr) =
-                        name_ref.syntax().ancestors().find_map(ast::PathExpr::cast)
-                    {
-                        let infer_result = function.infer(db);
-                        let source_map = function.body_source_map(db);
+                hir::PathResolution::GenericParam(..) => {
+                    // FIXME: go to the generic param def
+                }
+                hir::PathResolution::SelfType(impl_block) => {
+                    let ty = impl_block.target_ty(db);
 
-                        if let Some(expr) = ast::Expr::cast(path_expr.syntax()) {
-                            if let Some(res) = source_map
-                                .node_expr(expr)
-                                .and_then(|it| infer_result.assoc_resolutions_for_expr(it.into()))
-                            {
-                                return Exact(NavigationTarget::from_impl_item(db, res));
-                            }
-                        }
+                    if let Some((def_id, _)) = ty.as_adt() {
+                        return Exact(NavigationTarget::from_adt_def(db, def_id));
                     }
-
-                    // Resolve associated item for path patterns
-                    if let Some(path_pat) =
-                        name_ref.syntax().ancestors().find_map(ast::PathPat::cast)
-                    {
-                        let infer_result = function.infer(db);
-                        let source_map = function.body_source_map(db);
-
-                        let pat: &ast::Pat = path_pat.into();
-
-                        if let Some(res) = source_map
-                            .node_pat(pat)
-                            .and_then(|it| infer_result.assoc_resolutions_for_pat(it.into()))
-                        {
-                            return Exact(NavigationTarget::from_impl_item(db, res));
-                        }
-                    }
+                }
+                hir::PathResolution::AssocItem(assoc) => {
+                    return Exact(NavigationTarget::from_impl_item(db, assoc))
                 }
             }
         }
     }
 
-    // If that fails try the index based approach.
+    // Fallback index based approach:
     let navs = crate::symbol_index::index_resolve(db, name_ref)
         .into_iter()
         .map(NavigationTarget::from_symbol)
