@@ -239,8 +239,8 @@ pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
 
 /// Checks if the method call given in `expr` belongs to the given trait.
 pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) -> bool {
-    let method_call = cx.tables.type_dependent_defs()[expr.hir_id];
-    let trt_id = cx.tcx.trait_of_item(method_call.def_id());
+    let def_id = cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
+    let trt_id = cx.tcx.trait_of_item(def_id);
     if let Some(trt_id) = trt_id {
         match_def_path(cx.tcx, trt_id, path)
     } else {

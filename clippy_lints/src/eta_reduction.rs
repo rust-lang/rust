@@ -102,7 +102,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             // Are the expression or the arguments type-adjusted? Then we need the closure
             if !(is_adjusted(cx, ex) || args.iter().skip(1).any(|arg| is_adjusted(cx, arg)));
 
-            let method_def_id = cx.tables.type_dependent_defs()[ex.hir_id].def_id();
+            let method_def_id = cx.tables.type_dependent_def_id(ex.hir_id).unwrap();
             if !type_is_unsafe_function(cx, cx.tcx.type_of(method_def_id));
 
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.into_iter());

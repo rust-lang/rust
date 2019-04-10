@@ -1369,7 +1369,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                     lint_iter_method(cx, args, arg, method_name);
                 }
             } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                let def_id = cx.tables.type_dependent_defs()[arg.hir_id].def_id();
+                let def_id = cx.tables.type_dependent_def_id(arg.hir_id).unwrap();
                 let substs = cx.tables.node_substs(arg.hir_id);
                 let method_type = cx.tcx.type_of(def_id).subst(cx.tcx, substs);
 
@@ -1904,7 +1904,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 }
             },
             ExprKind::MethodCall(_, _, ref args) => {
-                let def_id = self.cx.tables.type_dependent_defs()[expr.hir_id].def_id();
+                let def_id = self.cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
                 for (ty, expr) in self.cx.tcx.fn_sig(def_id).inputs().skip_binder().iter().zip(args) {
                     self.prefer_mutable = false;
                     if let ty::Ref(_, _, mutbl) = ty.sty {
