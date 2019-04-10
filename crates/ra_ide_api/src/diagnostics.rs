@@ -5,8 +5,9 @@ use hir::{source_binder, diagnostics::{Diagnostic as _, DiagnosticSink}};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
-    ast::{self, AstNode},
+    ast::{self, AstNode, NamedFieldList, NamedField},
 };
+use ra_assists::ast_editor::{AstEditor, AstBuilder};
 use ra_text_edit::{TextEdit, TextEditBuilder};
 use ra_prof::profile;
 
@@ -42,6 +43,27 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let source_root = db.file_source_root(d.file().original_file(db));
         let create_file = FileSystemEdit::CreateFile { source_root, path: d.candidate.clone() };
         let fix = SourceChange::file_system_edit("create module", create_file);
+        res.borrow_mut().push(Diagnostic {
+            range: d.highlight_range(),
+            message: d.message(),
+            severity: Severity::Error,
+            fix: Some(fix),
+        })
+    })
+    .on::<hir::diagnostics::MissingFields, _>(|d| {
+        let file_id = d.file().original_file(db);
+        let source_file = db.parse(file_id);
+        let syntax_node = d.syntax_node_ptr();
+        let node = NamedFieldList::cast(syntax_node.to_node(&source_file)).unwrap();
+        let mut ast_editor = AstEditor::new(node);
+        for f in d.missed_fields.iter() {
+            ast_editor.append_field(&AstBuilder::<NamedField>::from_name(f));
+        }
+
+        let mut builder = TextEditBuilder::default();
+        ast_editor.into_text_edit(&mut builder);
+        let fix =
+            SourceChange::source_file_edit_from("fill struct fields", file_id, builder.finish());
         res.borrow_mut().push(Diagnostic {
             range: d.highlight_range(),
             message: d.message(),
@@ -185,6 +207,105 @@ mod tests {
         let edit = fix.source_file_edits.pop().unwrap().edit;
         let actual = edit.apply(&before);
         assert_eq_text!(after, &actual);
+    }
+
+    fn check_apply_diagnostic_fix(before: &str, after: &str) {
+        let (analysis, file_id) = single_file(before);
+        let diagnostic = analysis.diagnostics(file_id).unwrap().pop().unwrap();
+        let mut fix = diagnostic.fix.unwrap();
+        let edit = fix.source_file_edits.pop().unwrap().edit;
+        let actual = edit.apply(&before);
+        assert_eq_text!(after, &actual);
+    }
+
+    fn check_no_diagnostic(content: &str) {
+        let (analysis, file_id) = single_file(content);
+        let diagnostics = analysis.diagnostics(file_id).unwrap();
+        assert_eq!(diagnostics.len(), 0);
+    }
+
+    #[test]
+    fn test_fill_struct_fields_empty() {
+        let before = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+
+            fn test_fn() {
+                let s = TestStruct{};
+            }
+        ";
+        let after = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+
+            fn test_fn() {
+                let s = TestStruct{ one: (), two: ()};
+            }
+        ";
+        check_apply_diagnostic_fix(before, after);
+    }
+
+    #[test]
+    fn test_fill_struct_fields_partial() {
+        let before = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+
+            fn test_fn() {
+                let s = TestStruct{ two: 2 };
+            }
+        ";
+        let after = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+
+            fn test_fn() {
+                let s = TestStruct{ two: 2, one: () };
+            }
+        ";
+        check_apply_diagnostic_fix(before, after);
+    }
+
+    #[test]
+    fn test_fill_struct_fields_no_diagnostic() {
+        let content = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+            
+            fn test_fn() {
+                let one = 1;
+                let s = TestStruct{ one, two: 2 };
+            }
+        ";
+
+        check_no_diagnostic(content);
+    }
+
+    #[test]
+    fn test_fill_struct_fields_no_diagnostic_on_spread() {
+        let content = r"
+            struct TestStruct {
+                one: i32,
+                two: i64,
+            }
+            
+            fn test_fn() {
+                let one = 1;
+                let s = TestStruct{ ..a };
+            }
+        ";
+
+        check_no_diagnostic(content);
     }
 
     #[test]

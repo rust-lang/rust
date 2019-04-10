@@ -8,7 +8,7 @@ use crate::{
     HirDatabase, DefDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
-    expr::{Body, BodySourceMap},
+    expr::{Body, BodySourceMap, validation::ExprValidator},
     ty::{ TraitRef, InferenceResult},
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::HasGenericParams,
@@ -16,7 +16,7 @@ use crate::{
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId},
     impl_block::ImplBlock,
     resolve::Resolver,
-    diagnostics::DiagnosticSink,
+    diagnostics::{DiagnosticSink},
     traits::{TraitItem, TraitData},
 };
 
@@ -431,8 +431,8 @@ impl Docs for EnumVariant {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum DefWithBody {
     Function(Function),
-    Const(Const),
     Static(Static),
+    Const(Const),
 }
 
 impl_froms!(DefWithBody: Function, Const, Static);
@@ -562,7 +562,10 @@ impl Function {
     }
 
     pub fn diagnostics(&self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
-        self.infer(db).add_diagnostics(db, *self, sink);
+        let infer = self.infer(db);
+        infer.add_diagnostics(db, *self, sink);
+        let mut validator = ExprValidator::new(*self, infer, sink);
+        validator.validate_body(db);
     }
 }
 

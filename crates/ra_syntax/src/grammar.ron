@@ -451,8 +451,11 @@ Grammar(
             traits: [ "AttrsOwner" ]
         ),
         "MatchGuard": (options: ["Expr"]),
-        "StructLit": (options: ["Path", "NamedFieldList", ["spread", "Expr"]]),
-        "NamedFieldList": (collections: [ ["fields", "NamedField"] ]),
+        "StructLit": (options: ["Path", "NamedFieldList"]),
+        "NamedFieldList": (
+            collections: [ ["fields", "NamedField"] ],
+            options: [["spread", "Expr"]]
+        ),
         "NamedField": (options: ["NameRef", "Expr"]),
         "CallExpr": (
             traits: ["ArgListOwner"],
