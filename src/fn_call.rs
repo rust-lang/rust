@@ -4,6 +4,8 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use syntax::attr;
 
+use rand::RngCore;
+
 use crate::*;
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
@@ -224,16 +226,26 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
 
             "syscall" => {
-                // TODO: read `syscall` IDs like `sysconf` IDs and
-                // figure out some way to actually process some of them.
-                //
+                let sys_getrandom = this.eval_path_scalar(&["libc", "SYS_getrandom"])?
+                    .expect("Failed to get libc::SYS_getrandom")
+                    .to_usize(this)?;
+
                 // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
-                // is called if a `HashMap` is created the regular way.
+                // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                 match this.read_scalar(args[0])?.to_usize(this)? {
-                    318 | 511 => {
-                        return err!(Unimplemented(
-                            "miri does not support random number generators".to_owned(),
-                        ))
+                    id if id == sys_getrandom => {
+                        let ptr = this.read_scalar(args[1])?.to_ptr()?;
+                        let len = this.read_scalar(args[2])?.to_usize(this)?;
+
+                        // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
+                        // neither of which have any effect on our current PRNG
+                        let _flags = this.read_scalar(args[3])?.to_i32()?;
+
+                        let data = gen_random(this, len as usize)?;
+                        this.memory_mut().get_mut(ptr.alloc_id)?
+                                    .write_bytes(tcx, ptr, &data)?;
+
+                        this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
                         return err!(Unimplemented(
@@ -499,18 +511,13 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 ];
                 let mut result = None;
                 for &(path, path_value) in paths {
-                    if let Ok(instance) = this.resolve_path(path) {
-                        let cid = GlobalId {
-                            instance,
-                            promoted: None,
-                        };
-                        let const_val = this.const_eval_raw(cid)?;
-                        let const_val = this.read_scalar(const_val.into())?;
-                        let value = const_val.to_i32()?;
-                        if value == name {
+                    if let Some(val) = this.eval_path_scalar(path)? {
+                        let val = val.to_i32()?;
+                        if val == name {
                             result = Some(path_value);
                             break;
                         }
+
                     }
                 }
                 if let Some(result) = result {
@@ -757,6 +764,17 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             "GetCommandLineW" => {
                 this.write_scalar(Scalar::Ptr(this.machine.cmd_line.unwrap()), dest)?;
             }
+            // The actual name of 'RtlGenRandom'
+            "SystemFunction036" => {
+                let ptr = this.read_scalar(args[0])?.to_ptr()?;
+                let len = this.read_scalar(args[1])?.to_usize(this)?;
+
+                let data = gen_random(this, len as usize)?;
+                this.memory_mut().get_mut(ptr.alloc_id)?
+                    .write_bytes(tcx, ptr, &data)?;
+
+                this.write_scalar(Scalar::from_bool(true), dest)?;
+            }
 
             // We can't execute anything else.
             _ => {
@@ -773,5 +791,43 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 
     fn write_null(&mut self, dest: PlaceTy<'tcx, Borrow>) -> EvalResult<'tcx> {
         self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
+    }
+
+    /// Evaluates the scalar at the specified path. Returns Some(val)
+    /// if the path could be resolved, and None otherwise
+    fn eval_path_scalar(&mut self, path: &[&str]) -> EvalResult<'tcx, Option<ScalarMaybeUndef<stacked_borrows::Borrow>>> {
+        let this = self.eval_context_mut();
+        if let Ok(instance) = this.resolve_path(path) {
+            let cid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            let const_val = this.const_eval_raw(cid)?;
+            let const_val = this.read_scalar(const_val.into())?;
+            return Ok(Some(const_val));
+        }
+        return Ok(None);
+    }
+}
+
+fn gen_random<'a, 'mir, 'tcx>(
+    this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
+    len: usize,
+) -> Result<Vec<u8>, EvalError<'tcx>>  {
+
+    match &mut this.machine.rng {
+        Some(rng) => {
+            let mut data = vec![0; len];
+            rng.fill_bytes(&mut data);
+            Ok(data)
+        }
+        None => {
+            err!(Unimplemented(
+                "miri does not support gathering system entropy in deterministic mode!
+                Use '-Zmiri-seed=<seed>' to enable random number generation.
+                WARNING: Miri does *not* generate cryptographically secure entropy -
+                do not use Miri to run any program that needs secure random number generation".to_owned(),
+            ))
+        }
     }
 }

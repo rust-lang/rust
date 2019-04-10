@@ -24,6 +24,9 @@ mod stacked_borrows;
 use std::collections::HashMap;
 use std::borrow::Cow;
 
+use rand::rngs::StdRng;
+use rand::SeedableRng;
+
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{LayoutOf, Size, Align};
 use rustc::hir::{self, def_id::DefId};
@@ -60,6 +63,9 @@ pub fn miri_default_args() -> &'static [&'static str] {
 pub struct MiriConfig {
     pub validate: bool,
     pub args: Vec<String>,
+
+    // The seed to use when non-determinism is required (e.g. getrandom())
+    pub seed: Option<u64>
 }
 
 // Used by priroda.
@@ -71,7 +77,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     let mut ecx = InterpretCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
-        Evaluator::new(config.validate),
+        Evaluator::new(config.validate, config.seed),
     );
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
@@ -326,10 +332,14 @@ pub struct Evaluator<'tcx> {
 
     /// Stacked Borrows state.
     pub(crate) stacked_borrows: stacked_borrows::State,
+
+    /// The random number generator to use if Miri
+    /// is running in non-deterministic mode
+    pub(crate) rng: Option<StdRng>
 }
 
 impl<'tcx> Evaluator<'tcx> {
-    fn new(validate: bool) -> Self {
+    fn new(validate: bool, seed: Option<u64>) -> Self {
         Evaluator {
             env_vars: HashMap::default(),
             argc: None,
@@ -339,6 +349,7 @@ impl<'tcx> Evaluator<'tcx> {
             tls: TlsData::default(),
             validate,
             stacked_borrows: stacked_borrows::State::default(),
+            rng: seed.map(|s| StdRng::seed_from_u64(s))
         }
     }
 }
