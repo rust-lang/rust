@@ -1,5 +1,6 @@
-use crate::io;
+use crate::io::{self, IoVec, IoVecMut};
 use crate::sys::fd::FileDesc;
+use crate::mem::ManuallyDrop;
 
 pub struct Stdin(());
 pub struct Stdout(());
@@ -11,10 +12,11 @@ impl Stdin {
 
 impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDIN_FILENO);
-        let ret = fd.read(buf);
-        fd.into_raw(); // do not close this FD
-        ret
+        ManuallyDrop::new(FileDesc::new(libc::STDIN_FILENO)).read(buf)
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        ManuallyDrop::new(FileDesc::new(libc::STDIN_FILENO)).read_vectored(bufs)
     }
 }
 
@@ -24,10 +26,11 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDOUT_FILENO);
-        let ret = fd.write(buf);
-        fd.into_raw(); // do not close this FD
-        ret
+        ManuallyDrop::new(FileDesc::new(libc::STDOUT_FILENO)).write(buf)
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        ManuallyDrop::new(FileDesc::new(libc::STDOUT_FILENO)).write_vectored(bufs)
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -41,10 +44,11 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        let fd = FileDesc::new(libc::STDERR_FILENO);
-        let ret = fd.write(buf);
-        fd.into_raw(); // do not close this FD
-        ret
+        ManuallyDrop::new(FileDesc::new(libc::STDERR_FILENO)).write(buf)
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        ManuallyDrop::new(FileDesc::new(libc::STDERR_FILENO)).write_vectored(bufs)
     }
 
     fn flush(&mut self) -> io::Result<()> {
