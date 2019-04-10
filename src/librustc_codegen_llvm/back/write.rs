@@ -13,7 +13,7 @@ use crate::LlvmCodegenBackend;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, run_assembler};
 use rustc_codegen_ssa::traits::*;
-use rustc::session::config::{self, OutputType, Passes, Lto};
+use rustc::session::config::{self, OutputType, Passes, Lto, PgoGenerate};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
@@ -26,7 +26,7 @@ use errors::{Handler, FatalError};
 use std::ffi::{CString, CStr};
 use std::fs;
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::Arc;
 use std::slice;
@@ -708,10 +708,20 @@ pub unsafe fn with_llvm_pmb(llmod: &llvm::Module,
         .unwrap_or(llvm::CodeGenOptSizeNone);
     let inline_threshold = config.inline_threshold;
 
-    let pgo_gen_path = config.pgo_gen.as_ref().map(|s| {
-        let s = if s.is_empty() { "default_%m.profraw" } else { s };
-        CString::new(s.as_bytes()).unwrap()
-    });
+    let pgo_gen_path = match config.pgo_gen {
+        PgoGenerate::Enabled(ref opt_dir_path) => {
+            let path = if let Some(dir_path) = opt_dir_path {
+                dir_path.join("default_%m.profraw")
+            } else {
+                PathBuf::from("default_%m.profraw")
+            };
+
+            Some(CString::new(format!("{}", path.display())).unwrap())
+        }
+        PgoGenerate::Disabled => {
+            None
+        }
+    };
 
     let pgo_use_path = if config.pgo_use.is_empty() {
         None
