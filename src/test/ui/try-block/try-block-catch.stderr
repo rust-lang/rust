@@ -1,0 +1,10 @@
+error: `try {} catch` is not a valid syntax
+  --> $DIR/try-block-catch.rs:8:4
+   |
+LL |     } catch { }; //~ ERROR `try {} catch` is not a valid syntax
+   |       ^^^^^
+   |
+   = help: try using `match` on the result of the `try` block instead
+
+error: aborting due to previous error
+

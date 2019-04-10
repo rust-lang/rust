@@ -3618,7 +3618,13 @@ impl<'a> Parser<'a> {
     {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
-        Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
+        if self.eat_keyword(keywords::Catch) {
+            let mut error = self.struct_span_err(self.prev_span, "`try {} catch` is not a valid syntax");
+            error.help("try using `match` on the result of the `try` block instead");
+            Err(error)
+        } else {
+            Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
+        }
     }
 
     // `match` token already eaten
