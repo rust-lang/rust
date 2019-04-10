@@ -842,8 +842,10 @@ impl EncodeContext<'tcx> {
 
     fn encode_inferred_outlives(&mut self, def_id: DefId) {
         debug!("EncodeContext::encode_inferred_outlives({:?})", def_id);
-        record!(self.per_def.inferred_outlives[def_id] <-
-            self.tcx.inferred_outlives_of(def_id));
+        let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
+        if !inferred_outlives.is_empty() {
+            record!(self.per_def.inferred_outlives[def_id] <- inferred_outlives);
+        }
     }
 
     fn encode_super_predicates(&mut self, def_id: DefId) {

@@ -249,6 +249,7 @@ crate struct LazyPerDefTables<'tcx> {
     // doesn't handle shorthands in its own (de)serialization impls,
     // as it's an `enum` for which we want to derive (de)serialization,
     // so the `ty::codec` APIs handle the whole `&'tcx [...]` at once.
+    // Also, as an optimization, a missing entry indicates an empty `&[]`.
     pub inferred_outlives: Lazy!(PerDefTable<Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>),
     pub super_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
 

@@ -671,7 +671,9 @@ impl<'a, 'tcx> CrateMetadata {
         item_id: DefIndex,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx [(ty::Predicate<'tcx>, Span)] {
-        self.root.per_def.inferred_outlives.get(self, item_id).unwrap().decode((self, tcx))
+        self.root.per_def.inferred_outlives.get(self, item_id).map(|predicates| {
+            predicates.decode((self, tcx))
+        }).unwrap_or_default()
     }
 
     crate fn get_super_predicates(
