@@ -826,7 +826,7 @@ fn gen_random<'a, 'mir, 'tcx>(
                 "miri does not support gathering system entropy in deterministic mode!
                 Use '-Zmiri-seed=<seed>' to enable random number generation.
                 WARNING: Miri does *not* generate cryptographically secure entropy -
-                do not use Miri to run any program that need secure random number generation".to_owned(),
+                do not use Miri to run any program that needs secure random number generation".to_owned(),
             ))
         }
     }
