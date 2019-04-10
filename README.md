@@ -160,7 +160,7 @@ Rustfmt is designed to be very configurable. You can create a TOML file called
 `rustfmt.toml` or `.rustfmt.toml`, place it in the project or any other parent
 directory and it will apply the options in that file. See `rustfmt
 --help=config` for the options which are available, or if you prefer to see
-visual style previews, [Configurations.md](Configurations.md).
+visual style previews, [GitHub page](https://rust-lang.github.io/rustfmt/).
 
 By default, Rustfmt uses a style which conforms to the [Rust style guide][style
 guide] that has been formalized through the [style RFC
@@ -168,7 +168,7 @@ process][fmt rfcs].
 
 Configuration options are either stable or unstable. Stable options can always
 be used, while unstable ones are only available on a nightly toolchain, and opt-in.
-See [Configurations.md](Configurations.md) for details.
+See [GitHub page](https://rust-lang.github.io/rustfmt/) for details.
 
 ### Rust's Editions
 
