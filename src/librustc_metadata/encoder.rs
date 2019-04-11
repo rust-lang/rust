@@ -47,7 +47,7 @@ struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
-    entries_table: Table<'tcx>,
+    entries_table: Table<Entry<'tcx>>,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,

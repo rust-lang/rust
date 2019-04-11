@@ -69,19 +69,16 @@ impl FixedSizeEncoding for u32 {
     }
 }
 
-/// While we are generating the metadata, we also track the position
-/// of each DefIndex. It is not required that all definitions appear
-/// in the metadata, nor that they are serialized in order, and
-/// therefore we first allocate the vector here and fill it with
-/// `0`. Whenever an index is visited, we fill in the
-/// appropriate spot by calling `record_position`. We should never
-/// visit the same index twice.
-crate struct Table<'tcx> {
+/// Random-access position table, allowing encoding in an arbitrary order
+/// (e.g. while visiting the definitions of a crate), and on-demand decoding
+/// of specific indices (e.g. queries for per-definition data).
+/// Similar to `Vec<Lazy<T>>`, but with zero-copy decoding.
+crate struct Table<T> {
     positions: Vec<u8>,
-    _marker: PhantomData<&'tcx ()>,
+    _marker: PhantomData<T>,
 }
 
-impl Table<'tcx> {
+impl<T> Table<T> {
     crate fn new(max_index: usize) -> Self {
         Table {
             positions: vec![0; max_index * 4],
@@ -89,12 +86,12 @@ impl Table<'tcx> {
         }
     }
 
-    crate fn record(&mut self, def_id: DefId, entry: Lazy<Entry<'tcx>>) {
+    crate fn record(&mut self, def_id: DefId, entry: Lazy<T>) {
         assert!(def_id.is_local());
         self.record_index(def_id.index, entry);
     }
 
-    fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'tcx>>) {
+    crate fn record_index(&mut self, item: DefIndex, entry: Lazy<T>) {
         let position: u32 = entry.position.get().try_into().unwrap();
         let array_index = item.index();
 
@@ -118,11 +115,11 @@ impl Table<'tcx> {
     }
 }
 
-impl Lazy<[Table<'tcx>]> {
+impl<T> Lazy<[Table<T>]> {
     /// Given the metadata, extract out the offset of a particular
     /// DefIndex (if any).
     #[inline(never)]
-    crate fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
+    crate fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<T>> {
         debug!("Table::lookup: index={:?} len={:?}",
                def_index,
                self.meta);
