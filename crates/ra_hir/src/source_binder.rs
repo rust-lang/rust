@@ -15,7 +15,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, Struct, Enum, Const, Static, Either,
+    HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
     ids::LocationCtx,
     expr, AstId
@@ -219,7 +219,7 @@ pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> R
         .unwrap_or_default()
 }
 
-pub fn resolver_for_node(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> Resolver {
+fn resolver_for_node(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> Resolver {
     node.ancestors()
         .find_map(|node| {
             if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
@@ -284,16 +284,24 @@ pub enum PathResolution {
 
 impl SourceAnalyzer {
     pub fn new(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> SourceAnalyzer {
-        let resolver = resolver_for_node(db, file_id, node);
-        let function = function_from_child_node(db, file_id, node);
-        if let Some(function) = function {
-            SourceAnalyzer {
-                resolver,
-                body_source_map: Some(function.body_source_map(db)),
-                infer: Some(function.infer(db)),
+        let def_with_body = node.ancestors().find_map(|node| {
+            if let Some(src) = ast::FnDef::cast(node) {
+                return function_from_source(db, file_id, src).map(DefWithBody::from);
             }
-        } else {
-            SourceAnalyzer { resolver, body_source_map: None, infer: None }
+            if let Some(src) = ast::StaticDef::cast(node) {
+                return static_from_source(db, file_id, src).map(DefWithBody::from);
+            }
+            if let Some(src) = ast::ConstDef::cast(node) {
+                return const_from_source(db, file_id, src).map(DefWithBody::from);
+            }
+            None
+        });
+        SourceAnalyzer {
+            resolver: def_with_body
+                .map(|it| it.resolver(db))
+                .unwrap_or_else(|| resolver_for_node(db, file_id, node)),
+            body_source_map: def_with_body.map(|it| it.body_source_map(db)),
+            infer: def_with_body.map(|it| it.infer(db)),
         }
     }
 

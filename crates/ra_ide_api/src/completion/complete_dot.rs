@@ -308,4 +308,28 @@ mod tests {
 ]"###
         );
     }
+
+    #[test]
+    fn test_completion_works_in_consts() {
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
+            r"
+            struct A { the_field: u32 }
+            const X: u32 = {
+                A { the_field: 92 }.<|>
+            };
+            ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "the_field",
+        source_range: [106; 106),
+        delete: [106; 106),
+        insert: "the_field",
+        kind: Field,
+        detail: "u32"
+    }
+]"###
+        );
+    }
 }

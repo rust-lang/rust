@@ -454,6 +454,14 @@ impl DefWithBody {
         db.body_hir(*self)
     }
 
+    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        match *self {
+            DefWithBody::Const(ref c) => c.body_source_map(db),
+            DefWithBody::Function(ref f) => f.body_source_map(db),
+            DefWithBody::Static(ref s) => s.body_source_map(db),
+        }
+    }
+
     /// Builds a resolver for code inside this item.
     pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         match *self {
