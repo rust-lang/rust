@@ -30,7 +30,7 @@ use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
-use crate::dataflow::move_paths::{HasMoveData, LookupResult, MoveData, MoveError};
+use crate::dataflow::move_paths::{HasMoveData, InitLocation, LookupResult, MoveData, MoveError};
 use crate::dataflow::Borrows;
 use crate::dataflow::DataflowResultsConsumer;
 use crate::dataflow::FlowAtLocation;
@@ -1277,25 +1277,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         } = self.infcx.tcx.mir_borrowck(def_id);
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
                         for field in used_mut_upvars {
-                            // This relies on the current way that by-value
-                            // captures of a closure are copied/moved directly
-                            // when generating MIR.
-                            match operands[field.index()] {
-                                Operand::Move(Place::Base(PlaceBase::Local(local)))
-                                | Operand::Copy(Place::Base(PlaceBase::Local(local))) => {
-                                    self.used_mut.insert(local);
-                                }
-                                Operand::Move(ref place @ Place::Projection(_))
-                                | Operand::Copy(ref place @ Place::Projection(_)) => {
-                                    if let Some(field) = place.is_upvar_field_projection(
-                                            self.mir, &self.infcx.tcx) {
-                                        self.used_mut_upvars.push(field);
-                                    }
-                                }
-                                Operand::Move(Place::Base(PlaceBase::Static(..)))
-                                | Operand::Copy(Place::Base(PlaceBase::Static(..)))
-                                | Operand::Constant(..) => {}
-                            }
+                            self.propagate_closure_used_mut_upvar(&operands[field.index()]);
                         }
                     }
                     AggregateKind::Adt(..)
@@ -1307,6 +1289,80 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     self.consume_operand(context, (operand, span), flow_state);
                 }
             }
+        }
+    }
+
+    fn propagate_closure_used_mut_upvar(&mut self, operand: &Operand<'tcx>) {
+        let propagate_closure_used_mut_place = |this: &mut Self, place: &Place<'tcx>| {
+            match *place {
+                Place::Projection { .. } => {
+                    if let Some(field) = place.is_upvar_field_projection(
+                            this.mir, &this.infcx.tcx) {
+                        this.used_mut_upvars.push(field);
+                    }
+                }
+                Place::Base(PlaceBase::Local(local)) => {
+                    this.used_mut.insert(local);
+                }
+                Place::Base(PlaceBase::Static(_)) => {}
+            }
+        };
+
+        // This relies on the current way that by-value
+        // captures of a closure are copied/moved directly
+        // when generating MIR.
+        match *operand {
+            Operand::Move(Place::Base(PlaceBase::Local(local)))
+            | Operand::Copy(Place::Base(PlaceBase::Local(local)))
+                if self.mir.local_decls[local].is_user_variable.is_none() =>
+            {
+                if self.mir.local_decls[local].ty.is_mutable_pointer() {
+                    // The variable will be marked as mutable by the borrow.
+                    return;
+                }
+                // This is an edge case where we have a `move` closure
+                // inside a non-move closure, and the inner closure
+                // contains a mutation:
+                //
+                // let mut i = 0;
+                // || { move || { i += 1; }; };
+                //
+                // In this case our usual strategy of assuming that the
+                // variable will be captured by mutable reference is
+                // wrong, since `i` can be copied into the inner
+                // closure from a shared reference.
+                //
+                // As such we have to search for the local that this
+                // capture comes from and mark it as being used as mut.
+
+                let temp_mpi = self.move_data.rev_lookup.find_local(local);
+                let init = if let [init_index] = *self.move_data.init_path_map[temp_mpi] {
+                    &self.move_data.inits[init_index]
+                } else {
+                    bug!("temporary should be initialized exactly once")
+                };
+
+                let loc = match init.location {
+                    InitLocation::Statement(stmt) => stmt,
+                    _ => bug!("temporary initialized in arguments"),
+                };
+
+                let bbd = &self.mir[loc.block];
+                let stmt = &bbd.statements[loc.statement_index];
+                debug!("temporary assigned in: stmt={:?}", stmt);
+
+                if let StatementKind::Assign(_, box Rvalue::Ref(_, _, ref source)) = stmt.kind {
+                    propagate_closure_used_mut_place(self, source);
+                } else {
+                    bug!("closures should only capture user variables \
+                        or references to user variables");
+                }
+            }
+            Operand::Move(ref place)
+            | Operand::Copy(ref place) => {
+                propagate_closure_used_mut_place(self, place);
+            }
+            Operand::Constant(..) => {}
         }
     }
 
