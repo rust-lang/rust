@@ -1,5 +1,5 @@
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:15:33
+  --> $DIR/issue-59764.rs:14:33
    |
 LL |     use issue_59764::foo::{baz, makro};
    |                                 ^^^^^ no `makro` in `foo`
@@ -8,10 +8,10 @@ LL |     use issue_59764::foo::{baz, makro};
 help: a macro with this name exists at the root of the crate
    |
 LL |     use issue_59764::{makro, foo::{baz}};
-   |
+   |                      ^^^^^^^^^       --^^
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:22:9
+  --> $DIR/issue-59764.rs:21:9
    |
 LL |         makro,
    |         ^^^^^ no `makro` in `foo`
@@ -26,7 +26,7 @@ LL |     }};
    |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:29:9
+  --> $DIR/issue-59764.rs:28:9
    |
 LL |         makro
    |         ^^^^^ no `makro` in `foo`
@@ -41,7 +41,7 @@ LL |     }};
    |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:34:33
+  --> $DIR/issue-59764.rs:33:33
    |
 LL |     use issue_59764::foo::{baz, makro, foobar};
    |                                 ^^^^^ no `makro` in `foo`
@@ -50,10 +50,10 @@ LL |     use issue_59764::foo::{baz, makro, foobar};
 help: a macro with this name exists at the root of the crate
    |
 LL |     use issue_59764::{makro, foo::{baz, foobar}};
-   |
+   |                      ^^^^^^^^^         --      ^^
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:41:9
+  --> $DIR/issue-59764.rs:40:9
    |
 LL |         makro,
    |         ^^^^^ no `makro` in `foo`
@@ -69,7 +69,7 @@ LL |     }};
    |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:49:9
+  --> $DIR/issue-59764.rs:48:9
    |
 LL |         makro,
    |         ^^^^^ no `makro` in `foo`
@@ -85,7 +85,7 @@ LL |     }};
    |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:55:31
+  --> $DIR/issue-59764.rs:54:31
    |
 LL |     use issue_59764::{foobaz, foo::makro};
    |                               ^^^^^^^^^^ no `makro` in `foo`
@@ -94,10 +94,10 @@ LL |     use issue_59764::{foobaz, foo::makro};
 help: a macro with this name exists at the root of the crate
    |
 LL |     use issue_59764::{makro, foobaz};
-   |
+   |                      ^^^^^^^      --
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:60:42
+  --> $DIR/issue-59764.rs:59:42
    |
 LL |     use issue_59764::{foobaz, foo::{baz, makro}};
    |                                          ^^^^^ no `makro` in `foo`
@@ -106,10 +106,10 @@ LL |     use issue_59764::{foobaz, foo::{baz, makro}};
 help: a macro with this name exists at the root of the crate
    |
 LL |     use issue_59764::{makro, foobaz, foo::{baz}};
-   |
+   |                      ^^^^^^^                 --
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:69:13
+  --> $DIR/issue-59764.rs:68:13
    |
 LL |             makro,
    |             ^^^^^ no `makro` in `foo`
@@ -122,11 +122,10 @@ LL |         foobaz,
 LL |         foo::{
 LL |             baz,
 LL |
-LL |         },
- ...
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:79:13
+  --> $DIR/issue-59764.rs:78:13
    |
 LL |             makro
    |             ^^^^^ no `makro` in `foo`
@@ -139,11 +138,10 @@ LL |         foobaz,
 LL |         foo::{
 LL |             baz,
 LL |
-LL |         }
- ...
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:85:42
+  --> $DIR/issue-59764.rs:84:42
    |
 LL |     use issue_59764::{foobaz, foo::{baz, makro, barbaz::{barfoo}}};
    |                                          ^^^^^ no `makro` in `foo`
@@ -152,10 +150,10 @@ LL |     use issue_59764::{foobaz, foo::{baz, makro, barbaz::{barfoo}}};
 help: a macro with this name exists at the root of the crate
    |
 LL |     use issue_59764::{makro, foobaz, foo::{baz, barbaz::{barfoo}}};
-   |
+   |                      ^^^^^^^                   --
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:94:13
+  --> $DIR/issue-59764.rs:93:13
    |
 LL |             makro,
    |             ^^^^^ no `makro` in `foo`
@@ -168,11 +166,10 @@ LL |         foobaz,
 LL |         foo::{
 LL |             baz,
 LL |
-LL |             barbaz::{
- ...
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:103:9
+  --> $DIR/issue-59764.rs:102:9
    |
 LL |     use issue_59764::foo::makro as baz;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `makro` in `foo`
@@ -184,7 +181,7 @@ LL |     use issue_59764::makro as baz;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:108:33
+  --> $DIR/issue-59764.rs:107:33
    |
 LL |     use issue_59764::foo::{baz, makro as foobar};
    |                                 ^^^^^^^^^^^^^^^ no `makro` in `foo`
@@ -193,10 +190,10 @@ LL |     use issue_59764::foo::{baz, makro as foobar};
 help: a macro with this name exists at the root of the crate
    |
 LL |     use issue_59764::{makro as foobar, foo::{baz}};
-   |
+   |                      ^^^^^^^^^^^^^^^^^^^       --^^
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:121:17
+  --> $DIR/issue-59764.rs:120:17
    |
 LL |                 makro as foobar}
    |                 ^^^^^^^^^^^^^^^ no `makro` in `foo`
@@ -204,16 +201,16 @@ LL |                 makro as foobar}
    = note: this could be because a macro annotated with `#[macro_export]` will be exported at the root of the crate instead of the module where it is defined
 help: a macro with this name exists at the root of the crate
    |
-LL |     use issue_59764::{makro as foobar, 
+LL |         issue_59764::{makro as foobar, 
 LL | 
 LL |             foobaz,
 LL | 
 LL | 
 LL |             foo::{baz}
- ...
+   |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:128:5
+  --> $DIR/issue-59764.rs:127:5
    |
 LL | use issue_59764::foo::makro;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ no `makro` in `foo`
@@ -225,7 +222,7 @@ LL | use issue_59764::makro;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: cannot determine resolution for the macro `makro`
-  --> $DIR/issue-59764.rs:131:1
+  --> $DIR/issue-59764.rs:130:1
    |
 LL | makro!(bar);
    | ^^^^^
@@ -233,7 +230,7 @@ LL | makro!(bar);
    = note: import resolution is stuck, try simplifying macro imports
 
 error[E0425]: cannot find function `bar` in this scope
-  --> $DIR/issue-59764.rs:135:5
+  --> $DIR/issue-59764.rs:134:5
    |
 LL |     bar();
    |     ^^^ not found in this scope

@@ -793,8 +793,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 diag.span_label(err.span, label);
             }
 
-            if let Some((span, msg, suggestion, applicability)) = err.suggestion {
-                diag.span_suggestion(span, &msg, suggestion, applicability);
+            if let Some((suggestions, msg, applicability)) = err.suggestion {
+                diag.multipart_suggestion(&msg, suggestions, applicability);
             }
         }
 
@@ -947,9 +947,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                 label: None,
                                 note,
                                 suggestion: Some((
-                                    span,
+                                    vec![(span, Segment::names_to_string(&suggestion))],
                                     String::from("a similar path exists"),
-                                    Segment::names_to_string(&suggestion),
                                     Applicability::MaybeIncorrect,
                                 )),
                             }
@@ -1113,8 +1112,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
                 let lev_suggestion = find_best_match_for_name(names, &ident.as_str(), None)
                    .map(|suggestion|
-                        (ident.span, String::from("a similar name exists in the module"),
-                         suggestion.to_string(), Applicability::MaybeIncorrect)
+                        (vec![(ident.span, suggestion.to_string())],
+                         String::from("a similar name exists in the module"),
+                         Applicability::MaybeIncorrect)
                     );
 
                 let (suggestion, note) = match self.check_for_module_export_macro(

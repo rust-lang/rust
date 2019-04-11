@@ -1,7 +1,6 @@
 // aux-build:issue-59764.rs
 // compile-flags:--extern issue_59764
 // edition:2018
-// run-rustfix
 
 #![allow(warnings)]
 

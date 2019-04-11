@@ -617,14 +617,12 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 _ => format!("{}", ident),
             };
 
-            // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
-            // intermediate segments.
-            let (mut span, mut correction) = (directive.span,
-                                              format!("{}::{}", module_name, import));
-
-            if directive.is_nested() {
-                span = directive.use_span;
-
+            let mut corrections: Vec<(Span, String)> = Vec::new();
+            if !directive.is_nested() {
+                // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
+                // intermediate segments.
+                corrections.push((directive.span, format!("{}::{}", module_name, import)));
+            } else {
                 // Find the binding span (and any trailing commas and spaces).
                 //   ie. `use a::b::{c, d, e};`
                 //                      ^^^
@@ -652,6 +650,9 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
                 debug!("check_for_module_export_macro: removal_span={:?}", removal_span);
 
+                // Remove the `removal_span`.
+                corrections.push((removal_span, "".to_string()));
+
                 // Find the span after the crate name and if it has nested imports immediatately
                 // after the crate name already.
                 //   ie. `use a::b::{c, d};`
@@ -666,34 +667,32 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
                 let source_map = self.resolver.session.source_map();
 
-                // Remove two bytes at the end to keep all but the `};` characters.
-                //   ie. `{b::{c, d}, e::{f, g}};`
-                //        ^^^^^^^^^^^^^^^^^^^^^
-                let end_bytes = BytePos(if has_nested { 2 } else { 1 });
-                let mut remaining_span = after_crate_name.with_hi(
-                    after_crate_name.hi() - end_bytes);
-                if has_nested {
-                    // Remove two bytes at the start to keep all but the initial `{` character.
-                    //   ie. `{b::{c, d}, e::{f, g}`
-                    //         ^^^^^^^^^^^^^^^^^^^^
-                    remaining_span = remaining_span.with_lo(after_crate_name.lo() + BytePos(1));
+                // Add the import to the start, with a `{` if required.
+                let start_point = source_map.start_point(after_crate_name);
+                if let Ok(start_snippet) = source_map.span_to_snippet(start_point) {
+                    corrections.push((
+                        start_point,
+                        if has_nested {
+                            // In this case, `start_snippet` must equal '{'.
+                            format!("{}{}, ", start_snippet, import)
+                        } else {
+                            // In this case, add a `{`, then the moved import, then whatever
+                            // was there before.
+                            format!("{{{}, {}", import, start_snippet)
+                        }
+                    ));
                 }
 
-                // Calculate the number of characters into a snippet to remove the removal
-                // span.
-                let lo = removal_span.lo() - remaining_span.lo();
-                let hi = lo + (removal_span.hi() - removal_span.lo());
-                if let Ok(mut remaining) = source_map.span_to_snippet(remaining_span) {
-                    // Remove the original location of the binding.
-                    remaining.replace_range((lo.0 as usize)..(hi.0 as usize), "");
-                    correction = format!("use {}::{{{}, {}}};", module_name, import, remaining);
+                // Add a `};` to the end if nested, matching the `{` added at the start.
+                if !has_nested {
+                    corrections.push((source_map.end_point(after_crate_name),
+                                     "};".to_string()));
                 }
             }
 
             let suggestion = Some((
-                span,
+                corrections,
                 String::from("a macro with this name exists at the root of the crate"),
-                correction,
                 Applicability::MaybeIncorrect,
             ));
             let note = vec![

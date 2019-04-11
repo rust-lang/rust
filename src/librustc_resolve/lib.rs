@@ -139,8 +139,8 @@ impl Ord for BindingError {
     }
 }
 
-/// A span, message, replacement text, and applicability.
-type Suggestion = (Span, String, String, Applicability);
+/// A vector of spans and replacements, a message and applicability.
+type Suggestion = (Vec<(Span, String)>, String, Applicability);
 
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer function.
@@ -390,8 +390,8 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                            "failed to resolve: {}", &label);
             err.span_label(span, label);
 
-            if let Some((span, msg, suggestion, applicability)) = suggestion {
-                err.span_suggestion(span, &msg, suggestion, applicability);
+            if let Some((suggestions, msg, applicability)) = suggestion {
+                err.multipart_suggestion(&msg, suggestions, applicability);
             }
 
             err
@@ -3774,9 +3774,8 @@ impl<'a> Resolver<'a> {
                             (
                                 String::from("unresolved import"),
                                 Some((
-                                    ident.span,
+                                    vec![(ident.span, candidate.path.to_string())],
                                     String::from("a similar path exists"),
-                                    candidate.path.to_string(),
                                     Applicability::MaybeIncorrect,
                                 )),
                             )
