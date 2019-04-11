@@ -1,9 +1,10 @@
-error[E0658]: compiler plugins are experimental and possibly buggy (see issue #29597)
+error[E0658]: compiler plugins are experimental and possibly buggy
   --> $DIR/gated-plugin.rs:3:1
    |
 LL | #![plugin(attr_plugin_test)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29597
    = help: add #![feature(plugin)] to the crate attributes to enable
 
 error: aborting due to previous error
