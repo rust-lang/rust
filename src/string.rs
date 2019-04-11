@@ -338,11 +338,13 @@ fn is_new_line(grapheme: &str) -> bool {
 }
 
 fn is_whitespace(grapheme: &str) -> bool {
-    grapheme.chars().all(|c| c.is_whitespace())
+    grapheme.chars().all(char::is_whitespace)
 }
 
 fn is_punctuation(grapheme: &str) -> bool {
-    grapheme.chars().all(|c| c.is_punctuation_other())
+    grapheme
+        .chars()
+        .all(UnicodeCategories::is_punctuation_other)
 }
 
 fn graphemes_width(graphemes: &[&str]) -> usize {

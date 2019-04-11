@@ -34,7 +34,7 @@ struct TestSetting {
 impl Default for TestSetting {
     fn default() -> Self {
         TestSetting {
-            stack_size: 8388608, // 8MB
+            stack_size: 8_388_608, // 8MB
         }
     }
 }
@@ -90,12 +90,13 @@ fn verify_config_used(path: &Path, config_name: &str) {
         if path.extension().map_or(false, |f| f == "rs") {
             // check if "// rustfmt-<config_name>:" appears in the file.
             let filebuf = BufReader::new(
-                fs::File::open(&path).expect(&format!("couldn't read file {}", path.display())),
+                fs::File::open(&path)
+                    .unwrap_or_else(|_| panic!("couldn't read file {}", path.display())),
             );
             assert!(
                 filebuf
                     .lines()
-                    .map(|l| l.unwrap())
+                    .map(Result::unwrap)
                     .take_while(|l| l.starts_with("//"))
                     .any(|l| l.starts_with(&format!("// rustfmt-{}", config_name))),
                 format!(
@@ -249,7 +250,7 @@ fn assert_output(source: &Path, expected_filename: &Path) {
         let mut failures = HashMap::new();
         failures.insert(source.to_owned(), compare);
         print_mismatches_default_message(failures);
-        assert!(false, "Text does not match expected output");
+        panic!("Text does not match expected output");
     }
 }
 
@@ -565,8 +566,8 @@ fn get_config(config_file: Option<&Path>) -> Config {
 
 // Reads significant comments of the form: `// rustfmt-key: value` into a hash map.
 fn read_significant_comments(file_name: &Path) -> HashMap<String, String> {
-    let file =
-        fs::File::open(file_name).expect(&format!("couldn't read file {}", file_name.display()));
+    let file = fs::File::open(file_name)
+        .unwrap_or_else(|_| panic!("couldn't read file {}", file_name.display()));
     let reader = BufReader::new(file);
     let pattern = r"^\s*//\s*rustfmt-([^:]+):\s*(\S+)";
     let regex = regex::Regex::new(pattern).expect("failed creating pattern 1");
@@ -962,10 +963,10 @@ fn configuration_snippet_tests() {
     fn get_code_blocks() -> Vec<ConfigCodeBlock> {
         let mut file_iter = BufReader::new(
             fs::File::open(Path::new(CONFIGURATIONS_FILE_NAME))
-                .expect(&format!("couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
+                .unwrap_or_else(|_| panic!("couldn't read file {}", CONFIGURATIONS_FILE_NAME)),
         )
         .lines()
-        .map(|l| l.unwrap())
+        .map(Result::unwrap)
         .enumerate();
         let mut code_blocks: Vec<ConfigCodeBlock> = Vec::new();
         let mut hash_set = Config::hash_set();
@@ -988,7 +989,7 @@ fn configuration_snippet_tests() {
     let blocks = get_code_blocks();
     let failures = blocks
         .iter()
-        .map(|b| b.formatted_is_idempotent())
+        .map(ConfigCodeBlock::formatted_is_idempotent)
         .fold(0, |acc, r| acc + (!r as u32));
 
     // Display results.

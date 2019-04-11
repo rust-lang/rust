@@ -263,7 +263,7 @@ impl FormattingError {
                 .and_then(|fl| {
                     fl.file
                         .get_line(fl.lines[0].line_index)
-                        .map(|l| l.into_owned())
+                        .map(std::borrow::Cow::into_owned)
                 })
                 .unwrap_or_else(String::new),
         }
@@ -653,7 +653,7 @@ fn parse_crate(
                 return Ok(c);
             }
         }
-        Ok(Err(mut diagnostics)) => diagnostics.iter_mut().for_each(|d| d.emit()),
+        Ok(Err(mut diagnostics)) => diagnostics.iter_mut().for_each(DiagnosticBuilder::emit),
         Err(_) => {
             // Note that if you see this message and want more information,
             // then run the `parse_crate_mod` function above without

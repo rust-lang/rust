@@ -71,7 +71,7 @@ impl<'a> SpanUtils for SnippetProvider<'a> {
 
 impl LineRangeUtils for SourceMap {
     fn lookup_line_range(&self, span: Span) -> LineRange {
-        let snippet = self.span_to_snippet(span).unwrap_or(String::new());
+        let snippet = self.span_to_snippet(span).unwrap_or_default();
         let lo = self.lookup_line(span.lo()).unwrap();
         let hi = self.lookup_line(span.hi()).unwrap();
 

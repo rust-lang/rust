@@ -146,7 +146,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         if let Some(first_stmt) = b.stmts.first() {
             let hi = inner_attrs
                 .and_then(|attrs| inner_attributes(attrs).first().map(|attr| attr.span.lo()))
-                .unwrap_or(first_stmt.span().lo());
+                .unwrap_or_else(|| first_stmt.span().lo());
 
             let snippet = self.snippet(mk_sp(self.last_pos, hi));
             let len = CommentCodeSlices::new(snippet)

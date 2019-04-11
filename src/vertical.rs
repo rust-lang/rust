@@ -135,7 +135,7 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
 
         let snippet = context.snippet(missing_span);
         if snippet.trim_start().starts_with("//") {
-            let offset = snippet.lines().next().map_or(0, |l| l.len());
+            let offset = snippet.lines().next().map_or(0, str::len);
             // 2 = "," + "\n"
             init_hi + BytePos(offset as u32 + 2)
         } else if snippet.trim_start().starts_with("/*") {

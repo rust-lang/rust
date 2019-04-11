@@ -32,8 +32,10 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
         (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
             // `extern crate foo as bar;`
             //               ^^^ Comparing this.
-            let a_orig_name = a_name.map_or_else(|| a.ident.as_str(), |symbol| symbol.as_str());
-            let b_orig_name = b_name.map_or_else(|| b.ident.as_str(), |symbol| symbol.as_str());
+            let a_orig_name =
+                a_name.map_or_else(|| a.ident.as_str(), syntax_pos::symbol::Symbol::as_str);
+            let b_orig_name =
+                b_name.map_or_else(|| b.ident.as_str(), syntax_pos::symbol::Symbol::as_str);
             let result = a_orig_name.cmp(&b_orig_name);
             if result != Ordering::Equal {
                 return result;

@@ -69,7 +69,7 @@ where
     // original text for `FileName::Stdin`.
     let original_text = source_map
         .and_then(|x| x.get_source_file(&filename.into()))
-        .and_then(|x| x.src.as_ref().map(|x| x.to_string()));
+        .and_then(|x| x.src.as_ref().map(ToString::to_string));
     let original_text = match original_text {
         Some(ori) => ori,
         None => fs::read_to_string(ensure_real_path(filename))?,

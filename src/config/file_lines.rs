@@ -191,7 +191,7 @@ impl FileLines {
 
     /// Returns an iterator over the files contained in `self`.
     pub fn files(&self) -> Files<'_> {
-        Files(self.0.as_ref().map(|m| m.keys()))
+        Files(self.0.as_ref().map(HashMap::keys))
     }
 
     /// Returns JSON representation as accepted by the `--file-lines JSON` arg.
