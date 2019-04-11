@@ -6,6 +6,7 @@ use crate::middle::cstore::{ExternCrate, ExternCrateSource};
 use crate::middle::region;
 use crate::ty::{self, DefIdTree, ParamConst, Ty, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Kind, Subst, UnpackedKind};
+use crate::ty::layout::Size;
 use crate::mir::interpret::{ConstValue, sign_extend, Scalar};
 use syntax::ast;
 use rustc_apfloat::ieee::{Double, Single};
@@ -1537,6 +1538,7 @@ define_print_and_forward_display! {
     }
 
     &'tcx ty::Const<'tcx> {
+        let u8 = cx.tcx().types.u8;
         match (self.val, &self.ty.sty) {
             | (ConstValue::Unevaluated(..), _)
             | (ConstValue::Infer(..), _)
@@ -1566,28 +1568,38 @@ define_print_and_forward_display! {
             (ConstValue::Scalar(Scalar::Bits { bits, ..}), ty::Char)
                 => p!(write("{:?}", ::std::char::from_u32(bits as u32).unwrap())),
             (_, ty::FnDef(did, _)) => p!(write("{}", cx.tcx().def_path_str(*did))),
-            (
-                ConstValue::Slice { data, start, end },
-                ty::Ref(_, slice_ty, _),
-            ) => {
-                let slice = &data.bytes[start..end];
-                match slice_ty.sty {
-                    ty::Str => {
-                        let s = ::std::str::from_utf8(slice)
-                            .expect("non utf8 str from miri");
-                        p!(write("{:?}", s))
-                    },
-                    ty::Slice(elem) if elem == cx.tcx().types.u8 => {
-                        p!(write("b\""));
-                        for &c in slice {
-                            for e in std::ascii::escape_default(c) {
-                                p!(write("{}", e));
-                            }
+            (_, ty::Ref(_, ref_ty, _)) => match (self.val, &ref_ty.sty) {
+                (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
+                    let n = n.unwrap_usize(cx.tcx());
+                    let slice = cx.tcx()
+                        .alloc_map.lock()
+                        .unwrap_memory(ptr.alloc_id)
+                        .get_bytes(&cx.tcx(), ptr, Size::from_bytes(n)).unwrap();
+                    p!(write("b\""));
+                    for &c in slice {
+                        for e in std::ascii::escape_default(c) {
+                            p!(write("{}", e));
                         }
-                        p!(write("\""));
-                    },
-                    _ => bug!("invalid slice: {:#?}", self),
-                }
+                    }
+                    p!(write("\""));
+                },
+                (ConstValue::Slice { data, start, end }, ty::Str) => {
+                    let slice = &data.bytes[start..end];
+                    let s = ::std::str::from_utf8(slice)
+                        .expect("non utf8 str from miri");
+                    p!(write("{:?}", s))
+                },
+                (ConstValue::Slice { data, start, end }, ty::Slice(t)) if *t == u8 => {
+                    let slice = &data.bytes[start..end];
+                    p!(write("b\""));
+                    for &c in slice {
+                        for e in std::ascii::escape_default(c) {
+                            p!(write("{}", e));
+                        }
+                    }
+                    p!(write("\""));
+                },
+                _ => p!(write("{:?} : ", self.val), print(self.ty)),
             },
             _ => p!(write("{:?} : ", self.val), print(self.ty)),
         }
