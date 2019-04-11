@@ -1310,15 +1310,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if !is_redundant.is_empty() &&
             is_redundant.present_items().all(|is_redundant| is_redundant)
         {
+            let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
+            redundant_spans.dedup();
             self.session.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 directive.id,
                 directive.span,
                 &format!("the item `{}` is imported redundantly", ident),
-                BuiltinLintDiagnostics::RedundantImport(
-                    redundant_span.present_items().collect(),
-                    ident,
-                ),
+                BuiltinLintDiagnostics::RedundantImport(redundant_spans, ident),
             );
         }
     }
