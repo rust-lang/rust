@@ -22,6 +22,7 @@ use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ich::NodeIdHashingMode;
+use rustc::mir::Field;
 use rustc::mir::interpret::truncate;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
@@ -1306,12 +1307,15 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
+                discr_index,
                 ref variants,
                 ..
             } => {
                 let discriminant_info = if fallback {
-                    RegularDiscriminant(self.discriminant_type_metadata
-                                        .expect(""))
+                    RegularDiscriminant {
+                        discr_field: Field::from(discr_index),
+                        discr_type_metadata: self.discriminant_type_metadata.unwrap()
+                    }
                 } else {
                     // This doesn't matter in this case.
                     NoDiscriminant
@@ -1358,6 +1362,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 },
                 ref discr,
                 ref variants,
+                discr_index,
             } => {
                 if fallback {
                     let variant = self.layout.for_variant(cx, dataful_variant);
@@ -1403,8 +1408,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     }
                     compute_field_path(cx, &mut name,
                                        self.layout,
-                                       self.layout.fields.offset(0),
-                                       self.layout.field(cx, 0).size);
+                                       self.layout.fields.offset(discr_index),
+                                       self.layout.field(cx, discr_index).size);
                     name.push_str(&adt.variants[*niche_variants.start()].ident.as_str());
 
                     // Create the (singleton) list of descriptions of union members.
@@ -1486,6 +1491,8 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
                 name: name.to_string(),
                 type_metadata: if use_enum_fallback(cx) {
                     match self.discriminant_type_metadata {
+                        // Discriminant is always the first field of our variant
+                        // when using the enum fallback.
                         Some(metadata) if i == 0 => metadata,
                         _ => type_metadata(cx, ty, self.span)
                     }
@@ -1504,7 +1511,7 @@ impl VariantMemberDescriptionFactory<'ll, 'tcx> {
 
 #[derive(Copy, Clone)]
 enum EnumDiscriminantInfo<'ll> {
-    RegularDiscriminant(&'ll DIType),
+    RegularDiscriminant{ discr_field: Field, discr_type_metadata: &'ll DIType },
     OptimizedDiscriminant,
     NoDiscriminant
 }
@@ -1535,15 +1542,26 @@ fn describe_enum_variant(
                                            unique_type_id,
                                            Some(containing_scope));
 
+    let arg_name = |i: usize| {
+        if variant.ctor_kind == CtorKind::Fn {
+            format!("__{}", i)
+        } else {
+            variant.fields[i].ident.to_string()
+        }
+    };
+
     // Build an array of (field name, field type) pairs to be captured in the factory closure.
     let (offsets, args) = if use_enum_fallback(cx) {
         // If this is not a univariant enum, there is also the discriminant field.
         let (discr_offset, discr_arg) = match discriminant_info {
-            RegularDiscriminant(_) => {
+            RegularDiscriminant { discr_field, .. } => {
                 // We have the layout of an enum variant, we need the layout of the outer enum
                 let enum_layout = cx.layout_of(layout.ty);
-                (Some(enum_layout.fields.offset(0)),
-                 Some(("RUST$ENUM$DISR".to_owned(), enum_layout.field(cx, 0).ty)))
+                let offset = enum_layout.fields.offset(discr_field.as_usize());
+                let args = (
+                    "RUST$ENUM$DISR".to_owned(),
+                    enum_layout.field(cx, discr_field.as_usize()).ty);
+                (Some(offset), Some(args))
             }
             _ => (None, None),
         };
@@ -1552,12 +1570,7 @@ fn describe_enum_variant(
                 layout.fields.offset(i)
             })).collect(),
             discr_arg.into_iter().chain((0..layout.fields.count()).map(|i| {
-                let name = if variant.ctor_kind == CtorKind::Fn {
-                    format!("__{}", i)
-                } else {
-                    variant.fields[i].ident.to_string()
-                };
-                (name, layout.field(cx, i).ty)
+                (arg_name(i), layout.field(cx, i).ty)
             })).collect()
         )
     } else {
@@ -1566,12 +1579,7 @@ fn describe_enum_variant(
                 layout.fields.offset(i)
             }).collect(),
             (0..layout.fields.count()).map(|i| {
-                let name = if variant.ctor_kind == CtorKind::Fn {
-                    format!("__{}", i)
-                } else {
-                    variant.fields[i].ident.to_string()
-                };
-                (name, layout.field(cx, i).ty)
+                (arg_name(i), layout.field(cx, i).ty)
             }).collect()
         )
     };
@@ -1581,8 +1589,8 @@ fn describe_enum_variant(
             offsets,
             args,
             discriminant_type_metadata: match discriminant_info {
-                RegularDiscriminant(discriminant_type_metadata) => {
-                    Some(discriminant_type_metadata)
+                RegularDiscriminant { discr_type_metadata, .. } => {
+                    Some(discr_type_metadata)
                 }
                 _ => None
             },
@@ -1732,6 +1740,7 @@ fn prepare_enum_metadata(
         layout::Variants::Multiple {
             discr_kind: layout::DiscriminantKind::Niche { .. },
             ref discr,
+            discr_index,
             ..
         } => {
             // Find the integer type of the correct size.
@@ -1755,7 +1764,7 @@ fn prepare_enum_metadata(
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
                     align.abi.bits() as u32,
-                    layout.fields.offset(0).bits(),
+                    layout.fields.offset(discr_index).bits(),
                     DIFlags::FlagArtificial,
                     discr_metadata))
             }
@@ -1764,6 +1773,7 @@ fn prepare_enum_metadata(
         layout::Variants::Multiple {
             discr_kind: layout::DiscriminantKind::Tag,
             ref discr,
+            discr_index,
             ..
         } => {
             let discr_type = discr.value.to_ty(cx.tcx);
@@ -1779,7 +1789,7 @@ fn prepare_enum_metadata(
                     UNKNOWN_LINE_NUMBER,
                     size.bits(),
                     align.bits() as u32,
-                    layout.fields.offset(0).bits(),
+                    layout.fields.offset(discr_index).bits(),
                     DIFlags::FlagArtificial,
                     discr_metadata))
             }

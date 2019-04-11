@@ -920,6 +920,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                         niche_variants,
                                         niche_start,
                                     },
+                                    discr_index: 0,
                                     variants: st,
                                 },
                                 fields: FieldPlacement::Arbitrary {
@@ -1142,6 +1143,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     variants: Variants::Multiple {
                         discr: tag,
                         discr_kind: DiscriminantKind::Tag,
+                        discr_index: 0,
                         variants: layout_variants,
                     },
                     fields: FieldPlacement::Arbitrary {
@@ -1884,10 +1886,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for Variants {
             Multiple {
                 ref discr,
                 ref discr_kind,
+                discr_index,
                 ref variants,
             } => {
                 discr.hash_stable(hcx, hasher);
                 discr_kind.hash_stable(hcx, hasher);
+                discr_index.hash_stable(hcx, hasher);
                 variants.hash_stable(hcx, hasher);
             }
         }

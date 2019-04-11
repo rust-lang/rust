@@ -452,31 +452,27 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
             _ => {
                 let mut data_variant = match self.variants {
+                    // Within the discriminant field, only the niche itself is
+                    // always initialized, so we only check for a pointer at its
+                    // offset.
+                    //
+                    // If the niche is a pointer, it's either valid (according
+                    // to its type), or null (which the niche field's scalar
+                    // validity range encodes).  This allows using
+                    // `dereferenceable_or_null` for e.g., `Option<&T>`, and
+                    // this will continue to work as long as we don't start
+                    // using more niches than just null (e.g., the first page of
+                    // the address space, or unaligned pointers).
                     layout::Variants::Multiple {
                         discr_kind: layout::DiscriminantKind::Niche {
                             dataful_variant,
                             ..
                         },
+                        discr_index,
                         ..
-                    } => {
-                        // Only the niche itself is always initialized,
-                        // so only check for a pointer at its offset.
-                        //
-                        // If the niche is a pointer, it's either valid
-                        // (according to its type), or null (which the
-                        // niche field's scalar validity range encodes).
-                        // This allows using `dereferenceable_or_null`
-                        // for e.g., `Option<&T>`, and this will continue
-                        // to work as long as we don't start using more
-                        // niches than just null (e.g., the first page
-                        // of the address space, or unaligned pointers).
-                        if self.fields.offset(0) == offset {
-                            Some(self.for_variant(cx, dataful_variant))
-                        } else {
-                            None
-                        }
-                    }
-                    _ => Some(*self)
+                    } if self.fields.offset(discr_index) == offset =>
+                        Some(self.for_variant(cx, dataful_variant)),
+                    _ => Some(*self),
                 };
 
                 if let Some(variant) = data_variant {
