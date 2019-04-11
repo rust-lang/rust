@@ -1,4 +1,4 @@
-error: `try {} catch` is not a valid syntax
+error: keyword `catch` cannot follow a `try` block
   --> $DIR/try-block-catch.rs:8:7
    |
 LL |     } catch { };

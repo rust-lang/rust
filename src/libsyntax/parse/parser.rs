@@ -3620,8 +3620,9 @@ impl<'a> Parser<'a> {
         attrs.extend(iattrs);
         if self.eat_keyword(keywords::Catch) {
             let mut error = self.struct_span_err(self.prev_span,
-                                                 "`try {} catch` is not a valid syntax");
+                                                 "keyword `catch` cannot follow a `try` block");
             error.help("try using `match` on the result of the `try` block instead");
+            error.emit();
             Err(error)
         } else {
             Ok(self.mk_expr(span_lo.to(body.span), ExprKind::TryBlock(body), attrs))
