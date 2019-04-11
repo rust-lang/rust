@@ -2,12 +2,9 @@ error[E0369]: binary operation `==` cannot be applied to type `fn() {main::f}`
   --> $DIR/fn-compare-mismatch.rs:4:15
    |
 LL |     let x = f == g;
-   |             - ^^ -
-   |             |    |
-   |             |    fn() {main::g}
-   |             |    did you forget `()`?
+   |             - ^^ - fn() {main::g}
+   |             |
    |             fn() {main::f}
-   |             did you forget `()`?
    |
    = note: an implementation of `std::cmp::PartialEq` might be missing for `fn() {main::f}`
 

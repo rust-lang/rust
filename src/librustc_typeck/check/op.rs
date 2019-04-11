@@ -333,8 +333,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 lhs_ty);
 
                             if !lhs_expr.span.eq(&rhs_expr.span) {
-                                self.add_type_neq_err_label(&mut err, lhs_expr.span, lhs_ty);
-                                self.add_type_neq_err_label(&mut err, rhs_expr.span, rhs_ty);
+                                self.add_type_neq_err_label(&mut err,
+                                                            lhs_expr.span,
+                                                            lhs_ty,
+                                                            rhs_ty,
+                                                            op,
+                                                            is_assign);
+                                self.add_type_neq_err_label(&mut err,
+                                                            rhs_expr.span,
+                                                            rhs_ty,
+                                                            lhs_ty,
+                                                            op,
+                                                            is_assign);
                             }
 
                             let mut suggested_deref = false;
@@ -420,10 +430,40 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err: &mut errors::DiagnosticBuilder<'_>,
         span: Span,
         ty: Ty<'tcx>,
+        other_ty: Ty<'tcx>,
+        op: hir::BinOp,
+        is_assign: IsAssign,
     ) {
         err.span_label(span, ty.to_string());
-        if let FnDef(..) = ty.sty {
-            err.span_label(span, "did you forget `()`?");
+        if let FnDef(def_id, _) = ty.sty {
+            let source_map = self.tcx.sess.source_map();
+            let hir_id = &self.tcx.hir().as_local_hir_id(def_id).unwrap();
+            let fn_sig = {
+                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(*hir_id) {
+                    Some(f) => f.clone(),
+                    None => {
+                        bug!("No fn-sig entry for def_id={:?}", def_id);
+                    }
+                }
+            };
+
+            if self.lookup_op_method(fn_sig.output(),
+                                    &[other_ty],
+                                    Op::Binary(op, is_assign))
+                    .is_ok() {
+                let variable_snippet = if fn_sig.inputs().len() > 0 {
+                    format!("{}( /* arguments */ )", source_map.span_to_snippet(span).unwrap())
+                } else {
+                    format!("{}()", source_map.span_to_snippet(span).unwrap())
+                };
+
+                err.span_suggestion(
+                    span,
+                    "did you forget",
+                    variable_snippet,
+                    Applicability::MachineApplicable,
+                );
+            }
         }
     }
 
