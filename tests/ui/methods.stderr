@@ -227,82 +227,8 @@ LL | |                                }
 LL | |                    ).is_some();
    | |______________________________^
 
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/methods.rs:315:22
-   |
-LL |     with_constructor.unwrap_or(make());
-   |                      ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(make)`
-   |
-   = note: `-D clippy::or-fun-call` implied by `-D warnings`
-
-error: use of `unwrap_or` followed by a call to `new`
-  --> $DIR/methods.rs:318:5
-   |
-LL |     with_new.unwrap_or(Vec::new());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_new.unwrap_or_default()`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/methods.rs:321:21
-   |
-LL |     with_const_args.unwrap_or(Vec::with_capacity(12));
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| Vec::with_capacity(12))`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/methods.rs:324:14
-   |
-LL |     with_err.unwrap_or(make());
-   |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| make())`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/methods.rs:327:19
-   |
-LL |     with_err_args.unwrap_or(Vec::with_capacity(12));
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| Vec::with_capacity(12))`
-
-error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/methods.rs:330:5
-   |
-LL |     with_default_trait.unwrap_or(Default::default());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_trait.unwrap_or_default()`
-
-error: use of `unwrap_or` followed by a call to `default`
-  --> $DIR/methods.rs:333:5
-   |
-LL |     with_default_type.unwrap_or(u64::default());
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `with_default_type.unwrap_or_default()`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/methods.rs:336:14
-   |
-LL |     with_vec.unwrap_or(vec![]);
-   |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| vec![])`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/methods.rs:341:21
-   |
-LL |     without_default.unwrap_or(Foo::new());
-   |                     ^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(Foo::new)`
-
-error: use of `or_insert` followed by a function call
-  --> $DIR/methods.rs:344:19
-   |
-LL |     map.entry(42).or_insert(String::new());
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
-
-error: use of `or_insert` followed by a function call
-  --> $DIR/methods.rs:347:21
-   |
-LL |     btree.entry(42).or_insert(String::new());
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_insert_with(String::new)`
-
-error: use of `unwrap_or` followed by a function call
-  --> $DIR/methods.rs:350:21
-   |
-LL |     let _ = stringy.unwrap_or("".to_owned());
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
-
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:361:23
+  --> $DIR/methods.rs:298:23
    |
 LL |         let bad_vec = some_vec.iter().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^
@@ -310,48 +236,48 @@ LL |         let bad_vec = some_vec.iter().nth(3);
    = note: `-D clippy::iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:362:26
+  --> $DIR/methods.rs:299:26
    |
 LL |         let bad_slice = &some_vec[..].iter().nth(3);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:363:31
+  --> $DIR/methods.rs:300:31
    |
 LL |         let bad_boxed_slice = boxed_slice.iter().nth(3);
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:364:29
+  --> $DIR/methods.rs:301:29
    |
 LL |         let bad_vec_deque = some_vec_deque.iter().nth(3);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-  --> $DIR/methods.rs:369:23
+  --> $DIR/methods.rs:306:23
    |
 LL |         let bad_vec = some_vec.iter_mut().nth(3);
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-  --> $DIR/methods.rs:372:26
+  --> $DIR/methods.rs:309:26
    |
 LL |         let bad_slice = &some_vec[..].iter_mut().nth(3);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-  --> $DIR/methods.rs:375:29
+  --> $DIR/methods.rs:312:29
    |
 LL |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-  --> $DIR/methods.rs:387:13
+  --> $DIR/methods.rs:324:13
    |
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^
    |
    = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 44 previous errors
+error: aborting due to 32 previous errors
 
