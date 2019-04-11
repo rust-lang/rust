@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
 
-use super::{InterpretCx, Machine, MemoryKind};
+use super::{InterpretCx, InterpError, Machine, MemoryKind};
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
@@ -76,7 +76,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
-                let instance = self.resolve(def_id, substs)?;
+                // resolve for vtable: insert shims where needed
+                let substs = self.subst_and_normalize_erasing_regions(substs)?;
+                let instance = ty::Instance::resolve_for_vtable(
+                    *self.tcx,
+                    self.param_env,
+                    def_id,
+                    substs,
+                ).ok_or_else(|| InterpError::TooGeneric)?;
                 let fn_ptr = self.memory.create_fn_alloc(instance).with_default_tag();
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), self)?;
                 self.memory

@@ -14,7 +14,7 @@ use rustc::mir::interpret::{
 };
 use super::{
     InterpretCx, Machine,
-    MemPlace, MPlaceTy, PlaceTy, Place, MemoryKind,
+    MemPlace, MPlaceTy, PlaceTy, Place,
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 
@@ -373,33 +373,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         Ok(str)
     }
 
-    pub fn uninit_operand(
-        &mut self,
-        layout: TyLayout<'tcx>
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        // This decides which types we will use the Immediate optimization for, and hence should
-        // match what `try_read_immediate` and `eval_place_to_op` support.
-        if layout.is_zst() {
-            return Ok(Operand::Immediate(Immediate::Scalar(Scalar::zst().into())));
-        }
-
-        Ok(match layout.abi {
-            layout::Abi::Scalar(..) =>
-                Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Undef)),
-            layout::Abi::ScalarPair(..) =>
-                Operand::Immediate(Immediate::ScalarPair(
-                    ScalarMaybeUndef::Undef,
-                    ScalarMaybeUndef::Undef,
-                )),
-            _ => {
-                trace!("Forcing allocation for local of type {:?}", layout.ty);
-                Operand::Indirect(
-                    *self.allocate(layout, MemoryKind::Stack)
-                )
-            }
-        })
-    }
-
     /// Projection functions
     pub fn operand_field(
         &self,
@@ -486,8 +459,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         assert_ne!(local, mir::RETURN_PLACE);
-        let op = *frame.locals[local].access()?;
         let layout = self.layout_of_local(frame, local, layout)?;
+        let op = if layout.is_zst() {
+            // Do not read from ZST, they might not be initialized
+            Operand::Immediate(Immediate::Scalar(Scalar::zst().into()))
+        } else {
+            frame.locals[local].access()?
+        };
         Ok(OpTy { op, layout })
     }
 
@@ -502,7 +480,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 Operand::Indirect(mplace)
             }
             Place::Local { frame, local } =>
-                *self.stack[frame].locals[local].access()?
+                *self.access_local(&self.stack[frame], local, None)?
         };
         Ok(OpTy { op, layout: place.layout })
     }

@@ -108,34 +108,51 @@ pub enum StackPopCleanup {
 /// State of a local variable including a memoized layout
 #[derive(Clone, PartialEq, Eq)]
 pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
-    pub state: LocalValue<Tag, Id>,
+    pub value: LocalValue<Tag, Id>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
     pub layout: Cell<Option<TyLayout<'tcx>>>,
 }
 
-/// State of a local variable
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+/// Current value of a local variable
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LocalValue<Tag=(), Id=AllocId> {
+    /// This local is not currently alive, and cannot be used at all.
     Dead,
-    // Mostly for convenience, we re-use the `Operand` type here.
-    // This is an optimization over just always having a pointer here;
-    // we can thus avoid doing an allocation when the local just stores
-    // immediate values *and* never has its address taken.
+    /// This local is alive but not yet initialized. It can be written to
+    /// but not read from or its address taken. Locals get initialized on
+    /// first write because for unsized locals, we do not know their size
+    /// before that.
+    Uninitialized,
+    /// A normal, live local.
+    /// Mostly for convenience, we re-use the `Operand` type here.
+    /// This is an optimization over just always having a pointer here;
+    /// we can thus avoid doing an allocation when the local just stores
+    /// immediate values *and* never has its address taken.
     Live(Operand<Tag, Id>),
 }
 
-impl<'tcx, Tag> LocalState<'tcx, Tag> {
-    pub fn access(&self) -> EvalResult<'tcx, &Operand<Tag>> {
-        match self.state {
+impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
+    pub fn access(&self) -> EvalResult<'tcx, Operand<Tag>> {
+        match self.value {
             LocalValue::Dead => err!(DeadLocal),
-            LocalValue::Live(ref val) => Ok(val),
+            LocalValue::Uninitialized =>
+                bug!("The type checker should prevent reading from a never-written local"),
+            LocalValue::Live(val) => Ok(val),
         }
     }
 
-    pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand<Tag>> {
-        match self.state {
+    /// Overwrite the local.  If the local can be overwritten in place, return a reference
+    /// to do so; otherwise return the `MemPlace` to consult instead.
+    pub fn access_mut(
+        &mut self,
+    ) -> EvalResult<'tcx, Result<&mut LocalValue<Tag>, MemPlace<Tag>>> {
+        match self.value {
             LocalValue::Dead => err!(DeadLocal),
-            LocalValue::Live(ref mut val) => Ok(val),
+            LocalValue::Live(Operand::Indirect(mplace)) => Ok(Err(mplace)),
+            ref mut local @ LocalValue::Live(Operand::Immediate(_)) |
+            ref mut local @ LocalValue::Uninitialized => {
+                Ok(Ok(local))
+            }
         }
     }
 }
@@ -327,6 +344,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                     let local_ty = self.monomorphize_with_substs(local_ty, frame.instance.substs);
                     self.layout_of(local_ty)
                 })?;
+                // Layouts of locals are requested a lot, so we cache them.
                 frame.locals[local].layout.set(Some(layout));
                 Ok(layout)
             }
@@ -473,19 +491,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
 
         // don't allocate at all for trivial constants
         if mir.local_decls.len() > 1 {
-            // We put some marker immediate into the locals that we later want to initialize.
-            // This can be anything except for LocalValue::Dead -- because *that* is the
-            // value we use for things that we know are initially dead.
+            // Locals are initially uninitialized.
             let dummy = LocalState {
-                state: LocalValue::Live(Operand::Immediate(Immediate::Scalar(
-                    ScalarMaybeUndef::Undef,
-                ))),
+                value: LocalValue::Uninitialized,
                 layout: Cell::new(None),
             };
             let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
-            locals[mir::RETURN_PLACE].state = LocalValue::Dead;
+            locals[mir::RETURN_PLACE].value = LocalValue::Dead;
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
@@ -498,28 +512,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                             match stmt.kind {
                                 StorageLive(local) |
                                 StorageDead(local) => {
-                                    locals[local].state = LocalValue::Dead;
+                                    locals[local].value = LocalValue::Dead;
                                 }
                                 _ => {}
                             }
                         }
                     }
                 },
-            }
-            // Finally, properly initialize all those that still have the dummy value
-            for (idx, local) in locals.iter_enumerated_mut() {
-                match local.state {
-                    LocalValue::Live(_) => {
-                        // This needs to be properly initialized.
-                        let ty = self.monomorphize(mir.local_decls[idx].ty)?;
-                        let layout = self.layout_of(ty)?;
-                        local.state = LocalValue::Live(self.uninit_operand(layout)?);
-                        local.layout = Cell::new(Some(layout));
-                    }
-                    LocalValue::Dead => {
-                        // Nothing to do
-                    }
-                }
             }
             // done
             self.frame_mut().locals = locals;
@@ -555,7 +554,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         }
         // Deallocate all locals that are backed by an allocation.
         for local in frame.locals {
-            self.deallocate_local(local.state)?;
+            self.deallocate_local(local.value)?;
         }
         // Validate the return value. Do this after deallocating so that we catch dangling
         // references.
@@ -603,10 +602,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
-        let layout = self.layout_of_local(self.frame(), local, None)?;
-        let init = LocalValue::Live(self.uninit_operand(layout)?);
+        let local_val = LocalValue::Uninitialized;
         // StorageLive *always* kills the value that's currently stored
-        Ok(mem::replace(&mut self.frame_mut().locals[local].state, init))
+        Ok(mem::replace(&mut self.frame_mut().locals[local].value, local_val))
     }
 
     /// Returns the old value of the local.
@@ -615,7 +613,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         assert!(local != mir::RETURN_PLACE, "Cannot make return place dead");
         trace!("{:?} is now dead", local);
 
-        mem::replace(&mut self.frame_mut().locals[local].state, LocalValue::Dead)
+        mem::replace(&mut self.frame_mut().locals[local].value, LocalValue::Dead)
     }
 
     pub(super) fn deallocate_local(
@@ -668,31 +666,31 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
                 }
                 write!(msg, ":").unwrap();
 
-                match self.stack[frame].locals[local].access() {
-                    Err(err) => {
-                        if let InterpError::DeadLocal = err.kind {
-                            write!(msg, " is dead").unwrap();
-                        } else {
-                            panic!("Failed to access local: {:?}", err);
-                        }
-                    }
-                    Ok(Operand::Indirect(mplace)) => {
-                        let (ptr, align) = mplace.to_scalar_ptr_align();
-                        match ptr {
+                match self.stack[frame].locals[local].value {
+                    LocalValue::Dead => write!(msg, " is dead").unwrap(),
+                    LocalValue::Uninitialized => write!(msg, " is uninitialized").unwrap(),
+                    LocalValue::Live(Operand::Indirect(mplace)) => {
+                        match mplace.ptr {
                             Scalar::Ptr(ptr) => {
-                                write!(msg, " by align({}) ref:", align.bytes()).unwrap();
+                                write!(msg, " by align({}){} ref:",
+                                    mplace.align.bytes(),
+                                    match mplace.meta {
+                                        Some(meta) => format!(" meta({:?})", meta),
+                                        None => String::new()
+                                    }
+                                ).unwrap();
                                 allocs.push(ptr.alloc_id);
                             }
                             ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
                         }
                     }
-                    Ok(Operand::Immediate(Immediate::Scalar(val))) => {
+                    LocalValue::Live(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(msg, " {:?}", val).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val {
                             allocs.push(ptr.alloc_id);
                         }
                     }
-                    Ok(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
+                    LocalValue::Live(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val1 {
                             allocs.push(ptr.alloc_id);

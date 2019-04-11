@@ -315,12 +315,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     );
 
                     // Figure out how to pass which arguments.
-                    // We have two iterators: Where the arguments come from,
-                    // and where they go to.
+                    // The Rust ABI is special: ZST get skipped.
                     let rust_abi = match caller_abi {
                         Abi::Rust | Abi::RustCall => true,
                         _ => false
                     };
+                    // We have two iterators: Where the arguments come from,
+                    // and where they go to.
 
                     // For where they come from: If the ABI is RustCall, we untuple the
                     // last incoming argument.  These two iterators do not have the same type,
@@ -368,7 +369,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     }
                     // Now we should have no more caller args
                     if caller_iter.next().is_some() {
-                        trace!("Caller has too many args over");
+                        trace!("Caller has passed too many args");
                         return err!(FunctionArgCountMismatch);
                     }
                     // Don't forget to check the return type!
@@ -406,9 +407,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
             }
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
+                let mut args = args.to_vec();
                 let ptr_size = self.pointer_size();
-                let ptr = self.deref_operand(args[0])?;
-                let vtable = ptr.vtable()?;
+                // We have to implement all "object safe receivers".  Currently we
+                // support built-in pointers (&, &mut, Box) as well as unsized-self.  We do
+                // not yet support custom self types.
+                // Also see librustc_codegen_llvm/abi.rs and librustc_codegen_llvm/mir/block.rs.
+                let receiver_place = match args[0].layout.ty.builtin_deref(true) {
+                    Some(_) => {
+                        // Built-in pointer.
+                        self.deref_operand(args[0])?
+                    }
+                    None => {
+                        // Unsized self.
+                        args[0].to_mem_place()
+                    }
+                };
+                // Find and consult vtable
+                let vtable = receiver_place.vtable()?;
                 self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
                 let fn_ptr = self.memory.get(vtable.alloc_id)?.read_ptr_sized(
                     self,
@@ -416,15 +432,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 )?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
 
-                // We have to patch the self argument, in particular get the layout
-                // expected by the actual function. Cannot just use "field 0" due to
-                // Box<self>.
-                let mut args = args.to_vec();
-                let pointee = args[0].layout.ty.builtin_deref(true).unwrap().ty;
-                let fake_fat_ptr_ty = self.tcx.mk_mut_ptr(pointee);
-                args[0] = OpTy::from(ImmTy { // strip vtable
-                    layout: self.layout_of(fake_fat_ptr_ty)?.field(self, 0)?,
-                    imm: Immediate::Scalar(ptr.ptr.into())
+                // `*mut receiver_place.layout.ty` is almost the layout that we
+                // want for args[0]: We have to project to field 0 because we want
+                // a thin pointer.
+                assert!(receiver_place.layout.is_unsized());
+                let receiver_ptr_ty = self.tcx.mk_mut_ptr(receiver_place.layout.ty);
+                let this_receiver_ptr = self.layout_of(receiver_ptr_ty)?.field(self, 0)?;
+                // Adjust receiver argument.
+                args[0] = OpTy::from(ImmTy {
+                    layout: this_receiver_ptr,
+                    imm: Immediate::Scalar(receiver_place.ptr.into())
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function

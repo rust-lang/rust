@@ -114,10 +114,11 @@ macro_rules! impl_snapshot_for {
             fn snapshot(&self, __ctx: &'a Ctx) -> Self::Item {
                 match *self {
                     $(
-                        $enum_name::$variant $( ( $(ref $field),* ) )? =>
+                        $enum_name::$variant $( ( $(ref $field),* ) )? => {
                             $enum_name::$variant $(
-                                ( $( __impl_snapshot_field!($field, __ctx $(, $delegate)?) ),* ),
+                                ( $( __impl_snapshot_field!($field, __ctx $(, $delegate)?) ),* )
                             )?
+                        }
                     )*
                 }
             }
@@ -250,11 +251,13 @@ impl_snapshot_for!(enum Operand {
 
 impl_stable_hash_for!(enum crate::interpret::LocalValue {
     Dead,
+    Uninitialized,
     Live(x),
 });
 impl_snapshot_for!(enum LocalValue {
-    Live(v),
     Dead,
+    Uninitialized,
+    Live(v),
 });
 
 impl<'a, Ctx> Snapshot<'a, Ctx> for Relocations
@@ -360,13 +363,13 @@ impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalState<'tcx>
     type Item = LocalValue<(), AllocIdSnapshot<'a>>;
 
     fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        let LocalState { state, layout: _ } = self;
-        state.snapshot(ctx)
+        let LocalState { value, layout: _ } = self;
+        value.snapshot(ctx)
     }
 }
 
 impl_stable_hash_for!(struct LocalState<'tcx> {
-    state,
+    value,
     layout -> _,
 });
 
