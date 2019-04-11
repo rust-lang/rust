@@ -21,8 +21,8 @@ WORKDIR /build/
 
 COPY scripts/musl-toolchain.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
-RUN CFLAGS="-Wa,-mrelax-relocations=no" \
-    CXXFLAGS="-Wa,-mrelax-relocations=no" \
+RUN CFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
+    CXXFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
     bash musl-toolchain.sh x86_64 && rm -rf build
 
 COPY scripts/sccache.sh /scripts/
@@ -38,7 +38,9 @@ ENV RUST_CONFIGURE_ARGS \
 # way to produce "super compatible" binaries.
 #
 # See: https://github.com/rust-lang/rust/issues/34978
-ENV CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
+# And: https://github.com/rust-lang/rust/issues/59411
+ENV CFLAGS_x86_64_unknown_linux_musl="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none \
+    -Wl,--compress-debug-sections=none"
 
 ENV HOSTS=x86_64-unknown-linux-musl \
     CC_x86_64_unknown_linux_musl=x86_64-linux-musl-gcc \
