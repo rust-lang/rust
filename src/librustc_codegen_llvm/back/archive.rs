@@ -7,14 +7,13 @@ use std::path::{Path, PathBuf};
 use std::ptr;
 use std::str;
 
-use crate::back::bytecode::RLIB_BYTECODE_EXTENSION;
 use crate::llvm::archive_ro::{ArchiveRO, Child};
 use crate::llvm::{self, ArchiveKind};
-use crate::metadata::METADATA_FILENAME;
-use rustc_codegen_ssa::back::archive::find_library;
+use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
+use rustc_codegen_ssa::back::archive::{ArchiveBuilder, find_library};
 use rustc::session::Session;
 
-pub struct ArchiveConfig<'a> {
+struct ArchiveConfig<'a> {
     pub sess: &'a Session,
     pub dst: PathBuf,
     pub src: Option<PathBuf>,
@@ -23,7 +22,7 @@ pub struct ArchiveConfig<'a> {
 
 /// Helper for adding many files to an archive.
 #[must_use = "must call build() to finish building the archive"]
-pub struct ArchiveBuilder<'a> {
+pub struct LlvmArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
     removals: Vec<String>,
     additions: Vec<Addition>,
@@ -49,11 +48,26 @@ fn is_relevant_child(c: &Child<'_>) -> bool {
     }
 }
 
-impl<'a> ArchiveBuilder<'a> {
+fn archive_config<'a>(sess: &'a Session,
+                      output: &Path,
+                      input: Option<&Path>) -> ArchiveConfig<'a> {
+    use rustc_codegen_ssa::back::link::archive_search_paths;
+    ArchiveConfig {
+        sess,
+        dst: output.to_path_buf(),
+        src: input.map(|p| p.to_path_buf()),
+        lib_search_paths: archive_search_paths(sess),
+    }
+}
+
+impl<'a> ArchiveBuilder<'a> for LlvmArchiveBuilder<'a> {
     /// Creates a new static archive, ready for modifying the archive specified
     /// by `config`.
-    pub fn new(config: ArchiveConfig<'a>) -> ArchiveBuilder<'a> {
-        ArchiveBuilder {
+    fn new(sess: &'a Session,
+            output: &Path,
+            input: Option<&Path>) -> LlvmArchiveBuilder<'a> {
+        let config = archive_config(sess, output, input);
+        LlvmArchiveBuilder {
             config,
             removals: Vec::new(),
             additions: Vec::new(),
@@ -63,12 +77,12 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     /// Removes a file from this archive
-    pub fn remove_file(&mut self, file: &str) {
+    fn remove_file(&mut self, file: &str) {
         self.removals.push(file.to_string());
     }
 
     /// Lists all files in an archive
-    pub fn src_files(&mut self) -> Vec<String> {
+    fn src_files(&mut self) -> Vec<String> {
         if self.src_archive().is_none() {
             return Vec::new()
         }
@@ -84,18 +98,9 @@ impl<'a> ArchiveBuilder<'a> {
                .collect()
     }
 
-    fn src_archive(&mut self) -> Option<&ArchiveRO> {
-        if let Some(ref a) = self.src_archive {
-            return a.as_ref()
-        }
-        let src = self.config.src.as_ref()?;
-        self.src_archive = Some(ArchiveRO::open(src).ok());
-        self.src_archive.as_ref().unwrap().as_ref()
-    }
-
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
-    pub fn add_native_library(&mut self, name: &str) {
+    fn add_native_library(&mut self, name: &str) {
         let location = find_library(name, &self.config.lib_search_paths,
                                     self.config.sess);
         self.add_archive(&location, |_| false).unwrap_or_else(|e| {
@@ -109,7 +114,7 @@ impl<'a> ArchiveBuilder<'a> {
     ///
     /// This ignores adding the bytecode from the rlib, and if LTO is enabled
     /// then the object file also isn't added.
-    pub fn add_rlib(&mut self,
+    fn add_rlib(&mut self,
                     rlib: &Path,
                     name: &str,
                     lto: bool,
@@ -141,6 +146,44 @@ impl<'a> ArchiveBuilder<'a> {
         })
     }
 
+    /// Adds an arbitrary file to this archive
+    fn add_file(&mut self, file: &Path) {
+        let name = file.file_name().unwrap().to_str().unwrap();
+        self.additions.push(Addition::File {
+            path: file.to_path_buf(),
+            name_in_archive: name.to_owned(),
+        });
+    }
+
+    /// Indicate that the next call to `build` should update all symbols in
+    /// the archive (equivalent to running 'ar s' over it).
+    fn update_symbols(&mut self) {
+        self.should_update_symbols = true;
+    }
+
+    /// Combine the provided files, rlibs, and native libraries into a single
+    /// `Archive`.
+    fn build(mut self) {
+        let kind = self.llvm_archive_kind().unwrap_or_else(|kind|
+            self.config.sess.fatal(&format!("Don't know how to build archive of type: {}", kind)));
+
+        if let Err(e) = self.build_with_llvm(kind) {
+            self.config.sess.fatal(&format!("failed to build archive: {}", e));
+        }
+
+    }
+}
+
+impl<'a> LlvmArchiveBuilder<'a> {
+    fn src_archive(&mut self) -> Option<&ArchiveRO> {
+        if let Some(ref a) = self.src_archive {
+            return a.as_ref()
+        }
+        let src = self.config.src.as_ref()?;
+        self.src_archive = Some(ArchiveRO::open(src).ok());
+        self.src_archive.as_ref().unwrap().as_ref()
+    }
+
     fn add_archive<F>(&mut self, archive: &Path, skip: F)
                       -> io::Result<()>
         where F: FnMut(&str) -> bool + 'static
@@ -154,33 +197,6 @@ impl<'a> ArchiveBuilder<'a> {
             skip: Box::new(skip),
         });
         Ok(())
-    }
-
-    /// Adds an arbitrary file to this archive
-    pub fn add_file(&mut self, file: &Path) {
-        let name = file.file_name().unwrap().to_str().unwrap();
-        self.additions.push(Addition::File {
-            path: file.to_path_buf(),
-            name_in_archive: name.to_owned(),
-        });
-    }
-
-    /// Indicate that the next call to `build` should update all symbols in
-    /// the archive (equivalent to running 'ar s' over it).
-    pub fn update_symbols(&mut self) {
-        self.should_update_symbols = true;
-    }
-
-    /// Combine the provided files, rlibs, and native libraries into a single
-    /// `Archive`.
-    pub fn build(&mut self) {
-        let kind = self.llvm_archive_kind().unwrap_or_else(|kind|
-            self.config.sess.fatal(&format!("Don't know how to build archive of type: {}", kind)));
-
-        if let Err(e) = self.build_with_llvm(kind) {
-            self.config.sess.fatal(&format!("failed to build archive: {}", e));
-        }
-
     }
 
     fn llvm_archive_kind(&self) -> Result<ArchiveKind, &str> {

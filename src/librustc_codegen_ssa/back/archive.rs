@@ -1,6 +1,7 @@
 use rustc::session::Session;
 
-use std::path::PathBuf;
+use std::io;
+use std::path::{Path, PathBuf};
 
 pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
                     -> PathBuf {
@@ -23,4 +24,24 @@ pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
     }
     sess.fatal(&format!("could not find native static library `{}`, \
                          perhaps an -L flag is missing?", name));
+}
+
+pub trait ArchiveBuilder<'a> {
+    fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self;
+
+    fn add_file(&mut self, path: &Path);
+    fn remove_file(&mut self, name: &str);
+    fn src_files(&mut self) -> Vec<String>;
+
+    fn add_rlib(
+        &mut self,
+        path: &Path,
+        name: &str,
+        lto: bool,
+        skip_objects: bool,
+    ) -> io::Result<()>;
+    fn add_native_library(&mut self, name: &str);
+    fn update_symbols(&mut self);
+
+    fn build(self);
 }

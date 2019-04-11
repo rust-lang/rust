@@ -1,6 +1,8 @@
 use syntax_pos::{BytePos, Span};
 use rustc::hir::def_id::CrateNum;
 
+pub mod type_names;
+
 pub enum FunctionDebugContext<D> {
     RegularContext(FunctionDebugContextData<D>),
     DebugInfoDisabled,
