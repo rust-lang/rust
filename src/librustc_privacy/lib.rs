@@ -1540,7 +1540,6 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     has_pub_restricted: bool,
     has_old_errors: bool,
     in_assoc_ty: bool,
-    private_crates: FxHashSet<CrateNum>
 }
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
@@ -1622,7 +1621,7 @@ impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     /// 2. It comes from a private crate
     fn leaks_private_dep(&self, item_id: DefId) -> bool {
         let ret = self.required_visibility == ty::Visibility::Public &&
-            self.private_crates.contains(&item_id.krate);
+            self.tcx.is_private_dep(item_id.krate);
 
         log::debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
         return ret;
@@ -1640,7 +1639,6 @@ struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     has_pub_restricted: bool,
     old_error_set: &'a HirIdSet,
-    private_crates: FxHashSet<CrateNum>
 }
 
 impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
@@ -1678,7 +1676,6 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             has_pub_restricted: self.has_pub_restricted,
             has_old_errors,
             in_assoc_ty: false,
-            private_crates: self.private_crates.clone()
         }
     }
 
@@ -1876,17 +1873,11 @@ fn check_private_in_public<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, krate: CrateNum) {
         pub_restricted_visitor.has_pub_restricted
     };
 
-    let private_crates: FxHashSet<CrateNum> = tcx.sess.opts.extern_private.iter()
-        .flat_map(|c| {
-            tcx.crates().iter().find(|&&krate| &tcx.crate_name(krate) == c).cloned()
-        }).collect();
-
     // Check for private types and traits in public interfaces.
     let mut visitor = PrivateItemsInPublicInterfacesVisitor {
         tcx,
         has_pub_restricted,
         old_error_set: &visitor.old_error_set,
-        private_crates
     };
     krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
 }

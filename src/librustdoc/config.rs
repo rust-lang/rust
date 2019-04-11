@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -9,7 +9,7 @@ use rustc::lint::Level;
 use rustc::session::early_error;
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
-                             get_cmd_lint_options};
+                             get_cmd_lint_options, ExternEntry};
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
@@ -578,7 +578,7 @@ fn parse_extern_html_roots(
 /// error message.
 // FIXME(eddyb) This shouldn't be duplicated with `rustc::session`.
 fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
-    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+    let mut externs: BTreeMap<_, ExternEntry> = BTreeMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
@@ -588,7 +588,10 @@ fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
                         enable `--extern crate_name` without `=path`".to_string());
         }
         let name = name.to_string();
-        externs.entry(name).or_default().insert(location);
+        // For Rustdoc purposes, we can treat all externs as public
+        externs.entry(name)
+            .or_default()
+            .locations.insert(location.clone());
     }
     Ok(Externs::new(externs))
 }

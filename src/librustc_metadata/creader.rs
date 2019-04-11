@@ -131,9 +131,9 @@ impl<'a> CrateLoader<'a> {
             // `source` stores paths which are normalized which may be different
             // from the strings on the command line.
             let source = &self.cstore.get_crate_data(cnum).source;
-            if let Some(locs) = self.sess.opts.externs.get(&*name.as_str()) {
+            if let Some(entry) = self.sess.opts.externs.get(&*name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
-                let found = locs.iter().filter_map(|l| l.as_ref()).any(|l| {
+                let found = entry.locations.iter().filter_map(|l| l.as_ref()).any(|l| {
                     let l = fs::canonicalize(l).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
                     source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
@@ -195,11 +195,19 @@ impl<'a> CrateLoader<'a> {
         ident: Symbol,
         span: Span,
         lib: Library,
-        dep_kind: DepKind
+        dep_kind: DepKind,
+        name: Symbol
     ) -> (CrateNum, Lrc<cstore::CrateMetadata>) {
         let crate_root = lib.metadata.get_root();
-        info!("register crate `extern crate {} as {}`", crate_root.name, ident);
         self.verify_no_symbol_conflicts(span, &crate_root);
+
+        let private_dep = self.sess.opts.externs.get(&name.as_str())
+            .map(|e| e.is_private_dep)
+            .unwrap_or(false);
+
+        info!("register crate `extern crate {} as {}` (private_dep = {})",
+            crate_root.name, ident, private_dep);
+
 
         // Claim this crate number and cache it
         let cnum = self.cstore.alloc_new_crate_num();
@@ -272,7 +280,8 @@ impl<'a> CrateLoader<'a> {
                 dylib,
                 rlib,
                 rmeta,
-            }
+            },
+            private_dep
         };
 
         let cmeta = Lrc::new(cmeta);
@@ -390,7 +399,7 @@ impl<'a> CrateLoader<'a> {
                 Ok((cnum, data))
             }
             (LoadResult::Loaded(library), host_library) => {
-                Ok(self.register_crate(host_library, root, ident, span, library, dep_kind))
+                Ok(self.register_crate(host_library, root, ident, span, library, dep_kind, name))
             }
             _ => panic!()
         }
