@@ -11,7 +11,7 @@ use ra_db::{FileId, FilePosition};
 use ra_syntax::{
     SyntaxNode, AstPtr,
     ast::{self, AstNode, NameOwner},
-    algo::{find_node_at_offset, find_token_at_offset},
+    algo::find_node_at_offset,
 };
 
 use crate::{
@@ -196,29 +196,6 @@ pub fn trait_from_module(
     Trait { id: ctx.to_def(trait_def) }
 }
 
-pub fn resolver_for_position(db: &impl HirDatabase, position: FilePosition) -> Resolver {
-    let file_id = position.file_id;
-    let file = db.parse(file_id);
-    find_token_at_offset(file.syntax(), position.offset)
-        .find_map(|token| {
-            token.parent().ancestors().find_map(|node| {
-                if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
-                    if let Some(func) = function_from_child_node(db, file_id, node) {
-                        let scopes = func.scopes(db);
-                        let scope = scopes.scope_for_offset(position.offset);
-                        Some(expr::resolver_for_scope(func.body(db), db, scope))
-                    } else {
-                        // FIXME const/static/array length
-                        None
-                    }
-                } else {
-                    try_get_resolver_for_node(db, file_id, node)
-                }
-            })
-        })
-        .unwrap_or_default()
-}
-
 fn resolver_for_node(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> Resolver {
     node.ancestors()
         .find_map(|node| {
@@ -303,6 +280,10 @@ impl SourceAnalyzer {
             body_source_map: def_with_body.map(|it| it.body_source_map(db)),
             infer: def_with_body.map(|it| it.infer(db)),
         }
+    }
+
+    pub fn resolver(&self) -> &Resolver {
+        &self.resolver
     }
 
     pub fn type_of(&self, _db: &impl HirDatabase, expr: &ast::Expr) -> Option<crate::Ty> {

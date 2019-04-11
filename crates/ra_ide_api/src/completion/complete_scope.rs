@@ -4,7 +4,7 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if !ctx.is_trivial_path {
         return;
     }
-    let names = ctx.resolver.all_names(ctx.db);
+    let names = ctx.analyzer.resolver().all_names(ctx.db);
 
     names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
 }

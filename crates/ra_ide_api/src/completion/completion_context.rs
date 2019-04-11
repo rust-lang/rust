@@ -5,7 +5,7 @@ use ra_syntax::{
     algo::{find_token_at_offset, find_covering_element, find_node_at_offset},
     SyntaxKind::*,
 };
-use hir::{source_binder, Resolver};
+use hir::source_binder;
 
 use crate::{db, FilePosition};
 
@@ -17,7 +17,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) analyzer: hir::SourceAnalyzer,
     pub(super) offset: TextUnit,
     pub(super) token: SyntaxToken<'a>,
-    pub(super) resolver: Resolver,
     pub(super) module: Option<hir::Module>,
     pub(super) function_syntax: Option<&'a ast::FnDef>,
     pub(super) use_item_syntax: Option<&'a ast::UseItem>,
@@ -47,7 +46,6 @@ impl<'a> CompletionContext<'a> {
         original_file: &'a SourceFile,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
-        let resolver = source_binder::resolver_for_position(db, position);
         let module = source_binder::module_from_position(db, position);
         let token = find_token_at_offset(original_file.syntax(), position.offset).left_biased()?;
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, token.parent());
@@ -56,7 +54,6 @@ impl<'a> CompletionContext<'a> {
             analyzer,
             token,
             offset: position.offset,
-            resolver,
             module,
             function_syntax: None,
             use_item_syntax: None,
