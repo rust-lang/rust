@@ -955,6 +955,44 @@ impl<T: ?Sized> RefCell<T> {
             &mut *self.value.get()
         }
     }
+
+    /// Immutably borrows the wrapped value, returning an error if the value is
+    /// currently mutably borrowed.
+    ///
+    /// # Safety
+    ///
+    /// Unlike `RefCell::borrow`, this method is unsafe because it does not
+    /// return a `Ref`, thus leaving the borrow flag untouched. Mutably
+    /// borrowing the `RefCell` while the reference returned by this method
+    /// is alive is undefined behaviour.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(borrow_state)]
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// {
+    ///     let m = c.borrow_mut();
+    ///     assert!(unsafe { c.try_borrow_unguarded() }.is_err());
+    /// }
+    ///
+    /// {
+    ///     let m = c.borrow();
+    ///     assert!(unsafe { c.try_borrow_unguarded() }.is_ok());
+    /// }
+    /// ```
+    #[unstable(feature = "borrow_state", issue = "27733")]
+    #[inline]
+    pub unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
+        if !is_writing(self.borrow.get()) {
+            Ok(&*self.value.get())
+        } else {
+            Err(BorrowError { _private: () })
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
