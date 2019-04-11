@@ -99,6 +99,13 @@ mod imp {
     }
 }
 
+// On iOS and MacOS `SecRandomCopyBytes` calls `CCRandomCopyBytes` with
+// `kCCRandomDefault`. `CCRandomCopyBytes` manages a CSPRNG which is seeded
+// from `/dev/random` and which runs on its own thread accessed via GCD.
+// This seems needlessly heavyweight for the purposes of generating two u64s
+// once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
+// only used on iOS where direct access to `/dev/urandom` is blocked by the
+// sandbox.
 #[cfg(target_os = "ios")]
 mod imp {
     use crate::io;
