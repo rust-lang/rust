@@ -110,7 +110,7 @@ impl Index<'tcx> {
         position.write_to_bytes_at(positions, array_index)
     }
 
-    pub fn write_index(&self, buf: &mut Encoder) -> LazySeq<Self> {
+    pub fn write_index(&self, buf: &mut Encoder) -> Lazy<[Self]> {
         let pos = buf.position();
 
         // First we write the length of the lower range ...
@@ -119,12 +119,14 @@ impl Index<'tcx> {
         buf.emit_raw_bytes(&self.positions[0]);
         // ... then the values in the higher range.
         buf.emit_raw_bytes(&self.positions[1]);
-        LazySeq::with_position_and_length(pos as usize,
-            (self.positions[0].len() + self.positions[1].len()) / 4 + 1)
+        Lazy::from_position_and_meta(
+            pos as usize,
+            (self.positions[0].len() + self.positions[1].len()) / 4 + 1,
+        )
     }
 }
 
-impl LazySeq<Index<'tcx>> {
+impl Lazy<[Index<'tcx>]> {
     /// Given the metadata, extract out the offset of a particular
     /// DefIndex (if any).
     #[inline(never)]
@@ -132,7 +134,7 @@ impl LazySeq<Index<'tcx>> {
         let bytes = &bytes[self.position..];
         debug!("Index::lookup: index={:?} len={:?}",
                def_index,
-               self.len);
+               self.meta);
 
         let i = def_index.as_array_index() + match def_index.address_space() {
             DefIndexAddressSpace::Low => 0,
@@ -149,7 +151,7 @@ impl LazySeq<Index<'tcx>> {
             None
         } else {
             debug!("Index::lookup: position={:?}", position);
-            Some(Lazy::with_position(position as usize))
+            Some(Lazy::from_position(position as usize))
         }
     }
 }

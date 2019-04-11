@@ -135,14 +135,14 @@ impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
     }
 }
 
-impl<'a, 'tcx: 'a, T: Decodable> LazySeq<T> {
+impl<'a, 'tcx: 'a, T: Decodable> Lazy<[T]> {
     pub fn decode<M: Metadata<'a, 'tcx>>(
         self,
         meta: M,
     ) -> impl Iterator<Item = T> + Captures<'tcx> + 'a {
         let mut dcx = meta.decoder(self.position);
         dcx.lazy_state = LazyState::NodeStart(self.position);
-        (0..self.len).map(move |_| T::decode(&mut dcx).unwrap())
+        (0..self.meta).map(move |_| T::decode(&mut dcx).unwrap())
     }
 }
 
@@ -155,10 +155,14 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         self.cdata.expect("missing CrateMetadata in DecodeContext")
     }
 
-    fn read_lazy_distance(&mut self, min_size: usize) -> Result<usize, <Self as Decoder>::Error> {
+    fn read_lazy_with_meta<T: ?Sized + LazyMeta>(
+        &mut self,
+        meta: T::Meta,
+    ) -> Result<Lazy<T>, <Self as Decoder>::Error> {
+        let min_size = T::min_size(meta);
         let distance = self.read_usize()?;
         let position = match self.lazy_state {
-            LazyState::NoNode => bug!("read_lazy_distance: outside of a metadata node"),
+            LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
             LazyState::NodeStart(start) => {
                 assert!(distance + min_size <= start);
                 start - distance - min_size
@@ -166,7 +170,7 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
             LazyState::Previous(last_min_end) => last_min_end + distance,
         };
         self.lazy_state = LazyState::Previous(position + min_size);
-        Ok(position)
+        Ok(Lazy::from_position_and_meta(position, meta))
     }
 }
 
@@ -232,19 +236,18 @@ impl<'a, 'tcx: 'a> TyDecoder<'a, 'tcx> for DecodeContext<'a, 'tcx> {
 
 impl<'a, 'tcx, T> SpecializedDecoder<Lazy<T>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<T>, Self::Error> {
-        Ok(Lazy::with_position(self.read_lazy_distance(Lazy::<T>::min_size())?))
+        self.read_lazy_with_meta(())
     }
 }
 
-impl<'a, 'tcx, T> SpecializedDecoder<LazySeq<T>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<LazySeq<T>, Self::Error> {
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a, 'tcx> {
+    fn specialized_decode(&mut self) -> Result<Lazy<[T]>, Self::Error> {
         let len = self.read_usize()?;
-        let position = if len == 0 {
-            0
+        if len == 0 {
+            Ok(Lazy::empty())
         } else {
-            self.read_lazy_distance(LazySeq::<T>::min_size(len))?
-        };
-        Ok(LazySeq::with_position_and_length(position, len))
+            self.read_lazy_with_meta(len)
+        }
     }
 }
 
@@ -372,7 +375,7 @@ impl<'tcx> MetadataBlob {
     }
 
     pub fn get_rustc_version(&self) -> String {
-        Lazy::with_position(METADATA_HEADER.len() + 4).decode(self)
+        Lazy::<String>::from_position(METADATA_HEADER.len() + 4).decode(self)
     }
 
     pub fn get_root(&self) -> CrateRoot<'tcx> {
@@ -381,7 +384,7 @@ impl<'tcx> MetadataBlob {
         let pos = (((slice[offset + 0] as u32) << 24) | ((slice[offset + 1] as u32) << 16) |
                    ((slice[offset + 2] as u32) << 8) |
                    ((slice[offset + 3] as u32) << 0)) as usize;
-        Lazy::with_position(pos).decode(self)
+        Lazy::<CrateRoot<'tcx>>::from_position(pos).decode(self)
     }
 
     pub fn list_crate_metadata(&self,
@@ -1109,7 +1112,7 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::Fn(data) |
             EntryKind::ForeignFn(data) => data.decode(self).arg_names,
             EntryKind::Method(data) => data.decode(self).fn_data.arg_names,
-            _ => LazySeq::empty(),
+            _ => Lazy::empty(),
         };
         arg_names.decode(self).collect()
     }
