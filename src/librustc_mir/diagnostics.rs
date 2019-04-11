@@ -2307,10 +2307,10 @@ let q = *p;
 ```
 
 Here, the expression `&foo()` is borrowing the expression
-`foo()`. As `foo()` is call to a function, and not the name of
+`foo()`. As `foo()` is a call to a function, and not the name of
 a variable, this creates a **temporary** -- that temporary stores
 the return value from `foo()` so that it can be borrowed.
-So you might imagine that `let p = bar(&foo())` is equivalent
+You could imagine that `let p = bar(&foo());` is equivalent
 to this:
 
 ```compile_fail,E0597
