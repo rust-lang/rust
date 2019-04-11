@@ -2,9 +2,9 @@ use crate::schema::*;
 
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc_serialize::opaque::Encoder;
+use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
-use std::u32;
 use log::debug;
 
 /// Helper trait, for encoding to, and decoding from, a fixed number of bytes.
@@ -73,7 +73,7 @@ impl FixedSizeEncoding for u32 {
 /// of each DefIndex. It is not required that all definitions appear
 /// in the metadata, nor that they are serialized in order, and
 /// therefore we first allocate the vector here and fill it with
-/// `u32::MAX`. Whenever an index is visited, we fill in the
+/// `0`. Whenever an index is visited, we fill in the
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
 crate struct Index<'tcx> {
@@ -84,7 +84,7 @@ crate struct Index<'tcx> {
 impl Index<'tcx> {
     crate fn new(max_index: usize) -> Self {
         Index {
-            positions: vec![0xff; max_index * 4],
+            positions: vec![0; max_index * 4],
             _marker: PhantomData,
         }
     }
@@ -95,12 +95,11 @@ impl Index<'tcx> {
     }
 
     fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'tcx>>) {
-        assert!(entry.position.get() < (u32::MAX as usize));
-        let position = entry.position.get() as u32;
+        let position: u32 = entry.position.get().try_into().unwrap();
         let array_index = item.index();
 
         let positions = &mut self.positions;
-        assert!(u32::read_from_bytes_at(positions, array_index) == u32::MAX,
+        assert!(u32::read_from_bytes_at(positions, array_index) == 0,
                 "recorded position for item {:?} twice, first at {:?} and now at {:?}",
                 item,
                 u32::read_from_bytes_at(positions, array_index),
@@ -130,12 +129,7 @@ impl Lazy<[Index<'tcx>]> {
 
         let bytes = &bytes[self.position.get()..][..self.meta * 4];
         let position = u32::read_from_bytes_at(bytes, def_index.index());
-        if position == u32::MAX {
-            debug!("Index::lookup: position=u32::MAX");
-            None
-        } else {
-            debug!("Index::lookup: position={:?}", position);
-            Some(Lazy::from_position(NonZeroUsize::new(position as usize).unwrap()))
-        }
+        debug!("Index::lookup: position={:?}", position);
+        NonZeroUsize::new(position as usize).map(Lazy::from_position)
     }
 }
