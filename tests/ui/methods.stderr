@@ -154,7 +154,7 @@ LL |                        });
    |
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:238:13
+  --> $DIR/methods.rs:224:13
    |
 LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -163,7 +163,7 @@ LL |     let _ = v.iter().filter(|&x| *x < 0).next();
    = note: replace `filter(|&x| *x < 0).next()` with `find(|&x| *x < 0)`
 
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
-  --> $DIR/methods.rs:241:13
+  --> $DIR/methods.rs:227:13
    |
 LL |       let _ = v.iter().filter(|&x| {
    |  _____________^
@@ -173,7 +173,7 @@ LL | |                    ).next();
    | |___________________________^
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:257:13
+  --> $DIR/methods.rs:243:13
    |
 LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -182,7 +182,7 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    = note: replace `find(|&x| *x < 0).is_some()` with `any(|&x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:260:13
+  --> $DIR/methods.rs:246:13
    |
 LL |       let _ = v.iter().find(|&x| {
    |  _____________^
@@ -192,7 +192,7 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:266:13
+  --> $DIR/methods.rs:252:13
    |
 LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -200,7 +200,7 @@ LL |     let _ = v.iter().position(|&x| x < 0).is_some();
    = note: replace `position(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:269:13
+  --> $DIR/methods.rs:255:13
    |
 LL |       let _ = v.iter().position(|&x| {
    |  _____________^
@@ -210,7 +210,7 @@ LL | |                    ).is_some();
    | |______________________________^
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:275:13
+  --> $DIR/methods.rs:261:13
    |
 LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -218,7 +218,7 @@ LL |     let _ = v.iter().rposition(|&x| x < 0).is_some();
    = note: replace `rposition(|&x| x < 0).is_some()` with `any(|&x| x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
-  --> $DIR/methods.rs:278:13
+  --> $DIR/methods.rs:264:13
    |
 LL |       let _ = v.iter().rposition(|&x| {
    |  _____________^
@@ -227,57 +227,13 @@ LL | |                                }
 LL | |                    ).is_some();
    | |______________________________^
 
-error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:298:23
-   |
-LL |         let bad_vec = some_vec.iter().nth(3);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::iter-nth` implied by `-D warnings`
-
-error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:299:26
-   |
-LL |         let bad_slice = &some_vec[..].iter().nth(3);
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:300:31
-   |
-LL |         let bad_boxed_slice = boxed_slice.iter().nth(3);
-   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-  --> $DIR/methods.rs:301:29
-   |
-LL |         let bad_vec_deque = some_vec_deque.iter().nth(3);
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-  --> $DIR/methods.rs:306:23
-   |
-LL |         let bad_vec = some_vec.iter_mut().nth(3);
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-  --> $DIR/methods.rs:309:26
-   |
-LL |         let bad_slice = &some_vec[..].iter_mut().nth(3);
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-  --> $DIR/methods.rs:312:29
-   |
-LL |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
-   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-  --> $DIR/methods.rs:324:13
+  --> $DIR/methods.rs:279:13
    |
 LL |     let _ = opt.unwrap();
    |             ^^^^^^^^^^^^
    |
    = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 32 previous errors
+error: aborting due to 25 previous errors
 
