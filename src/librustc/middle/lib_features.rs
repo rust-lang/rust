@@ -8,7 +8,7 @@ use crate::ty::TyCtxt;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
-use syntax_pos::Span;
+use syntax_pos::{Span, symbols};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_macros::HashStable;
 use errors::DiagnosticId;
@@ -51,12 +51,12 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
-        let stab_attrs = vec!["stable", "unstable", "rustc_const_unstable"];
+        let stab_attrs = [symbols::stable, symbols::unstable, symbols::rustc_const_unstable];
 
         // Find a stability attribute (i.e., `#[stable (..)]`, `#[unstable (..)]`,
         // `#[rustc_const_unstable (..)]`).
         if let Some(stab_attr) = stab_attrs.iter().find(|stab_attr| {
-            attr.check_name(stab_attr)
+            attr.check_name(**stab_attr)
         }) {
             let meta_item = attr.meta();
             if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta_item {
