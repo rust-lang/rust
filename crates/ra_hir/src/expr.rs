@@ -51,12 +51,12 @@ pub struct Body {
 pub struct BodySourceMap {
     expr_map: FxHashMap<SyntaxNodePtr, ExprId>,
     expr_map_back: ArenaMap<ExprId, SyntaxNodePtr>,
-    pat_map: FxHashMap<PatPrr, PatId>,
-    pat_map_back: ArenaMap<PatId, PatPrr>,
+    pat_map: FxHashMap<PatPtr, PatId>,
+    pat_map_back: ArenaMap<PatId, PatPtr>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::NamedField>>,
 }
 
-type PatPrr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
+type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
 
 impl Body {
     pub fn params(&self) -> &[PatId] {
@@ -129,11 +129,11 @@ impl BodySourceMap {
         self.expr_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Option<PatPrr> {
+    pub fn pat_syntax(&self, pat: PatId) -> Option<PatPtr> {
         self.pat_map_back.get(pat).cloned()
     }
 
-    pub fn syntax_pat(&self, ptr: PatPrr) -> Option<PatId> {
+    pub fn syntax_pat(&self, ptr: PatPtr) -> Option<PatId> {
         self.pat_map.get(&ptr).cloned()
     }
 
@@ -506,7 +506,7 @@ impl ExprCollector {
         id
     }
 
-    fn alloc_pat(&mut self, pat: Pat, ptr: PatPrr) -> PatId {
+    fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.pats.alloc(pat);
         self.source_map.pat_map.insert(ptr, id);
         self.source_map.pat_map_back.insert(id, ptr);
