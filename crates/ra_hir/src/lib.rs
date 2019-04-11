@@ -60,7 +60,7 @@ pub use self::{
     source_id::{AstIdMap, ErasedFileAstId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc},
     nameres::{PerNs, Namespace, ImportId},
-    ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},
+    ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay, CallableDef},
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,

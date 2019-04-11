@@ -2,7 +2,6 @@ use test_utils::tested_by;
 use ra_db::SourceDatabase;
 use ra_syntax::{
     AstNode, SyntaxNode, TextUnit,
-    SyntaxKind::FN_DEF,
     ast::{self, ArgListOwner},
     algo::find_node_at_offset,
 };
@@ -18,19 +17,26 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let calling_node = FnCallNode::with_node(syntax, position.offset)?;
     let name_ref = calling_node.name_ref()?;
 
-    // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
-    let file_symbols = crate::symbol_index::index_resolve(db, name_ref);
-    let symbol = file_symbols.into_iter().find(|it| it.ptr.kind() == FN_DEF)?;
-    let fn_file = db.parse(symbol.file_id);
-    let fn_def = symbol.ptr.to_node(&fn_file);
-    let fn_def = ast::FnDef::cast(fn_def).unwrap();
-    let function = hir::source_binder::function_from_source(db, symbol.file_id, fn_def)?;
+    let analyser = hir::SourceAnalyser::new(db, position.file_id, name_ref.syntax());
+    let function = match calling_node {
+        FnCallNode::CallExpr(expr) => {
+            //FIXME: apply subst
+            let (callable_def, _subst) =
+                analyser.type_of(db, expr.expr()?.into())?.as_callable()?;
+            match callable_def {
+                hir::CallableDef::Function(it) => it,
+                //FIXME: handle other callables
+                _ => return None,
+            }
+        }
+        FnCallNode::MethodCallExpr(expr) => analyser.resolve_method_call(expr)?,
+    };
 
     let mut call_info = CallInfo::new(db, function);
 
     // If we have a calling expression let's find which argument we are on
     let num_params = call_info.parameters().len();
-    let has_self = fn_def.param_list().and_then(|l| l.self_param()).is_some();
+    let has_self = function.signature(db).has_self_param();
 
     if num_params == 1 {
         if !has_self {
@@ -142,7 +148,7 @@ mod tests {
     }
 
     #[test]
-    fn test_fn_signature_two_args_first() {
+    fn test_fn_signature_two_args_firstx() {
         let info = call_info(
             r#"fn foo(x: u32, y: u32) -> u32 {x + y}
 fn bar() { foo(<|>3, ); }"#,
@@ -382,11 +388,9 @@ assert_eq!(6, my_crate::add_one(5));
     fn test_fn_signature_with_docs_from_actix() {
         let info = call_info(
             r#"
-pub trait WriteHandler<E>
-where
-    Self: Actor,
-    Self::Context: ActorContext,
-{
+struct WriteHandler<E>;
+
+impl<E> WriteHandler<E> {
     /// Method is called when writer emits error.
     ///
     /// If this method returns `ErrorAction::Continue` writer processing
@@ -403,8 +407,7 @@ where
     }
 }
 
-pub fn foo() {
-    WriteHandler r;
+pub fn foo(mut r: WriteHandler<()>) {
     r.finished(<|>);
 }
 

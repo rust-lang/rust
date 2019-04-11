@@ -19,7 +19,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) token: SyntaxToken<'a>,
     pub(super) resolver: Resolver,
     pub(super) module: Option<hir::Module>,
-    pub(super) function: Option<hir::Function>,
     pub(super) function_syntax: Option<&'a ast::FnDef>,
     pub(super) use_item_syntax: Option<&'a ast::UseItem>,
     pub(super) struct_lit_syntax: Option<&'a ast::StructLit>,
@@ -59,7 +58,6 @@ impl<'a> CompletionContext<'a> {
             offset: position.offset,
             resolver,
             module,
-            function: None,
             function_syntax: None,
             use_item_syntax: None,
             struct_lit_syntax: None,
@@ -150,10 +148,6 @@ impl<'a> CompletionContext<'a> {
             .ancestors()
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::FnDef::cast);
-        if let (Some(module), Some(fn_def)) = (self.module, self.function_syntax) {
-            let function = source_binder::function_from_module(self.db, module, fn_def);
-            self.function = Some(function);
-        }
 
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,
