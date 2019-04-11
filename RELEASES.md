@@ -133,7 +133,7 @@ Compatibility Notes
 [`num::NonZeroI64`]: https://doc.rust-lang.org/std/num/struct.NonZeroI64.html
 [`num::NonZeroI8`]: https://doc.rust-lang.org/std/num/struct.NonZeroI8.html
 [`num::NonZeroIsize`]: https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html
-[`slice::sort_by_cached_key`]: https://doc.rust-lang.org/std/slice/fn.sort_by_cached_key
+[`slice::sort_by_cached_key`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_by_cached_key
 [`str::escape_debug`]: https://doc.rust-lang.org/std/primitive.str.html#method.escape_debug
 [`str::escape_default`]: https://doc.rust-lang.org/std/primitive.str.html#method.escape_default
 [`str::escape_unicode`]: https://doc.rust-lang.org/std/primitive.str.html#method.escape_unicode
