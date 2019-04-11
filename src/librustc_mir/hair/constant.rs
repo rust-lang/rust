@@ -33,14 +33,16 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
     let lit = match *lit {
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
-            let id = tcx.allocate_bytes(s.as_bytes());
-            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64)
+            let allocation = Allocation::from_byte_aligned_bytes(s.as_bytes(), ());
+            let allocation = tcx.intern_const_alloc(allocation);
+            ConstValue::Slice { data: allocation, start: 0, end: s.len() }
         },
         LitKind::Err(ref s) => {
             let s = s.as_str();
-            let id = tcx.allocate_bytes(s.as_bytes());
+            let allocation = Allocation::from_byte_aligned_bytes(s.as_bytes(), ());
+            let allocation = tcx.intern_const_alloc(allocation);
             return Ok(tcx.mk_const(ty::Const {
-                val: ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64),
+                val: ConstValue::Slice{ data: allocation, start: 0, end: s.len() },
                 ty: tcx.types.err,
             }));
         },

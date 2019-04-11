@@ -12,11 +12,11 @@ use crate::hair::constant::*;
 
 use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::mir::{UserTypeProjection};
-use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
+use rustc::mir::interpret::{GlobalId, ConstValue, sign_extend, AllocId, Pointer};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, UserType, DefIdTree};
 use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations};
 use rustc::ty::subst::{SubstsRef, Kind};
-use rustc::ty::layout::VariantIdx;
+use rustc::ty::layout::{VariantIdx, Size};
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -1293,22 +1293,25 @@ pub fn compare_const_vals<'a, 'gcx, 'tcx>(
     if let ty::Str = ty.value.sty {
         match (a.val, b.val) {
             (
-                ConstValue::Slice(
-                    Scalar::Ptr(ptr_a),
-                    len_a,
-                ),
-                ConstValue::Slice(
-                    Scalar::Ptr(ptr_b),
-                    len_b,
-                ),
-            ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
-                if len_a == len_b {
-                    let map = tcx.alloc_map.lock();
-                    let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
-                    let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
-                    if alloc_a.bytes.len() as u64 == len_a {
-                        return from_bool(alloc_a == alloc_b);
-                    }
+                ConstValue::Slice { data: alloc_a, start: offset_a, end: end_a },
+                ConstValue::Slice { data: alloc_b, start: offset_b, end: end_b },
+            ) => {
+                let len_a = end_a - offset_a;
+                let len_b = end_b - offset_b;
+                let a = alloc_a.get_bytes(
+                    &tcx,
+                    // invent a pointer, only the offset is relevant anyway
+                    Pointer::new(AllocId(0), Size::from_bytes(offset_a as u64)),
+                    Size::from_bytes(len_a as u64),
+                );
+                let b = alloc_b.get_bytes(
+                    &tcx,
+                    // invent a pointer, only the offset is relevant anyway
+                    Pointer::new(AllocId(0), Size::from_bytes(offset_b as u64)),
+                    Size::from_bytes(len_b as u64),
+                );
+                if let (Ok(a), Ok(b)) = (a, b) {
+                    return from_bool(a == b);
                 }
             }
             _ => (),

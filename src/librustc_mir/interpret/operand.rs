@@ -533,11 +533,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     MemPlace::from_ptr(ptr.with_default_tag(), alloc.align)
                 )
             },
-            ConstValue::Slice(a, b) =>
+            ConstValue::Slice { data, start, end } =>
                 Operand::Immediate(Immediate::ScalarPair(
-                    a.with_default_tag().into(),
-                    Scalar::from_uint(b, self.tcx.data_layout.pointer_size)
-                        .with_default_tag().into(),
+                    Scalar::from(Pointer::new(
+                        self.tcx.alloc_map.lock().allocate(data),
+                        Size::from_bytes(start as u64),
+                    )).with_default_tag().into(),
+                    Scalar::from_uint(
+                        (end - start) as u64,
+                        self.tcx.data_layout.pointer_size,
+                    ).with_default_tag().into(),
                 )),
             ConstValue::Scalar(x) =>
                 Operand::Immediate(Immediate::Scalar(x.with_default_tag().into())),
