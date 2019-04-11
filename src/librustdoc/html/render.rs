@@ -1060,11 +1060,22 @@ themePicker.onblur = handleThemeButtonsBlur;
                                                         .expect("invalid osstring conversion")))
                                       .collect::<Vec<_>>();
             files.sort_unstable_by(|a, b| a.cmp(b));
-            // FIXME(imperio): we could avoid to generate "dirs" and "files" if they're empty.
-            format!("{{\"name\":\"{name}\",\"dirs\":[{subs}],\"files\":[{files}]}}",
+            let subs = subs.iter().map(|s| s.to_json_string()).collect::<Vec<_>>().join(",");
+            let dirs = if subs.is_empty() {
+                String::new()
+            } else {
+                format!(",\"dirs\":[{}]", subs)
+            };
+            let files = files.join(",");
+            let files = if files.is_empty() {
+                String::new()
+            } else {
+                format!(",\"files\":[{}]", files)
+            };
+            format!("{{\"name\":\"{name}\"{dirs}{files}}}",
                     name=self.elem.to_str().expect("invalid osstring conversion"),
-                    subs=subs.iter().map(|s| s.to_json_string()).collect::<Vec<_>>().join(","),
-                    files=files.join(","))
+                    dirs=dirs,
+                    files=files)
         }
     }
 
