@@ -80,7 +80,7 @@ enum FnCallNode<'a> {
 }
 
 impl<'a> FnCallNode<'a> {
-    pub fn with_node(syntax: &'a SyntaxNode, offset: TextUnit) -> Option<FnCallNode<'a>> {
+    fn with_node(syntax: &'a SyntaxNode, offset: TextUnit) -> Option<FnCallNode<'a>> {
         if let Some(expr) = find_node_at_offset::<ast::CallExpr>(syntax, offset) {
             return Some(FnCallNode::CallExpr(expr));
         }
@@ -90,7 +90,7 @@ impl<'a> FnCallNode<'a> {
         None
     }
 
-    pub fn name_ref(&self) -> Option<&'a ast::NameRef> {
+    fn name_ref(&self) -> Option<&'a ast::NameRef> {
         match *self {
             FnCallNode::CallExpr(call_expr) => Some(match call_expr.expr()?.kind() {
                 ast::ExprKind::PathExpr(path_expr) => path_expr.path()?.segment()?.name_ref()?,
@@ -103,7 +103,7 @@ impl<'a> FnCallNode<'a> {
         }
     }
 
-    pub fn arg_list(&self) -> Option<&'a ast::ArgList> {
+    fn arg_list(&self) -> Option<&'a ast::ArgList> {
         match *self {
             FnCallNode::CallExpr(expr) => expr.arg_list(),
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
