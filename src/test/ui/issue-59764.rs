@@ -109,6 +109,20 @@ mod renamed_multiple_imports {
     //~^ ERROR unresolved import `issue_59764::foo::makro` [E0432]
 }
 
+mod lots_of_whitespace {
+    use
+        issue_59764::{
+
+            foobaz,
+
+
+            foo::{baz,
+
+                makro as foobar} //~ ERROR unresolved import `issue_59764::foo::makro` [E0432]
+
+        };
+}
+
 // Simple case..
 
 use issue_59764::foo::makro;

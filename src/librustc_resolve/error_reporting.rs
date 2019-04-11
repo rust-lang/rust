@@ -827,28 +827,29 @@ fn find_span_immediately_after_crate_name(
            module_name, use_span);
     let source_map = sess.source_map();
 
-    // Get position of the first `{` character for the use statement.
-    //  ie. `use foo::{a, b::{c, d}};`
-    //                ^
-    let pos_of_use_tree_left_bracket = source_map.span_until_char(use_span, '{').hi();
-    debug!("find_span_immediately_after_crate_name: pos_of_use_tree_left_bracket={:?}",
-           pos_of_use_tree_left_bracket);
+    // Using `use issue_59764::foo::{baz, makro};` as an example throughout..
+    let mut num_colons = 0;
+    // Find second colon.. `use issue_59764:`
+    let until_second_colon = source_map.span_take_while(use_span, |c| {
+        if *c == ':' { num_colons += 1; }
+        match c {
+            ':' if num_colons == 2 => false,
+            _ => true,
+        }
+    });
+    // Find everything after the second colon.. `foo::{baz, makro};`
+    let from_second_colon = use_span.with_lo(until_second_colon.hi() + BytePos(1));
 
-    // Calculate the expected difference between the first `{` character and the start of a
-    // use statement.
-    //  ie. `use foo::{..};`
-    //       ^^^^
-    //       |   ^^^
-    //       4   |  ^^
-    //           3  |
-    //              2
-    let expected_difference = BytePos((module_name.as_str().len() + 4 + 2) as u32);
-    debug!("find_span_immediately_after_crate_name: expected_difference={:?}",
-           expected_difference);
-    let actual_difference = pos_of_use_tree_left_bracket - use_span.lo();
-    debug!("find_span_immediately_after_crate_name: actual_difference={:?}",
-           actual_difference);
+    let mut found_a_non_whitespace_character = false;
+    // Find the first non-whitespace character in `from_second_colon`.. `f`
+    let after_second_colon = source_map.span_take_while(from_second_colon, |c| {
+        if found_a_non_whitespace_character { return false; }
+        if !c.is_whitespace() { found_a_non_whitespace_character = true; }
+        true
+    });
 
-    (expected_difference == actual_difference,
-     use_span.with_lo(use_span.lo() + expected_difference))
+    // Find the first `{` in from_second_colon.. `foo::{`
+    let next_left_bracket = source_map.span_through_char(from_second_colon, '{');
+
+    (next_left_bracket == after_second_colon, from_second_colon)
 }

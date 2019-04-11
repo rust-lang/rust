@@ -196,7 +196,24 @@ LL |     use issue_59764::{makro as foobar, foo::{baz}};
    |
 
 error[E0432]: unresolved import `issue_59764::foo::makro`
-  --> $DIR/issue-59764.rs:114:5
+  --> $DIR/issue-59764.rs:121:17
+   |
+LL |                 makro as foobar}
+   |                 ^^^^^^^^^^^^^^^ no `makro` in `foo`
+   |
+   = note: this could be because a macro annotated with `#[macro_export]` will be exported at the root of the crate instead of the module where it is defined
+help: a macro with this name exists at the root of the crate
+   |
+LL |     use issue_59764::{makro as foobar, 
+LL | 
+LL |             foobaz,
+LL | 
+LL | 
+LL |             foo::{baz}
+ ...
+
+error[E0432]: unresolved import `issue_59764::foo::makro`
+  --> $DIR/issue-59764.rs:128:5
    |
 LL | use issue_59764::foo::makro;
    |     ^^^^^^^^^^^^^^^^^^^^^^^ no `makro` in `foo`
@@ -208,7 +225,7 @@ LL | use issue_59764::makro;
    |     ^^^^^^^^^^^^^^^^^^
 
 error: cannot determine resolution for the macro `makro`
-  --> $DIR/issue-59764.rs:117:1
+  --> $DIR/issue-59764.rs:131:1
    |
 LL | makro!(bar);
    | ^^^^^
@@ -216,12 +233,12 @@ LL | makro!(bar);
    = note: import resolution is stuck, try simplifying macro imports
 
 error[E0425]: cannot find function `bar` in this scope
-  --> $DIR/issue-59764.rs:121:5
+  --> $DIR/issue-59764.rs:135:5
    |
 LL |     bar();
    |     ^^^ not found in this scope
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 
 Some errors occurred: E0425, E0432.
 For more information about an error, try `rustc --explain E0425`.
