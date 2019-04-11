@@ -12,7 +12,7 @@ use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_data_structures::svh::Svh;
 
-use rustc_serialize as serialize;
+use rustc_serialize::{self as serialize, Encodable};
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -52,7 +52,7 @@ pub trait LazyMeta {
     fn min_size(meta: Self::Meta) -> usize;
 }
 
-impl<T> LazyMeta for T {
+impl<T: Encodable> LazyMeta for T {
     type Meta = ();
 
     fn min_size(_: ()) -> usize {
@@ -61,7 +61,7 @@ impl<T> LazyMeta for T {
     }
 }
 
-impl<T> LazyMeta for [T] {
+impl<T: Encodable> LazyMeta for [T] {
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
@@ -117,13 +117,13 @@ impl<T: ?Sized + LazyMeta> Lazy<T> {
     }
 }
 
-impl<T> Lazy<T> {
+impl<T: Encodable> Lazy<T> {
     pub fn from_position(position: NonZeroUsize) -> Lazy<T> {
         Lazy::from_position_and_meta(position, ())
     }
 }
 
-impl<T> Lazy<[T]> {
+impl<T: Encodable> Lazy<[T]> {
     pub fn empty() -> Lazy<[T]> {
         Lazy::from_position_and_meta(NonZeroUsize::new(1).unwrap(), 0)
     }
@@ -159,6 +159,7 @@ pub enum LazyState {
 // manually, instead of relying on the default, to get the correct variance.
 // Only needed when `T` itself contains a parameter (e.g. `'tcx`).
 macro_rules! Lazy {
+    (Table<$T:ty>) => {Lazy<Table<$T>, usize>};
     ([$T:ty]) => {Lazy<[$T], usize>};
     ($T:ty) => {Lazy<$T, ()>};
 }
@@ -192,7 +193,7 @@ pub struct CrateRoot<'tcx> {
     pub exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_table: Lazy!([Table<Entry<'tcx>>]),
+    pub entries_table: Lazy!(Table<Entry<'tcx>>),
 
     pub compiler_builtins: bool,
     pub needs_allocator: bool,

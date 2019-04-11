@@ -1,7 +1,7 @@
 use crate::schema::*;
 
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace};
-use rustc_serialize::opaque::Encoder;
+use rustc_serialize::{Encodable, opaque::Encoder};
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 use log::debug;
@@ -72,12 +72,12 @@ impl FixedSizeEncoding for u32 {
 /// (e.g. while visiting the definitions of a crate), and on-demand decoding
 /// of specific indices (e.g. queries for per-definition data).
 /// Similar to `Vec<Lazy<T>>`, but with zero-copy decoding.
-pub struct Table<T> {
+pub struct Table<T: LazyMeta<Meta = ()>> {
     positions: [Vec<u8>; 2],
     _marker: PhantomData<T>,
 }
 
-impl<T> Table<T> {
+impl<T: LazyMeta<Meta = ()>> Table<T> {
     pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Self {
         Table {
             positions: [vec![0; max_index_lo * 4],
@@ -107,7 +107,7 @@ impl<T> Table<T> {
         position.write_to_bytes_at(positions, array_index)
     }
 
-    pub fn encode(&self, buf: &mut Encoder) -> Lazy<[Self]> {
+    pub fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
         let pos = buf.position();
 
         // First we write the length of the lower range ...
@@ -123,7 +123,15 @@ impl<T> Table<T> {
     }
 }
 
-impl<T> Lazy<[Table<T>]> {
+impl<T: LazyMeta<Meta = ()>> LazyMeta for Table<T> {
+    type Meta = usize;
+
+    fn min_size(len: usize) -> usize {
+        len * 4
+    }
+}
+
+impl<T: Encodable> Lazy<Table<T>> {
     /// Given the metadata, extract out the offset of a particular
     /// DefIndex (if any).
     #[inline(never)]
