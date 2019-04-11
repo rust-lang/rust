@@ -23,11 +23,12 @@ use rustc::session::config::{self, CrateType};
 use rustc::util::nodemap::FxHashMap;
 
 use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::sync::Lrc;
 use rustc_serialize::{Encodable, Encoder, SpecializedEncoder, opaque};
 
 use std::hash::Hash;
+use std::num::NonZeroUsize;
 use std::path::Path;
-use rustc_data_structures::sync::Lrc;
 use std::u32;
 use syntax::ast;
 use syntax::attr;
@@ -271,10 +272,11 @@ impl<'tcx> EncodeContext<'tcx> {
         &mut self,
         lazy: Lazy<T>,
     ) -> Result<(), <Self as Encoder>::Error> {
-        let min_end = lazy.position + T::min_size(lazy.meta);
+        let min_end = lazy.position.get() + T::min_size(lazy.meta);
         let distance = match self.lazy_state {
             LazyState::NoNode => bug!("emit_lazy_distance: outside of a metadata node"),
             LazyState::NodeStart(start) => {
+                let start = start.get();
                 assert!(min_end <= start);
                 start - min_end
             }
@@ -284,10 +286,10 @@ impl<'tcx> EncodeContext<'tcx> {
                     "make sure that the calls to `lazy*` \
                     are in the same order as the metadata fields",
                 );
-                lazy.position - last_min_end
+                lazy.position.get() - last_min_end.get()
             }
         };
-        self.lazy_state = LazyState::Previous(min_end);
+        self.lazy_state = LazyState::Previous(NonZeroUsize::new(min_end).unwrap());
         self.emit_usize(distance)
     }
 
@@ -295,14 +297,14 @@ impl<'tcx> EncodeContext<'tcx> {
         &mut self,
         value: impl EncodeContentsForLazy<T>,
     ) -> Lazy<T> {
-        let pos = self.position();
+        let pos = NonZeroUsize::new(self.position()).unwrap();
 
         assert_eq!(self.lazy_state, LazyState::NoNode);
         self.lazy_state = LazyState::NodeStart(pos);
         let meta = value.encode_contents_for_lazy(self);
         self.lazy_state = LazyState::NoNode;
 
-        assert!(pos + <T>::min_size(meta) <= self.position());
+        assert!(pos.get() + <T>::min_size(meta) <= self.position());
 
         Lazy::from_position_and_meta(pos, meta)
     }
@@ -1934,7 +1936,7 @@ crate fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
 
     // Encode the root position.
     let header = METADATA_HEADER.len();
-    let pos = root.position;
+    let pos = root.position.get();
     result[header + 0] = (pos >> 24) as u8;
     result[header + 1] = (pos >> 16) as u8;
     result[header + 2] = (pos >> 8) as u8;

@@ -25,6 +25,7 @@ use rustc::util::captures::Captures;
 
 use std::io;
 use std::mem;
+use std::num::NonZeroUsize;
 use std::u32;
 
 use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
@@ -131,7 +132,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
 
 impl<'a, 'tcx, T: Decodable> Lazy<T> {
     crate fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> T {
-        let mut dcx = meta.decoder(self.position);
+        let mut dcx = meta.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         T::decode(&mut dcx).unwrap()
     }
@@ -142,7 +143,7 @@ impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable> Lazy<[T]> {
         self,
         meta: M,
     ) -> impl ExactSizeIterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x {
-        let mut dcx = meta.decoder(self.position);
+        let mut dcx = meta.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         (0..self.meta).map(move |_| T::decode(&mut dcx).unwrap())
     }
@@ -166,13 +167,14 @@ impl<'a, 'tcx> DecodeContext<'a, 'tcx> {
         let position = match self.lazy_state {
             LazyState::NoNode => bug!("read_lazy_with_meta: outside of a metadata node"),
             LazyState::NodeStart(start) => {
+                let start = start.get();
                 assert!(distance + min_size <= start);
                 start - distance - min_size
             }
-            LazyState::Previous(last_min_end) => last_min_end + distance,
+            LazyState::Previous(last_min_end) => last_min_end.get() + distance,
         };
-        self.lazy_state = LazyState::Previous(position + min_size);
-        Ok(Lazy::from_position_and_meta(position, meta))
+        self.lazy_state = LazyState::Previous(NonZeroUsize::new(position + min_size).unwrap());
+        Ok(Lazy::from_position_and_meta(NonZeroUsize::new(position).unwrap(), meta))
     }
 }
 
@@ -384,7 +386,9 @@ impl<'tcx> MetadataBlob {
     }
 
     crate fn get_rustc_version(&self) -> String {
-        Lazy::<String>::from_position(METADATA_HEADER.len() + 4).decode(self)
+        Lazy::<String>::from_position(
+            NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap(),
+        ).decode(self)
     }
 
     crate fn get_root(&self) -> CrateRoot<'tcx> {
@@ -393,7 +397,9 @@ impl<'tcx> MetadataBlob {
         let pos = (((slice[offset + 0] as u32) << 24) | ((slice[offset + 1] as u32) << 16) |
                    ((slice[offset + 2] as u32) << 8) |
                    ((slice[offset + 3] as u32) << 0)) as usize;
-        Lazy::<CrateRoot<'tcx>>::from_position(pos).decode(self)
+        Lazy::<CrateRoot<'tcx>>::from_position(
+            NonZeroUsize::new(pos).unwrap(),
+        ).decode(self)
     }
 
     crate fn list_crate_metadata(&self,

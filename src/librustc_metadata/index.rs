@@ -3,6 +3,7 @@ use crate::schema::*;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc_serialize::opaque::Encoder;
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 use std::u32;
 use log::debug;
 
@@ -94,8 +95,8 @@ impl Index<'tcx> {
     }
 
     fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'tcx>>) {
-        assert!(entry.position < (u32::MAX as usize));
-        let position = entry.position as u32;
+        assert!(entry.position.get() < (u32::MAX as usize));
+        let position = entry.position.get() as u32;
         let array_index = item.index();
 
         let positions = &mut self.positions;
@@ -111,7 +112,10 @@ impl Index<'tcx> {
     crate fn write_index(&self, buf: &mut Encoder) -> Lazy<[Self]> {
         let pos = buf.position();
         buf.emit_raw_bytes(&self.positions);
-        Lazy::from_position_and_meta(pos as usize, self.positions.len() / 4)
+        Lazy::from_position_and_meta(
+            NonZeroUsize::new(pos as usize).unwrap(),
+            self.positions.len() / 4,
+        )
     }
 }
 
@@ -124,14 +128,14 @@ impl Lazy<[Index<'tcx>]> {
                def_index,
                self.meta);
 
-        let bytes = &bytes[self.position..][..self.meta * 4];
+        let bytes = &bytes[self.position.get()..][..self.meta * 4];
         let position = u32::read_from_bytes_at(bytes, def_index.index());
         if position == u32::MAX {
             debug!("Index::lookup: position=u32::MAX");
             None
         } else {
             debug!("Index::lookup: position={:?}", position);
-            Some(Lazy::from_position(position as usize))
+            Some(Lazy::from_position(NonZeroUsize::new(position as usize).unwrap()))
         }
     }
 }

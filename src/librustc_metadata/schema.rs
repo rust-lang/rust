@@ -20,6 +20,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
+use std::num::NonZeroUsize;
 
 crate fn rustc_version() -> String {
     format!("rustc {}",
@@ -102,13 +103,13 @@ crate struct Lazy<T, Meta = <T as LazyMeta>::Meta>
     where T: ?Sized + LazyMeta<Meta = Meta>,
           Meta: 'static + Copy,
 {
-    pub position: usize,
+    pub position: NonZeroUsize,
     pub meta: Meta,
     _marker: PhantomData<T>,
 }
 
 impl<T: ?Sized + LazyMeta> Lazy<T> {
-    crate fn from_position_and_meta(position: usize, meta: T::Meta) -> Lazy<T> {
+     crate fn from_position_and_meta(position: NonZeroUsize, meta: T::Meta) -> Lazy<T> {
         Lazy {
             position,
             meta,
@@ -118,14 +119,14 @@ impl<T: ?Sized + LazyMeta> Lazy<T> {
 }
 
 impl<T> Lazy<T> {
-    crate fn from_position(position: usize) -> Lazy<T> {
+    crate fn from_position(position: NonZeroUsize) -> Lazy<T> {
         Lazy::from_position_and_meta(position, ())
     }
 }
 
 impl<T> Lazy<[T]> {
     crate fn empty() -> Lazy<[T]> {
-        Lazy::from_position_and_meta(0, 0)
+        Lazy::from_position_and_meta(NonZeroUsize::new(1).unwrap(), 0)
     }
 }
 
@@ -147,12 +148,12 @@ crate enum LazyState {
 
     /// Inside a metadata node, and before any `Lazy`.
     /// The position is that of the node itself.
-    NodeStart(usize),
+    NodeStart(NonZeroUsize),
 
     /// Inside a metadata node, with a previous `Lazy`.
     /// The position is a conservative estimate of where that
     /// previous `Lazy` would end (see their comments).
-    Previous(usize),
+    Previous(NonZeroUsize),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
