@@ -72,9 +72,17 @@ pub struct RawWakerVTable {
     /// This function will be called when `wake` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
     ///
-    /// The implemention of this function must not consume the provided data
-    /// pointer.
+    /// The implementation of this function must make sure to release any
+    /// resources that are associated with this instance of a [`RawWaker`] and
+    /// associated task.
     wake: unsafe fn(*const ()),
+
+    /// This function will be called when `wake_by_ref` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// This function is similar to `wake`, but must not consume the provided data
+    /// pointer.
+    wake_by_ref: unsafe fn(*const ()),
 
     /// This function gets called when a [`RawWaker`] gets dropped.
     ///
@@ -85,8 +93,8 @@ pub struct RawWakerVTable {
 }
 
 impl RawWakerVTable {
-    /// Creates a new `RawWakerVTable` from the provided `clone`, `wake`, and
-    /// `drop` functions.
+    /// Creates a new `RawWakerVTable` from the provided `clone`, `wake`,
+    /// `wake_by_ref`, and `drop` functions.
     ///
     /// # `clone`
     ///
@@ -103,7 +111,16 @@ impl RawWakerVTable {
     /// This function will be called when `wake` is called on the [`Waker`].
     /// It must wake up the task associated with this [`RawWaker`].
     ///
-    /// The implemention of this function must not consume the provided data
+    /// The implementation of this function must make sure to release any
+    /// resources that are associated with this instance of a [`RawWaker`] and
+    /// associated task.
+    ///
+    /// # `wake_by_ref`
+    ///
+    /// This function will be called when `wake_by_ref` is called on the [`Waker`].
+    /// It must wake up the task associated with this [`RawWaker`].
+    ///
+    /// This function is similar to `wake`, but must not consume the provided data
     /// pointer.
     ///
     /// # `drop`
@@ -120,11 +137,13 @@ impl RawWakerVTable {
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),
+        wake_by_ref: unsafe fn(*const ()),
         drop: unsafe fn(*const ()),
     ) -> Self {
         Self {
             clone,
             wake,
+            wake_by_ref,
             drop,
         }
     }
@@ -187,14 +206,33 @@ unsafe impl Sync for Waker {}
 impl Waker {
     /// Wake up the task associated with this `Waker`.
     #[inline]
-    pub fn wake(&self) {
+    pub fn wake(self) {
+        // The actual wakeup call is delegated through a virtual function call
+        // to the implementation which is defined by the executor.
+        let wake = self.waker.vtable.wake;
+        let data = self.waker.data;
+
+        // Don't call `drop` -- the waker will be consumed by `wake`.
+        crate::mem::forget(self);
+
+        // SAFETY: This is safe because `Waker::from_raw` is the only way
+        // to initialize `wake` and `data` requiring the user to acknowledge
+        // that the contract of `RawWaker` is upheld.
+        unsafe { (wake)(data) };
+    }
+
+    /// Wake up the task associated with this `Waker` without consuming the `Waker`.
+    ///
+    /// This is similar to `wake`, but may be slightly less efficient in the case
+    /// where an owned `Waker` is available. This method should be preferred to
+    /// calling `waker.clone().wake()`.
+    #[inline]
+    pub fn wake_by_ref(&self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
 
-        // SAFETY: This is safe because `Waker::new_unchecked` is the only way
-        // to initialize `wake` and `data` requiring the user to acknowledge
-        // that the contract of `RawWaker` is upheld.
-        unsafe { (self.waker.vtable.wake)(self.waker.data) }
+        // SAFETY: see `wake`
+        unsafe { (self.waker.vtable.wake_by_ref)(self.waker.data) }
     }
 
     /// Returns `true` if this `Waker` and another `Waker` have awoken the same task.
@@ -215,7 +253,7 @@ impl Waker {
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
     /// Therefore this method is unsafe.
     #[inline]
-    pub unsafe fn new_unchecked(waker: RawWaker) -> Waker {
+    pub unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker {
             waker,
         }
@@ -226,7 +264,7 @@ impl Clone for Waker {
     #[inline]
     fn clone(&self) -> Self {
         Waker {
-            // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+            // SAFETY: This is safe because `Waker::from_raw` is the only way
             // to initialize `clone` and `data` requiring the user to acknowledge
             // that the contract of [`RawWaker`] is upheld.
             waker: unsafe { (self.waker.vtable.clone)(self.waker.data) },
@@ -237,7 +275,7 @@ impl Clone for Waker {
 impl Drop for Waker {
     #[inline]
     fn drop(&mut self) {
-        // SAFETY: This is safe because `Waker::new_unchecked` is the only way
+        // SAFETY: This is safe because `Waker::from_raw` is the only way
         // to initialize `drop` and `data` requiring the user to acknowledge
         // that the contract of `RawWaker` is upheld.
         unsafe { (self.waker.vtable.drop)(self.waker.data) }
