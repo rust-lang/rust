@@ -25,8 +25,7 @@
 ///
 /// For more information on what `as` is capable of, see the [Reference]
 ///
-/// [Reference]:
-/// https://doc.rust-lang.org/reference/expressions/operator-expr.html#type-cast-expressions
+/// [Reference]: ../reference/expressions/operator-expr.html#type-cast-expressions
 /// [`crate`]: keyword.crate.html
 mod as_keyword { }
 
@@ -80,8 +79,8 @@ mod as_keyword { }
 ///
 /// [pointer]: primitive.pointer.html
 /// [Rust Book]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
-/// [Reference]: https://doc.rust-lang.org/reference/items/constant-items.html
+/// ../book/ch03-01-variables-and-mutability.html#differences-between-variables-and-constants
+/// [Reference]: ../reference/items/constant-items.html
 mod const_keyword { }
 
 #[doc(keyword = "crate")]
@@ -114,7 +113,7 @@ mod const_keyword { }
 /// }
 /// ```
 ///
-/// [Reference]: https://doc.rust-lang.org/reference/items/extern-crates.html
+/// [Reference]: ../reference/items/extern-crates.html
 mod crate_keyword { }
 
 #[doc(keyword = "enum")]
@@ -169,8 +168,8 @@ mod crate_keyword { }
 ///
 /// [Algebraic Data Types]: https://en.wikipedia.org/wiki/Algebraic_data_type
 /// [`Option`]: option/enum.Option.html
-/// [Rust Book]: https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html
-/// [Reference]: https://doc.rust-lang.org/reference/items/enumerations.html
+/// [Rust Book]: ../book/ch06-01-defining-an-enum.html
+/// [Reference]: ../reference/items/enumerations.html
 mod enum_keyword { }
 
 #[doc(keyword = "extern")]
@@ -211,8 +210,8 @@ mod enum_keyword { }
 /// For more information on FFI, check the [Rust book] or the [Reference].
 ///
 /// [Rust book]:
-/// https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
-/// [Reference]: https://doc.rust-lang.org/reference/items/external-blocks.html
+/// ../book/ch19-01-unsafe-rust.html#using-extern-functions-to-call-external-code
+/// [Reference]: ../reference/items/external-blocks.html
 mod extern_keyword { }
 
 #[doc(keyword = "fn")]
@@ -278,8 +277,8 @@ mod extern_keyword { }
 ///
 /// [`impl`]: keyword.impl.html
 /// [`extern`]: keyword.extern.html
-/// [Rust book]: https://doc.rust-lang.org/book/ch03-03-how-functions-work.html
-/// [Reference]: https://doc.rust-lang.org/reference/items/functions.html
+/// [Rust book]: ../book/ch03-03-how-functions-work.html
+/// [Reference]: ../reference/items/functions.html
 mod fn_keyword { }
 
 #[doc(keyword = "for")]
@@ -352,12 +351,11 @@ mod fn_keyword { }
 /// For more information on for-loops, see the [Rust book] or the [Reference].
 ///
 /// [`impl`]: keyword.impl.html
-/// [higher-ranked trait bounds]:
-/// https://doc.rust-lang.org/nightly/reference/trait-bounds.html#higher-ranked-trait-bounds
+/// [higher-ranked trait bounds]: ../reference/trait-bounds.html#higher-ranked-trait-bounds
 /// [`IntoIterator`]: iter/trait.IntoIterator.html
 /// [Rust book]:
-/// https://doc.rust-lang.org/book/2018-edition/ch03-05-control-flow.html#looping-through-a-collection-with-for
-/// [Reference]: https://doc.rust-lang.org/reference/expressions/loop-expr.html#iterator-loops
+/// ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
+/// [Reference]: ../reference/expressions/loop-expr.html#iterator-loops
 mod for_keyword { }
 
 #[doc(keyword = "if")]
@@ -430,9 +428,8 @@ mod for_keyword { }
 ///
 /// For more information on `if` expressions, see the [Rust book] or the [Reference].
 ///
-/// [Rust book]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch03-05-control-flow.html#if-expressions
-/// [Reference]: https://doc.rust-lang.org/reference/expressions/if-expr.html
+/// [Rust book]: ../book/ch03-05-control-flow.html#if-expressions
+/// [Reference]: ../reference/expressions/if-expr.html
 mod if_keyword { }
 
 #[doc(keyword = "impl")]
@@ -493,10 +490,9 @@ mod if_keyword { }
 ///
 /// For more information on `impl Trait` syntax, see the [Rust book][book2].
 ///
-/// [book1]: https://doc.rust-lang.org/stable/book/2018-edition/ch05-03-method-syntax.html
-/// [Reference]: https://doc.rust-lang.org/reference/items/implementations.html
-/// [book2]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch10-02-traits.html#returning-traits
+/// [book1]: ../book/ch05-03-method-syntax.html
+/// [Reference]: ../reference/items/implementations.html
+/// [book2]: ../book/ch10-02-traits.html#returning-types-that-implement-traits
 mod impl_keyword { }
 
 #[doc(keyword = "let")]
@@ -554,13 +550,12 @@ mod impl_keyword { }
 /// enumerations. `while let` also exists, which runs a loop with a pattern matched value until
 /// that pattern can't be matched.
 ///
-/// For more information on the `let` keyword, see the [Rust book] or the [Reference]
+/// For more information on the `let` keyword, see the [Rust book][book2] or the [Reference]
 ///
-/// [book1]: https://doc.rust-lang.org/stable/book/2018-edition/ch06-02-match.html
+/// [book1]: ../book/ch06-02-match.html
 /// [`if`]: keyword.if.html
-/// [book2]:
-/// https://doc.rust-lang.org/stable/book/2018-edition/ch18-01-all-the-places-for-patterns.html#let-statements
-/// [Reference]: https://doc.rust-lang.org/reference/statements.html#let-statements
+/// [book2]: ../book/ch18-01-all-the-places-for-patterns.html#let-statements
+/// [Reference]: ../reference/statements.html#let-statements
 mod let_keyword { }
 
 #[doc(keyword = "loop")]
@@ -605,7 +600,7 @@ mod let_keyword { }
 ///
 /// For more information on `loop` and loops in general, see the [Reference].
 ///
-/// [Reference]: https://doc.rust-lang.org/reference/expressions/loop-expr.html
+/// [Reference]: ../reference/expressions/loop-expr.html
 mod loop_keyword { }
 
 #[doc(keyword = "struct")]
@@ -712,6 +707,6 @@ mod loop_keyword { }
 /// [Reference][reference].
 ///
 /// [`PhantomData`]: marker/struct.PhantomData.html
-/// [book]: https://doc.rust-lang.org/book/ch05-01-defining-structs.html
-/// [reference]: https://doc.rust-lang.org/reference/items/structs.html
+/// [book]: ../book/ch05-01-defining-structs.html
+/// [reference]: ../reference/items/structs.html
 mod struct_keyword { }
