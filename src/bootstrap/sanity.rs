@@ -131,6 +131,11 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
+        // We don't use a C compiler on wasm32
+        if target.contains("wasm32") {
+            continue;
+        }
+
         if !build.config.dry_run {
             cmd_finder.must_have(build.cc(*target));
             if let Some(ar) = build.ar(*target) {
