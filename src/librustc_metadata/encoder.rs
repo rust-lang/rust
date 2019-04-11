@@ -98,18 +98,27 @@ impl<'tcx> Encoder for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
+impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(*lazy)
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
+impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         if lazy.meta == 0 {
             return Ok(());
         }
+        self.emit_lazy_distance(*lazy)
+    }
+}
+
+impl<'tcx, T> SpecializedEncoder<Lazy<Table<T>>> for EncodeContext<'tcx>
+    where T: LazyMeta<Meta = ()>,
+{
+    fn specialized_encode(&mut self, lazy: &Lazy<Table<T>>) -> Result<(), Self::Error> {
+        self.emit_usize(lazy.meta)?;
         self.emit_lazy_distance(*lazy)
     }
 }
@@ -258,7 +267,7 @@ impl<T: Encodable> EncodeContentsForLazy<T> for T {
     }
 }
 
-impl<I, T> EncodeContentsForLazy<[T]> for I
+impl<I, T: Encodable> EncodeContentsForLazy<[T]> for I
     where I: IntoIterator,
           I::Item: EncodeContentsForLazy<T>,
 {
