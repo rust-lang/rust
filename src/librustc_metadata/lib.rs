@@ -2,6 +2,7 @@
 
 #![feature(box_patterns)]
 #![feature(drain_filter)]
+#![feature(in_band_lifetimes)]
 #![feature(libc)]
 #![feature(nll)]
 #![feature(proc_macro_internals)]

@@ -309,7 +309,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         op(&mut IsolatedEncoder::new(self), data)
     }
 
-    fn encode_info_for_items(&mut self) -> Index {
+    fn encode_info_for_items(&mut self) -> Index<'tcx> {
         let krate = self.tcx.hir().krate();
         let mut index = IndexBuilder::new(self);
         let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public };
@@ -371,7 +371,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_seq_ref(adapted.iter().map(|rc| &**rc))
     }
 
-    fn encode_crate_root(&mut self) -> Lazy<CrateRoot> {
+    fn encode_crate_root(&mut self) -> Lazy<CrateRoot<'tcx>> {
         let mut i = self.position();
 
         let crate_deps = self.tracked(IsolatedEncoder::encode_crate_deps, ());
@@ -1595,13 +1595,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     // symbol associated with them (they weren't translated) or if they're an FFI
     // definition (as that's not defined in this crate).
     fn encode_exported_symbols(&mut self,
-                               exported_symbols: &[(ExportedSymbol<'_>, SymbolExportLevel)])
-                               -> EncodedExportedSymbols {
+                               exported_symbols: &[(ExportedSymbol<'tcx>, SymbolExportLevel)])
+                               -> LazySeq<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
         // The metadata symbol name is special. It should not show up in
         // downstream crates.
         let metadata_symbol_name = SymbolName::new(&metadata_symbol_name(self.tcx));
 
-        let lazy_seq = self.lazy_seq(exported_symbols
+        self.lazy_seq(exported_symbols
             .iter()
             .filter(|&&(ref exported_symbol, _)| {
                 match *exported_symbol {
@@ -1611,12 +1611,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                     _ => true,
                 }
             })
-            .cloned());
-
-        EncodedExportedSymbols {
-            len: lazy_seq.len,
-            position: lazy_seq.position,
-        }
+            .cloned())
     }
 
     fn encode_dylib_dependency_formats(&mut self, _: ()) -> LazySeq<Option<LinkagePreference>> {
