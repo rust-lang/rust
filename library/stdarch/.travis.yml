@@ -85,7 +85,8 @@ matrix:
         - cd ..
         # Pull the target spec up into the current directory and then build
         - mv ci/gba.json gba.json
-        - cargo xbuild --lib --target gba.json
+        - cargo xbuild -p core_arch --target gba.json
+        - cargo xbuild -p std_detect --target gba.json
     - name: "Documentation"
       install: true
       script: ci/dox.sh
