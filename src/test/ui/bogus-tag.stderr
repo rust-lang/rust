@@ -1,11 +1,11 @@
-error[E0599]: no variant named `Hsl` found for type `Color` in the current scope
+error[E0599]: no variant or associated item named `Hsl` found for type `Color` in the current scope
   --> $DIR/bogus-tag.rs:7:16
    |
 LL | enum Color { Rgb(isize, isize, isize), Rgba(isize, isize, isize, isize), }
-   | ---------- variant `Hsl` not found here
+   | ---------- variant or associated item `Hsl` not found here
 ...
 LL |         Color::Hsl(h, s, l) => { println!("hsl"); }
-   |                ^^^ variant not found in `Color`
+   |                ^^^ variant or associated item not found in `Color`
 
 error: aborting due to previous error
 

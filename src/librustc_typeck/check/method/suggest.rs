@@ -14,11 +14,11 @@ use rustc::hir::map as hir_map;
 use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::Obligation;
-use rustc::ty::{self, Adt, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use rustc::ty::print::with_crate_prefix;
 use syntax_pos::{Span, FileName};
 use syntax::ast;
-use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::util::lev_distance;
 
 use std::cmp::Ordering;
 
@@ -188,17 +188,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
                 let ty_str = self.ty_to_string(actual);
                 let is_method = mode == Mode::MethodCall;
-                let mut suggestion = None;
                 let item_kind = if is_method {
                     "method"
                 } else if actual.is_enum() {
-                    if let Adt(ref adt_def, _) = actual.sty {
-                        let names = adt_def.variants.iter().map(|s| &s.ident.name);
-                        suggestion = find_best_match_for_name(names,
-                                                              &item_name.as_str(),
-                                                              None);
-                    }
-                    "variant"
+                    "variant or associated item"
                 } else {
                     match (item_name.as_str().chars().next(), actual.is_fresh_ty()) {
                         (Some(name), false) if name.is_lowercase() => {
@@ -299,7 +292,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         return;
                     } else {
                         span = item_name.span;
-                        let mut err = struct_span_err!(
+                        struct_span_err!(
                             tcx.sess,
                             span,
                             E0599,
@@ -307,17 +300,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             item_kind,
                             item_name,
                             ty_str
-                        );
-                        if let Some(suggestion) = suggestion {
-                            // enum variant
-                            err.span_suggestion(
-                                span,
-                                "did you mean",
-                                suggestion.to_string(),
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                        err
+                        )
                     }
                 } else {
                     tcx.sess.diagnostic().struct_dummy()
@@ -469,14 +452,36 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                   out_of_scope_traits);
                 }
 
+                if actual.is_enum() {
+                    let adt_def = actual.ty_adt_def().expect("enum is not an ADT");
+                    if let Some(suggestion) = lev_distance::find_best_match_for_name(
+                        adt_def.variants.iter().map(|s| &s.ident.name),
+                        &item_name.as_str(),
+                        None,
+                    ) {
+                        err.span_suggestion(
+                            span,
+                            "there is a variant with a similar name",
+                            suggestion.to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+
                 if let Some(lev_candidate) = lev_candidate {
+                    let def = lev_candidate.def();
                     err.span_suggestion(
                         span,
-                        "did you mean",
+                        &format!(
+                            "there is {} {} with a similar name",
+                            def.article(),
+                            def.kind_name(),
+                        ),
                         lev_candidate.ident.to_string(),
                         Applicability::MaybeIncorrect,
                     );
                 }
+
                 err.emit();
             }
 

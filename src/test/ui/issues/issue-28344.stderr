@@ -11,7 +11,7 @@ LL |     let x: u8 = BitXor::bitor(0 as u8, 0 as u8);
    |                         ^^^^^
    |                         |
    |                         function or associated item not found in `dyn std::ops::BitXor<_>`
-   |                         help: did you mean: `bitxor`
+   |                         help: there is a method with a similar name: `bitxor`
 
 error[E0191]: the value of the associated type `Output` (from the trait `std::ops::BitXor`) must be specified
   --> $DIR/issue-28344.rs:8:13
@@ -26,7 +26,7 @@ LL |     let g = BitXor::bitor;
    |                     ^^^^^
    |                     |
    |                     function or associated item not found in `dyn std::ops::BitXor<_>`
-   |                     help: did you mean: `bitxor`
+   |                     help: there is a method with a similar name: `bitxor`
 
 error: aborting due to 4 previous errors
 

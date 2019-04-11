@@ -46,25 +46,31 @@ LL |     let xe1 = XEmpty1();
    |               did you mean `XEmpty1 { /* fields */ }`?
    |               help: a unit struct with a similar name exists: `XEmpty2`
 
-error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
+error[E0599]: no variant or associated item named `Empty3` found for type `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:22:19
    |
 LL |     let xe3 = XE::Empty3;
    |                   ^^^^^^
    |                   |
-   |                   variant not found in `empty_struct::XE`
-   |                   help: did you mean: `XEmpty3`
+   |                   variant or associated item not found in `empty_struct::XE`
+   |                   help: there is a variant with a similar name: `XEmpty3`
 
-error[E0599]: no variant named `Empty3` found for type `empty_struct::XE` in the current scope
+error[E0599]: no variant or associated item named `Empty3` found for type `empty_struct::XE` in the current scope
   --> $DIR/empty-struct-braces-expr.rs:23:19
    |
 LL |     let xe3 = XE::Empty3();
    |                   ^^^^^^
    |                   |
-   |                   variant not found in `empty_struct::XE`
-   |                   help: did you mean: `XEmpty3`
+   |                   variant or associated item not found in `empty_struct::XE`
+   |                   help: there is a variant with a similar name: `XEmpty3`
 
-error: aborting due to 8 previous errors
+error: no variant `Empty1` in enum `empty_struct::XE`
+  --> $DIR/empty-struct-braces-expr.rs:25:9
+   |
+LL |     XE::Empty1 {};
+   |         ^^^^^^ help: there is a variant with a similar name: `XEmpty3`
+
+error: aborting due to 9 previous errors
 
 Some errors occurred: E0423, E0599.
 For more information about an error, try `rustc --explain E0423`.

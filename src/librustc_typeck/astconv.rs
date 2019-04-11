@@ -1362,12 +1362,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     let msg = format!("expected type, found variant `{}`", assoc_ident);
                     tcx.sess.span_err(span, &msg);
                 } else if qself_ty.is_enum() {
-                    // Report as incorrect enum variant rather than ambiguous type.
                     let mut err = tcx.sess.struct_span_err(
-                        span,
-                        &format!("no variant `{}` on enum `{}`", &assoc_ident.as_str(), qself_ty),
+                        assoc_ident.span,
+                        &format!("no variant `{}` in enum `{}`", assoc_ident, qself_ty),
                     );
-                    // Check if it was a typo.
+
                     let adt_def = qself_ty.ty_adt_def().expect("enum is not an ADT");
                     if let Some(suggested_name) = find_best_match_for_name(
                         adt_def.variants.iter().map(|variant| &variant.ident.name),
@@ -1375,14 +1374,20 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                         None,
                     ) {
                         err.span_suggestion(
-                            span,
-                            "did you mean",
-                            format!("{}::{}", qself_ty, suggested_name),
+                            assoc_ident.span,
+                            "there is a variant with a similar name",
+                            suggested_name.to_string(),
                             Applicability::MaybeIncorrect,
                         );
                     } else {
-                        err.span_label(span, "unknown variant");
+                        err.span_label(span, format!("variant not found in `{}`", qself_ty));
                     }
+
+                    if let Some(sp) = tcx.hir().span_if_local(adt_def.did) {
+                        let sp = tcx.sess.source_map().def_span(sp);
+                        err.span_label(sp, format!("variant `{}` not found here", assoc_ident));
+                    }
+
                     err.emit();
                 } else if !qself_ty.references_error() {
                     // Don't print `TyErr` to the user.
