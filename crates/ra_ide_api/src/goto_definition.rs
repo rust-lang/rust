@@ -90,10 +90,8 @@ pub(crate) fn reference_definition(
             match resolved {
                 hir::PathResolution::Def(def) => return Exact(NavigationTarget::from_def(db, def)),
                 hir::PathResolution::LocalBinding(pat) => {
-                    if let Some(pat) = analyzer.pat_syntax(db, pat) {
-                        let nav = NavigationTarget::from_pat(db, file_id, pat);
-                        return Exact(nav);
-                    }
+                    let nav = NavigationTarget::from_pat(db, file_id, pat);
+                    return Exact(nav);
                 }
                 hir::PathResolution::GenericParam(..) => {
                     // FIXME: go to the generic param def

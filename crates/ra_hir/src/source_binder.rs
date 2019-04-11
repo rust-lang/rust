@@ -261,7 +261,8 @@ fn try_get_resolver_for_node(
     }
 }
 
-/// `SourceAnalyzer`
+/// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
+/// original source files. It should not be used inside the HIR itself.
 #[derive(Debug)]
 pub struct SourceAnalyzer {
     resolver: Resolver,
@@ -274,7 +275,7 @@ pub enum PathResolution {
     /// An item
     Def(crate::ModuleDef),
     /// A local binding (only value namespace)
-    LocalBinding(crate::expr::PatId),
+    LocalBinding(Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>),
     /// A generic parameter
     GenericParam(u32),
     SelfType(crate::ImplBlock),
@@ -332,25 +333,14 @@ impl SourceAnalyzer {
         let hir_path = crate::Path::from_ast(path)?;
         let res = self.resolver.resolve_path(db, &hir_path);
         let res = res.clone().take_types().or_else(|| res.take_values())?;
-        Some(res.into())
-    }
-
-    pub fn pat_syntax(
-        &self,
-        _db: &impl HirDatabase,
-        pat: crate::expr::PatId,
-    ) -> Option<Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>> {
-        self.body_source_map.as_ref()?.pat_syntax(pat)
-    }
-}
-
-impl From<crate::Resolution> for PathResolution {
-    fn from(res: crate::Resolution) -> PathResolution {
-        match res {
+        let res = match res {
             crate::Resolution::Def(it) => PathResolution::Def(it),
-            crate::Resolution::LocalBinding(it) => PathResolution::LocalBinding(it),
+            crate::Resolution::LocalBinding(it) => {
+                PathResolution::LocalBinding(self.body_source_map.as_ref()?.pat_syntax(it)?)
+            }
             crate::Resolution::GenericParam(it) => PathResolution::GenericParam(it),
             crate::Resolution::SelfType(it) => PathResolution::SelfType(it),
-        }
+        };
+        Some(res)
     }
 }
