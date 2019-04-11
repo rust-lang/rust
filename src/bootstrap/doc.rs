@@ -277,7 +277,7 @@ impl Step for TheBook {
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(name.to_string()),
-            version: RustbookVersion::MdBook1,
+            version: RustbookVersion::MdBook2,
         });
 
         // building older edition redirects
@@ -286,21 +286,21 @@ impl Step for TheBook {
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook1,
+            version: RustbookVersion::MdBook2,
         });
 
         let source_name = format!("{}/second-edition", name);
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook1,
+            version: RustbookVersion::MdBook2,
         });
 
         let source_name = format!("{}/2018-edition", name);
         builder.ensure(Rustbook {
             target,
             name: INTERNER.intern_string(source_name),
-            version: RustbookVersion::MdBook1,
+            version: RustbookVersion::MdBook2,
         });
 
         // build the version info page and CSS
