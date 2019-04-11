@@ -930,10 +930,10 @@ if (!DOMTokenList.prototype.remove) {
                     returned = checkReturned(ty, output, true);
                     if (output.name === "*" || returned === true) {
                         in_args = false;
-                        var module = false;
+                        var is_module = false;
 
                         if (input === "*") {
-                            module = true;
+                            is_module = true;
                         } else {
                             var allFound = true;
                             for (var it = 0; allFound === true && it < inputs.length; it++) {
@@ -955,7 +955,7 @@ if (!DOMTokenList.prototype.remove) {
                                 dontValidate: true,
                             };
                         }
-                        if (module === true) {
+                        if (is_module === true) {
                             results[fullId] = {
                                 id: i,
                                 index: -1,
@@ -1073,6 +1073,10 @@ if (!DOMTokenList.prototype.remove) {
                     if (index !== -1 || lev <= MAX_LEV_DISTANCE) {
                         if (index !== -1 && paths.length < 2) {
                             lev = 0;
+                        } else if (searchWords[j] === val) {
+                            // Small trick to fix when you're looking for a one letter type
+                            // and there are other short named types.
+                            lev = -1;
                         }
                         if (results[fullId] === undefined) {
                             results[fullId] = {
