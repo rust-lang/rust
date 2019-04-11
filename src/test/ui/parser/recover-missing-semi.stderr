@@ -2,7 +2,7 @@ error: expected one of `.`, `;`, `?`, or an operator, found `let`
   --> $DIR/recover-missing-semi.rs:4:5
    |
 LL |     let _: usize = ()
-   |                      - help: missing semicolon here
+   |                      - help: a semicolon may be missing here
 LL |
 LL |     let _ = 3;
    |     ^^^
@@ -11,7 +11,7 @@ error: expected one of `.`, `;`, `?`, or an operator, found `return`
   --> $DIR/recover-missing-semi.rs:11:5
    |
 LL |     let _: usize = ()
-   |                      - help: missing semicolon here
+   |                      - help: a semicolon may be missing here
 LL |
 LL |     return 3;
    |     ^^^^^^
