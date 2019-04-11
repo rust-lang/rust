@@ -796,6 +796,10 @@ impl<'a> Parser<'a> {
                 .chain(inedible.iter().map(|x| TokenType::Token(x.clone())))
                 .chain(self.expected_tokens.iter().cloned())
                 .collect::<Vec<_>>();
+            let expects_semi = expected.iter().any(|t| match t {
+                TokenType::Token(token::Semi) => true,
+                _ => false,
+            });
             expected.sort_by_cached_key(|x| x.to_string());
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
@@ -835,6 +839,17 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect,
                 );
             }
+            let is_semi_suggestable = expects_semi && (
+                self.token.is_keyword(keywords::Break) ||
+                self.token.is_keyword(keywords::Continue) ||
+                self.token.is_keyword(keywords::For) ||
+                self.token.is_keyword(keywords::If) ||
+                self.token.is_keyword(keywords::Let) ||
+                self.token.is_keyword(keywords::Loop) ||
+                self.token.is_keyword(keywords::Match) ||
+                self.token.is_keyword(keywords::Return) ||
+                self.token.is_keyword(keywords::While)
+            );
             let sp = if self.token == token::Token::Eof {
                 // This is EOF, don't want to point at the following char, but rather the last token
                 self.prev_span
@@ -853,6 +868,18 @@ impl<'a> Parser<'a> {
 
             let cm = self.sess.source_map();
             match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
+                (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
+                    // The spans are in different lines, expected `;` and found `let` or `return`.
+                    // High likelihood that it is only a missing `;`.
+                    err.span_suggestion_short(
+                        label_sp,
+                        "missing semicolon here",
+                        ";".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                    return Ok(true);
+                }
                 (Ok(ref a), Ok(ref b)) if a.line == b.line => {
                     // When the spans are in the same line, it means that the only content between
                     // them is whitespace, point at the found token in that case:
