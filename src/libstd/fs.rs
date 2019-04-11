@@ -1615,8 +1615,8 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// `O_CLOEXEC` is set for returned file descriptors.
 /// On Windows, this function currently corresponds to `CopyFileEx`. Alternate
 /// NTFS streams are copied but only the size of the main stream is returned by
-/// this function. On MacOS, this function corresponds to `copyfile` with
-/// `COPYFILE_ALL`.
+/// this function. On MacOS, this function corresponds to `fclonefileat` and
+/// `fcopyfile`.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
