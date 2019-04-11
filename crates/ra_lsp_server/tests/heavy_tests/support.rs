@@ -63,7 +63,7 @@ impl Server {
             128,
             move |mut msg_receiver, mut msg_sender| {
                 main_loop(
-                    path,
+                    vec![path],
                     InitializationOptions::default(),
                     &mut msg_receiver,
                     &mut msg_sender,

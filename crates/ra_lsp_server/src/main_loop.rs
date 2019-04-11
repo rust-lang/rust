@@ -48,7 +48,7 @@ enum Task {
 const THREADPOOL_SIZE: usize = 8;
 
 pub fn main_loop(
-    ws_root: PathBuf,
+    ws_roots: Vec<PathBuf>,
     options: InitializationOptions,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
@@ -59,23 +59,26 @@ pub fn main_loop(
     // FIXME: support dynamic workspace loading.
     let workspaces = {
         let ws_worker = workspace_loader();
-        ws_worker.sender().send(ws_root.clone()).unwrap();
-        match ws_worker.receiver().recv().unwrap() {
-            Ok(ws) => vec![ws],
-            Err(e) => {
-                log::error!("loading workspace failed: {}", e);
+        let mut loaded_workspaces = Vec::new();
+        for ws_root in &ws_roots {
+            ws_worker.sender().send(ws_root.clone()).unwrap();
+            match ws_worker.receiver().recv().unwrap() {
+                Ok(ws) => loaded_workspaces.push(ws),
+                Err(e) => {
+                    log::error!("loading workspace failed: {}", e);
 
-                show_message(
-                    req::MessageType::Error,
-                    format!("rust-analyzer failed to load workspace: {}", e),
-                    msg_sender,
-                );
-                Vec::new()
+                    show_message(
+                        req::MessageType::Error,
+                        format!("rust-analyzer failed to load workspace: {}", e),
+                        msg_sender,
+                    );
+                }
             }
         }
+        loaded_workspaces
     };
 
-    let mut state = ServerWorldState::new(ws_root.clone(), workspaces);
+    let mut state = ServerWorldState::new(ws_roots, workspaces);
 
     log::info!("server initialized, serving requests");
 
