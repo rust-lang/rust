@@ -1570,18 +1570,18 @@ define_print_and_forward_display! {
                 ConstValue::Slice(place, len),
                 ty::Ref(_, &ty::TyS { sty: ty::Str, .. }, _),
             ) => {
-                let s = match (place, len) {
+                match (place, len) {
                     (_, 0) => "",
                     (Scalar::Ptr(ptr), len) => {
                         let alloc = cx.tcx().alloc_map.lock().unwrap_memory(ptr.alloc_id);
                         assert_eq!(len as usize as u64, len);
                         let slice =
                             &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                        ::std::str::from_utf8(slice).expect("non utf8 str from miri")
+                        let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
+                        p!(write("{:?}", s))
                     },
                     _ => bug!("invalid slice: {:#?}", self),
                 };
-                p!(write("{:?}", s))
             },
             _ => p!(write("{:?} : ", self.val), print(self.ty)),
         }
