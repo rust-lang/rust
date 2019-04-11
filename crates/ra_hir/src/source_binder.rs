@@ -274,9 +274,7 @@ impl SourceAnalyzer {
             None
         });
         SourceAnalyzer {
-            resolver: def_with_body
-                .map(|it| it.resolver(db))
-                .unwrap_or_else(|| resolver_for_node(db, file_id, node)),
+            resolver: resolver_for_node(db, file_id, node),
             body_source_map: def_with_body.map(|it| it.body_source_map(db)),
             infer: def_with_body.map(|it| it.infer(db)),
         }
