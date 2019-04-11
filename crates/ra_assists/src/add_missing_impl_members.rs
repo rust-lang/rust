@@ -45,9 +45,9 @@ fn add_missing_impl_members_inner(
     let trait_def = {
         let file_id = ctx.frange.file_id;
         let position = FilePosition { file_id, offset: impl_node.syntax().range().start() };
-        let analyser = hir::SourceAnalyzer::new(ctx.db, position.file_id, impl_node.syntax());
+        let analyzer = hir::SourceAnalyzer::new(ctx.db, position.file_id, impl_node.syntax());
 
-        resolve_target_trait_def(ctx.db, &analyser, impl_node)?
+        resolve_target_trait_def(ctx.db, &analyzer, impl_node)?
     };
 
     let missing_fns: Vec<_> = {

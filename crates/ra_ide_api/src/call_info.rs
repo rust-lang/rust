@@ -17,19 +17,19 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let calling_node = FnCallNode::with_node(syntax, position.offset)?;
     let name_ref = calling_node.name_ref()?;
 
-    let analyser = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax());
+    let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax());
     let function = match calling_node {
         FnCallNode::CallExpr(expr) => {
             //FIXME: apply subst
             let (callable_def, _subst) =
-                analyser.type_of(db, expr.expr()?.into())?.as_callable()?;
+                analyzer.type_of(db, expr.expr()?.into())?.as_callable()?;
             match callable_def {
                 hir::CallableDef::Function(it) => it,
                 //FIXME: handle other callables
                 _ => return None,
             }
         }
-        FnCallNode::MethodCallExpr(expr) => analyser.resolve_method_call(expr)?,
+        FnCallNode::MethodCallExpr(expr) => analyzer.resolve_method_call(expr)?,
     };
 
     let mut call_info = CallInfo::new(db, function);

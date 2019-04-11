@@ -60,7 +60,7 @@ fn reparse_fuzz_tests() {
     }
 }
 
-/// Test that Rust-analyzer can parse and validate the rust-analyser
+/// Test that Rust-analyzer can parse and validate the rust-analyzer
 /// FIXME: Use this as a benchmark
 #[test]
 fn self_hosting_parsing() {
