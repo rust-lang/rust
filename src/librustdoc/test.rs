@@ -715,6 +715,7 @@ impl Tester for Collector {
                 )
             }),
         });
+        self.tests.clear();
     }
 
     fn get_line(&self) -> usize {
