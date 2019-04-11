@@ -492,10 +492,7 @@ impl UseTree {
 
         // Recursively normalize elements of a list use (including sorting the list).
         if let UseSegment::List(list) = last {
-            let mut list = list
-                .into_iter()
-                .map(|ut| ut.normalize())
-                .collect::<Vec<_>>();
+            let mut list = list.into_iter().map(UseTree::normalize).collect::<Vec<_>>();
             list.sort();
             last = UseSegment::List(list);
         }

@@ -1358,7 +1358,7 @@ fn format_tuple_struct(
         context
             .snippet_provider
             .opt_span_after(mk_sp(last_arg_span.hi(), span.hi()), ")")
-            .unwrap_or(last_arg_span.hi())
+            .unwrap_or_else(|| last_arg_span.hi())
     };
 
     let where_clause_str = match struct_parts.generics {
@@ -2143,7 +2143,7 @@ fn rewrite_fn_base(
             indent
         } else {
             if context.config.version() == Version::Two {
-                if arg_str.len() != 0 || !no_args_and_over_max_width {
+                if !arg_str.is_empty() || !no_args_and_over_max_width {
                     result.push(' ');
                 }
             } else {
@@ -2284,7 +2284,7 @@ fn rewrite_args(
     span: Span,
     variadic: bool,
 ) -> Option<String> {
-    if args.len() == 0 {
+    if args.is_empty() {
         let comment = context
             .snippet(mk_sp(
                 span.lo(),

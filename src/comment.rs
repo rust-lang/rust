@@ -1243,7 +1243,7 @@ where
             },
             CharClassesStatus::LitCharEscape => CharClassesStatus::LitChar,
             CharClassesStatus::Normal => match chr {
-                'r' => match self.base.peek().map(|c| c.get_char()) {
+                'r' => match self.base.peek().map(RichChar::get_char) {
                     Some('#') | Some('"') => {
                         char_kind = FullCodeCharKind::InString;
                         CharClassesStatus::RawStringPrefix(0)

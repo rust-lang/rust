@@ -445,7 +445,7 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSni
     let block_len = formatted
         .snippet
         .rfind('}')
-        .unwrap_or(formatted.snippet.len());
+        .unwrap_or_else(|| formatted.snippet.len());
     let mut is_indented = true;
     for (kind, ref line) in LineClasses::new(&formatted.snippet[FN_MAIN_PREFIX.len()..block_len]) {
         if !is_first {

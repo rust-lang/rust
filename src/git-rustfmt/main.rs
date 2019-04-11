@@ -98,7 +98,7 @@ fn uncommitted_files() -> Vec<String> {
     stdout
         .lines()
         .filter(|s| s.ends_with(".rs"))
-        .map(|s| s.to_owned())
+        .map(std::borrow::ToOwned::to_owned)
         .collect()
 }
 

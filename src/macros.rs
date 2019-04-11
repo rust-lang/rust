@@ -933,8 +933,7 @@ impl MacroArgParser {
 
     /// Returns a collection of parsed macro def's arguments.
     pub fn parse(mut self, tokens: TokenStream) -> Option<Vec<ParsedMacroArg>> {
-        let stream: TokenStream = tokens.into();
-        let mut iter = stream.trees();
+        let mut iter = tokens.trees();
 
         while let Some(tok) = iter.next() {
             match tok {
@@ -1045,18 +1044,17 @@ fn wrap_macro_args_inner(
 // FIXME: Use multi-line when every thing does not fit on one line.
 fn format_macro_args(
     context: &RewriteContext<'_>,
-    toks: TokenStream,
+    token_stream: TokenStream,
     shape: Shape,
 ) -> Option<String> {
     if !context.config.format_macro_matchers() {
-        let token_stream: TokenStream = toks.into();
         let span = span_for_token_stream(&token_stream);
         return Some(match span {
             Some(span) => context.snippet(span).to_owned(),
             None => String::new(),
         });
     }
-    let parsed_args = MacroArgParser::new().parse(toks)?;
+    let parsed_args = MacroArgParser::new().parse(token_stream)?;
     wrap_macro_args(context, &parsed_args, shape)
 }
 
@@ -1140,7 +1138,7 @@ fn next_space(tok: &Token) -> SpaceState {
 /// failed).
 pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
     if &mac.node.path.to_string() == "try" {
-        let ts: TokenStream = mac.node.tts.clone().into();
+        let ts: TokenStream = mac.node.tts.clone();
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());
 
         Some(ast::Expr {
@@ -1194,7 +1192,7 @@ impl MacroParser {
             TokenTree::Token(..) => return None,
             TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
         };
-        let args = tok.joint().into();
+        let args = tok.joint();
         match self.toks.next()? {
             TokenTree::Token(_, Token::FatArrow) => {}
             _ => return None,

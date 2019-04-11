@@ -244,7 +244,7 @@ impl Config {
                 }
             }
 
-            return Ok(None);
+            Ok(None)
         }
 
         match resolve_project_file(dir)? {
@@ -260,7 +260,7 @@ impl Config {
         let mut err = String::new();
         let table = parsed
             .as_table()
-            .ok_or(String::from("Parsed config was not table"))?;
+            .ok_or_else(|| String::from("Parsed config was not table"))?;
         for key in table.keys() {
             if !Config::is_valid_name(key) {
                 let msg = &format!("Warning: Unknown configuration option `{}`\n", key);
@@ -358,7 +358,7 @@ fn config_path(options: &dyn CliOptions) -> Result<Option<PathBuf>, Error> {
                 config_path_not_found(path.to_str().unwrap())
             }
         }
-        path => Ok(path.map(|p| p.to_owned())),
+        path => Ok(path.map(ToOwned::to_owned)),
     }
 }
 
