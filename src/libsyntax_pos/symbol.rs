@@ -524,7 +524,11 @@ impl LocalInternedString {
         }
     }
 
-    pub fn get(&self) -> &'static str {
+    pub fn get(&self) -> &str {
+        // This returns a valid string since we ensure that `self` outlives the interner
+        // by creating the interner on a thread which outlives threads which can access it.
+        // This type cannot move to a thread which outlives the interner since it does
+        // not implement Send.
         self.string
     }
 }

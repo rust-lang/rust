@@ -622,7 +622,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::GlobalAsm(ref ga) => {
                 self.head(visibility_qualified(&item.vis, "global asm"))?;
-                self.s.word(ga.asm.as_str().get())?;
+                self.s.word(ga.asm.as_str().to_string())?;
                 self.end()?
             }
             hir::ItemKind::Ty(ref ty, ref generics) => {
@@ -1591,7 +1591,7 @@ impl<'a> State<'a> {
         if ident.is_raw_guess() {
             self.s.word(format!("r#{}", ident.name))?;
         } else {
-            self.s.word(ident.as_str().get())?;
+            self.s.word(ident.as_str().to_string())?;
         }
         self.ann.post(self, AnnNode::Name(&ident.name))
     }
@@ -1998,7 +1998,7 @@ impl<'a> State<'a> {
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(indent_unit)?;
             if let Some(arg_name) = arg_names.get(i) {
-                s.s.word(arg_name.as_str().get())?;
+                s.s.word(arg_name.as_str().to_string())?;
                 s.s.word(":")?;
                 s.s.space()?;
             } else if let Some(body_id) = body_id {

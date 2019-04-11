@@ -645,7 +645,7 @@ pub trait PrintState<'a> {
             ast::LitKind::Float(ref f, t) => {
                 self.writer().word(format!("{}{}", &f, t.ty_to_string()))
             }
-            ast::LitKind::FloatUnsuffixed(ref f) => self.writer().word(f.as_str().get()),
+            ast::LitKind::FloatUnsuffixed(ref f) => self.writer().word(f.as_str().to_string()),
             ast::LitKind::Bool(val) => {
                 if val { self.writer().word("true") } else { self.writer().word("false") }
             }
@@ -731,7 +731,7 @@ pub trait PrintState<'a> {
                 if segment.ident.name == keywords::DollarCrate.name() {
                     self.print_dollar_crate(segment.ident)?;
                 } else {
-                    self.writer().word(segment.ident.as_str().get())?;
+                    self.writer().word(segment.ident.as_str().to_string())?;
                 }
             }
         }
@@ -749,7 +749,7 @@ pub trait PrintState<'a> {
         }
         self.maybe_print_comment(attr.span.lo())?;
         if attr.is_sugared_doc {
-            self.writer().word(attr.value_str().unwrap().as_str().get())?;
+            self.writer().word(attr.value_str().unwrap().as_str().to_string())?;
             self.writer().hardbreak()
         } else {
             match attr.style {
@@ -858,7 +858,7 @@ pub trait PrintState<'a> {
         if !ast::Ident::with_empty_ctxt(name).is_path_segment_keyword() {
             self.writer().word("::")?;
         }
-        self.writer().word(name.as_str().get())
+        self.writer().word(name.as_str().to_string())
     }
 }
 
@@ -1300,7 +1300,7 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::GlobalAsm(ref ga) => {
                 self.head(visibility_qualified(&item.vis, "global_asm!"))?;
-                self.s.word(ga.asm.as_str().get())?;
+                self.s.word(ga.asm.as_str().to_string())?;
                 self.end()?;
             }
             ast::ItemKind::Ty(ref ty, ref generics) => {
@@ -2437,7 +2437,7 @@ impl<'a> State<'a> {
         if ident.is_raw_guess() {
             self.s.word(format!("r#{}", ident))?;
         } else {
-            self.s.word(ident.as_str().get())?;
+            self.s.word(ident.as_str().to_string())?;
         }
         self.ann.post(self, AnnNode::Ident(&ident))
     }
@@ -2447,7 +2447,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> io::Result<()> {
-        self.s.word(name.as_str().get())?;
+        self.s.word(name.as_str().to_string())?;
         self.ann.post(self, AnnNode::Name(&name))
     }
 
