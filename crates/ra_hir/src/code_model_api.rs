@@ -455,11 +455,7 @@ impl DefWithBody {
     }
 
     pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        match *self {
-            DefWithBody::Const(ref c) => c.body_source_map(db),
-            DefWithBody::Function(ref f) => f.body_source_map(db),
-            DefWithBody::Static(ref s) => s.body_source_map(db),
-        }
+        db.body_with_source_map(*self).1
     }
 
     /// Builds a resolver for code inside this item.
@@ -610,6 +606,7 @@ impl Const {
         db.infer((*self).into())
     }
 
+    #[cfg(test)]
     pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map((*self).into()).1
     }
@@ -683,6 +680,7 @@ impl Static {
         db.infer((*self).into())
     }
 
+    #[cfg(test)]
     pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map((*self).into()).1
     }
