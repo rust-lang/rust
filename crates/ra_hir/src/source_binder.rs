@@ -261,9 +261,9 @@ fn try_get_resolver_for_node(
     }
 }
 
-// Name is bad, don't use inside HIR
+/// `SourceAnalyzer`
 #[derive(Debug)]
-pub struct SourceAnalyser {
+pub struct SourceAnalyzer {
     resolver: Resolver,
     body_source_map: Option<Arc<crate::expr::BodySourceMap>>,
     infer: Option<Arc<crate::ty::InferenceResult>>,
@@ -281,18 +281,18 @@ pub enum PathResolution {
     AssocItem(crate::ImplItem),
 }
 
-impl SourceAnalyser {
-    pub fn new(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> SourceAnalyser {
+impl SourceAnalyzer {
+    pub fn new(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> SourceAnalyzer {
         let resolver = resolver_for_node(db, file_id, node);
         let function = function_from_child_node(db, file_id, node);
         if let Some(function) = function {
-            SourceAnalyser {
+            SourceAnalyzer {
                 resolver,
                 body_source_map: Some(function.body_source_map(db)),
                 infer: Some(function.infer(db)),
             }
         } else {
-            SourceAnalyser { resolver, body_source_map: None, infer: None }
+            SourceAnalyzer { resolver, body_source_map: None, infer: None }
         }
     }
 

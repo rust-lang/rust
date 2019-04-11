@@ -51,7 +51,7 @@ where
     }
 
     fn evaluate_struct_def_fields(&mut self) -> Option<()> {
-        let analyzer = hir::SourceAnalyser::new(
+        let analyzer = hir::SourceAnalyzer::new(
             self.ctx.db,
             self.ctx.frange.file_id,
             self.struct_lit.syntax(),

@@ -45,7 +45,7 @@ fn add_missing_impl_members_inner(
     let trait_def = {
         let file_id = ctx.frange.file_id;
         let position = FilePosition { file_id, offset: impl_node.syntax().range().start() };
-        let analyser = hir::SourceAnalyser::new(ctx.db, position.file_id, impl_node.syntax());
+        let analyser = hir::SourceAnalyzer::new(ctx.db, position.file_id, impl_node.syntax());
 
         resolve_target_trait_def(ctx.db, &analyser, impl_node)?
     };
@@ -121,13 +121,13 @@ fn add_missing_impl_members_inner(
 /// implemented) to a `ast::TraitDef`.
 fn resolve_target_trait_def(
     db: &impl HirDatabase,
-    binder: &hir::SourceAnalyser,
+    analyzer: &hir::SourceAnalyzer,
     impl_block: &ast::ImplBlock,
 ) -> Option<TreeArc<ast::TraitDef>> {
     let ast_path =
         impl_block.target_trait().map(AstNode::syntax).and_then(ast::PathType::cast)?.path()?;
 
-    match binder.resolve_path(db, &ast_path) {
+    match analyzer.resolve_path(db, &ast_path) {
         Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
         _ => None,
     }

@@ -14,7 +14,7 @@ use crate::{db, FilePosition};
 #[derive(Debug)]
 pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a db::RootDatabase,
-    pub(super) analyzer: hir::SourceAnalyser,
+    pub(super) analyzer: hir::SourceAnalyzer,
     pub(super) offset: TextUnit,
     pub(super) token: SyntaxToken<'a>,
     pub(super) resolver: Resolver,
@@ -50,7 +50,7 @@ impl<'a> CompletionContext<'a> {
         let resolver = source_binder::resolver_for_position(db, position);
         let module = source_binder::module_from_position(db, position);
         let token = find_token_at_offset(original_file.syntax(), position.offset).left_biased()?;
-        let analyzer = hir::SourceAnalyser::new(db, position.file_id, token.parent());
+        let analyzer = hir::SourceAnalyzer::new(db, position.file_id, token.parent());
         let mut ctx = CompletionContext {
             db,
             analyzer,

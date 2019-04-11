@@ -132,7 +132,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
         .ancestors()
         .take_while(|it| it.range() == leaf_node.range())
         .find(|&it| ast::Expr::cast(it).is_some() || ast::Pat::cast(it).is_some())?;
-    let analyzer = hir::SourceAnalyser::new(db, frange.file_id, node);
+    let analyzer = hir::SourceAnalyzer::new(db, frange.file_id, node);
     let ty = if let Some(ty) = ast::Expr::cast(node).and_then(|e| analyzer.type_of(db, e)) {
         ty
     } else if let Some(ty) = ast::Pat::cast(node).and_then(|p| analyzer.type_of_pat(db, p)) {
