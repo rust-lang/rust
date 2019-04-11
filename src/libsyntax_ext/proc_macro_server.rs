@@ -336,11 +336,11 @@ impl Ident {
         }
     }
     fn new(sym: Symbol, is_raw: bool, span: Span) -> Ident {
-        let string = sym.as_str().get();
-        if !Self::is_valid(string) {
+        let string = sym.as_str();
+        if !Self::is_valid(&string) {
             panic!("`{:?}` is not a valid identifier", string)
         }
-        if is_raw && !ast::Ident::from_str(string).can_be_raw() {
+        if is_raw && !ast::Ident::from_interned_str(sym.as_interned_str()).can_be_raw() {
             panic!("`{}` cannot be a raw identifier", string);
         }
         Ident { sym, is_raw, span }
