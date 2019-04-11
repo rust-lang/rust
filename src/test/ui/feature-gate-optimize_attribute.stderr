@@ -4,7 +4,7 @@ error[E0658]: #[optimize] attribute is an unstable feature
 LL | #[optimize(size)]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54882
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add #![feature(optimize_attribute)] to the crate attributes to enable
 
 error[E0658]: #[optimize] attribute is an unstable feature
@@ -13,7 +13,7 @@ error[E0658]: #[optimize] attribute is an unstable feature
 LL | #[optimize(speed)]
    | ^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54882
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add #![feature(optimize_attribute)] to the crate attributes to enable
 
 error[E0658]: #[optimize] attribute is an unstable feature
@@ -22,7 +22,7 @@ error[E0658]: #[optimize] attribute is an unstable feature
 LL | #[optimize(banana)]
    | ^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54882
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add #![feature(optimize_attribute)] to the crate attributes to enable
 
 error[E0658]: #[optimize] attribute is an unstable feature
@@ -31,7 +31,7 @@ error[E0658]: #[optimize] attribute is an unstable feature
 LL | #[optimize(size)]
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54882
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add #![feature(optimize_attribute)] to the crate attributes to enable
 
 error[E0658]: #[optimize] attribute is an unstable feature
@@ -40,7 +40,7 @@ error[E0658]: #[optimize] attribute is an unstable feature
 LL | #![optimize(speed)]
    | ^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54882
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54882
    = help: add #![feature(optimize_attribute)] to the crate attributes to enable
 
 error[E0722]: invalid argument

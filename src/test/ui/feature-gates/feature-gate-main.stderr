@@ -4,7 +4,7 @@ error[E0658]: declaration of a nonstandard #[main] function may change over time
 LL | fn foo() {}
    | ^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29634
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29634
    = help: add #![feature(main)] to the crate attributes to enable
 
 error: aborting due to previous error

@@ -4,7 +4,7 @@ error[E0658]: #[doc(masked)] is experimental
 LL | #[doc(masked)]
    | ^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #44027
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44027
    = help: add #![feature(doc_masked)] to the crate attributes to enable
 
 error: aborting due to previous error

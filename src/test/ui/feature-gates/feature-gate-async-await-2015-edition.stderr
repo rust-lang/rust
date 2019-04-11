@@ -22,7 +22,7 @@ error[E0658]: async fn is unstable
 LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #50547
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error: aborting due to 4 previous errors

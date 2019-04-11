@@ -4,7 +4,7 @@ error[E0658]: custom test frameworks are an unstable feature
 LL | #![test_runner(main)]
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #50297
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50297
    = help: add #![feature(custom_test_frameworks)] to the crate attributes to enable
 
 error: aborting due to previous error

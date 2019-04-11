@@ -4,7 +4,7 @@ error[E0658]: non-builtin inner attributes are unstable
 LL |     #![a]
    |     ^^^^^
    |
-   = note: for more information, see tracking issue #54726
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54726
    = help: add #![feature(custom_inner_attributes)] to the crate attributes to enable
 
 error[E0658]: non-builtin inner attributes are unstable
@@ -13,7 +13,7 @@ error[E0658]: non-builtin inner attributes are unstable
 LL |     #![a]
    |     ^^^^^
    |
-   = note: for more information, see tracking issue #54726
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54726
    = help: add #![feature(custom_inner_attributes)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to modules
@@ -22,7 +22,7 @@ error[E0658]: custom attributes cannot be applied to modules
 LL | #[a]
    | ^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to modules
@@ -31,7 +31,7 @@ error[E0658]: custom attributes cannot be applied to modules
 LL |     #![a]
    |     ^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error: custom attribute invocations must be of the form #[foo] or #[foo(..)], the macro name must only be followed by a delimiter token
@@ -46,7 +46,7 @@ error[E0658]: custom attributes cannot be applied to statements
 LL |     #[a]
    |     ^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to statements
@@ -55,7 +55,7 @@ error[E0658]: custom attributes cannot be applied to statements
 LL |     #[a]
    |     ^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to statements
@@ -64,7 +64,7 @@ error[E0658]: custom attributes cannot be applied to statements
 LL |     #[a]
    |     ^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
@@ -73,7 +73,7 @@ error[E0658]: custom attributes cannot be applied to expressions
 LL |     let _x = #[a] 2;
    |              ^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
@@ -82,7 +82,7 @@ error[E0658]: custom attributes cannot be applied to expressions
 LL |     let _x = [#[a] 2];
    |               ^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: custom attributes cannot be applied to expressions
@@ -91,7 +91,7 @@ error[E0658]: custom attributes cannot be applied to expressions
 LL |     let _x = #[a] println!();
    |              ^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to types
@@ -100,7 +100,7 @@ error[E0658]: procedural macros cannot be expanded to types
 LL |     let _x: m!(u32) = 3;
    |             ^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to patterns
@@ -109,7 +109,7 @@ error[E0658]: procedural macros cannot be expanded to patterns
 LL |     if let m!(Some(_x)) = Some(3) {}
    |            ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to statements
@@ -118,7 +118,7 @@ error[E0658]: procedural macros cannot be expanded to statements
 LL |     m!(struct S;);
    |     ^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to statements
@@ -127,7 +127,7 @@ error[E0658]: procedural macros cannot be expanded to statements
 LL |     m!(let _x = 3;);
    |     ^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
@@ -136,7 +136,7 @@ error[E0658]: procedural macros cannot be expanded to expressions
 LL |     let _x = m!(3);
    |              ^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot be expanded to expressions
@@ -145,7 +145,7 @@ error[E0658]: procedural macros cannot be expanded to expressions
 LL |     let _x = [m!(3)];
    |               ^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error: aborting due to 17 previous errors

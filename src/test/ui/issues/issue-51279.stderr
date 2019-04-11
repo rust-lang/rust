@@ -52,7 +52,7 @@ error[E0658]: The attribute `ignored` is currently unknown to the compiler and m
 LL | type Z<#[ignored] 'a, #[cfg(none)] T> = X<'a, T>;
    |        ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to 9 previous errors

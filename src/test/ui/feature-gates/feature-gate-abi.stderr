@@ -12,7 +12,7 @@ error[E0658]: platform intrinsics are experimental and possibly buggy
 LL | extern "platform-intrinsic" fn f2() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #27731
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(platform_intrinsics)] to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -29,7 +29,7 @@ error[E0658]: rust-call ABI is subject to change
 LL | extern "rust-call" fn f4() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29625
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
@@ -38,7 +38,7 @@ error[E0658]: msp430-interrupt ABI is experimental and subject to change
 LL | extern "msp430-interrupt" fn f5() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38487
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
@@ -47,7 +47,7 @@ error[E0658]: PTX ABIs are experimental and subject to change
 LL | extern "ptx-kernel" fn f6() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38788
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38788
    = help: add #![feature(abi_ptx)] to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
@@ -56,7 +56,7 @@ error[E0658]: x86-interrupt ABI is experimental and subject to change
 LL | extern "x86-interrupt" fn f7() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #40180
+   = note: for more information, see https://github.com/rust-lang/rust/issues/40180
    = help: add #![feature(abi_x86_interrupt)] to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
@@ -73,7 +73,7 @@ error[E0658]: amdgpu-kernel ABI is experimental and subject to change
 LL | extern "amdgpu-kernel" fn f9() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #51575
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add #![feature(abi_amdgpu_kernel)] to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -90,7 +90,7 @@ error[E0658]: platform intrinsics are experimental and possibly buggy
 LL |     extern "platform-intrinsic" fn m2();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #27731
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(platform_intrinsics)] to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -107,7 +107,7 @@ error[E0658]: rust-call ABI is subject to change
 LL |     extern "rust-call" fn m4();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29625
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
@@ -116,7 +116,7 @@ error[E0658]: msp430-interrupt ABI is experimental and subject to change
 LL |     extern "msp430-interrupt" fn m5();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38487
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
@@ -125,7 +125,7 @@ error[E0658]: PTX ABIs are experimental and subject to change
 LL |     extern "ptx-kernel" fn m6();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38788
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38788
    = help: add #![feature(abi_ptx)] to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
@@ -134,7 +134,7 @@ error[E0658]: x86-interrupt ABI is experimental and subject to change
 LL |     extern "x86-interrupt" fn m7();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #40180
+   = note: for more information, see https://github.com/rust-lang/rust/issues/40180
    = help: add #![feature(abi_x86_interrupt)] to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
@@ -151,7 +151,7 @@ error[E0658]: amdgpu-kernel ABI is experimental and subject to change
 LL |     extern "amdgpu-kernel" fn m9();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #51575
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add #![feature(abi_amdgpu_kernel)] to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -168,7 +168,7 @@ error[E0658]: platform intrinsics are experimental and possibly buggy
 LL |     extern "platform-intrinsic" fn dm2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #27731
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(platform_intrinsics)] to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -185,7 +185,7 @@ error[E0658]: rust-call ABI is subject to change
 LL |     extern "rust-call" fn dm4() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29625
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
@@ -194,7 +194,7 @@ error[E0658]: msp430-interrupt ABI is experimental and subject to change
 LL |     extern "msp430-interrupt" fn dm5() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38487
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
@@ -203,7 +203,7 @@ error[E0658]: PTX ABIs are experimental and subject to change
 LL |     extern "ptx-kernel" fn dm6() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38788
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38788
    = help: add #![feature(abi_ptx)] to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
@@ -212,7 +212,7 @@ error[E0658]: x86-interrupt ABI is experimental and subject to change
 LL |     extern "x86-interrupt" fn dm7() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #40180
+   = note: for more information, see https://github.com/rust-lang/rust/issues/40180
    = help: add #![feature(abi_x86_interrupt)] to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
@@ -229,7 +229,7 @@ error[E0658]: amdgpu-kernel ABI is experimental and subject to change
 LL |     extern "amdgpu-kernel" fn dm9() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #51575
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add #![feature(abi_amdgpu_kernel)] to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -246,7 +246,7 @@ error[E0658]: platform intrinsics are experimental and possibly buggy
 LL |     extern "platform-intrinsic" fn m2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #27731
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(platform_intrinsics)] to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -263,7 +263,7 @@ error[E0658]: rust-call ABI is subject to change
 LL |     extern "rust-call" fn m4() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29625
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
@@ -272,7 +272,7 @@ error[E0658]: msp430-interrupt ABI is experimental and subject to change
 LL |     extern "msp430-interrupt" fn m5() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38487
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
@@ -281,7 +281,7 @@ error[E0658]: PTX ABIs are experimental and subject to change
 LL |     extern "ptx-kernel" fn m6() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38788
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38788
    = help: add #![feature(abi_ptx)] to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
@@ -290,7 +290,7 @@ error[E0658]: x86-interrupt ABI is experimental and subject to change
 LL |     extern "x86-interrupt" fn m7() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #40180
+   = note: for more information, see https://github.com/rust-lang/rust/issues/40180
    = help: add #![feature(abi_x86_interrupt)] to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
@@ -307,7 +307,7 @@ error[E0658]: amdgpu-kernel ABI is experimental and subject to change
 LL |     extern "amdgpu-kernel" fn m9() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #51575
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add #![feature(abi_amdgpu_kernel)] to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -324,7 +324,7 @@ error[E0658]: platform intrinsics are experimental and possibly buggy
 LL |     extern "platform-intrinsic" fn im2() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #27731
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(platform_intrinsics)] to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -341,7 +341,7 @@ error[E0658]: rust-call ABI is subject to change
 LL |     extern "rust-call" fn im4() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29625
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
@@ -350,7 +350,7 @@ error[E0658]: msp430-interrupt ABI is experimental and subject to change
 LL |     extern "msp430-interrupt" fn im5() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38487
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
@@ -359,7 +359,7 @@ error[E0658]: PTX ABIs are experimental and subject to change
 LL |     extern "ptx-kernel" fn im6() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38788
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38788
    = help: add #![feature(abi_ptx)] to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
@@ -368,7 +368,7 @@ error[E0658]: x86-interrupt ABI is experimental and subject to change
 LL |     extern "x86-interrupt" fn im7() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #40180
+   = note: for more information, see https://github.com/rust-lang/rust/issues/40180
    = help: add #![feature(abi_x86_interrupt)] to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
@@ -385,7 +385,7 @@ error[E0658]: amdgpu-kernel ABI is experimental and subject to change
 LL |     extern "amdgpu-kernel" fn im9() {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #51575
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add #![feature(abi_amdgpu_kernel)] to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -402,7 +402,7 @@ error[E0658]: platform intrinsics are experimental and possibly buggy
 LL | type A2 = extern "platform-intrinsic" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #27731
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(platform_intrinsics)] to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -419,7 +419,7 @@ error[E0658]: rust-call ABI is subject to change
 LL | type A4 = extern "rust-call" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29625
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
@@ -428,7 +428,7 @@ error[E0658]: msp430-interrupt ABI is experimental and subject to change
 LL | type A5 = extern "msp430-interrupt" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38487
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
@@ -437,7 +437,7 @@ error[E0658]: PTX ABIs are experimental and subject to change
 LL | type A6 = extern "ptx-kernel" fn ();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38788
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38788
    = help: add #![feature(abi_ptx)] to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
@@ -446,7 +446,7 @@ error[E0658]: x86-interrupt ABI is experimental and subject to change
 LL | type A7 = extern "x86-interrupt" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #40180
+   = note: for more information, see https://github.com/rust-lang/rust/issues/40180
    = help: add #![feature(abi_x86_interrupt)] to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
@@ -463,7 +463,7 @@ error[E0658]: amdgpu-kernel ABI is experimental and subject to change
 LL | type A9 = extern "amdgpu-kernel" fn();
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #51575
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add #![feature(abi_amdgpu_kernel)] to the crate attributes to enable
 
 error[E0658]: intrinsics are subject to change
@@ -480,7 +480,7 @@ error[E0658]: platform intrinsics are experimental and possibly buggy
 LL | extern "platform-intrinsic" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #27731
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(platform_intrinsics)] to the crate attributes to enable
 
 error[E0658]: vectorcall is experimental and subject to change
@@ -497,7 +497,7 @@ error[E0658]: rust-call ABI is subject to change
 LL | extern "rust-call" {}
    | ^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29625
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0658]: msp430-interrupt ABI is experimental and subject to change
@@ -506,7 +506,7 @@ error[E0658]: msp430-interrupt ABI is experimental and subject to change
 LL | extern "msp430-interrupt" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38487
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error[E0658]: PTX ABIs are experimental and subject to change
@@ -515,7 +515,7 @@ error[E0658]: PTX ABIs are experimental and subject to change
 LL | extern "ptx-kernel" {}
    | ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #38788
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38788
    = help: add #![feature(abi_ptx)] to the crate attributes to enable
 
 error[E0658]: x86-interrupt ABI is experimental and subject to change
@@ -524,7 +524,7 @@ error[E0658]: x86-interrupt ABI is experimental and subject to change
 LL | extern "x86-interrupt" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #40180
+   = note: for more information, see https://github.com/rust-lang/rust/issues/40180
    = help: add #![feature(abi_x86_interrupt)] to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
@@ -541,7 +541,7 @@ error[E0658]: amdgpu-kernel ABI is experimental and subject to change
 LL | extern "amdgpu-kernel" {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #51575
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51575
    = help: add #![feature(abi_amdgpu_kernel)] to the crate attributes to enable
 
 error: aborting due to 63 previous errors

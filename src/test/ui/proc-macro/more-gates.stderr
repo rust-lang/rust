@@ -4,7 +4,7 @@ error[E0658]: procedural macros cannot expand to macro definitions
 LL | #[attr2mac1]
    | ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions
@@ -13,7 +13,7 @@ error[E0658]: procedural macros cannot expand to macro definitions
 LL | #[attr2mac2]
    | ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions
@@ -22,7 +22,7 @@ error[E0658]: procedural macros cannot expand to macro definitions
 LL | mac2mac1!();
    | ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions
@@ -31,7 +31,7 @@ error[E0658]: procedural macros cannot expand to macro definitions
 LL | mac2mac2!();
    | ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error[E0658]: procedural macros cannot expand to macro definitions
@@ -40,7 +40,7 @@ error[E0658]: procedural macros cannot expand to macro definitions
 LL | tricky!();
    | ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54727
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
    = help: add #![feature(proc_macro_hygiene)] to the crate attributes to enable
 
 error: aborting due to 5 previous errors

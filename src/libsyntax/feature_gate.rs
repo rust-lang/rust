@@ -1481,9 +1481,12 @@ fn leveled_feature_err<'a>(
     };
 
     match issue {
-        None | Some(0) => {}
+        None | Some(0) => {}  // We still accept `0` as a stand-in for backwards compatibility
         Some(n) => {
-            err.note(&format!("for more information, see tracking issue #{}", n));
+            err.note(&format!(
+                "for more information, see https://github.com/rust-lang/rust/issues/{}",
+                n,
+            ));
         }
     }
 

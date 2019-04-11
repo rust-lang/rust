@@ -4,7 +4,7 @@ error[E0658]: `log_syntax!` is not stable enough for use and is subject to chang
 LL |     println!("{:?}", log_syntax!());
    |                      ^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29598
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29598
    = help: add #![feature(log_syntax)] to the crate attributes to enable
 
 error: aborting due to previous error

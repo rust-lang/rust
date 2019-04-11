@@ -4,7 +4,7 @@ error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` ar
 LL | #[rustc_attribute_should_be_reserved]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
 error: cannot determine resolution for the macro `foo`

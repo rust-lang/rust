@@ -4,7 +4,7 @@ error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` ar
 LL | #[rustc_err]
    |   ^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
 error[E0658]: The attribute `tests` is currently unknown to the compiler and may have meaning added to it in the future
@@ -13,7 +13,7 @@ error[E0658]: The attribute `tests` is currently unknown to the compiler and may
 LL | #[tests]
    |   ^^^^^ help: a built-in attribute with a similar name exists: `test`
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `deprcated` is currently unknown to the compiler and may have meaning added to it in the future
@@ -22,7 +22,7 @@ error[E0658]: The attribute `deprcated` is currently unknown to the compiler and
 LL | #[deprcated]
    |   ^^^^^^^^^ help: a built-in attribute with a similar name exists: `deprecated`
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

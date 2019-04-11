@@ -4,7 +4,7 @@ error[E0658]: macro invocations in `extern {}` blocks are experimental
 LL |     #[no_output]
    |     ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #49476
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
 error[E0658]: macro invocations in `extern {}` blocks are experimental
@@ -13,7 +13,7 @@ error[E0658]: macro invocations in `extern {}` blocks are experimental
 LL |     #[nop_attr]
    |     ^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #49476
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
 error[E0658]: macro invocations in `extern {}` blocks are experimental
@@ -22,7 +22,7 @@ error[E0658]: macro invocations in `extern {}` blocks are experimental
 LL |     emit_input!(fn rust_dbg_extern_identity_u32(arg: u32) -> u32;);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #49476
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

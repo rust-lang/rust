@@ -4,7 +4,7 @@ error[E0658]: The attribute `lt_struct` is currently unknown to the compiler and
 LL | struct StLt<#[lt_struct] 'a>(&'a u32);
    |             ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_struct` is currently unknown to the compiler and may have meaning added to it in the future
@@ -13,7 +13,7 @@ error[E0658]: The attribute `ty_struct` is currently unknown to the compiler and
 LL | struct StTy<#[ty_struct] I>(I);
    |             ^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_enum` is currently unknown to the compiler and may have meaning added to it in the future
@@ -22,7 +22,7 @@ error[E0658]: The attribute `lt_enum` is currently unknown to the compiler and m
 LL | enum EnLt<#[lt_enum] 'b> { A(&'b u32), B }
    |           ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_enum` is currently unknown to the compiler and may have meaning added to it in the future
@@ -31,7 +31,7 @@ error[E0658]: The attribute `ty_enum` is currently unknown to the compiler and m
 LL | enum EnTy<#[ty_enum] J> { A(J), B }
    |           ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_trait` is currently unknown to the compiler and may have meaning added to it in the future
@@ -40,7 +40,7 @@ error[E0658]: The attribute `lt_trait` is currently unknown to the compiler and 
 LL | trait TrLt<#[lt_trait] 'c> { fn foo(&self, _: &'c [u32]) -> &'c u32; }
    |            ^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_trait` is currently unknown to the compiler and may have meaning added to it in the future
@@ -49,7 +49,7 @@ error[E0658]: The attribute `ty_trait` is currently unknown to the compiler and 
 LL | trait TrTy<#[ty_trait] K> { fn foo(&self, _: K); }
    |            ^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_type` is currently unknown to the compiler and may have meaning added to it in the future
@@ -58,7 +58,7 @@ error[E0658]: The attribute `lt_type` is currently unknown to the compiler and m
 LL | type TyLt<#[lt_type] 'd> = &'d u32;
    |           ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_type` is currently unknown to the compiler and may have meaning added to it in the future
@@ -67,7 +67,7 @@ error[E0658]: The attribute `ty_type` is currently unknown to the compiler and m
 LL | type TyTy<#[ty_type] L> = (L, );
    |           ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_inherent` is currently unknown to the compiler and may have meaning added to it in the future
@@ -76,7 +76,7 @@ error[E0658]: The attribute `lt_inherent` is currently unknown to the compiler a
 LL | impl<#[lt_inherent] 'e> StLt<'e> { }
    |      ^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_inherent` is currently unknown to the compiler and may have meaning added to it in the future
@@ -85,7 +85,7 @@ error[E0658]: The attribute `ty_inherent` is currently unknown to the compiler a
 LL | impl<#[ty_inherent] M> StTy<M> { }
    |      ^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_impl_for` is currently unknown to the compiler and may have meaning added to it in the future
@@ -94,7 +94,7 @@ error[E0658]: The attribute `lt_impl_for` is currently unknown to the compiler a
 LL | impl<#[lt_impl_for] 'f> TrLt<'f> for StLt<'f> {
    |      ^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_impl_for` is currently unknown to the compiler and may have meaning added to it in the future
@@ -103,7 +103,7 @@ error[E0658]: The attribute `ty_impl_for` is currently unknown to the compiler a
 LL | impl<#[ty_impl_for] N> TrTy<N> for StTy<N> {
    |      ^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_fn` is currently unknown to the compiler and may have meaning added to it in the future
@@ -112,7 +112,7 @@ error[E0658]: The attribute `lt_fn` is currently unknown to the compiler and may
 LL | fn f_lt<#[lt_fn] 'g>(_: &'g [u32]) -> &'g u32 { loop { } }
    |         ^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_fn` is currently unknown to the compiler and may have meaning added to it in the future
@@ -121,7 +121,7 @@ error[E0658]: The attribute `ty_fn` is currently unknown to the compiler and may
 LL | fn f_ty<#[ty_fn] O>(_: O) { }
    |         ^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_meth` is currently unknown to the compiler and may have meaning added to it in the future
@@ -130,7 +130,7 @@ error[E0658]: The attribute `lt_meth` is currently unknown to the compiler and m
 LL |     fn m_lt<#[lt_meth] 'h>(_: &'h [u32]) -> &'h u32 { loop { } }
    |             ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `ty_meth` is currently unknown to the compiler and may have meaning added to it in the future
@@ -139,7 +139,7 @@ error[E0658]: The attribute `ty_meth` is currently unknown to the compiler and m
 LL |     fn m_ty<#[ty_meth] P>(_: P) { }
    |             ^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0658]: The attribute `lt_hof` is currently unknown to the compiler and may have meaning added to it in the future
@@ -148,7 +148,7 @@ error[E0658]: The attribute `lt_hof` is currently unknown to the compiler and ma
 LL |     where Q: for <#[lt_hof] 'i> Fn(&'i [u32]) -> &'i u32
    |                   ^^^^^^^^^
    |
-   = note: for more information, see tracking issue #29642
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to 17 previous errors

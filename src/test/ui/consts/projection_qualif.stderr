@@ -16,7 +16,7 @@ error[E0658]: dereferencing raw pointers in constants is unstable
 LL |         unsafe { *b = 5; }
    |                  ^^^^^^
    |
-   = note: for more information, see tracking issue #51911
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51911
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

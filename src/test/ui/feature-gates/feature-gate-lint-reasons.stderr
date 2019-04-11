@@ -4,7 +4,7 @@ error[E0658]: lint reasons are experimental
 LL | #![warn(nonstandard_style, reason = "the standard should be respected")]
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: for more information, see tracking issue #54503
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54503
    = help: add #![feature(lint_reasons)] to the crate attributes to enable
 
 error: aborting due to previous error

@@ -4,7 +4,7 @@ error[E0658]: inline assembly is not stable enough for use and is subject to cha
 LL |         println!("{:?}", asm!(""));
    |                          ^^^^^^^^
    |
-   = note: for more information, see tracking issue #29722
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29722
    = help: add #![feature(asm)] to the crate attributes to enable
 
 error: aborting due to previous error

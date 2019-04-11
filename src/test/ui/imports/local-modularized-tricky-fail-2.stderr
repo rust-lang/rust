@@ -7,7 +7,7 @@ LL | exported!();
 LL |                 () => ( struct Б; )
    |                                ^
    |
-   = note: for more information, see tracking issue #55467
+   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -19,7 +19,7 @@ LL |     panic!();
 LL |         () => ( struct Г; )
    |                        ^
    |
-   = note: for more information, see tracking issue #55467
+   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
 error[E0658]: non-ascii idents are not fully supported
@@ -31,7 +31,7 @@ LL | include!();
 LL |         () => ( struct Д; )
    |                        ^
    |
-   = note: for more information, see tracking issue #55467
+   = note: for more information, see https://github.com/rust-lang/rust/issues/55467
    = help: add #![feature(non_ascii_idents)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

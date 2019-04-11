@@ -10,7 +10,7 @@ LL | |     ()
 LL | | };
    | |__^
    |
-   = note: for more information, see tracking issue #54912
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54912
    = help: add #![feature(underscore_const_names)] to the crate attributes to enable
 
 error: aborting due to previous error
