@@ -60,7 +60,7 @@ use std::ops::{Deref, DerefMut};
 /// Builder that can encode new items, adding them into the index.
 /// Item encoding cannot be nested.
 pub struct IndexBuilder<'a, 'b: 'a, 'tcx: 'b> {
-    items: Index,
+    items: Index<'tcx>,
     pub ecx: &'a mut EncodeContext<'b, 'tcx>,
 }
 
@@ -123,7 +123,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         })
     }
 
-    pub fn into_items(self) -> Index {
+    pub fn into_items(self) -> Index<'tcx> {
         self.items
     }
 }

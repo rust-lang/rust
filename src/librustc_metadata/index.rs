@@ -2,6 +2,7 @@ use crate::schema::*;
 
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace};
 use rustc_serialize::opaque::Encoder;
+use std::marker::PhantomData;
 use std::u32;
 use log::debug;
 
@@ -74,24 +75,26 @@ impl FixedSizeEncoding for u32 {
 /// `u32::MAX`. Whenever an index is visited, we fill in the
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
-pub struct Index {
-    positions: [Vec<u8>; 2]
+pub struct Index<'tcx> {
+    positions: [Vec<u8>; 2],
+    _marker: PhantomData<&'tcx ()>,
 }
 
-impl Index {
-    pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Index {
+impl Index<'tcx> {
+    pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Self {
         Index {
             positions: [vec![0xff; max_index_lo * 4],
                         vec![0xff; max_index_hi * 4]],
+            _marker: PhantomData,
         }
     }
 
-    pub fn record(&mut self, def_id: DefId, entry: Lazy<Entry<'_>>) {
+    pub fn record(&mut self, def_id: DefId, entry: Lazy<Entry<'tcx>>) {
         assert!(def_id.is_local());
         self.record_index(def_id.index, entry);
     }
 
-    pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'_>>) {
+    pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'tcx>>) {
         assert!(entry.position < (u32::MAX as usize));
         let position = entry.position as u32;
         let space_index = item.address_space().index();
@@ -107,7 +110,7 @@ impl Index {
         position.write_to_bytes_at(positions, array_index)
     }
 
-    pub fn write_index(&self, buf: &mut Encoder) -> LazySeq<Index> {
+    pub fn write_index(&self, buf: &mut Encoder) -> LazySeq<Self> {
         let pos = buf.position();
 
         // First we write the length of the lower range ...
@@ -121,7 +124,7 @@ impl Index {
     }
 }
 
-impl<'tcx> LazySeq<Index> {
+impl LazySeq<Index<'tcx>> {
     /// Given the metadata, extract out the offset of a particular
     /// DefIndex (if any).
     #[inline(never)]
