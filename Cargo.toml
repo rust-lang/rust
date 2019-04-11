@@ -44,6 +44,8 @@ shell-escape = "0.1.4"
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
 # for more information.
 rustc-workspace-hack = "1.0.0"
+hex = "0.3.2"
+rand = "0.6.5"
 
 [build-dependencies]
 vergen = "3"
@@ -54,5 +56,5 @@ cargo_miri = ["cargo_metadata", "directories", "rustc_version"]
 rustc_tests = []
 
 [dev-dependencies]
-compiletest_rs = { version = "=0.3.19", features = ["tmp", "stable"] }
+compiletest_rs = { version = "0.3.21", features = ["tmp", "stable"] }
 colored = "1.6"
