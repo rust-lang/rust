@@ -1,4 +1,4 @@
-use crate::index;
+use crate::table::Table;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -184,7 +184,7 @@ pub struct CrateRoot<'tcx> {
     pub exported_symbols: Lazy<[(ExportedSymbol<'tcx>, SymbolExportLevel)]>,
     pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_index: Lazy<[index::Index<'tcx>]>,
+    pub entries_table: Lazy<[Table<'tcx>]>,
 
     pub compiler_builtins: bool,
     pub needs_allocator: bool,

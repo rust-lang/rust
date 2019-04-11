@@ -1,5 +1,5 @@
-use crate::index::Index;
 use crate::schema::*;
+use crate::table::Table;
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -45,7 +45,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Encoder,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
-    entries_index: Index<'tcx>,
+    entries_table: Table<'tcx>,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -316,7 +316,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let entry = op(self, data);
         let entry = self.lazy(entry);
-        self.entries_index.record(id, entry);
+        self.entries_table.record(id, entry);
     }
 
     fn encode_info_for_items(&mut self) {
@@ -460,8 +460,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         i = self.position();
-        let entries_index = self.entries_index.write_index(&mut self.opaque);
-        let entries_index_bytes = self.position() - i;
+        let entries_table = self.entries_table.encode(&mut self.opaque);
+        let entries_table_bytes = self.position() - i;
 
         let attrs = tcx.hir().krate_attrs();
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
@@ -512,7 +512,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             impls,
             exported_symbols,
             interpret_alloc_index,
-            entries_index,
+            entries_table,
         });
 
         let total_bytes = self.position();
@@ -535,7 +535,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             println!("    exp. symbols bytes: {}", exported_symbols_bytes);
             println!("  def-path table bytes: {}", def_path_table_bytes);
             println!("            item bytes: {}", item_bytes);
-            println!("   entries index bytes: {}", entries_index_bytes);
+            println!("   entries table bytes: {}", entries_table_bytes);
             println!("            zero bytes: {}", zero_bytes);
             println!("           total bytes: {}", total_bytes);
         }
@@ -1875,7 +1875,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
         let mut ecx = EncodeContext {
             opaque: encoder,
             tcx,
-            entries_index: Index::new(tcx.hir().definitions().def_index_counts_lo_hi()),
+            entries_table: Table::new(tcx.hir().definitions().def_index_counts_lo_hi()),
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),
