@@ -274,6 +274,7 @@ impl SourceAnalyzer {
             None
         });
         SourceAnalyzer {
+            //TODO: use scope_for_offset here to get correct scope for completion
             resolver: resolver_for_node(db, file_id, node),
             body_source_map: def_with_body.map(|it| it.body_source_map(db)),
             infer: def_with_body.map(|it| it.infer(db)),
