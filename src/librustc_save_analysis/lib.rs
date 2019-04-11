@@ -23,7 +23,6 @@ use rustc::middle::cstore::ExternCrate;
 use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
-use rustc_typeck::hir_ty_to_ty;
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
 use rustc_data_structures::sync::Lrc;
 
@@ -658,23 +657,9 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 ..
             }) => HirDef::Local(self.tcx.hir().hir_to_node_id(canonical_id)),
 
-            Node::Ty(ty) => if let hir::Ty {
-                node: hir::TyKind::Path(ref qpath),
-                ..
-            } = *ty
-            {
-                match *qpath {
-                    hir::QPath::Resolved(_, ref path) => path.def,
-                    hir::QPath::TypeRelative(..) => {
-                        let ty = hir_ty_to_ty(self.tcx, ty);
-                        if let ty::Projection(proj) = ty.sty {
-                            return HirDef::AssociatedTy(proj.item_def_id);
-                        }
-                        HirDef::Err
-                    }
-                }
-            } else {
-                HirDef::Err
+            Node::Ty(&hir::Ty { node: hir::TyKind::Path(ref qpath), .. } ) => {
+                let hir_id = self.tcx.hir().node_to_hir_id(id);
+                self.tables.qpath_def(qpath, hir_id)
             },
 
             _ => HirDef::Err,
