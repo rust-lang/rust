@@ -5,6 +5,7 @@ use std::error::Error;
 use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 use std::collections::hash_map::Entry;
+use std::convert::TryInto;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
@@ -89,7 +90,14 @@ fn op_to_const<'tcx>(
     // We do not normalize just any data.  Only non-union scalars and slices.
     let normalize = match op.layout.abi {
         layout::Abi::Scalar(..) => op.layout.ty.ty_adt_def().map_or(true, |adt| !adt.is_union()),
-        layout::Abi::ScalarPair(..) => op.layout.ty.is_slice(),
+        layout::Abi::ScalarPair(..) => match op.layout.ty.sty {
+            ty::Ref(_, inner, _) => match inner.sty {
+                ty::Slice(elem) => elem == ecx.tcx.types.u8,
+                ty::Str => true,
+                _ => false,
+            },
+            _ => false,
+        },
         _ => false,
     };
     let normalized_op = if normalize {
@@ -101,8 +109,26 @@ fn op_to_const<'tcx>(
         Ok(mplace) => return mplace_to_const(ecx, mplace),
         Err(Immediate::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef().unwrap()),
-        Err(Immediate::ScalarPair(a, b)) =>
-            ConstValue::Slice(a.not_undef().unwrap(), b.to_usize(ecx).unwrap()),
+        Err(Immediate::ScalarPair(a, b)) => {
+            let (data, start) = match a.not_undef().unwrap() {
+                Scalar::Ptr(ptr) => (
+                    ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
+                    ptr.offset.bytes(),
+                ),
+                Scalar::Bits { .. } => (
+                    ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(b"", ())),
+                    0,
+                ),
+            };
+            let len = b.to_usize(&ecx.tcx.tcx).unwrap();
+            let start = start.try_into().unwrap();
+            let len: usize = len.try_into().unwrap();
+            ConstValue::Slice {
+                data,
+                start,
+                end: start + len,
+            }
+        },
     };
     ecx.tcx.mk_const(ty::Const { val, ty: op.layout.ty })
 }

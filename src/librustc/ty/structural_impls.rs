@@ -1345,7 +1345,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
             ConstValue::Param(p) => ConstValue::Param(p.fold_with(folder)),
             ConstValue::Placeholder(p) => ConstValue::Placeholder(p),
             ConstValue::Scalar(a) => ConstValue::Scalar(a),
-            ConstValue::Slice(a, b) => ConstValue::Slice(a, b),
+            ConstValue::Slice { data, start, end } => ConstValue::Slice { data, start, end },
             ConstValue::Unevaluated(did, substs)
                 => ConstValue::Unevaluated(did, substs.fold_with(folder)),
         }
@@ -1358,7 +1358,7 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
             ConstValue::Param(p) => p.visit_with(visitor),
             ConstValue::Placeholder(_) => false,
             ConstValue::Scalar(_) => false,
-            ConstValue::Slice(..) => false,
+            ConstValue::Slice { .. } => false,
             ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
     }

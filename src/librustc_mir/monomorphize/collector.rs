@@ -1255,10 +1255,10 @@ fn collect_const<'a, 'tcx>(
     debug!("visiting const {:?}", constant);
 
     match constant.val {
-        ConstValue::Slice(Scalar::Ptr(ptr), _) |
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
-        ConstValue::ByRef(_ptr, alloc) => {
+        ConstValue::Slice { data: alloc, start: _, end: _ } |
+        ConstValue::ByRef(_, alloc) => {
             for &((), id) in alloc.relocations.values() {
                 collect_miri(tcx, id, output);
             }

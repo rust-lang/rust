@@ -2207,7 +2207,7 @@ pub struct Const<'tcx> {
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert!(CONST_SIZE: ::std::mem::size_of::<Const<'static>>() == 48);
+static_assert!(CONST_SIZE: ::std::mem::size_of::<Const<'static>>() == 40);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
