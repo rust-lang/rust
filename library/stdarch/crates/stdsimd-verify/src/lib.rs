@@ -5,11 +5,12 @@ extern crate quote;
 #[macro_use]
 extern crate syn;
 
+use proc_macro::TokenStream;
+use proc_macro2::Span;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-
-use proc_macro::TokenStream;
+use syn::ext::IdentExt;
 
 #[proc_macro]
 pub fn x86_functions(input: TokenStream) -> TokenStream {
@@ -91,7 +92,7 @@ fn functions(input: TokenStream, dirs: &[&str]) -> TokenStream {
                     arguments: &[#(#arguments),*],
                     ret: #ret,
                     target_feature: #target_feature,
-                    instrs: &[#(stringify!(#instrs)),*],
+                    instrs: &[#(#instrs),*],
                     file: stringify!(#path),
                     required_const: &[#(#required_const),*],
                 }
@@ -263,35 +264,54 @@ fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
     }
 }
 
-fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
-    attrs
+fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
+    return attrs
         .iter()
-        .filter_map(|a| a.interpret_meta())
-        .filter_map(|a| match a {
-            syn::Meta::List(i) => {
-                if i.ident == "cfg_attr" {
-                    i.nested.into_iter().nth(1)
+        .filter(|a| a.path == syn::Ident::new("cfg_attr", Span::call_site()).into())
+        .filter_map(|a| syn::parse2::<AssertInstr>(a.tts.clone()).ok())
+        .map(|a| a.instr)
+        .collect();
+
+    struct AssertInstr {
+        instr: String,
+    }
+
+    // A small custom parser to parse out the instruction in `assert_instr`.
+    //
+    // TODO: should probably just reuse `Invoc` from the `assert-instr-macro`
+    // crate.
+    impl syn::parse::Parse for AssertInstr {
+        fn parse(content: syn::parse::ParseStream) -> syn::parse::Result<Self> {
+            let input;
+            parenthesized!(input in content);
+            drop(input.parse::<syn::Meta>()?);
+            drop(input.parse::<Token![,]>()?);
+            let ident = input.parse::<syn::Ident>()?;
+            if ident != "assert_instr" {
+                return Err(input.error("expected `assert_instr`"));
+            }
+            let instrs;
+            parenthesized!(instrs in input);
+
+            let mut instr = String::new();
+            while !instrs.is_empty() {
+                if let Ok(lit) = instrs.parse::<syn::LitStr>() {
+                    instr.push_str(&lit.value());
+                } else if let Ok(ident) = instrs.call(syn::Ident::parse_any) {
+                    instr.push_str(&ident.to_string());
+                } else if instrs.parse::<Token![.]>().is_ok() {
+                    instr.push_str(".");
+                } else if instrs.parse::<Token![,]>().is_ok() {
+                    // consume everything remaining
+                    drop(instrs.parse::<proc_macro2::TokenStream>());
+                    break;
                 } else {
-                    None
+                    return Err(input.error("failed to parse instruction"));
                 }
             }
-            _ => None,
-        })
-        .filter_map(|nested| match nested {
-            syn::NestedMeta::Meta(syn::Meta::List(i)) => {
-                if i.ident == "assert_instr" {
-                    i.nested.into_iter().next()
-                } else {
-                    None
-                }
-            }
-            _ => None,
-        })
-        .filter_map(|nested| match nested {
-            syn::NestedMeta::Meta(syn::Meta::Word(i)) => Some(i),
-            _ => None,
-        })
-        .collect()
+            Ok(AssertInstr { instr })
+        }
+    }
 }
 
 fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
