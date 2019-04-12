@@ -256,7 +256,11 @@ where
     ///
     /// This method runs in a potentially parallel fashion.
     pub fn par_is_subset(&self, other: &Self) -> bool {
-        self.into_par_iter().all(|x| other.contains(x))
+        if self.len() <= other.len() {
+            self.into_par_iter().all(|x| other.contains(x))
+        } else {
+            false
+        }
     }
 
     /// Returns `true` if the set is a superset of another,
