@@ -1,4 +1,4 @@
-use crate::io;
+use crate::io::{self, IoVec, IoVecMut};
 use crate::mem;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::fd::FileDesc;
@@ -60,8 +60,16 @@ impl AnonPipe {
         self.0.read(buf)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.0.read_vectored(bufs)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
     }
 
     pub fn fd(&self) -> &FileDesc { &self.0 }

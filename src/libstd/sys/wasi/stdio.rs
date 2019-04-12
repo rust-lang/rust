@@ -13,8 +13,12 @@ impl Stdin {
     }
 
     pub fn read(&self, data: &mut [u8]) -> io::Result<usize> {
+        self.read_vectored(&mut [IoVecMut::new(data)])
+    }
+
+    pub fn read_vectored(&self, data: &mut [IoVecMut<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDIN_FILENO as u32) })
-            .read(&mut [IoVecMut::new(data)])
+            .read(data)
     }
 }
 
@@ -24,8 +28,12 @@ impl Stdout {
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+        self.write_vectored(&[IoVec::new(data)])
+    }
+
+    pub fn write_vectored(&self, data: &[IoVec<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDOUT_FILENO as u32) })
-            .write(&[IoVec::new(data)])
+            .write(data)
     }
 
     pub fn flush(&self) -> io::Result<()> {
@@ -39,8 +47,12 @@ impl Stderr {
     }
 
     pub fn write(&self, data: &[u8]) -> io::Result<usize> {
+        self.write_vectored(&[IoVec::new(data)])
+    }
+
+    pub fn write_vectored(&self, data: &[IoVec<'_>]) -> io::Result<usize> {
         ManuallyDrop::new(unsafe { WasiFd::from_raw(libc::STDERR_FILENO as u32) })
-            .write(&[IoVec::new(data)])
+            .write(data)
     }
 
     pub fn flush(&self) -> io::Result<()> {
