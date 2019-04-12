@@ -45,9 +45,9 @@ fn main() {
     <u8 as E::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `E::N`
     <u8 as A::N>::NN; //~ ERROR cannot find method or associated constant `NN` in `A::N`
     let _: <u8 as Tr::Y>::NN; //~ ERROR cannot find associated type `NN` in `Tr::Y`
-    let _: <u8 as E::Y>::NN; //~ ERROR failed to resolve: not a module `Y`
+    let _: <u8 as E::Y>::NN; //~ ERROR failed to resolve: `Y` is a variant, not a module
     <u8 as Tr::Y>::NN; //~ ERROR cannot find method or associated constant `NN` in `Tr::Y`
-    <u8 as E::Y>::NN; //~ ERROR failed to resolve: not a module `Y`
+    <u8 as E::Y>::NN; //~ ERROR failed to resolve: `Y` is a variant, not a module
 
     let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found method `Dr::Z`
     <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
