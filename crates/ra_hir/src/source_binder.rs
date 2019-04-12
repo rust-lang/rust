@@ -89,27 +89,6 @@ fn module_from_source(
     )
 }
 
-pub fn const_from_source(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    const_def: &ast::ConstDef,
-) -> Option<Const> {
-    let module = module_from_child_node(db, file_id, const_def.syntax())?;
-    let res = const_from_module(db, module, const_def);
-    Some(res)
-}
-
-pub fn const_from_module(
-    db: &impl HirDatabase,
-    module: Module,
-    const_def: &ast::ConstDef,
-) -> Const {
-    let (file_id, _) = module.definition_source(db);
-    let file_id = file_id.into();
-    let ctx = LocationCtx::new(db, module, file_id);
-    Const { id: ctx.to_def(const_def) }
-}
-
 pub fn function_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Function> {
     let file = db.parse(position.file_id);
     let fn_def = find_node_at_offset::<ast::FnDef>(file.syntax(), position.offset)?;
@@ -155,27 +134,6 @@ pub fn struct_from_module(
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
     Struct { id: ctx.to_def(struct_def) }
-}
-
-pub fn static_from_source(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    static_def: &ast::StaticDef,
-) -> Option<Static> {
-    let module = module_from_child_node(db, file_id, static_def.syntax())?;
-    let res = static_from_module(db, module, static_def);
-    Some(res)
-}
-
-pub fn static_from_module(
-    db: &impl HirDatabase,
-    module: Module,
-    static_def: &ast::StaticDef,
-) -> Static {
-    let (file_id, _) = module.definition_source(db);
-    let file_id = file_id.into();
-    let ctx = LocationCtx::new(db, module, file_id);
-    Static { id: ctx.to_def(static_def) }
 }
 
 pub fn enum_from_module(db: &impl HirDatabase, module: Module, enum_def: &ast::EnumDef) -> Enum {
@@ -246,6 +204,27 @@ fn try_get_resolver_for_node(
     }
 }
 
+pub fn def_with_body_from_child_node(
+    db: &impl HirDatabase,
+    file_id: FileId,
+    node: &SyntaxNode,
+) -> Option<DefWithBody> {
+    let module = module_from_child_node(db, file_id, node)?;
+    let ctx = LocationCtx::new(db, module, file_id.into());
+    node.ancestors().find_map(|node| {
+        if let Some(def) = ast::FnDef::cast(node) {
+            return Some(Function { id: ctx.to_def(def) }.into());
+        }
+        if let Some(def) = ast::ConstDef::cast(node) {
+            return Some(Const { id: ctx.to_def(def) }.into());
+        }
+        if let Some(def) = ast::StaticDef::cast(node) {
+            return Some(Static { id: ctx.to_def(def) }.into());
+        }
+        None
+    })
+}
+
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
 /// original source files. It should not be used inside the HIR itself.
 #[derive(Debug)]
@@ -274,18 +253,7 @@ impl SourceAnalyzer {
         node: &SyntaxNode,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        let def_with_body = node.ancestors().find_map(|node| {
-            if let Some(src) = ast::FnDef::cast(node) {
-                return function_from_source(db, file_id, src).map(DefWithBody::from);
-            }
-            if let Some(src) = ast::StaticDef::cast(node) {
-                return static_from_source(db, file_id, src).map(DefWithBody::from);
-            }
-            if let Some(src) = ast::ConstDef::cast(node) {
-                return const_from_source(db, file_id, src).map(DefWithBody::from);
-            }
-            None
-        });
+        let def_with_body = def_with_body_from_child_node(db, file_id, node);
         SourceAnalyzer {
             resolver: resolver_for_node(db, file_id, node, offset),
             body_source_map: def_with_body.map(|it| it.body_source_map(db)),
