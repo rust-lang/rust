@@ -8,8 +8,6 @@ use super::super::indexed_vec::{Idx, IndexVec};
 use super::iterate::reverse_post_order;
 use super::ControlFlowGraph;
 
-use std::fmt;
-
 #[cfg(test)]
 mod test;
 
@@ -156,50 +154,5 @@ impl<'dom, Node: Idx> Iterator for Iter<'dom, Node> {
         } else {
             return None;
         }
-    }
-}
-
-pub struct DominatorTree<N: Idx> {
-    root: N,
-    children: IndexVec<N, Vec<N>>,
-}
-
-impl<Node: Idx> DominatorTree<Node> {
-    pub fn children(&self, node: Node) -> &[Node] {
-        &self.children[node]
-    }
-}
-
-impl<Node: Idx> fmt::Debug for DominatorTree<Node> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(
-            &DominatorTreeNode {
-                tree: self,
-                node: self.root,
-            },
-            fmt,
-        )
-    }
-}
-
-struct DominatorTreeNode<'tree, Node: Idx> {
-    tree: &'tree DominatorTree<Node>,
-    node: Node,
-}
-
-impl<'tree, Node: Idx> fmt::Debug for DominatorTreeNode<'tree, Node> {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let subtrees: Vec<_> = self.tree
-            .children(self.node)
-            .iter()
-            .map(|&child| DominatorTreeNode {
-                tree: self.tree,
-                node: child,
-            })
-            .collect();
-        fmt.debug_tuple("")
-            .field(&self.node)
-            .field(&subtrees)
-            .finish()
     }
 }
