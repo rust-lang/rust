@@ -26,7 +26,6 @@ use crate::infer::{InferCtxt, SuppressRegionErrors};
 use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::middle::region;
 use crate::mir::interpret::ErrorHandled;
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -984,11 +983,11 @@ fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
-    -> Lrc<Vec<Option<(DefId, SubstsRef<'tcx>)>>>
+    -> &'tcx [Option<(DefId, SubstsRef<'tcx>)>]
 {
     debug!("vtable_methods({:?})", trait_ref);
 
-    Lrc::new(
+    tcx.arena.alloc_from_iter(
         supertraits(tcx, trait_ref).flat_map(move |trait_ref| {
             let trait_methods = tcx.associated_items(trait_ref.def_id())
                 .filter(|item| item.kind == ty::AssociatedKind::Method);
@@ -1039,7 +1038,7 @@ fn vtable_methods<'a, 'tcx>(
 
                 Some((def_id, substs))
             })
-        }).collect()
+        })
     )
 }
 

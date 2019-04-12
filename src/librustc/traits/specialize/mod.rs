@@ -16,7 +16,6 @@ use crate::infer::{InferCtxt, InferOk};
 use crate::lint;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::ty::{self, TyCtxt, TypeFoldable};
@@ -289,7 +288,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 pub(super) fn specialization_graph_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_id: DefId,
-) -> Lrc<specialization_graph::Graph> {
+) -> &'tcx specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = tcx.all_impls(trait_id);
@@ -383,7 +382,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(
         }
     }
 
-    Lrc::new(sg)
+    tcx.arena.alloc(sg)
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

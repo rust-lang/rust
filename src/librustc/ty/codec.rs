@@ -6,6 +6,7 @@
 // The functionality in here is shared between persisting to crate metadata and
 // persisting to incr. comp. caches.
 
+use crate::arena::ArenaAllocatable;
 use crate::hir::def_id::{DefId, CrateNum};
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use rustc_data_structures::fx::FxHashMap;
@@ -128,6 +129,26 @@ pub trait TyDecoder<'a, 'tcx: 'a>: Decoder {
     fn positioned_at_shorthand(&self) -> bool {
         (self.peek_byte() & (SHORTHAND_OFFSET as u8)) != 0
     }
+}
+
+#[inline]
+pub fn decode_arena_allocable<'a, 'tcx, D, T: ArenaAllocatable + Decodable>(
+    decoder: &mut D
+) -> Result<&'tcx T, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    Ok(decoder.tcx().arena.alloc(Decodable::decode(decoder)?))
+}
+
+#[inline]
+pub fn decode_arena_allocable_slice<'a, 'tcx, D, T: ArenaAllocatable + Decodable>(
+    decoder: &mut D
+) -> Result<&'tcx [T], D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    Ok(decoder.tcx().arena.alloc_from_iter(<Vec<T> as Decodable>::decode(decoder)?))
 }
 
 #[inline]
@@ -274,6 +295,39 @@ macro_rules! __impl_decoder_methods {
 }
 
 #[macro_export]
+macro_rules! impl_arena_allocatable_decoder {
+    ([]$args:tt) => {};
+    ([decode $(, $attrs:ident)*]
+     [[$DecoderName:ident [$($typaram:tt),*]], [$name:ident: $ty:ty], $tcx:lifetime]) => {
+        impl<$($typaram),*> SpecializedDecoder<&$tcx $ty> for $DecoderName<$($typaram),*> {
+            #[inline]
+            fn specialized_decode(&mut self) -> Result<&$tcx $ty, Self::Error> {
+                decode_arena_allocable(self)
+            }
+        }
+
+        impl<$($typaram),*> SpecializedDecoder<&$tcx [$ty]> for $DecoderName<$($typaram),*> {
+            #[inline]
+            fn specialized_decode(&mut self) -> Result<&$tcx [$ty], Self::Error> {
+                decode_arena_allocable_slice(self)
+            }
+        }
+    };
+    ([$ignore:ident $(, $attrs:ident)*]$args:tt) => {
+        impl_arena_allocatable_decoder!([$($attrs),*]$args);
+    };
+}
+
+#[macro_export]
+macro_rules! impl_arena_allocatable_decoders {
+    ($args:tt, [$($a:tt $name:ident: $ty:ty,)*], $tcx:lifetime) => {
+        $(
+            impl_arena_allocatable_decoder!($a [$args, [$name: $ty], $tcx]);
+        )*
+    }
+}
+
+#[macro_export]
 macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
         mod __ty_decoder_impl {
@@ -321,6 +375,8 @@ macro_rules! implement_ty_decoder {
             // FIXME(#36588) These impls are horribly unsound as they allow
             // the caller to pick any lifetime for 'tcx, including 'static,
             // by using the unspecialized proxies to them.
+
+            arena_types!(impl_arena_allocatable_decoders, [$DecoderName [$($typaram),*]], 'tcx);
 
             impl<$($typaram),*> SpecializedDecoder<CrateNum>
             for $DecoderName<$($typaram),*> {

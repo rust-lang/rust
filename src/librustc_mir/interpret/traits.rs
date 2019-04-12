@@ -1,4 +1,3 @@
-use rustc_data_structures::sync::Lrc;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{Size, Align, LayoutOf};
 use rustc::mir::interpret::{Scalar, Pointer, EvalResult, PointerArithmetic};
@@ -35,7 +34,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
 
             self.tcx.vtable_methods(trait_ref)
         } else {
-            Lrc::new(Vec::new())
+            &[]
         };
 
         let layout = self.layout_of(ty)?;

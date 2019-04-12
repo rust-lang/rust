@@ -40,6 +40,7 @@
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
+#![feature(overlapping_marker_traits)]
 #![feature(extern_types)]
 #![feature(nll)]
 #![feature(non_exhaustive)]
@@ -103,6 +104,8 @@ pub mod diagnostics;
 #[macro_use]
 pub mod query;
 
+#[macro_use]
+pub mod arena;
 pub mod cfg;
 pub mod dep_graph;
 pub mod hir;
