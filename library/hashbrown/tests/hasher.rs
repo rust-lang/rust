@@ -1,5 +1,7 @@
 //! Sanity check that alternate hashers work correctly.
 
+#![cfg(not(miri))] // FIXME: takes too long
+
 use hashbrown::HashSet;
 use std::hash::{BuildHasher, BuildHasherDefault, Hasher};
 
