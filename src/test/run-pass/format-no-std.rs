@@ -1,6 +1,6 @@
 // ignore-emscripten no no_std executables
 
-#![feature(lang_items, start, alloc)]
+#![feature(lang_items, start)]
 #![no_std]
 
 extern crate std as other;
