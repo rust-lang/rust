@@ -997,6 +997,7 @@ where
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
                 ref discr,
+                discr_index,
                 ..
             } => {
                 let adt_def = dest.layout.ty.ty_adt_def().unwrap();
@@ -1011,7 +1012,7 @@ where
                 let size = discr.value.size(self);
                 let discr_val = truncate(discr_val, size);
 
-                let discr_dest = self.place_field(dest, 0)?;
+                let discr_dest = self.place_field(dest, discr_index as u64)?;
                 self.write_scalar(Scalar::from_uint(discr_val, size), discr_dest)?;
             }
             layout::Variants::Multiple {
@@ -1020,6 +1021,7 @@ where
                     ref niche_variants,
                     niche_start,
                 },
+                discr_index,
                 ..
             } => {
                 assert!(
@@ -1027,7 +1029,7 @@ where
                 );
                 if variant_index != dataful_variant {
                     let niche_dest =
-                        self.place_field(dest, 0)?;
+                        self.place_field(dest, discr_index as u64)?;
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                     let niche_value = (niche_value as u128)
                         .wrapping_add(niche_start);

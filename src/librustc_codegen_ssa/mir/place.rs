@@ -216,19 +216,19 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         if self.layout.abi.is_uninhabited() {
             return bx.cx().const_undef(cast_to);
         }
-        let (discr_scalar, discr_kind) = match self.layout.variants {
+        let (discr_scalar, discr_kind, discr_index) = match self.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = self.layout.ty.ty_adt_def().map_or(
                     index.as_u32() as u128,
                     |def| def.discriminant_for_variant(bx.cx().tcx(), index).val);
                 return bx.cx().const_uint_big(cast_to, discr_val);
             }
-            layout::Variants::Multiple { ref discr, ref discr_kind, .. } => {
-                (discr, discr_kind)
+            layout::Variants::Multiple { ref discr, ref discr_kind, discr_index, .. } => {
+                (discr, discr_kind, discr_index)
             }
         };
 
-        let discr = self.project_field(bx, 0);
+        let discr = self.project_field(bx, discr_index);
         let lldiscr = bx.load_operand(discr).immediate();
         match *discr_kind {
             layout::DiscriminantKind::Tag => {
@@ -292,9 +292,10 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
+                discr_index,
                 ..
             } => {
-                let ptr = self.project_field(bx, 0);
+                let ptr = self.project_field(bx, discr_index);
                 let to = self.layout.ty.ty_adt_def().unwrap()
                     .discriminant_for_variant(bx.tcx(), variant_index)
                     .val;
@@ -309,6 +310,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                     ref niche_variants,
                     niche_start,
                 },
+                discr_index,
                 ..
             } => {
                 if variant_index != dataful_variant {
@@ -321,7 +323,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                         bx.memset(self.llval, fill_byte, size, self.align, MemFlags::empty());
                     }
 
-                    let niche = self.project_field(bx, 0);
+                    let niche = self.project_field(bx, discr_index);
                     let niche_llty = bx.cx().immediate_backend_type(niche.layout);
                     let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
                     let niche_value = (niche_value as u128)
