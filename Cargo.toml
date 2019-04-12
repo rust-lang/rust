@@ -45,7 +45,7 @@ shell-escape = "0.1.4"
 # for more information.
 rustc-workspace-hack = "1.0.0"
 hex = "0.3.2"
-rand = "0.6.5"
+rand = "0.6"
 
 [build-dependencies]
 vergen = "3"
