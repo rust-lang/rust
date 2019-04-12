@@ -851,8 +851,34 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            let is_semi_suggestable = expected.iter().any(|t| match t {
+                TokenType::Token(token::Semi) => true, // we expect a `;` here
+                _ => false,
+            }) && ( // a `;` would be expected before the current keyword
+                self.token.is_keyword(keywords::Break) ||
+                self.token.is_keyword(keywords::Continue) ||
+                self.token.is_keyword(keywords::For) ||
+                self.token.is_keyword(keywords::If) ||
+                self.token.is_keyword(keywords::Let) ||
+                self.token.is_keyword(keywords::Loop) ||
+                self.token.is_keyword(keywords::Match) ||
+                self.token.is_keyword(keywords::Return) ||
+                self.token.is_keyword(keywords::While)
+            );
             let cm = self.sess.source_map();
             match (cm.lookup_line(self.span.lo()), cm.lookup_line(sp.lo())) {
+                (Ok(ref a), Ok(ref b)) if a.line != b.line && is_semi_suggestable => {
+                    // The spans are in different lines, expected `;` and found `let` or `return`.
+                    // High likelihood that it is only a missing `;`.
+                    err.span_suggestion_short(
+                        label_sp,
+                        "a semicolon may be missing here",
+                        ";".to_string(),
+                        Applicability::MaybeIncorrect,
+                    );
+                    err.emit();
+                    return Ok(true);
+                }
                 (Ok(ref a), Ok(ref b)) if a.line == b.line => {
                     // When the spans are in the same line, it means that the only content between
                     // them is whitespace, point at the found token in that case:
