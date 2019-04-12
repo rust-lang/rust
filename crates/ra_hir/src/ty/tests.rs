@@ -4,7 +4,7 @@ use std::fmt::Write;
 use insta::assert_snapshot_matches;
 
 use ra_db::{SourceDatabase, salsa::Database, FilePosition};
-use ra_syntax::{algo, ast::{self, AstNode}};
+use ra_syntax::{algo, ast::{self, AstNode}, SyntaxKind::*};
 use test_utils::covers;
 
 use crate::{
@@ -12,7 +12,8 @@ use crate::{
     mock::MockDatabase,
     ty::display::HirDisplay,
     ty::InferenceResult,
-    expr::BodySourceMap
+    expr::BodySourceMap,
+    SourceAnalyzer,
 };
 
 // These tests compare the inference results for all expressions in a file
@@ -1862,14 +1863,14 @@ fn test() {
         @r###"
 [49; 50) '0': u32
 [80; 83) '101': u32
-[126; 128) '99': u32
 [95; 213) '{     ...NST; }': ()
 [138; 139) 'x': {unknown}
 [142; 153) 'LOCAL_CONST': {unknown}
 [163; 164) 'z': u32
 [167; 179) 'GLOBAL_CONST': u32
 [189; 191) 'id': u32
-[194; 210) 'Foo::A..._CONST': u32"###
+[194; 210) 'Foo::A..._CONST': u32
+[126; 128) '99': u32"###
     );
 }
 
@@ -1891,8 +1892,6 @@ fn test() {
         @r###"
 [29; 32) '101': u32
 [70; 73) '101': u32
-[118; 120) '99': u32
-[161; 163) '99': u32
 [85; 280) '{     ...MUT; }': ()
 [173; 174) 'x': {unknown}
 [177; 189) 'LOCAL_STATIC': {unknown}
@@ -1901,7 +1900,9 @@ fn test() {
 [229; 230) 'z': u32
 [233; 246) 'GLOBAL_STATIC': u32
 [256; 257) 'w': u32
-[260; 277) 'GLOBAL...IC_MUT': u32"###
+[260; 277) 'GLOBAL...IC_MUT': u32
+[118; 120) '99': u32
+[161; 163) '99': u32"###
     );
 }
 
@@ -2350,25 +2351,11 @@ fn infer(content: &str) -> String {
         }
     };
 
-    for const_def in source_file.syntax().descendants().filter_map(ast::ConstDef::cast) {
-        let konst = source_binder::const_from_source(&db, file_id, const_def).unwrap();
-        let inference_result = konst.infer(&db);
-        let body_source_map = konst.body_source_map(&db);
-        infer_def(inference_result, body_source_map)
-    }
-
-    for static_def in source_file.syntax().descendants().filter_map(ast::StaticDef::cast) {
-        let static_ = source_binder::static_from_source(&db, file_id, static_def).unwrap();
-        let inference_result = static_.infer(&db);
-        let body_source_map = static_.body_source_map(&db);
-        infer_def(inference_result, body_source_map)
-    }
-
-    for fn_def in source_file.syntax().descendants().filter_map(ast::FnDef::cast) {
-        let func = source_binder::function_from_source(&db, file_id, fn_def).unwrap();
-        let inference_result = func.infer(&db);
-        let body_source_map = func.body_source_map(&db);
-        infer_def(inference_result, body_source_map)
+    for node in source_file.syntax().descendants() {
+        if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
+            let analyzer = SourceAnalyzer::new(&db, file_id, node, None);
+            infer_def(analyzer.inference_result(), analyzer.body_source_map());
+        }
     }
 
     acc.truncate(acc.trim_end().len());

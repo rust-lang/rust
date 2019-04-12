@@ -343,4 +343,14 @@ impl SourceAnalyzer {
         };
         Some(res)
     }
+
+    #[cfg(test)]
+    pub(crate) fn body_source_map(&self) -> Arc<crate::expr::BodySourceMap> {
+        self.body_source_map.clone().unwrap()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn inference_result(&self) -> Arc<crate::ty::InferenceResult> {
+        self.infer.clone().unwrap()
+    }
 }

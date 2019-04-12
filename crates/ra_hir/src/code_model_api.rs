@@ -606,11 +606,6 @@ impl Const {
         db.infer((*self).into())
     }
 
-    #[cfg(test)]
-    pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map((*self).into()).1
-    }
-
     /// The containing impl block, if this is a method.
     pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
@@ -678,11 +673,6 @@ impl Static {
 
     pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer((*self).into())
-    }
-
-    #[cfg(test)]
-    pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map((*self).into()).1
     }
 }
 
