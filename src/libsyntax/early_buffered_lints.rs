@@ -12,8 +12,6 @@ pub enum BufferedEarlyLintId {
     /// Usage of `?` as a macro separator is deprecated.
     QuestionMarkMacroSep,
     IllFormedAttributeInput,
-    /// Usage of a duplicate macro matcher binding name.
-    DuplicateMacroMatcherBindingName,
 }
 
 /// Stores buffered lint info which can later be passed to `librustc`.
