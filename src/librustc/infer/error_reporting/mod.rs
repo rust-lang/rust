@@ -604,13 +604,39 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 source,
                 ref prior_arms,
                 last_ty,
+                discrim_hir_id,
                 ..
             } => match source {
                 hir::MatchSource::IfLetDesugar { .. } => {
                     let msg = "`if let` arms have incompatible types";
                     err.span_label(cause.span, msg);
                 }
-                hir::MatchSource::TryDesugar => {}
+                hir::MatchSource::TryDesugar => {
+                    if let Some(ty::error::ExpectedFound { expected, .. }) = exp_found {
+                        let discrim_expr = self.tcx.hir().expect_expr_by_hir_id(discrim_hir_id);
+                        let discrim_ty = if let hir::ExprKind::Call(_, args) = &discrim_expr.node {
+                            let arg_expr = args.first().expect("try desugaring call w/out arg");
+                            self.in_progress_tables.and_then(|tables| {
+                                tables.borrow().expr_ty_opt(arg_expr)
+                            })
+                        } else {
+                            bug!("try desugaring w/out call expr as discriminant");
+                        };
+
+                        match discrim_ty {
+                            Some(ty) if expected == ty => {
+                                let source_map = self.tcx.sess.source_map();
+                                err.span_suggestion(
+                                    source_map.end_point(cause.span),
+                                    "try removing this `?`",
+                                    "".to_string(),
+                                    Applicability::MachineApplicable,
+                                );
+                            },
+                            _ => {},
+                        }
+                    }
+                }
                 _ => {
                     let msg = "`match` arms have incompatible types";
                     err.span_label(cause.span, msg);

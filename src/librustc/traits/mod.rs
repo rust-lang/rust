@@ -226,6 +226,7 @@ pub enum ObligationCauseCode<'tcx> {
         source: hir::MatchSource,
         prior_arms: Vec<Span>,
         last_ty: Ty<'tcx>,
+        discrim_hir_id: hir::HirId,
     },
 
     /// Computing common supertype in the pattern guard for the arms of a match expression
