@@ -1,4 +1,3 @@
-use crate::boxed::FnBox;
 use crate::io;
 use crate::ffi::CStr;
 use crate::mem;
@@ -20,7 +19,7 @@ pub struct Thread {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnBox()>)
+    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>)
                           -> io::Result<Thread> {
         let p = box p;
 

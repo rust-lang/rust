@@ -1,5 +1,4 @@
 #![cfg_attr(test, allow(dead_code))] // why is this necessary?
-use crate::boxed::FnBox;
 use crate::ffi::CStr;
 use crate::io;
 use crate::time::Duration;
@@ -13,17 +12,16 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 mod task_queue {
     use crate::sync::{Mutex, MutexGuard, Once};
     use crate::sync::mpsc;
-    use crate::boxed::FnBox;
 
     pub type JoinHandle = mpsc::Receiver<()>;
 
     pub(super) struct Task {
-        p: Box<dyn FnBox()>,
+        p: Box<dyn FnOnce()>,
         done: mpsc::Sender<()>,
     }
 
     impl Task {
-        pub(super) fn new(p: Box<dyn FnBox()>) -> (Task, JoinHandle) {
+        pub(super) fn new(p: Box<dyn FnOnce()>) -> (Task, JoinHandle) {
             let (done, recv) = mpsc::channel();
             (Task { p, done }, recv)
         }
@@ -51,7 +49,7 @@ mod task_queue {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, p: Box<dyn FnBox()>)
+    pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>)
         -> io::Result<Thread>
     {
         let mut queue_lock = task_queue::lock();
