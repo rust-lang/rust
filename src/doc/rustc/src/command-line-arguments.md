@@ -86,6 +86,13 @@ This flag will set which lints should be set to the [deny level](lints/levels.ht
 
 This flag will set which lints should be set to the [forbid level](lints/levels.html#forbid).
 
+## `-Z`: set unstable options
+
+This flag will allow you to set unstable options of rustc. In order to set multiple options,
+the -Z flag can be used multiple times. For example: `rustc -Z verbose -Z time`.
+Specifying options with -Z is only available on nightly. To view all available options
+run: `rustc -Z help`.
+
 ## `--cap-lints`: set the most restrictive lint level
 
 This flag lets you 'cap' lints, for more, [see here](lints/levels.html#capping-lints).
