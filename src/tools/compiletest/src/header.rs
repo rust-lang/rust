@@ -303,6 +303,10 @@ pub struct TestProps {
     // For UI tests, allows compiler to generate arbitrary output to stderr
     pub dont_check_compiler_stderr: bool,
     // Don't force a --crate-type=dylib flag on the command line
+    //
+    // Set this for example if you have an auxiliary test file that contains
+    // a proc-macro and needs `#![crate_type = "proc-macro"]`. This ensures
+    // that the aux file is compiled as a `proc-macro` and not as a `dylib`.
     pub no_prefer_dynamic: bool,
     // Run --pretty expanded when running pretty printing tests
     pub pretty_expanded: bool,
@@ -490,7 +494,7 @@ impl TestProps {
             }
 
             if !self.compile_pass {
-                // run-pass implies must_compile_successfully
+                // run-pass implies compile_pass
                 self.compile_pass = config.parse_compile_pass(ln) || self.run_pass;
             }
 
