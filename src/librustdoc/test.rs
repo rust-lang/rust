@@ -77,7 +77,7 @@ pub fn run(options: Options) -> i32 {
     let display_warnings = options.display_warnings;
 
     let tests = interface::run_compiler(config, |compiler| -> Result<_, ErrorReported> {
-        compiler.enter(|tcx| {
+        compiler.enter(|compiler, tcx| {
             let lower_to_hir = tcx.lower_ast_to_hir(())?;
 
             let mut opts = scrape_test_config(lower_to_hir.forest.krate());
@@ -322,14 +322,13 @@ fn run_test(
 
     let compile_result = panic::catch_unwind(AssertUnwindSafe(|| {
         interface::run_compiler(config, |compiler| {
+            let sess = compiler.session().clone();
             if no_run {
-                compiler.global_ctxt().and_then(|global_ctxt| global_ctxt.take().enter(|tcx| {
-                    tcx.analysis(LOCAL_CRATE)
-                })).ok();
+                compiler.enter(|_, tcx| tcx.analysis(LOCAL_CRATE)).ok();
             } else {
                 compiler.compile().ok();
             };
-            compiler.session().compile_status()
+            sess.compile_status()
         })
     })).map_err(|_| ()).and_then(|s| s.map_err(|_| ()));
 

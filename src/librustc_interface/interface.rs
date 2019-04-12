@@ -1,22 +1,24 @@
-use crate::queries::Queries;
 use crate::util;
 use crate::profile;
+use crate::passes;
 pub use crate::passes::BoxedResolver;
 
 use rustc::lint;
-use rustc::session::config::{self, Input, InputsAndOutputs};
+use rustc::session::config::{self, Input, InputsAndOutputs, OutputType};
+use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::{DiagnosticOutput, Session};
 use rustc::util::common::ErrorReported;
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, OneThread};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_metadata::cstore::CStore;
 use std::io::Write;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
+use std::mem;
 use syntax;
 use syntax::source_map::{FileLoader, SourceMap};
 use syntax_pos::edition;
@@ -31,7 +33,6 @@ pub struct Compiler {
     codegen_backend: Arc<dyn CodegenBackend + Send + Sync>,
     source_map: Lrc<SourceMap>,
     pub(crate) io: InputsAndOutputs,
-    pub(crate) queries: Queries,
     pub(crate) cstore: Lrc<CStore>,
     pub(crate) crate_name: Option<String>,
 }
@@ -58,11 +59,61 @@ impl Compiler {
     pub fn output_file(&self) -> &Option<PathBuf> {
         &self.io.output_file
     }
-    pub fn enter<F, R>(&self, f: F) -> R
+    pub fn enter<F, R>(self, f: F) -> R
     where
-        F: FnOnce(TyCtxt<'_>) -> R
+        F: FnOnce(&Compiler, TyCtxt<'_>) -> R
     {
-        self.global_ctxt().unwrap().peek_mut().enter(f)
+        passes::enter_global_ctxt(&self, f)
+    }
+    pub fn linker(&self, tcx: TyCtxt<'_>) -> Result<Linker> {
+        tcx.ongoing_codegen(LOCAL_CRATE).map(|ongoing_codegen| {
+            Linker {
+                sess: self.sess.clone(),
+                ongoing_codegen,
+                codegen_backend: self.codegen_backend.clone(),
+            }
+        })
+    }
+    pub fn compile(self) -> Result<()> {
+        let link = self.enter(|compiler, tcx| {
+            tcx.prepare_outputs(())?;
+
+            if tcx.sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                && tcx.sess.opts.output_types.len() == 1
+            {
+                return Ok(None)
+            }
+
+            tcx.lower_ast_to_hir(())?;
+            // Drop AST after lowering HIR to free memory
+            mem::drop(tcx.expand_macros(()).unwrap().ast_crate.steal());
+
+            compiler.linker(tcx).map(|linker| Some(linker))
+        })?;
+
+        // Run linker outside `enter` so GlobalCtxt is freed
+        if let Some(linker) = link {
+            linker.link()
+        } else {
+            Ok(())
+        }
+    }
+}
+
+pub struct Linker {
+    sess: Lrc<Session>,
+    ongoing_codegen: Lrc<ty::OngoingCodegen>,
+    codegen_backend: Arc<dyn CodegenBackend + Send + Sync>,
+}
+
+impl Linker {
+    pub fn link(self) -> Result<()> {
+        self.codegen_backend.join_codegen_and_link(
+            OneThread::into_inner(self.ongoing_codegen.codegen_object.steal()),
+            &self.sess,
+            &self.ongoing_codegen.dep_graph,
+            &self.ongoing_codegen.outputs,
+        ).map_err(|_| ErrorReported)
     }
 }
 
@@ -90,7 +141,7 @@ pub struct Config {
 
 pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
 where
-    F: FnOnce(&Compiler) -> R,
+    F: FnOnce(Compiler) -> R,
 {
     let (sess, codegen_backend, source_map) = util::create_session(
         config.opts,
@@ -104,7 +155,7 @@ where
     let cstore = Lrc::new(CStore::new(codegen_backend.metadata_loader()));
 
     let compiler = Compiler {
-        sess,
+        sess: sess.clone(),
         codegen_backend,
         source_map,
         cstore,
@@ -114,22 +165,21 @@ where
             output_dir: config.output_dir,
             output_file: config.output_file,
         },
-        queries: Default::default(),
         crate_name: config.crate_name,
     };
 
     let _sess_abort_error = OnDrop(|| {
-        compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());
+        sess.diagnostic().print_error_count(&util::diagnostics_registry());
     });
 
-    if compiler.sess.profile_queries() {
-        profile::begin(&compiler.sess);
+    if sess.profile_queries() {
+        profile::begin(&sess);
     }
 
-    let r = f(&compiler);
+    let r = f(compiler);
 
-    if compiler.sess.profile_queries() {
-        profile::dump(&compiler.sess, "profile_queries".to_string())
+    if sess.profile_queries() {
+        profile::dump(&sess, "profile_queries".to_string())
     }
 
     r
@@ -137,7 +187,7 @@ where
 
 pub fn run_compiler<F, R>(mut config: Config, f: F) -> R
 where
-    F: FnOnce(&Compiler) -> R + Send,
+    F: FnOnce(Compiler) -> R + Send,
     R: Send,
 {
     let stderr = config.stderr.take();

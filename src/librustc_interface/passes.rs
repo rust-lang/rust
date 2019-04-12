@@ -946,74 +946,49 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
     cstore::provide_extern(providers);
 }
 
-declare_box_region_type!(
-    pub BoxedGlobalCtxt,
-    for('tcx),
-    (&'tcx GlobalCtxt<'tcx>) -> ((), ())
-);
-
-impl BoxedGlobalCtxt {
-    pub fn enter<F, R>(&mut self, f: F) -> R
-    where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
-    {
-        self.access(|gcx| ty::tls::enter_global(gcx, |tcx| f(tcx)))
-    }
-}
-
-pub fn create_global_ctxt(
+pub fn enter_global_ctxt<F, R>(
     compiler: &Compiler,
-    io: InputsAndOutputs,
-) -> BoxedGlobalCtxt {
-    let sess = compiler.session().clone();
-    let cstore = compiler.cstore.clone();
+    f: F,
+) -> R
+where
+    F: FnOnce(&Compiler, TyCtxt<'_>) -> R
+{
     let codegen_backend = compiler.codegen_backend().clone();
-    let crate_name = compiler.crate_name.clone();
+    let sess = &*compiler.session();
+    let cstore = &compiler.cstore.clone();
 
-    let ((), result) = BoxedGlobalCtxt::new(static move || {
-        let sess = &sess;
-        let cstore = &cstore;
+    let global_ctxt: Option<GlobalCtxt<'_>>;
+    let arenas = AllArenas::new();
 
-        let global_ctxt: Option<GlobalCtxt<'_>>;
-        let arenas = AllArenas::new();
+    let mut local_providers = ty::query::Providers::default();
+    default_provide(&mut local_providers);
+    codegen_backend.provide(&mut local_providers);
 
-        let mut local_providers = ty::query::Providers::default();
-        default_provide(&mut local_providers);
-        codegen_backend.provide(&mut local_providers);
+    let mut extern_providers = local_providers;
+    default_provide_extern(&mut extern_providers);
+    codegen_backend.provide_extern(&mut extern_providers);
 
-        let mut extern_providers = local_providers;
-        default_provide_extern(&mut extern_providers);
-        codegen_backend.provide_extern(&mut extern_providers);
+    let gcx = TyCtxt::create_global_ctxt(
+        sess,
+        &**cstore,
+        cstore,
+        local_providers,
+        extern_providers,
+        &arenas,
+        compiler.crate_name.clone(),
+        Box::new(codegen_backend),
+        compiler.io.clone(),
+    );
 
-        // Move the dyn Any coercion outside the generator to avoid lifetime issues
-        fn codegen_backend_any(
-            i: Arc<dyn CodegenBackend + Send + Sync>
-        ) -> Box<dyn Any + Send + Sync> {
-            Box::new(i)
-        }
+    global_ctxt = Some(gcx);
+    let gcx = global_ctxt.as_ref().unwrap();
 
-        let gcx = TyCtxt::create_global_ctxt(
-            sess,
-            &**cstore,
-            cstore,
-            local_providers,
-            extern_providers,
-            &arenas,
-            crate_name,
-            codegen_backend_any(codegen_backend.clone()),
-            io,
-        );
+    let result = ty::tls::enter_global(gcx, |tcx| f(compiler, tcx));
 
-        global_ctxt = Some(gcx);
-        let gcx = global_ctxt.as_ref().unwrap();
 
-        yield BoxedGlobalCtxt::initial_yield(());
-        box_region_allow_access!(for('tcx), (&'tcx GlobalCtxt<'tcx>), (gcx));
-
-        if sess.opts.debugging_opts.query_stats {
-            gcx.queries.print_stats();
-        }
-    });
+    if sess.opts.debugging_opts.query_stats {
+        gcx.queries.print_stats();
+    }
 
     result
 }

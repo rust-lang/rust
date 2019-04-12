@@ -36,6 +36,7 @@ use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
+use rustc::ty::TyCtxt;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::util::common::{ErrorReported, install_panic_hook, print_time_passes_entry};
 use rustc::util::common::{set_time_depth, time};
@@ -106,11 +107,19 @@ pub trait Callbacks {
     /// Called before creating the compiler instance
     fn config(&mut self, _config: &mut interface::Config) {}
     /// Called after parsing and returns true to continue execution
-    fn after_parsing(&mut self, _compiler: &interface::Compiler) -> bool {
+    fn after_parsing(
+        &mut self,
+        _compiler: &interface::Compiler,
+        _tcx: TyCtxt<'_>,
+    ) -> bool {
         true
     }
     /// Called after analysis and returns true to continue execution
-    fn after_analysis(&mut self, _compiler: &interface::Compiler) -> bool {
+    fn after_analysis(
+        &mut self,
+        _compiler: &interface::Compiler,
+        _tcx: TyCtxt<'_>,
+    ) -> bool {
         true
     }
 }
@@ -244,7 +253,8 @@ pub fn run_compiler(
     let pretty_info = parse_pretty(&mut config.opts, &matches);
 
     interface::run_compiler(config, |compiler| {
-        let sess = compiler.session();
+        let sess = compiler.session().clone();
+        let sess = &*sess;
         let should_stop = RustcDefaultCalls::print_crate_info(
             &**compiler.codegen_backend(),
             sess,
@@ -262,9 +272,9 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        if let Some((ppm, opt_uii)) = pretty_info {
-            if ppm.needs_ast_map(&opt_uii) {
-                compiler.enter(|tcx| {
+        let link = compiler.enter(|compiler, tcx| {
+            if let Some((ppm, opt_uii)) = pretty_info {
+                if ppm.needs_ast_map(&opt_uii) {
                     let expansion_result = tcx.expand_macros(())?;
                     pretty::print_after_hir_lowering(
                         tcx,
@@ -274,11 +284,8 @@ pub fn run_compiler(
                         opt_uii.clone(),
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
-                    Ok(())
-                })?;
-                return sess.compile_status();
-            } else {
-                compiler.enter(|tcx| {
+                    return sess.compile_status().map(|_| None);
+                } else {
                     let krate = tcx.parse(())?;
                     let krate = krate.borrow();
                     pretty::print_after_parsing(
@@ -288,57 +295,48 @@ pub fn run_compiler(
                         ppm,
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
-                    Ok(())
-                })?;
-                return sess.compile_status();
+                    return sess.compile_status().map(|_| None);
+                }
             }
-        }
 
-        compiler.enter(|tcx| tcx.parse(()))?;
+            tcx.parse(())?;
 
-        if !callbacks.after_parsing(compiler) {
-            return sess.compile_status();
-        }
+            if !callbacks.after_parsing(compiler, tcx) {
+                return sess.compile_status().map(|_| None);
+            }
 
-        if sess.opts.debugging_opts.parse_only ||
-           sess.opts.debugging_opts.show_span.is_some() ||
-           sess.opts.debugging_opts.ast_json_noexpand {
-            return sess.compile_status();
-        }
+            if sess.opts.debugging_opts.parse_only ||
+            sess.opts.debugging_opts.show_span.is_some() ||
+            sess.opts.debugging_opts.ast_json_noexpand {
+                return sess.compile_status().map(|_| None);
+            }
 
-        compiler.enter(|tcx| tcx.register_plugins(()))?;
+            tcx.register_plugins(())?;
 
-        // Lint plugins are registered; now we can process command line flags.
-        if sess.opts.describe_lints {
-            describe_lints(&sess, &sess.lint_store.borrow(), true);
-            return sess.compile_status();
-        }
+            // Lint plugins are registered; now we can process command line flags.
+            if sess.opts.describe_lints {
+                describe_lints(&sess, &sess.lint_store.borrow(), true);
+                return sess.compile_status().map(|_| None);
+            }
 
-        compiler.enter(|tcx| {
             tcx.prepare_outputs(())?;
-            Ok(())
-        })?;
 
-        if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-            && sess.opts.output_types.len() == 1
-        {
-            return sess.compile_status();
-        }
+            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                && sess.opts.output_types.len() == 1
+            {
+                return sess.compile_status().map(|_| None);
+            }
 
-        compiler.enter(|tcx| {
             tcx.lower_ast_to_hir(())?;
-            Ok(())
-        })?;
 
-        if sess.opts.debugging_opts.no_analysis ||
-           sess.opts.debugging_opts.ast_json {
-            return sess.compile_status();
-        }
+            if sess.opts.debugging_opts.no_analysis ||
+            sess.opts.debugging_opts.ast_json {
+                return sess.compile_status().map(|_| None);
+            }
 
-        if sess.opts.debugging_opts.save_analysis {
-            compiler.enter(|tcx| {
+            if sess.opts.debugging_opts.save_analysis {
                 let expansion_result = tcx.expand_macros(())?;
-                let result = tcx.analysis(LOCAL_CRATE);
+                tcx.analysis(LOCAL_CRATE).ok();
                 let crate_name = &tcx.crate_name(LOCAL_CRATE).as_str();
 
                 time(sess, "save analysis", || {
@@ -351,41 +349,36 @@ pub fn run_compiler(
                         DumpHandler::new(compiler.output_dir().as_ref().map(|p| &**p), crate_name)
                     )
                 });
-
-                result
                 // AST will be dropped *after* the `after_analysis` callback
                 // (needed by the RLS)
-            })?;
-        } else {
-            compiler.enter(|tcx| {
+            } else {
                 // Drop AST after lowering HIR to free memory
                 mem::drop(tcx.expand_macros(()).unwrap().ast_crate.steal());
-            });
-        }
+            }
 
-        compiler.enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
+            tcx.analysis(LOCAL_CRATE)?;
 
-        if !callbacks.after_analysis(compiler) {
-            return sess.compile_status();
-        }
+            if !callbacks.after_analysis(compiler, tcx) {
+                return sess.compile_status().map(|_| None);
+            }
 
-        if sess.opts.debugging_opts.save_analysis {
-            compiler.enter(|tcx| {
-                // Drop AST after lowering HIR to free memory
+            if sess.opts.debugging_opts.save_analysis {
+                // Drop AST after running `after_analysis` callback to free memory
                 mem::drop(tcx.expand_macros(()).unwrap().ast_crate.steal());
-            });
-        }
+            }
 
-        compiler.ongoing_codegen()?;
+            compiler.linker(tcx).map(|linker| Some(linker))
+        })?;
 
-        // Drop GlobalCtxt after starting codegen to free memory
-        mem::drop(compiler.global_ctxt()?.take());
 
         if sess.opts.debugging_opts.print_type_sizes {
             sess.code_stats.borrow().print_type_sizes();
         }
 
-        compiler.link()?;
+        // Run linker outside `enter` so GlobalCtxt is freed
+        if let Some(linker) = link {
+            linker.link()?;
+        }
 
         if sess.opts.debugging_opts.perf_stats {
             sess.print_perf_stats();

@@ -339,7 +339,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {
-        abort_on_err(compiler.global_ctxt(), compiler.session()).take().enter(|tcx| {
+        compiler.enter(|compiler, tcx| {
             let sess = compiler.session();
 
             // We need to hold on to the complete resolver, so we cause everything to be

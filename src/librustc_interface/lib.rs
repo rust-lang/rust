@@ -18,7 +18,6 @@ extern crate libc;
 
 pub mod interface;
 mod passes;
-mod queries;
 pub mod util;
 mod proc_macro_decls;
 mod profile;
