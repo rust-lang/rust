@@ -213,7 +213,7 @@ pub trait AsMut<T: ?Sized> {
 ///
 /// # Generic Implementations
 ///
-/// - [`From<T>`]` for U` implies `Into<U> for T`
+/// - [`From`]`<T> for U` implies `Into<U> for T`
 /// - [`Into`]` is reflexive, which means that `Into<T> for T` is implemented
 ///
 /// # Implementing `Into` for conversions to external types
@@ -273,7 +273,7 @@ pub trait AsMut<T: ?Sized> {
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [From]: trait.From.html
+/// [`From`]: trait.From.html
 /// [`into`]: trait.Into.html#tymethod.into
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
@@ -285,18 +285,18 @@ pub trait Into<T>: Sized {
 /// Used to do value-to-value conversions while consuming the input value. It is the reciprocal of
 /// [`Into`].
 ///
-/// One should always prefer implementing [`From`] over [`Into`]
-/// because implementing [`From`] automatically provides one with a implementation of [`Into`]
+/// One should always prefer implementing `From` over [`Into`]
+/// because implementing `From` automatically provides one with a implementation of [`Into`]
 /// thanks to the blanket implementation in the standard library.
 ///
 /// Only implement [`Into`] if a conversion to a type outside the current crate is required.
-/// [`From`] cannot do these type of conversions because of Rust's orphaning rules.
+/// `From` cannot do these type of conversions because of Rust's orphaning rules.
 /// See [`Into`] for more details.
 ///
-/// Prefer using [`Into`] over using [`From`] when specifying trait bounds on a generic function.
+/// Prefer using [`Into`] over using `From` when specifying trait bounds on a generic function.
 /// This way, types that directly implement [`Into`] can be used as arguments as well.
 ///
-/// The [`From`] is also very useful when performing error handling. When constructing a function
+/// The `From` is also very useful when performing error handling. When constructing a function
 /// that is capable of failing, the return type will generally be of the form `Result<T, E>`.
 /// The `From` trait simplifies error handling by allowing a function to return a single error type
 /// that encapsulate multiple error types. See the "Examples" section and [the book][book] for more
@@ -306,8 +306,8 @@ pub trait Into<T>: Sized {
 ///
 /// # Generic Implementations
 ///
-/// - [`From<T>`]` for U` implies [`Into<U>`]` for T`
-/// - [`From`] is reflexive, which means that `From<T> for T` is implemented
+/// - `From<T>` for U` implies [`Into`]`<U> for T`
+/// - `From` is reflexive, which means that `From<T> for T` is implemented
 ///
 /// # Examples
 ///
@@ -361,7 +361,7 @@ pub trait Into<T>: Sized {
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`Into<U>`]: trait.Into.html
+/// [`Into`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -422,7 +422,7 @@ pub trait TryInto<T>: Sized {
 ///
 /// # Generic Implementations
 ///
-/// - `TryFrom<T> for U` implies [`TryInto<U>`]` for T`
+/// - `TryFrom<T> for U` implies [`TryInto`]`<U> for T`
 /// - [`try_from`] is reflexive, which means that `TryFrom<T> for T`
 /// is implemented and cannot fail -- the associated `Error` type for
 /// calling `T::try_from()` on a value of type `T` is `Infallible`.
