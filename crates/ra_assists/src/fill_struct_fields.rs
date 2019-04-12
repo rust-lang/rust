@@ -55,6 +55,7 @@ where
             self.ctx.db,
             self.ctx.frange.file_id,
             self.struct_lit.syntax(),
+            None,
         );
         let struct_lit_ty = analyzer.type_of(self.ctx.db, self.struct_lit.into())?;
         let struct_def = match struct_lit_ty.as_adt() {

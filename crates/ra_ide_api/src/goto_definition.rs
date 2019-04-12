@@ -47,7 +47,7 @@ pub(crate) fn reference_definition(
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax());
+    let analyzer = hir::SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
 
     // Special cases:
 

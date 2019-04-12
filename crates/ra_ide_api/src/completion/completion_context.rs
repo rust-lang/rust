@@ -48,7 +48,8 @@ impl<'a> CompletionContext<'a> {
     ) -> Option<CompletionContext<'a>> {
         let module = source_binder::module_from_position(db, position);
         let token = find_token_at_offset(original_file.syntax(), position.offset).left_biased()?;
-        let analyzer = hir::SourceAnalyzer::new(db, position.file_id, token.parent());
+        let analyzer =
+            hir::SourceAnalyzer::new(db, position.file_id, token.parent(), Some(position.offset));
         let mut ctx = CompletionContext {
             db,
             analyzer,

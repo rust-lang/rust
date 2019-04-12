@@ -20,7 +20,7 @@ pub(crate) fn fill_match_arms(mut ctx: AssistCtx<impl HirDatabase>) -> Option<As
     }
 
     let expr = match_expr.expr()?;
-    let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, expr.syntax());
+    let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, expr.syntax(), None);
     let match_expr_ty = analyzer.type_of(ctx.db, expr)?;
     let enum_def = match_expr_ty.autoderef(ctx.db).find_map(|ty| match ty.as_adt() {
         Some((AdtDef::Enum(e), _)) => Some(e),

@@ -29,7 +29,7 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
     }
     // Infer type
     let db = ctx.db;
-    let analyzer = hir::SourceAnalyzer::new(db, ctx.frange.file_id, stmt.syntax());
+    let analyzer = hir::SourceAnalyzer::new(db, ctx.frange.file_id, stmt.syntax(), None);
     let ty = analyzer.type_of(db, expr)?;
     // Assist not applicable if the type is unknown
     if is_unknown(&ty) {

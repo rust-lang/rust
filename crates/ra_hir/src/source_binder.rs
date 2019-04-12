@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SyntaxNode, AstPtr,
+    SyntaxNode, AstPtr, TextUnit,
     ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
 };
@@ -196,13 +196,21 @@ pub fn trait_from_module(
     Trait { id: ctx.to_def(trait_def) }
 }
 
-fn resolver_for_node(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> Resolver {
+fn resolver_for_node(
+    db: &impl HirDatabase,
+    file_id: FileId,
+    node: &SyntaxNode,
+    offset: Option<TextUnit>,
+) -> Resolver {
     node.ancestors()
         .find_map(|node| {
             if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
                 if let Some(func) = function_from_child_node(db, file_id, node) {
                     let scopes = func.scopes(db);
-                    let scope = scopes.scope_for(&node);
+                    let scope = match offset {
+                        None => scopes.scope_for(&node),
+                        Some(offset) => scopes.scope_for_offset(offset),
+                    };
                     Some(expr::resolver_for_scope(func.body(db), db, scope))
                 } else {
                     // FIXME const/static/array length
@@ -260,7 +268,12 @@ pub enum PathResolution {
 }
 
 impl SourceAnalyzer {
-    pub fn new(db: &impl HirDatabase, file_id: FileId, node: &SyntaxNode) -> SourceAnalyzer {
+    pub fn new(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        node: &SyntaxNode,
+        offset: Option<TextUnit>,
+    ) -> SourceAnalyzer {
         let def_with_body = node.ancestors().find_map(|node| {
             if let Some(src) = ast::FnDef::cast(node) {
                 return function_from_source(db, file_id, src).map(DefWithBody::from);
@@ -274,8 +287,7 @@ impl SourceAnalyzer {
             None
         });
         SourceAnalyzer {
-            //TODO: use scope_for_offset here to get correct scope for completion
-            resolver: resolver_for_node(db, file_id, node),
+            resolver: resolver_for_node(db, file_id, node, offset),
             body_source_map: def_with_body.map(|it| it.body_source_map(db)),
             infer: def_with_body.map(|it| it.infer(db)),
         }
