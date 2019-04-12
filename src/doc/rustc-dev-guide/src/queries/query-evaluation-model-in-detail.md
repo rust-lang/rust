@@ -99,7 +99,7 @@ from outside of the query system, invoke the queries it needs to perform its
 task. This looks something like the following:
 
 ```rust,ignore
-fn compile_crate() {}
+fn compile_crate() {
     let cli_options = ...;
     let hir_map = ...;
 
