@@ -218,14 +218,17 @@ pub fn clear_markings() {
 }
 
 impl SyntaxContext {
+    #[inline]
     pub const fn empty() -> Self {
         SyntaxContext(0)
     }
 
+    #[inline]
     crate fn as_u32(self) -> u32 {
         self.0
     }
 
+    #[inline]
     crate fn from_u32(raw: u32) -> SyntaxContext {
         SyntaxContext(raw)
     }
