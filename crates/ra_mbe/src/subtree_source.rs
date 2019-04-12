@@ -2,6 +2,64 @@ use ra_parser::{TokenSource};
 use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*};
 use std::cell::{RefCell};
 
+// A Sequece of Token,
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(super) enum TokenSeq<'a> {
+    Subtree(&'a tt::Subtree),
+    Seq(&'a [tt::TokenTree]),
+}
+
+impl<'a> From<&'a tt::Subtree> for TokenSeq<'a> {
+    fn from(s: &'a tt::Subtree) -> TokenSeq<'a> {
+        TokenSeq::Subtree(s)
+    }
+}
+
+impl<'a> From<&'a [tt::TokenTree]> for TokenSeq<'a> {
+    fn from(s: &'a [tt::TokenTree]) -> TokenSeq<'a> {
+        TokenSeq::Seq(s)
+    }
+}
+
+enum DelimToken<'a> {
+    Delim(&'a tt::Delimiter, bool),
+    Token(&'a tt::TokenTree),
+    End,
+}
+
+impl<'a> TokenSeq<'a> {
+    fn get(&self, pos: usize) -> DelimToken<'a> {
+        match self {
+            TokenSeq::Subtree(subtree) => {
+                let len = subtree.token_trees.len() + 2;
+                match pos {
+                    p if p >= len => DelimToken::End,
+                    p if p == len - 1 => DelimToken::Delim(&subtree.delimiter, true),
+                    0 => DelimToken::Delim(&subtree.delimiter, false),
+                    p => DelimToken::Token(&subtree.token_trees[p - 1]),
+                }
+            }
+            TokenSeq::Seq(tokens) => {
+                tokens.get(pos).map(DelimToken::Token).unwrap_or(DelimToken::End)
+            }
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            TokenSeq::Subtree(subtree) => subtree.token_trees.len() + 2,
+            TokenSeq::Seq(tokens) => tokens.len(),
+        }
+    }
+
+    fn child_slice(&self) -> &[tt::TokenTree] {
+        match self {
+            TokenSeq::Subtree(subtree) => &subtree.token_trees,
+            TokenSeq::Seq(tokens) => &tokens,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct TtToken {
     pub kind: SyntaxKind,
@@ -12,29 +70,27 @@ struct TtToken {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 enum WalkCursor {
-    DelimiterBegin(Option<TtToken>),
-    Token(usize, Option<TtToken>),
-    DelimiterEnd(Option<TtToken>),
+    Token(usize, TtToken),
     Eof,
 }
 
 #[derive(Debug)]
 struct SubTreeWalker<'a> {
     pos: usize,
-    stack: Vec<(&'a tt::Subtree, Option<usize>)>,
+    stack: Vec<(TokenSeq<'a>, usize)>,
     cursor: WalkCursor,
     last_steps: Vec<usize>,
-    subtree: &'a tt::Subtree,
+    ts: TokenSeq<'a>,
 }
 
 impl<'a> SubTreeWalker<'a> {
-    fn new(subtree: &tt::Subtree) -> SubTreeWalker {
+    fn new(ts: TokenSeq<'a>) -> SubTreeWalker {
         let mut res = SubTreeWalker {
             pos: 0,
             stack: vec![],
             cursor: WalkCursor::Eof,
             last_steps: vec![],
-            subtree,
+            ts,
         };
 
         res.reset();
@@ -47,209 +103,106 @@ impl<'a> SubTreeWalker<'a> {
 
     fn reset(&mut self) {
         self.pos = 0;
-        self.stack = vec![(self.subtree, None)];
-        self.cursor = WalkCursor::DelimiterBegin(convert_delim(self.subtree.delimiter, false));
+        self.stack = vec![];
         self.last_steps = vec![];
 
-        while self.is_empty_delimiter() {
-            self.forward_unchecked();
-        }
-    }
-
-    // This funciton will fast forward the cursor,
-    // Such that backward will stop at `start_pos` point
-    fn start_from_nth(&mut self, start_pos: usize) {
-        self.reset();
-        self.pos = start_pos;
-        self.cursor = self.walk_token(start_pos, 0, false);
-
-        while self.is_empty_delimiter() {
-            self.forward_unchecked();
+        self.cursor = match self.ts.get(0) {
+            DelimToken::Token(token) => match token {
+                tt::TokenTree::Subtree(subtree) => {
+                    WalkCursor::Token(0, convert_delim(subtree.delimiter, false))
+                }
+                tt::TokenTree::Leaf(leaf) => {
+                    let next_tokens = self.ts.child_slice();
+                    WalkCursor::Token(0, convert_leaf(&next_tokens, leaf))
+                }
+            },
+            DelimToken::Delim(delim, is_end) => {
+                assert!(!is_end);
+                WalkCursor::Token(0, convert_delim(*delim, false))
+            }
+            DelimToken::End => WalkCursor::Eof,
         }
     }
 
     fn current(&self) -> Option<&TtToken> {
         match &self.cursor {
-            WalkCursor::DelimiterBegin(t) => t.as_ref(),
-            WalkCursor::Token(_, t) => t.as_ref(),
-            WalkCursor::DelimiterEnd(t) => t.as_ref(),
+            WalkCursor::Token(_, t) => Some(t),
             WalkCursor::Eof => None,
         }
     }
 
-    fn is_empty_delimiter(&self) -> bool {
-        match &self.cursor {
-            WalkCursor::DelimiterBegin(None) => true,
-            WalkCursor::DelimiterEnd(None) => true,
-            _ => false,
-        }
+    fn top(&self) -> &TokenSeq {
+        self.stack.last().map(|(t, _)| t).unwrap_or(&self.ts)
     }
 
-    /// Move cursor backward by 1 step with empty checking
+    /// Move cursor backward by 1 step
     fn backward(&mut self) {
         if self.last_steps.is_empty() {
             return;
         }
+
         self.pos -= 1;
-        loop {
-            self.backward_unchecked();
-            // Skip Empty delimiter
-            if self.last_steps.is_empty() || !self.is_empty_delimiter() {
-                break;
-            }
-        }
-
-        // Move forward if it is empty delimiter
-        if self.last_steps.is_empty() {
-            while self.is_empty_delimiter() {
-                self.forward_unchecked();
-            }
-        }
-    }
-
-    /// Move cursor backward by 1 step without empty check
-    ///
-    /// Depends on the current state of cursor:
-    ///
-    /// * Delimiter Begin => Pop the stack, goto last walking token  (`walk_token`)
-    /// * Token => Goto prev token  (`walk_token`)
-    /// * Delimiter End => Goto the last child token (`walk_token`)
-    /// * Eof => push the root subtree, and set it as Delimiter End
-    fn backward_unchecked(&mut self) {
-        if self.last_steps.is_empty() {
-            return;
-        }
-
         let last_step = self.last_steps.pop().unwrap();
-        let do_walk_token = match self.cursor {
-            WalkCursor::DelimiterBegin(_) => None,
-            WalkCursor::Token(u, _) => Some(u),
-            WalkCursor::DelimiterEnd(_) => {
-                let (top, _) = self.stack.last().unwrap();
-                Some(top.token_trees.len())
+
+        self.cursor = match self.cursor {
+            WalkCursor::Token(idx, _) => self.walk_token(idx, last_step, true),
+            WalkCursor::Eof => {
+                let len = self.top().len();
+                self.walk_token(len, last_step, true)
             }
-            WalkCursor::Eof => None,
-        };
-
-        self.cursor = match do_walk_token {
-            Some(u) => self.walk_token(u, last_step, true),
-            None => match self.cursor {
-                WalkCursor::Eof => {
-                    self.stack.push((self.subtree, None));
-                    WalkCursor::DelimiterEnd(convert_delim(
-                        self.stack.last().unwrap().0.delimiter,
-                        true,
-                    ))
-                }
-                _ => {
-                    let (_, last_top_cursor) = self.stack.pop().unwrap();
-                    assert!(!self.stack.is_empty());
-
-                    self.walk_token(last_top_cursor.unwrap(), last_step, true)
-                }
-            },
-        };
+        }
     }
 
-    /// Move cursor forward by 1 step with empty checking
+    /// Move cursor forward by 1 step        
     fn forward(&mut self) {
         if self.is_eof() {
             return;
         }
-
         self.pos += 1;
-        loop {
-            self.forward_unchecked();
-            if !self.is_empty_delimiter() {
-                break;
-            }
-        }
-    }
-
-    /// Move cursor forward by 1 step without empty checking
-    ///
-    /// Depends on the current state of cursor:
-    ///
-    /// * Delimiter Begin => Goto the first child token (`walk_token`)
-    /// * Token => Goto next token  (`walk_token`)
-    /// * Delimiter End => Pop the stack, goto last walking token  (`walk_token`)
-    ///   
-    fn forward_unchecked(&mut self) {
-        if self.is_eof() {
-            return;
-        }
 
         let step = self.current().map(|x| x.n_tokens).unwrap_or(1);
         self.last_steps.push(step);
 
-        let do_walk_token = match self.cursor {
-            WalkCursor::DelimiterBegin(_) => Some((0, 0)),
-            WalkCursor::Token(u, _) => Some((u, step)),
-            WalkCursor::DelimiterEnd(_) => None,
-            _ => unreachable!(),
-        };
-
-        self.cursor = match do_walk_token {
-            Some((u, step)) => self.walk_token(u, step, false),
-            None => {
-                let (_, last_top_idx) = self.stack.pop().unwrap();
-                match self.stack.last() {
-                    Some(_) => self.walk_token(last_top_idx.unwrap(), 1, false),
-                    None => WalkCursor::Eof,
-                }
-            }
-        };
+        if let WalkCursor::Token(u, _) = self.cursor {
+            self.cursor = self.walk_token(u, step, false)
+        }
     }
 
     /// Traversal child token
-    /// Depends on the new position, it returns:
-    ///
-    /// * new position < 0 => DelimiterBegin
-    /// * new position > token_tree.len() => DelimiterEnd
-    /// * if new position is a subtree, depends on traversal direction:
-    /// ** backward => DelimiterEnd
-    /// ** forward => DelimiterBegin
-    /// * if new psoition is a leaf, return walk_leaf()
     fn walk_token(&mut self, pos: usize, offset: usize, backward: bool) -> WalkCursor {
-        let (top, _) = self.stack.last().unwrap();
+        let top = self.stack.last().map(|(t, _)| t).unwrap_or(&self.ts);
 
         if backward && pos < offset {
-            return WalkCursor::DelimiterBegin(convert_delim(
-                self.stack.last().unwrap().0.delimiter,
-                false,
-            ));
-        }
-
-        if !backward && pos + offset >= top.token_trees.len() {
-            return WalkCursor::DelimiterEnd(convert_delim(
-                self.stack.last().unwrap().0.delimiter,
-                true,
-            ));
+            let (_, last_idx) = self.stack.pop().unwrap();
+            return self.walk_token(last_idx, offset, backward);
         }
 
         let pos = if backward { pos - offset } else { pos + offset };
 
-        match &top.token_trees[pos] {
-            tt::TokenTree::Subtree(subtree) => {
-                self.stack.push((subtree, Some(pos)));
-                let delim = convert_delim(self.stack.last().unwrap().0.delimiter, backward);
-                if backward {
-                    WalkCursor::DelimiterEnd(delim)
-                } else {
-                    WalkCursor::DelimiterBegin(delim)
+        match top.get(pos) {
+            DelimToken::Token(token) => match token {
+                tt::TokenTree::Subtree(subtree) => {
+                    let ts = TokenSeq::from(subtree);
+                    let new_idx = if backward { ts.len() - 1 } else { 0 };
+                    self.stack.push((ts, pos));
+                    WalkCursor::Token(new_idx, convert_delim(subtree.delimiter, backward))
                 }
+                tt::TokenTree::Leaf(leaf) => {
+                    let next_tokens = top.child_slice();
+                    WalkCursor::Token(pos, convert_leaf(&next_tokens[pos..], leaf))
+                }
+            },
+            DelimToken::Delim(delim, is_end) => {
+                WalkCursor::Token(pos, convert_delim(*delim, is_end))
             }
-            tt::TokenTree::Leaf(leaf) => WalkCursor::Token(pos, Some(self.walk_leaf(leaf, pos))),
-        }
-    }
-
-    fn walk_leaf(&mut self, leaf: &tt::Leaf, pos: usize) -> TtToken {
-        match leaf {
-            tt::Leaf::Literal(l) => convert_literal(l),
-            tt::Leaf::Ident(ident) => convert_ident(ident),
-            tt::Leaf::Punct(punct) => {
-                let (top, _) = self.stack.last().unwrap();
-                convert_punct(punct, top, pos)
+            DelimToken::End => {
+                // it is the top level
+                if let Some((_, last_idx)) = self.stack.pop() {
+                    assert!(!backward);
+                    self.walk_token(last_idx, offset, backward)
+                } else {
+                    WalkCursor::Eof
+                }
             }
         }
     }
@@ -263,27 +216,20 @@ pub(crate) trait Querier {
 #[derive(Debug)]
 pub(crate) struct WalkerOwner<'a> {
     walker: RefCell<SubTreeWalker<'a>>,
-    offset: usize,
 }
 
 impl<'a> WalkerOwner<'a> {
-    fn new(subtree: &'a tt::Subtree) -> Self {
-        WalkerOwner { walker: RefCell::new(SubTreeWalker::new(subtree)), offset: 0 }
+    fn new<I: Into<TokenSeq<'a>>>(ts: I) -> Self {
+        WalkerOwner { walker: RefCell::new(SubTreeWalker::new(ts.into())) }
     }
 
     fn get<'b>(&self, pos: usize) -> Option<TtToken> {
-        self.set_walker_pos(pos);
+        self.set_pos(pos);
         let walker = self.walker.borrow();
         walker.current().cloned()
     }
 
-    fn start_from_nth(&mut self, pos: usize) {
-        self.offset = pos;
-        self.walker.borrow_mut().start_from_nth(pos);
-    }
-
-    fn set_walker_pos(&self, mut pos: usize) {
-        pos += self.offset;
+    fn set_pos(&self, pos: usize) {
         let mut walker = self.walker.borrow_mut();
         while pos > walker.pos && !walker.is_eof() {
             walker.forward();
@@ -294,19 +240,26 @@ impl<'a> WalkerOwner<'a> {
     }
 
     fn collect_token_trees(&mut self, n: usize) -> Vec<&tt::TokenTree> {
-        self.start_from_nth(self.offset);
-
         let mut res = vec![];
         let mut walker = self.walker.borrow_mut();
+        walker.reset();
 
-        while walker.pos - self.offset < n {
+        while walker.pos < n {
             if let WalkCursor::Token(u, tt) = &walker.cursor {
-                if walker.stack.len() == 1 {
-                    // We only collect the topmost child
-                    res.push(&walker.stack[0].0.token_trees[*u]);
-                    if let Some(tt) = tt {
-                        for i in 0..tt.n_tokens - 1 {
-                            res.push(&walker.stack[0].0.token_trees[u + i]);
+                // We only collect the topmost child
+                if walker.stack.len() == 0 {
+                    for i in 0..tt.n_tokens {
+                        if let DelimToken::Token(token) = walker.ts.get(u + i) {
+                            res.push(token);
+                        }
+                    }
+                } else if walker.stack.len() == 1 {
+                    if let DelimToken::Delim(_, is_end) = walker.ts.get(*u) {
+                        if !is_end {
+                            let (_, last_idx) = &walker.stack[0];
+                            if let DelimToken::Token(token) = walker.ts.get(*last_idx) {
+                                res.push(token);
+                            }
                         }
                     }
                 }
@@ -331,12 +284,8 @@ pub(crate) struct SubtreeTokenSource<'a> {
 }
 
 impl<'a> SubtreeTokenSource<'a> {
-    pub fn new(subtree: &tt::Subtree) -> SubtreeTokenSource {
-        SubtreeTokenSource { walker: WalkerOwner::new(subtree) }
-    }
-
-    pub fn start_from_nth(&mut self, n: usize) {
-        self.walker.start_from_nth(n);
+    pub fn new<I: Into<TokenSeq<'a>>>(ts: I) -> SubtreeTokenSource<'a> {
+        SubtreeTokenSource { walker: WalkerOwner::new(ts) }
     }
 
     pub fn querier<'b>(&'a self) -> &'b WalkerOwner<'a>
@@ -467,18 +416,18 @@ where
     None
 }
 
-fn convert_delim(d: tt::Delimiter, closing: bool) -> Option<TtToken> {
+fn convert_delim(d: tt::Delimiter, closing: bool) -> TtToken {
     let (kinds, texts) = match d {
         tt::Delimiter::Parenthesis => ([L_PAREN, R_PAREN], "()"),
         tt::Delimiter::Brace => ([L_CURLY, R_CURLY], "{}"),
         tt::Delimiter::Bracket => ([L_BRACK, R_BRACK], "[]"),
-        tt::Delimiter::None => return None,
+        tt::Delimiter::None => ([L_DOLLAR, R_DOLLAR], ""),
     };
 
     let idx = closing as usize;
     let kind = kinds[idx];
-    let text = &texts[idx..texts.len() - (1 - idx)];
-    Some(TtToken { kind, is_joint_to_next: false, text: SmolStr::new(text), n_tokens: 1 })
+    let text = if texts.len() > 0 { &texts[idx..texts.len() - (1 - idx)] } else { "" };
+    TtToken { kind, is_joint_to_next: false, text: SmolStr::new(text), n_tokens: 1 }
 }
 
 fn convert_literal(l: &tt::Literal) -> TtToken {
@@ -495,8 +444,9 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
     TtToken { kind, is_joint_to_next: false, text: ident.text.clone(), n_tokens: 1 }
 }
 
-fn convert_punct(p: &tt::Punct, parent: &tt::Subtree, next: usize) -> TtToken {
-    let iter = parent.token_trees[next + 1..].iter();
+fn convert_punct(p: &tt::Punct, next_tokens: &[tt::TokenTree]) -> TtToken {
+    let mut iter = next_tokens.iter();
+    iter.next();
     let mut peek = TokenPeek::new(iter);
 
     if let Some((kind, is_joint_to_next, text, size)) = convert_multi_char_punct(p, &mut peek) {
@@ -517,5 +467,13 @@ fn convert_punct(p: &tt::Punct, parent: &tt::Subtree, next: usize) -> TtToken {
             SmolStr::new(s)
         };
         TtToken { kind, is_joint_to_next: p.spacing == tt::Spacing::Joint, text, n_tokens: 1 }
+    }
+}
+
+fn convert_leaf(tokens: &[tt::TokenTree], leaf: &tt::Leaf) -> TtToken {
+    match leaf {
+        tt::Leaf::Literal(l) => convert_literal(l),
+        tt::Leaf::Ident(ident) => convert_ident(ident),
+        tt::Leaf::Punct(punct) => convert_punct(punct, tokens),
     }
 }

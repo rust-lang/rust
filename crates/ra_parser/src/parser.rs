@@ -99,6 +99,8 @@ impl<'t> Parser<'t> {
     /// consumed between the `start` and the corresponding `Marker::complete`
     /// belong to the same node.
     pub(crate) fn start(&mut self) -> Marker {
+        self.eat_dollars();
+
         let pos = self.events.len() as u32;
         self.push_event(Event::tombstone());
         Marker::new(pos)
@@ -180,12 +182,22 @@ impl<'t> Parser<'t> {
     }
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
+        self.eat_dollars();
         self.token_pos += usize::from(n_raw_tokens);
         self.push_event(Event::Token { kind, n_raw_tokens });
+        self.eat_dollars();
     }
 
     fn push_event(&mut self, event: Event) {
         self.events.push(event)
+    }
+
+    fn eat_dollars(&mut self) {
+        while self.nth(0) == SyntaxKind::L_DOLLAR || self.nth(0) == SyntaxKind::R_DOLLAR {
+            let kind = self.nth(0);
+            self.token_pos += 1;
+            self.push_event(Event::Token { kind, n_raw_tokens: 1 });
+        }
     }
 }
 

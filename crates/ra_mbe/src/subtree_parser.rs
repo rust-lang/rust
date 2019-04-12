@@ -34,8 +34,7 @@ impl<'a> Parser<'a> {
     where
         F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),
     {
-        let mut src = SubtreeTokenSource::new(self.subtree);
-        src.start_from_nth(*self.cur_pos);
+        let mut src = SubtreeTokenSource::new(&self.subtree.token_trees[*self.cur_pos..]);
         let mut sink = OffsetTokenSink { token_pos: 0 };
 
         f(&src, &mut sink);

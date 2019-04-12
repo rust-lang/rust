@@ -22,6 +22,14 @@ pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)
     Some((tt, token_map))
 }
 
+/// Convert the syntax node to a `TokenTree` (what macro
+/// will consume).
+pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, TokenMap)> {
+    let mut token_map = TokenMap::default();
+    let tt = convert_tt(&mut token_map, node.range().start(), node)?;
+    Some((tt, token_map))
+}
+
 /// Parses the token tree (result of macro expansion) as a sequence of items
 pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> TreeArc<ast::SourceFile> {
     let token_source = SubtreeTokenSource::new(tt);
@@ -51,15 +59,17 @@ fn convert_tt(
 ) -> Option<tt::Subtree> {
     let first_child = tt.first_child_or_token()?;
     let last_child = tt.last_child_or_token()?;
-    let delimiter = match (first_child.kind(), last_child.kind()) {
-        (L_PAREN, R_PAREN) => tt::Delimiter::Parenthesis,
-        (L_CURLY, R_CURLY) => tt::Delimiter::Brace,
-        (L_BRACK, R_BRACK) => tt::Delimiter::Bracket,
-        _ => return None,
+    let (delimiter, skip_first) = match (first_child.kind(), last_child.kind()) {
+        (L_PAREN, R_PAREN) => (tt::Delimiter::Parenthesis, true),
+        (L_CURLY, R_CURLY) => (tt::Delimiter::Brace, true),
+        (L_BRACK, R_BRACK) => (tt::Delimiter::Bracket, true),
+        _ => (tt::Delimiter::None, false),
     };
+
     let mut token_trees = Vec::new();
-    for child in tt.children_with_tokens().skip(1) {
-        if child == first_child || child == last_child || child.kind().is_trivia() {
+    for child in tt.children_with_tokens().skip(skip_first as usize) {
+        if (skip_first && (child == first_child || child == last_child)) || child.kind().is_trivia()
+        {
             continue;
         }
         match child {
@@ -127,6 +137,11 @@ impl<'a, Q: Querier> TtTreeSink<'a, Q> {
 
 impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
     fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
+        if kind == L_DOLLAR || kind == R_DOLLAR {
+            self.token_pos += n_tokens as usize;
+            return;
+        }
+
         for _ in 0..n_tokens {
             self.buf += &self.src_querier.token(self.token_pos).1;
             self.token_pos += 1;
@@ -176,19 +191,19 @@ mod tests {
 
         let query = tt_src.querier();
 
-        // [{]
+        // [${]
         // [let] [a] [=] ['c'] [;]
-        assert_eq!(query.token(1 + 3).1, "'c'");
-        assert_eq!(query.token(1 + 3).0, CHAR);
+        assert_eq!(query.token(2 + 3).1, "'c'");
+        assert_eq!(query.token(2 + 3).0, CHAR);
         // [let] [c] [=] [1000] [;]
-        assert_eq!(query.token(1 + 5 + 3).1, "1000");
-        assert_eq!(query.token(1 + 5 + 3).0, INT_NUMBER);
+        assert_eq!(query.token(2 + 5 + 3).1, "1000");
+        assert_eq!(query.token(2 + 5 + 3).0, INT_NUMBER);
         // [let] [f] [=] [12E+99_f64] [;]
-        assert_eq!(query.token(1 + 10 + 3).1, "12E+99_f64");
-        assert_eq!(query.token(1 + 10 + 3).0, FLOAT_NUMBER);
+        assert_eq!(query.token(2 + 10 + 3).1, "12E+99_f64");
+        assert_eq!(query.token(2 + 10 + 3).0, FLOAT_NUMBER);
 
         // [let] [s] [=] ["rust1"] [;]
-        assert_eq!(query.token(1 + 15 + 3).1, "\"rust1\"");
-        assert_eq!(query.token(1 + 15 + 3).0, STRING);
+        assert_eq!(query.token(2 + 15 + 3).1, "\"rust1\"");
+        assert_eq!(query.token(2 + 15 + 3).0, STRING);
     }
 }

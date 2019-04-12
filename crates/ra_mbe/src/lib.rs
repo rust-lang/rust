@@ -39,7 +39,7 @@ pub enum ExpandError {
     BindingError(String),
 }
 
-pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list};
+pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list, syntax_node_to_token_tree};
 
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as
@@ -192,6 +192,15 @@ impl_froms!(TokenTree: Leaf, Subtree);
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
+
+        let tree = token_tree_to_ast_item_list(&expanded);
+
+        // Eat all white space by parse it back and forth
+        let expansion = ast::SourceFile::parse(expansion);
+        let expansion = syntax_node_to_token_tree(expansion.syntax()).unwrap().0;
+        let file = token_tree_to_ast_item_list(&expansion);
+
+        assert_eq!(tree.syntax().debug_dump().trim(), file.syntax().debug_dump().trim());
     }
 
     #[test]
@@ -285,6 +294,36 @@ impl_froms!(TokenTree: Leaf, Subtree);
         assert_expansion(&rules, "foo! { foo, bar }", "mod foo {} mod bar {}");
         assert_expansion(&rules, "foo! { foo# bar }", "fn foo () {} fn bar () {}");
         assert_expansion(&rules, "foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
+    }
+
+    #[test]
+    fn test_match_group_pattern_with_multiple_defs() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:ident),*) => ( struct Bar { $ (
+                fn $ i {}
+            )*} );            
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! { foo, bar }", "struct Bar {fn foo {} fn bar {}}");
+    }
+
+    #[test]
+    fn test_match_group_pattern_with_multiple_statement() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:ident),*) => ( fn baz { $ (
+                $ i ();
+            )*} );            
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! { foo, bar }", "fn baz {foo () ; bar () ;}");
     }
 
     #[test]
@@ -415,7 +454,7 @@ SOURCE_FILE@[0; 40)
         assert_expansion(
             &rules,
             "foo! { bar::<u8>::baz::<u8> }",
-            "fn foo () {let a = bar ::< u8 > ::baz ::< u8 > ;}",
+            "fn foo () {let a = bar :: < u8 > :: baz :: < u8 > ;}",
         );
     }
 
@@ -431,5 +470,19 @@ SOURCE_FILE@[0; 40)
 "#,
         );
         assert_expansion(&rules, "foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
+    }
+
+    #[test]
+    fn test_path_with_path() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:path) => {
+                fn foo() { let a = $ i :: bar; }
+            }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { foo }", "fn foo () {let a = foo :: bar ;}");
     }
 }
