@@ -5,6 +5,7 @@
 use crate::fs;
 use crate::io;
 use crate::sys;
+use crate::net;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 /// Raw file descriptors.
@@ -48,6 +49,60 @@ pub trait IntoRawFd {
     /// to the caller. Callers are then the unique owners of the file descriptor
     /// and must close the descriptor once it's no longer needed.
     fn into_raw_fd(self) -> RawFd;
+}
+
+impl AsRawFd for net::TcpStream {
+    fn as_raw_fd(&self) -> RawFd {
+        self.as_inner().fd().as_raw()
+    }
+}
+
+impl FromRawFd for net::TcpStream {
+    unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
+        net::TcpStream::from_inner(sys::net::TcpStream::from_inner(fd))
+    }
+}
+
+impl IntoRawFd for net::TcpStream {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_fd().into_raw()
+    }
+}
+
+impl AsRawFd for net::TcpListener {
+    fn as_raw_fd(&self) -> RawFd {
+        self.as_inner().fd().as_raw()
+    }
+}
+
+impl FromRawFd for net::TcpListener {
+    unsafe fn from_raw_fd(fd: RawFd) -> net::TcpListener {
+        net::TcpListener::from_inner(sys::net::TcpListener::from_inner(fd))
+    }
+}
+
+impl IntoRawFd for net::TcpListener {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_fd().into_raw()
+    }
+}
+
+impl AsRawFd for net::UdpSocket {
+    fn as_raw_fd(&self) -> RawFd {
+        self.as_inner().fd().as_raw()
+    }
+}
+
+impl FromRawFd for net::UdpSocket {
+    unsafe fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
+        net::UdpSocket::from_inner(sys::net::UdpSocket::from_inner(fd))
+    }
+}
+
+impl IntoRawFd for net::UdpSocket {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_fd().into_raw()
+    }
 }
 
 impl AsRawFd for fs::File {
