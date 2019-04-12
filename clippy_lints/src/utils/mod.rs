@@ -220,13 +220,8 @@ pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path
 ///     // The given `def_id` is that of an `Option` type
 /// };
 /// ```
-pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<&'static str> {
-    AbsolutePathPrinter { tcx }
-        .print_def_path(def_id, &[])
-        .unwrap()
-        .iter()
-        .map(LocalInternedString::get)
-        .collect()
+pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<LocalInternedString> {
+    AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap()
 }
 
 /// Checks if type is struct, enum or union type with the given def path.
