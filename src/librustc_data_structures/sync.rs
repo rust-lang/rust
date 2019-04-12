@@ -23,6 +23,8 @@ use std::marker::PhantomData;
 use std::ops::{Deref, DerefMut};
 use crate::owning_ref::{Erased, OwningRef};
 
+pub mod worker;
+
 pub fn serial_join<A, B, RA, RB>(oper_a: A, oper_b: B) -> (RA, RB)
     where A: FnOnce() -> RA,
           B: FnOnce() -> RB
