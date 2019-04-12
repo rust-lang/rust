@@ -737,16 +737,6 @@ extern "rust-intrinsic" {
     ///
     /// There are a few things that `transmute` is really useful for.
     ///
-    /// Getting the bitpattern of a floating point type (or, more generally,
-    /// type punning, when `T` and `U` aren't pointers):
-    ///
-    /// ```
-    /// let bitpattern = unsafe {
-    ///     std::mem::transmute::<f32, u32>(1.0)
-    /// };
-    /// assert_eq!(bitpattern, 0x3F800000);
-    /// ```
-    ///
     /// Turning a pointer into a function pointer. This is *not* portable to
     /// machines where function pointers and data pointers have different sizes.
     ///
