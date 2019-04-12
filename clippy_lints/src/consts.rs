@@ -16,7 +16,7 @@ use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use syntax::ast::{FloatTy, LitKind};
 use syntax::ptr::P;
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{LocalInternedString, Symbol};
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -249,7 +249,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     if let ExprKind::Path(qpath) = &callee.node;
                     let def = self.tables.qpath_def(qpath, callee.hir_id);
                     if let Some(def_id) = def.opt_def_id();
-                    let def_path = get_def_path(self.tcx, def_id);
+                    let def_path = get_def_path(self.tcx, def_id)
+                        .iter()
+                        .map(LocalInternedString::get)
+                        .collect::<Vec<_>>();
                     if let &["core", "num", impl_ty, "max_value"] = &def_path[..];
                     then {
                        let value = match impl_ty {
