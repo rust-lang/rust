@@ -95,7 +95,7 @@ pub fn function_from_position(db: &impl HirDatabase, position: FilePosition) -> 
     function_from_source(db, position.file_id, fn_def)
 }
 
-pub fn function_from_source(
+fn function_from_source(
     db: &impl HirDatabase,
     file_id: FileId,
     fn_def: &ast::FnDef,
@@ -105,11 +105,7 @@ pub fn function_from_source(
     Some(res)
 }
 
-pub fn function_from_module(
-    db: &impl HirDatabase,
-    module: Module,
-    fn_def: &ast::FnDef,
-) -> Function {
+fn function_from_module(db: &impl HirDatabase, module: Module, fn_def: &ast::FnDef) -> Function {
     let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
