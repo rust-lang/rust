@@ -1,14 +1,14 @@
-error[E0599]: no variant named `Homura` found for type `Token` in the current scope
+error[E0599]: no variant or associated item named `Homura` found for type `Token` in the current scope
   --> $DIR/issue-23173.rs:9:23
    |
 LL | enum Token { LeftParen, RightParen, Plus, Minus, /* etc */ }
-   | ---------- variant `Homura` not found here
+   | ---------- variant or associated item `Homura` not found here
 ...
 LL |     use_token(&Token::Homura);
-   |                       ^^^^^^ variant not found in `Token`
+   |                       ^^^^^^ variant or associated item not found in `Token`
 
 error[E0599]: no function or associated item named `method` found for type `Struct` in the current scope
-  --> $DIR/issue-23173.rs:11:13
+  --> $DIR/issue-23173.rs:10:13
    |
 LL | struct Struct {
    | ------------- function or associated item `method` not found for this
@@ -17,7 +17,7 @@ LL |     Struct::method();
    |             ^^^^^^ function or associated item not found in `Struct`
 
 error[E0599]: no function or associated item named `method` found for type `Struct` in the current scope
-  --> $DIR/issue-23173.rs:13:13
+  --> $DIR/issue-23173.rs:11:13
    |
 LL | struct Struct {
    | ------------- function or associated item `method` not found for this
@@ -26,7 +26,7 @@ LL |     Struct::method;
    |             ^^^^^^ function or associated item not found in `Struct`
 
 error[E0599]: no associated item named `Assoc` found for type `Struct` in the current scope
-  --> $DIR/issue-23173.rs:15:13
+  --> $DIR/issue-23173.rs:12:13
    |
 LL | struct Struct {
    | ------------- associated item `Assoc` not found for this

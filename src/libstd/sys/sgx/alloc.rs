@@ -1,4 +1,4 @@
-use crate::alloc::{self, GlobalAlloc, Layout, System};
+use crate::alloc::{GlobalAlloc, Layout, System};
 
 use super::waitqueue::SpinMutex;
 
@@ -36,11 +36,11 @@ unsafe impl GlobalAlloc for System {
 #[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_c_alloc(size: usize, align: usize) -> *mut u8 {
-    alloc::alloc(Layout::from_size_align_unchecked(size, align))
+    crate::alloc::alloc(Layout::from_size_align_unchecked(size, align))
 }
 
 #[cfg(not(test))]
 #[no_mangle]
 pub unsafe extern "C" fn __rust_c_dealloc(ptr: *mut u8, size: usize, align: usize) {
-    alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align))
+    crate::alloc::dealloc(ptr, Layout::from_size_align_unchecked(size, align))
 }
