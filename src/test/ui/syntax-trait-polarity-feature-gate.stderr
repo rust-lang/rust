@@ -1,9 +1,10 @@
-error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now (see issue #13231)
+error[E0658]: negative trait bounds are not yet fully implemented; use marker types for now
   --> $DIR/syntax-trait-polarity-feature-gate.rs:7:1
    |
 LL | impl !Send for TestType {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/13231
    = help: add #![feature(optin_builtin_traits)] to the crate attributes to enable
 
 error: aborting due to previous error

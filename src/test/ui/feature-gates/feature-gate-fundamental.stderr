@@ -1,9 +1,10 @@
-error[E0658]: the `#[fundamental]` attribute is an experimental feature (see issue #29635)
+error[E0658]: the `#[fundamental]` attribute is an experimental feature
   --> $DIR/feature-gate-fundamental.rs:1:1
    |
 LL | #[fundamental]
    | ^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29635
    = help: add #![feature(fundamental)] to the crate attributes to enable
 
 error: aborting due to previous error

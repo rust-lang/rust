@@ -1,9 +1,10 @@
-error[E0658]: The attribute `derive_A` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+error[E0658]: The attribute `derive_A` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/derive-still-gated.rs:8:3
    |
 LL | #[derive_A]
    |   ^^^^^^^^ help: a built-in attribute with a similar name exists: `derive`
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to previous error

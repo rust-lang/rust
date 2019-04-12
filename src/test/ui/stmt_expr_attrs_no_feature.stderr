@@ -1,73 +1,82 @@
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:13:5
    |
 LL |     #[attr]
    |     ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:94:18
    |
 LL |     fn y(a: [u8; #[attr] 5]);
    |                  ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:101:19
    |
 LL |     const Y: u8 = #[attr] 5;
    |                   ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:107:19
    |
 LL |     const Y: [u8; #[attr] 5];
    |                   ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:113:18
    |
 LL |     field2: [u8; #[attr] 5]
    |                  ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:118:10
    |
 LL |     [u8; #[attr] 5]
    |          ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:124:14
    |
 LL |         [u8; #[attr] 5]
    |              ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:129:22
    |
 LL |         field2: [u8; #[attr] 5]
    |                      ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
-error[E0658]: attributes on expressions are experimental. (see issue #15701)
+error[E0658]: attributes on expressions are experimental
   --> $DIR/stmt_expr_attrs_no_feature.rs:137:14
    |
 LL |         6 => #[attr] (),
    |              ^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/15701
    = help: add #![feature(stmt_expr_attributes)] to the crate attributes to enable
 
 error: aborting due to 9 previous errors

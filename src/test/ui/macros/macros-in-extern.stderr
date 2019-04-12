@@ -1,25 +1,28 @@
-error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
+error[E0658]: macro invocations in `extern {}` blocks are experimental
   --> $DIR/macros-in-extern.rs:26:5
    |
 LL |     returns_isize!(rust_get_test_int);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
-error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
+error[E0658]: macro invocations in `extern {}` blocks are experimental
   --> $DIR/macros-in-extern.rs:28:5
    |
 LL |     takes_u32_returns_u32!(rust_dbg_extern_identity_u32);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
-error[E0658]: macro invocations in `extern {}` blocks are experimental (see issue #49476)
+error[E0658]: macro invocations in `extern {}` blocks are experimental
   --> $DIR/macros-in-extern.rs:30:5
    |
 LL |     emits_nothing!();
    |     ^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49476
    = help: add #![feature(macros_in_extern)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

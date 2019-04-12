@@ -903,7 +903,7 @@ pub const BUILTIN_ATTRIBUTES: &[(&str, AttributeType, AttributeTemplate, Attribu
     ("thread_local", Whitelisted, template!(Word), Gated(Stability::Unstable,
                                         "thread_local",
                                         "`#[thread_local]` is an experimental feature, and does \
-                                         not currently handle destructors.",
+                                         not currently handle destructors",
                                         cfg_fn!(thread_local))),
 
     ("rustc_on_unimplemented", Whitelisted, template!(List:
@@ -1438,18 +1438,34 @@ pub enum GateStrength {
     Soft,
 }
 
-pub fn emit_feature_err(sess: &ParseSess, feature: &str, span: Span, issue: GateIssue,
-                        explain: &str) {
+pub fn emit_feature_err(
+    sess: &ParseSess,
+    feature: &str,
+    span: Span,
+    issue: GateIssue,
+    explain: &str,
+) {
     feature_err(sess, feature, span, issue, explain).emit();
 }
 
-pub fn feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: GateIssue,
-                       explain: &str) -> DiagnosticBuilder<'a> {
+pub fn feature_err<'a>(
+    sess: &'a ParseSess,
+    feature: &str,
+    span: Span,
+    issue: GateIssue,
+    explain: &str,
+) -> DiagnosticBuilder<'a> {
     leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
 }
 
-fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue: GateIssue,
-                           explain: &str, level: GateStrength) -> DiagnosticBuilder<'a> {
+fn leveled_feature_err<'a>(
+    sess: &'a ParseSess,
+    feature: &str,
+    span: Span,
+    issue: GateIssue,
+    explain: &str,
+    level: GateStrength,
+) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
 
     let issue = match issue {
@@ -1457,23 +1473,26 @@ fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue
         GateIssue::Library(lib) => lib,
     };
 
-    let explanation = match issue {
-        None | Some(0) => explain.to_owned(),
-        Some(n) => format!("{} (see issue #{})", explain, n)
-    };
-
     let mut err = match level {
         GateStrength::Hard => {
-            diag.struct_span_err_with_code(span, &explanation, stringify_error_code!(E0658))
+            diag.struct_span_err_with_code(span, explain, stringify_error_code!(E0658))
         }
-        GateStrength::Soft => diag.struct_span_warn(span, &explanation),
+        GateStrength::Soft => diag.struct_span_warn(span, explain),
     };
+
+    match issue {
+        None | Some(0) => {}  // We still accept `0` as a stand-in for backwards compatibility
+        Some(n) => {
+            err.note(&format!(
+                "for more information, see https://github.com/rust-lang/rust/issues/{}",
+                n,
+            ));
+        }
+    }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
     if sess.unstable_features.is_nightly_build() {
-        err.help(&format!("add #![feature({})] to the \
-                           crate attributes to enable",
-                          feature));
+        err.help(&format!("add #![feature({})] to the crate attributes to enable", feature));
     }
 
     // If we're on stable and only emitting a "soft" warning, add a note to
@@ -1488,10 +1507,10 @@ fn leveled_feature_err<'a>(sess: &'a ParseSess, feature: &str, span: Span, issue
 }
 
 const EXPLAIN_BOX_SYNTAX: &str =
-    "box expression syntax is experimental; you can call `Box::new` instead.";
+    "box expression syntax is experimental; you can call `Box::new` instead";
 
 pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
-    "attributes on expressions are experimental.";
+    "attributes on expressions are experimental";
 
 pub const EXPLAIN_ASM: &str =
     "inline assembly is not stable enough for use and is subject to change";
@@ -1685,10 +1704,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
         if !name.as_str().is_ascii() {
-            gate_feature_post!(&self,
-                               non_ascii_idents,
-                               self.context.parse_sess.source_map().def_span(sp),
-                               "non-ascii idents are not fully supported.");
+            gate_feature_post!(
+                &self,
+                non_ascii_idents,
+                self.context.parse_sess.source_map().def_span(sp),
+                "non-ascii idents are not fully supported"
+            );
         }
     }
 

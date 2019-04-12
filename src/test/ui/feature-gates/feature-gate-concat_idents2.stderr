@@ -1,9 +1,10 @@
-error[E0658]: `concat_idents` is not stable enough for use and is subject to change (see issue #29599)
+error[E0658]: `concat_idents` is not stable enough for use and is subject to change
   --> $DIR/feature-gate-concat_idents2.rs:4:5
    |
 LL |     concat_idents!(a, b);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29599
    = help: add #![feature(concat_idents)] to the crate attributes to enable
 
 error[E0425]: cannot find value `ab` in this scope

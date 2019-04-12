@@ -1,9 +1,10 @@
-error[E0658]: The attribute `C` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+error[E0658]: The attribute `C` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/proc-macro-attributes.rs:7:3
    |
 LL | #[C]
    |   ^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error[E0659]: `B` is ambiguous (derive helper attribute vs any other name)

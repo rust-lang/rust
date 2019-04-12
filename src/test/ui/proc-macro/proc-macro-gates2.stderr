@@ -1,17 +1,19 @@
-error[E0658]: The attribute `a` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+error[E0658]: The attribute `a` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/proc-macro-gates2.rs:13:11
    |
 LL | fn _test6<#[a] T>() {}
    |           ^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error[E0658]: The attribute `a` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+error[E0658]: The attribute `a` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/proc-macro-gates2.rs:18:9
    |
 LL |         #[a]
    |         ^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to 2 previous errors

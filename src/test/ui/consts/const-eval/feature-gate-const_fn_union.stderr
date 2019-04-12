@@ -1,9 +1,10 @@
-error[E0658]: unions in const fn are unstable (see issue #51909)
+error[E0658]: unions in const fn are unstable
   --> $DIR/feature-gate-const_fn_union.rs:11:5
    |
 LL |     Foo { u }.i
    |     ^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51909
    = help: add #![feature(const_fn_union)] to the crate attributes to enable
 
 error: aborting due to previous error

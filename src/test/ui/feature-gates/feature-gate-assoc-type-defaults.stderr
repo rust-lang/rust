@@ -1,9 +1,10 @@
-error[E0658]: associated type defaults are unstable (see issue #29661)
+error[E0658]: associated type defaults are unstable
   --> $DIR/feature-gate-assoc-type-defaults.rs:4:5
    |
 LL |     type Bar = u8;
    |     ^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29661
    = help: add #![feature(associated_type_defaults)] to the crate attributes to enable
 
 error: aborting due to previous error

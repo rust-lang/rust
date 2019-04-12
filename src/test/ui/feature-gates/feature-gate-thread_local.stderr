@@ -1,9 +1,10 @@
-error[E0658]: `#[thread_local]` is an experimental feature, and does not currently handle destructors. (see issue #29594)
+error[E0658]: `#[thread_local]` is an experimental feature, and does not currently handle destructors
   --> $DIR/feature-gate-thread_local.rs:8:1
    |
 LL | #[thread_local]
    | ^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29594
    = help: add #![feature(thread_local)] to the crate attributes to enable
 
 error: aborting due to previous error

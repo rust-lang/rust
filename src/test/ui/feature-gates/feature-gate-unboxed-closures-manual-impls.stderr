@@ -1,41 +1,46 @@
-error[E0658]: rust-call ABI is subject to change (see issue #29625)
+error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:11:5
    |
 LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error[E0658]: rust-call ABI is subject to change (see issue #29625)
+error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:17:5
    |
 LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error[E0658]: rust-call ABI is subject to change (see issue #29625)
+error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:23:5
    |
 LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error[E0658]: rust-call ABI is subject to change (see issue #29625)
+error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:29:5
    |
 LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
    |
 LL | impl Fn<()> for Foo {
    |      ^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0229]: associated type bindings are not allowed here
@@ -44,20 +49,22 @@ error[E0229]: associated type bindings are not allowed here
 LL | impl FnOnce() for Foo1 {
    |            ^^ associated type not allowed here
 
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:21:6
    |
 LL | impl FnMut<()> for Bar {
    |      ^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:27:6
    |
 LL | impl FnOnce<()> for Baz {
    |      ^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error: aborting due to 8 previous errors

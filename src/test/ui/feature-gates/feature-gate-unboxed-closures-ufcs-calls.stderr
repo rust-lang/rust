@@ -1,25 +1,28 @@
-error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
+error[E0658]: use of unstable library feature 'fn_traits'
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:4:5
    |
 LL |     Fn::call(&f, ());
    |     ^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(fn_traits)] to the crate attributes to enable
 
-error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
+error[E0658]: use of unstable library feature 'fn_traits'
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:5:5
    |
 LL |     FnMut::call_mut(&mut f, ());
    |     ^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(fn_traits)] to the crate attributes to enable
 
-error[E0658]: use of unstable library feature 'fn_traits' (see issue #29625)
+error[E0658]: use of unstable library feature 'fn_traits'
   --> $DIR/feature-gate-unboxed-closures-ufcs-calls.rs:6:5
    |
 LL |     FnOnce::call_once(f, ());
    |     ^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(fn_traits)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

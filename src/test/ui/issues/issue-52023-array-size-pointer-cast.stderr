@@ -1,9 +1,10 @@
-error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
+error[E0658]: casting pointers to integers in constants is unstable
   --> $DIR/issue-52023-array-size-pointer-cast.rs:2:17
    |
 LL |     let _ = [0; (&0 as *const i32) as usize];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51910
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
 
 error[E0080]: it is undefined behavior to use this value

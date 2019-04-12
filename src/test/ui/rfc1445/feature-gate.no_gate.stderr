@@ -1,9 +1,10 @@
-error[E0658]: the semantics of constant patterns is not yet settled (see issue #31434)
+error[E0658]: the semantics of constant patterns is not yet settled
   --> $DIR/feature-gate.rs:13:1
    |
 LL | #[structural_match]
    | ^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/31434
    = help: add #![feature(structural_match)] to the crate attributes to enable
 
 error: aborting due to previous error

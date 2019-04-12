@@ -1,9 +1,10 @@
-error[E0658]: the `#[ffi_returns_twice]` attribute is an experimental feature (see issue #58314)
+error[E0658]: the `#[ffi_returns_twice]` attribute is an experimental feature
   --> $DIR/feature-gate-ffi_returns_twice.rs:5:5
    |
 LL |     #[ffi_returns_twice]
    |     ^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/58314
    = help: add #![feature(ffi_returns_twice)] to the crate attributes to enable
 
 error: aborting due to previous error

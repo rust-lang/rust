@@ -1,9 +1,10 @@
-error[E0658]: #[doc(include = "...")] is experimental (see issue #44732)
+error[E0658]: #[doc(include = "...")] is experimental
   --> $DIR/feature-gate-external_doc.rs:1:1
    |
 LL | #[doc(include="asdf.md")]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44732
    = help: add #![feature(external_doc)] to the crate attributes to enable
 
 error: aborting due to previous error

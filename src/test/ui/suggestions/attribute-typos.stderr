@@ -1,25 +1,28 @@
-error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics (see issue #29642)
+error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics
   --> $DIR/attribute-typos.rs:11:3
    |
 LL | #[rustc_err]
    |   ^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
-error[E0658]: The attribute `tests` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+error[E0658]: The attribute `tests` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/attribute-typos.rs:6:3
    |
 LL | #[tests]
    |   ^^^^^ help: a built-in attribute with a similar name exists: `test`
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
-error[E0658]: The attribute `deprcated` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+error[E0658]: The attribute `deprcated` is currently unknown to the compiler and may have meaning added to it in the future
   --> $DIR/attribute-typos.rs:1:3
    |
 LL | #[deprcated]
    |   ^^^^^^^^^ help: a built-in attribute with a similar name exists: `deprecated`
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(custom_attribute)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

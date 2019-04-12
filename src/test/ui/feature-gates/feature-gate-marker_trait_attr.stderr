@@ -1,9 +1,10 @@
-error[E0658]: marker traits is an experimental feature (see issue #29864)
+error[E0658]: marker traits is an experimental feature
   --> $DIR/feature-gate-marker_trait_attr.rs:3:1
    |
 LL | #[marker] trait ExplicitMarker {}
    | ^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29864
    = help: add #![feature(marker_trait_attr)] to the crate attributes to enable
 
 error: aborting due to previous error

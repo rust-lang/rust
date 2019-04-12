@@ -1,9 +1,10 @@
-error[E0658]: SIMD types are experimental and possibly buggy (see issue #27731)
+error[E0658]: SIMD types are experimental and possibly buggy
   --> $DIR/gated-features-attr-spans.rs:1:1
    |
 LL | #[repr(simd)]
    | ^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/27731
    = help: add #![feature(repr_simd)] to the crate attributes to enable
 
 error: aborting due to previous error

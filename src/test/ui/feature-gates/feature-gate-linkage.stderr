@@ -1,9 +1,10 @@
-error[E0658]: the `linkage` attribute is experimental and not portable across platforms (see issue #29603)
+error[E0658]: the `linkage` attribute is experimental and not portable across platforms
   --> $DIR/feature-gate-linkage.rs:2:5
    |
 LL |     #[linkage = "extern_weak"] static foo: isize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29603
    = help: add #![feature(linkage)] to the crate attributes to enable
 
 error: aborting due to previous error

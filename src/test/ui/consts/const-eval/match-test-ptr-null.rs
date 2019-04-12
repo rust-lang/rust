@@ -3,7 +3,9 @@ fn main() {
     // that pointer comparison is disallowed, not that parts of a pointer are accessed as raw
     // bytes.
     let _: [u8; 0] = [4; {
-        match &1 as *const i32 as usize { //~ ERROR casting pointers to integers in constants
+        match &1 as *const i32 as usize {
+            //~^ ERROR casting pointers to integers in constants
+            //~| NOTE for more information, see
             0 => 42, //~ ERROR constant contains unimplemented expression type
             //~^ NOTE "pointer arithmetic or comparison" needs an rfc before being allowed
             //~| ERROR evaluation of constant value failed

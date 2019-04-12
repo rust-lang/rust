@@ -1,9 +1,10 @@
-error[E0658]: specialization is unstable (see issue #31844)
+error[E0658]: specialization is unstable
   --> $DIR/specialization-feature-gate-default.rs:10:5
    |
 LL |     default fn foo(&self) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/31844
    = help: add #![feature(specialization)] to the crate attributes to enable
 
 error: aborting due to previous error

@@ -1,9 +1,10 @@
-error[E0658]: msp430-interrupt ABI is experimental and subject to change (see issue #38487)
+error[E0658]: msp430-interrupt ABI is experimental and subject to change
   --> $DIR/feature-gate-abi-msp430-interrupt.rs:4:1
    |
 LL | extern "msp430-interrupt" fn foo() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/38487
    = help: add #![feature(abi_msp430_interrupt)] to the crate attributes to enable
 
 error: aborting due to previous error

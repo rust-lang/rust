@@ -1,9 +1,10 @@
-error[E0658]: The use of std::mem::transmute() is gated in constants (see issue #53605)
+error[E0658]: The use of std::mem::transmute() is gated in constants
   --> $DIR/feature-gate-const_transmute.rs:6:38
    |
 LL | const TRANSMUTED_U32: u32 = unsafe { mem::transmute(Foo(3)) };
    |                                      ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53605
    = help: add #![feature(const_transmute)] to the crate attributes to enable
 
 error: aborting due to previous error

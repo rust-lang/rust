@@ -1,9 +1,10 @@
-error[E0658]: non exhaustive is an experimental feature (see issue #44109)
+error[E0658]: non exhaustive is an experimental feature
   --> $DIR/feature-gate-non_exhaustive.rs:3:1
    |
 LL | #[non_exhaustive]
    | ^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44109
    = help: add #![feature(non_exhaustive)] to the crate attributes to enable
 
 error: aborting due to previous error

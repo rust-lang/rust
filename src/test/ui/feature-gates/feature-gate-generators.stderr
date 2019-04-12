@@ -1,9 +1,10 @@
-error[E0658]: yield syntax is experimental (see issue #43122)
+error[E0658]: yield syntax is experimental
   --> $DIR/feature-gate-generators.rs:2:5
    |
 LL |     yield true;
    |     ^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/43122
    = help: add #![feature(generators)] to the crate attributes to enable
 
 error[E0627]: yield statement outside of generator literal

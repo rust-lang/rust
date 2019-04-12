@@ -1,145 +1,163 @@
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:15:7
    |
 LL | #[cfg(target_has_atomic = "8")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:21:7
    |
 LL | #[cfg(target_has_atomic = "8")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:26:7
    |
 LL | #[cfg(target_has_atomic = "16")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:31:7
    |
 LL | #[cfg(target_has_atomic = "16")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:36:7
    |
 LL | #[cfg(target_has_atomic = "32")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:41:7
    |
 LL | #[cfg(target_has_atomic = "32")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:46:7
    |
 LL | #[cfg(target_has_atomic = "64")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:51:7
    |
 LL | #[cfg(target_has_atomic = "64")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:56:7
    |
 LL | #[cfg(target_has_atomic = "128")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:61:7
    |
 LL | #[cfg(target_has_atomic = "128")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:66:7
    |
 LL | #[cfg(target_has_atomic = "ptr")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:71:7
    |
 LL | #[cfg(target_has_atomic = "ptr")]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:78:10
    |
 LL |     cfg!(target_has_atomic = "8");
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:80:10
    |
 LL |     cfg!(target_has_atomic = "16");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:82:10
    |
 LL |     cfg!(target_has_atomic = "32");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:84:10
    |
 LL |     cfg!(target_has_atomic = "64");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:86:10
    |
 LL |     cfg!(target_has_atomic = "128");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
-error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change (see issue #32976)
+error[E0658]: `cfg(target_has_atomic)` is experimental and subject to change
   --> $DIR/feature-gate-cfg-target-has-atomic.rs:88:10
    |
 LL |     cfg!(target_has_atomic = "ptr");
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/32976
    = help: add #![feature(cfg_target_has_atomic)] to the crate attributes to enable
 
 error: aborting due to 18 previous errors

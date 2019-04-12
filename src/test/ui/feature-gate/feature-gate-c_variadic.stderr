@@ -1,9 +1,10 @@
-error[E0658]: C-varaidic functions are unstable (see issue #44930)
+error[E0658]: C-varaidic functions are unstable
   --> $DIR/feature-gate-c_variadic.rs:3:1
    |
 LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44930
    = help: add #![feature(c_variadic)] to the crate attributes to enable
 
 error: aborting due to previous error
