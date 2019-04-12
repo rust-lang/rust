@@ -272,4 +272,8 @@ which owns and protects the Rust and Cargo trademarks and logos
 
 If you want to use these names or brands, please read the [media guide][media-guide].
 
+Third-party logos may be subject to third-party copyrights and trademarks. See
+[Licenses][policies-licenses] for details.
+
 [media-guide]: https://www.rust-lang.org/policies/media-guide
+[policies-licenses]: https://www.rust-lang.org/policies/licenses
