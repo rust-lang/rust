@@ -118,11 +118,8 @@ fn special_is_empty(ctrl: u8) -> bool {
 #[inline]
 #[allow(clippy::cast_possible_truncation)]
 fn h1(hash: u64) -> usize {
-    #[cfg(target_pointer_width = "32")]
-    {
-        debug_assert!(hash <= u64::from(u32::max_value()));
-    }
-    hash as usize // truncation
+    // On 32-bit platforms we simply ignore the higher hash bits.
+    hash as usize
 }
 
 /// Secondary hash function, saved in the low 7 bits of the control byte.
