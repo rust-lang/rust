@@ -62,11 +62,11 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
-            Some(name) => name.as_str().get(),
-            None => this.tcx.item_name(def_id).as_str().get(),
+            Some(name) => name.as_str(),
+            None => this.tcx.item_name(def_id).as_str(),
         };
         // Strip linker suffixes (seen on 32-bit macOS).
-        let link_name = link_name.trim_end_matches("$UNIX2003");
+        let link_name = link_name.get().trim_end_matches("$UNIX2003");
         let tcx = &{this.tcx.tcx};
 
         // First: functions that could diverge.
