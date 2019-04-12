@@ -8,7 +8,6 @@ use ra_syntax::{algo, ast::{self, AstNode}, SyntaxKind::*};
 use test_utils::covers;
 
 use crate::{
-    source_binder,
     mock::MockDatabase,
     ty::display::HirDisplay,
     ty::InferenceResult,
@@ -2303,13 +2302,10 @@ fn test() -> u64 {
 }
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
-    let func = source_binder::function_from_position(db, pos).unwrap();
-    let body_source_map = func.body_source_map(db);
-    let inference_result = func.infer(db);
-    let (_, syntax) = func.source(db);
-    let node = algo::find_node_at_offset::<ast::Expr>(syntax.syntax(), pos.offset).unwrap();
-    let expr = body_source_map.node_expr(node).unwrap();
-    let ty = &inference_result[expr];
+    let file = db.parse(pos.file_id);
+    let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
+    let analyzer = SourceAnalyzer::new(db, pos.file_id, expr.syntax(), Some(pos.offset));
+    let ty = analyzer.type_of(db, expr).unwrap();
     ty.display(db).to_string()
 }
 
@@ -2390,10 +2386,12 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         }
     ",
     );
-    let func = source_binder::function_from_position(&db, pos).unwrap();
     {
+        let file = db.parse(pos.file_id);
+        let node =
+            algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            func.infer(&db);
+            SourceAnalyzer::new(&db, pos.file_id, node, None);
         });
         assert!(format!("{:?}", events).contains("infer"))
     }
@@ -2410,8 +2408,11 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     db.query_mut(ra_db::FileTextQuery).set(pos.file_id, Arc::new(new_text));
 
     {
+        let file = db.parse(pos.file_id);
+        let node =
+            algo::find_token_at_offset(file.syntax(), pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            func.infer(&db);
+            SourceAnalyzer::new(&db, pos.file_id, node, None);
         });
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }

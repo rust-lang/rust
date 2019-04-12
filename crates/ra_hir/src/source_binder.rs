@@ -89,12 +89,6 @@ fn module_from_source(
     )
 }
 
-pub fn function_from_position(db: &impl HirDatabase, position: FilePosition) -> Option<Function> {
-    let file = db.parse(position.file_id);
-    let fn_def = find_node_at_offset::<ast::FnDef>(file.syntax(), position.offset)?;
-    function_from_source(db, position.file_id, fn_def)
-}
-
 fn function_from_source(
     db: &impl HirDatabase,
     file_id: FileId,
