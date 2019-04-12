@@ -220,21 +220,21 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// // derive `Eq` and `PartialEq`.
 /// #[derive(Debug, Eq, PartialEq)]
 /// struct Rational {
-///     nominator: usize,
+///     numerator: usize,
 ///     denominator: usize,
 /// }
 ///
 /// impl Rational {
-///     fn new(nominator: usize, denominator: usize) -> Self {
+///     fn new(numerator: usize, denominator: usize) -> Self {
 ///         if denominator == 0 {
 ///             panic!("Zero is an invalid denominator!");
 ///         }
 ///
 ///         // Reduce to lowest terms by dividing by the greatest common
 ///         // divisor.
-///         let gcd = gcd(nominator, denominator);
+///         let gcd = gcd(numerator, denominator);
 ///         Rational {
-///             nominator: nominator / gcd,
+///             numerator: numerator / gcd,
 ///             denominator: denominator / gcd,
 ///         }
 ///     }
@@ -245,9 +245,9 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     type Output = Self;
 ///
 ///     fn mul(self, rhs: Self) -> Self {
-///         let nominator = self.nominator * rhs.nominator;
+///         let numerator = self.numerator * rhs.numerator;
 ///         let denominator = self.denominator * rhs.denominator;
-///         Rational::new(nominator, denominator)
+///         Rational::new(numerator, denominator)
 ///     }
 /// }
 ///
@@ -340,21 +340,21 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// // derive `Eq` and `PartialEq`.
 /// #[derive(Debug, Eq, PartialEq)]
 /// struct Rational {
-///     nominator: usize,
+///     numerator: usize,
 ///     denominator: usize,
 /// }
 ///
 /// impl Rational {
-///     fn new(nominator: usize, denominator: usize) -> Self {
+///     fn new(numerator: usize, denominator: usize) -> Self {
 ///         if denominator == 0 {
 ///             panic!("Zero is an invalid denominator!");
 ///         }
 ///
 ///         // Reduce to lowest terms by dividing by the greatest common
 ///         // divisor.
-///         let gcd = gcd(nominator, denominator);
+///         let gcd = gcd(numerator, denominator);
 ///         Rational {
-///             nominator: nominator / gcd,
+///             numerator: numerator / gcd,
 ///             denominator: denominator / gcd,
 ///         }
 ///     }
@@ -365,13 +365,13 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 ///     type Output = Self;
 ///
 ///     fn div(self, rhs: Self) -> Self::Output {
-///         if rhs.nominator == 0 {
+///         if rhs.numerator == 0 {
 ///             panic!("Cannot divide by zero-valued `Rational`!");
 ///         }
 ///
-///         let nominator = self.nominator * rhs.denominator;
-///         let denominator = self.denominator * rhs.nominator;
-///         Rational::new(nominator, denominator)
+///         let numerator = self.numerator * rhs.denominator;
+///         let denominator = self.denominator * rhs.numerator;
+///         Rational::new(numerator, denominator)
 ///     }
 /// }
 ///
