@@ -1311,6 +1311,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             is_redundant.present_items().all(|is_redundant| is_redundant)
         {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
+            redundant_spans.sort();
             redundant_spans.dedup();
             self.session.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
