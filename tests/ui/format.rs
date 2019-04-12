@@ -11,6 +11,8 @@ macro_rules! foo {
 
 fn main() {
     format!("foo");
+    format!("{{}}");
+    format!("{{}} abc {{}}");
 
     format!("{}", "foo");
     format!("{:?}", "foo"); // Don't warn about `Debug`.
