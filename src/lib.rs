@@ -470,11 +470,11 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Borrow, Self::AllocExtra>>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
-            Some(name) => name.as_str().get(),
-            None => tcx.item_name(def_id).as_str().get(),
+            Some(name) => name.as_str(),
+            None => tcx.item_name(def_id).as_str(),
         };
 
-        let alloc = match link_name {
+        let alloc = match link_name.get() {
             "__cxa_thread_atexit_impl" => {
                 // This should be all-zero, pointer-sized.
                 let size = tcx.data_layout.pointer_size;

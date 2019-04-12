@@ -27,8 +27,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         // (as opposed to through a place), we have to remember to erase any tag
         // that might still hang around!
 
-        let intrinsic_name = this.tcx.item_name(instance.def_id()).as_str().get();
-        match intrinsic_name {
+        let intrinsic_name = this.tcx.item_name(instance.def_id()).as_str();
+        match intrinsic_name.get() {
             "arith_offset" => {
                 let offset = this.read_scalar(args[1])?.to_isize(this)?;
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
@@ -187,7 +187,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "sinf32" | "fabsf32" | "cosf32" | "sqrtf32" | "expf32" | "exp2f32" | "logf32" |
             "log10f32" | "log2f32" | "floorf32" | "ceilf32" | "truncf32" => {
                 let f = this.read_scalar(args[0])?.to_f32()?;
-                let f = match intrinsic_name {
+                let f = match intrinsic_name.get() {
                     "sinf32" => f.sin(),
                     "fabsf32" => f.abs(),
                     "cosf32" => f.cos(),
@@ -208,7 +208,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "sinf64" | "fabsf64" | "cosf64" | "sqrtf64" | "expf64" | "exp2f64" | "logf64" |
             "log10f64" | "log2f64" | "floorf64" | "ceilf64" | "truncf64" => {
                 let f = this.read_scalar(args[0])?.to_f64()?;
-                let f = match intrinsic_name {
+                let f = match intrinsic_name.get() {
                     "sinf64" => f.sin(),
                     "fabsf64" => f.abs(),
                     "cosf64" => f.cos(),
@@ -229,7 +229,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
                 let a = this.read_immediate(args[0])?;
                 let b = this.read_immediate(args[1])?;
-                let op = match intrinsic_name {
+                let op = match intrinsic_name.get() {
                     "fadd_fast" => mir::BinOp::Add,
                     "fsub_fast" => mir::BinOp::Sub,
                     "fmul_fast" => mir::BinOp::Mul,
