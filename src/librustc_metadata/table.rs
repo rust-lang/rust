@@ -1,3 +1,4 @@
+use crate::decoder::Metadata;
 use crate::schema::*;
 
 use rustc::hir::def_id::{DefId, DefIndex};
@@ -158,10 +159,15 @@ impl<T> LazyMeta for Table<T> where Option<T>: FixedSizeEncoding {
 impl<T> Lazy<Table<T>> where Option<T>: FixedSizeEncoding {
     /// Given the metadata, extract out the value at a particular index (if any).
     #[inline(never)]
-    crate fn get(&self, bytes: &[u8], i: usize) -> Option<T> {
+    crate fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
+        &self,
+        metadata: M,
+        i: usize,
+    ) -> Option<T> {
         debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
 
-        <Option<T>>::read_from_bytes_at(&bytes[self.position.get()..][..self.meta], i)
+        let bytes = &metadata.raw_bytes()[self.position.get()..][..self.meta];
+        <Option<T>>::read_from_bytes_at(bytes, i)
     }
 }
 
@@ -201,7 +207,11 @@ impl<T> Lazy<PerDefTable<T>> where Option<T>: FixedSizeEncoding {
 
     /// Given the metadata, extract out the value at a particular DefIndex (if any).
     #[inline(never)]
-    crate fn get(&self, bytes: &[u8], def_index: DefIndex) -> Option<T> {
-        self.as_table().get(bytes, def_index.index())
+    crate fn get<'a, 'tcx, M: Metadata<'a, 'tcx>>(
+        &self,
+        metadata: M,
+        def_index: DefIndex,
+    ) -> Option<T> {
+        self.as_table().get(metadata, def_index.index())
     }
 }

@@ -132,8 +132,8 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
 }
 
 impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
-    crate fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> T {
-        let mut dcx = meta.decoder(self.position.get());
+    crate fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
+        let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         T::decode(&mut dcx).unwrap()
     }
@@ -142,9 +142,9 @@ impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
 impl<'a: 'x, 'tcx: 'x, 'x, T: Encodable + Decodable> Lazy<[T]> {
     crate fn decode<M: Metadata<'a, 'tcx>>(
         self,
-        meta: M,
+        metadata: M,
     ) -> impl ExactSizeIterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x {
-        let mut dcx = meta.decoder(self.position.get());
+        let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         (0..self.meta).map(move |_| T::decode(&mut dcx).unwrap())
     }
@@ -481,7 +481,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
-        self.root.per_def.entry.get(self.blob.raw_bytes(), item_id)
+        self.root.per_def.entry.get(self, item_id)
     }
 
     fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
