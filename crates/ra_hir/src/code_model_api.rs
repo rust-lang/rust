@@ -189,7 +189,7 @@ impl Module {
         }
     }
 
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let def_map = db.crate_def_map(self.krate);
         Resolver::default().push_module_scope(def_map, self.module_id)
     }
@@ -313,7 +313,7 @@ impl Struct {
 
     // FIXME move to a more general type
     /// Builds a resolver for type references inside this struct.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
@@ -373,7 +373,7 @@ impl Enum {
 
     // FIXME: move to a more general type
     /// Builds a resolver for type references inside this struct.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
@@ -459,7 +459,7 @@ impl DefWithBody {
     }
 
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         match *self {
             DefWithBody::Const(ref c) => c.resolver(db),
             DefWithBody::Function(ref f) => f.resolver(db),
@@ -549,7 +549,7 @@ impl Function {
 
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)
@@ -602,7 +602,7 @@ impl Const {
 
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)
@@ -654,7 +654,7 @@ impl Static {
     }
 
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         self.module(db).resolver(db)
     }
@@ -736,7 +736,7 @@ impl TypeAlias {
     }
 
     /// Builds a resolver for the type references in this type alias.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)

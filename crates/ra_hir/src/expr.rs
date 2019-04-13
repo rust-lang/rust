@@ -81,12 +81,16 @@ impl Body {
 }
 
 // needs arbitrary_self_types to be a method... or maybe move to the def?
-pub fn resolver_for_expr(body: Arc<Body>, db: &impl HirDatabase, expr_id: ExprId) -> Resolver {
+pub(crate) fn resolver_for_expr(
+    body: Arc<Body>,
+    db: &impl HirDatabase,
+    expr_id: ExprId,
+) -> Resolver {
     let scopes = db.expr_scopes(body.owner);
     resolver_for_scope(body, db, scopes.scope_for(expr_id))
 }
 
-pub fn resolver_for_scope(
+pub(crate) fn resolver_for_scope(
     body: Arc<Body>,
     db: &impl HirDatabase,
     scope_id: Option<scope::ScopeId>,

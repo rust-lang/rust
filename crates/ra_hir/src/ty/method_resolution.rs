@@ -135,7 +135,7 @@ fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
 impl Ty {
     /// Look up the method with the given name, returning the actual autoderefed
     /// receiver type (but without autoref applied yet).
-    pub fn lookup_method(
+    pub(crate) fn lookup_method(
         self,
         db: &impl HirDatabase,
         name: &Name,
