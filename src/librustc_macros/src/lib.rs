@@ -9,10 +9,16 @@ use proc_macro::TokenStream;
 
 mod hash_stable;
 mod query;
+mod symbols;
 
 #[proc_macro]
 pub fn rustc_queries(input: TokenStream) -> TokenStream {
     query::rustc_queries(input)
+}
+
+#[proc_macro]
+pub fn symbols(input: TokenStream) -> TokenStream {
+    symbols::symbols(input)
 }
 
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
