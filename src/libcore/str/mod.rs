@@ -2712,7 +2712,7 @@ impl str {
     /// All kinds of ASCII whitespace are considered:
     ///
     /// ```
-    /// let mut iter = " Mary   had\ta little  \n\t lamb".split_whitespace();
+    /// let mut iter = " Mary   had\ta little  \n\t lamb".split_ascii_whitespace();
     /// assert_eq!(Some("Mary"), iter.next());
     /// assert_eq!(Some("had"), iter.next());
     /// assert_eq!(Some("a"), iter.next());
