@@ -145,7 +145,7 @@ fn h2(hash: u64) -> u8 {
 /// (skipping over 1 group), then 3 groups (skipping over 2 groups), and so on.
 ///
 /// Proof that the probe will visit every group in the table:
-/// https://fgiesen.wordpress.com/2015/02/22/triangular-numbers-mod-2n/
+/// <https://fgiesen.wordpress.com/2015/02/22/triangular-numbers-mod-2n/>
 struct ProbeSeq {
     bucket_mask: usize,
     pos: usize,
@@ -298,7 +298,7 @@ impl<T> Bucket<T> {
         } else {
             self.ptr.add(offset)
         };
-        Bucket { ptr }
+        Self { ptr }
     }
     #[inline]
     pub unsafe fn drop(&self) {
@@ -321,7 +321,7 @@ impl<T> Bucket<T> {
         &mut *self.as_ptr()
     }
     #[inline]
-    pub unsafe fn copy_from_nonoverlapping(&self, other: Bucket<T>) {
+    pub unsafe fn copy_from_nonoverlapping(&self, other: &Self) {
         self.as_ptr().copy_from_nonoverlapping(other.as_ptr(), 1);
     }
 }
@@ -745,7 +745,7 @@ impl<T> RawTable<T> {
                         // element into the new slot and clear the old control
                         // byte.
                         guard.set_ctrl(i, EMPTY);
-                        guard.bucket(new_i).copy_from_nonoverlapping(item);
+                        guard.bucket(new_i).copy_from_nonoverlapping(&item);
                         continue 'outer;
                     } else {
                         // If the target slot is occupied, swap the two elements
@@ -802,7 +802,7 @@ impl<T> RawTable<T> {
                 // - all elements are unique.
                 let index = new_table.find_insert_slot(hash);
                 new_table.set_ctrl(index, h2(hash));
-                new_table.bucket(index).copy_from_nonoverlapping(item);
+                new_table.bucket(index).copy_from_nonoverlapping(&item);
             }
 
             // We successfully copied all elements without panicking. Now replace
@@ -935,12 +935,12 @@ impl<T> RawTable<T> {
     /// should be dropped using a `RawIter` before freeing the allocation.
     #[inline]
     pub fn into_alloc(self) -> Option<(NonNull<u8>, Layout)> {
-        let alloc = if !self.is_empty_singleton() {
+        let alloc = if self.is_empty_singleton() {
+            None
+        } else {
             let (layout, _) = calculate_layout::<T>(self.buckets())
                 .unwrap_or_else(|| unsafe { hint::unreachable_unchecked() });
             Some((self.ctrl.cast(), layout))
-        } else {
-            None
         };
         mem::forget(self);
         alloc
