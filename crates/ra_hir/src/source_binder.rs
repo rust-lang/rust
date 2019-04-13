@@ -17,6 +17,7 @@ use ra_syntax::{
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
+    expr::scope::{ReferenceDescriptor, ScopeEntryWithSyntax},
     ids::LocationCtx,
     expr, AstId
 };
@@ -222,6 +223,7 @@ pub struct SourceAnalyzer {
     resolver: Resolver,
     body_source_map: Option<Arc<crate::expr::BodySourceMap>>,
     infer: Option<Arc<crate::ty::InferenceResult>>,
+    scopes: Option<crate::expr::ScopesWithSourceMap>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -248,6 +250,7 @@ impl SourceAnalyzer {
             resolver: resolver_for_node(db, file_id, node, offset),
             body_source_map: def_with_body.map(|it| it.body_source_map(db)),
             infer: def_with_body.map(|it| it.infer(db)),
+            scopes: def_with_body.map(|it| it.scopes(db)),
         }
     }
 
@@ -300,6 +303,14 @@ impl SourceAnalyzer {
             crate::Resolution::SelfType(it) => PathResolution::SelfType(it),
         };
         Some(res)
+    }
+
+    pub fn find_all_refs(&self, pat: &ast::BindPat) -> Option<Vec<ReferenceDescriptor>> {
+        self.scopes.as_ref().map(|it| it.find_all_refs(pat))
+    }
+
+    pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
+        self.scopes.as_ref()?.resolve_local_name(name_ref)
     }
 
     #[cfg(test)]

@@ -173,7 +173,10 @@ impl ScopesWithSourceMap {
             .unwrap_or(original_scope)
     }
 
-    pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
+    pub(crate) fn resolve_local_name(
+        &self,
+        name_ref: &ast::NameRef,
+    ) -> Option<ScopeEntryWithSyntax> {
         let mut shadowed = FxHashSet::default();
         let name = name_ref.as_name();
         let ret = self
@@ -190,7 +193,7 @@ impl ScopesWithSourceMap {
         })
     }
 
-    pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
+    pub(crate) fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
         let ptr = Either::A(AstPtr::new(pat.into()));
         fn_def
