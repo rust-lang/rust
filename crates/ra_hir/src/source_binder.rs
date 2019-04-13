@@ -139,21 +139,13 @@ fn resolver_for_node(
     node.ancestors()
         .find_map(|node| {
             if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
-                if let Some(func) = node
-                    .ancestors()
-                    .find_map(ast::FnDef::cast)
-                    .and_then(|it| function_from_source(db, file_id, it))
-                {
-                    let scopes = func.scopes(db);
-                    let scope = match offset {
-                        None => scopes.scope_for(&node),
-                        Some(offset) => scopes.scope_for_offset(offset),
-                    };
-                    Some(expr::resolver_for_scope(func.body(db), db, scope))
-                } else {
-                    // FIXME const/static/array length
-                    None
-                }
+                let def = def_with_body_from_child_node(db, file_id, node)?;
+                let scopes = def.scopes(db);
+                let scope = match offset {
+                    None => scopes.scope_for(&node),
+                    Some(offset) => scopes.scope_for_offset(offset),
+                };
+                Some(expr::resolver_for_scope(def.body(db), db, scope))
             } else {
                 try_get_resolver_for_node(db, file_id, node)
             }
