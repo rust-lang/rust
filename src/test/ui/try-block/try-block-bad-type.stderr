@@ -6,9 +6,9 @@ LL |         Err("")?;
    |
    = help: the following implementations were found:
              <i32 as std::convert::From<bool>>
-             <i32 as std::convert::From<core::num::NonZeroI32>>
              <i32 as std::convert::From<i16>>
              <i32 as std::convert::From<i8>>
+             <i32 as std::convert::From<std::num::NonZeroI32>>
            and 2 others
    = note: required by `std::convert::From::from`
 
