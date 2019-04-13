@@ -166,7 +166,7 @@ fn try_get_resolver_for_node(
     }
 }
 
-pub fn def_with_body_from_child_node(
+fn def_with_body_from_child_node(
     db: &impl HirDatabase,
     file_id: FileId,
     node: &SyntaxNode,
