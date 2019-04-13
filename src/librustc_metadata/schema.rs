@@ -220,7 +220,7 @@ pub struct TraitImpls {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct LazyPerDefTables<'tcx> {
-    pub entry: Lazy!(PerDefTable<Entry<'tcx>>),
+    pub entry: Lazy!(PerDefTable<Lazy<Entry<'tcx>>>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

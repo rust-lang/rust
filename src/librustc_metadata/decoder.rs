@@ -2,7 +2,7 @@
 
 use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignModule};
 use crate::schema::*;
-use crate::table::PerDefTable;
+use crate::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc_data_structures::sync::{Lrc, ReadGuard};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
@@ -255,7 +255,7 @@ impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a,
 }
 
 impl<'a, 'tcx, T> SpecializedDecoder<Lazy<PerDefTable<T>>> for DecodeContext<'a, 'tcx>
-    where T: LazyMeta<Meta = ()>,
+    where Option<T>: FixedSizeEncoding,
 {
     fn specialized_decode(&mut self) -> Result<Lazy<PerDefTable<T>>, Self::Error> {
         let lo_hi = [
@@ -498,7 +498,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         assert!(!self.is_proc_macro(item_id));
-        self.root.per_def.entry.lookup(self.blob.raw_bytes(), item_id)
+        self.root.per_def.entry.get(self.blob.raw_bytes(), item_id)
     }
 
     fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
