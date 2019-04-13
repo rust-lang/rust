@@ -1,4 +1,4 @@
-use crate::table::Table;
+use crate::table::PerDefTable;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -159,7 +159,7 @@ pub enum LazyState {
 // manually, instead of relying on the default, to get the correct variance.
 // Only needed when `T` itself contains a parameter (e.g. `'tcx`).
 macro_rules! Lazy {
-    (Table<$T:ty>) => {Lazy<Table<$T>, usize>};
+    (PerDefTable<$T:ty>) => {Lazy<PerDefTable<$T>, [usize; 2]>};
     ([$T:ty]) => {Lazy<[$T], usize>};
     ($T:ty) => {Lazy<$T, ()>};
 }
@@ -193,7 +193,7 @@ pub struct CrateRoot<'tcx> {
     pub exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_table: Lazy!(Table<Entry<'tcx>>),
+    pub entries_table: Lazy!(PerDefTable<Entry<'tcx>>),
 
     pub compiler_builtins: bool,
     pub needs_allocator: bool,

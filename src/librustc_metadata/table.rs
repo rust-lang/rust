@@ -72,53 +72,42 @@ impl FixedSizeEncoding for u32 {
 /// (e.g. while visiting the definitions of a crate), and on-demand decoding
 /// of specific indices (e.g. queries for per-definition data).
 /// Similar to `Vec<Lazy<T>>`, but with zero-copy decoding.
+// FIXME(eddyb) newtype `[u8]` here, such that `Box<Table<T>>` would be used
+// when building it, and `Lazy<Table<T>>` or `&Table<T>` when reading it.
+// Sadly, that doesn't work for `DefPerTable`, which is `(Table<T>, Table<T>)`,
+// and so would need two lengths in its metadata, which is not supported yet.
 pub struct Table<T: LazyMeta<Meta = ()>> {
-    positions: [Vec<u8>; 2],
+    bytes: Vec<u8>,
     _marker: PhantomData<T>,
 }
 
 impl<T: LazyMeta<Meta = ()>> Table<T> {
-    pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Self {
+    pub fn new(len: usize) -> Self {
         Table {
-            positions: [vec![0; max_index_lo * 4],
-                        vec![0; max_index_hi * 4]],
+            bytes: vec![0; len * 4],
             _marker: PhantomData,
         }
     }
 
-    pub fn record(&mut self, def_id: DefId, entry: Lazy<T>) {
-        assert!(def_id.is_local());
-        self.record_index(def_id.index, entry);
-    }
-
-    pub fn record_index(&mut self, item: DefIndex, entry: Lazy<T>) {
+    pub fn record(&mut self, i: usize, entry: Lazy<T>) {
         let position = entry.position.get() as u32;
         assert_eq!(position as usize, entry.position.get());
-        let space_index = item.address_space().index();
-        let array_index = item.as_array_index();
 
-        let positions = &mut self.positions[space_index];
-        assert!(u32::read_from_bytes_at(positions, array_index) == 0,
-                "recorded position for item {:?} twice, first at {:?} and now at {:?}",
-                item,
-                u32::read_from_bytes_at(positions, array_index),
+        assert!(u32::read_from_bytes_at(&self.bytes, i) == 0,
+                "recorded position for index {:?} twice, first at {:?} and now at {:?}",
+                i,
+                u32::read_from_bytes_at(&self.bytes, i),
                 position);
 
-        position.write_to_bytes_at(positions, array_index)
+        position.write_to_bytes_at(&mut self.bytes, i)
     }
 
     pub fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
         let pos = buf.position();
-
-        // First we write the length of the lower range ...
-        buf.emit_raw_bytes(&(self.positions[0].len() as u32 / 4).to_le_bytes());
-        // ... then the values in the lower range ...
-        buf.emit_raw_bytes(&self.positions[0]);
-        // ... then the values in the higher range.
-        buf.emit_raw_bytes(&self.positions[1]);
+        buf.emit_raw_bytes(&self.bytes);
         Lazy::from_position_and_meta(
             NonZeroUsize::new(pos as usize).unwrap(),
-            (self.positions[0].len() + self.positions[1].len()) / 4 + 1,
+            self.bytes.len(),
         )
     }
 }
@@ -127,31 +116,81 @@ impl<T: LazyMeta<Meta = ()>> LazyMeta for Table<T> {
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
-        len * 4
+        len
     }
 }
 
 impl<T: Encodable> Lazy<Table<T>> {
-    /// Given the metadata, extract out the offset of a particular
-    /// DefIndex (if any).
+    /// Given the metadata, extract out the offset of a particular index (if any).
+    #[inline(never)]
+    pub fn lookup(&self, bytes: &[u8], i: usize) -> Option<Lazy<T>> {
+        debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
+
+        let bytes = &bytes[self.position.get()..][..self.meta];
+        let position = u32::read_from_bytes_at(bytes, i);
+        debug!("Table::lookup: position={:?}", position);
+
+        NonZeroUsize::new(position as usize).map(Lazy::from_position)
+    }
+}
+
+
+/// Per-definition table, similar to `Table` but keyed on `DefIndex`.
+/// Needed because of the two `DefIndexAddressSpace`s a `DefIndex` can be in.
+pub struct PerDefTable<T: LazyMeta<Meta = ()>> {
+    lo: Table<T>,
+    hi: Table<T>,
+}
+
+impl<T: LazyMeta<Meta = ()>> PerDefTable<T> {
+    pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Self {
+        PerDefTable {
+            lo: Table::new(max_index_lo),
+            hi: Table::new(max_index_hi),
+        }
+    }
+
+    pub fn record(&mut self, def_id: DefId, entry: Lazy<T>) {
+        assert!(def_id.is_local());
+        let space_index = def_id.index.address_space().index();
+        let array_index = def_id.index.as_array_index();
+        [&mut self.lo, &mut self.hi][space_index].record(array_index, entry);
+    }
+
+    pub fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
+        let lo = self.lo.encode(buf);
+        let hi = self.hi.encode(buf);
+        assert_eq!(lo.position.get() + lo.meta, hi.position.get());
+
+        Lazy::from_position_and_meta(
+            lo.position,
+            [lo.meta, hi.meta],
+        )
+    }
+}
+
+impl<T: LazyMeta<Meta = ()>> LazyMeta for PerDefTable<T> {
+    type Meta = [<Table<T> as LazyMeta>::Meta; 2];
+
+    fn min_size([lo, hi]: Self::Meta) -> usize {
+        Table::<T>::min_size(lo) + Table::<T>::min_size(hi)
+    }
+}
+
+impl<T: Encodable> Lazy<PerDefTable<T>> {
+    fn table_for_space(&self, space: DefIndexAddressSpace) -> Lazy<Table<T>> {
+        let space_index = space.index();
+        let offset = space_index.checked_sub(1).map_or(0, |i| self.meta[i]);
+        Lazy::from_position_and_meta(
+            NonZeroUsize::new(self.position.get() + offset).unwrap(),
+            self.meta[space_index]
+        )
+    }
+
+    /// Given the metadata, extract out the offset of a particular DefIndex (if any).
     #[inline(never)]
     pub fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<T>> {
-        let bytes = &bytes[self.position.get()..];
-        debug!("Table::lookup: index={:?} len={:?}",
-               def_index,
-               self.meta);
-
-        let i = def_index.as_array_index() + match def_index.address_space() {
-            DefIndexAddressSpace::Low => 0,
-            DefIndexAddressSpace::High => {
-                // This is a DefIndex in the higher range, so find out where
-                // that starts:
-                u32::read_from_bytes_at(bytes, 0) as usize
-            }
-        };
-
-        let position = u32::read_from_bytes_at(bytes, 1 + i);
-        debug!("Table::lookup: position={:?}", position);
-        NonZeroUsize::new(position as usize).map(Lazy::from_position)
+        self.table_for_space(def_index.address_space())
+            .lookup(bytes, def_index.as_array_index())
     }
 }
