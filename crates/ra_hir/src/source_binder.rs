@@ -101,15 +101,6 @@ fn function_from_source(
     Some(Function { id: ctx.to_def(fn_def) })
 }
 
-fn function_from_child_node(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<Function> {
-    let fn_def = node.ancestors().find_map(ast::FnDef::cast)?;
-    function_from_source(db, file_id, fn_def)
-}
-
 pub fn struct_from_module(
     db: &impl HirDatabase,
     module: Module,
@@ -148,7 +139,11 @@ fn resolver_for_node(
     node.ancestors()
         .find_map(|node| {
             if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
-                if let Some(func) = function_from_child_node(db, file_id, node) {
+                if let Some(func) = node
+                    .ancestors()
+                    .find_map(ast::FnDef::cast)
+                    .and_then(|it| function_from_source(db, file_id, it))
+                {
                     let scopes = func.scopes(db);
                     let scope = match offset {
                         None => scopes.scope_for(&node),
