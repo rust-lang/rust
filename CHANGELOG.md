@@ -13,7 +13,8 @@ All notable changes to this project will be documented in this file.
 * New lint: [`assertions_on_constants`] to detect for example `assert!(true)`
 * New lint: [`dbg_macro`] to detect uses of the `dbg!` macro
 * New lint: [`missing_const_for_fn`] that can suggest functions to be made `const`
-* New lint: [`too_many_lines`] to detect functions with excessive LOC
+* New lint: [`too_many_lines`] to detect functions with excessive LOC. It can be
+  configured using the `too-many-lines-threshold` configuration.
 * New lint: [`wildcard_enum_match_arm`] to check for wildcard enum matches using `_`
 * Expand `redundant_closure` to also work for methods (not only functions)
 * Fix ICEs in `vec_box`, `needless_pass_by_value` and `implicit_hasher`
