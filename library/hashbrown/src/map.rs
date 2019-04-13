@@ -1646,8 +1646,8 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     {
         unsafe {
             let elem = self.table.insert(hash, (key, value), |x| hasher(&x.0));
-            let &mut (ref mut key, ref mut value) = elem.as_mut();
-            (key, value)
+            let &mut (ref mut k, ref mut v) = elem.as_mut();
+            (k, v)
         }
     }
 }
