@@ -1013,7 +1013,7 @@ themePicker.onblur = handleThemeButtonsBlur;
                 })
     }
 
-    let dst = cx.dst.join("aliases.js");
+    let dst = cx.dst.join(&format!("aliases{}.js", cx.shared.resource_suffix));
     {
         let (mut all_aliases, _, _) = try_err!(collect(&dst, &krate.name, "ALIASES", false), &dst);
         let mut w = try_err!(File::create(&dst), &dst);
@@ -1099,7 +1099,7 @@ themePicker.onblur = handleThemeButtonsBlur;
             }
         }
 
-        let dst = cx.dst.join("source-files.js");
+        let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
         let (mut all_sources, _krates, _) = try_err!(collect(&dst, &krate.name, "sourcesIndex",
                                                              false),
                                                      &dst);
@@ -1115,7 +1115,7 @@ themePicker.onblur = handleThemeButtonsBlur;
     }
 
     // Update the search index
-    let dst = cx.dst.join("search-index.js");
+    let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
     let (mut all_indexes, mut krates, variables) = try_err!(collect(&dst,
                                                                     &krate.name,
                                                                     "searchIndex",
@@ -1483,7 +1483,7 @@ impl<'a> SourceCollector<'a> {
             description: &desc,
             keywords: BASIC_KEYWORDS,
             resource_suffix: &self.scx.resource_suffix,
-            extra_scripts: &["source-files"],
+            extra_scripts: &[&format!("source-files{}", self.scx.resource_suffix)],
             static_extra_scripts: &[&format!("source-script{}", self.scx.resource_suffix)],
         };
         layout::render(&mut w, &self.scx.layout,
