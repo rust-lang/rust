@@ -4,63 +4,63 @@
 //!
 //! Intrinsics that could live here
 //!
-//! - [x] __sel
-//! - [ ] __ssat16
-//! - [ ] __usat16
-//! - [ ] __sxtab16
-//! - [ ] __sxtb16
-//! - [ ] __uxtab16
-//! - [ ] __uxtb16
-//! - [x] __qadd8
-//! - [x] __qsub8
-//! - [x] __sadd8
-//! - [x] __shadd8
-//! - [x] __shsub8
-//! - [x] __ssub8
-//! - [ ] __uadd8
-//! - [ ] __uhadd8
-//! - [ ] __uhsub8
-//! - [ ] __uqadd8
-//! - [ ] __uqsub8
-//! - [x] __usub8
-//! - [x] __usad8
-//! - [x] __usada8
-//! - [x] __qadd16
-//! - [x] __qasx
-//! - [x] __qsax
-//! - [x] __qsub16
-//! - [x] __sadd16
-//! - [x] __sasx
-//! - [x] __shadd16
-//! - [ ] __shasx
-//! - [ ] __shsax
-//! - [x] __shsub16
-//! - [ ] __ssax
-//! - [ ] __ssub16
-//! - [ ] __uadd16
-//! - [ ] __uasx
-//! - [ ] __uhadd16
-//! - [ ] __uhasx
-//! - [ ] __uhsax
-//! - [ ] __uhsub16
-//! - [ ] __uqadd16
-//! - [ ] __uqasx
-//! - [x] __uqsax
-//! - [ ] __uqsub16
-//! - [ ] __usax
-//! - [ ] __usub16
-//! - [x] __smlad
-//! - [ ] __smladx
-//! - [ ] __smlald
-//! - [ ] __smlaldx
-//! - [x] __smlsd
-//! - [ ] __smlsdx
-//! - [ ] __smlsld
-//! - [ ] __smlsldx
-//! - [x] __smuad
-//! - [x] __smuadx
-//! - [x] __smusd
-//! - [x] __smusdx
+//! - \[x\] __sel
+//! - \[ \] __ssat16
+//! - \[ \] __usat16
+//! - \[ \] __sxtab16
+//! - \[ \] __sxtb16
+//! - \[ \] __uxtab16
+//! - \[ \] __uxtb16
+//! - \[x\] __qadd8
+//! - \[x\] __qsub8
+//! - \[x\] __sadd8
+//! - \[x\] __shadd8
+//! - \[x\] __shsub8
+//! - \[x\] __ssub8
+//! - \[ \] __uadd8
+//! - \[ \] __uhadd8
+//! - \[ \] __uhsub8
+//! - \[ \] __uqadd8
+//! - \[ \] __uqsub8
+//! - \[x\] __usub8
+//! - \[x\] __usad8
+//! - \[x\] __usada8
+//! - \[x\] __qadd16
+//! - \[x\] __qasx
+//! - \[x\] __qsax
+//! - \[x\] __qsub16
+//! - \[x\] __sadd16
+//! - \[x\] __sasx
+//! - \[x\] __shadd16
+//! - \[ \] __shasx
+//! - \[ \] __shsax
+//! - \[x\] __shsub16
+//! - \[ \] __ssax
+//! - \[ \] __ssub16
+//! - \[ \] __uadd16
+//! - \[ \] __uasx
+//! - \[ \] __uhadd16
+//! - \[ \] __uhasx
+//! - \[ \] __uhsax
+//! - \[ \] __uhsub16
+//! - \[ \] __uqadd16
+//! - \[ \] __uqasx
+//! - \[x\] __uqsax
+//! - \[ \] __uqsub16
+//! - \[ \] __usax
+//! - \[ \] __usub16
+//! - \[x\] __smlad
+//! - \[ \] __smladx
+//! - \[ \] __smlald
+//! - \[ \] __smlaldx
+//! - \[x\] __smlsd
+//! - \[ \] __smlsdx
+//! - \[ \] __smlsld
+//! - \[ \] __smlsldx
+//! - \[x\] __smuad
+//! - \[x\] __smuadx
+//! - \[x\] __smusd
+//! - \[x\] __smusdx
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;
@@ -349,7 +349,7 @@ pub unsafe fn __shsub8(a: int8x4_t, b: int8x4_t) -> int8x4_t {
 /// res\[2\] = a\[2\] - a\[2\]
 /// res\[3\] = a\[3\] - a\[3\]
 ///
-/// where [0] is the lower 8 bits and [3] is the upper 8 bits.
+/// where \[0\] is the lower 8 bits and \[3\] is the upper 8 bits.
 /// The GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(usub8))]
@@ -366,7 +366,7 @@ pub unsafe fn __usub8(a: uint8x4_t, b: uint8x4_t) -> uint8x4_t {
 /// res\[2\] = a\[2\] - a\[2\]
 /// res\[3\] = a\[3\] - a\[3\]
 ///
-/// where [0] is the lower 8 bits and [3] is the upper 8 bits.
+/// where \[0\] is the lower 8 bits and \[3\] is the upper 8 bits.
 /// The GE bits of the APSR are set.
 #[inline]
 #[cfg_attr(test, assert_instr(ssub8))]
