@@ -10,7 +10,7 @@ use std::sync::Arc;
 use rustc_hash::{FxHashSet, FxHashMap};
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr,
+    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr, TextRange,
     ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
     SyntaxKind::*,
@@ -19,7 +19,7 @@ use ra_syntax::{
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
-    expr::{BodySourceMap, scope::{ReferenceDescriptor, ScopeId, ExprScopes}},
+    expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
     ids::LocationCtx,
     expr, AstId
 };
@@ -203,6 +203,12 @@ impl ScopeEntryWithSyntax {
     }
 }
 
+#[derive(Debug)]
+pub struct ReferenceDescriptor {
+    pub range: TextRange,
+    pub name: String,
+}
+
 impl SourceAnalyzer {
     pub fn new(
         db: &impl HirDatabase,
@@ -318,6 +324,8 @@ impl SourceAnalyzer {
     }
 
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
+        // FIXME: at least, this should work with any DefWithBody, but ideally
+        // this should be hir-based altogether
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
         let ptr = Either::A(AstPtr::new(pat.into()));
         fn_def
@@ -329,7 +337,7 @@ impl SourceAnalyzer {
                 Some(entry) => entry.ptr() == ptr,
             })
             .map(|name_ref| ReferenceDescriptor {
-                name: name_ref.syntax().text().to_string(),
+                name: name_ref.text().to_string(),
                 range: name_ref.syntax().range(),
             })
             .collect()

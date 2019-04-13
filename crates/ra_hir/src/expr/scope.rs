@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use rustc_hash::FxHashMap;
-use ra_syntax::TextRange;
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
@@ -171,21 +170,13 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
     };
 }
 
-#[derive(Debug)]
-pub struct ReferenceDescriptor {
-    pub range: TextRange,
-    pub name: String,
-}
-
 #[cfg(test)]
 mod tests {
     use ra_db::SourceDatabase;
-    use ra_syntax::{algo::find_node_at_offset, AstNode, SyntaxNodePtr};
+    use ra_syntax::{algo::find_node_at_offset, AstNode, SyntaxNodePtr, ast};
     use test_utils::{extract_offset, assert_eq_text};
 
     use crate::{source_binder::SourceAnalyzer, mock::MockDatabase};
-
-    use super::*;
 
     fn do_check(code: &str, expected: &[&str]) {
         let (off, code) = extract_offset(code);
