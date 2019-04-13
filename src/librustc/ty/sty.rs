@@ -11,6 +11,7 @@ use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, Kind, UnpackedKind};
 use crate::ty::{self, AdtDef, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
+use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, Pointer};
 
@@ -466,7 +467,44 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
+    /// Generator have not been resumed yet
+    pub const UNRESUMED: usize = 0;
+    /// Generator has returned / is completed
+    pub const RETURNED: usize = 1;
+    /// Generator has been poisoned
+    pub const POISONED: usize = 2;
+
+    const UNRESUMED_NAME: &'static str = "Unresumed";
+    const RETURNED_NAME: &'static str = "Returned";
+    const POISONED_NAME: &'static str = "Panicked";
+
+    /// The variants of this Generator.
+    #[inline]
+    pub fn variants(&self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item = VariantIdx>
+    {
+        // FIXME requires optimized MIR
+        let num_variants = self.state_tys(def_id, tcx).count();
+        (0..num_variants).map(VariantIdx::new)
+    }
+
+    /// Calls `f` with a reference to the name of the enumerator for the given
+    /// variant `v`.
+    #[inline]
+    pub fn map_variant_name<R>(&self, v: VariantIdx, f: impl FnOnce(&str) -> R) -> R {
+        let name = match v.as_usize() {
+            Self::UNRESUMED => Self::UNRESUMED_NAME,
+            Self::RETURNED => Self::RETURNED_NAME,
+            Self::POISONED => Self::POISONED_NAME,
+            _ => {
+                return f(&format!("variant#{}", v.as_usize()));
+            }
+        };
+        f(name)
+    }
+
     /// The type of the state "discriminant" used in the generator type.
+    #[inline]
     pub fn discr_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         tcx.types.u32
     }
@@ -477,6 +515,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     ///
     /// The locals are grouped by their variant number. Note that some locals may
     /// be repeated in multiple variants.
+    #[inline]
     pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a>
     {
@@ -487,6 +526,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
 
     /// This is the types of the fields of a generator which are not stored in a
     /// variant.
+    #[inline]
     pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=Ty<'tcx>> + 'a
     {

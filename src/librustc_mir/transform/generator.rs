@@ -54,6 +54,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
+use rustc::ty::GeneratorSubsts;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
@@ -145,11 +146,11 @@ fn self_arg() -> Local {
 }
 
 /// Generator have not been resumed yet
-const UNRESUMED: usize = 0;
+const UNRESUMED: usize = GeneratorSubsts::UNRESUMED;
 /// Generator has returned / is completed
-const RETURNED: usize = 1;
+const RETURNED: usize = GeneratorSubsts::RETURNED;
 /// Generator has been poisoned
-const POISONED: usize = 2;
+const POISONED: usize = GeneratorSubsts::POISONED;
 
 struct SuspensionPoint {
     state: usize,
