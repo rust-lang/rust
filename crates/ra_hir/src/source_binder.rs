@@ -96,15 +96,9 @@ fn function_from_source(
     fn_def: &ast::FnDef,
 ) -> Option<Function> {
     let module = module_from_child_node(db, file_id, fn_def.syntax())?;
-    let res = function_from_module(db, module, fn_def);
-    Some(res)
-}
-
-fn function_from_module(db: &impl HirDatabase, module: Module, fn_def: &ast::FnDef) -> Function {
-    let (file_id, _) = module.definition_source(db);
     let file_id = file_id.into();
     let ctx = LocationCtx::new(db, module, file_id);
-    Function { id: ctx.to_def(fn_def) }
+    Some(Function { id: ctx.to_def(fn_def) })
 }
 
 fn function_from_child_node(
