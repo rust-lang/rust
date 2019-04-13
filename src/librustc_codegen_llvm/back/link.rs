@@ -1014,7 +1014,7 @@ fn link_args(cmd: &mut dyn Linker,
         cmd.build_static_executable();
     }
 
-    if sess.opts.debugging_opts.pgo_gen.is_some() {
+    if sess.opts.debugging_opts.pgo_gen.enabled() {
         cmd.pgo_gen();
     }
 
