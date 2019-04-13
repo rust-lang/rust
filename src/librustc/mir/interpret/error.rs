@@ -65,8 +65,8 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
                 write!(f, "inside call to `{}`", self.instance)?;
             }
             if !self.call_site.is_dummy() {
-                let lo = tcx.sess.source_map().lookup_char_pos_adj(self.call_site.lo());
-                write!(f, " at {}:{}:{}", lo.filename, lo.line, lo.col.to_usize() + 1)?;
+                let lo = tcx.sess.source_map().lookup_char_pos(self.call_site.lo());
+                write!(f, " at {}:{}:{}", lo.file.name, lo.line, lo.col.to_usize() + 1)?;
             }
             Ok(())
         })
