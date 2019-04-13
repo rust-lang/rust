@@ -365,11 +365,11 @@ impl Qualif for NeedsDrop {
     }
 }
 
-// Not constant at all - non-`const fn` calls, asm!,
+// Not promotable at all - non-`const fn` calls, asm!,
 // pointer comparisons, ptr-to-int casts, etc.
-struct IsNotConst;
+struct IsNotPromotable;
 
-impl Qualif for IsNotConst {
+impl Qualif for IsNotPromotable {
     const IDX: usize = 2;
 
     fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
@@ -508,13 +508,17 @@ impl Qualif for IsNotConst {
     }
 }
 
-// Refers to temporaries which cannot be promoted as
-// promote_consts decided they weren't simple enough.
-// FIXME(oli-obk,eddyb): Remove this flag entirely and
-// solely process this information via `IsNotConst`.
-struct IsNotPromotable;
+/// Refers to temporaries which cannot be promoted *implicitly*.
+/// Explicit promotion happens e.g. for constant arguments declared via `rustc_args_required_const`.
+/// Inside a const context all constness rules
+/// apply, so implicit promotion simply has to follow the regular constant rules (modulo interior
+/// mutability or `Drop` rules which are handled `HasMutInterior` and `NeedsDrop` respectively).
+/// Implicit promotion inside regular functions does not happen if `const fn` calls are involved,
+/// as the call may be perfectly alright at runtime, but fail at compile time e.g. due to addresses
+/// being compared inside the function.
+struct IsNotImplicitlyPromotable;
 
-impl Qualif for IsNotPromotable {
+impl Qualif for IsNotImplicitlyPromotable {
     const IDX: usize = 3;
 
     fn in_call(
@@ -550,15 +554,18 @@ macro_rules! static_assert_seq_qualifs {
         static_assert!(SEQ_QUALIFS: QUALIF_COUNT == $i);
     };
 }
-static_assert_seq_qualifs!(0 => HasMutInterior, NeedsDrop, IsNotConst, IsNotPromotable);
+static_assert_seq_qualifs!(
+    0 => HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
+);
 
 impl ConstCx<'_, 'tcx> {
     fn qualifs_in_any_value_of_ty(&self, ty: Ty<'tcx>) -> PerQualif<bool> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[NeedsDrop] = NeedsDrop::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotConst] = IsNotConst::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[IsNotPromotable] = IsNotPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
+        qualifs[IsNotImplicitlyPromotable] =
+            IsNotImplicitlyPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs
     }
 
@@ -566,8 +573,8 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_local(self, local);
         qualifs[NeedsDrop] = NeedsDrop::in_local(self, local);
-        qualifs[IsNotConst] = IsNotConst::in_local(self, local);
         qualifs[IsNotPromotable] = IsNotPromotable::in_local(self, local);
+        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_local(self, local);
         qualifs
     }
 
@@ -575,8 +582,8 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_value(self, source);
         qualifs[NeedsDrop] = NeedsDrop::in_value(self, source);
-        qualifs[IsNotConst] = IsNotConst::in_value(self, source);
         qualifs[IsNotPromotable] = IsNotPromotable::in_value(self, source);
+        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_value(self, source);
         qualifs
     }
 }
@@ -631,26 +638,21 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         };
 
         for (local, decl) in mir.local_decls.iter_enumerated() {
-            match mir.local_kind(local) {
-                LocalKind::Arg => {
-                    let qualifs = cx.qualifs_in_any_value_of_ty(decl.ty);
-                    for (per_local, qualif) in &mut cx.per_local.as_mut().zip(qualifs).0 {
-                        if *qualif {
-                            per_local.insert(local);
-                        }
+            if let LocalKind::Arg = mir.local_kind(local) {
+                let qualifs = cx.qualifs_in_any_value_of_ty(decl.ty);
+                for (per_local, qualif) in &mut cx.per_local.as_mut().zip(qualifs).0 {
+                    if *qualif {
+                        per_local.insert(local);
                     }
-                    cx.per_local[IsNotConst].insert(local);
                 }
-
-                LocalKind::Var if mode == Mode::Fn => {
-                    cx.per_local[IsNotConst].insert(local);
-                }
-
-                LocalKind::Temp if !temps[local].is_promotable() => {
-                    cx.per_local[IsNotConst].insert(local);
-                }
-
-                _ => {}
+            }
+            if !temps[local].is_promotable() {
+                cx.per_local[IsNotPromotable].insert(local);
+            }
+            if let LocalKind::Var = mir.local_kind(local) {
+                // Sanity check to prevent implicit and explicit promotion of
+                // named locals
+                assert!(cx.per_local[IsNotPromotable].contains(local));
             }
         }
 
@@ -698,11 +700,11 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             // the borrowed place is disallowed from being borrowed,
             // due to either a mutable borrow (with some exceptions),
             // or an shared borrow of a value with interior mutability.
-            // Then `HasMutInterior` is replaced with `IsNotConst`,
+            // Then `HasMutInterior` is replaced with `IsNotPromotable`,
             // to avoid duplicate errors (e.g. from reborrowing).
             if qualifs[HasMutInterior] {
                 qualifs[HasMutInterior] = false;
-                qualifs[IsNotConst] = true;
+                qualifs[IsNotPromotable] = true;
 
                 if self.mode != Mode::Fn {
                     if let BorrowKind::Mut { .. } = kind {
@@ -817,7 +819,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        // Ensure the `IsNotConst` qualification is preserved.
+        // Ensure the `IsNotPromotable` qualification is preserved.
         // NOTE(eddyb) this is actually unnecessary right now, as
         // we never replace the local's qualif, but we might in
         // the future, and so it serves to catch changes that unset
@@ -825,7 +827,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         // be replaced with calling `insert` to re-set the bit).
         if kind == LocalKind::Temp {
             if !self.temp_promotion_state[index].is_promotable() {
-                assert!(self.cx.per_local[IsNotConst].contains(index));
+                assert!(self.cx.per_local[IsNotPromotable].contains(index));
             }
         }
     }
@@ -911,7 +913,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         // Account for errors in consts by using the
         // conservative type qualification instead.
-        if qualifs[IsNotConst] {
+        if qualifs[IsNotPromotable] {
             qualifs = self.qualifs_in_any_value_of_ty(mir.return_ty());
         }
 
@@ -1326,7 +1328,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                     // which happens even without the user requesting it.
                     // We can error out with a hard error if the argument is not
                     // constant here.
-                    if !IsNotConst::in_operand(self, arg) {
+                    if !IsNotPromotable::in_operand(self, arg) {
                         debug!("visit_terminator_kind: candidate={:?}", candidate);
                         self.promotion_candidates.push(candidate);
                     } else {
@@ -1444,7 +1446,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (1 << IsNotConst::IDX, Lrc::new(BitSet::new_empty(0)));
+        return (1 << IsNotPromotable::IDX, Lrc::new(BitSet::new_empty(0)));
     }
 
     Checker::new(tcx, def_id, mir, Mode::Const).check_const()

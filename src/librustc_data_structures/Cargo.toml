@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 [dependencies]
 ena = "0.13"
 log = "0.4"
-jobserver_crate = { version = "0.1", package = "jobserver" }
+jobserver_crate = { version = "0.1.13", package = "jobserver" }
 lazy_static = "1"
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }

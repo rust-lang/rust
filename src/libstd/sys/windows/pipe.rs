@@ -1,7 +1,7 @@
 use crate::os::windows::prelude::*;
 
 use crate::ffi::OsStr;
-use crate::io;
+use crate::io::{self, IoVec, IoVecMut};
 use crate::mem;
 use crate::path::Path;
 use crate::ptr;
@@ -166,8 +166,16 @@ impl AnonPipe {
         self.inner.read(buf)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        self.inner.read_vectored(bufs)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        self.inner.write_vectored(bufs)
     }
 }
 

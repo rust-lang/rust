@@ -3,7 +3,7 @@
 
 #![no_std]
 #![crate_type = "staticlib"]
-#![feature(panic_handler, alloc_error_handler, alloc)]
+#![feature(panic_handler, alloc_error_handler)]
 
 #[panic_handler]
 fn panic(_: &core::panic::PanicInfo) -> ! {

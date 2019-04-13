@@ -26,7 +26,7 @@ use rustc_data_structures::sync::{self, Lrc};
 use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;
-use crate::lint::builtin::{BuiltinLintDiagnostics, DUPLICATE_MATCHER_BINDING_NAME};
+use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, ILL_FORMED_ATTRIBUTE_INPUT};
 use crate::session::{Session, DiagnosticMessageId};
 use crate::ty::TyCtxt;
@@ -82,7 +82,6 @@ impl Lint {
         match lint_id {
             BufferedEarlyLintId::QuestionMarkMacroSep => QUESTION_MARK_MACRO_SEP,
             BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
-            BufferedEarlyLintId::DuplicateMacroMatcherBindingName => DUPLICATE_MATCHER_BINDING_NAME,
         }
     }
 

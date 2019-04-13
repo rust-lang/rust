@@ -12,6 +12,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 }
 
 #[cfg(all(unix,
+          not(target_os = "macos"),
           not(target_os = "ios"),
           not(target_os = "openbsd"),
           not(target_os = "freebsd"),
@@ -99,7 +100,7 @@ mod imp {
     }
 }
 
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 mod imp {
     use crate::io;
     use crate::ptr;

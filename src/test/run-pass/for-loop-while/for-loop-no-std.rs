@@ -1,6 +1,6 @@
 // run-pass
 #![allow(unused_imports)]
-#![feature(lang_items, start, alloc)]
+#![feature(lang_items, start)]
 #![no_std]
 
 extern crate std as other;

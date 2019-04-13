@@ -72,18 +72,6 @@ impl Atom for BorrowIndex {
     }
 }
 
-impl From<usize> for BorrowIndex {
-    fn from(i: usize) -> BorrowIndex {
-        BorrowIndex::new(i)
-    }
-}
-
-impl From<BorrowIndex> for usize {
-    fn from(vid: BorrowIndex) -> usize {
-        Idx::index(vid)
-    }
-}
-
 impl Atom for LocationIndex {
     fn index(self) -> usize {
         Idx::index(self)

@@ -33,7 +33,12 @@ mod graphviz;
 mod impls;
 pub mod move_paths;
 
-pub(crate) use self::move_paths::indexes;
+pub(crate) mod indexes {
+    pub(crate) use super::{
+        move_paths::{MovePathIndex, MoveOutIndex, InitIndex},
+        impls::borrows::BorrowIndex,
+    };
+}
 
 pub(crate) struct DataflowBuilder<'a, 'tcx: 'a, BD>
 where

@@ -2,12 +2,11 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
-use crate::boxed::FnBox;
 use crate::ptr;
 use crate::mem;
 use crate::sys_common::mutex::Mutex;
 
-type Queue = Vec<Box<dyn FnBox()>>;
+type Queue = Vec<Box<dyn FnOnce()>>;
 
 // NB these are specifically not types from `std::sync` as they currently rely
 // on poisoning and this module needs to operate at a lower level than requiring
@@ -61,7 +60,7 @@ pub fn cleanup() {
     }
 }
 
-pub fn push(f: Box<dyn FnBox()>) -> bool {
+pub fn push(f: Box<dyn FnOnce()>) -> bool {
     unsafe {
         let _guard = LOCK.lock();
         if init() {

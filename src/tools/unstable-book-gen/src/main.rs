@@ -52,7 +52,7 @@ fn set_to_summary_str(set: &BTreeSet<String>, dir: &str
 
 fn generate_summary(path: &Path, lang_features: &Features, lib_features: &Features) {
     let compiler_flags = collect_unstable_book_section_file_names(
-        &path.join("compiler-flags"));
+        &path.join("src/compiler-flags"));
 
     let compiler_flags_str = set_to_summary_str(&compiler_flags,
                                                 "compiler-flags");
@@ -61,11 +61,11 @@ fn generate_summary(path: &Path, lang_features: &Features, lib_features: &Featur
     let unstable_lib_features = collect_unstable_feature_names(&lib_features);
 
     let lang_features_str = set_to_summary_str(&unstable_lang_features,
-                                               LANG_FEATURES_DIR);
+                                               "language-features");
     let lib_features_str = set_to_summary_str(&unstable_lib_features,
-                                              LIB_FEATURES_DIR);
+                                              "library-features");
 
-    let mut file = t!(File::create(&path.join("SUMMARY.md")));
+    let mut file = t!(File::create(&path.join("src/SUMMARY.md")));
     t!(file.write_fmt(format_args!(include_str!("SUMMARY.md"),
                                    compiler_flags = compiler_flags_str,
                                    language_features = lang_features_str,
@@ -102,8 +102,8 @@ fn generate_unstable_book_files(src :&Path, out: &Path, features :&Features) {
     }
 }
 
-fn copy_recursive(path: &Path, to: &Path) {
-    for entry in t!(fs::read_dir(path)) {
+fn copy_recursive(from: &Path, to: &Path) {
+    for entry in t!(fs::read_dir(from)) {
         let e = t!(entry);
         let t = t!(e.metadata());
         let dest = &to.join(e.file_name());
@@ -120,7 +120,7 @@ fn main() {
     let src_path_str = env::args_os().skip(1).next().expect("source path required");
     let dest_path_str = env::args_os().skip(2).next().expect("destination path required");
     let src_path = Path::new(&src_path_str);
-    let dest_path = Path::new(&dest_path_str).join("src");
+    let dest_path = Path::new(&dest_path_str);
 
     let lang_features = collect_lang_features(src_path, &mut false);
     let lib_features = collect_lib_features(src_path).into_iter().filter(|&(ref name, _)| {
