@@ -3,7 +3,6 @@ use std::sync::Arc;
 use rustc_hash::{FxHashMap};
 use ra_syntax::{
     TextRange, AstPtr,
-    algo::generate,
     ast,
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
@@ -26,13 +25,13 @@ pub struct ExprScopes {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ScopeEntry {
+pub(crate) struct ScopeEntry {
     name: Name,
     pat: PatId,
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct ScopeData {
+pub(crate) struct ScopeData {
     parent: Option<ScopeId>,
     entries: Vec<ScopeEntry>,
 }
@@ -57,16 +56,15 @@ impl ExprScopes {
         scopes
     }
 
-    pub fn body(&self) -> Arc<Body> {
-        self.body.clone()
-    }
-
-    pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
+    pub(crate) fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
         &self.scopes[scope].entries
     }
 
-    pub fn scope_chain<'a>(&'a self, scope: Option<ScopeId>) -> impl Iterator<Item = ScopeId> + 'a {
-        generate(scope, move |&scope| self.scopes[scope].parent)
+    pub(crate) fn scope_chain<'a>(
+        &'a self,
+        scope: Option<ScopeId>,
+    ) -> impl Iterator<Item = ScopeId> + 'a {
+        std::iter::successors(scope, move |&scope| self.scopes[scope].parent)
     }
 
     fn root_scope(&mut self) -> ScopeId {
@@ -98,7 +96,7 @@ impl ExprScopes {
         self.scope_for.insert(node, scope);
     }
 
-    pub fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
+    pub(crate) fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
         self.scope_for.get(&expr).map(|&scope| scope)
     }
 }
