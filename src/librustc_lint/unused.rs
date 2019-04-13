@@ -228,7 +228,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
 
         let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
         for &(ref name, ty) in plugin_attributes.iter() {
-            if ty == AttributeType::Whitelisted && attr.check_name(&name) {
+            if ty == AttributeType::Whitelisted && attr.check_name(&**name) {
                 debug!("{:?} (plugin attr) is whitelisted with ty {:?}", name, ty);
                 break;
             }

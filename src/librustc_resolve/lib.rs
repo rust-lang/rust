@@ -50,7 +50,7 @@ use syntax::ast::{QSelf, TraitItemKind, TraitRef, Ty, TyKind};
 use syntax::ptr::P;
 use syntax::{span_err, struct_span_err, unwrap_or, walk_list};
 
-use syntax_pos::{BytePos, Span, DUMMY_SP, MultiSpan};
+use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use log::debug;
@@ -62,6 +62,7 @@ use std::mem::replace;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 
+use error_reporting::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, ParentScope};
 
@@ -138,8 +139,8 @@ impl Ord for BindingError {
     }
 }
 
-/// A span, message, replacement text, and applicability.
-type Suggestion = (Span, String, String, Applicability);
+/// A vector of spans and replacements, a message and applicability.
+type Suggestion = (Vec<(Span, String)>, String, Applicability);
 
 enum ResolutionError<'a> {
     /// Error E0401: can't use type or const parameters from outer function.
@@ -389,8 +390,8 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                            "failed to resolve: {}", &label);
             err.span_label(span, label);
 
-            if let Some((span, msg, suggestion, applicability)) = suggestion {
-                err.span_suggestion(span, &msg, suggestion, applicability);
+            if let Some((suggestions, msg, applicability)) = suggestion {
+                err.multipart_suggestion(&msg, suggestions, applicability);
             }
 
             err
@@ -1089,6 +1090,16 @@ enum ModuleKind {
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
     Def(Def, Name),
+}
+
+impl ModuleKind {
+    /// Get name of the module.
+    pub fn name(&self) -> Option<Name> {
+        match self {
+            ModuleKind::Block(..) => None,
+            ModuleKind::Def(_, name) => Some(*name),
+        }
+    }
 }
 
 /// One node in the tree of modules.
@@ -3770,9 +3781,8 @@ impl<'a> Resolver<'a> {
                             (
                                 String::from("unresolved import"),
                                 Some((
-                                    ident.span,
+                                    vec![(ident.span, candidate.path.to_string())],
                                     String::from("a similar path exists"),
-                                    candidate.path.to_string(),
                                     Applicability::MaybeIncorrect,
                                 )),
                             )
@@ -5141,7 +5151,6 @@ impl<'a> Resolver<'a> {
     ) {
         assert!(directive.is_nested());
         let message = "remove unnecessary import";
-        let source_map = self.session.source_map();
 
         // Two examples will be used to illustrate the span manipulations we're doing:
         //
@@ -5150,73 +5159,24 @@ impl<'a> Resolver<'a> {
         // - Given `use issue_52891::{d, e, a};` where `a` is a duplicate then `binding_span` is
         //   `a` and `directive.use_span` is `issue_52891::{d, e, a};`.
 
-        // Find the span of everything after the binding.
-        //   ie. `a, e};` or `a};`
-        let binding_until_end = binding_span.with_hi(directive.use_span.hi());
-
-        // Find everything after the binding but not including the binding.
-        //   ie. `, e};` or `};`
-        let after_binding_until_end = binding_until_end.with_lo(binding_span.hi());
-
-        // Keep characters in the span until we encounter something that isn't a comma or
-        // whitespace.
-        //   ie. `, ` or ``.
-        //
-        // Also note whether a closing brace character was encountered. If there
-        // was, then later go backwards to remove any trailing commas that are left.
-        let mut found_closing_brace = false;
-        let after_binding_until_next_binding = source_map.span_take_while(
-            after_binding_until_end,
-            |&ch| {
-                if ch == '}' { found_closing_brace = true; }
-                ch == ' ' || ch == ','
-            }
+        let (found_closing_brace, span) = find_span_of_binding_until_next_binding(
+            self.session, binding_span, directive.use_span,
         );
-
-        // Combine the two spans.
-        //   ie. `a, ` or `a`.
-        //
-        // Removing these would leave `issue_52891::{d, e};` or `issue_52891::{d, e, };`
-        let span = binding_span.with_hi(after_binding_until_next_binding.hi());
 
         // If there was a closing brace then identify the span to remove any trailing commas from
         // previous imports.
         if found_closing_brace {
-            if let Ok(prev_source) = source_map.span_to_prev_source(span) {
-                // `prev_source` will contain all of the source that came before the span.
-                // Then split based on a command and take the first (ie. closest to our span)
-                // snippet. In the example, this is a space.
-                let prev_comma = prev_source.rsplit(',').collect::<Vec<_>>();
-                let prev_starting_brace = prev_source.rsplit('{').collect::<Vec<_>>();
-                if prev_comma.len() > 1 && prev_starting_brace.len() > 1 {
-                    let prev_comma = prev_comma.first().unwrap();
-                    let prev_starting_brace = prev_starting_brace.first().unwrap();
-
-                    // If the amount of source code before the comma is greater than
-                    // the amount of source code before the starting brace then we've only
-                    // got one item in the nested item (eg. `issue_52891::{self}`).
-                    if prev_comma.len() > prev_starting_brace.len() {
-                        // So just remove the entire line...
-                        err.span_suggestion(
-                            directive.use_span_with_attributes,
-                            message,
-                            String::new(),
-                            Applicability::MaybeIncorrect,
-                        );
-                        return;
-                    }
-
-                    let span = span.with_lo(BytePos(
-                        // Take away the number of bytes for the characters we've found and an
-                        // extra for the comma.
-                        span.lo().0 - (prev_comma.as_bytes().len() as u32) - 1
-                    ));
-                    err.tool_only_span_suggestion(
-                        span, message, String::new(), Applicability::MaybeIncorrect,
-                    );
-                    return;
-                }
+            if let Some(span) = extend_span_to_previous_binding(self.session, span) {
+                err.tool_only_span_suggestion(span, message, String::new(),
+                                              Applicability::MaybeIncorrect);
+            } else {
+                // Remove the entire line if we cannot extend the span back, this indicates a
+                // `issue_52891::{self}` case.
+                err.span_suggestion(directive.use_span_with_attributes, message, String::new(),
+                                    Applicability::MaybeIncorrect);
             }
+
+            return;
         }
 
         err.span_suggestion(span, message, String::new(), Applicability::MachineApplicable);

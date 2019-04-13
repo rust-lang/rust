@@ -28,7 +28,7 @@ use crate::tokenstream::TokenTree;
 use errors::{DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, symbols};
 use log::debug;
 
 use std::env;
@@ -1366,7 +1366,7 @@ impl<'a> Context<'a> {
                     }
                 } else if n == "doc" {
                     if let Some(content) = attr.meta_item_list() {
-                        if content.iter().any(|c| c.check_name("include")) {
+                        if content.iter().any(|c| c.check_name(symbols::include)) {
                             gate_feature!(self, external_doc, attr.span,
                                 "#[doc(include = \"...\")] is experimental"
                             );
@@ -1667,25 +1667,25 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         // check for gated attributes
         self.context.check_attribute(attr, false);
 
-        if attr.check_name("doc") {
+        if attr.check_name(symbols::doc) {
             if let Some(content) = attr.meta_item_list() {
-                if content.len() == 1 && content[0].check_name("cfg") {
+                if content.len() == 1 && content[0].check_name(symbols::cfg) {
                     gate_feature_post!(&self, doc_cfg, attr.span,
                         "#[doc(cfg(...))] is experimental"
                     );
-                } else if content.iter().any(|c| c.check_name("masked")) {
+                } else if content.iter().any(|c| c.check_name(symbols::masked)) {
                     gate_feature_post!(&self, doc_masked, attr.span,
                         "#[doc(masked)] is experimental"
                     );
-                } else if content.iter().any(|c| c.check_name("spotlight")) {
+                } else if content.iter().any(|c| c.check_name(symbols::spotlight)) {
                     gate_feature_post!(&self, doc_spotlight, attr.span,
                         "#[doc(spotlight)] is experimental"
                     );
-                } else if content.iter().any(|c| c.check_name("alias")) {
+                } else if content.iter().any(|c| c.check_name(symbols::alias)) {
                     gate_feature_post!(&self, doc_alias, attr.span,
                         "#[doc(alias = \"...\")] is experimental"
                     );
-                } else if content.iter().any(|c| c.check_name("keyword")) {
+                } else if content.iter().any(|c| c.check_name(symbols::keyword)) {
                     gate_feature_post!(&self, doc_keyword, attr.span,
                         "#[doc(keyword = \"...\")] is experimental"
                     );
@@ -1693,7 +1693,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
         }
 
-        match BUILTIN_ATTRIBUTES.iter().find(|(name, ..)| attr.path == name) {
+        match BUILTIN_ATTRIBUTES.iter().find(|(name, ..)| attr.path == *name) {
             Some(&(name, _, template, _)) => self.check_builtin_attribute(attr, name, template),
             None => if let Some(TokenTree::Token(_, token::Eq)) = attr.tokens.trees().next() {
                 // All key-value attributes are restricted to meta-item syntax.
@@ -1748,7 +1748,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::Struct(..) => {
                 for attr in attr::filter_by_name(&i.attrs[..], "repr") {
                     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-                        if item.check_name("simd") {
+                        if item.check_name(symbols::simd) {
                             gate_feature_post!(&self, repr_simd, attr.span,
                                                "SIMD types are experimental and possibly buggy");
                         }
@@ -1759,7 +1759,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ItemKind::Enum(..) => {
                 for attr in attr::filter_by_name(&i.attrs[..], "repr") {
                     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
-                        if item.check_name("align") {
+                        if item.check_name(symbols::align) {
                             gate_feature_post!(&self, repr_align_enum, attr.span,
                                                "`#[repr(align(x))]` on enums is experimental");
                         }
@@ -2083,7 +2083,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     // Process the edition umbrella feature-gates first, to ensure
     // `edition_enabled_features` is completed before it's queried.
     for attr in krate_attrs {
-        if !attr.check_name("feature") {
+        if !attr.check_name(symbols::feature) {
             continue
         }
 
@@ -2128,7 +2128,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
     }
 
     for attr in krate_attrs {
-        if !attr.check_name("feature") {
+        if !attr.check_name(symbols::feature) {
             continue
         }
 
@@ -2258,7 +2258,7 @@ fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate,
     };
     if !allow_features {
         for attr in &krate.attrs {
-            if attr.check_name("feature") {
+            if attr.check_name(symbols::feature) {
                 let release_channel = option_env!("CFG_RELEASE_CHANNEL").unwrap_or("(unknown)");
                 span_err!(span_handler, attr.span, E0554,
                           "#![feature] may not be used on the {} release channel",

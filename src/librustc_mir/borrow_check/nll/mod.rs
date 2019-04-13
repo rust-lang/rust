@@ -173,7 +173,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
 
         if infcx.tcx.sess.opts.debugging_opts.polonius {
             let algorithm = env::var("POLONIUS_ALGORITHM")
-                .unwrap_or_else(|_| String::from("DatafrogOpt"));
+                .unwrap_or_else(|_| String::from("Hybrid"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             Some(Rc::new(Output::compute(

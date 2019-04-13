@@ -11,6 +11,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 serialize = { path = "../libserialize" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 arena = { path = "../libarena" }
 scoped-tls = "1.0"
