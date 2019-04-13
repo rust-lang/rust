@@ -18,7 +18,7 @@ impl_arena_id!(ScopeId);
 pub struct ExprScopes {
     body: Arc<Body>,
     scopes: Arena<ScopeId, ScopeData>,
-    pub(crate) scope_for: FxHashMap<ExprId, ScopeId>,
+    scope_by_expr: FxHashMap<ExprId, ScopeId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -54,7 +54,7 @@ impl ExprScopes {
         let mut scopes = ExprScopes {
             body: body.clone(),
             scopes: Arena::default(),
-            scope_for: FxHashMap::default(),
+            scope_by_expr: FxHashMap::default(),
         };
         let root = scopes.root_scope();
         scopes.add_params_bindings(root, body.params());
@@ -71,6 +71,14 @@ impl ExprScopes {
         scope: Option<ScopeId>,
     ) -> impl Iterator<Item = ScopeId> + 'a {
         std::iter::successors(scope, move |&scope| self.scopes[scope].parent)
+    }
+
+    pub(crate) fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
+        self.scope_by_expr.get(&expr).map(|&scope| scope)
+    }
+
+    pub(crate) fn scope_by_expr(&self) -> &FxHashMap<ExprId, ScopeId> {
+        &self.scope_by_expr
     }
 
     fn root_scope(&mut self) -> ScopeId {
@@ -99,11 +107,7 @@ impl ExprScopes {
     }
 
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
-        self.scope_for.insert(node, scope);
-    }
-
-    pub(crate) fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
-        self.scope_for.get(&expr).map(|&scope| scope)
+        self.scope_by_expr.insert(node, scope);
     }
 }
 

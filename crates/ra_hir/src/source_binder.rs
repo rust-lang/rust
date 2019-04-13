@@ -368,7 +368,7 @@ fn scope_for_offset(
     offset: TextUnit,
 ) -> Option<ScopeId> {
     scopes
-        .scope_for
+        .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| Some((source_map.expr_syntax(*id)?, scope)))
         // find containing scope
@@ -388,7 +388,7 @@ fn adjust(
 ) -> Option<ScopeId> {
     let r = ptr.range();
     let child_scopes = scopes
-        .scope_for
+        .scope_by_expr()
         .iter()
         .filter_map(|(id, scope)| Some((source_map.expr_syntax(*id)?, scope)))
         .map(|(ptr, scope)| (ptr.range(), scope))
