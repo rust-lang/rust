@@ -193,7 +193,7 @@ pub struct CrateRoot<'tcx> {
     pub exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_table: Lazy!(PerDefTable<Entry<'tcx>>),
+    pub per_def: LazyPerDefTables<'tcx>,
 
     pub compiler_builtins: bool,
     pub needs_allocator: bool,
@@ -216,6 +216,11 @@ pub struct CrateDep {
 pub struct TraitImpls {
     pub trait_id: (u32, DefIndex),
     pub impls: Lazy<[DefIndex]>,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct LazyPerDefTables<'tcx> {
+    pub entry: Lazy!(PerDefTable<Entry<'tcx>>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
