@@ -79,7 +79,7 @@ fn execute() -> i32 {
     }
 
     if matches.opt_present("version") {
-        return handle_command_status(get_version(verbosity), &opts);
+        return handle_command_status(get_version(), &opts);
     }
 
     let strategy = CargoFmtStrategy::from_matches(&matches);
@@ -122,8 +122,19 @@ fn handle_command_status(status: Result<i32, io::Error>, opts: &getopts::Options
     }
 }
 
-fn get_version(verbosity: Verbosity) -> Result<i32, io::Error> {
-    run_rustfmt(&BTreeSet::new(), &[String::from("--version")], verbosity)
+fn get_version() -> Result<i32, io::Error> {
+    let mut status = vec![];
+    let mut command = Command::new("rustfmt")
+        .stdout(std::process::Stdio::inherit())
+        .args(&[String::from("--version")])
+        .spawn()?;
+    status.push(command.wait()?);
+
+    Ok(status
+        .iter()
+        .filter_map(|s| if s.success() { None } else { s.code() })
+        .next()
+        .unwrap_or(SUCCESS))
 }
 
 fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32, io::Error> {
