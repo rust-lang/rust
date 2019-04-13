@@ -11,7 +11,7 @@ use crate::borrow_check::location::LocationIndex;
 
 use polonius_engine::Output;
 
-use crate::dataflow::move_paths::indexes::BorrowIndex;
+use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::HasMoveData;
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;

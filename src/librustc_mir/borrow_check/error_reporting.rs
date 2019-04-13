@@ -26,8 +26,7 @@ use super::borrow_set::BorrowData;
 use super::{Context, MirBorrowckCtxt};
 use super::{InitializationRequiringAction, PrefixSet};
 use crate::dataflow::drop_flag_effects;
-use crate::dataflow::move_paths::indexes::MoveOutIndex;
-use crate::dataflow::move_paths::MovePathIndex;
+use crate::dataflow::indexes::{MovePathIndex, MoveOutIndex};
 use crate::util::borrowck_errors::{BorrowckErrors, Origin};
 
 #[derive(Debug)]

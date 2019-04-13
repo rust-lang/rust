@@ -9,7 +9,7 @@ use crate::borrow_check::ArtificialField;
 use crate::borrow_check::{ReadKind, WriteKind};
 use crate::borrow_check::nll::facts::AllFacts;
 use crate::borrow_check::path_utils::*;
-use crate::dataflow::move_paths::indexes::BorrowIndex;
+use crate::dataflow::indexes::BorrowIndex;
 use rustc::ty::TyCtxt;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Mir, Place, PlaceBase, Rvalue};
