@@ -176,7 +176,10 @@
 //! i.e., an operation with type `fn(Pin<&Struct>) -> Pin<&Field>`?  In a
 //! similar vein, when can a generic wrapper type (such as `Vec<T>`, `Box<T>`,
 //! or `RefCell<T>`) have an operation with type `fn(Pin<&Wrapper<T>>) ->
-//! Pin<&T>` (or similarly `fn(Pin<&mut Wrapper<T>>) -> Pin<&mut T>`)?
+//! Pin<&T>`?
+//!
+//! Note: For the entirety of this discussion, the same applies for mutable references as it
+//! does for shared references.
 //!
 //! Having a pinning projection for some field means that pinning is "structural":
 //! when the wrapper is pinned, the field must be considered pinned, too.
