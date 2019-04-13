@@ -1,7 +1,7 @@
 use std::{
     cell::{Cell, RefCell},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Once,
     time::Duration,
 };
@@ -176,6 +176,10 @@ impl Server {
     }
     fn send_notification(&self, not: RawNotification) {
         self.worker.as_ref().unwrap().sender().send(RawMessage::Notification(not)).unwrap();
+    }
+
+    pub fn path(&self) -> &Path {
+        self.dir.path()
     }
 }
 

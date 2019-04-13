@@ -1,5 +1,5 @@
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -194,5 +194,10 @@ impl ServerWorld {
         res.push_str("\nanalysis:\n");
         res.push_str(&self.analysis.status());
         res
+    }
+
+    pub fn workspace_root_for(&self, file_id: FileId) -> Option<&Path> {
+        let path = self.vfs.read().file2path(VfsFile(file_id.0.into()));
+        self.workspaces.iter().find_map(|ws| ws.workspace_root_for(&path))
     }
 }

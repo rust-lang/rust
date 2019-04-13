@@ -19,6 +19,7 @@ use crate::Result;
 pub struct CargoWorkspace {
     packages: Arena<Package, PackageData>,
     targets: Arena<Target, TargetData>,
+    pub(crate) workspace_root: PathBuf,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -165,7 +166,7 @@ impl CargoWorkspace {
             }
         }
 
-        Ok(CargoWorkspace { packages, targets })
+        Ok(CargoWorkspace { packages, targets, workspace_root: meta.workspace_root })
     }
 
     pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + 'a {

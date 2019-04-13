@@ -255,6 +255,18 @@ impl ProjectWorkspace {
         }
         crate_graph
     }
+
+    pub fn workspace_root_for(&self, path: &Path) -> Option<&Path> {
+        match self {
+            ProjectWorkspace::Cargo { cargo, .. } => {
+                Some(cargo.workspace_root.as_ref()).filter(|root| path.starts_with(root))
+            }
+            ProjectWorkspace::Json { project: JsonProject { roots, .. } } => roots
+                .iter()
+                .find(|root| path.starts_with(&root.path))
+                .map(|root| root.path.as_ref()),
+        }
+    }
 }
 
 fn find_rust_project_json(path: &Path) -> Option<PathBuf> {

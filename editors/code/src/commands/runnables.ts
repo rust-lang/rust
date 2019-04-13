@@ -17,6 +17,7 @@ interface Runnable {
     bin: string;
     args: string[];
     env: { [index: string]: string };
+    cwd?: string;
 }
 
 class RunnableQuickPick implements vscode.QuickPickItem {
@@ -49,7 +50,7 @@ function createTask(spec: Runnable): vscode.Task {
     };
 
     const execOption: vscode.ShellExecutionOptions = {
-        cwd: '.',
+        cwd: spec.cwd || '.',
         env: definition.env
     };
     const exec = new vscode.ShellExecution(

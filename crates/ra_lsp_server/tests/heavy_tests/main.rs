@@ -62,6 +62,7 @@ fn foo() {
             "args": [ "test", "--", "foo", "--nocapture" ],
             "bin": "cargo",
             "env": { "RUST_BACKTRACE": "short" },
+            "cwd": null,
             "label": "test foo",
             "range": {
               "end": { "character": 1, "line": 2 },
@@ -75,6 +76,7 @@ fn foo() {
             ],
             "bin": "cargo",
             "env": {},
+            "cwd": null,
             "label": "cargo check --all",
             "range": {
               "end": {
@@ -123,7 +125,8 @@ fn test_eggs() {}
             "range": {
               "end": { "character": 17, "line": 1 },
               "start": { "character": 0, "line": 0 }
-            }
+            },
+            "cwd": server.path()
           },
           {
             "args": [
@@ -135,6 +138,7 @@ fn test_eggs() {}
             ],
             "bin": "cargo",
             "env": {},
+            "cwd": server.path(),
             "label": "cargo check -p foo",
             "range": {
               "end": {
