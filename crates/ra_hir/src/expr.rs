@@ -16,7 +16,7 @@ use crate::{
 };
 use crate::{ path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
 
-pub use self::scope::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax};
+pub use self::scope::{ExprScopes, ScopeEntryWithSyntax};
 
 pub(crate) mod scope;
 
@@ -93,7 +93,7 @@ pub fn resolver_for_scope(
 ) -> Resolver {
     let mut r = body.owner.resolver(db);
     let scopes = db.expr_scopes(body.owner);
-    let scope_chain = scopes.scope_chain_for(scope_id).collect::<Vec<_>>();
+    let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
         r = r.push_expr_scope(Arc::clone(&scopes), scope);
     }

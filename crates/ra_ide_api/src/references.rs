@@ -65,7 +65,7 @@ pub(crate) fn find_all_refs(
     let declaration = NavigationTarget::from_bind_pat(position.file_id, binding);
 
     let references = analyzer
-        .find_all_refs(binding)?
+        .find_all_refs(binding)
         .into_iter()
         .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
         .collect::<Vec<_>>();

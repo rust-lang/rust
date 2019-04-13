@@ -1,17 +1,16 @@
 use std::sync::Arc;
 
-use rustc_hash::{FxHashMap, FxHashSet};
-
+use rustc_hash::{FxHashMap};
 use ra_syntax::{
-    AstNode, SyntaxNode, TextUnit, TextRange, SyntaxNodePtr, AstPtr,
+    TextRange, AstPtr,
     algo::generate,
     ast,
 };
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    Name, AsName,DefWithBody, Either,
-    expr::{PatId, ExprId, Pat, Expr, Body, Statement, BodySourceMap},
+    Name, DefWithBody, Either,
+    expr::{PatId, ExprId, Pat, Expr, Body, Statement},
     HirDatabase,
 };
 
@@ -23,7 +22,7 @@ impl_arena_id!(ScopeId);
 pub struct ExprScopes {
     body: Arc<Body>,
     scopes: Arena<ScopeId, ScopeData>,
-    scope_for: FxHashMap<ExprId, ScopeId>,
+    pub(crate) scope_for: FxHashMap<ExprId, ScopeId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -66,10 +65,7 @@ impl ExprScopes {
         &self.scopes[scope].entries
     }
 
-    pub fn scope_chain_for<'a>(
-        &'a self,
-        scope: Option<ScopeId>,
-    ) -> impl Iterator<Item = ScopeId> + 'a {
+    pub fn scope_chain<'a>(&'a self, scope: Option<ScopeId>) -> impl Iterator<Item = ScopeId> + 'a {
         generate(scope, move |&scope| self.scopes[scope].parent)
     }
 
@@ -108,15 +104,9 @@ impl ExprScopes {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScopesWithSourceMap {
-    pub(crate) source_map: Arc<BodySourceMap>,
-    pub(crate) scopes: Arc<ExprScopes>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopeEntryWithSyntax {
-    name: Name,
-    ptr: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
+    pub(crate) name: Name,
+    pub(crate) ptr: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
 }
 
 impl ScopeEntryWithSyntax {
@@ -126,96 +116,6 @@ impl ScopeEntryWithSyntax {
 
     pub fn ptr(&self) -> Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>> {
         self.ptr
-    }
-}
-
-impl ScopesWithSourceMap {
-    fn scope_chain<'a>(&'a self, node: &SyntaxNode) -> impl Iterator<Item = ScopeId> + 'a {
-        generate(self.scope_for(node), move |&scope| self.scopes.scopes[scope].parent)
-    }
-
-    pub(crate) fn scope_for_offset(&self, offset: TextUnit) -> Option<ScopeId> {
-        self.scopes
-            .scope_for
-            .iter()
-            .filter_map(|(id, scope)| Some((self.source_map.expr_syntax(*id)?, scope)))
-            // find containing scope
-            .min_by_key(|(ptr, _scope)| {
-                (!(ptr.range().start() <= offset && offset <= ptr.range().end()), ptr.range().len())
-            })
-            .map(|(ptr, scope)| self.adjust(ptr, *scope, offset))
-    }
-
-    // XXX: during completion, cursor might be outside of any particular
-    // expression. Try to figure out the correct scope...
-    // FIXME: move this to source binder?
-    fn adjust(&self, ptr: SyntaxNodePtr, original_scope: ScopeId, offset: TextUnit) -> ScopeId {
-        let r = ptr.range();
-        let child_scopes = self
-            .scopes
-            .scope_for
-            .iter()
-            .filter_map(|(id, scope)| Some((self.source_map.expr_syntax(*id)?, scope)))
-            .map(|(ptr, scope)| (ptr.range(), scope))
-            .filter(|(range, _)| range.start() <= offset && range.is_subrange(&r) && *range != r);
-
-        child_scopes
-            .max_by(|(r1, _), (r2, _)| {
-                if r2.is_subrange(&r1) {
-                    std::cmp::Ordering::Greater
-                } else if r1.is_subrange(&r2) {
-                    std::cmp::Ordering::Less
-                } else {
-                    r1.start().cmp(&r2.start())
-                }
-            })
-            .map(|(_ptr, scope)| *scope)
-            .unwrap_or(original_scope)
-    }
-
-    pub(crate) fn resolve_local_name(
-        &self,
-        name_ref: &ast::NameRef,
-    ) -> Option<ScopeEntryWithSyntax> {
-        let mut shadowed = FxHashSet::default();
-        let name = name_ref.as_name();
-        let ret = self
-            .scope_chain(name_ref.syntax())
-            .flat_map(|scope| self.scopes.entries(scope).iter())
-            .filter(|entry| shadowed.insert(entry.name()))
-            .filter(|entry| entry.name() == &name)
-            .nth(0);
-        ret.and_then(|entry| {
-            Some(ScopeEntryWithSyntax {
-                name: entry.name().clone(),
-                ptr: self.source_map.pat_syntax(entry.pat())?,
-            })
-        })
-    }
-
-    pub(crate) fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
-        let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
-        let ptr = Either::A(AstPtr::new(pat.into()));
-        fn_def
-            .syntax()
-            .descendants()
-            .filter_map(ast::NameRef::cast)
-            .filter(|name_ref| match self.resolve_local_name(*name_ref) {
-                None => false,
-                Some(entry) => entry.ptr() == ptr,
-            })
-            .map(|name_ref| ReferenceDescriptor {
-                name: name_ref.syntax().text().to_string(),
-                range: name_ref.syntax().range(),
-            })
-            .collect()
-    }
-
-    pub(crate) fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
-        node.ancestors()
-            .map(SyntaxNodePtr::new)
-            .filter_map(|ptr| self.source_map.syntax_expr(ptr))
-            .find_map(|it| self.scopes.scope_for(it))
     }
 }
 
@@ -297,12 +197,11 @@ pub struct ReferenceDescriptor {
 
 #[cfg(test)]
 mod tests {
-    use ra_db::salsa::InternKey;
-    use ra_syntax::{SourceFile, algo::find_node_at_offset};
+    use ra_db::SourceDatabase;
+    use ra_syntax::{algo::find_node_at_offset, AstNode, SyntaxNodePtr};
     use test_utils::{extract_offset, assert_eq_text};
-    use crate::Function;
 
-    use crate::expr::{ExprCollector};
+    use crate::{source_binder::SourceAnalyzer, mock::MockDatabase};
 
     use super::*;
 
@@ -316,18 +215,20 @@ mod tests {
             buf.push_str(&code[off..]);
             buf
         };
-        let file = SourceFile::parse(&code);
+
+        let (db, _source_root, file_id) = MockDatabase::with_single_file(&code);
+        let file = db.parse(file_id);
         let marker: &ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
-        let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
-        let irrelevant_function =
-            Function { id: crate::ids::FunctionId::from_intern_id(0u32.into()) };
-        let (body, source_map) = collect_fn_body_syntax(irrelevant_function, fn_def);
-        let scopes = ExprScopes::new(Arc::new(body));
-        let scopes =
-            ScopesWithSourceMap { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
+        let analyzer = SourceAnalyzer::new(&db, file_id, marker.syntax(), None);
+
+        let scopes = analyzer.scopes();
+        let expr_id =
+            analyzer.body_source_map().syntax_expr(SyntaxNodePtr::new(marker.syntax())).unwrap();
+        let scope = scopes.scope_for(expr_id);
+
         let actual = scopes
-            .scope_chain(marker.syntax())
-            .flat_map(|scope| scopes.scopes.entries(scope))
+            .scope_chain(scope)
+            .flat_map(|scope| scopes.entries(scope))
             .map(|it| it.name().to_string())
             .collect::<Vec<_>>()
             .join("\n");
@@ -410,28 +311,17 @@ mod tests {
         );
     }
 
-    fn collect_fn_body_syntax(function: Function, node: &ast::FnDef) -> (Body, BodySourceMap) {
-        let mut collector = ExprCollector::new(DefWithBody::Function(function));
-        collector.collect_fn_body(node);
-        collector.finish()
-    }
-
     fn do_check_local_name(code: &str, expected_offset: u32) {
         let (off, code) = extract_offset(code);
-        let file = SourceFile::parse(&code);
+
+        let (db, _source_root, file_id) = MockDatabase::with_single_file(&code);
+        let file = db.parse(file_id);
         let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
             .expect("failed to find a name at the target offset");
-
-        let fn_def: &ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let name_ref: &ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
+        let analyzer = SourceAnalyzer::new(&db, file_id, name_ref.syntax(), None);
 
-        let irrelevant_function =
-            Function { id: crate::ids::FunctionId::from_intern_id(0u32.into()) };
-        let (body, source_map) = collect_fn_body_syntax(irrelevant_function, fn_def);
-        let scopes = ExprScopes::new(Arc::new(body));
-        let scopes =
-            ScopesWithSourceMap { scopes: Arc::new(scopes), source_map: Arc::new(source_map) };
-        let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
+        let local_name_entry = analyzer.resolve_local_name(name_ref).unwrap();
         let local_name =
             local_name_entry.ptr().either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
         assert_eq!(local_name.range(), expected_name.syntax().range());

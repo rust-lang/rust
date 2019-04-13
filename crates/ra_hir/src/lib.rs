@@ -64,7 +64,7 @@ pub use self::{
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
-    expr::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax},
+    expr::{ExprScopes, ScopeEntryWithSyntax},
     resolve::{Resolver, Resolution},
     source_binder::{SourceAnalyzer, PathResolution},
 };

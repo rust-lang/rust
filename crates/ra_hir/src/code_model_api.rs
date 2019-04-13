@@ -4,7 +4,7 @@ use ra_db::{CrateId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc};
 
 use crate::{
-    Name, ScopesWithSourceMap, Ty, HirFileId, Either,
+    Name, Ty, HirFileId, Either,
     HirDatabase, DefDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
@@ -466,12 +466,6 @@ impl DefWithBody {
             DefWithBody::Static(ref s) => s.resolver(db),
         }
     }
-
-    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
-        let scopes = db.expr_scopes(*self);
-        let source_map = db.body_with_source_map(*self).1;
-        ScopesWithSourceMap { scopes, source_map }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -533,12 +527,6 @@ impl Function {
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_def((*self).into(), Namespace::Values)
-    }
-
-    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
-        let scopes = db.expr_scopes((*self).into());
-        let source_map = db.body_with_source_map((*self).into()).1;
-        ScopesWithSourceMap { scopes, source_map }
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {

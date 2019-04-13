@@ -7,9 +7,10 @@
 /// purely for "IDE needs".
 use std::sync::Arc;
 
+use rustc_hash::FxHashSet;
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SyntaxNode, AstPtr, TextUnit,
+    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr,
     ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
     SyntaxKind::*,
@@ -18,7 +19,7 @@ use ra_syntax::{
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
-    expr::scope::{ReferenceDescriptor, ScopeEntryWithSyntax},
+    expr::{BodySourceMap, scope::{ReferenceDescriptor, ScopeEntryWithSyntax, ScopeId, ExprScopes}},
     ids::LocationCtx,
     expr, AstId
 };
@@ -120,29 +121,6 @@ pub fn trait_from_module(
     Trait { id: ctx.to_def(trait_def) }
 }
 
-fn resolver_for_node(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    node: &SyntaxNode,
-    offset: Option<TextUnit>,
-) -> Resolver {
-    node.ancestors()
-        .find_map(|node| {
-            if ast::Expr::cast(node).is_some() || ast::Block::cast(node).is_some() {
-                let def = def_with_body_from_child_node(db, file_id, node)?;
-                let scopes = def.scopes(db);
-                let scope = match offset {
-                    None => scopes.scope_for(&node),
-                    Some(offset) => scopes.scope_for_offset(offset),
-                };
-                Some(expr::resolver_for_scope(def.body(db), db, scope))
-            } else {
-                try_get_resolver_for_node(db, file_id, node)
-            }
-        })
-        .unwrap_or_default()
-}
-
 fn try_get_resolver_for_node(
     db: &impl HirDatabase,
     file_id: FileId,
@@ -192,9 +170,9 @@ fn def_with_body_from_child_node(
 #[derive(Debug)]
 pub struct SourceAnalyzer {
     resolver: Resolver,
-    body_source_map: Option<Arc<crate::expr::BodySourceMap>>,
+    body_source_map: Option<Arc<BodySourceMap>>,
     infer: Option<Arc<crate::ty::InferenceResult>>,
-    scopes: Option<crate::expr::ScopesWithSourceMap>,
+    scopes: Option<Arc<crate::expr::ExprScopes>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -217,11 +195,30 @@ impl SourceAnalyzer {
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
         let def_with_body = def_with_body_from_child_node(db, file_id, node);
-        SourceAnalyzer {
-            resolver: resolver_for_node(db, file_id, node, offset),
-            body_source_map: def_with_body.map(|it| it.body_source_map(db)),
-            infer: def_with_body.map(|it| it.infer(db)),
-            scopes: def_with_body.map(|it| it.scopes(db)),
+        if let Some(def) = def_with_body {
+            let source_map = def.body_source_map(db);
+            let scopes = db.expr_scopes(def);
+            let scope = match offset {
+                None => scope_for(&scopes, &source_map, &node),
+                Some(offset) => scope_for_offset(&scopes, &source_map, offset),
+            };
+            let resolver = expr::resolver_for_scope(def.body(db), db, scope);
+            SourceAnalyzer {
+                resolver,
+                body_source_map: Some(source_map),
+                infer: Some(def.infer(db)),
+                scopes: Some(scopes),
+            }
+        } else {
+            SourceAnalyzer {
+                resolver: node
+                    .ancestors()
+                    .find_map(|node| try_get_resolver_for_node(db, file_id, node))
+                    .unwrap_or_default(),
+                body_source_map: None,
+                infer: None,
+                scopes: None,
+            }
         }
     }
 
@@ -276,16 +273,46 @@ impl SourceAnalyzer {
         Some(res)
     }
 
-    pub fn find_all_refs(&self, pat: &ast::BindPat) -> Option<Vec<ReferenceDescriptor>> {
-        self.scopes.as_ref().map(|it| it.find_all_refs(pat))
+    pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
+        let mut shadowed = FxHashSet::default();
+        let name = name_ref.as_name();
+        let source_map = self.body_source_map.as_ref()?;
+        let scopes = self.scopes.as_ref()?;
+        let scope = scope_for(scopes, source_map, name_ref.syntax());
+        let ret = scopes
+            .scope_chain(scope)
+            .flat_map(|scope| scopes.entries(scope).iter())
+            .filter(|entry| shadowed.insert(entry.name()))
+            .filter(|entry| entry.name() == &name)
+            .nth(0);
+        ret.and_then(|entry| {
+            Some(ScopeEntryWithSyntax {
+                name: entry.name().clone(),
+                ptr: source_map.pat_syntax(entry.pat())?,
+            })
+        })
     }
 
-    pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
-        self.scopes.as_ref()?.resolve_local_name(name_ref)
+    pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
+        let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
+        let ptr = Either::A(AstPtr::new(pat.into()));
+        fn_def
+            .syntax()
+            .descendants()
+            .filter_map(ast::NameRef::cast)
+            .filter(|name_ref| match self.resolve_local_name(*name_ref) {
+                None => false,
+                Some(entry) => entry.ptr() == ptr,
+            })
+            .map(|name_ref| ReferenceDescriptor {
+                name: name_ref.syntax().text().to_string(),
+                range: name_ref.syntax().range(),
+            })
+            .collect()
     }
 
     #[cfg(test)]
-    pub(crate) fn body_source_map(&self) -> Arc<crate::expr::BodySourceMap> {
+    pub(crate) fn body_source_map(&self) -> Arc<BodySourceMap> {
         self.body_source_map.clone().unwrap()
     }
 
@@ -293,4 +320,65 @@ impl SourceAnalyzer {
     pub(crate) fn inference_result(&self) -> Arc<crate::ty::InferenceResult> {
         self.infer.clone().unwrap()
     }
+
+    #[cfg(test)]
+    pub(crate) fn scopes(&self) -> Arc<ExprScopes> {
+        self.scopes.clone().unwrap()
+    }
+}
+
+fn scope_for(
+    scopes: &ExprScopes,
+    source_map: &BodySourceMap,
+    node: &SyntaxNode,
+) -> Option<ScopeId> {
+    node.ancestors()
+        .map(SyntaxNodePtr::new)
+        .filter_map(|ptr| source_map.syntax_expr(ptr))
+        .find_map(|it| scopes.scope_for(it))
+}
+
+fn scope_for_offset(
+    scopes: &ExprScopes,
+    source_map: &BodySourceMap,
+    offset: TextUnit,
+) -> Option<ScopeId> {
+    scopes
+        .scope_for
+        .iter()
+        .filter_map(|(id, scope)| Some((source_map.expr_syntax(*id)?, scope)))
+        // find containing scope
+        .min_by_key(|(ptr, _scope)| {
+            (!(ptr.range().start() <= offset && offset <= ptr.range().end()), ptr.range().len())
+        })
+        .map(|(ptr, scope)| adjust(scopes, source_map, ptr, offset).unwrap_or(*scope))
+}
+
+// XXX: during completion, cursor might be outside of any particular
+// expression. Try to figure out the correct scope...
+fn adjust(
+    scopes: &ExprScopes,
+    source_map: &BodySourceMap,
+    ptr: SyntaxNodePtr,
+    offset: TextUnit,
+) -> Option<ScopeId> {
+    let r = ptr.range();
+    let child_scopes = scopes
+        .scope_for
+        .iter()
+        .filter_map(|(id, scope)| Some((source_map.expr_syntax(*id)?, scope)))
+        .map(|(ptr, scope)| (ptr.range(), scope))
+        .filter(|(range, _)| range.start() <= offset && range.is_subrange(&r) && *range != r);
+
+    child_scopes
+        .max_by(|(r1, _), (r2, _)| {
+            if r2.is_subrange(&r1) {
+                std::cmp::Ordering::Greater
+            } else if r1.is_subrange(&r2) {
+                std::cmp::Ordering::Less
+            } else {
+                r1.start().cmp(&r2.start())
+            }
+        })
+        .map(|(_ptr, scope)| *scope)
 }
