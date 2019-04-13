@@ -19,7 +19,7 @@ use ra_syntax::{
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
-    expr::{BodySourceMap, scope::{ReferenceDescriptor, ScopeEntryWithSyntax, ScopeId, ExprScopes}},
+    expr::{BodySourceMap, scope::{ReferenceDescriptor, ScopeId, ExprScopes}},
     ids::LocationCtx,
     expr, AstId
 };
@@ -185,6 +185,22 @@ pub enum PathResolution {
     GenericParam(u32),
     SelfType(crate::ImplBlock),
     AssocItem(crate::ImplItem),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopeEntryWithSyntax {
+    pub(crate) name: Name,
+    pub(crate) ptr: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
+}
+
+impl ScopeEntryWithSyntax {
+    pub fn name(&self) -> &Name {
+        &self.name
+    }
+
+    pub fn ptr(&self) -> Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>> {
+        self.ptr
+    }
 }
 
 impl SourceAnalyzer {

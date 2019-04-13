@@ -65,9 +65,9 @@ pub use self::{
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
-    expr::{ExprScopes, ScopeEntryWithSyntax},
+    expr::ExprScopes,
     resolve::Resolution,
-    source_binder::{SourceAnalyzer, PathResolution},
+    source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax},
 };
 
 pub use self::code_model_api::{

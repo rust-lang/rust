@@ -1,14 +1,11 @@
 use std::sync::Arc;
 
-use rustc_hash::{FxHashMap};
-use ra_syntax::{
-    TextRange, AstPtr,
-    ast,
-};
+use rustc_hash::FxHashMap;
+use ra_syntax::TextRange;
 use ra_arena::{Arena, RawId, impl_arena_id};
 
 use crate::{
-    Name, DefWithBody, Either,
+    Name, DefWithBody,
     expr::{PatId, ExprId, Pat, Expr, Body, Statement},
     HirDatabase,
 };
@@ -28,6 +25,16 @@ pub struct ExprScopes {
 pub(crate) struct ScopeEntry {
     name: Name,
     pat: PatId,
+}
+
+impl ScopeEntry {
+    pub(crate) fn name(&self) -> &Name {
+        &self.name
+    }
+
+    pub(crate) fn pat(&self) -> PatId {
+        self.pat
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -97,32 +104,6 @@ impl ExprScopes {
 
     pub(crate) fn scope_for(&self, expr: ExprId) -> Option<ScopeId> {
         self.scope_for.get(&expr).map(|&scope| scope)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ScopeEntryWithSyntax {
-    pub(crate) name: Name,
-    pub(crate) ptr: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
-}
-
-impl ScopeEntryWithSyntax {
-    pub fn name(&self) -> &Name {
-        &self.name
-    }
-
-    pub fn ptr(&self) -> Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>> {
-        self.ptr
-    }
-}
-
-impl ScopeEntry {
-    pub fn name(&self) -> &Name {
-        &self.name
-    }
-
-    pub fn pat(&self) -> PatId {
-        self.pat
     }
 }
 

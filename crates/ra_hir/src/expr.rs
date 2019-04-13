@@ -14,9 +14,9 @@ use crate::{
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
-use crate::{ path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
+use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
 
-pub use self::scope::{ExprScopes, ScopeEntryWithSyntax};
+pub use self::scope::ExprScopes;
 
 pub(crate) mod scope;
 
