@@ -110,7 +110,7 @@ impl ExprScopes {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopesWithSourceMap {
     pub(crate) source_map: Arc<BodySourceMap>,
-    pub scopes: Arc<ExprScopes>,
+    pub(crate) scopes: Arc<ExprScopes>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -134,7 +134,7 @@ impl ScopesWithSourceMap {
         generate(self.scope_for(node), move |&scope| self.scopes.scopes[scope].parent)
     }
 
-    pub fn scope_for_offset(&self, offset: TextUnit) -> Option<ScopeId> {
+    pub(crate) fn scope_for_offset(&self, offset: TextUnit) -> Option<ScopeId> {
         self.scopes
             .scope_for
             .iter()
@@ -211,7 +211,7 @@ impl ScopesWithSourceMap {
             .collect()
     }
 
-    pub fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
+    pub(crate) fn scope_for(&self, node: &SyntaxNode) -> Option<ScopeId> {
         node.ancestors()
             .map(SyntaxNodePtr::new)
             .filter_map(|ptr| self.source_map.syntax_expr(ptr))
