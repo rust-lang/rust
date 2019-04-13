@@ -74,22 +74,22 @@ pub fn dylib_env_var() -> &'static str {
     }
 }
 
-/// The platform-specific library file extension
-pub fn lib_extension(dylib: bool) -> &'static str {
+/// The platform-specific library name
+pub fn get_lib_name(lib: &str, dylib: bool) -> String {
     // In some casess (e.g. MUSL), we build a static
     // library, rather than a dynamic library.
     // In this case, the only path we can pass
     // with '--extern-meta' is the '.lib' file
     if !dylib {
-        return ".rlib"
+        return format!("lib{}.rlib", lib);
     }
 
     if cfg!(windows) {
-        ".dll"
+        format!("{}.dll", lib)
     } else if cfg!(target_os = "macos") {
-        ".dylib"
+        format!("lib{}.dylib", lib)
     } else {
-        ".so"
+        format!("lib{}.so", lib)
     }
 }
 
@@ -1608,7 +1608,7 @@ impl<'test> TestCx<'test> {
         let mut extern_priv = self.props.extern_private.clone();
 
         let mut add_extern_priv = |priv_dep: &str, dylib: bool| {
-            let lib_name = format!("lib{}{}", priv_dep, lib_extension(dylib));
+            let lib_name = get_lib_name(priv_dep, dylib);
             rustc
                 .arg("--extern-private")
                 .arg(format!("{}={}", priv_dep, aux_dir.join(lib_name).to_str().unwrap()));
