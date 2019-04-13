@@ -2,7 +2,7 @@
 
 use crate::cstore::{self, CrateMetadata, MetadataBlob};
 use crate::schema::*;
-use crate::table::Table;
+use crate::table::PerDefTable;
 
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::sync::{Lrc, ReadGuard};
@@ -255,10 +255,10 @@ impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a,
     }
 }
 
-impl<'a, 'tcx, T> SpecializedDecoder<Lazy<Table<T>>> for DecodeContext<'a, 'tcx>
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<PerDefTable<T>>> for DecodeContext<'a, 'tcx>
     where T: LazyMeta<Meta = ()>,
 {
-    fn specialized_decode(&mut self) -> Result<Lazy<Table<T>>, Self::Error> {
+    fn specialized_decode(&mut self) -> Result<Lazy<PerDefTable<T>>, Self::Error> {
         let len = self.read_usize()?;
         self.read_lazy_with_meta(len)
     }

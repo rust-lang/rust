@@ -1,5 +1,5 @@
 use crate::schema::*;
-use crate::table::Table;
+use crate::table::PerDefTable;
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -47,7 +47,7 @@ struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
-    entries_table: Table<Entry<'tcx>>,
+    entries_table: PerDefTable<Entry<'tcx>>,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -114,10 +114,10 @@ impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<Table<T>>> for EncodeContext<'tcx>
+impl<'tcx, T> SpecializedEncoder<Lazy<PerDefTable<T>>> for EncodeContext<'tcx>
     where T: LazyMeta<Meta = ()>,
 {
-    fn specialized_encode(&mut self, lazy: &Lazy<Table<T>>) -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, lazy: &Lazy<PerDefTable<T>>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         self.emit_lazy_distance(*lazy)
     }
@@ -1925,7 +1925,7 @@ crate fn encode_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         let mut ecx = EncodeContext {
             opaque: encoder,
             tcx,
-            entries_table: Table::new(tcx.hir().definitions().def_index_count()),
+            entries_table: PerDefTable::new(tcx.hir().definitions().def_index_count()),
             lazy_state: LazyState::NoNode,
             type_shorthands: Default::default(),
             predicate_shorthands: Default::default(),

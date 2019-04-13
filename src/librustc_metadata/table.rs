@@ -73,44 +73,41 @@ impl FixedSizeEncoding for u32 {
 /// (e.g. while visiting the definitions of a crate), and on-demand decoding
 /// of specific indices (e.g. queries for per-definition data).
 /// Similar to `Vec<Lazy<T>>`, but with zero-copy decoding.
+// FIXME(eddyb) newtype `[u8]` here, such that `Box<Table<T>>` would be used
+// when building it, and `Lazy<Table<T>>` or `&Table<T>` when reading it.
+// Sadly, that doesn't work for `DefPerTable`, which is `(Table<T>, Table<T>)`,
+// and so would need two lengths in its metadata, which is not supported yet.
 crate struct Table<T: LazyMeta<Meta = ()>> {
-    positions: Vec<u8>,
+    bytes: Vec<u8>,
     _marker: PhantomData<T>,
 }
 
 impl<T: LazyMeta<Meta = ()>> Table<T> {
-    crate fn new(max_index: usize) -> Self {
+    crate fn new(len: usize) -> Self {
         Table {
-            positions: vec![0; max_index * 4],
+            bytes: vec![0; len * 4],
             _marker: PhantomData,
         }
     }
 
-    crate fn record(&mut self, def_id: DefId, entry: Lazy<T>) {
-        assert!(def_id.is_local());
-        self.record_index(def_id.index, entry);
-    }
-
-    crate fn record_index(&mut self, item: DefIndex, entry: Lazy<T>) {
+    crate fn record(&mut self, i: usize, entry: Lazy<T>) {
         let position: u32 = entry.position.get().try_into().unwrap();
-        let array_index = item.index();
 
-        let positions = &mut self.positions;
-        assert!(u32::read_from_bytes_at(positions, array_index) == 0,
-                "recorded position for item {:?} twice, first at {:?} and now at {:?}",
-                item,
-                u32::read_from_bytes_at(positions, array_index),
+        assert!(u32::read_from_bytes_at(&self.bytes, i) == 0,
+                "recorded position for index {:?} twice, first at {:?} and now at {:?}",
+                i,
+                u32::read_from_bytes_at(&self.bytes, i),
                 position);
 
-        position.write_to_bytes_at(positions, array_index)
+        position.write_to_bytes_at(&mut self.bytes, i)
     }
 
     crate fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
         let pos = buf.position();
-        buf.emit_raw_bytes(&self.positions);
+        buf.emit_raw_bytes(&self.bytes);
         Lazy::from_position_and_meta(
             NonZeroUsize::new(pos as usize).unwrap(),
-            self.positions.len() / 4,
+            self.bytes.len(),
         )
     }
 }
@@ -119,22 +116,62 @@ impl<T: LazyMeta<Meta = ()>> LazyMeta for Table<T> {
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
-        len * 4
+        len
     }
 }
 
 impl<T: Encodable> Lazy<Table<T>> {
-    /// Given the metadata, extract out the offset of a particular
-    /// DefIndex (if any).
+    /// Given the metadata, extract out the offset of a particular index (if any).
+    #[inline(never)]
+    crate fn lookup(&self, bytes: &[u8], i: usize) -> Option<Lazy<T>> {
+        debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
+
+        let bytes = &bytes[self.position.get()..][..self.meta];
+        let position = u32::read_from_bytes_at(bytes, i);
+        debug!("Table::lookup: position={:?}", position);
+
+        NonZeroUsize::new(position as usize).map(Lazy::from_position)
+    }
+}
+
+
+/// Per-definition table, similar to `Table` but keyed on `DefIndex`.
+// FIXME(eddyb) replace by making `Table` behave like `IndexVec`,
+// and by using `newtype_index!` to define `DefIndex`.
+crate struct PerDefTable<T: LazyMeta<Meta = ()>>(Table<T>);
+
+impl<T: LazyMeta<Meta = ()>> PerDefTable<T> {
+    crate fn new(def_index_count: usize) -> Self {
+        PerDefTable(Table::new(def_index_count))
+    }
+
+    crate fn record(&mut self, def_id: DefId, entry: Lazy<T>) {
+        assert!(def_id.is_local());
+        self.0.record(def_id.index.index(), entry);
+    }
+
+    crate fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
+        let lazy = self.0.encode(buf);
+        Lazy::from_position_and_meta(lazy.position, lazy.meta)
+    }
+}
+
+impl<T: LazyMeta<Meta = ()>> LazyMeta for PerDefTable<T> {
+    type Meta = <Table<T> as LazyMeta>::Meta;
+
+    fn min_size(meta: Self::Meta) -> usize {
+        Table::<T>::min_size(meta)
+    }
+}
+
+impl<T: Encodable> Lazy<PerDefTable<T>> {
+    fn as_table(&self) -> Lazy<Table<T>> {
+        Lazy::from_position_and_meta(self.position, self.meta)
+    }
+
+    /// Given the metadata, extract out the offset of a particular DefIndex (if any).
     #[inline(never)]
     crate fn lookup(&self, bytes: &[u8], def_index: DefIndex) -> Option<Lazy<T>> {
-        debug!("Table::lookup: index={:?} len={:?}",
-               def_index,
-               self.meta);
-
-        let bytes = &bytes[self.position.get()..][..self.meta * 4];
-        let position = u32::read_from_bytes_at(bytes, def_index.index());
-        debug!("Table::lookup: position={:?}", position);
-        NonZeroUsize::new(position as usize).map(Lazy::from_position)
+        self.as_table().lookup(bytes, def_index.index())
     }
 }

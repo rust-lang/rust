@@ -1,4 +1,4 @@
-use crate::table::Table;
+use crate::table::PerDefTable;
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -162,6 +162,7 @@ crate enum LazyState {
 // Only needed when `T` itself contains a parameter (e.g. `'tcx`).
 macro_rules! Lazy {
     (Table<$T:ty>) => {Lazy<Table<$T>, usize>};
+    (PerDefTable<$T:ty>) => {Lazy<PerDefTable<$T>, usize>};
     ([$T:ty]) => {Lazy<[$T], usize>};
     ($T:ty) => {Lazy<$T, ()>};
 }
@@ -196,7 +197,7 @@ crate struct CrateRoot<'tcx> {
     pub exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_table: Lazy!(Table<Entry<'tcx>>),
+    pub entries_table: Lazy!(PerDefTable<Entry<'tcx>>),
 
     /// The DefIndex's of any proc macros delcared by
     /// this crate
