@@ -87,7 +87,7 @@ pub fn modify(sess: &ParseSess,
 }
 
 pub fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
-    PROC_MACRO_KINDS.iter().any(|kind| attr.check_name(kind))
+    PROC_MACRO_KINDS.iter().any(|kind| attr.check_name(*kind))
 }
 
 impl<'a> CollectProcMacros<'a> {

@@ -16,6 +16,7 @@
 #![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
 #![feature(rustc_attrs)]
+#![feature(proc_macro_hygiene)]
 #![feature(specialization)]
 #![feature(step_trait)]
 
@@ -32,6 +33,7 @@ mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
+pub use symbol::symbols;
 
 mod analyze_source_file;
 

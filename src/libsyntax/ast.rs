@@ -68,6 +68,18 @@ pub struct Path {
     pub segments: Vec<PathSegment>,
 }
 
+impl PartialEq<Symbol> for Path {
+    fn eq(&self, symbol: &Symbol) -> bool {
+        self.segments.len() == 1 && {
+            let name = self.segments[0].ident.name;
+            // Make sure these symbols are pure strings
+            debug_assert!(!symbol.is_gensymed());
+            debug_assert!(!name.is_gensymed());
+            name == *symbol
+        }
+    }
+}
+
 impl<'a> PartialEq<&'a str> for Path {
     fn eq(&self, string: &&'a str) -> bool {
         self.segments.len() == 1 && self.segments[0].ident.name == *string

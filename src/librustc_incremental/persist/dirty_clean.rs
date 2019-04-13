@@ -599,7 +599,7 @@ impl<'a, 'tcx> FindAllAttrs<'a, 'tcx> {
 
     fn is_active_attr(&mut self, attr: &Attribute) -> bool {
         for attr_name in &self.attr_names {
-            if attr.check_name(attr_name) && check_config(self.tcx, attr) {
+            if attr.check_name(*attr_name) && check_config(self.tcx, attr) {
                 return true;
             }
         }
