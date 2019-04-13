@@ -862,7 +862,7 @@ impl<'a> CrateLoader<'a> {
 
     fn inject_profiler_runtime(&mut self) {
         if self.sess.opts.debugging_opts.profile ||
-            self.sess.opts.debugging_opts.pgo_gen.is_some()
+            self.sess.opts.debugging_opts.pgo_gen.enabled()
         {
             info!("loading profiler");
 
