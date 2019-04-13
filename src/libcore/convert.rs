@@ -180,6 +180,7 @@ pub trait AsRef<T: ?Sized> {
 /// write a function `add_one`that takes all arguments that can be converted to `&mut u64`.
 /// Because [`Box<T>`] implements `AsMut<T>` `add_one` accepts arguments of type
 /// `&mut Box<u64>` as well:
+///
 /// ```
 /// fn add_one<T: AsMut<u64>>(num: &mut T) {
 ///     *num.as_mut() += 1;
@@ -189,8 +190,8 @@ pub trait AsRef<T: ?Sized> {
 /// add_one(&mut boxed_num);
 /// assert_eq!(*boxed_num, 1);
 /// ```
-/// [`Box<T>`]: ../../std/boxed/struct.Box.html
 ///
+/// [`Box<T>`]: ../../std/boxed/struct.Box.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
     /// Performs the conversion.
