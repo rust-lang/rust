@@ -1,7 +1,7 @@
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::indexed_vec::{IndexVec};
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use smallvec::SmallVec;
 use syntax_pos::{Span};
 
@@ -12,66 +12,23 @@ use self::abs_domain::{AbstractElem, Lift};
 
 mod abs_domain;
 
-// This submodule holds some newtype'd Index wrappers that are using
-// NonZero to ensure that Option<Index> occupies only a single word.
-// They are in a submodule to impose privacy restrictions; namely, to
-// ensure that other code does not accidentally access `index.0`
-// (which is likely to yield a subtle off-by-one error).
-pub(crate) mod indexes {
-    use std::fmt;
-    use std::num::NonZeroUsize;
-    use rustc_data_structures::indexed_vec::Idx;
-
-    macro_rules! new_index {
-        ($(#[$attrs:meta])* $Index:ident, $debug_name:expr) => {
-            #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-            pub struct $Index(NonZeroUsize);
-
-            impl Idx for $Index {
-                fn new(idx: usize) -> Self {
-                    $Index(NonZeroUsize::new(idx + 1).unwrap())
-                }
-                fn index(self) -> usize {
-                    self.0.get() - 1
-                }
-            }
-
-            impl fmt::Debug for $Index {
-                fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    write!(fmt, "{}{}", $debug_name, self.index())
-                }
-            }
-        }
+newtype_index! {
+    pub struct MovePathIndex {
+        DEBUG_FORMAT = "mp{}"
     }
-
-    new_index!(
-        /// Index into MovePathData.move_paths
-        MovePathIndex,
-        "mp"
-    );
-
-    new_index!(
-        /// Index into MoveData.moves.
-        MoveOutIndex,
-        "mo"
-    );
-
-    new_index!(
-        /// Index into MoveData.inits.
-        InitIndex,
-        "in"
-    );
-
-    new_index!(
-        /// Index into Borrows.locations
-        BorrowIndex,
-        "bw"
-    );
 }
 
-pub use self::indexes::MovePathIndex;
-pub use self::indexes::MoveOutIndex;
-pub use self::indexes::InitIndex;
+newtype_index! {
+    pub struct MoveOutIndex {
+        DEBUG_FORMAT = "mo{}"
+    }
+}
+
+newtype_index! {
+    pub struct InitIndex {
+        DEBUG_FORMAT = "in{}"
+    }
+}
 
 impl MoveOutIndex {
     pub fn move_path_index(&self, move_data: &MoveData<'_>) -> MovePathIndex {

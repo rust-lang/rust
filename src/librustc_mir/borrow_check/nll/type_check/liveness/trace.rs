@@ -3,7 +3,7 @@ use crate::borrow_check::nll::region_infer::values::{self, PointIndex, RegionVal
 use crate::borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
 use crate::borrow_check::nll::type_check::NormalizeLocation;
 use crate::borrow_check::nll::type_check::TypeChecker;
-use crate::dataflow::move_paths::indexes::MovePathIndex;
+use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
 use rustc::infer::canonical::QueryRegionConstraint;
