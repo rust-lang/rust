@@ -497,22 +497,14 @@ fn check_lhs_duplicate_matcher_bindings(
     node_id: ast::NodeId,
 ) -> bool {
     use self::quoted::TokenTree;
-    use crate::early_buffered_lints::BufferedEarlyLintId;
     for tt in tts {
         match *tt {
             TokenTree::MetaVarDecl(span, name, _kind) => {
                 if let Some(&prev_span) = metavar_names.get(&name) {
-                    // FIXME(mark-i-m): in a few cycles, make this a hard error.
-                    // sess.span_diagnostic
-                    //     .struct_span_err(span, "duplicate matcher binding")
-                    //     .span_note(prev_span, "previous declaration was here")
-                    //     .emit();
-                    sess.buffer_lint(
-                        BufferedEarlyLintId::DuplicateMacroMatcherBindingName,
-                        crate::source_map::MultiSpan::from(vec![prev_span, span]),
-                        node_id,
-                        "duplicate matcher binding"
-                    );
+                    sess.span_diagnostic
+                        .struct_span_err(span, "duplicate matcher binding")
+                        .span_note(prev_span, "previous declaration was here")
+                        .emit();
                     return false;
                 } else {
                     metavar_names.insert(name, span);
