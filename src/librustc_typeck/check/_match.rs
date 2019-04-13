@@ -47,6 +47,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) {
         let tcx = self.tcx;
 
+        dbg!(self.yield_ty);
+        dbg!(expected);
+        dbg!(pat);
         debug!("check_pat_walk(pat={:?},expected={:?},def_bm={:?})", pat, expected, def_bm);
 
         let is_non_ref_pat = match pat.node {

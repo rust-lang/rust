@@ -383,13 +383,18 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         binding_mode: ty::BindingMode::BindByValue{..},
                         opt_ty_info,
                         ..
-                    })) => Some(suggest_ampmut(
-                        self.infcx.tcx,
-                        self.mir,
-                        *local,
-                        local_decl,
-                        *opt_ty_info,
-                    )),
+                    })) => {
+                        dbg!(local_decl);
+                        let x = suggest_ampmut(
+                            self.infcx.tcx,
+                            self.mir,
+                            *local,
+                            local_decl,
+                            *opt_ty_info,
+                        );
+                        dbg!(&x);
+                        Some(x)
+                    },
 
                     ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
                         binding_mode: ty::BindingMode::BindByReference(_),
@@ -564,9 +569,11 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
     local_decl: &mir::LocalDecl<'tcx>,
     opt_ty_info: Option<Span>,
 ) -> (Span, String) {
+    dbg!("!!!!!!!!!!!!!!");
     let locations = mir.find_assignments(local);
     if !locations.is_empty() {
         let assignment_rhs_span = mir.source_info(locations[0]).span;
+        dbg!(&assignment_rhs_span);
         if let Ok(src) = tcx.sess.source_map().span_to_snippet(assignment_rhs_span) {
             if let (true, Some(ws_pos)) = (
                 src.starts_with("&'"),

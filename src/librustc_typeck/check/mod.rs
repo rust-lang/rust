@@ -2254,9 +2254,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
+        dbg!(expr);
+        dbg!(&expr.node);
+        dbg!(&expr.span);
+        dbg!(&expr.hir_id);
+        dbg!(&adj);
         match self.tables.borrow_mut().adjustments_mut().entry(expr.hir_id) {
-            Entry::Vacant(entry) => { entry.insert(adj); },
+            Entry::Vacant(entry) => {
+                dbg!("KKKKKKKKK");
+                entry.insert(adj);
+            },
             Entry::Occupied(mut entry) => {
+                dbg!("%%%%%%%%%%%");
                 debug!(" - composing on top of {:?}", entry.get());
                 match (&entry.get()[..], &adj[..]) {
                     // Applying any adjustment on top of a NeverToAny
@@ -3176,6 +3185,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn check_expr_coercable_to_type(&self,
                                     expr: &'gcx hir::Expr,
                                     expected: Ty<'tcx>) -> Ty<'tcx> {
+        dbg!(expr);
+        dbg!(expected);
         let ty = self.check_expr_with_hint(expr, expected);
         // checks don't need two phase
         self.demand_coerce(expr, ty, expected, AllowTwoPhase::No)
@@ -3357,6 +3368,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let coerce_to_ty = expected.coercion_target_type(self, sp);
         let mut coerce: DynamicCoerceMany<'_, '_> = CoerceMany::new(coerce_to_ty);
 
+        dbg!("())()()()()(");
+        dbg!(then_expr);
+        dbg!(then_ty);
+        dbg!(coerce_to_ty);
         coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
 
         if let Some(else_expr) = opt_else_expr {
@@ -3481,6 +3496,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         let result_ty = coerce.complete(self);
+        dbg!(result_ty);
         if cond_ty.references_error() {
             self.tcx.types.err
         } else {

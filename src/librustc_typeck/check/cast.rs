@@ -416,6 +416,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         self.expr_ty = fcx.structurally_resolved_type(self.span, self.expr_ty);
         self.cast_ty = fcx.structurally_resolved_type(self.span, self.cast_ty);
 
+        dbg!(self.expr.hir_id);
+        dbg!(self.expr_ty);
+        dbg!(self.cast_ty);
         debug!("check_cast({}, {:?} as {:?})",
                self.expr.hir_id,
                self.expr_ty,
@@ -459,6 +462,9 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                                              self.expr_ty,
                                              fcx.tcx.mk_fn_ptr(f),
                                              AllowTwoPhase::No);
+                    dbg!(self.expr);
+                    dbg!(self.expr_ty);
+                    dbg!(fcx.tcx.mk_fn_ptr(f));
                     if res.is_err() {
                         return Err(CastError::NonScalar);
                     }
@@ -636,6 +642,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> bool {
+        dbg!("$$$$$$$$$$$$$$$$");
         fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No).is_ok()
     }
 }

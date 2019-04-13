@@ -783,6 +783,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
+        dbg!(expr);
+        dbg!(source);
+        dbg!(target);
+
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
         let coerce = Coerce::new(self, cause, allow_two_phase);
         let ok = self.commit_if_ok(|_| coerce.coerce(source, target))?;
@@ -876,6 +880,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match result {
                 Ok(ok) => {
                     let (adjustments, target) = self.register_infer_ok_obligations(ok);
+                    dbg!("&*&*&*&*&*&*");
                     self.apply_adjustments(new, adjustments);
                     return Ok(target);
                 }
@@ -888,6 +893,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // previous expressions, other than noop reborrows (ignoring lifetimes).
         for expr in exprs {
             let expr = expr.as_coercion_site();
+            dbg!(expr);
             let noop = match self.tables.borrow().expr_adjustments(expr) {
                 &[
                     Adjustment { kind: Adjust::Deref(_), .. },
@@ -896,6 +902,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     match self.node_ty(expr.hir_id).sty {
                         ty::Ref(_, _, mt_orig) => {
                             let mutbl_adj: hir::Mutability = mutbl_adj.into();
+                            dbg!(mutbl_adj);
+                            dbg!(mt_orig);
                             // Reborrow that we can safely ignore, because
                             // the next adjustment can only be a Deref
                             // which will be merged into it.
@@ -916,6 +924,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
+        dbg!(prev_ty);
+        dbg!(new_ty);
         match self.commit_if_ok(|_| coerce.coerce(prev_ty, new_ty)) {
             Err(_) => {
                 // Avoid giving strange errors on failed attempts.
@@ -932,6 +942,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let (adjustments, target) = self.register_infer_ok_obligations(ok);
                 for expr in exprs {
                     let expr = expr.as_coercion_site();
+                    dbg!("gggGgggggg");
                     self.apply_adjustments(expr, adjustments.clone());
                 }
                 Ok(target)
@@ -1128,8 +1139,12 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
                 // We don't allow two-phase borrows, see comment in try_find_coercion_lub for why
+                dbg!("#################");
+                dbg!(expression_ty);
+                dbg!(self.expected_ty);
                 fcx.try_coerce(expression, expression_ty, self.expected_ty, AllowTwoPhase::No)
             } else {
+                dbg!("pushed is 1");
                 match self.expressions {
                     Expressions::Dynamic(ref exprs) =>
                         fcx.try_find_coercion_lub(cause,
@@ -1159,6 +1174,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             // `expression_ty` will be unit).
             //
             // Another example is `break` with no argument expression.
+            dbg!("ELSE");
             assert!(expression_ty.is_unit(), "if let hack without unit type");
             fcx.at(cause, fcx.param_env)
                .eq_exp(label_expression_as_expected, expression_ty, self.merged_ty())
@@ -1170,6 +1186,10 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
 
         match result {
             Ok(v) => {
+                dbg!(expression);
+                dbg!(expression_ty);
+                dbg!(self.expected_ty);
+                dbg!(v);
                 self.final_ty = Some(v);
                 if let Some(e) = expression {
                     match self.expressions {

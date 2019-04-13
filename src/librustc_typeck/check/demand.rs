@@ -108,6 +108,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               expected: Ty<'tcx>,
                               allow_two_phase: AllowTwoPhase)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
+        dbg!(expr);
+        dbg!(expected);
         let expected = self.resolve_type_vars_with_obligations(expected);
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
@@ -118,6 +120,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
+
+        dbg!(cause);
+        dbg!(expr_ty);
 
         // If the expected type is an enum (Issue #55250) with any variants whose
         // sole field is of the found type, suggest such variants. (Issue #42764)
@@ -322,6 +327,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                        self.tcx.mk_region(ty::ReStatic),
                                                        checked_ty),
                 };
+                dbg!(ref_ty);
+                dbg!(expected);
                 if self.can_coerce(ref_ty, expected) {
                     if let Ok(src) = cm.span_to_snippet(sp) {
                         let needs_parens = match expr.node {

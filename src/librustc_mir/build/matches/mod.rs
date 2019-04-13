@@ -1714,8 +1714,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let tcx = self.hir.tcx();
         let binding_mode = match mode {
-            BindingMode::ByValue => ty::BindingMode::BindByValue{
-                mutability: mutability.into(), coerced: false,
+            BindingMode::ByValue => {
+                dbg!(mode);
+                dbg!(mutability);
+                dbg!(source_info);
+                dbg!(var_id);
+                dbg!(var_ty);
+                dbg!(&user_ty);
+                dbg!(&opt_match_place);
+                dbg!(pat_span);
+                ty::BindingMode::BindByValue{
+                    mutability: mutability.into(), coerced: true,
+                }
             },
             BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability.into()),
         };
