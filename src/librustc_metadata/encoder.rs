@@ -1,5 +1,5 @@
 use crate::schema::*;
-use crate::table::PerDefTable;
+use crate::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -61,7 +61,7 @@ struct EncodeContext<'tcx> {
 }
 
 struct PerDefTables<'tcx> {
-    entry: PerDefTable<Entry<'tcx>>,
+    entry: PerDefTable<Lazy<Entry<'tcx>>>,
 }
 
 macro_rules! encoder_methods {
@@ -119,7 +119,7 @@ impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
 }
 
 impl<'tcx, T> SpecializedEncoder<Lazy<PerDefTable<T>>> for EncodeContext<'tcx>
-    where T: LazyMeta<Meta = ()>,
+    where Option<T>: FixedSizeEncoding,
 {
     fn specialized_encode(&mut self, lazy: &Lazy<PerDefTable<T>>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
@@ -280,14 +280,14 @@ impl<I, T: Encodable> EncodeContentsForLazy<[T]> for I
     }
 }
 
-// Shorthand for `$self.$tables.$table.record($key, $self.lazy($value))`, which would
+// Shorthand for `$self.$tables.$table.set($key, $self.lazy($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
     ($self:ident.$tables:ident.$table:ident[$key:expr] <- $value:expr) => {{
         {
             let value = $value;
             let lazy = $self.lazy(value);
-            $self.$tables.$table.record($key, lazy);
+            $self.$tables.$table.set($key, lazy);
         }
     }}
 }

@@ -229,7 +229,7 @@ crate struct TraitImpls {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct LazyPerDefTables<'tcx> {
-    pub entry: Lazy!(PerDefTable<Entry<'tcx>>),
+    pub entry: Lazy!(PerDefTable<Lazy<Entry<'tcx>>>),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
