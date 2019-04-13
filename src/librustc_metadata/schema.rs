@@ -197,7 +197,7 @@ crate struct CrateRoot<'tcx> {
     pub exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
     pub interpret_alloc_index: Lazy<[u32]>,
 
-    pub entries_table: Lazy!(PerDefTable<Entry<'tcx>>),
+    pub per_def: LazyPerDefTables<'tcx>,
 
     /// The DefIndex's of any proc macros delcared by
     /// this crate
@@ -228,6 +228,11 @@ crate struct TraitImpls {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
+crate struct LazyPerDefTables<'tcx> {
+    pub entry: Lazy!(PerDefTable<Entry<'tcx>>),
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
 crate struct Entry<'tcx> {
     pub kind: EntryKind<'tcx>,
     pub visibility: Lazy<ty::Visibility>,
@@ -245,7 +250,7 @@ crate struct Entry<'tcx> {
     pub predicates_defined_on: Option<Lazy!(ty::GenericPredicates<'tcx>)>,
 
     pub mir: Option<Lazy!(mir::Body<'tcx>)>,
-    pub promoted_mir: Option<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
+    pub promoted_mir: Option<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
