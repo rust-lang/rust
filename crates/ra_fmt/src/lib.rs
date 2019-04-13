@@ -1,10 +1,10 @@
 //! This crate provides some utilities for indenting rust code.
 //!
+use std::iter::successors;
 use itertools::Itertools;
 use ra_syntax::{
     SyntaxNode, SyntaxKind::*, SyntaxToken, SyntaxKind,
     ast::{self, AstNode, AstToken},
-    algo::generate,
 };
 
 pub fn reindent(text: &str, indent: &str) -> String {
@@ -29,7 +29,7 @@ pub fn leading_indent(node: &SyntaxNode) -> Option<&str> {
 }
 
 fn prev_tokens(token: SyntaxToken) -> impl Iterator<Item = SyntaxToken> {
-    generate(token.prev_token(), |&token| token.prev_token())
+    successors(token.prev_token(), |&token| token.prev_token())
 }
 
 pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {

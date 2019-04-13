@@ -1,8 +1,9 @@
-use std::marker::PhantomData;
-
+use std::{
+    marker::PhantomData,
+    iter::successors,
+};
 use crate::{
     AstNode, SourceFile, SyntaxKind, SyntaxNode, TextRange,
-    algo::generate,
 };
 
 /// A pointer to a syntax node inside a file. It can be used to remember a
@@ -19,7 +20,7 @@ impl SyntaxNodePtr {
     }
 
     pub fn to_node(self, source_file: &SourceFile) -> &SyntaxNode {
-        generate(Some(source_file.syntax()), |&node| {
+        successors(Some(source_file.syntax()), |&node| {
             node.children().find(|it| self.range.is_subrange(&it.range()))
         })
         .find(|it| it.range() == self.range && it.kind() == self.kind)

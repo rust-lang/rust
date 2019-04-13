@@ -46,13 +46,3 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
 pub fn find_covering_element(root: &SyntaxNode, range: TextRange) -> SyntaxElement {
     root.0.covering_node(range).into()
 }
-
-// Replace with `std::iter::successors` in `1.34.0`
-pub fn generate<T>(seed: Option<T>, step: impl Fn(&T) -> Option<T>) -> impl Iterator<Item = T> {
-    ::itertools::unfold(seed, move |slot| {
-        slot.take().map(|curr| {
-            *slot = step(&curr);
-            curr
-        })
-    })
-}

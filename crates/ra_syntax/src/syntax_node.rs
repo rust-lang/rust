@@ -10,6 +10,7 @@ use std::{
     fmt::{self, Write},
     any::Any,
     borrow::Borrow,
+    iter::successors,
 };
 
 use ra_parser::ParseError;
@@ -195,7 +196,7 @@ impl SyntaxNode {
     }
 
     pub fn ancestors(&self) -> impl Iterator<Item = &SyntaxNode> {
-        crate::algo::generate(Some(self), |&node| node.parent())
+        successors(Some(self), |&node| node.parent())
     }
 
     pub fn descendants(&self) -> impl Iterator<Item = &SyntaxNode> {
@@ -213,7 +214,7 @@ impl SyntaxNode {
     }
 
     pub fn siblings(&self, direction: Direction) -> impl Iterator<Item = &SyntaxNode> {
-        crate::algo::generate(Some(self), move |&node| match direction {
+        successors(Some(self), move |&node| match direction {
             Direction::Next => node.next_sibling(),
             Direction::Prev => node.prev_sibling(),
         })
@@ -224,7 +225,7 @@ impl SyntaxNode {
         direction: Direction,
     ) -> impl Iterator<Item = SyntaxElement> {
         let me: SyntaxElement = self.into();
-        crate::algo::generate(Some(me), move |el| match direction {
+        successors(Some(me), move |el| match direction {
             Direction::Next => el.next_sibling_or_token(),
             Direction::Prev => el.prev_sibling_or_token(),
         })
@@ -373,7 +374,7 @@ impl<'a> SyntaxToken<'a> {
         direction: Direction,
     ) -> impl Iterator<Item = SyntaxElement<'a>> {
         let me: SyntaxElement = (*self).into();
-        crate::algo::generate(Some(me), move |el| match direction {
+        successors(Some(me), move |el| match direction {
             Direction::Next => el.next_sibling_or_token(),
             Direction::Prev => el.prev_sibling_or_token(),
         })
