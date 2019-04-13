@@ -132,7 +132,7 @@ pub const fn identity<T>(x: T) -> T { x }
 /// converted a the specified type `T`.
 ///
 /// For example: By creating a generic function that takes an `AsRef<str>` we express that we
-/// want to accept all references that can be converted to &str as an argument.
+/// want to accept all references that can be converted to `&str` as an argument.
 /// Since both [`String`] and `&str` implement `AsRef<str>` we can accept both as input argument.
 ///
 /// [`String`]: ../../std/string/struct.String.html
@@ -312,7 +312,8 @@ pub trait Into<T>: Sized {
 ///
 /// [`String`] implements `From<&str>`:
 ///
-/// An explicit conversion from a &str to a String is done as follows:
+/// An explicit conversion from a `&str` to a String is done as follows:
+///
 /// ```
 /// let string = "hello".to_string();
 /// let other_string = String::from("hello");
