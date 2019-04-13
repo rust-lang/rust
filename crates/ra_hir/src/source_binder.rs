@@ -7,7 +7,7 @@
 /// purely for "IDE needs".
 use std::sync::Arc;
 
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashSet, FxHashMap};
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
     SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr,
@@ -17,7 +17,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody,
+    HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
     AsName, Module, HirFileId, Crate, Trait, Resolver,
     expr::{BodySourceMap, scope::{ReferenceDescriptor, ScopeEntryWithSyntax, ScopeId, ExprScopes}},
     ids::LocationCtx,
@@ -222,10 +222,6 @@ impl SourceAnalyzer {
         }
     }
 
-    pub fn resolver(&self) -> &Resolver {
-        &self.resolver
-    }
-
     pub fn type_of(&self, _db: &impl HirDatabase, expr: &ast::Expr) -> Option<crate::Ty> {
         let expr_id = self.body_source_map.as_ref()?.node_expr(expr)?;
         Some(self.infer.as_ref()?[expr_id].clone())
@@ -244,6 +240,18 @@ impl SourceAnalyzer {
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
         let expr_id = self.body_source_map.as_ref()?.node_expr(field.into())?;
         self.infer.as_ref()?.field_resolution(expr_id)
+    }
+
+    pub fn resolve_hir_path(
+        &self,
+        db: &impl HirDatabase,
+        path: &crate::Path,
+    ) -> PerNs<crate::Resolution> {
+        self.resolver.resolve_path(db, path)
+    }
+
+    pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<crate::Resolution>> {
+        self.resolver.all_names(db)
     }
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {

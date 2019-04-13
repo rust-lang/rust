@@ -7,7 +7,7 @@ pub(super) fn complete_pattern(acc: &mut Completions, ctx: &CompletionContext) {
     }
     // FIXME: ideally, we should look at the type we are matching against and
     // suggest variants + auto-imports
-    let names = ctx.analyzer.resolver().all_names(ctx.db);
+    let names = ctx.analyzer.all_names(ctx.db);
     for (name, res) in names.into_iter() {
         let r = res.as_ref();
         let def = match r.take_types().or(r.take_values()) {
