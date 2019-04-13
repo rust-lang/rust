@@ -12,6 +12,7 @@ use ra_syntax::{
     SyntaxNode, AstPtr, TextUnit,
     ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
+    SyntaxKind::*,
 };
 
 use crate::{
@@ -90,17 +91,6 @@ fn module_from_source(
     )
 }
 
-fn function_from_source(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    fn_def: &ast::FnDef,
-) -> Option<Function> {
-    let module = module_from_child_node(db, file_id, fn_def.syntax())?;
-    let file_id = file_id.into();
-    let ctx = LocationCtx::new(db, module, file_id);
-    Some(Function { id: ctx.to_def(fn_def) })
-}
-
 pub fn struct_from_module(
     db: &impl HirDatabase,
     module: Module,
@@ -168,8 +158,8 @@ fn try_get_resolver_for_node(
     } else if let Some(e) = ast::EnumDef::cast(node) {
         let module = module_from_child_node(db, file_id, e.syntax())?;
         Some(enum_from_module(db, module, e).resolver(db))
-    } else if let Some(f) = ast::FnDef::cast(node) {
-        function_from_source(db, file_id, f).map(|f| f.resolver(db))
+    } else if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
+        Some(def_with_body_from_child_node(db, file_id, node)?.resolver(db))
     } else {
         // FIXME add missing cases
         None
