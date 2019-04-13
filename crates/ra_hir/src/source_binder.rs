@@ -250,10 +250,6 @@ impl SourceAnalyzer {
         self.resolver.resolve_path(db, path)
     }
 
-    pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<crate::Resolution>> {
-        self.resolver.all_names(db)
-    }
-
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {
         if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
             let expr_id = self.body_source_map.as_ref()?.node_expr(path_expr.into())?;
@@ -299,6 +295,10 @@ impl SourceAnalyzer {
                 ptr: source_map.pat_syntax(entry.pat())?,
             })
         })
+    }
+
+    pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<crate::Resolution>> {
+        self.resolver.all_names(db)
     }
 
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
