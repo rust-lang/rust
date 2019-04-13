@@ -4,17 +4,10 @@ use crate::completion::{CompletionContext, Completions};
 
 /// Complete dot accesses, i.e. fields or methods (currently only fields).
 pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
-    let (function, receiver) = match (&ctx.function, ctx.dot_receiver) {
-        (Some(function), Some(receiver)) => (function, receiver),
-        _ => return,
-    };
-    let infer_result = function.infer(ctx.db);
-    let source_map = function.body_source_map(ctx.db);
-    let expr = match source_map.node_expr(receiver) {
-        Some(expr) => expr,
+    let receiver_ty = match ctx.dot_receiver.and_then(|it| ctx.analyzer.type_of(ctx.db, it)) {
+        Some(it) => it,
         None => return,
     };
-    let receiver_ty = infer_result[expr].clone();
     if !ctx.is_call {
         complete_fields(acc, ctx, receiver_ty.clone());
     }
@@ -311,6 +304,30 @@ mod tests {
         insert: "blah()$0",
         kind: Method,
         detail: "pub fn blah(&self)"
+    }
+]"###
+        );
+    }
+
+    #[test]
+    fn test_completion_works_in_consts() {
+        assert_debug_snapshot_matches!(
+        do_ref_completion(
+            r"
+            struct A { the_field: u32 }
+            const X: u32 = {
+                A { the_field: 92 }.<|>
+            };
+            ",
+        ),
+        @r###"[
+    CompletionItem {
+        label: "the_field",
+        source_range: [106; 106),
+        delete: [106; 106),
+        insert: "the_field",
+        kind: Field,
+        detail: "u32"
     }
 ]"###
         );

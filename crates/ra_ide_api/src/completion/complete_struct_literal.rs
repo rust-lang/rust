@@ -4,17 +4,10 @@ use crate::completion::{CompletionContext, Completions};
 
 /// Complete fields in fields literals.
 pub(super) fn complete_struct_literal(acc: &mut Completions, ctx: &CompletionContext) {
-    let (function, struct_lit) = match (&ctx.function, ctx.struct_lit_syntax) {
-        (Some(function), Some(struct_lit)) => (function, struct_lit),
-        _ => return,
-    };
-    let infer_result = function.infer(ctx.db);
-    let source_map = function.body_source_map(ctx.db);
-    let expr = match source_map.node_expr(struct_lit.into()) {
-        Some(expr) => expr,
+    let ty = match ctx.struct_lit_syntax.and_then(|it| ctx.analyzer.type_of(ctx.db, it.into())) {
+        Some(it) => it,
         None => return,
     };
-    let ty = infer_result[expr].clone();
     let (adt, substs) = match ty.as_adt() {
         Some(res) => res,
         _ => return,

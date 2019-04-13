@@ -5,7 +5,7 @@ use ra_syntax::{
     algo::{find_token_at_offset, find_covering_element, find_node_at_offset},
     SyntaxKind::*,
 };
-use hir::{source_binder, Resolver};
+use hir::source_binder;
 
 use crate::{db, FilePosition};
 
@@ -14,11 +14,10 @@ use crate::{db, FilePosition};
 #[derive(Debug)]
 pub(crate) struct CompletionContext<'a> {
     pub(super) db: &'a db::RootDatabase,
+    pub(super) analyzer: hir::SourceAnalyzer,
     pub(super) offset: TextUnit,
     pub(super) token: SyntaxToken<'a>,
-    pub(super) resolver: Resolver,
     pub(super) module: Option<hir::Module>,
-    pub(super) function: Option<hir::Function>,
     pub(super) function_syntax: Option<&'a ast::FnDef>,
     pub(super) use_item_syntax: Option<&'a ast::UseItem>,
     pub(super) struct_lit_syntax: Option<&'a ast::StructLit>,
@@ -47,16 +46,16 @@ impl<'a> CompletionContext<'a> {
         original_file: &'a SourceFile,
         position: FilePosition,
     ) -> Option<CompletionContext<'a>> {
-        let resolver = source_binder::resolver_for_position(db, position);
         let module = source_binder::module_from_position(db, position);
         let token = find_token_at_offset(original_file.syntax(), position.offset).left_biased()?;
+        let analyzer =
+            hir::SourceAnalyzer::new(db, position.file_id, token.parent(), Some(position.offset));
         let mut ctx = CompletionContext {
             db,
+            analyzer,
             token,
             offset: position.offset,
-            resolver,
             module,
-            function: None,
             function_syntax: None,
             use_item_syntax: None,
             struct_lit_syntax: None,
@@ -147,10 +146,6 @@ impl<'a> CompletionContext<'a> {
             .ancestors()
             .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
             .find_map(ast::FnDef::cast);
-        if let (Some(module), Some(fn_def)) = (self.module, self.function_syntax) {
-            let function = source_binder::function_from_module(self.db, module, fn_def);
-            self.function = Some(function);
-        }
 
         let parent = match name_ref.syntax().parent() {
             Some(it) => it,

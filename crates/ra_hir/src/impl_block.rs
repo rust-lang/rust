@@ -105,7 +105,7 @@ impl ImplBlock {
         db.generic_params((*self).into())
     }
 
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let r = self.module().resolver(db);
         // add generic params, if present
         let p = self.generic_params(db);

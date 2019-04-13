@@ -4,7 +4,7 @@ use ra_db::{CrateId, SourceRootId, Edition};
 use ra_syntax::{ast::self, TreeArc};
 
 use crate::{
-    Name, ScopesWithSourceMap, Ty, HirFileId, Either,
+    Name, Ty, HirFileId, Either,
     HirDatabase, DefDatabase,
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
@@ -189,7 +189,7 @@ impl Module {
         }
     }
 
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         let def_map = db.crate_def_map(self.krate);
         Resolver::default().push_module_scope(def_map, self.module_id)
     }
@@ -313,7 +313,7 @@ impl Struct {
 
     // FIXME move to a more general type
     /// Builds a resolver for type references inside this struct.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
@@ -373,7 +373,7 @@ impl Enum {
 
     // FIXME: move to a more general type
     /// Builds a resolver for type references inside this struct.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
@@ -450,27 +450,21 @@ impl DefWithBody {
         db.infer(*self)
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(*self).1
-    }
-
     pub fn body(&self, db: &impl HirDatabase) -> Arc<Body> {
         db.body_hir(*self)
     }
 
+    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+        db.body_with_source_map(*self).1
+    }
+
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         match *self {
             DefWithBody::Const(ref c) => c.resolver(db),
             DefWithBody::Function(ref f) => f.resolver(db),
             DefWithBody::Static(ref s) => s.resolver(db),
         }
-    }
-
-    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
-        let scopes = db.expr_scopes(*self);
-        let source_map = db.body_with_source_map(*self).1;
-        ScopesWithSourceMap { scopes, source_map }
     }
 }
 
@@ -523,7 +517,7 @@ impl Function {
         self.signature(db).name.clone()
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+    pub(crate) fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map((*self).into()).1
     }
 
@@ -533,12 +527,6 @@ impl Function {
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_def((*self).into(), Namespace::Values)
-    }
-
-    pub fn scopes(&self, db: &impl HirDatabase) -> ScopesWithSourceMap {
-        let scopes = db.expr_scopes((*self).into());
-        let source_map = db.body_with_source_map((*self).into()).1;
-        ScopesWithSourceMap { scopes, source_map }
     }
 
     pub fn signature(&self, db: &impl HirDatabase) -> Arc<FnSignature> {
@@ -561,7 +549,7 @@ impl Function {
 
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)
@@ -606,10 +594,6 @@ impl Const {
         db.infer((*self).into())
     }
 
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map((*self).into()).1
-    }
-
     /// The containing impl block, if this is a method.
     pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
@@ -618,7 +602,7 @@ impl Const {
 
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)
@@ -670,17 +654,13 @@ impl Static {
     }
 
     /// Builds a resolver for code inside this item.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         self.module(db).resolver(db)
     }
 
     pub fn infer(&self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer((*self).into())
-    }
-
-    pub fn body_source_map(&self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map((*self).into()).1
     }
 }
 
@@ -756,7 +736,7 @@ impl TypeAlias {
     }
 
     /// Builds a resolver for the type references in this type alias.
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
         let r = self
             .impl_block(db)

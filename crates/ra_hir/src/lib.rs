@@ -51,6 +51,7 @@ use crate::{
     db::{HirDatabase, DefDatabase},
     name::{AsName, KnownName},
     source_id::{FileAstId, AstId},
+    resolve::Resolver,
 };
 
 pub use self::{
@@ -60,12 +61,13 @@ pub use self::{
     source_id::{AstIdMap, ErasedFileAstId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc},
     nameres::{PerNs, Namespace, ImportId},
-    ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay},
+    ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay, CallableDef},
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
-    expr::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax},
-    resolve::{Resolver, Resolution},
+    expr::ExprScopes,
+    resolve::Resolution,
+    source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax},
 };
 
 pub use self::code_model_api::{

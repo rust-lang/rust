@@ -65,7 +65,6 @@ fn runnable_mod(db: &RootDatabase, file_id: FileId, module: &ast::Module) -> Opt
     let range = module.syntax().range();
     let module = hir::source_binder::module_from_child_node(db, file_id, module.syntax())?;
 
-    // FIXME: thread cancellation instead of `.ok`ing
     let path = module.path_to_root(db).into_iter().rev().filter_map(|it| it.name(db)).join("::");
     Some(Runnable { range, kind: RunnableKind::TestMod { path } })
 }

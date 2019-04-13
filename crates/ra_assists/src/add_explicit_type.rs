@@ -1,7 +1,6 @@
 use hir::{
     HirDisplay, Ty,
     db::HirDatabase,
-    source_binder::function_from_child_node,
 };
 use ra_syntax::{
     SyntaxKind,
@@ -30,11 +29,8 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
     }
     // Infer type
     let db = ctx.db;
-    let func = function_from_child_node(db, ctx.frange.file_id, pat.syntax())?;
-    let inference_res = func.infer(db);
-    let source_map = func.body_source_map(db);
-    let expr_id = source_map.node_expr(expr.into())?;
-    let ty = inference_res[expr_id].clone();
+    let analyzer = hir::SourceAnalyzer::new(db, ctx.frange.file_id, stmt.syntax(), None);
+    let ty = analyzer.type_of(db, expr)?;
     // Assist not applicable if the type is unknown
     if is_unknown(&ty) {
         return None;

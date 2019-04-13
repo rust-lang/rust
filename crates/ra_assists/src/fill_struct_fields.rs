@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use hir::{AdtDef, db::HirDatabase, source_binder::function_from_child_node};
+use hir::{AdtDef, db::HirDatabase};
 
 use ra_syntax::ast::{self, AstNode};
 
@@ -51,15 +51,13 @@ where
     }
 
     fn evaluate_struct_def_fields(&mut self) -> Option<()> {
-        let function = function_from_child_node(
+        let analyzer = hir::SourceAnalyzer::new(
             self.ctx.db,
             self.ctx.frange.file_id,
             self.struct_lit.syntax(),
-        )?;
-        let infer_result = function.infer(self.ctx.db);
-        let source_map = function.body_source_map(self.ctx.db);
-        let node_expr = source_map.node_expr(self.struct_lit.into())?;
-        let struct_lit_ty = infer_result[node_expr].clone();
+            None,
+        );
+        let struct_lit_ty = analyzer.type_of(self.ctx.db, self.struct_lit.into())?;
         let struct_def = match struct_lit_ty.as_adt() {
             Some((AdtDef::Struct(s), _)) => s,
             _ => return None,

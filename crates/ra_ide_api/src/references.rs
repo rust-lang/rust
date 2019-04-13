@@ -61,11 +61,10 @@ pub(crate) fn find_all_refs(
     position: FilePosition,
 ) -> Option<ReferenceSearchResult> {
     let file = db.parse(position.file_id);
-    let (binding, descr) = find_binding(db, &file, position)?;
+    let (binding, analyzer) = find_binding(db, &file, position)?;
     let declaration = NavigationTarget::from_bind_pat(position.file_id, binding);
 
-    let references = descr
-        .scopes(db)
+    let references = analyzer
         .find_all_refs(binding)
         .into_iter()
         .map(move |ref_desc| FileRange { file_id: position.file_id, range: ref_desc.range })
@@ -77,21 +76,18 @@ pub(crate) fn find_all_refs(
         db: &RootDatabase,
         source_file: &'a SourceFile,
         position: FilePosition,
-    ) -> Option<(&'a ast::BindPat, hir::Function)> {
+    ) -> Option<(&'a ast::BindPat, hir::SourceAnalyzer)> {
         let syntax = source_file.syntax();
         if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
-            let descr =
-                source_binder::function_from_child_node(db, position.file_id, binding.syntax())?;
-            return Some((binding, descr));
+            let analyzer = hir::SourceAnalyzer::new(db, position.file_id, binding.syntax(), None);
+            return Some((binding, analyzer));
         };
         let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
-        let descr =
-            source_binder::function_from_child_node(db, position.file_id, name_ref.syntax())?;
-        let scope = descr.scopes(db);
-        let resolved = scope.resolve_local_name(name_ref)?;
+        let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
+        let resolved = analyzer.resolve_local_name(name_ref)?;
         if let Either::A(ptr) = resolved.ptr() {
             if let ast::PatKind::BindPat(binding) = ptr.to_node(source_file).kind() {
-                return Some((binding, descr));
+                return Some((binding, analyzer));
             }
         }
         None

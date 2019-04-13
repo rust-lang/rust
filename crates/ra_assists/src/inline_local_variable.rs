@@ -1,7 +1,4 @@
-use hir::{
-    db::HirDatabase,
-    source_binder::function_from_child_node,
-};
+use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode, AstToken, PatKind, ExprKind},
     TextRange,
@@ -29,10 +26,8 @@ pub(crate) fn inline_local_varialbe(mut ctx: AssistCtx<impl HirDatabase>) -> Opt
     } else {
         let_stmt.syntax().range()
     };
-
-    let function = function_from_child_node(ctx.db, ctx.frange.file_id, bind_pat.syntax())?;
-    let scope = function.scopes(ctx.db);
-    let refs = scope.find_all_refs(bind_pat);
+    let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, bind_pat.syntax(), None);
+    let refs = analyzer.find_all_refs(bind_pat);
 
     let mut wrap_in_parens = vec![true; refs.len()];
 

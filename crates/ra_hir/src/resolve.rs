@@ -9,13 +9,13 @@ use crate::{
     name::{Name, KnownName},
     nameres::{PerNs, CrateDefMap, CrateModuleId},
     generics::GenericParams,
-    expr::{scope::{ExprScopes, ScopeId}, PatId, Body},
+    expr::{scope::{ExprScopes, ScopeId}, PatId},
     impl_block::ImplBlock,
     path::Path, Trait
 };
 
 #[derive(Debug, Clone, Default)]
-pub struct Resolver {
+pub(crate) struct Resolver {
     scopes: Vec<Scope>,
 }
 
@@ -117,7 +117,7 @@ pub enum Resolution {
 }
 
 impl Resolver {
-    pub fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
+    pub(crate) fn resolve_name(&self, db: &impl HirDatabase, name: &Name) -> PerNs<Resolution> {
         let mut resolution = PerNs::none();
         for scope in self.scopes.iter().rev() {
             resolution = resolution.or(scope.resolve_name(db, name));
@@ -154,12 +154,12 @@ impl Resolver {
 
     /// Returns the fully resolved path if we were able to resolve it.
     /// otherwise returns `PerNs::none`
-    pub fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
+    pub(crate) fn resolve_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs<Resolution> {
         // into_fully_resolved() returns the fully resolved path or PerNs::none() otherwise
         self.resolve_path_segments(db, path).into_fully_resolved()
     }
 
-    pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<Resolution>> {
+    pub(crate) fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<Resolution>> {
         let mut names = FxHashMap::default();
         for scope in self.scopes.iter().rev() {
             scope.collect_names(db, &mut |name, res| {
@@ -194,14 +194,6 @@ impl Resolver {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
-            _ => None,
-        })
-    }
-
-    /// The body from which any `LocalBinding` resolutions in this resolver come.
-    pub fn body(&self) -> Option<Arc<Body>> {
-        self.scopes.iter().rev().find_map(|scope| match scope {
-            Scope::ExprScope(expr_scope) => Some(expr_scope.expr_scopes.body()),
             _ => None,
         })
     }

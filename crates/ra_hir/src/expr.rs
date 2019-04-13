@@ -14,9 +14,9 @@ use crate::{
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
-use crate::{ path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
+use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
 
-pub use self::scope::{ExprScopes, ScopesWithSourceMap, ScopeEntryWithSyntax};
+pub use self::scope::ExprScopes;
 
 pub(crate) mod scope;
 
@@ -81,19 +81,23 @@ impl Body {
 }
 
 // needs arbitrary_self_types to be a method... or maybe move to the def?
-pub fn resolver_for_expr(body: Arc<Body>, db: &impl HirDatabase, expr_id: ExprId) -> Resolver {
+pub(crate) fn resolver_for_expr(
+    body: Arc<Body>,
+    db: &impl HirDatabase,
+    expr_id: ExprId,
+) -> Resolver {
     let scopes = db.expr_scopes(body.owner);
     resolver_for_scope(body, db, scopes.scope_for(expr_id))
 }
 
-pub fn resolver_for_scope(
+pub(crate) fn resolver_for_scope(
     body: Arc<Body>,
     db: &impl HirDatabase,
     scope_id: Option<scope::ScopeId>,
 ) -> Resolver {
     let mut r = body.owner.resolver(db);
     let scopes = db.expr_scopes(body.owner);
-    let scope_chain = scopes.scope_chain_for(scope_id).collect::<Vec<_>>();
+    let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
         r = r.push_expr_scope(Arc::clone(&scopes), scope);
     }
@@ -117,31 +121,27 @@ impl Index<PatId> for Body {
 }
 
 impl BodySourceMap {
-    pub fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
+    pub(crate) fn expr_syntax(&self, expr: ExprId) -> Option<SyntaxNodePtr> {
         self.expr_map_back.get(expr).cloned()
     }
 
-    pub fn syntax_expr(&self, ptr: SyntaxNodePtr) -> Option<ExprId> {
+    pub(crate) fn syntax_expr(&self, ptr: SyntaxNodePtr) -> Option<ExprId> {
         self.expr_map.get(&ptr).cloned()
     }
 
-    pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
+    pub(crate) fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
         self.expr_map.get(&SyntaxNodePtr::new(node.syntax())).cloned()
     }
 
-    pub fn pat_syntax(&self, pat: PatId) -> Option<PatPtr> {
+    pub(crate) fn pat_syntax(&self, pat: PatId) -> Option<PatPtr> {
         self.pat_map_back.get(pat).cloned()
     }
 
-    pub fn syntax_pat(&self, ptr: PatPtr) -> Option<PatId> {
-        self.pat_map.get(&ptr).cloned()
-    }
-
-    pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
+    pub(crate) fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
         self.pat_map.get(&Either::A(AstPtr::new(node))).cloned()
     }
 
-    pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::NamedField> {
+    pub(crate) fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::NamedField> {
         self.field_map[&(expr, field)].clone()
     }
 }

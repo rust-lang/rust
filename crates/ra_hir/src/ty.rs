@@ -15,10 +15,11 @@ use std::sync::Arc;
 use std::{fmt, mem};
 
 use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait};
-
-pub(crate) use lower::{TypableDef, CallableDef, type_for_def, type_for_field, callable_item_sig};
-pub(crate) use infer::{infer, InferenceResult, InferTy};
 use display::{HirDisplay, HirFormatter};
+
+pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig};
+pub(crate) use infer::{infer, InferenceResult, InferTy};
+pub use lower::CallableDef;
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
@@ -284,6 +285,15 @@ impl Ty {
     pub fn as_tuple(&self) -> Option<&Substs> {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple, parameters }) => Some(parameters),
+            _ => None,
+        }
+    }
+
+    pub fn as_callable(&self) -> Option<(CallableDef, &Substs)> {
+        match self {
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::FnDef(callable_def), parameters }) => {
+                Some((*callable_def, parameters))
+            }
             _ => None,
         }
     }

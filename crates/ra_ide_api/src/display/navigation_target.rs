@@ -1,11 +1,11 @@
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
-    SyntaxNode, SyntaxNodePtr, AstNode, SmolStr, TextRange, TreeArc,
+    SyntaxNode, AstNode, SmolStr, TextRange, TreeArc, AstPtr,
     SyntaxKind::{self, NAME},
     ast::{self, NameOwner, VisibilityOwner, TypeAscriptionOwner},
     algo::visit::{visitor, Visitor},
 };
-use hir::{ModuleSource, FieldSource, Name, ImplItem};
+use hir::{ModuleSource, FieldSource, ImplItem, Either};
 
 use crate::{FileSymbol, db::RootDatabase};
 
@@ -74,15 +74,25 @@ impl NavigationTarget {
         }
     }
 
-    pub(crate) fn from_scope_entry(
+    pub(crate) fn from_pat(
+        db: &RootDatabase,
         file_id: FileId,
-        name: Name,
-        ptr: SyntaxNodePtr,
+        pat: Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>,
     ) -> NavigationTarget {
+        let file = db.parse(file_id);
+        let (name, full_range) = match pat {
+            Either::A(pat) => match pat.to_node(&file).kind() {
+                ast::PatKind::BindPat(pat) => {
+                    return NavigationTarget::from_bind_pat(file_id, &pat)
+                }
+                _ => ("_".into(), pat.syntax_node_ptr().range()),
+            },
+            Either::B(slf) => ("self".into(), slf.syntax_node_ptr().range()),
+        };
         NavigationTarget {
             file_id,
-            name: name.to_string().into(),
-            full_range: ptr.range(),
+            name,
+            full_range,
             focus_range: None,
             kind: NAME,
             container_name: None,
@@ -229,6 +239,7 @@ impl NavigationTarget {
 
     /// Allows `NavigationTarget` to be created from a `NameOwner`
     pub(crate) fn from_named(file_id: FileId, node: &impl ast::NameOwner) -> NavigationTarget {
+        //FIXME: use `_` instead of empty string
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range = node.name().map(|it| it.syntax().range());
         NavigationTarget::from_syntax(file_id, name, focus_range, node.syntax())
