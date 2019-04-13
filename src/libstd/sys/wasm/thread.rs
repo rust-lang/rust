@@ -1,4 +1,3 @@
-use crate::boxed::FnBox;
 use crate::ffi::CStr;
 use crate::io;
 use crate::sys::{unsupported, Void};
@@ -10,7 +9,7 @@ pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, _p: Box<dyn FnBox()>)
+    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>)
         -> io::Result<Thread>
     {
         unsupported()
