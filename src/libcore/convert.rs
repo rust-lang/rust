@@ -203,9 +203,9 @@ pub trait AsMut<T: ?Sized> {
 /// A value-to-value conversion that consumes the input value. The
 /// opposite of [`From`].
 ///
-/// One should only implement [`Into`] if a conversion to a type outside the current crate is
-/// required. Otherwise one should always prefer implementing [`From`] over [`Into`] because
-/// implementing [`From`] automatically provides one with a implementation of [`Into`] thanks to
+/// One should only implement `Into` if a conversion to a type outside the current crate is
+/// required. Otherwise one should always prefer implementing [`From`] over `Into` because
+/// implementing [`From`] automatically provides one with a implementation of `Into` thanks to
 /// the blanket implementation in the standard library. [`From`] cannot do these type of
 /// conversions because of Rust's orphaning rules.
 ///
@@ -214,7 +214,7 @@ pub trait AsMut<T: ?Sized> {
 /// # Generic Implementations
 ///
 /// - [`From`]`<T> for U` implies `Into<U> for T`
-/// - [`Into`] is reflexive, which means that `Into<T> for T` is implemented
+/// - `Into` is reflexive, which means that `Into<T> for T` is implemented
 ///
 /// # Implementing `Into` for conversions to external types
 ///
