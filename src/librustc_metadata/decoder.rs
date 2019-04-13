@@ -130,8 +130,8 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'a, 'tcx, 'tcx>
 }
 
 impl<'a, 'tcx: 'a, T: Encodable + Decodable> Lazy<T> {
-    pub fn decode<M: Metadata<'a, 'tcx>>(self, meta: M) -> T {
-        let mut dcx = meta.decoder(self.position.get());
+    pub fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
+        let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         T::decode(&mut dcx).unwrap()
     }
@@ -140,9 +140,9 @@ impl<'a, 'tcx: 'a, T: Encodable + Decodable> Lazy<T> {
 impl<'a, 'tcx: 'a, T: Encodable + Decodable> Lazy<[T]> {
     pub fn decode<M: Metadata<'a, 'tcx>>(
         self,
-        meta: M,
+        metadata: M,
     ) -> impl Iterator<Item = T> + Captures<'tcx> + 'a {
-        let mut dcx = meta.decoder(self.position.get());
+        let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         (0..self.meta).map(move |_| T::decode(&mut dcx).unwrap())
     }
@@ -498,7 +498,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn maybe_entry(&self, item_id: DefIndex) -> Option<Lazy<Entry<'tcx>>> {
         assert!(!self.is_proc_macro(item_id));
-        self.root.per_def.entry.get(self.blob.raw_bytes(), item_id)
+        self.root.per_def.entry.get(self, item_id)
     }
 
     fn entry(&self, item_id: DefIndex) -> Entry<'tcx> {
