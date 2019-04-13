@@ -5,7 +5,6 @@
 //!
 //! ```
 //! # #![allow(unused_imports)]
-//! # #![feature(alloc)]
 //! #![feature(alloc_prelude)]
 //! extern crate alloc;
 //! use alloc::prelude::v1::*;

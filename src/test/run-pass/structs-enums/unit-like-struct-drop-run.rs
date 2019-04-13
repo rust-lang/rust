@@ -3,9 +3,6 @@
 
 // Make sure the destructor is run for unit-like structs.
 
-
-#![feature(alloc)]
-
 use std::thread;
 
 struct Foo;

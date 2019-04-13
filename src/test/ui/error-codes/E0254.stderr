@@ -1,5 +1,5 @@
 error[E0254]: the name `alloc` is defined multiple times
-  --> $DIR/E0254.rs:12:5
+  --> $DIR/E0254.rs:11:5
    |
 LL | extern crate alloc;
    | ------------------- previous import of the extern crate `alloc` here

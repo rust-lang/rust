@@ -2,7 +2,7 @@
 
 // ignore-emscripten no no_std executables
 
-#![feature(lang_items, start, rustc_private, alloc)]
+#![feature(lang_items, start, rustc_private)]
 #![no_std]
 
 extern crate std as other;
