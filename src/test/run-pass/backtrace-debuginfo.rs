@@ -10,9 +10,11 @@
 // ignore-pretty issue #37195
 // ignore-cloudabi spawning processes is not supported
 // ignore-emscripten spawning processes is not supported
+// normalize-stderr-test ".*\n" -> ""
 
-// note that above `-opt-bisect-limit=0` is used to basically disable
-// optimizations
+// Note that above `-opt-bisect-limit=0` is used to basically disable
+// optimizations. It creates tons of output on stderr, hence we normalize
+// that away entirely.
 
 use std::env;
 
