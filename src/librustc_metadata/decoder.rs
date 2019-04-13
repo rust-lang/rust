@@ -831,7 +831,16 @@ impl<'a, 'tcx> CrateMetadata {
                             let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
                             let ctor_kind = self.get_ctor_kind(child_index);
                             let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
-                            let vis = self.get_visibility(ctor_def_id.index);
+                            let mut vis = self.get_visibility(ctor_def_id.index);
+                            // If the variant is marked as non_exhaustive then lower the visibility
+                            // to within the crate.
+                            let has_non_exhaustive = || { attr::contains_name(
+                                &self.get_item_attrs(def_id.index, sess), "non_exhaustive"
+                            )};
+                            if vis == ty::Visibility::Public && has_non_exhaustive() {
+                                let crate_def_id = DefId { index: CRATE_DEF_INDEX, ..def_id };
+                                vis = ty::Visibility::Restricted(crate_def_id);
+                            }
                             callback(def::Export { def: ctor_def, ident, vis, span });
                         }
                         _ => {}
