@@ -1,8 +1,9 @@
+use std::iter::successors;
+
 use hir::db::HirDatabase;
 use ra_syntax::{
     TextUnit, AstNode, SyntaxKind::COLONCOLON,
     ast,
-    algo::generate,
 };
 
 use crate::{AssistCtx, Assist, AssistId};
@@ -10,7 +11,7 @@ use crate::{AssistCtx, Assist, AssistId};
 pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let colon_colon = ctx.token_at_offset().find(|leaf| leaf.kind() == COLONCOLON)?;
     let path = ast::Path::cast(colon_colon.parent())?;
-    let top_path = generate(Some(path), |it| it.parent_path()).last()?;
+    let top_path = successors(Some(path), |it| it.parent_path()).last()?;
 
     let use_tree = top_path.syntax().ancestors().find_map(ast::UseTree::cast);
     if use_tree.is_none() {

@@ -3,7 +3,7 @@
 //! reference to a type with the field `bar`. This is an approximation of the
 //! logic in rustc (which lives in librustc_typeck/check/autoderef.rs).
 
-use ra_syntax::algo::generate;
+use std::iter::successors;
 
 use crate::HirDatabase;
 use super::Ty;
@@ -11,7 +11,7 @@ use super::Ty;
 impl Ty {
     /// Iterates over the possible derefs of `ty`.
     pub fn autoderef<'a>(self, db: &'a impl HirDatabase) -> impl Iterator<Item = Ty> + 'a {
-        generate(Some(self), move |ty| ty.autoderef_step(db))
+        successors(Some(self), move |ty| ty.autoderef_step(db))
     }
 
     fn autoderef_step(&self, _db: &impl HirDatabase) -> Option<Ty> {
