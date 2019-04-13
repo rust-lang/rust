@@ -1,0 +1,50 @@
+error: symbol-name(_RNvMNtCs4fqI2P2rA04_5impl13fooNtB2_3Foo3bar)
+  --> $DIR/impl1.rs:12:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<impl1[317d481089b8c8fe]::foo::Foo>::bar)
+  --> $DIR/impl1.rs:12:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<impl1::foo::Foo>::bar)
+  --> $DIR/impl1.rs:12:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(foo::Foo::bar)
+  --> $DIR/impl1.rs:19:9
+   |
+LL |         #[rustc_def_path]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_RNvMNtCs4fqI2P2rA04_5impl13barNtNtB4_3foo3Foo3baz)
+  --> $DIR/impl1.rs:30:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<impl1[317d481089b8c8fe]::foo::Foo>::baz)
+  --> $DIR/impl1.rs:30:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<impl1::foo::Foo>::baz)
+  --> $DIR/impl1.rs:30:9
+   |
+LL |         #[rustc_symbol_name]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: def-path(bar::<impl foo::Foo>::baz)
+  --> $DIR/impl1.rs:37:9
+   |
+LL |         #[rustc_def_path]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
