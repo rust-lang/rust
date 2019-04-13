@@ -18,7 +18,7 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
-use rustc::util::profiling::{ProfileCategory, SelfProfiler};
+use rustc::util::profiling::SelfProfiler;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
 use rustc_errors::{Handler, Level, DiagnosticBuilder, FatalError, DiagnosticId};
@@ -29,7 +29,6 @@ use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
 use syntax_pos::symbol::Symbol;
 use jobserver::{Client, Acquired};
-use parking_lot::Mutex as PlMutex;
 
 use std::any::Any;
 use std::borrow::Cow;
@@ -198,25 +197,21 @@ impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
 }
 
 pub struct ProfileGenericActivityTimer {
-    profiler: Option<Arc<PlMutex<SelfProfiler>>>,
-    category: ProfileCategory,
+    profiler: Option<Arc<SelfProfiler>>,
     label: Cow<'static, str>,
 }
 
 impl ProfileGenericActivityTimer {
     pub fn start(
-        profiler: Option<Arc<PlMutex<SelfProfiler>>>,
-        category: ProfileCategory,
+        profiler: Option<Arc<SelfProfiler>>,
         label: Cow<'static, str>,
     ) -> ProfileGenericActivityTimer {
         if let Some(profiler) = &profiler {
-            let mut p = profiler.lock();
-            p.start_activity(category, label.clone());
+            profiler.start_activity(label.clone());
         }
 
         ProfileGenericActivityTimer {
             profiler,
-            category,
             label,
         }
     }
@@ -225,8 +220,7 @@ impl ProfileGenericActivityTimer {
 impl Drop for ProfileGenericActivityTimer {
     fn drop(&mut self) {
         if let Some(profiler) = &self.profiler {
-            let mut p = profiler.lock();
-            p.end_activity(self.category, self.label.clone());
+            profiler.end_activity(self.label.clone());
         }
     }
 }
@@ -237,7 +231,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     // Resources needed when running LTO
     pub backend: B,
     pub time_passes: bool,
-    pub profiler: Option<Arc<PlMutex<SelfProfiler>>>,
+    pub profiler: Option<Arc<SelfProfiler>>,
     pub lto: Lto,
     pub no_landing_pads: bool,
     pub save_temps: bool,
@@ -291,19 +285,17 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
     #[inline(never)]
     #[cold]
-    fn profiler_active<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
+    fn profiler_active<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
         match &self.profiler {
             None => bug!("profiler_active() called but there was no profiler active"),
             Some(profiler) => {
-                let mut p = profiler.lock();
-
-                f(&mut p);
+                f(&*profiler);
             }
         }
     }
 
     #[inline(always)]
-    pub fn profile<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
+    pub fn profile<F: FnOnce(&SelfProfiler) -> ()>(&self, f: F) {
         if unlikely!(self.profiler.is_some()) {
             self.profiler_active(f)
         }
@@ -311,10 +303,9 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
     pub fn profile_activity(
         &self,
-        category: ProfileCategory,
         label: impl Into<Cow<'static, str>>,
     ) -> ProfileGenericActivityTimer {
-        ProfileGenericActivityTimer::start(self.profiler.clone(), category, label.into())
+        ProfileGenericActivityTimer::start(self.profiler.clone(), label.into())
     }
 }
 
@@ -324,7 +315,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>
 ) -> Vec<(WorkItem<B>, u64)> {
-    cgcx.profile(|p| p.start_activity(ProfileCategory::Linking, "codegen_run_lto"));
+    cgcx.profile(|p| p.start_activity("codegen_run_lto"));
 
     let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
@@ -351,7 +342,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         }), 0)
     })).collect();
 
-    cgcx.profile(|p| p.end_activity(ProfileCategory::Linking, "codegen_run_lto"));
+    cgcx.profile(|p| p.end_activity("codegen_run_lto"));
 
     result
 }
@@ -1655,9 +1646,9 @@ fn spawn_work<B: ExtraBackendMethods>(
         // surface that there was an error in this worker.
         bomb.result = {
             let label = work.name();
-            cgcx.profile(|p| p.start_activity(ProfileCategory::Codegen, label.clone()));
+            cgcx.profile(|p| p.start_activity(label.clone()));
             let result = execute_work_item(&cgcx, work).ok();
-            cgcx.profile(|p| p.end_activity(ProfileCategory::Codegen, label));
+            cgcx.profile(|p| p.end_activity(label));
 
             result
         };

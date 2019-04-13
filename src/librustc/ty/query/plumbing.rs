@@ -114,7 +114,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             let mut lock = cache.borrow_mut();
             if let Some(value) = lock.results.get(key) {
                 profq_msg!(tcx, ProfileQueriesMsg::CacheHit);
-                tcx.sess.profiler(|p| p.record_query_hit(Q::NAME, Q::CATEGORY));
+                tcx.sess.profiler(|p| p.record_query_hit(Q::NAME));
                 let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
                 {
@@ -130,7 +130,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
                             //in another thread has completed. Record how long we wait in the
                             //self-profiler
                             #[cfg(parallel_compiler)]
-                            tcx.sess.profiler(|p| p.query_blocked_start(Q::NAME, Q::CATEGORY));
+                            tcx.sess.profiler(|p| p.query_blocked_start(Q::NAME));
 
                             job.clone()
                         },
@@ -172,7 +172,7 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
             #[cfg(parallel_compiler)]
             {
                 let result = job.r#await(tcx, span);
-                tcx.sess.profiler(|p| p.query_blocked_end(Q::NAME, Q::CATEGORY));
+                tcx.sess.profiler(|p| p.query_blocked_end(Q::NAME));
 
                 if let Err(cycle) = result {
                     return TryGetJob::Cycle(Q::handle_cycle_error(tcx, cycle));
@@ -358,14 +358,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         key: Q::Key)
     -> Q::Value {
         debug!("ty::query::get_query<{}>(key={:?}, span={:?})",
-               Q::NAME,
+               Q::NAME.as_str(),
                key,
                span);
 
         profq_msg!(self,
             ProfileQueriesMsg::QueryBegin(
                 span.data(),
-                profq_query_msg!(Q::NAME, self, key),
+                profq_query_msg!(Q::NAME.as_str(), self, key),
             )
         );
 
@@ -389,7 +389,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         if dep_node.kind.is_anon() {
             profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-            self.sess.profiler(|p| p.start_query(Q::NAME, Q::CATEGORY));
+            self.sess.profiler(|p| p.start_query(Q::NAME));
 
             let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
                 self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -399,7 +399,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 })
             });
 
-            self.sess.profiler(|p| p.end_query(Q::NAME, Q::CATEGORY));
+            self.sess.profiler(|p| p.end_query(Q::NAME));
             profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
             self.dep_graph.read_index(dep_node_index);
@@ -474,14 +474,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let result = if let Some(result) = result {
             profq_msg!(self, ProfileQueriesMsg::CacheHit);
-            self.sess.profiler(|p| p.record_query_hit(Q::NAME, Q::CATEGORY));
+            self.sess.profiler(|p| p.record_query_hit(Q::NAME));
 
             result
         } else {
             // We could not load a result from the on-disk cache, so
             // recompute.
 
-            self.sess.profiler(|p| p.start_query(Q::NAME, Q::CATEGORY));
+            self.sess.profiler(|p| p.start_query(Q::NAME));
 
             // The dep-graph for this computation is already in
             // place
@@ -489,7 +489,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 Q::compute(self, key)
             });
 
-            self.sess.profiler(|p| p.end_query(Q::NAME, Q::CATEGORY));
+            self.sess.profiler(|p| p.end_query(Q::NAME));
             result
         };
 
@@ -552,7 +552,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 key, dep_node);
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-        self.sess.profiler(|p| p.start_query(Q::NAME, Q::CATEGORY));
+        self.sess.profiler(|p| p.start_query(Q::NAME));
 
         let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
             self.start_query(job.job.clone(), diagnostics, |tcx| {
@@ -572,7 +572,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             })
         });
 
-        self.sess.profiler(|p| p.end_query(Q::NAME, Q::CATEGORY));
+        self.sess.profiler(|p| p.end_query(Q::NAME));
         profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
 
         if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
@@ -619,7 +619,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             let _ = self.get_query::<Q>(DUMMY_SP, key);
         } else {
             profq_msg!(self, ProfileQueriesMsg::CacheHit);
-            self.sess.profiler(|p| p.record_query_hit(Q::NAME, Q::CATEGORY));
+            self.sess.profiler(|p| p.record_query_hit(Q::NAME));
         }
     }
 
@@ -632,7 +632,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     ) {
         profq_msg!(
             self,
-            ProfileQueriesMsg::QueryBegin(span.data(), profq_query_msg!(Q::NAME, self, key))
+            ProfileQueriesMsg::QueryBegin(span.data(),
+                                          profq_query_msg!(Q::NAME.as_str(), self, key))
         );
 
         // We may be concurrently trying both execute and force a query
@@ -723,18 +724,6 @@ macro_rules! define_queries_inner {
                     on_disk_cache,
                     $($name: Default::default()),*
                 }
-            }
-
-            pub fn record_computed_queries(&self, sess: &Session) {
-                sess.profiler(|p| {
-                    $(
-                        p.record_computed_queries(
-                            <queries::$name<'_> as QueryConfig<'_>>::NAME,
-                            <queries::$name<'_> as QueryConfig<'_>>::CATEGORY,
-                            self.$name.lock().results.len()
-                        );
-                    )*
-                });
             }
 
             #[cfg(parallel_compiler)]
@@ -855,6 +844,24 @@ macro_rules! define_queries_inner {
         }
 
         #[allow(nonstandard_style)]
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        pub enum QueryName {
+            $($name),*
+        }
+
+        impl QueryName {
+            pub fn register_with_profiler(profiler: &crate::util::profiling::SelfProfiler) {
+                $(profiler.register_query_name(QueryName::$name);)*
+            }
+
+            pub fn as_str(&self) -> &'static str {
+                match self {
+                    $(QueryName::$name => stringify!($name),)*
+                }
+            }
+        }
+
+        #[allow(nonstandard_style)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
         pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
@@ -894,6 +901,12 @@ macro_rules! define_queries_inner {
                     $(Query::$name(key) => key.default_span(tcx),)*
                 }
             }
+
+            pub fn query_name(&self) -> QueryName {
+                match self {
+                    $(Query::$name(_) => QueryName::$name,)*
+                }
+            }
         }
 
         impl<'a, $tcx> HashStable<StableHashingContext<'a>> for Query<$tcx> {
@@ -930,7 +943,7 @@ macro_rules! define_queries_inner {
             type Key = $K;
             type Value = $V;
 
-            const NAME: &'static str = stringify!($name);
+            const NAME: QueryName = QueryName::$name;
             const CATEGORY: ProfileCategory = $category;
         }
 
