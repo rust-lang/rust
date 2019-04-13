@@ -119,6 +119,16 @@
                 "command": "rust-analyzer.reload",
                 "title": "Restart server",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.startCargoWatch",
+                "title": "Start Cargo Watch",
+                "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.stopCargoWatch",
+                "title": "Stop Cargo Watch",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [

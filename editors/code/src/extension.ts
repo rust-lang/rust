@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
+import { CargoWatchProvider } from './commands/cargo_watch';
 import { interactivelyStartCargoWatch } from './commands/runnables';
 import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
@@ -126,7 +127,20 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('rust-analyzer.reload', reloadCommand);
 
     // Executing `cargo watch` provides us with inline diagnostics on save
-    interactivelyStartCargoWatch(context);
+    let provider: CargoWatchProvider | undefined;
+    interactivelyStartCargoWatch(context).then(p => {
+        provider = p;
+    });
+    registerCommand('rust-analyzer.startCargoWatch', () => {
+        if (provider) {
+            provider.start();
+        }
+    });
+    registerCommand('rust-analyzer.stopCargoWatch', () => {
+        if (provider) {
+            provider.stop();
+        }
+    });
 
     // Start the language server, finally!
     startServer();

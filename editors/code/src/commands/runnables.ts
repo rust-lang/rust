@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import * as lc from 'vscode-languageclient';
 
 import { Server } from '../server';
-import { CargoWatchProvider } from './cargo_watch';
+import { CargoWatchProvider, registerCargoWatchProvider } from './cargo_watch';
 
 interface RunnablesParams {
     textDocument: lc.TextDocumentIdentifier;
@@ -137,7 +137,7 @@ export async function handleSingle(runnable: Runnable) {
  */
 export async function interactivelyStartCargoWatch(
     context: vscode.ExtensionContext
-) {
+): Promise<CargoWatchProvider | undefined> {
     if (Server.config.cargoWatchOptions.enableOnStartup === 'disabled') {
         return;
     }
@@ -197,6 +197,5 @@ export async function interactivelyStartCargoWatch(
         }
     }
 
-    const validater = new CargoWatchProvider();
-    validater.activate(context.subscriptions);
+    return registerCargoWatchProvider(context.subscriptions);
 }
