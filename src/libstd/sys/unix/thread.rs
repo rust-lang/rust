@@ -1,4 +1,3 @@
-use crate::boxed::FnBox;
 use crate::cmp;
 use crate::ffi::CStr;
 use crate::io;
@@ -39,7 +38,7 @@ unsafe fn pthread_attr_setstacksize(_attr: *mut libc::pthread_attr_t,
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(stack: usize, p: Box<dyn FnBox()>)
+    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>)
                           -> io::Result<Thread> {
         let p = box p;
         let mut native: libc::pthread_t = mem::zeroed();
