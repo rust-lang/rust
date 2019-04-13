@@ -107,7 +107,7 @@ fn function_from_module(db: &impl HirDatabase, module: Module, fn_def: &ast::FnD
     Function { id: ctx.to_def(fn_def) }
 }
 
-pub fn function_from_child_node(
+fn function_from_child_node(
     db: &impl HirDatabase,
     file_id: FileId,
     node: &SyntaxNode,
