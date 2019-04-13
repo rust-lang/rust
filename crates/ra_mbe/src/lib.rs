@@ -189,6 +189,14 @@ impl_froms!(TokenTree: Leaf, Subtree);
         rules.expand(&invocation_tt).unwrap()
     }
 
+    pub(crate) fn expand_to_syntax(
+        rules: &MacroRules,
+        invocation: &str,
+    ) -> ra_syntax::TreeArc<ast::SourceFile> {
+        let expanded = expand(rules, invocation);
+        token_tree_to_ast_item_list(&expanded)
+    }
+
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
@@ -484,5 +492,94 @@ SOURCE_FILE@[0; 40)
 "#,
         );
         assert_expansion(&rules, "foo! { foo }", "fn foo () {let a = foo :: bar ;}");
+    }
+
+    #[test]
+    fn test_expr() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:expr) => {
+                 fn bar() { $ i; } 
+            }
+        }
+"#,
+        );
+
+        assert_expansion(
+            &rules,
+            "foo! { 2 + 2 * baz(3).quux() }",
+            "fn bar () {2 + 2 * baz (3) . quux () ;}",
+        );
+    }
+
+    #[test]
+    fn test_expr_order() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:expr) => {
+                 fn bar() { $ i * 2; } 
+            }
+        }
+"#,
+        );
+
+        assert_eq!(
+            expand_to_syntax(&rules, "foo! { 1 + 1  }").syntax().debug_dump().trim(),
+            r#"SOURCE_FILE@[0; 15)
+  FN_DEF@[0; 15)
+    FN_KW@[0; 2) "fn"
+    NAME@[2; 5)
+      IDENT@[2; 5) "bar"
+    PARAM_LIST@[5; 7)
+      L_PAREN@[5; 6) "("
+      R_PAREN@[6; 7) ")"
+    BLOCK@[7; 15)
+      L_CURLY@[7; 8) "{"
+      EXPR_STMT@[8; 14)
+        BIN_EXPR@[8; 13)
+          BIN_EXPR@[8; 11)
+            LITERAL@[8; 9)
+              INT_NUMBER@[8; 9) "1"
+            PLUS@[9; 10) "+"
+            LITERAL@[10; 11)
+              INT_NUMBER@[10; 11) "1"
+          STAR@[11; 12) "*"
+          LITERAL@[12; 13)
+            INT_NUMBER@[12; 13) "2"
+        SEMI@[13; 14) ";"
+      R_CURLY@[14; 15) "}""#,
+        );
+    }
+
+    #[test]
+    fn test_ty() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:ty) => (
+                fn bar() -> $ i { unimplemented!() }
+            )
+        }
+"#,
+        );
+        assert_expansion(
+            &rules,
+            "foo! { Baz<u8> }",
+            "fn bar () -> Baz < u8 > {unimplemented ! ()}",
+        );
+    }
+
+    #[test]
+    fn test_pat_() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:pat) => { fn foo() { let $ i; } }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { (a, b) }", "fn foo () {let (a , b) ;}");
     }
 }

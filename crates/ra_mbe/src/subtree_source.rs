@@ -109,6 +109,8 @@ impl<'a> SubTreeWalker<'a> {
         self.cursor = match self.ts.get(0) {
             DelimToken::Token(token) => match token {
                 tt::TokenTree::Subtree(subtree) => {
+                    let ts = TokenSeq::from(subtree);
+                    self.stack.push((ts, 0));
                     WalkCursor::Token(0, convert_delim(subtree.delimiter, false))
                 }
                 tt::TokenTree::Leaf(leaf) => {
@@ -254,7 +256,7 @@ impl<'a> WalkerOwner<'a> {
                         }
                     }
                 } else if walker.stack.len() == 1 {
-                    if let DelimToken::Delim(_, is_end) = walker.ts.get(*u) {
+                    if let DelimToken::Delim(_, is_end) = walker.top().get(*u) {
                         if !is_end {
                             let (_, last_idx) = &walker.stack[0];
                             if let DelimToken::Token(token) = walker.ts.get(*last_idx) {
@@ -310,10 +312,16 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
         }
     }
     fn is_token_joint_to_next(&self, pos: usize) -> bool {
-        self.walker.get(pos).unwrap().is_joint_to_next
+        match self.walker.get(pos) {
+            Some(t) => t.is_joint_to_next,
+            _ => false,
+        }
     }
     fn is_keyword(&self, pos: usize, kw: &str) -> bool {
-        self.walker.get(pos).unwrap().text == *kw
+        match self.walker.get(pos) {
+            Some(t) => t.text == *kw,
+            _ => false,
+        }
     }
 }
 

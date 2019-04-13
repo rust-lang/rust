@@ -53,20 +53,39 @@ pub trait TreeSink {
     fn error(&mut self, error: ParseError);
 }
 
-/// Parse given tokens into the given sink as a rust file.
-pub fn parse(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+fn parse_from_tokens<F>(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink, f: F)
+where
+    F: FnOnce(&mut parser::Parser),
+{
     let mut p = parser::Parser::new(token_source);
-    grammar::root(&mut p);
+    f(&mut p);
     let events = p.finish();
     event::process(tree_sink, events);
 }
 
+/// Parse given tokens into the given sink as a rust file.
+pub fn parse(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::root);
+}
+
 /// Parse given tokens into the given sink as a path
 pub fn parse_path(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
-    let mut p = parser::Parser::new(token_source);
-    grammar::path(&mut p);
-    let events = p.finish();
-    event::process(tree_sink, events);
+    parse_from_tokens(token_source, tree_sink, grammar::path);
+}
+
+/// Parse given tokens into the given sink as a expression
+pub fn parse_expr(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::expr);
+}
+
+/// Parse given tokens into the given sink as a ty
+pub fn parse_ty(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::type_);
+}
+
+/// Parse given tokens into the given sink as a pattern
+pub fn parse_pat(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::pattern);
 }
 
 /// A parsing function for a specific braced-block.

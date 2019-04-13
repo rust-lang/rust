@@ -53,6 +53,18 @@ pub(crate) fn path(p: &mut Parser) {
     paths::type_path(p);
 }
 
+pub(crate) fn expr(p: &mut Parser) {
+    expressions::expr(p);
+}
+
+pub(crate) fn type_(p: &mut Parser) {
+    types::type_(p)
+}
+
+pub(crate) fn pattern(p: &mut Parser) {
+    patterns::pattern(p)
+}
+
 pub(crate) fn reparser(
     node: SyntaxKind,
     first_child: Option<SyntaxKind>,
