@@ -1,17 +1,17 @@
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:6:9
+  --> $DIR/resolve_self_super_hint.rs:5:9
    |
 LL |     use alloc::HashMap;
    |         ^^^^^ help: a similar path exists: `self::alloc`
 
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:11:13
+  --> $DIR/resolve_self_super_hint.rs:10:13
    |
 LL |         use alloc::HashMap;
    |             ^^^^^ help: a similar path exists: `super::alloc`
 
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:16:17
+  --> $DIR/resolve_self_super_hint.rs:15:17
    |
 LL |             use alloc::HashMap;
    |                 ^^^^^
@@ -20,7 +20,7 @@ LL |             use alloc::HashMap;
    |                 help: a similar path exists: `a::alloc`
 
 error[E0432]: unresolved import `alloc`
-  --> $DIR/resolve_self_super_hint.rs:21:21
+  --> $DIR/resolve_self_super_hint.rs:20:21
    |
 LL |                 use alloc::HashMap;
    |                     ^^^^^
