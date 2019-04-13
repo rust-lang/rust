@@ -1,9 +1,10 @@
-error[E0658]: inline assembly is not stable enough for use and is subject to change (see issue #29722)
+error[E0658]: inline assembly is not stable enough for use and is subject to change
   --> $DIR/feature-gate-asm2.rs:5:26
    |
 LL |         println!("{:?}", asm!(""));
    |                          ^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29722
    = help: add #![feature(asm)] to the crate attributes to enable
 
 error: aborting due to previous error

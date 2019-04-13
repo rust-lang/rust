@@ -732,6 +732,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                         source: match_src,
                         prior_arms: other_arms.clone(),
                         last_ty: prior_arm_ty.unwrap(),
+                        discrim_hir_id: discrim.hir_id,
                     })
                 };
                 coercion.coerce(self, &cause, &arm.body, arm_ty);

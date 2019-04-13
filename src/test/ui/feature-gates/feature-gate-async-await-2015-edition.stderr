@@ -16,12 +16,13 @@ error[E0425]: cannot find value `async` in this scope
 LL |     let _ = async || { true };
    |             ^^^^^ not found in this scope
 
-error[E0658]: async fn is unstable (see issue #50547)
+error[E0658]: async fn is unstable
   --> $DIR/feature-gate-async-await-2015-edition.rs:5:1
    |
 LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error: aborting due to 4 previous errors

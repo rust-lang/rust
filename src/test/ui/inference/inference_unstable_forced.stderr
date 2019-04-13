@@ -1,9 +1,10 @@
-error[E0658]: use of unstable library feature 'ipu_flatten' (see issue #99999)
+error[E0658]: use of unstable library feature 'ipu_flatten'
   --> $DIR/inference_unstable_forced.rs:11:20
    |
 LL |     assert_eq!('x'.ipu_flatten(), 0);
    |                    ^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/99999
    = help: add #![feature(ipu_flatten)] to the crate attributes to enable
 
 error: aborting due to previous error

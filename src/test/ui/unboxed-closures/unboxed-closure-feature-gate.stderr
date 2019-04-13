@@ -1,9 +1,10 @@
-error[E0658]: parenthetical notation is only stable when used with `Fn`-family traits (see issue #29625)
+error[E0658]: parenthetical notation is only stable when used with `Fn`-family traits
   --> $DIR/unboxed-closure-feature-gate.rs:13:16
    |
 LL |     let x: Box<Foo(isize)>;
    |                ^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error: aborting due to previous error

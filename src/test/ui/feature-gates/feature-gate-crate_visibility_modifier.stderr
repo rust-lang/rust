@@ -1,9 +1,10 @@
-error[E0658]: `crate` visibility modifier is experimental (see issue #53120)
+error[E0658]: `crate` visibility modifier is experimental
   --> $DIR/feature-gate-crate_visibility_modifier.rs:1:1
    |
 LL | crate struct Bender {
    | ^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53120
    = help: add #![feature(crate_visibility_modifier)] to the crate attributes to enable
 
 error: aborting due to previous error

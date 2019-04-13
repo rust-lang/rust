@@ -1,9 +1,10 @@
-error[E0658]: `global_asm!` is not stable enough for use and is subject to change (see issue #35119)
+error[E0658]: `global_asm!` is not stable enough for use and is subject to change
   --> $DIR/feature-gate-global_asm.rs:1:1
    |
 LL | global_asm!("");
    | ^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/35119
    = help: add #![feature(global_asm)] to the crate attributes to enable
 
 error: aborting due to previous error

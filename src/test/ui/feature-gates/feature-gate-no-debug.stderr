@@ -1,9 +1,10 @@
-error[E0658]: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand (see issue #29721)
+error[E0658]: the `#[no_debug]` attribute was an experimental feature that has been deprecated due to lack of demand
   --> $DIR/feature-gate-no-debug.rs:3:1
    |
 LL | #[no_debug]
    | ^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29721
    = help: add #![feature(no_debug)] to the crate attributes to enable
 
 error: aborting due to previous error

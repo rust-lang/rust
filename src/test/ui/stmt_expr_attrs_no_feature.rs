@@ -91,42 +91,42 @@ item_mac!(e);
 extern {
     #[cfg(unset)]
     fn x(a: [u8; #[attr] 5]);
-    fn y(a: [u8; #[attr] 5]); //~ ERROR 15701
+    fn y(a: [u8; #[attr] 5]); //~ ERROR attributes on expressions are experimental
 }
 
 struct Foo;
 impl Foo {
     #[cfg(unset)]
     const X: u8 = #[attr] 5;
-    const Y: u8 = #[attr] 5; //~ ERROR 15701
+    const Y: u8 = #[attr] 5; //~ ERROR attributes on expressions are experimental
 }
 
 trait Bar {
     #[cfg(unset)]
     const X: [u8; #[attr] 5];
-    const Y: [u8; #[attr] 5]; //~ ERROR 15701
+    const Y: [u8; #[attr] 5]; //~ ERROR attributes on expressions are experimental
 }
 
 struct Joyce {
     #[cfg(unset)]
     field: [u8; #[attr] 5],
-    field2: [u8; #[attr] 5] //~ ERROR 15701
+    field2: [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
 }
 
 struct Walky(
     #[cfg(unset)] [u8; #[attr] 5],
-    [u8; #[attr] 5] //~ ERROR 15701
+    [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
 );
 
 enum Mike {
     Happy(
         #[cfg(unset)] [u8; #[attr] 5],
-        [u8; #[attr] 5] //~ ERROR 15701
+        [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
     ),
     Angry {
         #[cfg(unset)]
         field: [u8; #[attr] 5],
-        field2: [u8; #[attr] 5] //~ ERROR 15701
+        field2: [u8; #[attr] 5] //~ ERROR attributes on expressions are experimental
     }
 }
 
@@ -134,7 +134,7 @@ fn pat() {
     match 5 {
         #[cfg(unset)]
         5 => #[attr] (),
-        6 => #[attr] (), //~ ERROR 15701
+        6 => #[attr] (), //~ ERROR attributes on expressions are experimental
         _ => (),
     }
 }

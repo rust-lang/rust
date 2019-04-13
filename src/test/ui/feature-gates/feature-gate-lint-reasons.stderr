@@ -1,9 +1,10 @@
-error[E0658]: lint reasons are experimental (see issue #54503)
+error[E0658]: lint reasons are experimental
   --> $DIR/feature-gate-lint-reasons.rs:1:28
    |
 LL | #![warn(nonstandard_style, reason = "the standard should be respected")]
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54503
    = help: add #![feature(lint_reasons)] to the crate attributes to enable
 
 error: aborting due to previous error

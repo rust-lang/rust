@@ -1,9 +1,10 @@
-error[E0658]: comparing raw pointers inside static (see issue #53020)
+error[E0658]: comparing raw pointers inside static
   --> $DIR/E0395.rs:6:29
    |
 LL | static BAZ: bool = unsafe { (&FOO as *const i32) == (&BAR as *const i32) };
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53020
    = help: add #![feature(const_compare_raw_pointers)] to the crate attributes to enable
 
 error: aborting due to previous error

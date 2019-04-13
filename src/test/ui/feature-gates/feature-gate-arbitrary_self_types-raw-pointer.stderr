@@ -1,27 +1,30 @@
-error[E0658]: `*const Self` cannot be used as the type of `self` without the `arbitrary_self_types` feature (see issue #44874)
+error[E0658]: `*const Self` cannot be used as the type of `self` without the `arbitrary_self_types` feature
   --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:9:18
    |
 LL |     fn bar(self: *const Self);
    |                  ^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44874
    = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
-error[E0658]: `*const Foo` cannot be used as the type of `self` without the `arbitrary_self_types` feature (see issue #44874)
+error[E0658]: `*const Foo` cannot be used as the type of `self` without the `arbitrary_self_types` feature
   --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:4:18
    |
 LL |     fn foo(self: *const Self) {}
    |                  ^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44874
    = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 
-error[E0658]: `*const ()` cannot be used as the type of `self` without the `arbitrary_self_types` feature (see issue #44874)
+error[E0658]: `*const ()` cannot be used as the type of `self` without the `arbitrary_self_types` feature
   --> $DIR/feature-gate-arbitrary_self_types-raw-pointer.rs:14:18
    |
 LL |     fn bar(self: *const Self) {}
    |                  ^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44874
    = help: add #![feature(arbitrary_self_types)] to the crate attributes to enable
    = help: consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`
 

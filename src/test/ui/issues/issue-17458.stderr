@@ -1,9 +1,10 @@
-error[E0658]: casting pointers to integers in statics is unstable (see issue #51910)
+error[E0658]: casting pointers to integers in statics is unstable
   --> $DIR/issue-17458.rs:1:28
    |
 LL | static X: usize = unsafe { 0 as *const usize as usize };
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51910
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
 
 error: aborting due to previous error

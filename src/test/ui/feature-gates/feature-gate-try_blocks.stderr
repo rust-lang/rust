@@ -1,4 +1,4 @@
-error[E0658]: `try` expression is experimental (see issue #31436)
+error[E0658]: `try` expression is experimental
   --> $DIR/feature-gate-try_blocks.rs:4:33
    |
 LL |       let try_result: Option<_> = try {
@@ -8,6 +8,7 @@ LL | |         x
 LL | |     };
    | |_____^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/31436
    = help: add #![feature(try_blocks)] to the crate attributes to enable
 
 error: aborting due to previous error

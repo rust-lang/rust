@@ -1,25 +1,28 @@
-error[E0658]: async fn is unstable (see issue #50547)
+error[E0658]: async fn is unstable
   --> $DIR/feature-gate-async-await.rs:5:1
    |
 LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(async_await)] to the crate attributes to enable
 
-error[E0658]: async blocks are unstable (see issue #50547)
+error[E0658]: async blocks are unstable
   --> $DIR/feature-gate-async-await.rs:8:13
    |
 LL |     let _ = async {};
    |             ^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(async_await)] to the crate attributes to enable
 
-error[E0658]: async closures are unstable (see issue #50547)
+error[E0658]: async closures are unstable
   --> $DIR/feature-gate-async-await.rs:9:13
    |
 LL |     let _ = async || {};
    |             ^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

@@ -1,9 +1,10 @@
-error[E0658]: linking to LLVM intrinsics is experimental (see issue #29602)
+error[E0658]: linking to LLVM intrinsics is experimental
   --> $DIR/issue-20313.rs:3:5
    |
 LL |     fn sqrt(x: f32) -> f32;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29602
    = help: add #![feature(link_llvm_intrinsics)] to the crate attributes to enable
 
 error: aborting due to previous error

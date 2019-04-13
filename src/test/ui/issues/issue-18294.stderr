@@ -1,9 +1,10 @@
-error[E0658]: casting pointers to integers in constants is unstable (see issue #51910)
+error[E0658]: casting pointers to integers in constants is unstable
   --> $DIR/issue-18294.rs:3:31
    |
 LL |     const Y: usize = unsafe { &X as *const u32 as usize };
    |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51910
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
 
 error: aborting due to previous error

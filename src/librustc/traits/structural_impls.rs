@@ -519,6 +519,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 source,
                 ref prior_arms,
                 last_ty,
+                discrim_hir_id,
             } => {
                 tcx.lift(&last_ty).map(|last_ty| {
                     super::MatchExpressionArm {
@@ -526,6 +527,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                         source,
                         prior_arms: prior_arms.clone(),
                         last_ty,
+                        discrim_hir_id,
                     }
                 })
             }

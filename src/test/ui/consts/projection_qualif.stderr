@@ -10,12 +10,13 @@ error[E0019]: constant contains unimplemented expression type
 LL |         unsafe { *b = 5; }
    |                  ^^^^^^
 
-error[E0658]: dereferencing raw pointers in constants is unstable (see issue #51911)
+error[E0658]: dereferencing raw pointers in constants is unstable
   --> $DIR/projection_qualif.rs:7:18
    |
 LL |         unsafe { *b = 5; }
    |                  ^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/51911
    = help: add #![feature(const_raw_ptr_deref)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

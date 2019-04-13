@@ -1,9 +1,10 @@
-error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead (see issue #29625)
+error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change. Use parenthetical notation (Fn(Foo, Bar) -> Baz) instead
   --> $DIR/issue-23024.rs:9:35
    |
 LL |     println!("{:?}",(vfnfer[0] as Fn)(3));
    |                                   ^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29625
    = help: add #![feature(unboxed_closures)] to the crate attributes to enable
 
 error[E0107]: wrong number of type arguments: expected 1, found 0

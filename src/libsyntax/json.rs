@@ -348,19 +348,17 @@ impl DiagnosticSpanLine {
     /// `span` within the line.
     fn from_span(span: Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
         je.sm.span_to_lines(span)
-             .map(|lines| {
-                 let fm = &*lines.file;
-                 lines.lines
-                      .iter()
-                      .map(|line| {
-                          DiagnosticSpanLine::line_from_source_file(fm,
-                                                                line.line_index,
-                                                                line.start_col.0 + 1,
-                                                                line.end_col.0 + 1)
-                      })
-                     .collect()
-             })
-            .unwrap_or_else(|_| vec![])
+            .map(|lines| {
+                let fm = &*lines.file;
+                lines.lines
+                    .iter()
+                    .map(|line| DiagnosticSpanLine::line_from_source_file(
+                        fm,
+                        line.line_index,
+                        line.start_col.0 + 1,
+                        line.end_col.0 + 1,
+                    )).collect()
+            }).unwrap_or_else(|_| vec![])
     }
 }
 

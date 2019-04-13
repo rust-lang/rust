@@ -1,9 +1,10 @@
-error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics (see issue #29642)
+error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics
   --> $DIR/expand-to-unstable-2.rs:8:10
    |
 LL | #[derive(Unstable)]
    |          ^^^^^^^^
    |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
    = help: add #![feature(rustc_attrs)] to the crate attributes to enable
 
 error: aborting due to previous error
