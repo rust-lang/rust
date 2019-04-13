@@ -57,7 +57,13 @@ impl CodeStats {
                                          overall_size: Size,
                                          packed: bool,
                                          opt_discr_size: Option<Size>,
-                                         variants: Vec<VariantInfo>) {
+                                         mut variants: Vec<VariantInfo>) {
+        // Sort variants so the largest ones are shown first. A stable sort is
+        // used here so that source code order is preserved for all variants
+        // that have the same size.
+        variants.sort_by(|info1, info2| {
+            info2.size.cmp(&info1.size)
+        });
         let info = TypeSizeInfo {
             kind,
             type_description: type_desc.to_string(),
