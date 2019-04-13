@@ -1152,15 +1152,6 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
-    /// Deprecated before stabilization.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
-    #[inline(always)]
-    // FIXME: still used by stdsimd
-    // #[rustc_deprecated(since = "1.35.0", reason = "use `uninit` instead")]
-    pub const fn uninitialized() -> MaybeUninit<T> {
-        Self::uninit()
-    }
-
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
     /// filled with `0` bytes. It depends on `T` whether that already makes for
     /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
@@ -1219,14 +1210,6 @@ impl<T> MaybeUninit<T> {
             self.value = ManuallyDrop::new(val);
             self.get_mut()
         }
-    }
-
-    /// Deprecated before stabilization.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
-    #[inline(always)]
-    #[rustc_deprecated(since = "1.35.0", reason = "use `write` instead")]
-    pub fn set(&mut self, val: T) -> &mut T {
-        self.write(val)
     }
 
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
@@ -1346,15 +1329,6 @@ impl<T> MaybeUninit<T> {
         ManuallyDrop::into_inner(self.value)
     }
 
-    /// Deprecated before stabilization.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
-    #[inline(always)]
-    // FIXME: still used by stdsimd
-    // #[rustc_deprecated(since = "1.35.0", reason = "use `assume_init` instead")]
-    pub unsafe fn into_initialized(self) -> T {
-        self.assume_init()
-    }
-
     /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
     /// to the usual drop handling.
     ///
@@ -1415,14 +1389,6 @@ impl<T> MaybeUninit<T> {
     pub unsafe fn read(&self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         self.as_ptr().read()
-    }
-
-    /// Deprecated before stabilization.
-    #[unstable(feature = "maybe_uninit", issue = "53491")]
-    #[inline(always)]
-    #[rustc_deprecated(since = "1.35.0", reason = "use `read` instead")]
-    pub unsafe fn read_initialized(&self) -> T {
-        self.read()
     }
 
     /// Gets a reference to the contained value.
