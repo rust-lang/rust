@@ -4,16 +4,17 @@ use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
 use rustc::hir::def::{Def, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
-use rustc::session::config::nightly_options;
-use syntax::ast::{Expr, ExprKind};
-use syntax::symbol::keywords;
-use syntax_pos::Span;
+use rustc::session::{Session, config::nightly_options};
+use syntax::ast::{Expr, ExprKind, Ident};
+use syntax::ext::base::MacroKind;
+use syntax::symbol::{Symbol, keywords};
+use syntax_pos::{BytePos, Span};
 
 use crate::macros::ParentScope;
-use crate::resolve_imports::ImportResolver;
+use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
 use crate::{import_candidate_to_enum_paths, is_self_type, is_self_value, path_names_to_string};
 use crate::{AssocSuggestion, CrateLint, ImportSuggestion, ModuleOrUniformRoot, PathResult,
-            PathSource, Resolver, Segment};
+            PathSource, Resolver, Segment, Suggestion};
 
 impl<'a> Resolver<'a> {
     /// Handles error reporting for `smart_resolve_path_fragment` function.
@@ -428,7 +429,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
 
         match (path.get(0), path.get(1)) {
@@ -463,13 +464,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].ident.name = keywords::SelfLower.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some((path, None))
+            Some((path, Vec::new()))
         } else {
             None
         }
@@ -487,7 +488,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = keywords::Crate.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
@@ -495,11 +496,11 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if let PathResult::Module(..) = result {
             Some((
                 path,
-                Some(
+                vec![
                     "`use` statements changed in Rust 2018; read more at \
                      <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-\
                      clarity.html>".to_string()
-                ),
+                ],
             ))
         } else {
             None
@@ -518,13 +519,13 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].ident.name = keywords::Super.name();
         let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
-            Some((path, None))
+            Some((path, Vec::new()))
         } else {
             None
         }
@@ -545,7 +546,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
-    ) -> Option<(Vec<Segment>, Option<String>)> {
+    ) -> Option<(Vec<Segment>, Vec<String>)> {
         if path[1].ident.span.rust_2015() {
             return None;
         }
@@ -564,10 +565,290 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
             if let PathResult::Module(..) = result {
-                return Some((path, None));
+                return Some((path, Vec::new()));
             }
         }
 
         None
     }
+
+    /// Suggests importing a macro from the root of the crate rather than a module within
+    /// the crate.
+    ///
+    /// ```
+    /// help: a macro with this name exists at the root of the crate
+    ///    |
+    /// LL | use issue_59764::makro;
+    ///    |     ^^^^^^^^^^^^^^^^^^
+    ///    |
+    ///    = note: this could be because a macro annotated with `#[macro_export]` will be exported
+    ///            at the root of the crate instead of the module where it is defined
+    /// ```
+    pub(crate) fn check_for_module_export_macro(
+        &self,
+        directive: &'b ImportDirective<'b>,
+        module: ModuleOrUniformRoot<'b>,
+        ident: Ident,
+    ) -> Option<(Option<Suggestion>, Vec<String>)> {
+        let mut crate_module = if let ModuleOrUniformRoot::Module(module) = module {
+            module
+        } else {
+            return None;
+        };
+
+        while let Some(parent) = crate_module.parent {
+            crate_module = parent;
+        }
+
+        if ModuleOrUniformRoot::same_def(ModuleOrUniformRoot::Module(crate_module), module) {
+            // Don't make a suggestion if the import was already from the root of the
+            // crate.
+            return None;
+        }
+
+        let resolutions = crate_module.resolutions.borrow();
+        let resolution = resolutions.get(&(ident, MacroNS))?;
+        let binding = resolution.borrow().binding()?;
+        if let Def::Macro(_, MacroKind::Bang) = binding.def() {
+            let module_name = crate_module.kind.name().unwrap();
+            let import = match directive.subclass {
+                ImportDirectiveSubclass::SingleImport { source, target, .. } if source != target =>
+                    format!("{} as {}", source, target),
+                _ => format!("{}", ident),
+            };
+
+            let mut corrections: Vec<(Span, String)> = Vec::new();
+            if !directive.is_nested() {
+                // Assume this is the easy case of `use issue_59764::foo::makro;` and just remove
+                // intermediate segments.
+                corrections.push((directive.span, format!("{}::{}", module_name, import)));
+            } else {
+                // Find the binding span (and any trailing commas and spaces).
+                //   ie. `use a::b::{c, d, e};`
+                //                      ^^^
+                let (found_closing_brace, binding_span) = find_span_of_binding_until_next_binding(
+                    self.resolver.session, directive.span, directive.use_span,
+                );
+                debug!("check_for_module_export_macro: found_closing_brace={:?} binding_span={:?}",
+                       found_closing_brace, binding_span);
+
+                let mut removal_span = binding_span;
+                if found_closing_brace {
+                    // If the binding span ended with a closing brace, as in the below example:
+                    //   ie. `use a::b::{c, d};`
+                    //                      ^
+                    // Then expand the span of characters to remove to include the previous
+                    // binding's trailing comma.
+                    //   ie. `use a::b::{c, d};`
+                    //                    ^^^
+                    if let Some(previous_span) = extend_span_to_previous_binding(
+                        self.resolver.session, binding_span,
+                    ) {
+                        debug!("check_for_module_export_macro: previous_span={:?}", previous_span);
+                        removal_span = removal_span.with_lo(previous_span.lo());
+                    }
+                }
+                debug!("check_for_module_export_macro: removal_span={:?}", removal_span);
+
+                // Remove the `removal_span`.
+                corrections.push((removal_span, "".to_string()));
+
+                // Find the span after the crate name and if it has nested imports immediatately
+                // after the crate name already.
+                //   ie. `use a::b::{c, d};`
+                //               ^^^^^^^^^
+                //   or  `use a::{b, c, d}};`
+                //               ^^^^^^^^^^^
+                let (has_nested, after_crate_name) = find_span_immediately_after_crate_name(
+                    self.resolver.session, module_name, directive.use_span,
+                );
+                debug!("check_for_module_export_macro: has_nested={:?} after_crate_name={:?}",
+                       has_nested, after_crate_name);
+
+                let source_map = self.resolver.session.source_map();
+
+                // Add the import to the start, with a `{` if required.
+                let start_point = source_map.start_point(after_crate_name);
+                if let Ok(start_snippet) = source_map.span_to_snippet(start_point) {
+                    corrections.push((
+                        start_point,
+                        if has_nested {
+                            // In this case, `start_snippet` must equal '{'.
+                            format!("{}{}, ", start_snippet, import)
+                        } else {
+                            // In this case, add a `{`, then the moved import, then whatever
+                            // was there before.
+                            format!("{{{}, {}", import, start_snippet)
+                        }
+                    ));
+                }
+
+                // Add a `};` to the end if nested, matching the `{` added at the start.
+                if !has_nested {
+                    corrections.push((source_map.end_point(after_crate_name),
+                                     "};".to_string()));
+                }
+            }
+
+            let suggestion = Some((
+                corrections,
+                String::from("a macro with this name exists at the root of the crate"),
+                Applicability::MaybeIncorrect,
+            ));
+            let note = vec![
+                "this could be because a macro annotated with `#[macro_export]` will be exported \
+                 at the root of the crate instead of the module where it is defined".to_string(),
+            ];
+            Some((suggestion, note))
+        } else {
+            None
+        }
+    }
+}
+
+/// Given a `binding_span` of a binding within a use statement:
+///
+/// ```
+/// use foo::{a, b, c};
+///              ^
+/// ```
+///
+/// then return the span until the next binding or the end of the statement:
+///
+/// ```
+/// use foo::{a, b, c};
+///              ^^^
+/// ```
+pub(crate) fn find_span_of_binding_until_next_binding(
+    sess: &Session,
+    binding_span: Span,
+    use_span: Span,
+) -> (bool, Span) {
+    let source_map = sess.source_map();
+
+    // Find the span of everything after the binding.
+    //   ie. `a, e};` or `a};`
+    let binding_until_end = binding_span.with_hi(use_span.hi());
+
+    // Find everything after the binding but not including the binding.
+    //   ie. `, e};` or `};`
+    let after_binding_until_end = binding_until_end.with_lo(binding_span.hi());
+
+    // Keep characters in the span until we encounter something that isn't a comma or
+    // whitespace.
+    //   ie. `, ` or ``.
+    //
+    // Also note whether a closing brace character was encountered. If there
+    // was, then later go backwards to remove any trailing commas that are left.
+    let mut found_closing_brace = false;
+    let after_binding_until_next_binding = source_map.span_take_while(
+        after_binding_until_end,
+        |&ch| {
+            if ch == '}' { found_closing_brace = true; }
+            ch == ' ' || ch == ','
+        }
+    );
+
+    // Combine the two spans.
+    //   ie. `a, ` or `a`.
+    //
+    // Removing these would leave `issue_52891::{d, e};` or `issue_52891::{d, e, };`
+    let span = binding_span.with_hi(after_binding_until_next_binding.hi());
+
+    (found_closing_brace, span)
+}
+
+/// Given a `binding_span`, return the span through to the comma or opening brace of the previous
+/// binding.
+///
+/// ```
+/// use foo::a::{a, b, c};
+///               ^^--- binding span
+///               |
+///               returned span
+///
+/// use foo::{a, b, c};
+///           --- binding span
+/// ```
+pub(crate) fn extend_span_to_previous_binding(
+    sess: &Session,
+    binding_span: Span,
+) -> Option<Span> {
+    let source_map = sess.source_map();
+
+    // `prev_source` will contain all of the source that came before the span.
+    // Then split based on a command and take the first (ie. closest to our span)
+    // snippet. In the example, this is a space.
+    let prev_source = source_map.span_to_prev_source(binding_span).ok()?;
+
+    let prev_comma = prev_source.rsplit(',').collect::<Vec<_>>();
+    let prev_starting_brace = prev_source.rsplit('{').collect::<Vec<_>>();
+    if prev_comma.len() <= 1 || prev_starting_brace.len() <= 1 {
+        return None;
+    }
+
+    let prev_comma = prev_comma.first().unwrap();
+    let prev_starting_brace = prev_starting_brace.first().unwrap();
+
+    // If the amount of source code before the comma is greater than
+    // the amount of source code before the starting brace then we've only
+    // got one item in the nested item (eg. `issue_52891::{self}`).
+    if prev_comma.len() > prev_starting_brace.len() {
+        return None;
+    }
+
+    Some(binding_span.with_lo(BytePos(
+        // Take away the number of bytes for the characters we've found and an
+        // extra for the comma.
+        binding_span.lo().0 - (prev_comma.as_bytes().len() as u32) - 1
+    )))
+}
+
+/// Given a `use_span` of a binding within a use statement, returns the highlighted span and if
+/// it is a nested use tree.
+///
+/// ```
+/// use foo::a::{b, c};
+///          ^^^^^^^^^^ // false
+///
+/// use foo::{a, b, c};
+///          ^^^^^^^^^^ // true
+///
+/// use foo::{a, b::{c, d}};
+///          ^^^^^^^^^^^^^^^ // true
+/// ```
+fn find_span_immediately_after_crate_name(
+    sess: &Session,
+    module_name: Symbol,
+    use_span: Span,
+) -> (bool, Span) {
+    debug!("find_span_immediately_after_crate_name: module_name={:?} use_span={:?}",
+           module_name, use_span);
+    let source_map = sess.source_map();
+
+    // Using `use issue_59764::foo::{baz, makro};` as an example throughout..
+    let mut num_colons = 0;
+    // Find second colon.. `use issue_59764:`
+    let until_second_colon = source_map.span_take_while(use_span, |c| {
+        if *c == ':' { num_colons += 1; }
+        match c {
+            ':' if num_colons == 2 => false,
+            _ => true,
+        }
+    });
+    // Find everything after the second colon.. `foo::{baz, makro};`
+    let from_second_colon = use_span.with_lo(until_second_colon.hi() + BytePos(1));
+
+    let mut found_a_non_whitespace_character = false;
+    // Find the first non-whitespace character in `from_second_colon`.. `f`
+    let after_second_colon = source_map.span_take_while(from_second_colon, |c| {
+        if found_a_non_whitespace_character { return false; }
+        if !c.is_whitespace() { found_a_non_whitespace_character = true; }
+        true
+    });
+
+    // Find the first `{` in from_second_colon.. `foo::{`
+    let next_left_bracket = source_map.span_through_char(from_second_colon, '{');
+
+    (next_left_bracket == after_second_colon, from_second_colon)
 }
