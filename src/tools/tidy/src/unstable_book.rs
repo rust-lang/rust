@@ -3,13 +3,13 @@ use std::fs;
 use std::path;
 use crate::features::{collect_lang_features, collect_lib_features, Features, Status};
 
-pub const PATH_STR: &str = "doc/unstable-book/src";
+pub const PATH_STR: &str = "doc/unstable-book";
 
-pub const COMPILER_FLAGS_DIR: &str = "compiler-flags";
+pub const COMPILER_FLAGS_DIR: &str = "src/compiler-flags";
 
-pub const LANG_FEATURES_DIR: &str = "language-features";
+pub const LANG_FEATURES_DIR: &str = "src/language-features";
 
-pub const LIB_FEATURES_DIR: &str = "library-features";
+pub const LIB_FEATURES_DIR: &str = "src/library-features";
 
 /// Builds the path to the Unstable Book source directory from the Rust 'src' directory.
 pub fn unstable_book_path(base_src_path: &path::Path) -> path::PathBuf {

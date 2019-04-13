@@ -1577,3 +1577,17 @@ div.name.expand::before {
 	left: -15px;
 	top: 2px;
 }
+
+/* This part is to fix the "Expand attributes" part in the type declaration. */
+.type-decl > pre > :first-child {
+	margin-left: 0 !important;
+}
+.type-decl > pre > :nth-child(2) {
+	margin-left: 1.8em !important;
+}
+.type-decl > pre > .toggle-attributes {
+	margin-left: 2.2em;
+}
+.type-decl > pre > .docblock.attributes {
+	margin-left: 4em;
+}

@@ -1,8 +1,6 @@
 // Tests that it is possible to create a global allocator in a submodule, rather than in the crate
 // root.
 
-#![feature(alloc, allocator_api, global_allocator)]
-
 extern crate alloc;
 
 use std::{

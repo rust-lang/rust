@@ -429,11 +429,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
-            id: LintId::of(DUPLICATE_MATCHER_BINDING_NAME),
-            reference: "issue #57593 <https://github.com/rust-lang/rust/issues/57593>",
-            edition: None,
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(NESTED_IMPL_TRAIT),
             reference: "issue #59014 <https://github.com/rust-lang/rust/issues/59014>",
             edition: None,
@@ -494,6 +489,8 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         "no longer a warning, #[no_mangle] statics always exported");
     store.register_removed("bad_repr",
         "replaced with a generic attribute input check");
+    store.register_removed("duplicate_matcher_binding_name",
+        "converted into hard error, see https://github.com/rust-lang/rust/issues/57742");
 }
 
 pub fn register_internals(store: &mut lint::LintStore, sess: Option<&Session>) {

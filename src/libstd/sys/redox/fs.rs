@@ -2,7 +2,7 @@ use crate::os::unix::prelude::*;
 
 use crate::ffi::{OsString, OsStr};
 use crate::fmt;
-use crate::io::{self, Error, SeekFrom};
+use crate::io::{self, Error, SeekFrom, IoVec, IoVecMut};
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
@@ -278,8 +278,16 @@ impl File {
         self.0.read(buf)
     }
 
+    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        crate::io::default_read_vectored(|buf| self.read(buf), bufs)
+    }
+
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
+    }
+
+    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+        crate::io::default_write_vectored(|buf| self.write(buf), bufs)
     }
 
     pub fn flush(&self) -> io::Result<()> { Ok(()) }

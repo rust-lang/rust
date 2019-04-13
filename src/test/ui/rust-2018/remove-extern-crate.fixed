@@ -4,7 +4,6 @@
 // aux-build:remove-extern-crate.rs
 // compile-flags:--extern remove_extern_crate
 
-#![feature(alloc)]
 #![warn(rust_2018_idioms)]
 
 
