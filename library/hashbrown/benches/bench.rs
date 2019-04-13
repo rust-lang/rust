@@ -47,6 +47,22 @@ fn grow_by_insertion(b: &mut Bencher) {
 }
 
 #[bench]
+fn grow_by_insertion_kb(b: &mut Bencher) {
+    let mut m = new_map();
+    let kb = 1024;
+    for i in 1..1001 {
+        m.insert(i * kb, i);
+    }
+
+    let mut k = 1001 * kb;
+
+    b.iter(|| {
+        m.insert(k, k);
+        k += kb;
+    });
+}
+
+#[bench]
 fn find_existing(b: &mut Bencher) {
     let mut m = new_map();
 
@@ -57,6 +73,21 @@ fn find_existing(b: &mut Bencher) {
     b.iter(|| {
         for i in 1..1001 {
             m.contains_key(&i);
+        }
+    });
+}
+
+#[bench]
+fn find_existing_high_bits(b: &mut Bencher) {
+    let mut m = new_map();
+
+    for i in 1..1001_u64 {
+        m.insert(i << 32, i);
+    }
+
+    b.iter(|| {
+        for i in 1..1001_u64 {
+            m.contains_key(&(i << 32));
         }
     });
 }
@@ -109,5 +140,20 @@ fn get_remove_insert(b: &mut Bencher) {
         m.remove(&k);
         m.insert(k + 1000, k + 1000);
         k += 1;
+    })
+}
+
+#[bench]
+fn insert_8_char_string(b: &mut Bencher) {
+    let mut strings: Vec<_> = Vec::new();
+    for i in 1..1001 {
+        strings.push(format!("{:x}", -i));
+    }
+
+    let mut m = new_map();
+    b.iter(|| {
+        for key in &strings {
+            m.insert(key, key);
+        }
     })
 }
