@@ -113,6 +113,21 @@ impl LinkerPluginLto {
     }
 }
 
+#[derive(Clone, PartialEq, Hash)]
+pub enum PgoGenerate {
+    Enabled(Option<PathBuf>),
+    Disabled,
+}
+
+impl PgoGenerate {
+    pub fn enabled(&self) -> bool {
+        match *self {
+            PgoGenerate::Enabled(_) => true,
+            PgoGenerate::Disabled => false,
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Hash)]
 pub enum DebugInfo {
     None,
@@ -826,13 +841,15 @@ macro_rules! options {
         pub const parse_linker_plugin_lto: Option<&str> =
             Some("either a boolean (`yes`, `no`, `on`, `off`, etc), \
                   or the path to the linker plugin");
+        pub const parse_pgo_generate: Option<&str> =
+            Some("an optional path to the profiling data output directory");
         pub const parse_merge_functions: Option<&str> =
             Some("one of: `disabled`, `trampolines`, or `aliases`");
     }
 
     #[allow(dead_code)]
     mod $mod_set {
-        use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto};
+        use super::{$struct_name, Passes, Sanitizer, LtoCli, LinkerPluginLto, PgoGenerate};
         use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
         use std::path::PathBuf;
         use std::str::FromStr;
@@ -1083,6 +1100,14 @@ macro_rules! options {
             *slot = match v {
                 None => LinkerPluginLto::LinkerPluginAuto,
                 Some(path) => LinkerPluginLto::LinkerPlugin(PathBuf::from(path)),
+            };
+            true
+        }
+
+        fn parse_pgo_generate(slot: &mut PgoGenerate, v: Option<&str>) -> bool {
+            *slot = match v {
+                None => PgoGenerate::Enabled(None),
+                Some(path) => PgoGenerate::Enabled(Some(PathBuf::from(path))),
             };
             true
         }
@@ -1363,7 +1388,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "extra arguments to prepend to the linker invocation (space separated)"),
     profile: bool = (false, parse_bool, [TRACKED],
                      "insert profiling code"),
-    pgo_gen: Option<String> = (None, parse_opt_string, [TRACKED],
+    pgo_gen: PgoGenerate = (PgoGenerate::Disabled, parse_pgo_generate, [TRACKED],
         "Generate PGO profile data, to a given file, or to the default location if it's empty."),
     pgo_use: String = (String::new(), parse_string, [TRACKED],
         "Use PGO profile data from the given profile file."),
@@ -1980,7 +2005,7 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
-    if debugging_opts.pgo_gen.is_some() && !debugging_opts.pgo_use.is_empty() {
+    if debugging_opts.pgo_gen.enabled() && !debugging_opts.pgo_use.is_empty() {
         early_error(
             error_format,
             "options `-Z pgo-gen` and `-Z pgo-use` are exclusive",
@@ -2490,7 +2515,7 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
-                Passes, Sanitizer, LtoCli, LinkerPluginLto};
+                Passes, Sanitizer, LtoCli, LinkerPluginLto, PgoGenerate};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
@@ -2558,6 +2583,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(TargetTriple);
     impl_dep_tracking_hash_via_hash!(Edition);
     impl_dep_tracking_hash_via_hash!(LinkerPluginLto);
+    impl_dep_tracking_hash_via_hash!(PgoGenerate);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(PathBuf);
@@ -2625,7 +2651,7 @@ mod tests {
         build_session_options_and_crate_config,
         to_crate_config
     };
-    use crate::session::config::{LtoCli, LinkerPluginLto};
+    use crate::session::config::{LtoCli, LinkerPluginLto, PgoGenerate};
     use crate::session::build_session;
     use crate::session::search_paths::SearchPath;
     use std::collections::{BTreeMap, BTreeSet};
@@ -3124,7 +3150,7 @@ mod tests {
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
-        opts.debugging_opts.pgo_gen = Some(String::from("abc"));
+        opts.debugging_opts.pgo_gen = PgoGenerate::Enabled(None);
         assert_ne!(reference.dep_tracking_hash(), opts.dep_tracking_hash());
 
         opts = reference.clone();
