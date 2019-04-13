@@ -214,7 +214,7 @@ pub trait AsMut<T: ?Sized> {
 /// # Generic Implementations
 ///
 /// - [`From`]`<T> for U` implies `Into<U> for T`
-/// - [`Into`]` is reflexive, which means that `Into<T> for T` is implemented
+/// - [`Into`] is reflexive, which means that `Into<T> for T` is implemented
 ///
 /// # Implementing `Into` for conversions to external types
 ///
