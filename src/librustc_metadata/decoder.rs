@@ -832,14 +832,16 @@ impl<'a, 'tcx> CrateMetadata {
                             let ctor_kind = self.get_ctor_kind(child_index);
                             let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
                             let mut vis = self.get_visibility(ctor_def_id.index);
-                            // If the variant is marked as non_exhaustive then lower the visibility
-                            // to within the crate.
-                            let has_non_exhaustive = || { attr::contains_name(
-                                &self.get_item_attrs(def_id.index, sess), "non_exhaustive"
-                            )};
-                            if vis == ty::Visibility::Public && has_non_exhaustive() {
-                                let crate_def_id = DefId { index: CRATE_DEF_INDEX, ..def_id };
-                                vis = ty::Visibility::Restricted(crate_def_id);
+                            if ctor_def_id == def_id && vis == ty::Visibility::Public {
+                                // For non-exhaustive variants lower the constructor visibility to
+                                // within the crate. We only need this for fictive constructors,
+                                // for other constructors correct visibilities
+                                // were already encoded in metadata.
+                                let attrs = self.get_item_attrs(def_id.index, sess);
+                                if attr::contains_name(&attrs, "non_exhaustive") {
+                                    let crate_def_id = DefId { index: CRATE_DEF_INDEX, ..def_id };
+                                    vis = ty::Visibility::Restricted(crate_def_id);
+                                }
                             }
                             callback(def::Export { def: ctor_def, ident, vis, span });
                         }
