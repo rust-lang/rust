@@ -469,16 +469,34 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     let typable: Option<TypableDef> = def.into();
                     let typable = typable?;
 
+                    // For example, this substs will take `Gen::make::*<u32>*`
                     let mut substs =
                         Ty::substs_from_path_segment(self.db, &self.resolver, segment, typable);
 
                     if remaining_index > 0 {
-                        substs = Ty::substs_from_path_segment(
+                        // For example, this substs will take `Gen::*<u32>*::make`
+                        let parent_substs = Ty::substs_from_path_segment(
                             self.db,
                             &self.resolver,
                             &path.segments[remaining_index - 1],
                             typable,
                         );
+
+                        // merge parent and child substs
+                        let max_len = std::cmp::max(substs.len(), parent_substs.len());
+                        let mut merged = vec![];
+                        for i in 0..max_len {
+                            let s = match (substs.0.get(i), parent_substs.0.get(i)) {
+                                (Some(s @ Ty::Apply(_)), _) => s,
+                                (_, Some(s @ Ty::Apply(_))) => s,
+                                (Some(s), _) => s,
+                                (_, Some(s)) => s,
+                                _ => unreachable!(),
+                            };
+                            merged.push(s.clone());
+                        }
+
+                        substs = Substs(merged.into());
                     }
 
                     let ty = self.db.type_for_def(typable, Namespace::Types);
@@ -549,32 +567,52 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.insert_type_vars(ty);
 
                 // plug the old parent_ty in
-                if let Some(actual_def_ty) = actual_def_ty {
+                let plug_self_types = || -> Option<()> {
+                    let actual_def_ty = actual_def_ty?;
+
                     if let crate::ModuleDef::Function(func) = def {
+                        // We only do the infer if parent has generic params
                         let gen = func.generic_params(self.db);
-                        if let Some(target_ty) = func.impl_block(self.db) {
-                            let target_ty = target_ty.target_ty(self.db);
-                            let old_params = target_ty.substs().unwrap().clone();
-
-                            let target_ty = target_ty.subst(&substs);
-                            let target_ty = self.insert_type_vars(target_ty);
-
-                            if gen.count_parent_params() > 0 {
-                                self.unify(&target_ty, &actual_def_ty);
-
-                                if let Ty::Apply(ty) = &ty {
-                                    for (param, pty) in
-                                        old_params.iter().zip(target_ty.substs().unwrap().iter())
-                                    {
-                                        if let Ty::Param { idx, .. } = param {
-                                            self.unify(pty, &ty.parameters.0[*idx as usize]);
-                                        }
-                                    }
-                                }
-                            }
+                        if gen.count_parent_params() == 0 {
+                            return None;
                         }
+
+                        let impl_block = func.impl_block(self.db)?;
+                        let impl_block = impl_block.target_ty(self.db);
+
+                        // We save the impl block type params for later use
+                        let old_params = impl_block.substs().unwrap().clone();
+
+                        // Turn the impl block generic params to unknown
+                        let mut subst = vec![];
+                        for _ in 0..impl_block.substs().map(|x| x.len()).unwrap_or(0) {
+                            subst.push(Ty::Unknown);
+                        }
+                        let impl_block = impl_block.subst(&Substs(subst.into()));
+                        let impl_block = self.insert_type_vars(impl_block);
+
+                        // Unify *self type* and impl_block
+                        // e.g. Gen::<u32,u64> <=> Gen::<u64, T>
+                        self.unify(&impl_block, &actual_def_ty);
+
+                        // The following code *link up* the function parent generic param
+                        // and the impl_block generic param by unify them one by one
+                        if let Ty::Apply(ty) = &ty {
+                            old_params.iter().zip(impl_block.substs()?.iter()).for_each(
+                                |(param, pty)| {
+                                    if let Ty::Param { idx, .. } = param {
+                                        self.unify(pty, &ty.parameters.0[*idx as usize]);
+                                    }
+                                },
+                            );
+                        }
+
+                        return Some(());
                     }
-                }
+                    None
+                };
+
+                plug_self_types();
 
                 Some(ty)
             }
