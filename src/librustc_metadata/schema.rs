@@ -229,28 +229,23 @@ crate struct TraitImpls {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct LazyPerDefTables<'tcx> {
-    pub entry: Lazy!(PerDefTable<Lazy<Entry<'tcx>>>),
-}
+    pub kind: Lazy!(PerDefTable<Lazy!(EntryKind<'tcx>)>),
+    pub visibility: Lazy!(PerDefTable<Lazy<ty::Visibility>>),
+    pub span: Lazy!(PerDefTable<Lazy<Span>>),
+    pub attributes: Lazy!(PerDefTable<Lazy<[ast::Attribute]>>),
+    pub children: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
+    pub stability: Lazy!(PerDefTable<Lazy<attr::Stability>>),
+    pub deprecation: Lazy!(PerDefTable<Lazy<attr::Deprecation>>),
 
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct Entry<'tcx> {
-    pub kind: EntryKind<'tcx>,
-    pub visibility: Lazy<ty::Visibility>,
-    pub span: Lazy<Span>,
-    pub attributes: Lazy<[ast::Attribute]>,
-    pub children: Lazy<[DefIndex]>,
-    pub stability: Option<Lazy<attr::Stability>>,
-    pub deprecation: Option<Lazy<attr::Deprecation>>,
+    pub ty: Lazy!(PerDefTable<Lazy!(Ty<'tcx>)>),
+    pub inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
+    pub variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
+    pub generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
+    pub predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+    pub predicates_defined_on: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
 
-    pub ty: Option<Lazy!(Ty<'tcx>)>,
-    pub inherent_impls: Lazy<[DefIndex]>,
-    pub variances: Lazy<[ty::Variance]>,
-    pub generics: Option<Lazy<ty::Generics>>,
-    pub predicates: Option<Lazy!(ty::GenericPredicates<'tcx>)>,
-    pub predicates_defined_on: Option<Lazy!(ty::GenericPredicates<'tcx>)>,
-
-    pub mir: Option<Lazy!(mir::Body<'tcx>)>,
-    pub promoted_mir: Option<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
+    pub mir: Lazy!(PerDefTable<Lazy!(mir::Body<'tcx>)>),
+    pub promoted_mir: Lazy!(PerDefTable<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
