@@ -1,11 +1,11 @@
-use std::collections::HashSet;
+use std::collections::{hash_set, HashSet};
 use std::path::{Path, PathBuf};
 
 use atty;
 
 use crate::config::config_type::ConfigType;
 use crate::config::lists::*;
-use crate::config::{Config, FileName};
+use crate::config::Config;
 
 /// Macro that will stringify the enum variants or a provided textual repr
 #[macro_export]
@@ -399,6 +399,15 @@ impl Default for EmitMode {
 #[derive(Default, Deserialize, Serialize, Clone, Debug, PartialEq)]
 pub struct IgnoreList(HashSet<PathBuf>);
 
+impl<'a> IntoIterator for &'a IgnoreList {
+    type Item = &'a PathBuf;
+    type IntoIter = hash_set::Iter<'a, PathBuf>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 impl IgnoreList {
     pub fn add_prefix(&mut self, dir: &Path) {
         self.0 = self
@@ -414,18 +423,6 @@ impl IgnoreList {
                 }
             })
             .collect();
-    }
-
-    fn skip_file_inner(&self, file: &Path) -> bool {
-        self.0.iter().any(|path| file.starts_with(path))
-    }
-
-    pub fn skip_file(&self, file: &FileName) -> bool {
-        if let FileName::Real(ref path) = file {
-            self.skip_file_inner(path)
-        } else {
-            false
-        }
     }
 }
 

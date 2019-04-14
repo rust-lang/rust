@@ -14,6 +14,7 @@ use syntax::source_map::{FilePathMapping, SourceMap, Span, DUMMY_SP};
 
 use crate::comment::{CharClasses, FullCodeCharKind};
 use crate::config::{Config, FileName, Verbosity};
+use crate::ignore_path::IgnorePathSet;
 use crate::issues::BadIssueSeeker;
 use crate::utils::{count_newlines, get_skip_macro_names};
 use crate::visitor::{FmtVisitor, SnippetProvider};
@@ -90,6 +91,10 @@ fn format_project<T: FormatHandler>(
     parse_session.span_diagnostic = Handler::with_emitter(true, None, silent_emitter);
 
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
+    let ignore_path_set = match IgnorePathSet::from_ignore_list(&config.ignore()) {
+        Ok(set) => set,
+        Err(e) => return Err(ErrorKind::InvalidGlobPattern(e)),
+    };
 
     let files = modules::ModResolver::new(
         context.parse_session.source_map(),
@@ -99,7 +104,8 @@ fn format_project<T: FormatHandler>(
     .visit_crate(&krate)
     .map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
     for (path, (module, _)) in files {
-        if (config.skip_children() && path != main_file) || config.ignore().skip_file(&path) {
+        let should_ignore = !input_is_stdin && ignore_path_set.is_match(&path);
+        if (config.skip_children() && path != main_file) || should_ignore {
             continue;
         }
         should_emit_verbose(input_is_stdin, config, || println!("Formatting {}", path));
@@ -276,7 +282,10 @@ impl FormattingError {
             | ErrorKind::IoError(_)
             | ErrorKind::ParseError
             | ErrorKind::LostComment => "internal error:",
-            ErrorKind::LicenseCheck | ErrorKind::BadAttr | ErrorKind::VersionMismatch => "error:",
+            ErrorKind::LicenseCheck
+            | ErrorKind::BadAttr
+            | ErrorKind::InvalidGlobPattern(..)
+            | ErrorKind::VersionMismatch => "error:",
             ErrorKind::BadIssue(_) | ErrorKind::DeprecatedAttr => "warning:",
         }
     }
