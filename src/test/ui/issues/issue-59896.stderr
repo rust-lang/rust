@@ -1,0 +1,17 @@
+error: the item `S` is imported redundantly
+  --> $DIR/issue-59896.rs:6:9
+   |
+LL | struct S;
+   | --------- the item `S` is already defined here
+...
+LL |     use S;
+   |         ^
+   |
+note: lint level defined here
+  --> $DIR/issue-59896.rs:1:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
