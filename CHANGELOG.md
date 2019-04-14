@@ -28,7 +28,7 @@ All notable changes to this project will be documented in this file.
  * Fix suggestion for [`explicit_counter_loop`] to deal with parenthesizing range variables
  * Fix suggestion for [`single_char_pattern`] to correctly escape single quotes
  * Avoid triggering [`redundant_closure`] in macros
- * ICE fixes: #3805, #3772, #3741
+ * ICE fixes: [#3805](https://github.com/rust-lang/rust-clippy/pull/3805), [#3772](https://github.com/rust-lang/rust-clippy/pull/3772), [#3741](https://github.com/rust-lang/rust-clippy/pull/3741)
 
 ## Rust 1.34 (2019-04-10)
 
