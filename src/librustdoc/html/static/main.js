@@ -662,6 +662,10 @@ if (!DOMTokenList.prototype.remove) {
             // Check for type name and type generics (if any).
             function checkType(obj, val, literalSearch) {
                 var lev_distance = MAX_LEV_DISTANCE + 1;
+                if (typeof obj === 'undefined' || typeof val === 'undefined' ||
+                        typeof obj[NAME] === 'undefined' || typeof val.name === 'undefined') {
+                    return literalSearch === true ? false : lev_distance;
+                }
                 var x;
                 if (obj[NAME] === val.name) {
                     if (literalSearch === true) {
