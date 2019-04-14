@@ -3,7 +3,7 @@
 use super::{FnCtxt, Needs};
 use super::method::MethodCallee;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::TyKind::{Ref, Adt, Str, Uint, Never, Tuple, Char, Array};
+use rustc::ty::TyKind::{Ref, Adt, FnDef, Str, Uint, Never, Tuple, Char, Array};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use errors::{self,Applicability};
@@ -333,8 +333,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 lhs_ty);
 
                             if !lhs_expr.span.eq(&rhs_expr.span) {
-                                err.span_label(lhs_expr.span, lhs_ty.to_string());
-                                err.span_label(rhs_expr.span, rhs_ty.to_string());
+                                self.add_type_neq_err_label(
+                                    &mut err,
+                                    lhs_expr.span,
+                                    lhs_ty,
+                                    rhs_ty,
+                                    op,
+                                    is_assign
+                                );
+                                self.add_type_neq_err_label(
+                                    &mut err,
+                                    rhs_expr.span,
+                                    rhs_ty,
+                                    lhs_ty,
+                                    op,
+                                    is_assign
+                                );
                             }
 
                             let mut suggested_deref = false;
@@ -413,6 +427,62 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         (lhs_ty, rhs_ty, return_ty)
+    }
+
+    fn add_type_neq_err_label(
+        &self,
+        err: &mut errors::DiagnosticBuilder<'_>,
+        span: Span,
+        ty: Ty<'tcx>,
+        other_ty: Ty<'tcx>,
+        op: hir::BinOp,
+        is_assign: IsAssign,
+    ) {
+        err.span_label(span, ty.to_string());
+        if let FnDef(def_id, _) = ty.sty {
+            let source_map = self.tcx.sess.source_map();
+            let hir_id = &self.tcx.hir().as_local_hir_id(def_id).unwrap();
+            let fn_sig = {
+                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(*hir_id) {
+                    Some(f) => f.clone(),
+                    None => {
+                        bug!("No fn-sig entry for def_id={:?}", def_id);
+                    }
+                }
+            };
+
+            let other_ty = if let FnDef(def_id, _) = other_ty.sty {
+                let hir_id = &self.tcx.hir().as_local_hir_id(def_id).unwrap();
+                match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(*hir_id) {
+                    Some(f) => f.clone().output(),
+                    None => {
+                        bug!("No fn-sig entry for def_id={:?}", def_id);
+                    }
+                }
+            } else {
+                other_ty
+            };
+
+            if self.lookup_op_method(fn_sig.output(),
+                                    &[other_ty],
+                                    Op::Binary(op, is_assign))
+                    .is_ok() {
+                let (variable_snippet, applicability) = if fn_sig.inputs().len() > 0 {
+                    (format!("{}( /* arguments */ )", source_map.span_to_snippet(span).unwrap()),
+                    Applicability::HasPlaceholders)
+                } else {
+                    (format!("{}()", source_map.span_to_snippet(span).unwrap()),
+                    Applicability::MaybeIncorrect)
+                };
+
+                err.span_suggestion(
+                    span,
+                    "you might have forgotten to call this function",
+                    variable_snippet,
+                    applicability,
+                );
+            }
+        }
     }
 
     fn check_str_addition(

@@ -1,0 +1,81 @@
+error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+  --> $DIR/issue-59488.rs:12:9
+   |
+LL |     foo > 12;
+   |     --- ^ -- {integer}
+   |     |
+   |     fn() -> i32 {foo}
+   |     help: you might have forgotten to call this function: `foo()`
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn() -> i32 {foo}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-59488.rs:12:11
+   |
+LL |     foo > 12;
+   |           ^^ expected fn item, found integer
+   |
+   = note: expected type `fn() -> i32 {foo}`
+              found type `i32`
+
+error[E0369]: binary operation `>` cannot be applied to type `fn(i64) -> i64 {bar}`
+  --> $DIR/issue-59488.rs:16:9
+   |
+LL |     bar > 13;
+   |     --- ^ -- {integer}
+   |     |
+   |     fn(i64) -> i64 {bar}
+   |     help: you might have forgotten to call this function: `bar( /* arguments */ )`
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn(i64) -> i64 {bar}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-59488.rs:16:11
+   |
+LL |     bar > 13;
+   |           ^^ expected fn item, found integer
+   |
+   = note: expected type `fn(i64) -> i64 {bar}`
+              found type `i64`
+
+error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+  --> $DIR/issue-59488.rs:20:9
+   |
+LL |     foo > foo;
+   |     --- ^ --- fn() -> i32 {foo}
+   |     |
+   |     fn() -> i32 {foo}
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn() -> i32 {foo}`
+help: you might have forgotten to call this function
+   |
+LL |     foo() > foo;
+   |     ^^^^^
+help: you might have forgotten to call this function
+   |
+LL |     foo > foo();
+   |           ^^^^^
+
+error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
+  --> $DIR/issue-59488.rs:23:9
+   |
+LL |     foo > bar;
+   |     --- ^ --- fn(i64) -> i64 {bar}
+   |     |
+   |     fn() -> i32 {foo}
+   |
+   = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn() -> i32 {foo}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-59488.rs:23:11
+   |
+LL |     foo > bar;
+   |           ^^^ expected fn item, found a different fn item
+   |
+   = note: expected type `fn() -> i32 {foo}`
+              found type `fn(i64) -> i64 {bar}`
+
+error: aborting due to 7 previous errors
+
+Some errors occurred: E0308, E0369.
+For more information about an error, try `rustc --explain E0308`.
