@@ -327,7 +327,7 @@ impl<'a, 'tcx: 'a> DerefVisitor<'a, 'tcx> {
     fn check_arg(&self, ptr: &hir::Expr) {
         if let hir::ExprKind::Path(ref qpath) = ptr.node {
             if let Def::Local(id) = self.cx.tables.qpath_def(qpath, ptr.hir_id) {
-                if self.ptrs.contains(&self.cx.tcx.hir().node_to_hir_id(id)) {
+                if self.ptrs.contains(&id) {
                     span_lint(
                         self.cx,
                         NOT_UNSAFE_PTR_ARG_DEREF,

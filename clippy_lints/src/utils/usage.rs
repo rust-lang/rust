@@ -33,7 +33,7 @@ pub fn is_potentially_mutated<'a, 'tcx: 'a>(
         Def::Local(id) | Def::Upvar(id, ..) => id,
         _ => return true,
     };
-    mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&cx.tcx.hir().node_to_hir_id(id)))
+    mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))
 }
 
 struct MutVarsDelegate {

@@ -958,7 +958,7 @@ pub fn is_try<'a>(cx: &'_ LateContext<'_, '_>, expr: &'a Expr) -> Option<&'a Exp
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].node;
             if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.node;
             if let Def::Local(lid) = path.def;
-            if cx.tcx.hir().node_to_hir_id(lid) == hir_id;
+            if lid == hir_id;
             then {
                 return true;
             }
