@@ -387,33 +387,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let dep_node = Q::to_dep_node(self, &key);
 
-        if dep_node.kind.is_anon() {
-            profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
-            self.sess.profiler(|p| p.start_query(Q::NAME));
-
-            let ((result, dep_node_index), diagnostics) = with_diagnostics(|diagnostics| {
-                self.start_query(job.job.clone(), diagnostics, |tcx| {
-                    tcx.dep_graph.with_anon_task(dep_node.kind, || {
-                        Q::compute(tcx.global_tcx(), key)
-                    })
-                })
-            });
-
-            self.sess.profiler(|p| p.end_query(Q::NAME));
-            profq_msg!(self, ProfileQueriesMsg::ProviderEnd);
-
-            self.dep_graph.read_index(dep_node_index);
-
-            if unlikely!(!diagnostics.is_empty()) {
-                self.queries.on_disk_cache
-                    .store_diagnostics_for_anon_node(dep_node_index, diagnostics);
-            }
-
-            job.complete(&result, dep_node_index);
-
-            return result;
-        }
-
         if !dep_node.kind.is_eval_always() {
             // The diagnostics for this query will be
             // promoted to the current session during
@@ -606,8 +579,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        // Ensuring an anonymous query makes no sense
-        assert!(!dep_node.kind.is_anon());
         if self.dep_graph.try_mark_green_and_read(self, &dep_node).is_none() {
             // A None return from `try_mark_green_and_read` means that this is either
             // a new dep node or that the dep node has already been marked red.

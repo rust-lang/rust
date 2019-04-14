@@ -132,9 +132,9 @@ rustc_queries! {
             // is not a good candidates for "replay" because it is essentially a
             // pure function of its input (and hence the expectation is that
             // no caller would be green **apart** from just these
-            // queries). Making it anonymous avoids hashing the result, which
+            // queries). Making it no_hash avoids hashing the result, which
             // may save a bit of time.
-            anon
+            no_hash
             no_force
             desc { "erasing regions from `{:?}`", ty }
         }

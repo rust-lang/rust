@@ -52,9 +52,6 @@ enum QueryModifier {
     /// Don't force the query
     NoForce,
 
-    /// Generate a dep node based on the dependencies of the query
-    Anon,
-
     // Always evaluate the query, ignoring its depdendencies
     EvalAlways,
 }
@@ -110,8 +107,6 @@ impl Parse for QueryModifier {
             Ok(QueryModifier::NoHash)
         } else if modifier == "no_force" {
             Ok(QueryModifier::NoForce)
-        } else if modifier == "anon" {
-            Ok(QueryModifier::Anon)
         } else if modifier == "eval_always" {
             Ok(QueryModifier::EvalAlways)
         } else {
@@ -221,9 +216,6 @@ struct QueryModifiers {
     /// Don't force the query
     no_force: bool,
 
-    /// Generate a dep node based on the dependencies of the query
-    anon: bool,
-
     // Always evaluate the query, ignoring its depdendencies
     eval_always: bool,
 }
@@ -237,7 +229,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
     let mut cycle_delay_bug = false;
     let mut no_hash = false;
     let mut no_force = false;
-    let mut anon = false;
     let mut eval_always = false;
     for modifier in query.modifiers.0.drain(..) {
         match modifier {
@@ -283,12 +274,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
                 }
                 no_force = true;
             }
-            QueryModifier::Anon => {
-                if anon {
-                    panic!("duplicate modifier `anon` for query `{}`", query.name);
-                }
-                anon = true;
-            }
             QueryModifier::EvalAlways => {
                 if eval_always {
                     panic!("duplicate modifier `eval_always` for query `{}`", query.name);
@@ -305,7 +290,6 @@ fn process_modifiers(query: &mut Query) -> QueryModifiers {
         cycle_delay_bug,
         no_hash,
         no_force,
-        anon,
         eval_always,
     }
 }
@@ -437,10 +421,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
             let mut attributes = Vec::new();
 
-            // Pass on the anon modifier
-            if modifiers.anon {
-                attributes.push(quote! { anon });
-            };
             // Pass on the eval_always modifier
             if modifiers.eval_always {
                 attributes.push(quote! { eval_always });

@@ -366,22 +366,6 @@ impl<'sess> OnDiskCache<'sess> {
                           "query result")
     }
 
-    /// Stores a diagnostic emitted during computation of an anonymous query.
-    /// Since many anonymous queries can share the same `DepNode`, we aggregate
-    /// them -- as opposed to regular queries where we assume that there is a
-    /// 1:1 relationship between query-key and `DepNode`.
-    #[inline(never)]
-    #[cold]
-    pub fn store_diagnostics_for_anon_node(&self,
-                                           dep_node_index: DepNodeIndex,
-                                           diagnostics: ThinVec<Diagnostic>) {
-        let mut current_diagnostics = self.current_diagnostics.borrow_mut();
-
-        let x = current_diagnostics.entry(dep_node_index).or_insert(Vec::new());
-
-        x.extend(Into::<Vec<_>>::into(diagnostics));
-    }
-
     fn load_indexed<'tcx, T>(&self,
                              tcx: TyCtxt<'_, 'tcx, 'tcx>,
                              dep_node_index: SerializedDepNodeIndex,
