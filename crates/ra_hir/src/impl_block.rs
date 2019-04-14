@@ -9,15 +9,14 @@ use ra_syntax::{
 
 use crate::{
     Const, TypeAlias, Function, HirFileId,
-    HirDatabase, DefDatabase,
-    ModuleDef, Trait, Resolution,
+    HirDatabase, DefDatabase, TraitRef,
     type_ref::TypeRef,
     ids::LocationCtx,
     resolve::Resolver,
-    ty::Ty, generics::GenericParams,
+    ty::Ty,
+    generics::HasGenericParams,
+    code_model_api::{Module, ModuleSource}
 };
-
-use crate::code_model_api::{Module, ModuleSource};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImplSourceMap {
@@ -73,7 +72,7 @@ impl ImplBlock {
         self.module
     }
 
-    pub fn target_trait_ref(&self, db: &impl DefDatabase) -> Option<TypeRef> {
+    pub fn target_trait(&self, db: &impl DefDatabase) -> Option<TypeRef> {
         db.impls_in_module(self.module).impls[self.impl_id].target_trait().cloned()
     }
 
@@ -85,27 +84,16 @@ impl ImplBlock {
         Ty::from_hir(db, &self.resolver(db), &self.target_type(db))
     }
 
-    pub fn target_trait(&self, db: &impl HirDatabase) -> Option<Trait> {
-        if let Some(TypeRef::Path(path)) = self.target_trait_ref(db) {
-            let resolver = self.resolver(db);
-            if let Some(Resolution::Def(ModuleDef::Trait(tr))) =
-                resolver.resolve_path(db, &path).take_types()
-            {
-                return Some(tr);
-            }
-        }
-        None
+    pub fn target_trait_ref(&self, db: &impl HirDatabase) -> Option<TraitRef> {
+        let target_ty = self.target_ty(db);
+        TraitRef::from_hir(db, &self.resolver(db), &self.target_trait(db)?, Some(target_ty))
     }
 
     pub fn items(&self, db: &impl DefDatabase) -> Vec<ImplItem> {
         db.impls_in_module(self.module).impls[self.impl_id].items().to_vec()
     }
 
-    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params((*self).into())
-    }
-
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
         let r = self.module().resolver(db);
         // add generic params, if present
         let p = self.generic_params(db);

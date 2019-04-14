@@ -1,10 +1,11 @@
 //! HIR for trait definitions.
 
 use std::sync::Arc;
+use rustc_hash::FxHashMap;
 
 use ra_syntax::ast::{self, NameOwner};
 
-use crate::{Function, Const, TypeAlias, Name, DefDatabase, Trait, ids::LocationCtx, name::AsName};
+use crate::{Function, Const, TypeAlias, Name, DefDatabase, Trait, ids::LocationCtx, name::AsName, Module};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
@@ -49,4 +50,34 @@ pub enum TraitItem {
     TypeAlias(TypeAlias),
     // Existential
 }
+// FIXME: not every function, ... is actually a trait item. maybe we should make
+// sure that you can only turn actual trait items into TraitItems. This would
+// require not implementing From, and instead having some checked way of
+// casting them.
 impl_froms!(TraitItem: Function, Const, TypeAlias);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TraitItemsIndex {
+    traits_by_def: FxHashMap<TraitItem, Trait>,
+}
+
+impl TraitItemsIndex {
+    pub(crate) fn trait_items_index(db: &impl DefDatabase, module: Module) -> TraitItemsIndex {
+        let mut index = TraitItemsIndex { traits_by_def: FxHashMap::default() };
+        for decl in module.declarations(db) {
+            match decl {
+                crate::ModuleDef::Trait(tr) => {
+                    for item in tr.trait_data(db).items() {
+                        index.traits_by_def.insert(*item, tr);
+                    }
+                }
+                _ => {}
+            }
+        }
+        index
+    }
+
+    pub(crate) fn get_parent_trait(&self, item: TraitItem) -> Option<Trait> {
+        self.traits_by_def.get(&item).cloned()
+    }
+}

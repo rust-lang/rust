@@ -9,7 +9,7 @@ use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
 
 use crate::{
     db::DefDatabase,
-    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock
+    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -27,6 +27,7 @@ pub struct GenericParams {
     pub(crate) params: Vec<GenericParam>,
 }
 
+// FIXME: consts can have type parameters from their parents (i.e. associated consts of traits)
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDef {
     Function(Function),
@@ -45,18 +46,22 @@ impl GenericParams {
     ) -> Arc<GenericParams> {
         let mut generics = GenericParams::default();
         let parent = match def {
-            GenericDef::Function(it) => it.impl_block(db),
-            GenericDef::TypeAlias(it) => it.impl_block(db),
+            GenericDef::Function(it) => it.container(db).map(GenericDef::from),
+            GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
             GenericDef::Struct(_) | GenericDef::Enum(_) | GenericDef::Trait(_) => None,
             GenericDef::ImplBlock(_) => None,
         };
-        generics.parent_params = parent.map(|p| p.generic_params(db));
+        generics.parent_params = parent.map(|p| db.generic_params(p));
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         match def {
             GenericDef::Function(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Struct(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::Enum(it) => generics.fill(&*it.source(db).1, start),
-            GenericDef::Trait(it) => generics.fill(&*it.source(db).1, start),
+            GenericDef::Trait(it) => {
+                // traits get the Self type as an implicit first type parameter
+                generics.params.push(GenericParam { idx: start, name: Name::self_type() });
+                generics.fill(&*it.source(db).1, start + 1);
+            }
             GenericDef::TypeAlias(it) => generics.fill(&*it.source(db).1, start),
             GenericDef::ImplBlock(it) => generics.fill(&*it.source(db).1, start),
         }
@@ -102,5 +107,27 @@ impl GenericParams {
         let mut vec = Vec::with_capacity(self.count_params_including_parent());
         self.for_each_param(&mut |p| vec.push(p));
         vec
+    }
+}
+
+impl From<Container> for GenericDef {
+    fn from(c: Container) -> Self {
+        match c {
+            Container::Trait(trait_) => trait_.into(),
+            Container::ImplBlock(impl_block) => impl_block.into(),
+        }
+    }
+}
+
+pub trait HasGenericParams {
+    fn generic_params(self, db: &impl DefDatabase) -> Arc<GenericParams>;
+}
+
+impl<T> HasGenericParams for T
+where
+    T: Into<GenericDef>,
+{
+    fn generic_params(self, db: &impl DefDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.into())
     }
 }

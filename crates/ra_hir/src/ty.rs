@@ -5,6 +5,7 @@ mod autoderef;
 pub(crate) mod primitive;
 #[cfg(test)]
 mod tests;
+pub(crate) mod traits;
 pub(crate) mod method_resolution;
 mod op;
 mod lower;
@@ -145,6 +146,10 @@ impl Substs {
         Substs(Arc::new([ty]))
     }
 
+    pub fn prefix(&self, n: usize) -> Substs {
+        Substs(self.0.iter().cloned().take(n).collect::<Vec<_>>().into())
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Ty> {
         self.0.iter()
     }
@@ -167,6 +172,12 @@ impl Substs {
             panic!("expected substs of len 1, got {:?}", self);
         }
         &self.0[0]
+    }
+}
+
+impl From<Vec<Ty>> for Substs {
+    fn from(v: Vec<Ty>) -> Self {
+        Substs(v.into())
     }
 }
 
@@ -208,6 +219,14 @@ impl FnSig {
 
     pub fn ret(&self) -> &Ty {
         &self.params_and_return[self.params_and_return.len() - 1]
+    }
+
+    /// Applies the given substitutions to all types in this signature and
+    /// returns the result.
+    pub fn subst(&self, substs: &Substs) -> FnSig {
+        let result: Vec<_> =
+            self.params_and_return.iter().map(|ty| ty.clone().subst(substs)).collect();
+        FnSig { params_and_return: result.into() }
     }
 
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
@@ -303,6 +322,20 @@ impl Ty {
             Ty::Apply(a_ty) => match a_ty.ctor {
                 TypeCtor::Ref(..) => Some(Ty::clone(a_ty.parameters.as_single())),
                 TypeCtor::RawPtr(..) => Some(Ty::clone(a_ty.parameters.as_single())),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    fn callable_sig(&self, db: &impl HirDatabase) -> Option<FnSig> {
+        match self {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::FnPtr => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
+                TypeCtor::FnDef(def) => {
+                    let sig = db.callable_item_signature(def);
+                    Some(sig.subst(&a_ty.parameters))
+                }
                 _ => None,
             },
             _ => None,

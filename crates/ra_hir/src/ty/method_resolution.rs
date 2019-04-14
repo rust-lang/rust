@@ -10,10 +10,12 @@ use crate::{
     HirDatabase, Module, Crate, Name, Function, Trait,
     impl_block::{ImplId, ImplBlock, ImplItem},
     ty::{Ty, TypeCtor},
-    nameres::CrateModuleId, resolve::Resolver, traits::TraitItem
-
+    nameres::CrateModuleId,
+    resolve::Resolver,
+    traits::TraitItem,
+    generics::HasGenericParams,
 };
-use super::{ TraitRef, Substs};
+use super::{TraitRef, Substs};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -72,9 +74,9 @@ impl CrateImplBlocks {
 
             let target_ty = impl_block.target_ty(db);
 
-            if let Some(tr) = impl_block.target_trait(db) {
+            if let Some(tr) = impl_block.target_trait_ref(db) {
                 self.impls_by_trait
-                    .entry(tr)
+                    .entry(tr.trait_)
                     .or_insert_with(Vec::new)
                     .push((module.module_id, impl_id));
             } else {
@@ -108,20 +110,6 @@ impl CrateImplBlocks {
     }
 }
 
-/// Rudimentary check whether an impl exists for a given type and trait; this
-/// will actually be done by chalk.
-pub(crate) fn implements(db: &impl HirDatabase, trait_ref: TraitRef) -> bool {
-    // FIXME use all trait impls in the whole crate graph
-    let krate = trait_ref.trait_.module(db).krate(db);
-    let krate = match krate {
-        Some(krate) => krate,
-        None => return false,
-    };
-    let crate_impl_blocks = db.impls_in_crate(krate);
-    let mut impl_blocks = crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_ref.trait_);
-    impl_blocks.any(|impl_block| &impl_block.target_ty(db) == trait_ref.self_ty())
-}
-
 fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
@@ -142,6 +130,7 @@ impl Ty {
         resolver: &Resolver,
     ) -> Option<(Ty, Function)> {
         // FIXME: trait methods should be used before autoderefs
+        // (and we need to do autoderefs for trait method calls as well)
         let inherent_method = self.clone().iterate_methods(db, |ty, f| {
             let sig = f.signature(db);
             if sig.name() == name && sig.has_self_param() {
@@ -174,22 +163,15 @@ impl Ty {
                 }
             }
         }
-        // FIXME:
-        //  - we might not actually be able to determine fully that the type
-        //    implements the trait here; it's enough if we (well, Chalk) determine
-        //    that it's possible.
-        //  - when the trait method is picked, we need to register an
-        //    'obligation' somewhere so that we later check that it's really
-        //    implemented
-        //  - both points go for additional requirements from where clauses as
-        //    well (in fact, the 'implements' condition could just be considered a
-        //    'where Self: Trait' clause)
         candidates.retain(|(t, _m)| {
-            let trait_ref = TraitRef { trait_: *t, substs: Substs::single(self.clone()) };
-            db.implements(trait_ref)
+            let trait_ref =
+                TraitRef { trait_: *t, substs: fresh_substs_for_trait(db, *t, self.clone()) };
+            let (trait_ref, _) = super::traits::canonicalize(trait_ref);
+            db.implements(trait_ref).is_some()
         });
         // FIXME if there's multiple candidates here, that's an ambiguity error
         let (_chosen_trait, chosen_method) = candidates.first()?;
+        // FIXME return correct receiver type
         Some((self.clone(), *chosen_method))
     }
 
@@ -251,4 +233,18 @@ impl Ty {
         }
         None
     }
+}
+
+/// This creates Substs for a trait with the given Self type and type variables
+/// for all other parameters. This is kind of a hack since these aren't 'real'
+/// type variables; the resulting trait reference is just used for the
+/// preliminary method candidate check.
+fn fresh_substs_for_trait(db: &impl HirDatabase, tr: Trait, self_ty: Ty) -> Substs {
+    let mut substs = Vec::new();
+    let generics = tr.generic_params(db);
+    substs.push(self_ty);
+    substs.extend(generics.params_including_parent().into_iter().skip(1).enumerate().map(
+        |(i, _p)| Ty::Infer(super::infer::InferTy::TypeVar(super::infer::TypeVarId(i as u32))),
+    ));
+    substs.into()
 }

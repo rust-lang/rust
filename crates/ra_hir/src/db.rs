@@ -53,6 +53,9 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::traits::TraitData::trait_data_query)]
     fn trait_data(&self, t: Trait) -> Arc<TraitData>;
 
+    #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
+    fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
+
     #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
@@ -128,8 +131,8 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
 
-    #[salsa::invoke(crate::ty::method_resolution::implements)]
-    fn implements(&self, trait_ref: TraitRef) -> bool;
+    #[salsa::invoke(crate::ty::traits::implements)]
+    fn implements(&self, trait_ref: TraitRef) -> Option<crate::ty::traits::Solution>;
 }
 
 #[test]

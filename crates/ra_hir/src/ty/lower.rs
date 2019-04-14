@@ -5,6 +5,7 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
+use std::iter;
 
 use crate::{
     Function, Struct, StructField, Enum, EnumVariant, Path,
@@ -15,11 +16,11 @@ use crate::{
     name::KnownName,
     nameres::Namespace,
     resolve::{Resolver, Resolution},
-    path::{ PathSegment, GenericArg},
-    generics::GenericParams,
-    adt::VariantDef,
+    path::{PathSegment, GenericArg},
+    generics::{GenericParams, HasGenericParams},
+    adt::VariantDef, Trait
 };
-use super::{Ty, primitive, FnSig, Substs, TypeCtor};
+use super::{Ty, primitive, FnSig, Substs, TypeCtor, TraitRef};
 
 impl Ty {
     pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {
@@ -115,7 +116,6 @@ impl Ty {
         segment: &PathSegment,
         resolved: TypableDef,
     ) -> Substs {
-        let mut substs = Vec::new();
         let def_generics = match resolved {
             TypableDef::Function(func) => func.generic_params(db),
             TypableDef::Struct(s) => s.generic_params(db),
@@ -124,28 +124,7 @@ impl Ty {
             TypableDef::TypeAlias(t) => t.generic_params(db),
             TypableDef::Const(_) | TypableDef::Static(_) => GenericParams::default().into(),
         };
-        let parent_param_count = def_generics.count_parent_params();
-        substs.extend((0..parent_param_count).map(|_| Ty::Unknown));
-        if let Some(generic_args) = &segment.args_and_bindings {
-            // if args are provided, it should be all of them, but we can't rely on that
-            let param_count = def_generics.params.len();
-            for arg in generic_args.args.iter().take(param_count) {
-                match arg {
-                    GenericArg::Type(type_ref) => {
-                        let ty = Ty::from_hir(db, resolver, type_ref);
-                        substs.push(ty);
-                    }
-                }
-            }
-        }
-        // add placeholders for args that were not provided
-        // FIXME: handle defaults
-        let supplied_params = substs.len();
-        for _ in supplied_params..def_generics.count_params_including_parent() {
-            substs.push(Ty::Unknown);
-        }
-        assert_eq!(substs.len(), def_generics.count_params_including_parent());
-        Substs(substs.into())
+        substs_from_path_segment(db, resolver, segment, &def_generics, false)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -182,6 +161,82 @@ impl Ty {
             }
         };
         Ty::substs_from_path_segment(db, resolver, segment, resolved)
+    }
+}
+
+pub(super) fn substs_from_path_segment(
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    segment: &PathSegment,
+    def_generics: &GenericParams,
+    add_self_param: bool,
+) -> Substs {
+    let mut substs = Vec::new();
+    let parent_param_count = def_generics.count_parent_params();
+    substs.extend(iter::repeat(Ty::Unknown).take(parent_param_count));
+    if add_self_param {
+        // FIXME this add_self_param argument is kind of a hack: Traits have the
+        // Self type as an implicit first type parameter, but it can't be
+        // actually provided in the type arguments
+        // (well, actually sometimes it can, in the form of type-relative paths: `<Foo as Default>::default()`)
+        substs.push(Ty::Unknown);
+    }
+    if let Some(generic_args) = &segment.args_and_bindings {
+        // if args are provided, it should be all of them, but we can't rely on that
+        let self_param_correction = if add_self_param { 1 } else { 0 };
+        let param_count = def_generics.params.len() - self_param_correction;
+        for arg in generic_args.args.iter().take(param_count) {
+            match arg {
+                GenericArg::Type(type_ref) => {
+                    let ty = Ty::from_hir(db, resolver, type_ref);
+                    substs.push(ty);
+                }
+            }
+        }
+    }
+    // add placeholders for args that were not provided
+    // FIXME: handle defaults
+    let supplied_params = substs.len();
+    for _ in supplied_params..def_generics.count_params_including_parent() {
+        substs.push(Ty::Unknown);
+    }
+    assert_eq!(substs.len(), def_generics.count_params_including_parent());
+    Substs(substs.into())
+}
+
+impl TraitRef {
+    pub(crate) fn from_hir(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        type_ref: &TypeRef,
+        explicit_self_ty: Option<Ty>,
+    ) -> Option<Self> {
+        let path = match type_ref {
+            TypeRef::Path(path) => path,
+            _ => return None,
+        };
+        let resolved = match resolver.resolve_path(db, &path).take_types()? {
+            Resolution::Def(ModuleDef::Trait(tr)) => tr,
+            _ => return None,
+        };
+        let mut substs = Self::substs_from_path(db, resolver, path, resolved);
+        if let Some(self_ty) = explicit_self_ty {
+            // FIXME this could be nicer
+            let mut substs_vec = substs.0.to_vec();
+            substs_vec[0] = self_ty;
+            substs.0 = substs_vec.into();
+        }
+        Some(TraitRef { trait_: resolved, substs })
+    }
+
+    fn substs_from_path(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        path: &Path,
+        resolved: Trait,
+    ) -> Substs {
+        let segment = path.segments.last().expect("path should have at least one segment");
+        substs_from_path_segment(db, resolver, segment, &resolved.generic_params(db), true)
     }
 }
 

@@ -20,9 +20,9 @@ use std::sync::Arc;
 use std::mem;
 
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
-use ra_arena::map::ArenaMap;
 use rustc_hash::FxHashMap;
 
+use ra_arena::map::ArenaMap;
 use test_utils::tested_by;
 
 use crate::{
@@ -33,15 +33,18 @@ use crate::{
     ImplItem,
     type_ref::{TypeRef, Mutability},
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat,Array, self},
-    generics::GenericParams,
+    generics::{GenericParams, HasGenericParams},
     path::{GenericArgs, GenericArg},
     adt::VariantDef,
     resolve::{Resolver, Resolution},
     nameres::Namespace,
-    ty::infer::diagnostics::InferenceDiagnostic,
     diagnostics::DiagnosticSink,
 };
-use super::{Ty, TypableDef, Substs, primitive, op, FnSig, ApplicationTy, TypeCtor};
+use super::{
+    Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
+    traits::{ Solution, Obligation, Guidance},
+};
+use self::diagnostics::InferenceDiagnostic;
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
@@ -153,6 +156,7 @@ struct InferenceContext<'a, D: HirDatabase> {
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
+    obligations: Vec<Obligation>,
     method_resolutions: FxHashMap<ExprId, Function>,
     field_resolutions: FxHashMap<ExprId, StructField>,
     assoc_resolutions: FxHashMap<ExprOrPatId, ImplItem>,
@@ -173,6 +177,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             type_of_pat: ArenaMap::default(),
             diagnostics: Vec::default(),
             var_unification_table: InPlaceUnificationTable::new(),
+            obligations: Vec::default(),
             return_ty: Ty::Unknown, // set in collect_fn_signature
             db,
             body,
@@ -181,6 +186,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn resolve_all(mut self) -> InferenceResult {
+        // FIXME resolve obligations as well (use Guidance if necessary)
         let mut tv_stack = Vec::new();
         let mut expr_types = mem::replace(&mut self.type_of_expr, ArenaMap::default());
         for ty in expr_types.values_mut() {
@@ -311,11 +317,49 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         ty.fold(&mut |ty| self.insert_type_vars_shallow(ty))
     }
 
+    fn resolve_obligations_as_possible(&mut self) {
+        let obligations = mem::replace(&mut self.obligations, Vec::new());
+        for obligation in obligations {
+            // FIXME resolve types in the obligation first
+            let (solution, var_mapping) = match &obligation {
+                Obligation::Trait(tr) => {
+                    let (tr, var_mapping) = super::traits::canonicalize(tr.clone());
+                    (self.db.implements(tr), var_mapping)
+                }
+            };
+            match solution {
+                Some(Solution::Unique(substs)) => {
+                    for (i, subst) in substs.0.iter().enumerate() {
+                        let uncanonical = var_mapping[i];
+                        // FIXME the subst may contain type variables, which would need to be mapped back as well
+                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
+                    }
+                }
+                Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                    for (i, subst) in substs.0.iter().enumerate() {
+                        let uncanonical = var_mapping[i];
+                        // FIXME the subst may contain type variables, which would need to be mapped back as well
+                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
+                    }
+                    self.obligations.push(obligation);
+                }
+                Some(_) => {
+                    self.obligations.push(obligation);
+                }
+                None => {
+                    // FIXME obligation cannot be fulfilled => diagnostic
+                }
+            }
+        }
+    }
+
     /// Resolves the type as far as currently possible, replacing type variables
     /// by their known types. All types returned by the infer_* functions should
     /// be resolved as far as possible, i.e. contain no type variables with
     /// known type.
     fn resolve_ty_as_possible(&mut self, tv_stack: &mut Vec<TypeVarId>, ty: Ty) -> Ty {
+        self.resolve_obligations_as_possible();
+
         ty.fold(&mut |ty| match ty {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
@@ -420,6 +464,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for segment in &path.segments[remaining_index..] {
             let ty = match resolved {
                 Resolution::Def(def) => {
+                    // FIXME resolve associated items from traits as well
                     let typable: Option<TypableDef> = def.into();
                     let typable = typable?;
 
@@ -709,13 +754,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn substs_for_method_call(
         &mut self,
         def_generics: Option<Arc<GenericParams>>,
-        generic_args: &Option<GenericArgs>,
+        generic_args: Option<&GenericArgs>,
+        receiver_ty: &Ty,
     ) -> Substs {
         let (parent_param_count, param_count) =
-            def_generics.map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
+            def_generics.as_ref().map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
         let mut substs = Vec::with_capacity(parent_param_count + param_count);
-        for _ in 0..parent_param_count {
-            substs.push(Ty::Unknown);
+        // Parent arguments are unknown, except for the receiver type
+        if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
+            for param in &parent_generics.params {
+                if param.name.as_known_name() == Some(crate::KnownName::SelfType) {
+                    substs.push(receiver_ty.clone());
+                } else {
+                    substs.push(Ty::Unknown);
+                }
+            }
         }
         // handle provided type arguments
         if let Some(generic_args) = generic_args {
@@ -735,6 +788,83 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         }
         assert_eq!(substs.len(), parent_param_count + param_count);
         Substs(substs.into())
+    }
+
+    fn register_obligations_for_call(&mut self, callable_ty: &Ty) {
+        match callable_ty {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::FnDef(def) => {
+                    // add obligation for trait implementation, if this is a trait method
+                    // FIXME also register obligations from where clauses from the trait or impl and method
+                    match def {
+                        CallableDef::Function(f) => {
+                            if let Some(trait_) = f.parent_trait(self.db) {
+                                // construct a TraitDef
+                                let substs = a_ty.parameters.prefix(
+                                    trait_.generic_params(self.db).count_params_including_parent(),
+                                );
+                                self.obligations
+                                    .push(Obligation::Trait(TraitRef { trait_, substs }));
+                            }
+                        }
+                        CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
+                    }
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    fn infer_method_call(
+        &mut self,
+        tgt_expr: ExprId,
+        receiver: ExprId,
+        args: &[ExprId],
+        method_name: &Name,
+        generic_args: Option<&GenericArgs>,
+    ) -> Ty {
+        let receiver_ty = self.infer_expr(receiver, &Expectation::none());
+        let resolved = receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
+        let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
+            Some((ty, func)) => {
+                self.write_method_resolution(tgt_expr, func);
+                (
+                    ty,
+                    self.db.type_for_def(func.into(), Namespace::Values),
+                    Some(func.generic_params(self.db)),
+                )
+            }
+            None => (receiver_ty, Ty::Unknown, None),
+        };
+        let substs =
+            self.substs_for_method_call(def_generics.clone(), generic_args, &derefed_receiver_ty);
+        let method_ty = method_ty.apply_substs(substs);
+        let method_ty = self.insert_type_vars(method_ty);
+        self.register_obligations_for_call(&method_ty);
+        let (expected_receiver_ty, param_tys, ret_ty) = match method_ty.callable_sig(self.db) {
+            Some(sig) => {
+                if !sig.params().is_empty() {
+                    (sig.params()[0].clone(), sig.params()[1..].to_vec(), sig.ret().clone())
+                } else {
+                    (Ty::Unknown, Vec::new(), sig.ret().clone())
+                }
+            }
+            None => (Ty::Unknown, Vec::new(), Ty::Unknown),
+        };
+        // Apply autoref so the below unification works correctly
+        // FIXME: return correct autorefs from lookup_method
+        let actual_receiver_ty = match expected_receiver_ty.as_reference() {
+            Some((_, mutability)) => Ty::apply_one(TypeCtor::Ref(mutability), derefed_receiver_ty),
+            _ => derefed_receiver_ty,
+        };
+        self.unify(&expected_receiver_ty, &actual_receiver_ty);
+
+        let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
+        for (arg, param) in args.iter().zip(param_iter) {
+            self.infer_expr(*arg, &Expectation::has_type(param));
+        }
+        ret_ty
     }
 
     fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -793,102 +923,23 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Call { callee, args } => {
                 let callee_ty = self.infer_expr(*callee, &Expectation::none());
-                let (param_tys, ret_ty) = match &callee_ty {
-                    Ty::Apply(a_ty) => match a_ty.ctor {
-                        TypeCtor::FnPtr => {
-                            let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
-                            (sig.params().to_vec(), sig.ret().clone())
-                        }
-                        TypeCtor::FnDef(def) => {
-                            let sig = self.db.callable_item_signature(def);
-                            let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
-                            let param_tys = sig
-                                .params()
-                                .iter()
-                                .map(|ty| ty.clone().subst(&a_ty.parameters))
-                                .collect();
-                            (param_tys, ret_ty)
-                        }
-                        _ => (Vec::new(), Ty::Unknown),
-                    },
-                    _ => {
-                        // not callable
-                        // FIXME report an error?
+                let (param_tys, ret_ty) = match callee_ty.callable_sig(self.db) {
+                    Some(sig) => (sig.params().to_vec(), sig.ret().clone()),
+                    None => {
+                        // Not callable
+                        // FIXME: report an error
                         (Vec::new(), Ty::Unknown)
                     }
                 };
+                // FIXME register obligations from where clauses from the function
                 let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
                 for (arg, param) in args.iter().zip(param_iter) {
                     self.infer_expr(*arg, &Expectation::has_type(param));
                 }
                 ret_ty
             }
-            Expr::MethodCall { receiver, args, method_name, generic_args } => {
-                let receiver_ty = self.infer_expr(*receiver, &Expectation::none());
-                let resolved =
-                    receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
-                let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
-                    Some((ty, func)) => {
-                        self.write_method_resolution(tgt_expr, func);
-                        (
-                            ty,
-                            self.db.type_for_def(func.into(), Namespace::Values),
-                            Some(func.generic_params(self.db)),
-                        )
-                    }
-                    None => (receiver_ty, Ty::Unknown, None),
-                };
-                let substs = self.substs_for_method_call(def_generics, generic_args);
-                let method_ty = method_ty.apply_substs(substs);
-                let method_ty = self.insert_type_vars(method_ty);
-                let (expected_receiver_ty, param_tys, ret_ty) = match &method_ty {
-                    Ty::Apply(a_ty) => match a_ty.ctor {
-                        TypeCtor::FnPtr => {
-                            let sig = FnSig::from_fn_ptr_substs(&a_ty.parameters);
-                            if !sig.params().is_empty() {
-                                (
-                                    sig.params()[0].clone(),
-                                    sig.params()[1..].to_vec(),
-                                    sig.ret().clone(),
-                                )
-                            } else {
-                                (Ty::Unknown, Vec::new(), sig.ret().clone())
-                            }
-                        }
-                        TypeCtor::FnDef(def) => {
-                            let sig = self.db.callable_item_signature(def);
-                            let ret_ty = sig.ret().clone().subst(&a_ty.parameters);
-
-                            if !sig.params().is_empty() {
-                                let mut params_iter = sig
-                                    .params()
-                                    .iter()
-                                    .map(|ty| ty.clone().subst(&a_ty.parameters));
-                                let receiver_ty = params_iter.next().unwrap();
-                                (receiver_ty, params_iter.collect(), ret_ty)
-                            } else {
-                                (Ty::Unknown, Vec::new(), ret_ty)
-                            }
-                        }
-                        _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
-                    },
-                    _ => (Ty::Unknown, Vec::new(), Ty::Unknown),
-                };
-                // Apply autoref so the below unification works correctly
-                let actual_receiver_ty = match expected_receiver_ty.as_reference() {
-                    Some((_, mutability)) => {
-                        Ty::apply_one(TypeCtor::Ref(mutability), derefed_receiver_ty)
-                    }
-                    _ => derefed_receiver_ty,
-                };
-                self.unify(&expected_receiver_ty, &actual_receiver_ty);
-
-                let param_iter = param_tys.into_iter().chain(repeat(Ty::Unknown));
-                for (arg, param) in args.iter().zip(param_iter) {
-                    self.infer_expr(*arg, &Expectation::has_type(param));
-                }
-                ret_ty
-            }
+            Expr::MethodCall { receiver, args, method_name, generic_args } => self
+                .infer_method_call(tgt_expr, *receiver, &args, &method_name, generic_args.as_ref()),
             Expr::Match { expr, arms } => {
                 let expected = if expected.ty == Ty::Unknown {
                     Expectation::has_type(self.new_type_var())
@@ -1180,7 +1231,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
 /// The ID of a type variable.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct TypeVarId(u32);
+pub struct TypeVarId(pub(super) u32);
 
 impl UnifyKey for TypeVarId {
     type Value = TypeVarValue;

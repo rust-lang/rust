@@ -61,12 +61,13 @@ pub use self::{
     source_id::{AstIdMap, ErasedFileAstId},
     ids::{HirFileId, MacroDefId, MacroCallId, MacroCallLoc},
     nameres::{PerNs, Namespace, ImportId},
-    ty::{Ty, ApplicationTy, TypeCtor, Substs, display::HirDisplay, CallableDef},
+    ty::{Ty, ApplicationTy, TypeCtor, TraitRef, Substs, display::HirDisplay, CallableDef},
     impl_block::{ImplBlock, ImplItem},
     docs::{Docs, Documentation},
     adt::AdtDef,
     expr::ExprScopes,
     resolve::Resolution,
+    generics::{GenericParams, GenericParam, HasGenericParams},
     source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax},
 };
 
@@ -78,5 +79,5 @@ pub use self::code_model_api::{
     Function, FnSignature,
     StructField, FieldSource,
     Static, Const, ConstSignature,
-    Trait, TypeAlias,
+    Trait, TypeAlias, Container,
 };

@@ -104,7 +104,7 @@ pub(crate) fn reference_definition(
                     }
                 }
                 hir::PathResolution::AssocItem(assoc) => {
-                    return Exact(NavigationTarget::from_impl_item(db, assoc))
+                    return Exact(NavigationTarget::from_impl_item(db, assoc));
                 }
             }
         }
