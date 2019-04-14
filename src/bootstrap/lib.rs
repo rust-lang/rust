@@ -1125,8 +1125,6 @@ impl Build {
     /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
     /// done. The file is updated immediately after this function completes.
     pub fn save_toolstate(&self, tool: &str, state: ToolState) {
-        use std::io::{Seek, SeekFrom};
-
         if let Some(ref path) = self.config.save_toolstates {
             let mut file = t!(fs::OpenOptions::new()
                 .create(true)
