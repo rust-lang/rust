@@ -2424,16 +2424,23 @@ impl ForeignItemKind {
 
 /// A free variable referred to in a function.
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Freevar {
+pub struct Freevar<Id = HirId> {
     /// The variable being accessed free.
-    pub def: Def,
+    pub def: def::Def<Id>,
 
     // First span where it is accessed (there can be multiple).
     pub span: Span
 }
 
-impl Freevar {
-    pub fn var_id(&self) -> NodeId {
+impl<Id: fmt::Debug + Copy> Freevar<Id> {
+    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Freevar<R> {
+        Freevar {
+            def: self.def.map_id(map),
+            span: self.span,
+        }
+    }
+
+    pub fn var_id(&self) -> Id {
         match self.def {
             Def::Local(id) | Def::Upvar(id, ..) => id,
             _ => bug!("Freevar::var_id: bad def ({:?})", self.def)
@@ -2441,7 +2448,7 @@ impl Freevar {
     }
 }
 
-pub type FreevarMap = NodeMap<Vec<Freevar>>;
+pub type FreevarMap = NodeMap<Vec<Freevar<ast::NodeId>>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 

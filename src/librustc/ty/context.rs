@@ -1024,7 +1024,7 @@ pub struct GlobalCtxt<'tcx> {
                                        Lrc<StableVec<TraitCandidate>>>>>,
 
     /// Export map produced by name resolution.
-    export_map: FxHashMap<DefId, Lrc<Vec<Export>>>,
+    export_map: FxHashMap<DefId, Lrc<Vec<Export<hir::HirId>>>>,
 
     hir_map: hir_map::Map<'tcx>,
 
@@ -1271,10 +1271,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             types: common_types,
             trait_map,
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
-                (k, Lrc::new(v))
+                let exports: Vec<_> = v.into_iter().map(|e| {
+                    e.map_id(|id| hir.node_to_hir_id(id))
+                }).collect();
+                (k, Lrc::new(exports))
             }).collect(),
             freevars: resolutions.freevars.into_iter().map(|(k, v)| {
-                (hir.local_def_id(k), Lrc::new(v))
+                let vars: Vec<_> = v.into_iter().map(|e| {
+                    e.map_id(|id| hir.node_to_hir_id(id))
+                }).collect();
+                (hir.local_def_id(k), Lrc::new(vars))
             }).collect(),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports

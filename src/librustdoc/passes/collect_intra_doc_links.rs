@@ -429,12 +429,12 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Def> {
                 // skip proc-macro stubs, they'll cause `get_macro` to crash
             } else {
                 if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
-                    return Some(def);
+                    return Some(def.map_id(|_| panic!("unexpected id")));
                 }
             }
         }
         if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
-            return Some(*def);
+            return Some(def.map_id(|_| panic!("unexpected id")));
         }
         None
     })

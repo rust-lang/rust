@@ -423,7 +423,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for RenderedConst {
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ModData {
-    pub reexports: LazySeq<def::Export>,
+    pub reexports: LazySeq<def::Export<hir::HirId>>,
 }
 
 impl_stable_hash_for!(struct ModData { reexports });

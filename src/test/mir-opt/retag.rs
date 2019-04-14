@@ -98,7 +98,7 @@ fn main() {
 // }
 // END rustc.main.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(0:7), local_id: 70 }], _2: &i32) -> &i32 {
+// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(0:7), local_id: 72 }], _2: &i32) -> &i32 {
 //     ...
 //     bb0: {
 //         Retag([fn entry] _1);

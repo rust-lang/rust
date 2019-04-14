@@ -5397,8 +5397,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let tcx = self.tcx;
 
         match def {
-            Def::Local(nid) | Def::Upvar(nid, ..) => {
-                let hid = self.tcx.hir().node_to_hir_id(nid);
+            Def::Local(hid) | Def::Upvar(hid, ..) => {
                 let ty = self.local_ty(span, hid).decl_ty;
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(hir_id, ty);

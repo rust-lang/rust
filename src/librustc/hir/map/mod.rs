@@ -393,7 +393,7 @@ impl<'hir> Map<'hir> {
             Node::Block(_) |
             Node::Crate => None,
             Node::Local(local) => {
-                Some(Def::Local(self.hir_to_node_id(local.hir_id)))
+                Some(Def::Local(local.hir_id))
             }
             Node::MacroDef(macro_def) => {
                 Some(Def::Macro(self.local_def_id_from_hir_id(macro_def.hir_id),
@@ -402,8 +402,7 @@ impl<'hir> Map<'hir> {
             Node::GenericParam(param) => {
                 Some(match param.kind {
                     GenericParamKind::Lifetime { .. } => {
-                        let node_id = self.hir_to_node_id(param.hir_id);
-                        Def::Local(node_id)
+                        Def::Local(param.hir_id)
                     },
                     GenericParamKind::Type { .. } => Def::TyParam(
                         self.local_def_id_from_hir_id(param.hir_id)),

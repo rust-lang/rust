@@ -659,7 +659,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Node::Binding(&hir::Pat {
                 node: hir::PatKind::Binding(_, canonical_id, ..),
                 ..
-            }) => HirDef::Local(self.tcx.hir().hir_to_node_id(canonical_id)),
+            }) => HirDef::Local(canonical_id),
 
             _ => HirDef::Err,
         }
@@ -707,7 +707,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
-                    ref_id: id_from_node_id(id, self),
+                    ref_id: id_from_node_id(self.tcx.hir().hir_to_node_id(id), self),
                 })
             }
             HirDef::Trait(def_id) if fn_type(path_seg) => {

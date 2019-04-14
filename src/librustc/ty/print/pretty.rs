@@ -592,7 +592,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                         p!(
                             write("{}{}:",
                                     sep,
-                                    self.tcx().hir().name(freevar.var_id())),
+                                    self.tcx().hir().name_by_hir_id(freevar.var_id())),
                             print(upvar_ty));
                         sep = ", ";
                     }
@@ -635,7 +635,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                         p!(
                             write("{}{}:",
                                     sep,
-                                    self.tcx().hir().name(freevar.var_id())),
+                                    self.tcx().hir().name_by_hir_id(freevar.var_id())),
                             print(upvar_ty));
                         sep = ", ";
                     }
