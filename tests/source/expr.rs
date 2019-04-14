@@ -532,3 +532,16 @@ fn issue3457() {
         }
     }
 }
+
+// #3498
+static REPRO: &[usize] = &[#[cfg(feature = "zero")]
+                           0];
+
+fn overflow_with_attr() {
+    foo(#[cfg(feature = "zero")]
+        0);
+    foobar(#[cfg(feature = "zero")]
+           0);
+    foobar(x, y, #[cfg(feature = "zero")]
+           {});
+}
