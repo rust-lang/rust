@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.2.1] - 2019-04-14
+
+### Changed
+- Use for_each in map Extend and FromIterator. (#58)
+- Improved worst-case performance of HashSet.is_subset. (#61)
+
+### Fixed
+- Removed incorrect debug_assert. (#60)
+
 ## [v0.2.0] - 2019-03-31
 
 ### Changed
@@ -78,8 +87,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.2.0...HEAD
-[v0.1.8]: https://github.com/Amanieu/hashbrown/compare/v0.1.8...v0.2.0
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.2.1...HEAD
+[v0.2.1]: https://github.com/Amanieu/hashbrown/compare/v0.2.0...v0.2.1
+[v0.2.0]: https://github.com/Amanieu/hashbrown/compare/v0.1.8...v0.2.0
 [v0.1.8]: https://github.com/Amanieu/hashbrown/compare/v0.1.7...v0.1.8
 [v0.1.7]: https://github.com/Amanieu/hashbrown/compare/v0.1.6...v0.1.7
 [v0.1.6]: https://github.com/Amanieu/hashbrown/compare/v0.1.5...v0.1.6
