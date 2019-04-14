@@ -1726,7 +1726,7 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
             msg: db.message(),
             code: db.code.clone(),
@@ -1865,7 +1865,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
 
-        // These are generally cheap and won't through off scheduling.
+        // These are generally cheap and won't throw off scheduling.
         let cost = 0;
         submit_codegened_module_to_llvm(&self.backend, tcx, module, cost);
     }

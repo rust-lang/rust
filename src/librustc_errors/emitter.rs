@@ -50,7 +50,11 @@ const ANONYMIZED_LINE_NUM: &str = "LL";
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>);
+    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>);
+
+    /// Emit a JSON directive. The default is to do nothing; this should only
+    /// be emitted with --error-format=json.
+    fn maybe_emit_json_directive(&mut self, _directive: String) {}
 
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {
@@ -59,7 +63,7 @@ pub trait Emitter {
 }
 
 impl Emitter for EmitterWriter {
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
         let mut primary_span = db.span.clone();
         let mut children = db.children.clone();
         let mut suggestions: &[_] = &[];

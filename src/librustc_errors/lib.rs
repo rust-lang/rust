@@ -294,9 +294,16 @@ impl error::Error for ExplicitBug {
 pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, DiagnosticId};
 pub use diagnostic_builder::DiagnosticBuilder;
 
-/// A handler deals with errors; certain errors
-/// (fatal, bug, unimpl) may cause immediate exit,
-/// others log errors for later reporting.
+/// A handler deals with two kinds of compiler output.
+/// - Errors: certain errors (fatal, bug, unimpl) may cause immediate exit,
+///   others log errors for later reporting.
+/// - Directives: with --error-format=json, the compiler produces directives
+///   that indicate when certain actions have completed, which are useful for
+///   Cargo. They may change at any time and should not be considered a public
+///   API.
+///
+/// This crate's name (rustc_errors) doesn't encompass the directives, because
+/// directives were added much later.
 pub struct Handler {
     pub flags: HandlerFlags,
 
@@ -736,7 +743,7 @@ impl Handler {
     }
 
     pub fn force_print_db(&self, mut db: DiagnosticBuilder<'_>) {
-        self.emitter.borrow_mut().emit(&db);
+        self.emitter.borrow_mut().emit_diagnostic(&db);
         db.cancel();
     }
 
@@ -761,14 +768,17 @@ impl Handler {
         // Only emit the diagnostic if we haven't already emitted an equivalent
         // one:
         if self.emitted_diagnostics.borrow_mut().insert(diagnostic_hash) {
-            self.emitter.borrow_mut().emit(db);
+            self.emitter.borrow_mut().emit_diagnostic(db);
             if db.is_error() {
                 self.bump_err_count();
             }
         }
     }
-}
 
+    pub fn maybe_emit_json_directive(&self, directive: String) {
+        self.emitter.borrow_mut().maybe_emit_json_directive(directive);
+    }
+}
 
 #[derive(Copy, PartialEq, Clone, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum Level {

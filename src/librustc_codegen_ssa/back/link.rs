@@ -119,8 +119,14 @@ fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             .tempdir_in(out_filename.parent().unwrap())
             .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata = emit_metadata(sess, codegen_results, &metadata_tmpdir);
-        if let Err(e) = fs::rename(metadata, &out_filename) {
-            sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+        match fs::rename(&metadata, &out_filename) {
+            Ok(_) => {
+                if sess.opts.debugging_opts.emit_directives {
+                    sess.parse_sess.span_diagnostic.maybe_emit_json_directive(
+                        format!("metadata file written: {}", out_filename.display()));
+                }
+            }
+            Err(e) => sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e)),
         }
     }
 

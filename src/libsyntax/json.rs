@@ -79,7 +79,7 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
+    fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>) {
         let data = Diagnostic::from_diagnostic_builder(db, self);
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
@@ -88,6 +88,18 @@ impl Emitter for JsonEmitter {
         };
         if let Err(e) = result {
             panic!("failed to print diagnostics: {:?}", e);
+        }
+    }
+
+    fn maybe_emit_json_directive(&mut self, directive: String) {
+        let data = Directive { directive };
+        let result = if self.pretty {
+            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+        } else {
+            writeln!(&mut self.dst, "{}", as_json(&data))
+        };
+        if let Err(e) = result {
+            panic!("failed to print message: {:?}", e);
         }
     }
 }
@@ -168,6 +180,12 @@ struct DiagnosticCode {
     explanation: Option<&'static str>,
 }
 
+#[derive(RustcEncodable)]
+struct Directive {
+    /// The directive itself.
+    directive: String,
+}
+
 impl Diagnostic {
     fn from_diagnostic_builder(db: &DiagnosticBuilder<'_>,
                                je: &JsonEmitter)
@@ -200,7 +218,7 @@ impl Diagnostic {
         let buf = BufWriter::default();
         let output = buf.clone();
         je.json_rendered.new_emitter(Box::new(buf), Some(je.sm.clone()), false)
-            .ui_testing(je.ui_testing).emit(db);
+            .ui_testing(je.ui_testing).emit_diagnostic(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
