@@ -364,7 +364,8 @@ fn rewrite_match_body(
         shape.indent
     };
 
-    let forbid_same_line = has_guard && pats_str.contains('\n') && !is_empty_block;
+    let forbid_same_line =
+        (has_guard && pats_str.contains('\n') && !is_empty_block) || !body.attrs.is_empty();
 
     // Look for comments between `=>` and the start of the body.
     let arrow_comment = {
