@@ -1,9 +1,9 @@
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
+use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
 use syntax::ptr::P;
-use if_chain::if_chain;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
@@ -157,8 +157,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if expr.span.lo().0 != 0 && expr.span.hi().0 != 0;
 
         // this will be a span from the closing ‘}’ of the “then” block (excluding) to
-        // the
-        // “if” of the “else if” block (excluding)
+        // the “if” of the “else if” block (excluding)
         let else_span = then.span.between(else_.span);
 
         // the snippet should look like " else \n    " with maybe comments anywhere
