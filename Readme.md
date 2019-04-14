@@ -7,7 +7,7 @@
 ```bash
 $ git clone https://github.com/bjorn3/rustc_codegen_cranelift.git
 $ cd rustc_codegen_cranelift
-$ ./prepare.sh # downloads and patches sysroot src and installs hyperfine for benchmarking
+$ ./prepare.sh # download and patch sysroot src and install hyperfine for benchmarking
 $ ./test.sh
 ```
 
@@ -18,7 +18,7 @@ $ ./test.sh
 ### Rustc
 
 ```bash
-$ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_codegen_cranelift.so my_crate.rs
+$ rustc -Cpanic=abort -Zcodegen-backend=$cg_clif_dir/target/debug/librustc_codegen_cranelift.so --sysroot $cg_clif_dir/build_sysroot/sysroot my_crate.rs
 ```
 
 ### Cargo
