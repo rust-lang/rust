@@ -249,14 +249,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             ExprKind::Path(ref qpath) => {
                                 // local binding
                                 if let &QPath::Resolved(_, ref path) = &qpath {
-                                    if let hir::def::Def::Local(node_id) = path.def {
-                                        let span = tcx.hir().span(node_id);
+                                    if let hir::def::Def::Local(hir_id) = path.def {
+                                        let span = tcx.hir().span_by_hir_id(hir_id);
                                         let snippet = tcx.sess.source_map().span_to_snippet(span)
                                             .unwrap();
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
-                                        let parent_node = self.tcx.hir().get(
-                                            self.tcx.hir().get_parent_node(node_id),
+                                        let parent_node = self.tcx.hir().get_by_hir_id(
+                                            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
                                         );
                                         let msg = format!(
                                             "you must specify a type for this binding, like `{}`",

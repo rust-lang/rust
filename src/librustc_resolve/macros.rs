@@ -8,7 +8,7 @@ use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
                          CrateNum, DefIndexAddressSpace};
-use rustc::hir::def::{Def, NonMacroAttrKind};
+use rustc::hir::def::{self, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use rustc::{bug, span_bug};
@@ -32,6 +32,8 @@ use errors::Applicability;
 use std::cell::Cell;
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
+
+type Def = def::Def<ast::NodeId>;
 
 #[derive(Clone, Debug)]
 pub struct InvocationData<'a> {

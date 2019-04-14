@@ -103,8 +103,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
         };
 
         match def {
-            Some(Def::Local(node_id)) | Some(Def::Upvar(node_id, ..)) => {
-                let hir_id = self.tcx.hir().node_to_hir_id(node_id);
+            Some(Def::Local(hir_id)) | Some(Def::Upvar(hir_id, ..)) => {
                 self.reachable_symbols.insert(hir_id);
             }
             Some(def) => {

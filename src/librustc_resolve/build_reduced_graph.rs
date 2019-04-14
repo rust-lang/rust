@@ -12,7 +12,7 @@ use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
 use crate::{resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::bug;
-use rustc::hir::def::*;
+use rustc::hir::def::{self, *};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
@@ -43,6 +43,8 @@ use syntax::visit::{self, Visitor};
 use syntax_pos::{Span, DUMMY_SP};
 
 use log::debug;
+
+type Def = def::Def<NodeId>;
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, Mark) {
     fn to_name_binding(self, arenas: &'a ResolverArenas<'a>) -> &'a NameBinding<'a> {
@@ -641,7 +643,11 @@ impl<'a> Resolver<'a> {
     }
 
     /// Builds the reduced graph for a single item in an external crate.
-    fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
+    fn build_reduced_graph_for_external_crate_def(
+        &mut self,
+        parent: Module<'a>,
+        child: Export<ast::NodeId>,
+    ) {
         let Export { ident, def, vis, span } = child;
         // FIXME: We shouldn't create the gensym here, it should come from metadata,
         // but metadata cannot encode gensyms currently, so we create it here.
@@ -684,13 +690,14 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
 
                 for child in self.cstore.item_children_untracked(def_id, self.session) {
-                    let ns = if let Def::AssociatedTy(..) = child.def { TypeNS } else { ValueNS };
+                    let def = child.def.map_id(|_| panic!("unexpected id"));
+                    let ns = if let Def::AssociatedTy(..) = def { TypeNS } else { ValueNS };
                     self.define(module, child.ident, ns,
-                                (child.def, ty::Visibility::Public, DUMMY_SP, expansion));
+                                (def, ty::Visibility::Public, DUMMY_SP, expansion));
 
                     if self.cstore.associated_item_cloned_untracked(child.def.def_id())
                            .method_has_self_argument {
-                        self.has_self.insert(child.def.def_id());
+                        self.has_self.insert(def.def_id());
                     }
                 }
                 module.populated.set(true);
@@ -777,6 +784,7 @@ impl<'a> Resolver<'a> {
         if module.populated.get() { return }
         let def_id = module.def_id().unwrap();
         for child in self.cstore.item_children_untracked(def_id, self.session) {
+            let child = child.map_id(|_| panic!("unexpected id"));
             self.build_reduced_graph_for_external_crate_def(module, child);
         }
         module.populated.set(true)

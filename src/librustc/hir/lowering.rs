@@ -401,6 +401,7 @@ impl<'a> LoweringContext<'a> {
         /// declared for every type and trait definition.
         struct MiscCollector<'lcx, 'interner: 'lcx> {
             lctx: &'lcx mut LoweringContext<'interner>,
+            hir_id_owner: Option<NodeId>,
         }
 
         impl MiscCollector<'_, '_> {
@@ -432,9 +433,34 @@ impl<'a> LoweringContext<'a> {
                     }
                 }
             }
+
+            fn with_hir_id_owner<F, T>(&mut self, owner: Option<NodeId>, f: F) -> T
+            where
+                F: FnOnce(&mut Self) -> T,
+            {
+                let old = mem::replace(&mut self.hir_id_owner, owner);
+                let r = f(self);
+                self.hir_id_owner = old;
+                r
+            }
         }
 
         impl<'lcx, 'interner> Visitor<'lcx> for MiscCollector<'lcx, 'interner> {
+            fn visit_pat(&mut self, p: &'lcx Pat) {
+                match p.node {
+                    // Doesn't generate a Hir node
+                    PatKind::Paren(..) => {},
+                    _ => {
+
+                        if let Some(owner) = self.hir_id_owner {
+                            self.lctx.lower_node_id_with_owner(p.id, owner);
+                        }
+                    }
+                };
+
+                visit::walk_pat(self, p)
+            }
+
             fn visit_item(&mut self, item: &'lcx Item) {
                 let hir_id = self.lctx.allocate_hir_id_counter(item.id).hir_id;
 
@@ -461,17 +487,63 @@ impl<'a> LoweringContext<'a> {
                     }
                     _ => {}
                 }
-                visit::walk_item(self, item);
+
+                self.with_hir_id_owner(Some(item.id), |this| {
+                    visit::walk_item(this, item);
+                });
             }
 
             fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
-                visit::walk_trait_item(self, item);
+
+                match item.node {
+                    TraitItemKind::Method(_, None) => {
+                        // Ignore patterns in trait methods without bodies
+                        self.with_hir_id_owner(None, |this| {
+                            visit::walk_trait_item(this, item)
+                        });
+                    }
+                    _ => self.with_hir_id_owner(Some(item.id), |this| {
+                        visit::walk_trait_item(this, item);
+                    })
+                }
             }
 
             fn visit_impl_item(&mut self, item: &'lcx ImplItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
-                visit::walk_impl_item(self, item);
+                self.with_hir_id_owner(Some(item.id), |this| {
+                    visit::walk_impl_item(this, item);
+                });
+            }
+
+            fn visit_foreign_item(&mut self, i: &'lcx ForeignItem) {
+                // Ignore patterns in foreign items
+                self.with_hir_id_owner(None, |this| {
+                    visit::walk_foreign_item(this, i)
+                });
+            }
+
+            fn visit_ty(&mut self, t: &'lcx Ty) {
+                match t.node {
+                    // Mirrors the case in visit::walk_ty
+                    TyKind::BareFn(ref f) => {
+                        walk_list!(
+                            self,
+                            visit_generic_param,
+                            &f.generic_params
+                        );
+                        // Mirrors visit::walk_fn_decl
+                        for argument in &f.decl.inputs {
+                            // We don't lower the ids of argument patterns
+                            self.with_hir_id_owner(None, |this| {
+                                this.visit_pat(&argument.pat);
+                            });
+                            self.visit_ty(&argument.ty)
+                        }
+                        self.visit_fn_ret_ty(&f.decl.output)
+                    }
+                    _ => visit::walk_ty(self, t),
+                }
             }
         }
 
@@ -565,7 +637,7 @@ impl<'a> LoweringContext<'a> {
         self.lower_node_id(CRATE_NODE_ID);
         debug_assert!(self.node_id_to_hir_id[CRATE_NODE_ID] == hir::CRATE_HIR_ID);
 
-        visit::walk_crate(&mut MiscCollector { lctx: &mut self }, c);
+        visit::walk_crate(&mut MiscCollector { lctx: &mut self, hir_id_owner: None }, c);
         visit::walk_crate(&mut ItemLowerer { lctx: &mut self }, c);
 
         let module = self.lower_mod(&c.module);
@@ -729,7 +801,15 @@ impl<'a> LoweringContext<'a> {
         self.lower_node_id(self.sess.next_node_id())
     }
 
-    fn expect_full_def(&mut self, id: NodeId) -> Def {
+    fn lower_def(&mut self, def: Def<NodeId>) -> Def {
+        def.map_id(|id| {
+            self.lower_node_id_generic(id, |_| {
+                panic!("expected node_id to be lowered already for def {:#?}", def)
+            }).hir_id
+        })
+    }
+
+    fn expect_full_def(&mut self, id: NodeId) -> Def<NodeId> {
         self.resolver.get_resolution(id).map_or(Def::Err, |pr| {
             if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
@@ -738,7 +818,7 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn expect_full_def_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Def> {
+    fn expect_full_def_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Def<NodeId>> {
         self.resolver.get_import(id).present_items().map(|pr| {
             if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
@@ -1324,14 +1404,20 @@ impl<'a> LoweringContext<'a> {
                 }
                 return ty;
             }
-            TyKind::ImplicitSelf => hir::TyKind::Path(hir::QPath::Resolved(
-                None,
-                P(hir::Path {
-                    def: self.expect_full_def(t.id),
-                    segments: hir_vec![hir::PathSegment::from_ident(keywords::SelfUpper.ident())],
-                    span: t.span,
-                }),
-            )),
+            TyKind::ImplicitSelf => {
+                let def = self.expect_full_def(t.id);
+                let def = self.lower_def(def);
+                hir::TyKind::Path(hir::QPath::Resolved(
+                    None,
+                    P(hir::Path {
+                        def,
+                        segments: hir_vec![hir::PathSegment::from_ident(
+                            keywords::SelfUpper.ident()
+                        )],
+                        span: t.span,
+                    }),
+                ))
+            },
             TyKind::Array(ref ty, ref length) => {
                 hir::TyKind::Array(self.lower_ty(ty, itctx), self.lower_anon_const(length))
             }
@@ -1755,7 +1841,7 @@ impl<'a> LoweringContext<'a> {
 
         let proj_start = p.segments.len() - resolution.unresolved_segments();
         let path = P(hir::Path {
-            def: resolution.base_def(),
+            def: self.lower_def(resolution.base_def()),
             segments: p.segments[..proj_start]
                 .iter()
                 .enumerate()
@@ -1931,6 +2017,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_path(&mut self, id: NodeId, p: &Path, param_mode: ParamMode) -> hir::Path {
         let def = self.expect_full_def(id);
+        let def = self.lower_def(def);
         self.lower_path_extra(def, p, param_mode, None)
     }
 
@@ -2042,7 +2129,7 @@ impl<'a> LoweringContext<'a> {
         hir::PathSegment::new(
             segment.ident,
             Some(id.hir_id),
-            Some(def),
+            Some(self.lower_def(def)),
             generic_args,
             infer_types,
         )
@@ -3174,7 +3261,7 @@ impl<'a> LoweringContext<'a> {
                 let mut defs = self.expect_full_def_from_use(id);
                 // We want to return *something* from this function, so hold onto the first item
                 // for later.
-                let ret_def = defs.next().unwrap_or(Def::Err);
+                let ret_def = self.lower_def(defs.next().unwrap_or(Def::Err));
 
                 // Here, we are looping over namespaces, if they exist for the definition
                 // being imported. We only handle type and value namespaces because we
@@ -3192,6 +3279,7 @@ impl<'a> LoweringContext<'a> {
 
                     self.with_hir_id_owner(new_node_id, |this| {
                         let new_id = this.lower_node_id(new_node_id);
+                        let def = this.lower_def(def);
                         let path =
                             this.lower_path_extra(def, &path, ParamMode::Explicit, None);
                         let item = hir::ItemKind::Use(P(path), hir::UseKind::Single);
@@ -3347,6 +3435,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 let def = self.expect_full_def_from_use(id).next().unwrap_or(Def::Err);
+                let def = self.lower_def(def);
                 let path = P(self.lower_path_extra(def, &prefix, ParamMode::Explicit, None));
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
@@ -3780,7 +3869,7 @@ impl<'a> LoweringContext<'a> {
                         None,
                         P(hir::Path {
                             span: ident.span,
-                            def,
+                            def: self.lower_def(def),
                             segments: hir_vec![hir::PathSegment::from_ident(ident)],
                         }),
                     )),
@@ -4435,7 +4524,7 @@ impl<'a> LoweringContext<'a> {
                 let iter = self.str_to_ident("iter");
 
                 let next_ident = self.str_to_ident("__next");
-                let (next_pat, next_pat_nid) = self.pat_ident_binding_mode(
+                let (next_pat, next_pat_hid) = self.pat_ident_binding_mode(
                     desugared_span,
                     next_ident,
                     hir::BindingAnnotation::Mutable,
@@ -4444,9 +4533,9 @@ impl<'a> LoweringContext<'a> {
                 // `::std::option::Option::Some(val) => next = val`
                 let pat_arm = {
                     let val_ident = self.str_to_ident("val");
-                    let (val_pat, val_pat_nid) = self.pat_ident(pat.span, val_ident);
-                    let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_nid));
-                    let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_nid));
+                    let (val_pat, val_pat_hid) = self.pat_ident(pat.span, val_ident);
+                    let val_expr = P(self.expr_ident(pat.span, val_ident, val_pat_hid));
+                    let next_expr = P(self.expr_ident(pat.span, next_ident, next_pat_hid));
                     let assign = P(self.expr(
                         pat.span,
                         hir::ExprKind::Assign(next_expr, val_expr),
@@ -4497,7 +4586,7 @@ impl<'a> LoweringContext<'a> {
                     span: head_sp,
                 };
 
-                let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_nid));
+                let next_expr = P(self.expr_ident(head_sp, next_ident, next_pat_hid));
 
                 // `let mut __next`
                 let next_let = self.stmt_let_pat(
@@ -4790,6 +4879,7 @@ impl<'a> LoweringContext<'a> {
                     self.lower_node_id(id)
                 };
                 let def = self.expect_full_def(id);
+                let def = self.lower_def(def);
                 hir::VisibilityKind::Restricted {
                     path: P(self.lower_path_extra(
                         def,
@@ -4891,7 +4981,7 @@ impl<'a> LoweringContext<'a> {
         self.expr(span, hir::ExprKind::Call(e, args), ThinVec::new())
     }
 
-    fn expr_ident(&mut self, span: Span, ident: Ident, binding: NodeId) -> hir::Expr {
+    fn expr_ident(&mut self, span: Span, ident: Ident, binding: hir::HirId) -> hir::Expr {
         self.expr_ident_with_attrs(span, ident, binding, ThinVec::new())
     }
 
@@ -4899,7 +4989,7 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         span: Span,
         ident: Ident,
-        binding: NodeId,
+        binding: hir::HirId,
         attrs: ThinVec<Attribute>,
     ) -> hir::Expr {
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
@@ -4994,8 +5084,8 @@ impl<'a> LoweringContext<'a> {
         mutbl: bool,
         ident: Ident,
         ex: P<hir::Expr>,
-    ) -> (hir::Stmt, NodeId) {
-        let (pat, pat_nid) = if mutbl {
+    ) -> (hir::Stmt, hir::HirId) {
+        let (pat, pat_hid) = if mutbl {
             self.pat_ident_binding_mode(sp, ident, hir::BindingAnnotation::Mutable)
         } else {
             self.pat_ident(sp, ident)
@@ -5003,7 +5093,7 @@ impl<'a> LoweringContext<'a> {
 
         (
             self.stmt_let_pat(sp, Some(ex), pat, hir::LocalSource::Normal),
-            pat_nid,
+            pat_hid,
         )
     }
 
@@ -5061,7 +5151,7 @@ impl<'a> LoweringContext<'a> {
         self.pat(span, pt)
     }
 
-    fn pat_ident(&mut self, span: Span, ident: Ident) -> (P<hir::Pat>, NodeId) {
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> (P<hir::Pat>, hir::HirId) {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
@@ -5070,8 +5160,8 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
-    ) -> (P<hir::Pat>, NodeId) {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+    ) -> (P<hir::Pat>, hir::HirId) {
+        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
 
         (
             P(hir::Pat {
@@ -5079,7 +5169,7 @@ impl<'a> LoweringContext<'a> {
                 node: hir::PatKind::Binding(bm, hir_id, ident.with_span_pos(span), None),
                 span,
             }),
-            node_id
+            hir_id
         )
     }
 
