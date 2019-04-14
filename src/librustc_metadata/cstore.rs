@@ -79,6 +79,10 @@ pub struct CrateMetadata {
     pub source: CrateSource,
 
     pub proc_macros: Option<Vec<(ast::Name, Lrc<SyntaxExtension>)>>,
+
+    /// Whether or not this crate should be consider a private dependency
+    /// for purposes of the 'exported_private_dependencies' lint
+    pub private_dep: bool
 }
 
 pub struct CStore {
@@ -114,7 +118,8 @@ impl CStore {
     }
 
     pub(super) fn get_crate_data(&self, cnum: CrateNum) -> Lrc<CrateMetadata> {
-        self.metas.borrow()[cnum].clone().unwrap()
+        self.metas.borrow()[cnum].clone()
+            .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum))
     }
 
     pub(super) fn set_crate_data(&self, cnum: CrateNum, data: Lrc<CrateMetadata>) {

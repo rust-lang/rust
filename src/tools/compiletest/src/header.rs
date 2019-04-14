@@ -286,6 +286,10 @@ pub struct TestProps {
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
     pub aux_builds: Vec<String>,
+    // A list of crates to pass '--extern-private name:PATH' flags for
+    // This should be a subset of 'aux_build'
+    // FIXME: Replace this with a better solution: https://github.com/rust-lang/rust/pull/54020
+    pub extern_private: Vec<String>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
     // Environment settings to use during execution
@@ -353,6 +357,7 @@ impl TestProps {
             run_flags: None,
             pp_exact: None,
             aux_builds: vec![],
+            extern_private: vec![],
             revisions: vec![],
             rustc_env: vec![],
             exec_env: vec![],
@@ -467,6 +472,10 @@ impl TestProps {
 
             if let Some(ab) = config.parse_aux_build(ln) {
                 self.aux_builds.push(ab);
+            }
+
+            if let Some(ep) = config.parse_extern_private(ln) {
+                self.extern_private.push(ep);
             }
 
             if let Some(ee) = config.parse_env(ln, "exec-env") {
@@ -608,6 +617,10 @@ impl Config {
     fn parse_aux_build(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "aux-build")
             .map(|r| r.trim().to_string())
+    }
+
+    fn parse_extern_private(&self, line: &str) -> Option<String> {
+        self.parse_name_value_directive(line, "extern-private")
     }
 
     fn parse_compile_flags(&self, line: &str) -> Option<String> {

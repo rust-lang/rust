@@ -1397,6 +1397,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    /// Returns whether or not the crate with CrateNum 'cnum'
+    /// is marked as a private dependency
+    pub fn is_private_dep(self, cnum: CrateNum) -> bool {
+        if cnum == LOCAL_CRATE {
+            false
+        } else {
+            self.cstore.crate_is_private_dep_untracked(cnum)
+        }
+    }
+
     #[inline]
     pub fn def_path_hash(self, def_id: DefId) -> hir_map::DefPathHash {
         if def_id.is_local() {

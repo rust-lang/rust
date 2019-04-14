@@ -499,6 +499,10 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).name
     }
 
+    fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool {
+        self.get_crate_data(cnum).private_dep
+    }
+
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator
     {
         self.get_crate_data(cnum).root.disambiguator

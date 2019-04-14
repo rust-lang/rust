@@ -283,21 +283,28 @@ impl OutputTypes {
 // DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
 // would break dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
-pub struct Externs(BTreeMap<String, BTreeSet<Option<String>>>);
+pub struct Externs(BTreeMap<String, ExternEntry>);
+
+#[derive(Clone, Hash, Eq, PartialEq, Ord, PartialOrd, Debug, Default)]
+pub struct ExternEntry {
+    pub locations: BTreeSet<Option<String>>,
+    pub is_private_dep: bool
+}
 
 impl Externs {
-    pub fn new(data: BTreeMap<String, BTreeSet<Option<String>>>) -> Externs {
+    pub fn new(data: BTreeMap<String, ExternEntry>) -> Externs {
         Externs(data)
     }
 
-    pub fn get(&self, key: &str) -> Option<&BTreeSet<Option<String>>> {
+    pub fn get(&self, key: &str) -> Option<&ExternEntry> {
         self.0.get(key)
     }
 
-    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<Option<String>>> {
+    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, ExternEntry> {
         self.0.iter()
     }
 }
+
 
 macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
@@ -427,10 +434,6 @@ top_level_options!(
         remap_path_prefix: Vec<(PathBuf, PathBuf)> [UNTRACKED],
 
         edition: Edition [TRACKED],
-
-        // The list of crates to consider private when
-        // checking leaked private dependency types in public interfaces
-        extern_private: Vec<String> [TRACKED],
     }
 );
 
@@ -633,7 +636,6 @@ impl Default for Options {
             cli_forced_thinlto_off: false,
             remap_path_prefix: Vec::new(),
             edition: DEFAULT_EDITION,
-            extern_private: Vec::new()
         }
     }
 }
@@ -2315,10 +2317,14 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
-    let extern_private = matches.opt_strs("extern-private");
+    // We start out with a Vec<(Option<String>, bool)>>,
+    // and later convert it into a BTreeSet<(Option<String>, bool)>
+    // This allows to modify entries in-place to set their correct
+    // 'public' value
+    let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
+    for (arg, private) in matches.opt_strs("extern").into_iter().map(|v| (v, false))
+        .chain(matches.opt_strs("extern-private").into_iter().map(|v| (v, true))) {
 
-    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
-    for arg in matches.opt_strs("extern").into_iter().chain(matches.opt_strs("extern-private")) {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().unwrap_or_else(||
             early_error(error_format, "--extern value must not be empty"));
@@ -2331,10 +2337,17 @@ pub fn build_session_options_and_crate_config(
             );
         };
 
-        externs
+        let entry = externs
             .entry(name.to_owned())
-            .or_default()
-            .insert(location);
+            .or_default();
+
+
+        entry.locations.insert(location.clone());
+
+        // Crates start out being not private,
+        // and go to being private if we see an '--extern-private'
+        // flag
+        entry.is_private_dep |= private;
     }
 
     let crate_name = matches.opt_str("crate-name");
@@ -2386,7 +2399,6 @@ pub fn build_session_options_and_crate_config(
             cli_forced_thinlto_off: disable_thinlto,
             remap_path_prefix,
             edition,
-            extern_private
         },
         cfg,
     )
@@ -2651,7 +2663,7 @@ mod tests {
         build_session_options_and_crate_config,
         to_crate_config
     };
-    use crate::session::config::{LtoCli, LinkerPluginLto, PgoGenerate};
+    use crate::session::config::{LtoCli, LinkerPluginLto, PgoGenerate, ExternEntry};
     use crate::session::build_session;
     use crate::session::search_paths::SearchPath;
     use std::collections::{BTreeMap, BTreeSet};
@@ -2664,6 +2676,19 @@ mod tests {
     use syntax;
     use super::Options;
 
+    impl ExternEntry {
+        fn new_public<S: Into<String>,
+                      I: IntoIterator<Item = Option<S>>>(locations: I) -> ExternEntry {
+            let locations: BTreeSet<_> = locations.into_iter().map(|o| o.map(|s| s.into()))
+                .collect();
+
+            ExternEntry {
+                locations,
+                is_private_dep: false
+            }
+        }
+    }
+
     fn optgroups() -> getopts::Options {
         let mut opts = getopts::Options::new();
         for group in super::rustc_optgroups() {
@@ -2674,10 +2699,6 @@ mod tests {
 
     fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V> {
         BTreeMap::from_iter(entries.into_iter())
-    }
-
-    fn mk_set<V: Ord>(entries: Vec<V>) -> BTreeSet<V> {
-        BTreeSet::from_iter(entries.into_iter())
     }
 
     // When the user supplies --test we should implicitly supply --cfg test
@@ -2797,33 +2818,33 @@ mod tests {
         v1.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
+                ExternEntry::new_public(vec![Some("b"), Some("c")])
             ),
             (
                 String::from("d"),
-                mk_set(vec![Some(String::from("e")), Some(String::from("f"))]),
+                ExternEntry::new_public(vec![Some("e"), Some("f")])
             ),
         ]));
 
         v2.externs = Externs::new(mk_map(vec![
             (
                 String::from("d"),
-                mk_set(vec![Some(String::from("e")), Some(String::from("f"))]),
+                ExternEntry::new_public(vec![Some("e"), Some("f")])
             ),
             (
                 String::from("a"),
-                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
+                ExternEntry::new_public(vec![Some("b"), Some("c")])
             ),
         ]));
 
         v3.externs = Externs::new(mk_map(vec![
             (
                 String::from("a"),
-                mk_set(vec![Some(String::from("b")), Some(String::from("c"))]),
+                ExternEntry::new_public(vec![Some("b"), Some("c")])
             ),
             (
                 String::from("d"),
-                mk_set(vec![Some(String::from("f")), Some(String::from("e"))]),
+                ExternEntry::new_public(vec![Some("f"), Some("e")])
             ),
         ]));
 

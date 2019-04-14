@@ -74,6 +74,25 @@ pub fn dylib_env_var() -> &'static str {
     }
 }
 
+/// The platform-specific library name
+pub fn get_lib_name(lib: &str, dylib: bool) -> String {
+    // In some casess (e.g. MUSL), we build a static
+    // library, rather than a dynamic library.
+    // In this case, the only path we can pass
+    // with '--extern-meta' is the '.lib' file
+    if !dylib {
+        return format!("lib{}.rlib", lib);
+    }
+
+    if cfg!(windows) {
+        format!("{}.dll", lib)
+    } else if cfg!(target_os = "macos") {
+        format!("lib{}.dylib", lib)
+    } else {
+        format!("lib{}.so", lib)
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum DiffLine {
     Context(String),
@@ -1585,6 +1604,16 @@ impl<'test> TestCx<'test> {
             create_dir_all(&aux_dir).unwrap();
         }
 
+        // Use a Vec instead of a HashMap to preserve original order
+        let mut extern_priv = self.props.extern_private.clone();
+
+        let mut add_extern_priv = |priv_dep: &str, dylib: bool| {
+            let lib_name = get_lib_name(priv_dep, dylib);
+            rustc
+                .arg("--extern-private")
+                .arg(format!("{}={}", priv_dep, aux_dir.join(lib_name).to_str().unwrap()));
+        };
+
         for rel_ab in &self.props.aux_builds {
             let aux_testpaths = self.compute_aux_test_paths(rel_ab);
             let aux_props =
@@ -1601,8 +1630,8 @@ impl<'test> TestCx<'test> {
             create_dir_all(aux_cx.output_base_dir()).unwrap();
             let mut aux_rustc = aux_cx.make_compile_args(&aux_testpaths.file, aux_output);
 
-            let crate_type = if aux_props.no_prefer_dynamic {
-                None
+            let (dylib, crate_type) = if aux_props.no_prefer_dynamic {
+                (true, None)
             } else if self.config.target.contains("cloudabi")
                 || self.config.target.contains("emscripten")
                 || (self.config.target.contains("musl") && !aux_props.force_host)
@@ -1618,10 +1647,19 @@ impl<'test> TestCx<'test> {
                 // dynamic libraries so we just go back to building a normal library. Note,
                 // however, that for MUSL if the library is built with `force_host` then
                 // it's ok to be a dylib as the host should always support dylibs.
-                Some("lib")
+                (false, Some("lib"))
             } else {
-                Some("dylib")
+                (true, Some("dylib"))
             };
+
+            let trimmed = rel_ab.trim_end_matches(".rs").to_string();
+
+            // Normally, every 'extern-private' has a correspodning 'aux-build'
+            // entry. If so, we remove it from our list of private crates,
+            // and add an '--extern-private' flag to rustc
+            if extern_priv.remove_item(&trimmed).is_some() {
+                add_extern_priv(&trimmed, dylib);
+            }
 
             if let Some(crate_type) = crate_type {
                 aux_rustc.args(&["--crate-type", crate_type]);
@@ -1644,6 +1682,12 @@ impl<'test> TestCx<'test> {
                     &auxres,
                 );
             }
+        }
+
+        // Add any '--extern-private' entries without a matching
+        // 'aux-build'
+        for private_lib in extern_priv {
+            add_extern_priv(&private_lib, true);
         }
 
         rustc.envs(self.props.rustc_env.clone());
