@@ -37,7 +37,7 @@ fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty)
 }
 
 fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
-    receiver.iterate_methods(ctx.db, |_ty, func| {
+    ctx.analyzer.iterate_method_candidates(ctx.db, receiver, None, |_ty, func| {
         let sig = func.signature(ctx.db);
         if sig.has_self_param() {
             acc.add_function(ctx, func);
@@ -187,6 +187,32 @@ mod tests {
         label: "the_method",
         source_range: [144; 144),
         delete: [144; 144),
+        insert: "the_method()$0",
+        kind: Method,
+        detail: "fn the_method(&self)"
+    }
+]"###
+        );
+    }
+
+    #[test]
+    fn test_trait_method_completion() {
+        assert_debug_snapshot_matches!(
+            do_ref_completion(
+                r"
+            struct A {}
+            trait Trait { fn the_method(&self); }
+            impl Trait for A {}
+            fn foo(a: A) {
+               a.<|>
+            }
+            ",
+            ),
+            @r###"[
+    CompletionItem {
+        label: "the_method",
+        source_range: [151; 151),
+        delete: [151; 151),
         insert: "the_method()$0",
         kind: Method,
         detail: "fn the_method(&self)"

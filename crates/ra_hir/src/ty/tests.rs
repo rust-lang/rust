@@ -2336,12 +2336,77 @@ fn test() -> u64 {
     );
 }
 
+#[ignore]
+#[test]
+fn method_resolution_trait_before_autoref() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl S { fn foo(&self) -> i8 { 0 } }
+impl Trait for S { fn foo(self) -> u128 { 0 } }
+fn test() { S.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
+#[test]
+fn method_resolution_trait_before_autoderef() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl S { fn foo(self) -> i8 { 0 } }
+impl Trait for &S { fn foo(self) -> u128 { 0 } }
+fn test() { (&S).foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
+#[test]
+fn method_resolution_impl_before_trait() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl S { fn foo(self) -> i8 { 0 } }
+impl Trait for S { fn foo(self) -> u128 { 0 } }
+fn test() { S.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "i8");
+}
+
+#[test]
+fn method_resolution_trait_autoderef() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl Trait for S { fn foo(self) -> u128 { 0 } }
+fn test() { (&S).foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id);
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
     let analyzer = SourceAnalyzer::new(db, pos.file_id, expr.syntax(), Some(pos.offset));
     let ty = analyzer.type_of(db, expr).unwrap();
     ty.display(db).to_string()
+}
+
+fn type_at(content: &str) -> String {
+    let (db, file_pos) = MockDatabase::with_position(content);
+    type_at_pos(&db, file_pos)
 }
 
 fn infer(content: &str) -> String {
