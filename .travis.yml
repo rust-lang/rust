@@ -78,6 +78,8 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=bluss/rust-itertools
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
+    - env: INTEGRATION=Marwes/combine
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
   allow_failures:
   - os: windows
     env: CARGO_INCREMENTAL=0 BASE_TESTS=true
