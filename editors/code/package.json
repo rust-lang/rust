@@ -260,6 +260,18 @@
                     "${workspaceRoot}"
                 ],
                 "pattern": "$rustc"
+            },
+            {
+                "name": "rustc-watch",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceRoot}"
+                ],
+                "background": {
+                    "beginsPattern": "^\\[Running\\b",
+                    "endsPattern": "^\\[Finished running\\b"
+                },
+                "pattern": "$rustc"
             }
         ]
     }
