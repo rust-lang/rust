@@ -1,4 +1,5 @@
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
+use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use syntax::ast;
@@ -146,44 +147,39 @@ fn check_assign(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for weird `else`.
 fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
-    if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
-        if (is_block(else_) || unsugar_if(else_).is_some())
-            && !differing_macro_contexts(then.span, else_.span)
-            && !in_macro(then.span)
-            && !in_external_macro(cx.sess, expr.span)
-        {
-            // workaround for rust-lang/rust#43081
-            if expr.span.lo().0 == 0 && expr.span.hi().0 == 0 {
-                return;
-            }
+    if_chain! {
+        if let Some((then, &Some(ref else_))) = unsugar_if(expr);
+        if is_block(else_) || unsugar_if(else_).is_some();
+        if !differing_macro_contexts(then.span, else_.span);
+        if !in_macro(then.span) && !in_external_macro(cx.sess, expr.span);
 
-            // this will be a span from the closing ‘}’ of the “then” block (excluding) to
-            // the
-            // “if” of the “else if” block (excluding)
-            let else_span = then.span.between(else_.span);
+        // workaround for rust-lang/rust#43081
+        if expr.span.lo().0 != 0 && expr.span.hi().0 != 0;
 
-            // the snippet should look like " else \n    " with maybe comments anywhere
-            // it’s bad when there is a ‘\n’ after the “else”
-            if let Some(else_snippet) = snippet_opt(cx, else_span) {
-                let else_pos = else_snippet.find("else").expect("there must be a `else` here");
+        // this will be a span from the closing ‘}’ of the “then” block (excluding) to
+        // the “if” of the “else if” block (excluding)
+        let else_span = then.span.between(else_.span);
 
-                if else_snippet[else_pos..].contains('\n') {
-                    let else_desc = if unsugar_if(else_).is_some() { "if" } else { "{..}" };
+        // the snippet should look like " else \n    " with maybe comments anywhere
+        // it’s bad when there is a ‘\n’ after the “else”
+        if let Some(else_snippet) = snippet_opt(cx, else_span);
+        if let Some(else_pos) = else_snippet.find("else");
+        if else_snippet[else_pos..].contains('\n');
+        let else_desc = if unsugar_if(else_).is_some() { "if" } else { "{..}" };
 
-                    span_note_and_lint(
-                        cx,
-                        SUSPICIOUS_ELSE_FORMATTING,
-                        else_span,
-                        &format!("this is an `else {}` but the formatting might hide it", else_desc),
-                        else_span,
-                        &format!(
-                            "to remove this lint, remove the `else` or remove the new line between \
-                             `else` and `{}`",
-                            else_desc,
-                        ),
-                    );
-                }
-            }
+        then {
+            span_note_and_lint(
+                cx,
+                SUSPICIOUS_ELSE_FORMATTING,
+                else_span,
+                &format!("this is an `else {}` but the formatting might hide it", else_desc),
+                else_span,
+                &format!(
+                    "to remove this lint, remove the `else` or remove the new line between \
+                     `else` and `{}`",
+                    else_desc,
+                ),
+            );
         }
     }
 }
