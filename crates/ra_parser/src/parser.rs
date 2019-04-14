@@ -45,8 +45,9 @@ impl<'t> Parser<'t> {
     ///
     /// Useful for parsing things like `>>`.
     pub(crate) fn current2(&self) -> Option<(SyntaxKind, SyntaxKind)> {
-        let c1 = self.token_source.token_kind(self.token_pos);
-        let c2 = self.token_source.token_kind(self.token_pos + 1);
+        let c1 = self.nth(0);
+        let c2 = self.nth(1);
+
         if self.token_source.is_token_joint_to_next(self.token_pos) {
             Some((c1, c2))
         } else {
@@ -59,9 +60,9 @@ impl<'t> Parser<'t> {
     ///
     /// Useful for parsing things like `=>>`.
     pub(crate) fn current3(&self) -> Option<(SyntaxKind, SyntaxKind, SyntaxKind)> {
-        let c1 = self.token_source.token_kind(self.token_pos);
-        let c2 = self.token_source.token_kind(self.token_pos + 1);
-        let c3 = self.token_source.token_kind(self.token_pos + 2);
+        let c1 = self.nth(0);
+        let c2 = self.nth(1);
+        let c3 = self.nth(2);
         if self.token_source.is_token_joint_to_next(self.token_pos)
             && self.token_source.is_token_joint_to_next(self.token_pos + 1)
         {
@@ -77,7 +78,23 @@ impl<'t> Parser<'t> {
         let steps = self.steps.get();
         assert!(steps <= 10_000_000, "the parser seems stuck");
         self.steps.set(steps + 1);
-        self.token_source.token_kind(self.token_pos + n)
+
+        // It is beecause the Dollar will appear between nth
+        // Following code skips through it
+        let mut non_dollars_count = 0;
+        let mut i = 0;
+
+        loop {
+            let kind = self.token_source.token_kind(self.token_pos + i);
+            i += 1;
+
+            match kind {
+                EOF => return EOF,
+                SyntaxKind::L_DOLLAR | SyntaxKind::R_DOLLAR => {}
+                _ if non_dollars_count == n => return kind,
+                _ => non_dollars_count += 1,
+            }
+        }
     }
 
     /// Checks if the current token is `kind`.
@@ -180,12 +197,73 @@ impl<'t> Parser<'t> {
     }
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
+        self.eat_dollars();
         self.token_pos += usize::from(n_raw_tokens);
         self.push_event(Event::Token { kind, n_raw_tokens });
     }
 
     fn push_event(&mut self, event: Event) {
         self.events.push(event)
+    }
+
+    fn eat_dollars(&mut self) {
+        loop {
+            match self.token_source.token_kind(self.token_pos) {
+                k @ SyntaxKind::L_DOLLAR | k @ SyntaxKind::R_DOLLAR => {
+                    self.token_pos += 1;
+                    self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
+                }
+                _ => {
+                    return;
+                }
+            }
+        }
+    }
+
+    pub(crate) fn eat_l_dollars(&mut self) -> usize {
+        let mut ate_count = 0;
+        loop {
+            match self.token_source.token_kind(self.token_pos) {
+                k @ SyntaxKind::L_DOLLAR => {
+                    self.token_pos += 1;
+                    self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
+                    ate_count += 1;
+                }
+                _ => {
+                    return ate_count;
+                }
+            }
+        }
+    }
+
+    pub(crate) fn eat_r_dollars(&mut self, max_count: usize) -> usize {
+        let mut ate_count = 0;
+        loop {
+            match self.token_source.token_kind(self.token_pos) {
+                k @ SyntaxKind::R_DOLLAR => {
+                    self.token_pos += 1;
+                    self.push_event(Event::Token { kind: k, n_raw_tokens: 1 });
+                    ate_count += 1;
+
+                    if max_count >= ate_count {
+                        return ate_count;
+                    }
+                }
+                _ => {
+                    return ate_count;
+                }
+            }
+        }
+    }
+
+    pub(crate) fn at_l_dollar(&self) -> bool {
+        let kind = self.token_source.token_kind(self.token_pos);
+        (kind == SyntaxKind::L_DOLLAR)
+    }
+
+    pub(crate) fn at_r_dollar(&self) -> bool {
+        let kind = self.token_source.token_kind(self.token_pos);
+        (kind == SyntaxKind::R_DOLLAR)
     }
 }
 

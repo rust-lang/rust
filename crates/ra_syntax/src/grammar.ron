@@ -118,6 +118,8 @@ Grammar(
         "LIFETIME",
         "COMMENT",
         "SHEBANG",
+        "L_DOLLAR",
+        "R_DOLLAR",
     ],
     nodes: [
         "SOURCE_FILE",

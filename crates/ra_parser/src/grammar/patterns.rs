@@ -5,7 +5,7 @@ pub(super) const PATTERN_FIRST: TokenSet = expressions::LITERAL_FIRST
     .union(token_set![REF_KW, MUT_KW, L_PAREN, L_BRACK, AMP, UNDERSCORE, MINUS]);
 
 pub(super) fn pattern(p: &mut Parser) {
-    pattern_r(p, PAT_RECOVERY_SET)
+    pattern_r(p, PAT_RECOVERY_SET);
 }
 
 /// Parses a pattern list separated by pipes `|`

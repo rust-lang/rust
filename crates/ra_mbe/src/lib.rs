@@ -39,7 +39,7 @@ pub enum ExpandError {
     BindingError(String),
 }
 
-pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list};
+pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list, syntax_node_to_token_tree};
 
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as
@@ -189,9 +189,26 @@ impl_froms!(TokenTree: Leaf, Subtree);
         rules.expand(&invocation_tt).unwrap()
     }
 
+    pub(crate) fn expand_to_syntax(
+        rules: &MacroRules,
+        invocation: &str,
+    ) -> ra_syntax::TreeArc<ast::SourceFile> {
+        let expanded = expand(rules, invocation);
+        token_tree_to_ast_item_list(&expanded)
+    }
+
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
+
+        let tree = token_tree_to_ast_item_list(&expanded);
+
+        // Eat all white space by parse it back and forth
+        let expansion = ast::SourceFile::parse(expansion);
+        let expansion = syntax_node_to_token_tree(expansion.syntax()).unwrap().0;
+        let file = token_tree_to_ast_item_list(&expansion);
+
+        assert_eq!(tree.syntax().debug_dump().trim(), file.syntax().debug_dump().trim());
     }
 
     #[test]
@@ -285,6 +302,36 @@ impl_froms!(TokenTree: Leaf, Subtree);
         assert_expansion(&rules, "foo! { foo, bar }", "mod foo {} mod bar {}");
         assert_expansion(&rules, "foo! { foo# bar }", "fn foo () {} fn bar () {}");
         assert_expansion(&rules, "foo! { Foo,# Bar }", "struct Foo ; struct Bar ;");
+    }
+
+    #[test]
+    fn test_match_group_pattern_with_multiple_defs() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:ident),*) => ( struct Bar { $ (
+                fn $ i {}
+            )*} );            
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! { foo, bar }", "struct Bar {fn foo {} fn bar {}}");
+    }
+
+    #[test]
+    fn test_match_group_pattern_with_multiple_statement() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:ident),*) => ( fn baz { $ (
+                $ i ();
+            )*} );            
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! { foo, bar }", "fn baz {foo () ; bar () ;}");
     }
 
     #[test]
@@ -415,7 +462,7 @@ SOURCE_FILE@[0; 40)
         assert_expansion(
             &rules,
             "foo! { bar::<u8>::baz::<u8> }",
-            "fn foo () {let a = bar ::< u8 > ::baz ::< u8 > ;}",
+            "fn foo () {let a = bar :: < u8 > :: baz :: < u8 > ;}",
         );
     }
 
@@ -431,5 +478,108 @@ SOURCE_FILE@[0; 40)
 "#,
         );
         assert_expansion(&rules, "foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
+    }
+
+    #[test]
+    fn test_path_with_path() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:path) => {
+                fn foo() { let a = $ i :: bar; }
+            }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { foo }", "fn foo () {let a = foo :: bar ;}");
+    }
+
+    #[test]
+    fn test_expr() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:expr) => {
+                 fn bar() { $ i; } 
+            }
+        }
+"#,
+        );
+
+        assert_expansion(
+            &rules,
+            "foo! { 2 + 2 * baz(3).quux() }",
+            "fn bar () {2 + 2 * baz (3) . quux () ;}",
+        );
+    }
+
+    #[test]
+    fn test_expr_order() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:expr) => {
+                 fn bar() { $ i * 2; } 
+            }
+        }
+"#,
+        );
+
+        assert_eq!(
+            expand_to_syntax(&rules, "foo! { 1 + 1  }").syntax().debug_dump().trim(),
+            r#"SOURCE_FILE@[0; 15)
+  FN_DEF@[0; 15)
+    FN_KW@[0; 2) "fn"
+    NAME@[2; 5)
+      IDENT@[2; 5) "bar"
+    PARAM_LIST@[5; 7)
+      L_PAREN@[5; 6) "("
+      R_PAREN@[6; 7) ")"
+    BLOCK@[7; 15)
+      L_CURLY@[7; 8) "{"
+      EXPR_STMT@[8; 14)
+        BIN_EXPR@[8; 13)
+          BIN_EXPR@[8; 11)
+            LITERAL@[8; 9)
+              INT_NUMBER@[8; 9) "1"
+            PLUS@[9; 10) "+"
+            LITERAL@[10; 11)
+              INT_NUMBER@[10; 11) "1"
+          STAR@[11; 12) "*"
+          LITERAL@[12; 13)
+            INT_NUMBER@[12; 13) "2"
+        SEMI@[13; 14) ";"
+      R_CURLY@[14; 15) "}""#,
+        );
+    }
+
+    #[test]
+    fn test_ty() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:ty) => (
+                fn bar() -> $ i { unimplemented!() }
+            )
+        }
+"#,
+        );
+        assert_expansion(
+            &rules,
+            "foo! { Baz<u8> }",
+            "fn bar () -> Baz < u8 > {unimplemented ! ()}",
+        );
+    }
+
+    #[test]
+    fn test_pat_() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:pat) => { fn foo() { let $ i; } }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { (a, b) }", "fn foo () {let (a , b) ;}");
     }
 }
