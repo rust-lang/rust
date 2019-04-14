@@ -305,7 +305,7 @@ pub trait Into<T>: Sized {
 ///
 /// # Generic Implementations
 ///
-/// - `From<T>` for U` implies [`Into`]`<U> for T`
+/// - `From<T> for U` implies [`Into`]`<U> for T`
 /// - `From` is reflexive, which means that `From<T> for T` is implemented
 ///
 /// # Examples
