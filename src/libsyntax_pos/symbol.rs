@@ -6,6 +6,7 @@ use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::newtype_index;
+use rustc_macros::symbols;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::fmt;
@@ -15,6 +16,94 @@ use std::hash::{Hash, Hasher};
 
 use crate::hygiene::SyntaxContext;
 use crate::{Span, DUMMY_SP, GLOBALS};
+
+symbols! {
+    // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
+    // this should be rarely necessary though if the keywords are kept in alphabetic order.
+    Keywords {
+        // Special reserved identifiers used internally for elided lifetimes,
+        // unnamed method parameters, crate root module, error recovery etc.
+        Invalid:            "",
+        PathRoot:           "{{root}}",
+        DollarCrate:        "$crate",
+        Underscore:         "_",
+
+        // Keywords that are used in stable Rust.
+        As:                 "as",
+        Box:                "box",
+        Break:              "break",
+        Const:              "const",
+        Continue:           "continue",
+        Crate:              "crate",
+        Else:               "else",
+        Enum:               "enum",
+        Extern:             "extern",
+        False:              "false",
+        Fn:                 "fn",
+        For:                "for",
+        If:                 "if",
+        Impl:               "impl",
+        In:                 "in",
+        Let:                "let",
+        Loop:               "loop",
+        Match:              "match",
+        Mod:                "mod",
+        Move:               "move",
+        Mut:                "mut",
+        Pub:                "pub",
+        Ref:                "ref",
+        Return:             "return",
+        SelfLower:          "self",
+        SelfUpper:          "Self",
+        Static:             "static",
+        Struct:             "struct",
+        Super:              "super",
+        Trait:              "trait",
+        True:               "true",
+        Type:               "type",
+        Unsafe:             "unsafe",
+        Use:                "use",
+        Where:              "where",
+        While:              "while",
+
+        // Keywords that are used in unstable Rust or reserved for future use.
+        Abstract:           "abstract",
+        Become:             "become",
+        Do:                 "do",
+        Final:              "final",
+        Macro:              "macro",
+        Override:           "override",
+        Priv:               "priv",
+        Typeof:             "typeof",
+        Unsized:            "unsized",
+        Virtual:            "virtual",
+        Yield:              "yield",
+
+        // Edition-specific keywords that are used in stable Rust.
+        Dyn:                "dyn", // >= 2018 Edition only
+
+        // Edition-specific keywords that are used in unstable Rust or reserved for future use.
+        Async:              "async", // >= 2018 Edition only
+        Try:                "try", // >= 2018 Edition only
+
+        // Special lifetime names
+        UnderscoreLifetime: "'_",
+        StaticLifetime:     "'static",
+
+        // Weak keywords, have special meaning only in specific contexts.
+        Auto:               "auto",
+        Catch:              "catch",
+        Default:            "default",
+        Existential:        "existential",
+        Union:              "union",
+    }
+
+    // Other symbols that can be referred to with syntax_pos::symbols::*
+    Other {
+        doc, cfg, masked, spotlight, alias, keyword, feature, include, simd, align, stable,
+        unstable, rustc_const_unstable,
+    }
+}
 
 #[derive(Copy, Clone, Eq)]
 pub struct Ident {
@@ -317,129 +406,32 @@ impl Interner {
     }
 }
 
-// In this macro, there is the requirement that the name (the number) must be monotonically
-// increasing by one in the special identifiers, starting at 0; the same holds for the keywords,
-// except starting from the next number instead of zero.
-macro_rules! declare_keywords {(
-    $( ($index: expr, $konst: ident, $string: expr) )*
-) => {
-    pub mod keywords {
-        use super::{Symbol, Ident};
-        #[derive(Clone, Copy, PartialEq, Eq)]
-        pub struct Keyword {
-            ident: Ident,
-        }
-        impl Keyword {
-            #[inline] pub fn ident(self) -> Ident { self.ident }
-            #[inline] pub fn name(self) -> Symbol { self.ident.name }
-        }
-        $(
-            #[allow(non_upper_case_globals)]
-            pub const $konst: Keyword = Keyword {
-                ident: Ident::with_empty_ctxt(super::Symbol::new($index))
-            };
-        )*
+pub mod keywords {
+    use super::{Symbol, Ident};
 
-        impl std::str::FromStr for Keyword {
-            type Err = ();
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub struct Keyword {
+        ident: Ident,
+    }
 
-            fn from_str(s: &str) -> Result<Self, ()> {
-                match s {
-                    $($string => Ok($konst),)*
-                    _ => Err(()),
-                }
-            }
+    impl Keyword {
+        #[inline]
+        pub fn ident(self) -> Ident {
+            self.ident
+        }
+
+        #[inline]
+        pub fn name(self) -> Symbol {
+            self.ident.name
         }
     }
 
-    impl Interner {
-        pub fn fresh() -> Self {
-            Interner::prefill(&[$($string,)*])
-        }
-    }
-}}
+    keywords!();
+}
 
-// N.B., leaving holes in the ident table is bad! a different ident will get
-// interned with the id from the hole, but it will be between the min and max
-// of the reserved words, and thus tagged as "reserved".
-// After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
-// this should be rarely necessary though if the keywords are kept in alphabetic order.
-declare_keywords! {
-    // Special reserved identifiers used internally for elided lifetimes,
-    // unnamed method parameters, crate root module, error recovery etc.
-    (0,  Invalid,            "")
-    (1,  PathRoot,           "{{root}}")
-    (2,  DollarCrate,        "$crate")
-    (3,  Underscore,         "_")
-
-    // Keywords that are used in stable Rust.
-    (4,  As,                 "as")
-    (5,  Box,                "box")
-    (6,  Break,              "break")
-    (7,  Const,              "const")
-    (8,  Continue,           "continue")
-    (9,  Crate,              "crate")
-    (10, Else,               "else")
-    (11, Enum,               "enum")
-    (12, Extern,             "extern")
-    (13, False,              "false")
-    (14, Fn,                 "fn")
-    (15, For,                "for")
-    (16, If,                 "if")
-    (17, Impl,               "impl")
-    (18, In,                 "in")
-    (19, Let,                "let")
-    (20, Loop,               "loop")
-    (21, Match,              "match")
-    (22, Mod,                "mod")
-    (23, Move,               "move")
-    (24, Mut,                "mut")
-    (25, Pub,                "pub")
-    (26, Ref,                "ref")
-    (27, Return,             "return")
-    (28, SelfLower,          "self")
-    (29, SelfUpper,          "Self")
-    (30, Static,             "static")
-    (31, Struct,             "struct")
-    (32, Super,              "super")
-    (33, Trait,              "trait")
-    (34, True,               "true")
-    (35, Type,               "type")
-    (36, Unsafe,             "unsafe")
-    (37, Use,                "use")
-    (38, Where,              "where")
-    (39, While,              "while")
-
-    // Keywords that are used in unstable Rust or reserved for future use.
-    (40, Abstract,           "abstract")
-    (41, Become,             "become")
-    (42, Do,                 "do")
-    (43, Final,              "final")
-    (44, Macro,              "macro")
-    (45, Override,           "override")
-    (46, Priv,               "priv")
-    (47, Typeof,             "typeof")
-    (48, Unsized,            "unsized")
-    (49, Virtual,            "virtual")
-    (50, Yield,              "yield")
-
-    // Edition-specific keywords that are used in stable Rust.
-    (51, Dyn,                "dyn") // >= 2018 Edition only
-
-    // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-    (52, Async,              "async") // >= 2018 Edition only
-    (53, Try,                "try") // >= 2018 Edition only
-
-    // Special lifetime names
-    (54, UnderscoreLifetime, "'_")
-    (55, StaticLifetime,     "'static")
-
-    // Weak keywords, have special meaning only in specific contexts.
-    (56, Auto,               "auto")
-    (57, Catch,              "catch")
-    (58, Default,            "default")
-    (59, Existential,        "existential")
-    (60, Union,              "union")
+pub mod symbols {
+    use super::Symbol;
+    symbols!();
 }
 
 impl Symbol {
