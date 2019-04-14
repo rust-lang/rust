@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for freevar in freevars {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath {
-                        hir_id: self.tcx.hir().node_to_hir_id(freevar.var_id()),
+                        hir_id: freevar.var_id(),
                     },
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
@@ -250,8 +250,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             freevars
                 .iter()
                 .map(|freevar| {
-                    let var_node_id = freevar.var_id();
-                    let var_hir_id = tcx.hir().node_to_hir_id(var_node_id);
+                    let var_hir_id = freevar.var_id();
                     let freevar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
                         var_path: ty::UpvarPath { hir_id: var_hir_id },
@@ -261,7 +260,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     debug!(
                         "var_id={:?} freevar_ty={:?} capture={:?}",
-                        var_node_id, freevar_ty, capture
+                        var_hir_id, freevar_ty, capture
                     );
 
                     match capture {

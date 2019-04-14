@@ -734,7 +734,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     /// Iterates over each child of the given item.
     pub fn each_child_of_item<F>(&self, id: DefIndex, mut callback: F, sess: &Session)
-        where F: FnMut(def::Export)
+        where F: FnMut(def::Export<hir::HirId>)
     {
         if let Some(ref proc_macros) = self.proc_macros {
             /* If we are loading as a proc macro, we want to return the view of this crate
@@ -831,7 +831,18 @@ impl<'a, 'tcx> CrateMetadata {
                             let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
                             let ctor_kind = self.get_ctor_kind(child_index);
                             let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
-                            let vis = self.get_visibility(ctor_def_id.index);
+                            let mut vis = self.get_visibility(ctor_def_id.index);
+                            if ctor_def_id == def_id && vis == ty::Visibility::Public {
+                                // For non-exhaustive variants lower the constructor visibility to
+                                // within the crate. We only need this for fictive constructors,
+                                // for other constructors correct visibilities
+                                // were already encoded in metadata.
+                                let attrs = self.get_item_attrs(def_id.index, sess);
+                                if attr::contains_name(&attrs, "non_exhaustive") {
+                                    let crate_def_id = DefId { index: CRATE_DEF_INDEX, ..def_id };
+                                    vis = ty::Visibility::Restricted(crate_def_id);
+                                }
+                            }
                             callback(def::Export { def: ctor_def, ident, vis, span });
                         }
                         _ => {}

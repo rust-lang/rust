@@ -136,7 +136,7 @@ impl Decodable for Ident {
 }
 
 /// A symbol is an interned or gensymed string. The use of `newtype_index!` means
-/// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index! reserves
+/// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index!` reserves
 /// the last 256 values for tagging purposes.
 ///
 /// Note that `Symbol` cannot directly be a `newtype_index!` because it implements

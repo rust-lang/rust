@@ -236,12 +236,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) -> Option<(Span, &'static str, String)> {
         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
             if let hir::def::Def::Local(id) = path.def {
-                let parent = self.tcx.hir().get_parent_node(id);
+                let parent = self.tcx.hir().get_parent_node_by_hir_id(id);
                 if let Some(Node::Expr(hir::Expr {
                     hir_id,
                     node: hir::ExprKind::Closure(_, decl, ..),
                     ..
-                })) = self.tcx.hir().find(parent) {
+                })) = self.tcx.hir().find_by_hir_id(parent) {
                     let parent = self.tcx.hir().get_parent_node_by_hir_id(*hir_id);
                     if let (Some(Node::Expr(hir::Expr {
                         node: hir::ExprKind::MethodCall(path, span, expr),

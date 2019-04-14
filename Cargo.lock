@@ -1906,7 +1906,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "polonius-engine"
-version = "0.6.2"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "datafrog 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2341,7 +2341,7 @@ dependencies = [
  "measureme 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "polonius-engine 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "polonius-engine 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon-core 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_apfloat 0.0.0",
@@ -2841,7 +2841,7 @@ dependencies = [
  "graphviz 0.0.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "log_settings 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "polonius-engine 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "polonius-engine 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_apfloat 0.0.0",
  "rustc_data_structures 0.0.0",
@@ -4164,7 +4164,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum phf_generator 0.7.22 (registry+https://github.com/rust-lang/crates.io-index)" = "05a079dd052e7b674d21cb31cbb6c05efd56a2cd2827db7692e2f1a507ebd998"
 "checksum phf_shared 0.7.22 (registry+https://github.com/rust-lang/crates.io-index)" = "c2261d544c2bb6aa3b10022b0be371b9c7c64f762ef28c6f5d4f1ef6d97b5930"
 "checksum pkg-config 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "676e8eb2b1b4c9043511a9b7bea0915320d7e502b0a079fb03f9635a5252b18c"
-"checksum polonius-engine 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2490c396085801abf88df91758bad806b0890354f0875d624e62ecf0579a8145"
+"checksum polonius-engine 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8b24942fee141ea45628484a453762bb7e515099c3ec05fbeb76b7bf57b1aeed"
 "checksum precomputed-hash 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 "checksum pretty_assertions 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3a029430f0d744bc3d15dd474d591bed2402b645d024583082b9f63bb936dac6"
 "checksum pretty_env_logger 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "df8b3f4e0475def7d9c2e5de8e5a1306949849761e107b360d03e98eafaffd61"

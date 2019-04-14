@@ -915,13 +915,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         // process collected paths
         for (id, ident, immut) in collector.collected_idents {
             match self.save_ctxt.get_path_def(id) {
-                HirDef::Local(id) => {
+                HirDef::Local(hir_id) => {
                     let mut value = if immut == ast::Mutability::Immutable {
                         self.span.snippet(ident.span)
                     } else {
                         "<mutable>".to_owned()
                     };
-                    let hir_id = self.tcx.hir().node_to_hir_id(id);
+                    let id = self.tcx.hir().hir_to_node_id(hir_id);
                     let typ = self.save_ctxt
                         .tables
                         .node_type_opt(hir_id)

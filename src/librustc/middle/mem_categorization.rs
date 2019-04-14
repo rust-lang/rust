@@ -734,15 +734,17 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
 
             Def::Upvar(var_id, _, fn_node_id) => {
-                self.cat_upvar(hir_id, span, var_id, fn_node_id)
+                let var_nid = self.tcx.hir().hir_to_node_id(var_id);
+                self.cat_upvar(hir_id, span, var_nid, fn_node_id)
             }
 
             Def::Local(vid) => {
+                let vnid = self.tcx.hir().hir_to_node_id(vid);
                 Ok(cmt_ {
                     hir_id,
                     span,
-                    cat: Categorization::Local(self.tcx.hir().node_to_hir_id(vid)),
-                    mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vid),
+                    cat: Categorization::Local(vid),
+                    mutbl: MutabilityCategory::from_local(self.tcx, self.tables, vnid),
                     ty: expr_ty,
                     note: NoteNone
                 })

@@ -4,6 +4,7 @@
 #![feature(label_break_value)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(type_alias_enum_variants)]
 
 #![recursion_limit="256"]
 
@@ -20,7 +21,9 @@ use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
 use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
-use rustc::hir::def::*;
+use rustc::hir::def::{
+    self, PathResolution, CtorKind, CtorOf, NonMacroAttrKind, DefMap, ImportMap, ExportMap
+};
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
@@ -65,6 +68,8 @@ use rustc_data_structures::sync::Lrc;
 use error_reporting::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, ParentScope};
+
+type Def = def::Def<NodeId>;
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -1563,7 +1568,7 @@ pub struct Resolver<'a> {
     import_map: ImportMap,
     pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
-    pub export_map: ExportMap,
+    pub export_map: ExportMap<NodeId>,
     pub trait_map: TraitMap,
 
     /// A map from nodes to anonymous modules.
@@ -1773,7 +1778,7 @@ impl<'a> Resolver<'a> {
             }
         };
         let path = self.resolve_hir_path_cb(&path, is_value, |_, _, _| errored = true);
-        if errored || path.def == Def::Err {
+        if errored || path.def == def::Def::Err {
             Err(())
         } else {
             Ok(path)
@@ -1819,12 +1824,14 @@ impl<'a> Resolver<'a> {
 
         let segments: Vec<_> = segments.iter().map(|seg| {
             let mut hir_seg = hir::PathSegment::from_ident(seg.ident);
-            hir_seg.def = Some(self.def_map.get(&seg.id).map_or(Def::Err, |p| p.base_def()));
+            hir_seg.def = Some(self.def_map.get(&seg.id).map_or(def::Def::Err, |p| {
+                p.base_def().map_id(|_| panic!("unexpected node_id"))
+            }));
             hir_seg
         }).collect();
         hir::Path {
             span,
-            def,
+            def: def.map_id(|_| panic!("unexpected node_id")),
             segments: segments.into(),
         }
     }

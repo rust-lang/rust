@@ -21,7 +21,7 @@ use rustc::lint::builtin::{
     UNUSED_IMPORTS,
 };
 use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::def::*;
+use rustc::hir::def::{self, PathResolution, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
@@ -38,6 +38,8 @@ use log::*;
 
 use std::cell::{Cell, RefCell};
 use std::{mem, ptr};
+
+type Def = def::Def<NodeId>;
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
@@ -1311,15 +1313,15 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if !is_redundant.is_empty() &&
             is_redundant.present_items().all(|is_redundant| is_redundant)
         {
+            let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
+            redundant_spans.sort();
+            redundant_spans.dedup();
             self.session.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 directive.id,
                 directive.span,
                 &format!("the item `{}` is imported redundantly", ident),
-                BuiltinLintDiagnostics::RedundantImport(
-                    redundant_span.present_items().collect(),
-                    ident,
-                ),
+                BuiltinLintDiagnostics::RedundantImport(redundant_spans, ident),
             );
         }
     }
