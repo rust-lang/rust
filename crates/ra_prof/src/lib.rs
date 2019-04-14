@@ -6,7 +6,7 @@ use std::iter::repeat;
 use std::collections::{HashSet};
 use std::default::Default;
 use std::iter::FromIterator;
-use std::sync::RwLock;
+use std::sync::{RwLock, atomic::{AtomicBool, Ordering}};
 use lazy_static::lazy_static;
 
 /// Set profiling filter. It specifies descriptions allowed to profile.
@@ -24,6 +24,7 @@ use lazy_static::lazy_static;
 /// ```
 ///
 pub fn set_filter(f: Filter) {
+    PROFILING_ENABLED.store(f.depth > 0, Ordering::SeqCst);
     let set = HashSet::from_iter(f.allowed.iter().cloned());
     let mut old = FILTER.write().unwrap();
     let filter_data = FilterData { depth: f.depth, allowed: set, version: old.version + 1 };
@@ -62,6 +63,11 @@ pub fn set_filter(f: Filter) {
 /// ```
 ///
 pub fn profile(desc: &str) -> Profiler {
+    assert!(!desc.is_empty());
+    if !PROFILING_ENABLED.load(Ordering::Relaxed) {
+        return Profiler { desc: None };
+    }
+
     PROFILE_STACK.with(|stack| {
         let mut stack = stack.borrow_mut();
         if stack.starts.len() == 0 {
@@ -74,14 +80,14 @@ pub fn profile(desc: &str) -> Profiler {
                 Err(_) => (),
             };
         }
-        let desc_str = desc.to_string();
-        if desc_str.is_empty() {
-            Profiler { desc: None }
-        } else if stack.starts.len() < stack.filter_data.depth
-            && stack.filter_data.allowed.contains(&desc_str)
-        {
+
+        if stack.starts.len() > stack.filter_data.depth {
+            return Profiler { desc: None };
+        }
+
+        if stack.filter_data.allowed.is_empty() || stack.filter_data.allowed.contains(desc) {
             stack.starts.push(Instant::now());
-            Profiler { desc: Some(desc_str) }
+            Profiler { desc: Some(desc.to_string()) }
         } else {
             Profiler { desc: None }
         }
@@ -127,6 +133,8 @@ struct FilterData {
     version: usize,
     allowed: HashSet<String>,
 }
+
+static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
 
 lazy_static! {
     static ref FILTER: RwLock<FilterData> = RwLock::new(Default::default());
