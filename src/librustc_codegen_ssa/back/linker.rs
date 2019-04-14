@@ -381,15 +381,12 @@ impl<'a> Linker for GccLinker<'a> {
         // The object files have far more public symbols than we actually want to export,
         // so we hide them all here.
 
-        if crate_type == CrateType::ProcMacro {
-            return
+        if !self.sess.target.target.options.limit_rdylib_exports {
+            return;
         }
 
-        // Symbol visibility takes care of this for the WebAssembly.
-        // Additionally the only known linker, LLD, doesn't support the script
-        // arguments just yet
-        if self.sess.target.target.arch == "wasm32" {
-            return;
+        if crate_type == CrateType::ProcMacro {
+            return
         }
 
         let mut arg = OsString::new();

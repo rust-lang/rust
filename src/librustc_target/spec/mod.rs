@@ -748,6 +748,9 @@ pub struct TargetOptions {
     /// wasm32 where the whole program either has simd or not.
     pub simd_types_indirect: bool,
 
+    /// Pass a list of symbol which should be exported in the dylib to the linker.
+    pub limit_rdylib_exports: bool,
+
     /// If set, have the linker export exactly these symbols, instead of using
     /// the usual logic to figure this out from the crate itself.
     pub override_export_symbols: Option<Vec<String>>,
@@ -843,6 +846,7 @@ impl Default for TargetOptions {
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
             simd_types_indirect: true,
+            limit_rdylib_exports: true,
             override_export_symbols: None,
             merge_functions: MergeFunctions::Aliases,
             target_mcount: "mcount".to_string(),
@@ -1149,6 +1153,7 @@ impl Target {
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
         key!(simd_types_indirect, bool);
+        key!(limit_rdylib_exports, bool);
         key!(override_export_symbols, opt_list);
         key!(merge_functions, MergeFunctions)?;
         key!(target_mcount);
@@ -1364,6 +1369,7 @@ impl ToJson for Target {
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
         target_option_val!(simd_types_indirect);
+        target_option_val!(limit_rdylib_exports);
         target_option_val!(override_export_symbols);
         target_option_val!(merge_functions);
         target_option_val!(target_mcount);
