@@ -12,15 +12,27 @@ fn main() -> Result<()> {
         Ok(ref v) if v == "1" => logger.log_to_file().directory("log").start()?,
         _ => logger.start()?,
     };
-    let prof_depth = match std::env::var("RA_PROFILE_DEPTH") {
-        Ok(ref d) => d.parse()?,
-        _ => 0,
+    // Filtering syntax
+    // env RA_PROFILE=*             // dump everything
+    // env RA_PROFILE=foo|bar|baz   // enabled only selected entries
+    // env RA_PROFILE=*@3           // dump everything, up to depth 3
+    let filter = match std::env::var("RA_PROFILE") {
+        Ok(p) => {
+            let mut p = p.as_str();
+            let depth = if let Some(idx) = p.rfind("@") {
+                let depth: usize = p[idx + 1..].parse().expect("invalid profile depth");
+                p = &p[..idx];
+                depth
+            } else {
+                999
+            };
+            let allowed =
+                if p == "*" { Vec::new() } else { p.split(";").map(String::from).collect() };
+            ra_prof::Filter::new(depth, allowed)
+        }
+        Err(_) => ra_prof::Filter::disabled(),
     };
-    let profile_allowed = match std::env::var("RA_PROFILE") {
-        Ok(ref p) => p.split(";").map(String::from).collect(),
-        _ => Vec::new(),
-    };
-    ra_prof::set_filter(ra_prof::Filter::new(prof_depth, profile_allowed));
+    ra_prof::set_filter(filter);
     log::info!("lifecycle: server started");
     match ::std::panic::catch_unwind(main_inner) {
         Ok(res) => {

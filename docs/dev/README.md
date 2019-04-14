@@ -135,3 +135,13 @@ There's also two VS Code commands which might be of interest:
   There's an alias for this: `cargo jinstall-lsp`.
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
+
+# Profiling
+
+We have a built-in hierarchical profiler, you can enable it by using `RA_PROF` env-var:
+
+```
+RA_PROFILE=*             // dump everything
+RA_PROFILE=foo|bar|baz   // enabled only selected entries
+RA_PROFILE=*@3           // dump everything, up to depth 3
+```

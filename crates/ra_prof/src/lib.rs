@@ -104,6 +104,10 @@ pub struct Filter {
 }
 
 impl Filter {
+    pub fn disabled() -> Filter {
+        Filter::new(0, Vec::new())
+    }
+
     pub fn new(depth: usize, allowed: Vec<String>) -> Filter {
         Filter { depth, allowed }
     }
