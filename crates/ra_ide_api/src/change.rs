@@ -9,6 +9,7 @@ use ra_db::{
     salsa::{Database, SweepStrategy},
 };
 use ra_syntax::SourceFile;
+use ra_prof::profile;
 use relative_path::RelativePathBuf;
 use rayon::prelude::*;
 
@@ -153,6 +154,7 @@ const GC_COOLDOWN: time::Duration = time::Duration::from_millis(100);
 
 impl RootDatabase {
     pub(crate) fn apply_change(&mut self, change: AnalysisChange) {
+        let _p = profile("RootDatabase::apply_change");
         log::info!("apply_change {:?}", change);
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());

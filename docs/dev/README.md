@@ -105,7 +105,7 @@ figure out where logs go.
 Inside rust-analyzer, we use the standard `log` crate for logging, and
 `flexi_logger` for logging frotend. By default, log goes to stderr (the same as
 with `env_logger`), but the stderr itself is processed by VS Code. To mirror
-logs to a `./log` directory, set `RA_INTERNAL_MODE=1` environmental variable.
+logs to a `./log` directory, set `RA_LOG_DIR=1` environmental variable.
 
 To see stderr in the running VS Code instance, go to the "Output" tab of the
 panel and select `rust-analyzer`. This shows `eprintln!` as well. Note that
@@ -135,3 +135,15 @@ There's also two VS Code commands which might be of interest:
   There's an alias for this: `cargo jinstall-lsp`.
 
 * `Rust Analyzer: Syntax Tree` shows syntax tree of the current file/selection.
+
+# Profiling
+
+We have a built-in hierarchical profiler, you can enable it by using `RA_PROF` env-var:
+
+```
+RA_PROFILE=*             // dump everything
+RA_PROFILE=foo|bar|baz   // enabled only selected entries
+RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
+```
+
+In particular, I have `export RA_PROFILE='*>10' in my shell profile.

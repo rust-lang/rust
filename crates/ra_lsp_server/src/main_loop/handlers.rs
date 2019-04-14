@@ -12,6 +12,7 @@ use ra_ide_api::{
     AssistId,
 };
 use ra_syntax::{AstNode, SyntaxKind, TextUnit};
+use ra_prof::profile;
 use rustc_hash::FxHashMap;
 use serde::{Serialize, Deserialize};
 use serde_json::to_value;
@@ -328,6 +329,7 @@ pub fn handle_completion(
     world: ServerWorld,
     params: req::CompletionParams,
 ) -> Result<Option<req::CompletionResponse>> {
+    let _p = profile("handle_completion");
     let position = {
         let file_id = params.text_document.try_conv_with(&world)?;
         let line_index = world.analysis().file_line_index(file_id);
@@ -564,6 +566,7 @@ pub fn handle_code_action(
     world: ServerWorld,
     params: req::CodeActionParams,
 ) -> Result<Option<CodeActionResponse>> {
+    let _p = profile("handle_code_action");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let range = params.range.conv_with(&line_index);

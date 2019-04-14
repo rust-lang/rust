@@ -6,21 +6,16 @@ use ra_lsp_server::{Result, InitializationOptions};
 use ra_prof;
 
 fn main() -> Result<()> {
-    ::std::env::set_var("RUST_BACKTRACE", "short");
+    std::env::set_var("RUST_BACKTRACE", "short");
     let logger = Logger::with_env_or_str("error").duplicate_to_stderr(Duplicate::All);
-    match ::std::env::var("RA_INTERNAL_MODE") {
+    match std::env::var("RA_LOG_DIR") {
         Ok(ref v) if v == "1" => logger.log_to_file().directory("log").start()?,
         _ => logger.start()?,
     };
-    let prof_depth = match ::std::env::var("RA_PROFILE_DEPTH") {
-        Ok(ref d) => d.parse()?,
-        _ => 0,
-    };
-    let profile_allowed = match ::std::env::var("RA_PROFILE") {
-        Ok(ref p) => p.split(";").map(String::from).collect(),
-        _ => Vec::new(),
-    };
-    ra_prof::set_filter(ra_prof::Filter::new(prof_depth, profile_allowed));
+    ra_prof::set_filter(match std::env::var("RA_PROFILE") {
+        Ok(spec) => ra_prof::Filter::from_spec(&spec),
+        Err(_) => ra_prof::Filter::disabled(),
+    });
     log::info!("lifecycle: server started");
     match ::std::panic::catch_unwind(main_inner) {
         Ok(res) => {
@@ -36,7 +31,7 @@ fn main() -> Result<()> {
 
 fn main_inner() -> Result<()> {
     let (receiver, sender, threads) = stdio_transport();
-    let cwd = ::std::env::current_dir()?;
+    let cwd = std::env::current_dir()?;
     run_server(ra_lsp_server::server_capabilities(), receiver, sender, |params, r, s| {
         let root = params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
 

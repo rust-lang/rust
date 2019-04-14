@@ -6,7 +6,7 @@ use std::iter::repeat;
 use std::collections::{HashSet};
 use std::default::Default;
 use std::iter::FromIterator;
-use std::sync::RwLock;
+use std::sync::{RwLock, atomic::{AtomicBool, Ordering}};
 use lazy_static::lazy_static;
 
 /// Set profiling filter. It specifies descriptions allowed to profile.
@@ -15,18 +15,20 @@ use lazy_static::lazy_static;
 ///
 /// #Example
 /// ```
-/// use ra_prof::set_filter;
-/// use ra_prof::Filter;
-/// let max_depth = 2;
-/// let allowed = vec!["profile1".to_string(), "profile2".to_string()];
-/// let f = Filter::new( max_depth, allowed );
+/// use ra_prof::{set_filter, Filter};
+/// let f = Filter::from_spec("profile1|profile2@2");
 /// set_filter(f);
 /// ```
-///
 pub fn set_filter(f: Filter) {
+    PROFILING_ENABLED.store(f.depth > 0, Ordering::SeqCst);
     let set = HashSet::from_iter(f.allowed.iter().cloned());
     let mut old = FILTER.write().unwrap();
-    let filter_data = FilterData { depth: f.depth, allowed: set, version: old.version + 1 };
+    let filter_data = FilterData {
+        depth: f.depth,
+        allowed: set,
+        longer_than: f.longer_than,
+        version: old.version + 1,
+    };
     *old = filter_data;
 }
 
@@ -37,12 +39,9 @@ pub fn set_filter(f: Filter) {
 ///
 /// #Example
 /// ```
-/// use ra_prof::profile;
-/// use ra_prof::set_filter;
-/// use ra_prof::Filter;
+/// use ra_prof::{profile, set_filter, Filter};
 ///
-/// let allowed = vec!["profile1".to_string(), "profile2".to_string()];
-/// let f = Filter::new(2, allowed);
+/// let f = Filter::from_spec("profile1|profile2@2");
 /// set_filter(f);
 /// profiling_function1();
 ///
@@ -60,8 +59,12 @@ pub fn set_filter(f: Filter) {
 ///  0ms - profile
 ///      0ms - profile2
 /// ```
-///
 pub fn profile(desc: &str) -> Profiler {
+    assert!(!desc.is_empty());
+    if !PROFILING_ENABLED.load(Ordering::Relaxed) {
+        return Profiler { desc: None };
+    }
+
     PROFILE_STACK.with(|stack| {
         let mut stack = stack.borrow_mut();
         if stack.starts.len() == 0 {
@@ -74,14 +77,14 @@ pub fn profile(desc: &str) -> Profiler {
                 Err(_) => (),
             };
         }
-        let desc_str = desc.to_string();
-        if desc_str.is_empty() {
-            Profiler { desc: None }
-        } else if stack.starts.len() < stack.filter_data.depth
-            && stack.filter_data.allowed.contains(&desc_str)
-        {
+
+        if stack.starts.len() > stack.filter_data.depth {
+            return Profiler { desc: None };
+        }
+
+        if stack.filter_data.allowed.is_empty() || stack.filter_data.allowed.contains(desc) {
             stack.starts.push(Instant::now());
-            Profiler { desc: Some(desc_str) }
+            Profiler { desc: Some(desc.to_string()) }
         } else {
             Profiler { desc: None }
         }
@@ -95,11 +98,41 @@ pub struct Profiler {
 pub struct Filter {
     depth: usize,
     allowed: Vec<String>,
+    longer_than: Duration,
 }
 
 impl Filter {
-    pub fn new(depth: usize, allowed: Vec<String>) -> Filter {
-        Filter { depth, allowed }
+    // Filtering syntax
+    // env RA_PROFILE=*             // dump everything
+    // env RA_PROFILE=foo|bar|baz   // enabled only selected entries
+    // env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
+    pub fn from_spec(mut spec: &str) -> Filter {
+        let longer_than = if let Some(idx) = spec.rfind(">") {
+            let longer_than = spec[idx + 1..].parse().expect("invalid profile longer_than");
+            spec = &spec[..idx];
+            Duration::from_millis(longer_than)
+        } else {
+            Duration::new(0, 0)
+        };
+
+        let depth = if let Some(idx) = spec.rfind("@") {
+            let depth: usize = spec[idx + 1..].parse().expect("invalid profile depth");
+            spec = &spec[..idx];
+            depth
+        } else {
+            999
+        };
+        let allowed =
+            if spec == "*" { Vec::new() } else { spec.split("|").map(String::from).collect() };
+        Filter::new(depth, allowed, longer_than)
+    }
+
+    pub fn disabled() -> Filter {
+        Filter::new(0, Vec::new(), Duration::new(0, 0))
+    }
+
+    pub fn new(depth: usize, allowed: Vec<String>, longer_than: Duration) -> Filter {
+        Filter { depth, allowed, longer_than }
     }
 }
 
@@ -126,7 +159,10 @@ struct FilterData {
     depth: usize,
     version: usize,
     allowed: HashSet<String>,
+    longer_than: Duration,
 }
+
+static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
 
 lazy_static! {
     static ref FILTER: RwLock<FilterData> = RwLock::new(Default::default());
@@ -147,7 +183,9 @@ impl Drop for Profiler {
                     stack.messages.push(Message { level, duration, message });
                     if level == 0 {
                         let stdout = stderr();
-                        print(0, &stack.messages, &mut stdout.lock());
+                        if duration >= stack.filter_data.longer_than {
+                            print(0, &stack.messages, &mut stdout.lock());
+                        }
                         stack.messages.clear();
                     }
                 });
@@ -174,15 +212,12 @@ fn print(lvl: usize, msgs: &[Message], out: &mut impl Write) {
 
 #[cfg(test)]
 mod tests {
-
-    use super::profile;
-    use super::set_filter;
-    use super::Filter;
+    use super::*;
 
     #[test]
     fn test_basic_profile() {
         let s = vec!["profile1".to_string(), "profile2".to_string()];
-        let f = Filter::new(2, s);
+        let f = Filter::new(2, s, Duration::new(0, 0));
         set_filter(f);
         profiling_function1();
     }
