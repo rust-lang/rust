@@ -189,7 +189,7 @@ impl Module {
         }
     }
 
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
         let def_map = db.crate_def_map(self.krate);
         Resolver::default().push_module_scope(def_map, self.module_id)
     }
@@ -552,16 +552,21 @@ impl Function {
         db.trait_items_index(self.module(db)).get_parent_trait((*self).into())
     }
 
+    pub fn container(&self, db: &impl DefDatabase) -> Option<Container> {
+        if let Some(impl_block) = self.impl_block(db) {
+            Some(impl_block.into())
+        } else if let Some(trait_) = self.parent_trait(db) {
+            Some(trait_.into())
+        } else {
+            None
+        }
+    }
+
     // FIXME: move to a more general type for 'body-having' items
     /// Builds a resolver for code inside this item.
     pub(crate) fn resolver(&self, db: &impl HirDatabase) -> Resolver {
         // take the outer scope...
-        // FIXME abstract over containers (trait/impl)
-        let r = self
-            .impl_block(db)
-            .map(|ib| ib.resolver(db))
-            .or_else(|| self.parent_trait(db).map(|tr| tr.resolver(db)))
-            .unwrap_or_else(|| self.module(db).resolver(db));
+        let r = self.container(db).map_or_else(|| self.module(db).resolver(db), |c| c.resolver(db));
         // ...and add generic params, if present
         let p = self.generic_params(db);
         let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
@@ -707,7 +712,7 @@ impl Trait {
         db.trait_data(self)
     }
 
-    pub fn resolver(&self, db: &impl HirDatabase) -> Resolver {
+    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
         let r = self.module(db).resolver(db);
         // add generic params, if present
         let p = self.generic_params(db);
@@ -746,6 +751,21 @@ impl TypeAlias {
         ImplBlock::containing(module_impls, (*self).into())
     }
 
+    /// The containing trait, if this is a trait method definition.
+    pub fn parent_trait(&self, db: &impl DefDatabase) -> Option<Trait> {
+        db.trait_items_index(self.module(db)).get_parent_trait((*self).into())
+    }
+
+    pub fn container(&self, db: &impl DefDatabase) -> Option<Container> {
+        if let Some(impl_block) = self.impl_block(db) {
+            Some(impl_block.into())
+        } else if let Some(trait_) = self.parent_trait(db) {
+            Some(trait_.into())
+        } else {
+            None
+        }
+    }
+
     pub fn type_ref(self, db: &impl DefDatabase) -> Arc<TypeRef> {
         db.type_alias_ref(self)
     }
@@ -767,5 +787,20 @@ impl TypeAlias {
 impl Docs for TypeAlias {
     fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
         docs_from_ast(&*self.source(db).1)
+    }
+}
+
+pub enum Container {
+    Trait(Trait),
+    ImplBlock(ImplBlock),
+}
+impl_froms!(Container: Trait, ImplBlock);
+
+impl Container {
+    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
+        match self {
+            Container::Trait(trait_) => trait_.resolver(db),
+            Container::ImplBlock(impl_block) => impl_block.resolver(db),
+        }
     }
 }

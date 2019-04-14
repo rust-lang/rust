@@ -9,7 +9,7 @@ use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
 
 use crate::{
     db::DefDatabase,
-    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock
+    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -27,6 +27,7 @@ pub struct GenericParams {
     pub(crate) params: Vec<GenericParam>,
 }
 
+// FIXME: consts can have type parameters from their parents (i.e. associated consts of traits)
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDef {
     Function(Function),
@@ -45,12 +46,8 @@ impl GenericParams {
     ) -> Arc<GenericParams> {
         let mut generics = GenericParams::default();
         let parent = match def {
-            // FIXME abstract over containers (trait/impl)
-            GenericDef::Function(it) => it
-                .impl_block(db)
-                .map(GenericDef::from)
-                .or_else(|| it.parent_trait(db).map(GenericDef::from)),
-            GenericDef::TypeAlias(it) => it.impl_block(db).map(GenericDef::from),
+            GenericDef::Function(it) => it.container(db).map(GenericDef::from),
+            GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
             GenericDef::Struct(_) | GenericDef::Enum(_) | GenericDef::Trait(_) => None,
             GenericDef::ImplBlock(_) => None,
         };
@@ -110,5 +107,14 @@ impl GenericParams {
         let mut vec = Vec::with_capacity(self.count_params_including_parent());
         self.for_each_param(&mut |p| vec.push(p));
         vec
+    }
+}
+
+impl From<Container> for GenericDef {
+    fn from(c: Container) -> Self {
+        match c {
+            Container::Trait(trait_) => trait_.into(),
+            Container::ImplBlock(impl_block) => impl_block.into(),
+        }
     }
 }
