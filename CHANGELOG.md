@@ -4,7 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## Unreleased / In Rust Beta or Nightly
 
-[1fac380...master](https://github.com/rust-lang/rust-clippy/compare/1fac380...master)
+[eb9f9b1...master](https://github.com/rust-lang/rust-clippy/compare/eb9f9b1...master)
+
+## Rust 1.35 (beta)
+[1fac380..37f5c1e](https://github.com/rust-lang/rust-clippy/compare/1fac380...37f5c1e)
+
+ * New lint: [`drop_bounds`] to detect `T: Drop` bounds
+ * Rename `cyclomatic_complexity` to [`cognitive_complexity`], start work on making lint more practical for Rust code
+ * Move [`get_unwrap`] to the restriction category
+ * Improve suggestions for [`iter_cloned_collect`]
+ * Improve suggestions for [`cast_lossless`] to suggest suffixed literals
+ * Fix false positives in [`print_with_newline`] and [`write_with_newline`] pertaining to raw strings
+ * Fix false positive in [`needless_range_loop`] pertaining to structs without a `.iter()`
+ * Fix false positive in [`bool_comparison`] pertaining to non-bool types
+ * Fix false positive in [`redundant_closure`] pertaining to differences in borrows
+ * Fix false positive in [`option_map_unwrap_or`] on non-copy types
+ * Fix false positives in [`missing_const_for_fn`] pertaining to macros and trait method impls
+ * Fix false positive in [`needless_pass_by_value`] pertaining to procedural macros
+ * Fix false positive in [`needless_continue`] pertaining to loop labels
+ * Fix false positive for [`boxed_local`] pertaining to arguments moved into closures
+ * Fix false positive for [`use_self`] in nested functions
+ * Fix suggestion for [`expect_fun_call`] (https://github.com/rust-lang/rust-clippy/pull/3846)
+ * Fix suggestion for [`explicit_counter_loop`] to deal with parenthesizing range variables
+ * Fix suggestion for [`single_char_pattern`] to correctly escape single quotes
+ * Avoid triggering [`redundant_closure`] in macros
+ * ICE fixes: [#3805](https://github.com/rust-lang/rust-clippy/pull/3805), [#3772](https://github.com/rust-lang/rust-clippy/pull/3772), [#3741](https://github.com/rust-lang/rust-clippy/pull/3741)
 
 ## Rust 1.34 (2019-04-10)
 
