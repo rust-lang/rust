@@ -23,7 +23,7 @@ crate trait FixedSizeEncoding: Default {
     // FIXME(eddyb) make these generic functions, or at least defaults here.
     // (same problem as above, needs `[u8; Self::BYTE_LEN]`)
     // For now, a macro (`fixed_size_encoding_byte_len_and_defaults`) is used.
-    fn read_from_bytes_at(b: &[u8], i: usize) -> Self;
+    fn maybe_read_from_bytes_at(b: &[u8], i: usize) -> Option<Self>;
     fn write_to_bytes_at(self, b: &mut [u8], i: usize);
 }
 
@@ -31,7 +31,7 @@ crate trait FixedSizeEncoding: Default {
 macro_rules! fixed_size_encoding_byte_len_and_defaults {
     ($byte_len:expr) => {
         const BYTE_LEN: usize = $byte_len;
-        fn read_from_bytes_at(b: &[u8], i: usize) -> Self {
+        fn maybe_read_from_bytes_at(b: &[u8], i: usize) -> Option<Self> {
             const BYTE_LEN: usize = $byte_len;
             // HACK(eddyb) ideally this would be done with fully safe code,
             // but slicing `[u8]` with `i * N..` is optimized worse, due to the
@@ -42,7 +42,7 @@ macro_rules! fixed_size_encoding_byte_len_and_defaults {
                     b.len() / BYTE_LEN,
                 )
             };
-            FixedSizeEncoding::from_bytes(&b[i])
+            b.get(i).map(|b| FixedSizeEncoding::from_bytes(b))
         }
         fn write_to_bytes_at(self, b: &mut [u8], i: usize) {
             const BYTE_LEN: usize = $byte_len;
@@ -116,8 +116,7 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
 /// encoding or decoding all the values eagerly and in-order.
 // FIXME(eddyb) replace `Vec` with `[_]` here, such that `Box<Table<T>>` would be used
 // when building it, and `Lazy<Table<T>>` or `&Table<T>` when reading it.
-// Sadly, that doesn't work for `DefPerTable`, which is `(Table<T>, Table<T>)`,
-// and so would need two lengths in its metadata, which is not supported yet.
+// (not sure if that is possible given that the `Vec` is being resized now)
 crate struct Table<T> where Option<T>: FixedSizeEncoding {
     // FIXME(eddyb) store `[u8; <Option<T>>::BYTE_LEN]` instead of `u8` in `Vec`,
     // once that starts being allowed by the compiler (i.e. lazy normalization).
@@ -125,16 +124,21 @@ crate struct Table<T> where Option<T>: FixedSizeEncoding {
     _marker: PhantomData<T>,
 }
 
-impl<T> Table<T> where Option<T>: FixedSizeEncoding {
-    crate fn new(len: usize) -> Self {
+impl<T> Default for Table<T> where Option<T>: FixedSizeEncoding {
+    fn default() -> Self {
         Table {
-            // FIXME(eddyb) only allocate and encode as many entries as needed.
-            bytes: vec![0; len * <Option<T>>::BYTE_LEN],
+            bytes: vec![],
             _marker: PhantomData,
         }
     }
+}
 
+impl<T> Table<T> where Option<T>: FixedSizeEncoding {
     crate fn set(&mut self, i: usize, value: T) {
+        let needed = (i + 1) * <Option<T>>::BYTE_LEN;
+        if self.bytes.len() < needed {
+            self.bytes.resize(needed, 0);
+        }
         Some(value).write_to_bytes_at(&mut self.bytes, i);
     }
 
@@ -167,7 +171,7 @@ impl<T> Lazy<Table<T>> where Option<T>: FixedSizeEncoding {
         debug!("Table::lookup: index={:?} len={:?}", i, self.meta);
 
         let bytes = &metadata.raw_bytes()[self.position.get()..][..self.meta];
-        <Option<T>>::read_from_bytes_at(bytes, i)
+        <Option<T>>::maybe_read_from_bytes_at(bytes, i)?
     }
 }
 
@@ -176,11 +180,13 @@ impl<T> Lazy<Table<T>> where Option<T>: FixedSizeEncoding {
 // and by using `newtype_index!` to define `DefIndex`.
 crate struct PerDefTable<T>(Table<T>) where Option<T>: FixedSizeEncoding;
 
-impl<T> PerDefTable<T> where Option<T>: FixedSizeEncoding {
-    crate fn new(def_index_count: usize) -> Self {
-        PerDefTable(Table::new(def_index_count))
+impl<T> Default for PerDefTable<T> where Option<T>: FixedSizeEncoding {
+    fn default() -> Self {
+        PerDefTable(Table::default())
     }
+}
 
+impl<T> PerDefTable<T> where Option<T>: FixedSizeEncoding {
     crate fn set(&mut self, def_id: DefId, value: T) {
         assert!(def_id.is_local());
         self.0.set(def_id.index.index(), value);
