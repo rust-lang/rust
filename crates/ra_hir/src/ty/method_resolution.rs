@@ -129,57 +129,16 @@ impl Ty {
         name: &Name,
         resolver: &Resolver,
     ) -> Option<(Ty, Function)> {
-        // FIXME: trait methods should be used before autoderefs
-        // (and we need to do autoderefs for trait method calls as well)
-        let inherent_method = self.clone().iterate_methods(db, |ty, f| {
-            let sig = f.signature(db);
-            if sig.name() == name && sig.has_self_param() {
-                Some((ty.clone(), f))
-            } else {
-                None
-            }
-        });
-        inherent_method.or_else(|| self.lookup_trait_method(db, name, resolver))
-    }
-
-    fn lookup_trait_method(
-        self,
-        db: &impl HirDatabase,
-        name: &Name,
-        resolver: &Resolver,
-    ) -> Option<(Ty, Function)> {
-        let mut candidates = Vec::new();
-        for t in resolver.traits_in_scope() {
-            let data = t.trait_data(db);
-            for item in data.items() {
-                match item {
-                    &TraitItem::Function(m) => {
-                        let sig = m.signature(db);
-                        if sig.name() == name && sig.has_self_param() {
-                            candidates.push((t, m));
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        candidates.retain(|(t, _m)| {
-            let trait_ref =
-                TraitRef { trait_: *t, substs: fresh_substs_for_trait(db, *t, self.clone()) };
-            let (trait_ref, _) = super::traits::canonicalize(trait_ref);
-            db.implements(trait_ref).is_some()
-        });
-        // FIXME if there's multiple candidates here, that's an ambiguity error
-        let (_chosen_trait, chosen_method) = candidates.first()?;
-        // FIXME return correct receiver type
-        Some((self.clone(), *chosen_method))
+        self.iterate_method_candidates(db, resolver, Some(name), |ty, f| Some((ty.clone(), f)))
     }
 
     // This would be nicer if it just returned an iterator, but that runs into
     // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
-    pub fn iterate_methods<T>(
+    pub(crate) fn iterate_method_candidates<T>(
         self,
         db: &impl HirDatabase,
+        resolver: &Resolver,
+        name: Option<&Name>,
         mut callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
         // For method calls, rust first does any number of autoderef, and then one
@@ -192,22 +151,83 @@ impl Ty {
         // rustc does an autoderef and then autoref again).
 
         for derefed_ty in self.autoderef(db) {
-            let krate = match def_crate(db, &derefed_ty) {
-                Some(krate) => krate,
-                None => continue,
-            };
-            let impls = db.impls_in_crate(krate);
+            if let Some(result) = derefed_ty.iterate_inherent_methods(db, name, &mut callback) {
+                return Some(result);
+            }
+            if let Some(result) =
+                derefed_ty.iterate_trait_method_candidates(db, resolver, name, &mut callback)
+            {
+                return Some(result);
+            }
+        }
+        None
+    }
 
-            for impl_block in impls.lookup_impl_blocks(&derefed_ty) {
-                for item in impl_block.items(db) {
-                    match item {
-                        ImplItem::Method(f) => {
-                            if let Some(result) = callback(&derefed_ty, f) {
+    fn iterate_trait_method_candidates<T>(
+        &self,
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        name: Option<&Name>,
+        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+    ) -> Option<T> {
+        'traits: for t in resolver.traits_in_scope() {
+            let data = t.trait_data(db);
+            // we'll be lazy about checking whether the type implements the
+            // trait, but if we find out it doesn't, we'll skip the rest of the
+            // iteration
+            let mut known_implemented = false;
+            for item in data.items() {
+                match item {
+                    &TraitItem::Function(m) => {
+                        let sig = m.signature(db);
+                        if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
+                            if !known_implemented {
+                                let trait_ref = TraitRef {
+                                    trait_: t,
+                                    substs: fresh_substs_for_trait(db, t, self.clone()),
+                                };
+                                let (trait_ref, _) = super::traits::canonicalize(trait_ref);
+                                if db.implements(trait_ref).is_none() {
+                                    continue 'traits;
+                                }
+                            }
+                            known_implemented = true;
+                            if let Some(result) = callback(self, m) {
                                 return Some(result);
                             }
                         }
-                        _ => {}
                     }
+                    _ => {}
+                }
+            }
+        }
+        None
+    }
+
+    fn iterate_inherent_methods<T>(
+        &self,
+        db: &impl HirDatabase,
+        name: Option<&Name>,
+        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+    ) -> Option<T> {
+        let krate = match def_crate(db, self) {
+            Some(krate) => krate,
+            None => return None,
+        };
+        let impls = db.impls_in_crate(krate);
+
+        for impl_block in impls.lookup_impl_blocks(self) {
+            for item in impl_block.items(db) {
+                match item {
+                    ImplItem::Method(f) => {
+                        let sig = f.signature(db);
+                        if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
+                            if let Some(result) = callback(self, f) {
+                                return Some(result);
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

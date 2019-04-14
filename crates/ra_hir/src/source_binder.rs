@@ -18,7 +18,7 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
-    AsName, Module, HirFileId, Crate, Trait, Resolver,
+    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,
     expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
     ids::LocationCtx,
     expr, AstId
@@ -341,6 +341,16 @@ impl SourceAnalyzer {
                 range: name_ref.syntax().range(),
             })
             .collect()
+    }
+
+    pub fn iterate_method_candidates<T>(
+        &self,
+        db: &impl HirDatabase,
+        ty: Ty,
+        name: Option<&Name>,
+        callback: impl FnMut(&Ty, Function) -> Option<T>,
+    ) -> Option<T> {
+        ty.iterate_method_candidates(db, &self.resolver, name, callback)
     }
 
     #[cfg(test)]
