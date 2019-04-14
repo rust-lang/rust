@@ -1684,7 +1684,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        // Add any '--extenr-private' entries without a matching
+        // Add any '--extern-private' entries without a matching
         // 'aux-build'
         for private_lib in extern_priv {
             add_extern_priv(&private_lib, true);
