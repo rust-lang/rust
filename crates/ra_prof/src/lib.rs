@@ -15,14 +15,10 @@ use lazy_static::lazy_static;
 ///
 /// #Example
 /// ```
-/// use ra_prof::set_filter;
-/// use ra_prof::Filter;
-/// let max_depth = 2;
-/// let allowed = vec!["profile1".to_string(), "profile2".to_string()];
-/// let f = Filter::new( max_depth, allowed );
+/// use ra_prof::{set_filter, Filter};
+/// let f = Filter::from_spec("profile1|profile2@2");
 /// set_filter(f);
 /// ```
-///
 pub fn set_filter(f: Filter) {
     PROFILING_ENABLED.store(f.depth > 0, Ordering::SeqCst);
     let set = HashSet::from_iter(f.allowed.iter().cloned());
@@ -43,12 +39,9 @@ pub fn set_filter(f: Filter) {
 ///
 /// #Example
 /// ```
-/// use ra_prof::profile;
-/// use ra_prof::set_filter;
-/// use ra_prof::Filter;
+/// use ra_prof::{profile, set_filter, Filter};
 ///
-/// let allowed = vec!["profile1".to_string(), "profile2".to_string()];
-/// let f = Filter::new(2, allowed);
+/// let f = Filter::from_spec("profile1|profile2@2");
 /// set_filter(f);
 /// profiling_function1();
 ///
@@ -66,7 +59,6 @@ pub fn set_filter(f: Filter) {
 ///  0ms - profile
 ///      0ms - profile2
 /// ```
-///
 pub fn profile(desc: &str) -> Profiler {
     assert!(!desc.is_empty());
     if !PROFILING_ENABLED.load(Ordering::Relaxed) {
@@ -220,15 +212,12 @@ fn print(lvl: usize, msgs: &[Message], out: &mut impl Write) {
 
 #[cfg(test)]
 mod tests {
-
-    use super::profile;
-    use super::set_filter;
-    use super::Filter;
+    use super::*;
 
     #[test]
     fn test_basic_profile() {
         let s = vec!["profile1".to_string(), "profile2".to_string()];
-        let f = Filter::new(2, s);
+        let f = Filter::new(2, s, Duration::new(0, 0));
         set_filter(f);
         profiling_function1();
     }
