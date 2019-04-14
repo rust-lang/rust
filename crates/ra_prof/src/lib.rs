@@ -27,8 +27,12 @@ pub fn set_filter(f: Filter) {
     PROFILING_ENABLED.store(f.depth > 0, Ordering::SeqCst);
     let set = HashSet::from_iter(f.allowed.iter().cloned());
     let mut old = FILTER.write().unwrap();
-    let filter_data =
-        FilterData { depth: f.depth, allowed: set, cutoff: f.cutoff, version: old.version + 1 };
+    let filter_data = FilterData {
+        depth: f.depth,
+        allowed: set,
+        longer_than: f.longer_than,
+        version: old.version + 1,
+    };
     *old = filter_data;
 }
 
@@ -102,7 +106,7 @@ pub struct Profiler {
 pub struct Filter {
     depth: usize,
     allowed: Vec<String>,
-    cutoff: Duration,
+    longer_than: Duration,
 }
 
 impl Filter {
@@ -111,10 +115,10 @@ impl Filter {
     // env RA_PROFILE=foo|bar|baz   // enabled only selected entries
     // env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
     pub fn from_spec(mut spec: &str) -> Filter {
-        let cutoff = if let Some(idx) = spec.rfind(">") {
-            let cutoff = spec[idx + 1..].parse().expect("invalid profile cutoff");
+        let longer_than = if let Some(idx) = spec.rfind(">") {
+            let longer_than = spec[idx + 1..].parse().expect("invalid profile longer_than");
             spec = &spec[..idx];
-            Duration::from_millis(cutoff)
+            Duration::from_millis(longer_than)
         } else {
             Duration::new(0, 0)
         };
@@ -128,15 +132,15 @@ impl Filter {
         };
         let allowed =
             if spec == "*" { Vec::new() } else { spec.split("|").map(String::from).collect() };
-        Filter::new(depth, allowed, cutoff)
+        Filter::new(depth, allowed, longer_than)
     }
 
     pub fn disabled() -> Filter {
         Filter::new(0, Vec::new(), Duration::new(0, 0))
     }
 
-    pub fn new(depth: usize, allowed: Vec<String>, cutoff: Duration) -> Filter {
-        Filter { depth, allowed, cutoff }
+    pub fn new(depth: usize, allowed: Vec<String>, longer_than: Duration) -> Filter {
+        Filter { depth, allowed, longer_than }
     }
 }
 
@@ -163,7 +167,7 @@ struct FilterData {
     depth: usize,
     version: usize,
     allowed: HashSet<String>,
-    cutoff: Duration,
+    longer_than: Duration,
 }
 
 static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
@@ -187,7 +191,7 @@ impl Drop for Profiler {
                     stack.messages.push(Message { level, duration, message });
                     if level == 0 {
                         let stdout = stderr();
-                        if duration >= stack.filter_data.cutoff {
+                        if duration >= stack.filter_data.longer_than {
                             print(0, &stack.messages, &mut stdout.lock());
                         }
                         stack.messages.clear();
