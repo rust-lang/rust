@@ -1,4 +1,3 @@
-#![feature(alloc)]
 #![feature(associated_type_defaults)]
 #![warn(clippy::linkedlist)]
 #![allow(dead_code, clippy::needless_pass_by_value)]
