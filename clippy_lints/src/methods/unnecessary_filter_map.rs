@@ -68,7 +68,7 @@ fn check_expression<'a, 'tcx: 'a>(
                             if let hir::ExprKind::Path(path) = &args[0].node;
                             if let Def::Local(ref local) = cx.tables.qpath_def(path, args[0].hir_id);
                             then {
-                                if arg_id == cx.tcx.hir().node_to_hir_id(*local) {
+                                if arg_id == *local {
                                     return (false, false)
                                 }
                             }

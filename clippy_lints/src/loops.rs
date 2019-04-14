@@ -790,7 +790,7 @@ fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> bo
         if path.segments.len() == 1;
         if let Def::Local(local_id) = cx.tables.qpath_def(qpath, expr.hir_id);
         // our variable!
-        if cx.tcx.hir().node_to_hir_id(local_id) == var;
+        if local_id == var;
         then {
             return true;
         }
@@ -1657,13 +1657,13 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<HirId>
         then {
             let def = cx.tables.qpath_def(qpath, bound.hir_id);
             if let Def::Local(node_id) = def {
-                let node_str = cx.tcx.hir().get(node_id);
+                let node_str = cx.tcx.hir().get_by_hir_id(node_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
                     if let PatKind::Binding(bind_ann, ..) = pat.node;
                     if let BindingAnnotation::Mutable = bind_ann;
                     then {
-                        return Some(cx.tcx.hir().node_to_hir_id(node_id));
+                        return Some(node_id);
                     }
                 }
             }
@@ -1792,9 +1792,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                     }
                     let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
                     match def {
-                        Def::Local(node_id) | Def::Upvar(node_id, ..) => {
-                            let hir_id = self.cx.tcx.hir().node_to_hir_id(node_id);
-
+                        Def::Local(hir_id) | Def::Upvar(hir_id, ..) => {
                             let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
                             let parent_def_id = self.cx.tcx.hir().local_def_id_from_hir_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
@@ -1856,7 +1854,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             then {
                 match self.cx.tables.qpath_def(qpath, expr.hir_id) {
                     Def::Upvar(local_id, ..) => {
-                        if self.cx.tcx.hir().node_to_hir_id(local_id) == self.var {
+                        if local_id == self.var {
                             // we are not indexing anything, record that
                             self.nonindex = true;
                         }
@@ -1864,7 +1862,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                     Def::Local(local_id) =>
                     {
 
-                        if self.cx.tcx.hir().node_to_hir_id(local_id) == self.var {
+                        if local_id == self.var {
                             self.nonindex = true;
                         } else {
                             // not the correct variable, but still a variable
@@ -2209,7 +2207,7 @@ fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<HirId> {
     if let ExprKind::Path(ref qpath) = expr.node {
         let path_res = cx.tables.qpath_def(qpath, expr.hir_id);
         if let Def::Local(node_id) = path_res {
-            return Some(cx.tcx.hir().node_to_hir_id(node_id));
+            return Some(node_id);
         }
     }
     None
@@ -2404,7 +2402,7 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
             then {
                 match def {
                     Def::Local(node_id) | Def::Upvar(node_id, ..) => {
-                        self.ids.insert(self.cx.tcx.hir().node_to_hir_id(node_id));
+                        self.ids.insert(node_id);
                     },
                     Def::Static(def_id, mutable) => {
                         self.def_ids.insert(def_id, mutable);

@@ -5,7 +5,6 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
 use rustc::{declare_tool_lint, lint_array};
-use syntax::ast;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for a read and a write to the same variable where
@@ -287,7 +286,7 @@ fn check_stmt<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, stmt: &'tcx Stmt) -> St
 struct ReadVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     /// The ID of the variable we're looking for.
-    var: ast::NodeId,
+    var: HirId,
     /// The expressions where the write to the variable occurred (for reporting
     /// in the lint).
     write_expr: &'tcx Expr,

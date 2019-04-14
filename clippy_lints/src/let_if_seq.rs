@@ -150,7 +150,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
         if_chain! {
             if let hir::ExprKind::Path(ref qpath) = expr.node;
             if let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id);
-            if self.id == self.cx.tcx.hir().node_to_hir_id(local_id);
+            if self.id == local_id;
             then {
                 self.used = true;
                 return;
@@ -175,7 +175,7 @@ fn check_assign<'a, 'tcx>(
         if let hir::ExprKind::Assign(ref var, ref value) = expr.node;
         if let hir::ExprKind::Path(ref qpath) = var.node;
         if let Def::Local(local_id) = cx.tables.qpath_def(qpath, var.hir_id);
-        if decl == cx.tcx.hir().node_to_hir_id(local_id);
+        if decl == local_id;
         then {
             let mut v = UsedVisitor {
                 cx,
