@@ -78,6 +78,7 @@ use core::hash::{Hash, Hasher};
 use core::iter::{Iterator, FromIterator, FusedIterator};
 use core::marker::{Unpin, Unsize};
 use core::mem;
+use core::needle::Needle;
 use core::pin::Pin;
 use core::ops::{
     CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
@@ -917,5 +918,37 @@ impl<F: ?Sized + Future + Unpin> Future for Box<F> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         F::poll(Pin::new(&mut *self), cx)
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+impl<'p, 'h, T: PartialEq + 'p + 'h> Needle<&'h [T]> for &'p Box<[T]> {
+    type Searcher = <&'p [T] as Needle<&'h [T]>>::Searcher;
+    type Consumer = <&'p [T] as Needle<&'h [T]>>::Consumer;
+
+    #[inline]
+    fn into_searcher(self) -> Self::Searcher {
+        <&'p [T] as Needle<&'h [T]>>::into_searcher(&**self)
+    }
+
+    #[inline]
+    fn into_consumer(self) -> Self::Consumer {
+        <&'p [T] as Needle<&'h [T]>>::into_consumer(&**self)
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+impl<'p, 'h, T: PartialEq + 'p + 'h> Needle<&'h mut [T]> for &'p Box<[T]> {
+    type Searcher = <&'p [T] as Needle<&'h mut [T]>>::Searcher;
+    type Consumer = <&'p [T] as Needle<&'h mut [T]>>::Consumer;
+
+    #[inline]
+    fn into_searcher(self) -> Self::Searcher {
+        <&'p [T] as Needle<&'h mut [T]>>::into_searcher(&**self)
+    }
+
+    #[inline]
+    fn into_consumer(self) -> Self::Consumer {
+        <&'p [T] as Needle<&'h mut [T]>>::into_consumer(&**self)
     }
 }

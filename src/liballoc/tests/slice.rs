@@ -1709,3 +1709,10 @@ fn test_replace() {
         b" **E**mpowering **E**veryone to build reliable and **E**fficient software.".to_vec()
     );
 }
+
+#[test]
+fn test_boxed_slice_ref_is_a_needle() {
+    let boundary = vec![b'x'; 12].into_boxed_slice();
+    let bytes: &[u8] = b"--xxxxxxxxxxxxyyyy";
+    assert!(bytes[2..].starts_with(&boundary));
+}

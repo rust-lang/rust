@@ -699,8 +699,8 @@ where
 }
 
 macro_rules! impl_needle_for_slice_searcher {
-    (@<$haystack:ty> for $ty:ty) => {
-        impl<'p, 'h, T> Needle<$haystack> for $ty
+    ([$($gen:tt)+] <$haystack:ty> for $ty:ty) => {
+        impl<$($gen)+, 'h, T> Needle<$haystack> for $ty
         where
             T: PartialEq + 'p,
         {
@@ -720,11 +720,13 @@ macro_rules! impl_needle_for_slice_searcher {
     };
 
     ($($index:expr),*) => {
-        impl_needle_for_slice_searcher!(@<&'h [T]> for &'p [T]);
-        impl_needle_for_slice_searcher!(@<&'h mut [T]> for &'p [T]);
+        impl_needle_for_slice_searcher!(['p] <&'h [T]> for &'p [T]);
+        impl_needle_for_slice_searcher!(['p] <&'h mut [T]> for &'p [T]);
+        impl_needle_for_slice_searcher!(['q, 'p] <&'h [T]> for &'q &'p [T]);
+        impl_needle_for_slice_searcher!(['q, 'p] <&'h mut [T]> for &'q &'p [T]);
         $(
-            impl_needle_for_slice_searcher!(@<&'h [T]> for &'p [T; $index]);
-            impl_needle_for_slice_searcher!(@<&'h mut [T]> for &'p [T; $index]);
+            impl_needle_for_slice_searcher!(['p] <&'h [T]> for &'p [T; $index]);
+            impl_needle_for_slice_searcher!(['p] <&'h mut [T]> for &'p [T; $index]);
         )*
     }
 }

@@ -1475,3 +1475,10 @@ fn test_is_sorted() {
     assert!(!["c", "bb", "aaa"].is_sorted());
     assert!(["c", "bb", "aaa"].is_sorted_by_key(|s| s.len()));
 }
+
+#[test]
+fn test_double_array_ref_is_a_needle() {
+    static MAGIC_NUMBERS: [&[u8]; 2] = [b"%PDF", b"\x89PNG"];
+    let buffer: &[u8] = b"%PDF123";
+    assert!(MAGIC_NUMBERS.iter().any(|magic| buffer.starts_with(magic)));
+}
