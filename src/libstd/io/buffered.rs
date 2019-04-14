@@ -601,7 +601,7 @@ impl<W: Write> Write for BufWriter<W> {
         }
         if buf.len() >= self.buf.capacity() {
             self.panicked = true;
-            let r = self.inner.as_mut().unwrap().write(buf);
+            let r = self.get_mut().write(buf);
             self.panicked = false;
             r
         } else {
@@ -616,7 +616,7 @@ impl<W: Write> Write for BufWriter<W> {
         }
         if total_len >= self.buf.capacity() {
             self.panicked = true;
-            let r = self.inner.as_mut().unwrap().write_vectored(bufs);
+            let r = self.get_mut().write_vectored(bufs);
             self.panicked = false;
             r
         } else {
