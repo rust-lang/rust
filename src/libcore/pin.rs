@@ -158,12 +158,12 @@
 //! is called *even if your type was previously pinned*! It is as if the
 //! compiler automatically called `get_unchecked_mut`.
 //!
-//! This can never cause a problem in safe code because implementing a type that relies on pinning
-//! requires unsafe code, but be aware that deciding to make use of pinning
-//! in your type (for example by implementing some operation on `Pin<&[mut] Self>`)
-//! has consequences for your `Drop` implementation as well: if an element
-//! of your type could have been pinned, you must treat Drop as implicitly taking
-//! `Pin<&mut Self>`.
+//! This can never cause a problem in safe code because implementing a type that
+//! relies on pinning requires unsafe code, but be aware that deciding to make
+//! use of pinning in your type (for example by implementing some operation on
+//! `Pin<&Self>` or `Pin<&mut Self>`) has consequences for your `Drop`
+//! implementation as well: if an element of your type could have been pinned,
+//! you must treat Drop as implicitly taking `Pin<&mut Self>`.
 //!
 //! In particular, if your type is `#[repr(packed)]`, the compiler will automatically
 //! move fields around to be able to drop them. As a consequence, you cannot use
@@ -171,15 +171,19 @@
 //!
 //! # Projections and Structural Pinning
 //!
-//! One interesting question arises when considering the interaction of pinning and
-//! the fields of a struct. When can a struct have a "pinning projection", i.e.,
-//! an operation with type `fn(Pin<&[mut] Struct>) -> Pin<&[mut] Field>`?
-//! In a similar vein, when can a generic wrapper type (such as `Vec<T>`, `Box<T>`, or `RefCell<T>`)
-//! have an operation with type `fn(Pin<&[mut] Wrapper<T>>) -> Pin<&[mut] T>`?
+//! One interesting question arises when considering the interaction of pinning
+//! and the fields of a struct. When can a struct have a "pinning projection",
+//! i.e., an operation with type `fn(Pin<&Struct>) -> Pin<&Field>`?  In a
+//! similar vein, when can a generic wrapper type (such as `Vec<T>`, `Box<T>`,
+//! or `RefCell<T>`) have an operation with type `fn(Pin<&Wrapper<T>>) ->
+//! Pin<&T>`?
+//!
+//! Note: For the entirety of this discussion, the same applies for mutable references as it
+//! does for shared references.
 //!
 //! Having a pinning projection for some field means that pinning is "structural":
 //! when the wrapper is pinned, the field must be considered pinned, too.
-//! After all, the pinning projection lets us get a `Pin<&[mut] Field>`.
+//! After all, the pinning projection lets us get a `Pin<&Field>`.
 //!
 //! However, structural pinning comes with a few extra requirements, so not all
 //! wrappers can be structural and hence not all wrappers can offer pinning projections:
