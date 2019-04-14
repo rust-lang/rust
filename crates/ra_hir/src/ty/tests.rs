@@ -1427,6 +1427,65 @@ fn test() {
 }
 
 #[test]
+fn infer_associated_method_generics_without_args() {
+    assert_snapshot_matches!(
+        infer(r#"
+struct Gen<T> {
+    val: T
+}
+
+impl<T> Gen<T> {
+    pub fn make() -> Gen<T> {
+        loop { }
+    }
+}
+
+fn test() {
+    let a = Gen::<u32>::make();
+}
+"#),
+        @r###"
+[76; 100) '{     ...     }': !
+[86; 94) 'loop { }': !
+[91; 94) '{ }': ()
+[114; 149) '{     ...e(); }': ()
+[124; 125) 'a': Gen<u32>
+[128; 144) 'Gen::<...::make': fn make<u32>() -> Gen<T>
+[128; 146) 'Gen::<...make()': Gen<u32>"###
+    );
+}
+
+#[test]
+fn infer_associated_method_generics_2_type_params_without_args() {
+    assert_snapshot_matches!(
+        infer(r#"
+struct Gen<T, U> {
+    val: T,
+    val2: U,
+}
+
+impl<T> Gen<u32, T> {
+    pub fn make() -> Gen<u32,T> {
+        loop { }
+    }
+}
+
+fn test() {
+    let a = Gen::<u32, u64>::make();
+}
+"#),
+        @r###"
+[102; 126) '{     ...     }': !
+[112; 120) 'loop { }': !
+[117; 120) '{ }': ()
+[140; 180) '{     ...e(); }': ()
+[150; 151) 'a': Gen<u32, u64>
+[154; 175) 'Gen::<...::make': fn make<u64>() -> Gen<u32, T>
+[154; 177) 'Gen::<...make()': Gen<u32, u64>"###
+    );
+}
+
+#[test]
 fn infer_type_alias() {
     assert_snapshot_matches!(
         infer(r#"
@@ -1814,8 +1873,8 @@ pub fn main_loop() {
     @r###"
 [144; 146) '{}': ()
 [169; 198) '{     ...t(); }': ()
-[175; 193) 'FxHash...efault': fn default<{unknown}, {unknown}>() -> HashSet<T, H>
-[175; 195) 'FxHash...ault()': HashSet<{unknown}, {unknown}>"###
+[175; 193) 'FxHash...efault': fn default<{unknown}, FxHasher>() -> HashSet<T, H>
+[175; 195) 'FxHash...ault()': HashSet<{unknown}, FxHasher>"###
     );
 }
 

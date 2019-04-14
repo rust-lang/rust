@@ -459,6 +459,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             if remaining_index.is_none() { def.take_values()? } else { def.take_types()? };
 
         let remaining_index = remaining_index.unwrap_or(path.segments.len());
+        let mut actual_def_ty: Option<Ty> = None;
 
         // resolve intermediate segments
         for segment in &path.segments[remaining_index..] {
@@ -468,9 +469,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     let typable: Option<TypableDef> = def.into();
                     let typable = typable?;
 
-                    let substs =
+                    let mut substs =
                         Ty::substs_from_path_segment(self.db, &self.resolver, segment, typable);
-                    self.db.type_for_def(typable, Namespace::Types).subst(&substs)
+
+                    if remaining_index > 0 {
+                        substs = Ty::substs_from_path_segment(
+                            self.db,
+                            &self.resolver,
+                            &path.segments[remaining_index - 1],
+                            typable,
+                        );
+                    }
+
+                    let ty = self.db.type_for_def(typable, Namespace::Types);
+                    ty.subst(&substs)
                 }
                 Resolution::LocalBinding(_) => {
                     // can't have a local binding in an associated item path
@@ -489,6 +501,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // Attempt to find an impl_item for the type which has a name matching
             // the current segment
             log::debug!("looking for path segment: {:?}", segment);
+            actual_def_ty = Some(ty.clone());
+
             let item: crate::ModuleDef = ty.iterate_impl_items(self.db, |item| {
                 let matching_def: Option<crate::ModuleDef> = match item {
                     crate::ImplItem::Method(func) => {
@@ -528,9 +542,40 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
+
+                let ty = self.db.type_for_def(typable, Namespace::Values);
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = self.db.type_for_def(typable, Namespace::Values).subst(&substs);
+                let ty = ty.subst(&substs);
                 let ty = self.insert_type_vars(ty);
+
+                // plug the old parent_ty in
+                if let Some(actual_def_ty) = actual_def_ty {
+                    if let crate::ModuleDef::Function(func) = def {
+                        let gen = func.generic_params(self.db);
+                        if let Some(target_ty) = func.impl_block(self.db) {
+                            let target_ty = target_ty.target_ty(self.db);
+                            let old_params = target_ty.substs().unwrap().clone();
+
+                            let target_ty = target_ty.subst(&substs);
+                            let target_ty = self.insert_type_vars(target_ty);
+
+                            if gen.count_parent_params() > 0 {
+                                self.unify(&target_ty, &actual_def_ty);
+
+                                if let Ty::Apply(ty) = &ty {
+                                    for (param, pty) in
+                                        old_params.iter().zip(target_ty.substs().unwrap().iter())
+                                    {
+                                        if let Ty::Param { idx, .. } = param {
+                                            self.unify(pty, &ty.parameters.0[*idx as usize]);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Some(ty)
             }
             Resolution::LocalBinding(pat) => {
