@@ -1,5 +1,5 @@
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -24,7 +24,7 @@ use crate::{
 #[derive(Debug)]
 pub struct ServerWorldState {
     pub roots_to_scan: usize,
-    pub root: PathBuf,
+    pub roots: Vec<PathBuf>,
     pub workspaces: Arc<Vec<ProjectWorkspace>>,
     pub analysis_host: AnalysisHost,
     pub vfs: Arc<RwLock<Vfs>>,
@@ -37,19 +37,20 @@ pub struct ServerWorld {
 }
 
 impl ServerWorldState {
-    pub fn new(root: PathBuf, workspaces: Vec<ProjectWorkspace>) -> ServerWorldState {
+    pub fn new(folder_roots: Vec<PathBuf>, workspaces: Vec<ProjectWorkspace>) -> ServerWorldState {
         let mut change = AnalysisChange::new();
 
         let mut roots = Vec::new();
-        roots.push(IncludeRustFiles::member(root.clone()));
+        roots.extend(folder_roots.iter().cloned().map(IncludeRustFiles::member));
         for ws in workspaces.iter() {
             roots.extend(IncludeRustFiles::from_roots(ws.to_roots()));
         }
 
-        let (mut vfs, roots) = Vfs::new(roots);
-        let roots_to_scan = roots.len();
-        for r in roots {
-            let is_local = vfs.root2path(r).starts_with(&root);
+        let (mut vfs, vfs_roots) = Vfs::new(roots);
+        let roots_to_scan = vfs_roots.len();
+        for r in vfs_roots {
+            let vfs_root_path = vfs.root2path(r);
+            let is_local = folder_roots.iter().any(|it| vfs_root_path.starts_with(it));
             change.add_root(SourceRootId(r.0.into()), is_local);
         }
 
@@ -68,7 +69,7 @@ impl ServerWorldState {
         analysis_host.apply_change(change);
         ServerWorldState {
             roots_to_scan,
-            root,
+            roots: folder_roots,
             workspaces: Arc::new(workspaces),
             analysis_host,
             vfs: Arc::new(RwLock::new(vfs)),
@@ -90,7 +91,8 @@ impl ServerWorldState {
             match c {
                 VfsChange::AddRoot { root, files } => {
                     let root_path = self.vfs.read().root2path(root);
-                    if root_path.starts_with(&self.root) {
+                    let is_local = self.roots.iter().any(|r| root_path.starts_with(r));
+                    if is_local {
                         self.roots_to_scan -= 1;
                         for (file, path, text) in files {
                             change.add_file(
@@ -192,5 +194,10 @@ impl ServerWorld {
         res.push_str("\nanalysis:\n");
         res.push_str(&self.analysis.status());
         res
+    }
+
+    pub fn workspace_root_for(&self, file_id: FileId) -> Option<&Path> {
+        let path = self.vfs.read().file2path(VfsFile(file_id.0.into()));
+        self.workspaces.iter().find_map(|ws| ws.workspace_root_for(&path))
     }
 }

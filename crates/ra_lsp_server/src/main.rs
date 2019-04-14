@@ -40,12 +40,23 @@ fn main_inner() -> Result<()> {
     run_server(ra_lsp_server::server_capabilities(), receiver, sender, |params, r, s| {
         let root = params.root_uri.and_then(|it| it.to_file_path().ok()).unwrap_or(cwd);
 
+        let workspace_roots = params
+            .workspace_folders
+            .map(|workspaces| {
+                workspaces
+                    .into_iter()
+                    .filter_map(|it| it.uri.to_file_path().ok())
+                    .collect::<Vec<_>>()
+            })
+            .filter(|workspaces| !workspaces.is_empty())
+            .unwrap_or_else(|| vec![root]);
+
         let opts = params
             .initialization_options
             .and_then(|v| InitializationOptions::deserialize(v).ok())
             .unwrap_or(InitializationOptions::default());
 
-        ra_lsp_server::main_loop(root, opts, r, s)
+        ra_lsp_server::main_loop(workspace_roots, opts, r, s)
     })?;
     log::info!("shutting down IO...");
     threads.join()?;

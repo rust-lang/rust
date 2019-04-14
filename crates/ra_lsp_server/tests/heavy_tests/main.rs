@@ -14,7 +14,7 @@ use ra_lsp_server::req::{
 use serde_json::json;
 use tempfile::TempDir;
 
-use crate::support::{project, project_with_tmpdir};
+use crate::support::{project, Project};
 
 const LOG: &'static str = "";
 
@@ -62,6 +62,7 @@ fn foo() {
             "args": [ "test", "--", "foo", "--nocapture" ],
             "bin": "cargo",
             "env": { "RUST_BACKTRACE": "short" },
+            "cwd": null,
             "label": "test foo",
             "range": {
               "end": { "character": 1, "line": 2 },
@@ -75,6 +76,7 @@ fn foo() {
             ],
             "bin": "cargo",
             "env": {},
+            "cwd": null,
             "label": "cargo check --all",
             "range": {
               "end": {
@@ -93,25 +95,34 @@ fn foo() {
 
 #[test]
 fn test_runnables_project() {
-    let server = project(
-        r#"
-//- Cargo.toml
+    let code = r#"
+//- foo/Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
 
-//- src/lib.rs
+//- foo/src/lib.rs
 pub fn foo() {}
 
-//- tests/spam.rs
+//- foo/tests/spam.rs
 #[test]
 fn test_eggs() {}
-"#,
-    );
+
+//- bar/Cargo.toml
+[package]
+name = "bar"
+version = "0.0.0"
+
+//- bar/src/main.rs
+fn main() {}
+"#;
+
+    let server = Project::with_fixture(code).root("foo").root("bar").server();
+
     server.wait_until_workspace_is_loaded();
     server.request::<Runnables>(
         RunnablesParams {
-            text_document: server.doc_id("tests/spam.rs"),
+            text_document: server.doc_id("foo/tests/spam.rs"),
             position: None,
         },
         json!([
@@ -123,7 +134,8 @@ fn test_eggs() {}
             "range": {
               "end": { "character": 17, "line": 1 },
               "start": { "character": 0, "line": 0 }
-            }
+            },
+            "cwd": server.path().join("foo")
           },
           {
             "args": [
@@ -135,6 +147,7 @@ fn test_eggs() {}
             ],
             "bin": "cargo",
             "env": {},
+            "cwd": server.path().join("foo"),
             "label": "cargo check -p foo",
             "range": {
               "end": {
@@ -283,7 +296,9 @@ fn main() {{}}
 "#,
         PROJECT = project.to_string(),
     );
-    let server = project_with_tmpdir(tmp_dir, &code);
+
+    let server = Project::with_fixture(&code).tmp_dir(tmp_dir).server();
+
     server.wait_until_workspace_is_loaded();
     let empty_context = || CodeActionContext { diagnostics: Vec::new(), only: None };
     server.request::<CodeActionRequest>(

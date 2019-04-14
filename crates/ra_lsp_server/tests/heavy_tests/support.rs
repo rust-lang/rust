@@ -1,7 +1,7 @@
 use std::{
     cell::{Cell, RefCell},
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Once,
     time::Duration,
 };
@@ -26,26 +26,51 @@ use ra_lsp_server::{
     InitializationOptions,
 };
 
-pub fn project(fixture: &str) -> Server {
-    let tmp_dir = TempDir::new().unwrap();
-    project_with_tmpdir(tmp_dir, fixture)
+pub struct Project<'a> {
+    fixture: &'a str,
+    tmp_dir: Option<TempDir>,
+    roots: Vec<PathBuf>,
 }
 
-pub fn project_with_tmpdir(tmp_dir: TempDir, fixture: &str) -> Server {
-    static INIT: Once = Once::new();
-    INIT.call_once(|| {
-        let _ = Logger::with_env_or_str(crate::LOG).start().unwrap();
-    });
-
-    let mut paths = vec![];
-
-    for entry in parse_fixture(fixture) {
-        let path = tmp_dir.path().join(entry.meta);
-        fs::create_dir_all(path.parent().unwrap()).unwrap();
-        fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
-        paths.push((path, entry.text));
+impl<'a> Project<'a> {
+    pub fn with_fixture(fixture: &str) -> Project {
+        Project { fixture, tmp_dir: None, roots: vec![] }
     }
-    Server::new(tmp_dir, paths)
+
+    pub fn tmp_dir(mut self, tmp_dir: TempDir) -> Project<'a> {
+        self.tmp_dir = Some(tmp_dir);
+        self
+    }
+
+    pub fn root(mut self, path: &str) -> Project<'a> {
+        self.roots.push(path.into());
+        self
+    }
+
+    pub fn server(self) -> Server {
+        let tmp_dir = self.tmp_dir.unwrap_or_else(|| TempDir::new().unwrap());
+        static INIT: Once = Once::new();
+        INIT.call_once(|| {
+            let _ = Logger::with_env_or_str(crate::LOG).start().unwrap();
+        });
+
+        let mut paths = vec![];
+
+        for entry in parse_fixture(self.fixture) {
+            let path = tmp_dir.path().join(entry.meta);
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
+            paths.push((path, entry.text));
+        }
+
+        let roots = self.roots.into_iter().map(|root| tmp_dir.path().join(root)).collect();
+
+        Server::new(tmp_dir, roots, paths)
+    }
+}
+
+pub fn project(fixture: &str) -> Server {
+    Project::with_fixture(fixture).server()
 }
 
 pub struct Server {
@@ -56,14 +81,17 @@ pub struct Server {
 }
 
 impl Server {
-    fn new(dir: TempDir, files: Vec<(PathBuf, String)>) -> Server {
+    fn new(dir: TempDir, roots: Vec<PathBuf>, files: Vec<(PathBuf, String)>) -> Server {
         let path = dir.path().to_path_buf();
+
+        let roots = if roots.is_empty() { vec![path] } else { roots };
+
         let worker = Worker::<RawMessage, RawMessage>::spawn(
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
                 main_loop(
-                    path,
+                    roots,
                     InitializationOptions::default(),
                     &mut msg_receiver,
                     &mut msg_sender,
@@ -176,6 +204,10 @@ impl Server {
     }
     fn send_notification(&self, not: RawNotification) {
         self.worker.as_ref().unwrap().sender().send(RawMessage::Notification(not)).unwrap();
+    }
+
+    pub fn path(&self) -> &Path {
+        self.dir.path()
     }
 }
 

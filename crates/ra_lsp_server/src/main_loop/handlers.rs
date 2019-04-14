@@ -263,6 +263,7 @@ pub fn handle_runnables(
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.map(|it| it.conv_with(&line_index));
     let mut res = Vec::new();
+    let workspace_root = world.workspace_root_for(file_id);
     for runnable in world.analysis().runnables(file_id)? {
         if let Some(offset) = offset {
             if !runnable.range.contains_inclusive(offset) {
@@ -287,6 +288,7 @@ pub fn handle_runnables(
                 m.insert("RUST_BACKTRACE".to_string(), "short".to_string());
                 m
             },
+            cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
         };
         res.push(r);
     }
@@ -309,6 +311,7 @@ pub fn handle_runnables(
         bin: "cargo".to_string(),
         args: check_args,
         env: FxHashMap::default(),
+        cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
     });
     Ok(res)
 }
@@ -627,6 +630,7 @@ pub fn handle_code_lens(
     let line_index = world.analysis().file_line_index(file_id);
 
     let mut lenses: Vec<CodeLens> = Default::default();
+    let workspace_root = world.workspace_root_for(file_id);
 
     // Gather runnables
     for runnable in world.analysis().runnables(file_id)? {
@@ -647,6 +651,7 @@ pub fn handle_code_lens(
                 bin: "cargo".into(),
                 args,
                 env: Default::default(),
+                cwd: workspace_root.map(|root| root.to_string_lossy().to_string()),
             };
 
             let lens = CodeLens {

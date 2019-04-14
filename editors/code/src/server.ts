@@ -17,13 +17,6 @@ export class Server {
         let folder: string = '.';
         if (workspace.workspaceFolders !== undefined) {
             folder = workspace.workspaceFolders[0].uri.fsPath.toString();
-
-            if (workspace.workspaceFolders.length > 1) {
-                // Tell the user that we do not support multi-root workspaces yet
-                window.showWarningMessage(
-                    'Multi-root workspaces are not currently supported'
-                );
-            }
         }
 
         const run: lc.Executable = {

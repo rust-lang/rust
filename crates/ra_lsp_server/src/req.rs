@@ -163,6 +163,7 @@ pub struct Runnable {
     pub bin: String,
     pub args: Vec<String>,
     pub env: FxHashMap<String, String>,
+    pub cwd: Option<String>,
 }
 
 #[derive(Serialize, Debug)]
