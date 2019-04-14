@@ -252,3 +252,21 @@ fn stmt_expr_attributes() {
     #[must_use]
     foo = false;
 }
+
+// #3509
+fn issue3509() {
+    match MyEnum {
+        MyEnum::Option1 if cfg!(target_os = "windows") =>
+        #[cfg(target_os = "windows")]
+        {
+            1
+        }
+    }
+    match MyEnum {
+        MyEnum::Option1 if cfg!(target_os = "windows") =>
+        {
+            #[cfg(target_os = "windows")]
+            1
+        }
+    }
+}
