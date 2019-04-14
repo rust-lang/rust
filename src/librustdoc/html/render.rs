@@ -527,6 +527,7 @@ pub fn run(mut krate: clean::Crate,
         static_root_path,
         generate_search_filter,
         generate_redirect_pages,
+        favicon,
         ..
     } = options;
 
@@ -545,7 +546,10 @@ pub fn run(mut krate: clean::Crate,
         issue_tracker_base_url: None,
         layout: layout::Layout {
             logo: String::new(),
-            favicon: String::new(),
+            favicon: favicon.as_ref()
+                            .map(|_| format!("favicon-{}.ico", krate.name))
+                            .unwrap_or_else(String::new),
+            favicon_path: favicon,
             external_html,
             krate: krate.name.clone(),
         },
@@ -572,7 +576,16 @@ pub fn run(mut krate: clean::Crate,
         for attr in attrs.lists("doc") {
             match (attr.name_or_empty().get(), attr.value_str()) {
                 ("html_favicon_url", Some(s)) => {
-                    scx.layout.favicon = s.to_string();
+                    let s = s.to_string();
+                    if scx.layout.favicon_path.is_some() {
+                        if !s.is_empty() {
+                            diag.struct_warn("`favicon-path` option has been passed, ignoring \
+                                              `html_favicon_url` attribute")
+                                .emit();
+                        }
+                    } else {
+                        scx.layout.favicon = s;
+                    }
                 }
                 ("html_logo_url", Some(s)) => {
                     scx.layout.logo = s.to_string();
@@ -816,7 +829,10 @@ fn write_shared(
         write(cx.dst.join(&format!("rust-logo{}.png", cx.shared.resource_suffix)),
               static_files::RUST_LOGO)?;
     }
-    if (*cx.shared).layout.favicon.is_empty() {
+    if let Some(ref favicon) = (*cx.shared).layout.favicon_path {
+        let content = try_err!(fs::read(&favicon), &favicon);
+        write(cx.dst.join(&(*cx.shared).layout.favicon), &content)?;
+    } else if (*cx.shared).layout.favicon.is_empty() {
         write(cx.dst.join(&format!("favicon{}.ico", cx.shared.resource_suffix)),
               static_files::RUST_FAVICON)?;
     }

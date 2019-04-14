@@ -198,6 +198,8 @@ pub struct RenderOptions {
     pub generate_search_filter: bool,
     /// Option (disabled by default) to generate files used by RLS and some other tools.
     pub generate_redirect_pages: bool,
+    /// An optional path to to the favicon file to use.
+    pub favicon: Option<PathBuf>,
 }
 
 impl Options {
@@ -429,6 +431,14 @@ impl Options {
             }
         });
 
+        let favicon = matches.opt_str("favicon-path").map(|s| PathBuf::from(&s));
+        if let Some(ref favicon) = favicon {
+            if !favicon.is_file() {
+                diag.struct_err("option `--favicon-path` argument must be a file").emit();
+                return Err(1);
+            }
+        }
+
         let show_coverage = matches.opt_present("show-coverage");
         let document_private = matches.opt_present("document-private-items");
 
@@ -508,6 +518,7 @@ impl Options {
                 markdown_playground_url,
                 generate_search_filter,
                 generate_redirect_pages,
+                favicon,
             }
         })
     }

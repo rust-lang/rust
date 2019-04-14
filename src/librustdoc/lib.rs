@@ -356,6 +356,12 @@ fn opts() -> Vec<RustcOptGroup> {
                       "show-coverage",
                       "calculate percentage of public items with documentation")
         }),
+        unstable("favicon-path", |o| {
+            o.optopt("",
+                     "favicon-path",
+                     "Path string to the favicon file to be used for this crate",
+                     "PATH")
+        }),
     ]
 }
 

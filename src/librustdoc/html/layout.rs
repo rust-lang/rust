@@ -9,6 +9,7 @@ use crate::html::render::SlashChecker;
 pub struct Layout {
     pub logo: String,
     pub favicon: String,
+    pub favicon_path: Option<PathBuf>,
     pub external_html: ExternalHtml,
     pub krate: String,
 }
@@ -197,7 +198,11 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     title     = page.title,
     description = page.description,
     keywords = page.keywords,
-    favicon   = if layout.favicon.is_empty() {
+    favicon   = if layout.favicon_path.is_some() {
+        format!(r#"<link rel="shortcut icon" href="{static_root_path}{path}">"#,
+                static_root_path=static_root_path,
+                path=layout.favicon)
+    } else if layout.favicon.is_empty() {
         format!(r#"<link rel="shortcut icon" href="{static_root_path}favicon{suffix}.ico">"#,
                 static_root_path=static_root_path,
                 suffix=page.resource_suffix)
