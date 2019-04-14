@@ -36,6 +36,7 @@ mod type_ref;
 mod ty;
 mod impl_block;
 mod expr;
+mod lang_item;
 mod generics;
 mod docs;
 mod resolve;

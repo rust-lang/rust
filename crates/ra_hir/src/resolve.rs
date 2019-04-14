@@ -190,7 +190,7 @@ impl Resolver {
             .flatten()
     }
 
-    fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
+    pub(crate) fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 

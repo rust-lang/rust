@@ -16,6 +16,7 @@ use crate::{
     generics::{GenericParams, GenericDef},
     type_ref::TypeRef,
     traits::TraitData, Trait, ty::TraitRef,
+    lang_item::LangItems,
     ids
 };
 
@@ -100,6 +101,9 @@ pub trait DefDatabase: SourceDatabase {
 
     #[salsa::invoke(crate::ConstSignature::static_signature_query)]
     fn static_signature(&self, konst: Static) -> Arc<ConstSignature>;
+
+    #[salsa::invoke(crate::lang_item::LangItems::lang_items_query)]
+    fn lang_items(&self, krate: Crate) -> Arc<LangItems>;
 }
 
 #[salsa::query_group(HirDatabaseStorage)]

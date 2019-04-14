@@ -202,6 +202,10 @@ impl CrateDefMap {
         Arc::new(def_map)
     }
 
+    pub(crate) fn krate(&self) -> Crate {
+        self.krate
+    }
+
     pub(crate) fn root(&self) -> CrateModuleId {
         self.root
     }

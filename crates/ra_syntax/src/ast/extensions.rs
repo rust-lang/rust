@@ -65,6 +65,20 @@ impl ast::Attr {
             None
         }
     }
+
+    pub fn as_key_value(&self) -> Option<(SmolStr, SmolStr)> {
+        let tt = self.value()?;
+        let tt_node = tt.syntax();
+        let attr = tt_node.children_with_tokens().nth(1)?;
+        if attr.kind() == IDENT {
+            let key = attr.as_token()?.text().clone();
+            let val_node = tt_node.children_with_tokens().find(|t| t.kind() == STRING)?;
+            let val = val_node.as_token()?.text().trim_start_matches("\"").trim_end_matches("\"");
+            Some((key, SmolStr::new(val)))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
