@@ -118,3 +118,16 @@ impl From<Container> for GenericDef {
         }
     }
 }
+
+pub trait HasGenericParams {
+    fn generic_params(self, db: &impl DefDatabase) -> Arc<GenericParams>;
+}
+
+impl<T> HasGenericParams for T
+where
+    T: Into<GenericDef>,
+{
+    fn generic_params(self, db: &impl DefDatabase) -> Arc<GenericParams> {
+        db.generic_params(self.into())
+    }
+}

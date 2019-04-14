@@ -67,6 +67,7 @@ pub use self::{
     adt::AdtDef,
     expr::ExprScopes,
     resolve::Resolution,
+    generics::{GenericParams, GenericParam, HasGenericParams},
     source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax},
 };
 

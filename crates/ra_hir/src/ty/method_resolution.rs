@@ -10,10 +10,12 @@ use crate::{
     HirDatabase, Module, Crate, Name, Function, Trait,
     impl_block::{ImplId, ImplBlock, ImplItem},
     ty::{Ty, TypeCtor},
-    nameres::CrateModuleId, resolve::Resolver, traits::TraitItem
-
+    nameres::CrateModuleId,
+    resolve::Resolver,
+    traits::TraitItem,
+    generics::HasGenericParams,
 };
-use super::{ TraitRef, Substs};
+use super::{TraitRef, Substs};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

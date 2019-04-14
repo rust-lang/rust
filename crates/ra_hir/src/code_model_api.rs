@@ -11,7 +11,7 @@ use crate::{
     expr::{Body, BodySourceMap},
     ty::InferenceResult,
     adt::{EnumVariantId, StructFieldId, VariantDef},
-    generics::GenericParams,
+    generics::HasGenericParams,
     docs::{Documentation, Docs, docs_from_ast},
     ids::{FunctionId, StructId, EnumId, AstItemDef, ConstId, StaticId, TraitId, TypeAliasId},
     impl_block::ImplBlock,
@@ -299,10 +299,6 @@ impl Struct {
             .map(|(id, _)| StructField { parent: (*self).into(), id })
     }
 
-    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params((*self).into())
-    }
-
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
         db.type_for_def((*self).into(), Namespace::Types)
     }
@@ -361,10 +357,6 @@ impl Enum {
             .iter()
             .find(|(_id, data)| data.name.as_ref() == Some(name))
             .map(|(id, _)| EnumVariant { parent: *self, id })
-    }
-
-    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params((*self).into())
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
@@ -537,10 +529,6 @@ impl Function {
         db.infer((*self).into())
     }
 
-    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params((*self).into())
-    }
-
     /// The containing impl block, if this is a method.
     pub fn impl_block(&self, db: &impl DefDatabase) -> Option<ImplBlock> {
         let module_impls = db.impls_in_module(self.module(db));
@@ -696,10 +684,6 @@ impl Trait {
         self.id.module(db)
     }
 
-    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params((*self).into())
-    }
-
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         self.trait_data(db).name().clone()
     }
@@ -735,10 +719,6 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn source(&self, db: &impl DefDatabase) -> (HirFileId, TreeArc<ast::TypeAliasDef>) {
         self.id.source(db)
-    }
-
-    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params((*self).into())
     }
 
     pub fn module(&self, db: &impl DefDatabase) -> Module {

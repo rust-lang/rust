@@ -20,9 +20,9 @@ use std::sync::Arc;
 use std::mem;
 
 use ena::unify::{InPlaceUnificationTable, UnifyKey, UnifyValue, NoError};
-use ra_arena::map::ArenaMap;
 use rustc_hash::FxHashMap;
 
+use ra_arena::map::ArenaMap;
 use test_utils::tested_by;
 
 use crate::{
@@ -33,15 +33,18 @@ use crate::{
     ImplItem,
     type_ref::{TypeRef, Mutability},
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat,Array, self},
-    generics::GenericParams,
+    generics::{GenericParams, HasGenericParams},
     path::{GenericArgs, GenericArg},
     adt::VariantDef,
     resolve::{Resolver, Resolution},
     nameres::Namespace,
-    ty::infer::diagnostics::InferenceDiagnostic,
     diagnostics::DiagnosticSink,
 };
-use super::{Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, traits::{ Solution, Obligation, Guidance}, CallableDef, TraitRef};
+use super::{
+    Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
+    traits::{ Solution, Obligation, Guidance},
+};
+use self::diagnostics::InferenceDiagnostic;
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {

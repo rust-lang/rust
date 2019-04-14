@@ -9,12 +9,13 @@ use ra_syntax::{
 
 use crate::{
     Const, TypeAlias, Function, HirFileId,
-    HirDatabase, DefDatabase,
+    HirDatabase, DefDatabase, TraitRef,
     type_ref::TypeRef,
     ids::LocationCtx,
     resolve::Resolver,
-    ty::Ty, generics::GenericParams,
-    TraitRef, code_model_api::{Module, ModuleSource}
+    ty::Ty,
+    generics::HasGenericParams,
+    code_model_api::{Module, ModuleSource}
 };
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -90,10 +91,6 @@ impl ImplBlock {
 
     pub fn items(&self, db: &impl DefDatabase) -> Vec<ImplItem> {
         db.impls_in_module(self.module).impls[self.impl_id].items().to_vec()
-    }
-
-    pub fn generic_params(&self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params((*self).into())
     }
 
     pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {

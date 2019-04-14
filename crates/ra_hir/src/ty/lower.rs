@@ -16,8 +16,8 @@ use crate::{
     name::KnownName,
     nameres::Namespace,
     resolve::{Resolver, Resolution},
-    path::{ PathSegment, GenericArg},
-    generics::GenericParams,
+    path::{PathSegment, GenericArg},
+    generics::{GenericParams, HasGenericParams},
     adt::VariantDef, Trait
 };
 use super::{Ty, primitive, FnSig, Substs, TypeCtor, TraitRef};
