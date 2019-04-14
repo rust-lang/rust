@@ -127,7 +127,14 @@ fn get_version() -> Result<i32, io::Error> {
     let mut command = Command::new("rustfmt")
         .stdout(std::process::Stdio::inherit())
         .args(&[String::from("--version")])
-        .spawn()?;
+        .spawn()
+        .map_err(|e| match e.kind() {
+            io::ErrorKind::NotFound => io::Error::new(
+                io::ErrorKind::Other,
+                "Could not run rustfmt, please make sure it is in your PATH.",
+            ),
+            _ => e,
+        })?;
     status.push(command.wait()?);
 
     Ok(status
