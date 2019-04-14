@@ -209,7 +209,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    if tcx.sess.opts.debugging_opts.pgo_gen.is_some() {
+    if tcx.sess.opts.debugging_opts.pgo_gen.enabled() {
         // These are weak symbols that point to the profile version and the
         // profile name, which need to be treated as exported so LTO doesn't nix
         // them.

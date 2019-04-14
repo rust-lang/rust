@@ -157,11 +157,11 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
         window.rootPath = \"{root_path}\";\
         window.currentCrate = \"{krate}\";\
     </script>\
-    <script src=\"{root_path}aliases.js\"></script>\
+    <script src=\"{root_path}aliases{suffix}.js\"></script>\
     <script src=\"{static_root_path}main{suffix}.js\"></script>\
     {static_extra_scripts}\
     {extra_scripts}\
-    <script defer src=\"{root_path}search-index.js\"></script>\
+    <script defer src=\"{root_path}search-index{suffix}.js\"></script>\
 </body>\
 </html>",
     css_extension = if css_file_extension {
