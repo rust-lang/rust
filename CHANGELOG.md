@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
  * Fix false positive in [`needless_range_loop`] pertaining to structs without a `.iter()`
  * Fix false positive in [`bool_comparison`] pertaining to non-bool types
  * Fix false positive in [`redundant_closure`] pertaining to differences in borrows
- * Fix false positive in [`map_or`] on non-copy types
+ * Fix false positive in [`option_map_unwrap_or`] on non-copy types
  * Fix false positives in [`missing_const_for_fn`] pertaining to macros and trait method impls
  * Fix false positive in [`needless_pass_by_value`] pertaining to procedural macros
  * Fix false positive in [`needless_continue`] pertaining to loop labels
