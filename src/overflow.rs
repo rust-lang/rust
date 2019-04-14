@@ -91,6 +91,17 @@ impl<'a> Spanned for OverflowableItem<'a> {
 }
 
 impl<'a> OverflowableItem<'a> {
+    fn has_attrs(&self) -> bool {
+        match self {
+            OverflowableItem::Expr(ast::Expr { attrs, .. })
+            | OverflowableItem::GenericParam(ast::GenericParam { attrs, .. }) => !attrs.is_empty(),
+            OverflowableItem::StructField(ast::StructField { attrs, .. }) => !attrs.is_empty(),
+            OverflowableItem::MacroArg(MacroArg::Expr(expr)) => !expr.attrs.is_empty(),
+            OverflowableItem::MacroArg(MacroArg::Item(item)) => !item.attrs.is_empty(),
+            _ => false,
+        }
+    }
+
     pub fn map<F, T>(&self, f: F) -> T
     where
         F: Fn(&dyn IntoOverflowableItem<'a>) -> T,
@@ -447,6 +458,7 @@ impl<'a> Context<'a> {
         // 1 = "("
         let combine_arg_with_callee = self.items.len() == 1
             && self.items[0].is_expr()
+            && !self.items[0].has_attrs()
             && self.ident.len() < self.context.config.tab_spaces();
         let overflow_last = combine_arg_with_callee || can_be_overflowed(self.context, &self.items);
 
