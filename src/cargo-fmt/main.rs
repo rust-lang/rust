@@ -123,7 +123,6 @@ fn handle_command_status(status: Result<i32, io::Error>, opts: &getopts::Options
 }
 
 fn get_version() -> Result<i32, io::Error> {
-    let mut status = vec![];
     let mut command = Command::new("rustfmt")
         .stdout(std::process::Stdio::inherit())
         .args(&[String::from("--version")])
@@ -135,13 +134,12 @@ fn get_version() -> Result<i32, io::Error> {
             ),
             _ => e,
         })?;
-    status.push(command.wait()?);
-
-    Ok(status
-        .iter()
-        .filter_map(|s| if s.success() { None } else { s.code() })
-        .next()
-        .unwrap_or(SUCCESS))
+    let result = command.wait()?;
+    if result.success() {
+        Ok(SUCCESS)
+    } else {
+        Ok(result.code().unwrap_or(SUCCESS))
+    }
 }
 
 fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32, io::Error> {
