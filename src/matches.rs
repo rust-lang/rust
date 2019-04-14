@@ -263,7 +263,7 @@ fn rewrite_match_arm(
         false,
     )?;
 
-    let arrow_span = mk_sp(arm.pats.last().unwrap().span.hi(), arm.body.span.lo());
+    let arrow_span = mk_sp(arm.pats.last().unwrap().span.hi(), arm.body.span().lo());
     rewrite_match_body(
         context,
         &arm.body,
