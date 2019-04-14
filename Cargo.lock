@@ -996,6 +996,7 @@ dependencies = [
  "ra_db 0.1.0",
  "ra_fmt 0.1.0",
  "ra_hir 0.1.0",
+ "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
  "rayon 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
