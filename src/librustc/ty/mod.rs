@@ -123,7 +123,7 @@ pub struct Resolutions {
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
-    pub export_map: ExportMap,
+    pub export_map: ExportMap<NodeId>,
     pub glob_map: GlobMap,
     /// Extern prelude entries. The value is `true` if the entry was introduced
     /// via `extern crate` item and not `--extern` option or compiler built-in.

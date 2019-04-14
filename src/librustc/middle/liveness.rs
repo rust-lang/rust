@@ -487,8 +487,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
             call_caps.extend(freevars.iter().filter_map(|fv| {
                 if let Def::Local(rv) = fv.def {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                    let var_hid = ir.tcx.hir().node_to_hir_id(rv);
-                    Some(CaptureInfo { ln: fv_ln, var_hid })
+                    Some(CaptureInfo { ln: fv_ln, var_hid: rv })
                 } else {
                     None
                 }
@@ -1347,7 +1346,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn access_path(&mut self, hir_id: HirId, path: &hir::Path, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match path.def {
-            Def::Local(nid) => {
+            Def::Local(hid) => {
+              let nid = self.ir.tcx.hir().hir_to_node_id(hid);
               self.access_var(hir_id, nid, succ, acc, path.span)
             }
             _ => succ
@@ -1539,13 +1539,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_place(&mut self, expr: &'tcx Expr) {
         match expr.node {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-                if let Def::Local(nid) = path.def {
+                if let Def::Local(var_hid) = path.def {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability
                     // as being used.
                     let ln = self.live_node(expr.hir_id, expr.span);
-                    let var_hid = self.ir.tcx.hir().node_to_hir_id(nid);
                     let var = self.variable(var_hid, expr.span);
                     self.warn_about_dead_assign(expr.span, expr.hir_id, ln, var);
                 }
