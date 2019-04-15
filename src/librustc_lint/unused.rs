@@ -3,15 +3,17 @@ use rustc::hir::def_id::DefId;
 use rustc::lint;
 use rustc::ty;
 use rustc::ty::adjustment;
+use rustc_data_structures::fx::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
 
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::Applicability;
-use syntax::feature_gate::{BUILTIN_ATTRIBUTES, AttributeType};
+use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
 use syntax::symbol::keywords;
+use syntax::symbol::Symbol;
 use syntax::util::parser;
 use syntax_pos::Span;
 
@@ -210,17 +212,32 @@ declare_lint! {
     "detects attributes that were not used by the compiler"
 }
 
-declare_lint_pass!(UnusedAttributes => [UNUSED_ATTRIBUTES]);
+#[derive(Copy, Clone)]
+pub struct UnusedAttributes {
+    builtin_attributes: &'static FxHashMap<Symbol, &'static BuiltinAttribute>,
+}
+
+impl UnusedAttributes {
+    pub fn new() -> Self {
+        UnusedAttributes {
+            builtin_attributes: &*BUILTIN_ATTRIBUTE_MAP,
+        }
+    }
+}
+
+impl_lint_pass!(UnusedAttributes => [UNUSED_ATTRIBUTES]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
-        // Note that check_name() marks the attribute as used if it matches.
-        for &(name, ty, ..) in BUILTIN_ATTRIBUTES {
+
+        let attr_info = attr.ident().and_then(|ident| self.builtin_attributes.get(&ident.name));
+
+        if let Some(&&(name, ty, ..)) = attr_info {
             match ty {
-                AttributeType::Whitelisted if attr.check_name(name) => {
+                AttributeType::Whitelisted => {
                     debug!("{:?} is Whitelisted", name);
-                    break;
+                    return;
                 }
                 _ => (),
             }
@@ -239,11 +256,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             debug!("Emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = BUILTIN_ATTRIBUTES.iter()
-                .find(|&&(builtin, ty, ..)| {
-                    name == builtin && ty == AttributeType::CrateLevel
-                })
-                .is_some();
+            let known_crate = attr_info.map(|&&(_, ty, ..)| {
+                    ty == AttributeType::CrateLevel
+            }).unwrap_or(false);
 
             // Has a plugin registered this attribute as one that must be used at
             // the crate level?

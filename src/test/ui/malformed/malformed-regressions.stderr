@@ -27,7 +27,7 @@ LL | #[inline = ""]
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...",
-                                             /*opt*/ cfg = "...")]`
+                                               /*opt*/ cfg = "...")]`
   --> $DIR/malformed-regressions.rs:6:1
    |
 LL | #[link]
@@ -37,7 +37,7 @@ LL | #[link]
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
 warning: attribute must be of the form `#[link(name = "...", /*opt*/ kind = "dylib|static|...",
-                                             /*opt*/ cfg = "...")]`
+                                               /*opt*/ cfg = "...")]`
   --> $DIR/malformed-regressions.rs:7:1
    |
 LL | #[link = ""]

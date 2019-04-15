@@ -118,7 +118,7 @@ macro_rules! late_lint_passes {
             UnusedBrokenConst: UnusedBrokenConst,
 
             // Uses attr::is_used which is untracked, can't be an incremental module pass.
-            UnusedAttributes: UnusedAttributes,
+            UnusedAttributes: UnusedAttributes::new(),
 
             // Needs to run after UnusedAttributes as it marks all `feature` attributes as used.
             UnstableFeatures: UnstableFeatures,

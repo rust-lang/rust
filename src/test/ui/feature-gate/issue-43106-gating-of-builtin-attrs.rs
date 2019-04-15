@@ -52,7 +52,7 @@
 //~^ WARN unused attribute
 #![path = "3800"] //~ WARN unused attribute
 #![automatically_derived] //~ WARN unused attribute
-#![no_mangle]
+#![no_mangle] //~ WARN unused attribute
 #![no_link] //~ WARN unused attribute
 // see issue-43106-gating-of-derive.rs
 #![should_panic] //~ WARN unused attribute
@@ -70,8 +70,6 @@
 #![link()]
 #![link_name = "1900"]
 #![link_section = "1800"]
-#![no_builtins] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "0300")
-#![no_mangle] // Yikes, dupe'd on BUILTIN_ATTRIBUTES list (see "3500")
 // see issue-43106-gating-of-rustc_deprecated.rs
 #![must_use]
 // see issue-43106-gating-of-stable.rs

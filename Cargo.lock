@@ -3356,9 +3356,11 @@ name = "syntax"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_macros 0.1.0",
  "rustc_target 0.0.0",
  "scoped-tls 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",

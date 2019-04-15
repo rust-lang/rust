@@ -42,7 +42,7 @@ use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeTemplate, AttributeType};
 use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
-use syntax::symbol::keywords;
+use syntax::symbol::{Symbol, keywords};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
 use syntax::visit::FnKind;
@@ -653,7 +653,7 @@ impl EarlyLintPass for AnonymousParameters {
 pub struct DeprecatedAttr {
     // This is not free to compute, so we want to keep it around, rather than
     // compute it for every attribute.
-    depr_attrs: Vec<&'static (&'static str, AttributeType, AttributeTemplate, AttributeGate)>,
+    depr_attrs: Vec<&'static (Symbol, AttributeType, AttributeTemplate, AttributeGate)>,
 }
 
 impl_lint_pass!(DeprecatedAttr => []);
@@ -668,9 +668,8 @@ impl DeprecatedAttr {
 
 impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        let name = attr.name_or_empty();
         for &&(n, _, _, ref g) in &self.depr_attrs {
-            if name == n {
+            if attr.ident().map(|ident| ident.name) == Some(n) {
                 if let &AttributeGate::Gated(Stability::Deprecated(link, suggestion),
                                              ref name,
                                              ref reason,
