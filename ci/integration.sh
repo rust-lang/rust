@@ -43,7 +43,7 @@ function check_fmt_with_lib_tests {
 function check_fmt_base {
     local test_args="$1"
     local build=$(cargo test $test_args 2>&1)
-    if [[ "$build" =~ "build failed" ]]; then
+    if [[ "$build" =~ "build failed" ]] || [[ "$build" =~ "test result: FAILED." ]]; then
           return 0
     fi
     touch rustfmt.toml
