@@ -570,6 +570,16 @@ pub trait SliceConcatExt<T: ?Sized> {
     #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
     fn join(&self, sep: &T) -> Self::Output;
 
+    /// Flattens a slice of `T` into a single value `Self::Output`, placing a
+    /// given separator between each.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![allow(deprecated)]
+    /// assert_eq!(["hello", "world"].connect(" "), "hello world");
+    /// assert_eq!([[1, 2], [3, 4]].connect(&0), [1, 2, 0, 3, 4]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
     fn connect(&self, sep: &T) -> Self::Output;

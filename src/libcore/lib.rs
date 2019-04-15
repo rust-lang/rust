@@ -60,8 +60,8 @@
 
 #![warn(deprecated_in_future)]
 #![warn(missing_docs)]
-#![warn(intra_doc_link_resolution_failure)]
 #![warn(missing_debug_implementations)]
+#![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
