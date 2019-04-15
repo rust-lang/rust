@@ -8,6 +8,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
+#![deny(internal)]
 #![feature(crate_visibility_modifier)]
 
 // FIXME: switch to something more ergonomic here, once available.

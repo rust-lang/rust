@@ -9,7 +9,7 @@ use if_chain::if_chain;
 use rustc::hir::def::CtorKind;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::ty::{self, Ty, TyKind};
+use rustc::ty::{self, Ty};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
 use std::cmp::Ordering;
@@ -500,7 +500,7 @@ fn check_wild_enum_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm]) {
         // already covered.
 
         let mut missing_variants = vec![];
-        if let TyKind::Adt(def, _) = ty.sty {
+        if let ty::Adt(def, _) = ty.sty {
             for variant in &def.variants {
                 missing_variants.push(variant);
             }
