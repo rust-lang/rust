@@ -30,7 +30,6 @@ pub unsafe fn _addcarry_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
 #[target_feature(enable = "adx")]
 #[cfg_attr(test, assert_instr(adc))]
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
-#[cfg(not(stage0))]
 pub unsafe fn _addcarryx_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
     llvm_addcarryx_u32(c_in, a, b, out as *mut _ as *mut u8)
 }
