@@ -6,6 +6,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     ModuleDef,
     code_model_api::Crate,
+    MacroDefId,
     db::HirDatabase,
     name::{Name, KnownName},
     nameres::{PerNs, CrateDefMap, CrateModuleId},
@@ -130,6 +131,10 @@ impl Resolver {
         resolution
     }
 
+    pub fn resolve_macro_call(&self, name: &Name) -> Option<&MacroDefId> {
+        self.module().and_then(|(module, _)| module.find_macro(name))
+    }
+
     /// Returns the resolved path segments
     /// Which may be fully resolved, empty or partially resolved.
     pub(crate) fn resolve_path_segments(&self, db: &impl HirDatabase, path: &Path) -> PathResult {
@@ -192,7 +197,7 @@ impl Resolver {
             .flatten()
     }
 
-    fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
+    pub(crate) fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 

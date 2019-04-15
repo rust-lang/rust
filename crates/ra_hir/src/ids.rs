@@ -101,7 +101,7 @@ fn parse_macro(
         return Err(format!("Total tokens count exceed limit : count = {}", count));
     }
 
-    Ok(mbe::token_tree_to_ast_item_list(&tt))
+    Some(mbe::token_tree_to_ast_item_list(&tt))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

@@ -14,7 +14,9 @@
         "--disable-extensions"
       ],
       "env": {
-        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/ra_lsp_server"
+        "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/ra_lsp_server",
+        "RUST_LOG" :"ra_hir=debug",
+        "RA_INTERNAL_MODE":"1"
       },
       "outFiles": ["${workspaceFolder}/editors/code/out/**/*.js"],
       "preLaunchTask": "Build All"

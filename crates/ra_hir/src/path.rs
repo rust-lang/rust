@@ -126,6 +126,10 @@ impl Path {
         }
         self.segments.first().map(|s| &s.name)
     }
+
+    pub fn expand_macro_expr(&self) -> Option<Name> {
+        self.as_ident().and_then(|name| Some(name.clone()))
+    }
 }
 
 impl GenericArgs {
