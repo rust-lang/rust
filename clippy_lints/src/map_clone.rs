@@ -73,14 +73,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         hir::BindingAnnotation::Unannotated, .., name, None
                     ) = inner.node {
                         if ident_eq(name, closure_expr) {
-                            lint(cx, e.span, args[0].span);
+                            lint(cx, e.span, args[0].span, true);
                         }
                     },
                     hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, .., name, None) => {
                         match closure_expr.node {
                             hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
                                 if ident_eq(name, inner) && !cx.tables.expr_ty(inner).is_box() {
-                                    lint(cx, e.span, args[0].span);
+                                    lint(cx, e.span, args[0].span, true);
                                 }
                             },
                             hir::ExprKind::MethodCall(ref method, _, ref obj) => {
@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
                                     let obj_ty = cx.tables.expr_ty(&obj[0]);
                                     if let ty::Ref(..) = obj_ty.sty {
-                                        lint(cx, e.span, args[0].span);
+                                        lint(cx, e.span, args[0].span, false);
                                     } else {
                                         lint_needless_cloning(cx, e.span, args[0].span);
                                     }
@@ -125,18 +125,33 @@ fn lint_needless_cloning(cx: &LateContext<'_, '_>, root: Span, receiver: Span) {
     )
 }
 
-fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span) {
+fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, copied: bool) {
     let mut applicability = Applicability::MachineApplicable;
-    span_lint_and_sugg(
-        cx,
-        MAP_CLONE,
-        replace,
-        "You are using an explicit closure for cloning elements",
-        "Consider calling the dedicated `cloned` method",
-        format!(
-            "{}.cloned()",
-            snippet_with_applicability(cx, root, "..", &mut applicability)
-        ),
-        applicability,
-    )
+    if copied {
+        span_lint_and_sugg(
+            cx,
+            MAP_CLONE,
+            replace,
+            "You are using an explicit closure for copying elements",
+            "Consider calling the dedicated `copied` method",
+            format!(
+                "{}.copied()",
+                snippet_with_applicability(cx, root, "..", &mut applicability)
+            ),
+            applicability,
+        )
+    } else {
+        span_lint_and_sugg(
+            cx,
+            MAP_CLONE,
+            replace,
+            "You are using an explicit closure for cloning elements",
+            "Consider calling the dedicated `cloned` method",
+            format!(
+                "{}.cloned()",
+                snippet_with_applicability(cx, root, "..", &mut applicability)
+            ),
+            applicability,
+        )
+    }
 }

@@ -4,6 +4,7 @@
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::redundant_closure)]
+#![feature(iter_copied)]
 
 fn main() {
     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
