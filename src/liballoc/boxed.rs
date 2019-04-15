@@ -760,6 +760,7 @@ impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 pub trait FnBox<A>: FnOnce<A> {
+    /// Performs the call operation.
     fn call_box(self: Box<Self>, args: A) -> Self::Output;
 }
 
