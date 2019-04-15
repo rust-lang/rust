@@ -2856,7 +2856,7 @@ impl<'a> Parser<'a> {
                         hi = self.prev_span;
                         ex = ExprKind::Mac(respan(lo.to(hi), Mac_ { path, tts, delim }));
                     } else if self.check(&token::OpenDelim(token::Brace)) {
-                        if let Some(expr) = self.should_parse_struct_expr(lo, path.clone(), attrs.clone()) {
+                        if let Some(expr) = self.should_parse_struct_expr(lo, &path, &attrs) {
                             return expr;
                         } else {
                             hi = path.span;
@@ -2907,8 +2907,8 @@ impl<'a> Parser<'a> {
     fn should_parse_struct_expr(
         &mut self,
         lo: Span,
-        path: ast::Path,
-        attrs: ThinVec<Attribute>,
+        path: &ast::Path,
+        attrs: &ThinVec<Attribute>,
     ) -> Option<PResult<'a, P<Expr>>> {
         let could_be_struct = self.look_ahead(1, |t| t.is_ident()) && (
             self.look_ahead(2, |t| *t == token::Colon)
@@ -2924,7 +2924,7 @@ impl<'a> Parser<'a> {
             parse_struct = true;
         }
         if parse_struct {
-            match self.parse_struct_expr(lo, path, attrs) {
+            match self.parse_struct_expr(lo, path.clone(), attrs.clone()) {
                 Err(err) => return Some(Err(err)),
                 Ok(expr) => {
                     if bad_struct {
