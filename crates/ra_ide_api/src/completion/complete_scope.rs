@@ -1,12 +1,57 @@
-use crate::completion::{Completions, CompletionContext};
+use ra_text_edit::TextEditBuilder;
+use ra_syntax::SmolStr;
+use ra_assists::auto_import;
+use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
-    if !ctx.is_trivial_path {
-        return;
+    if ctx.is_trivial_path {
+        let names = ctx.analyzer.all_names(ctx.db);
+        names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
     }
-    let names = ctx.analyzer.all_names(ctx.db);
 
-    names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
+    if let Some(name) = ctx.path_ident.as_ref() {
+        let import_names = ctx.analyzer.all_import_names(ctx.db, name);
+        import_names.into_iter().for_each(|(name, path)| {
+            let edit = {
+                let mut builder = TextEditBuilder::default();
+                builder.replace(ctx.source_range(), name.to_string());
+                auto_import::auto_import_text_edit(
+                    ctx.token.parent(),
+                    ctx.token.parent(),
+                    &path,
+                    &mut builder,
+                );
+                builder.finish()
+            };
+            CompletionItem::new(
+                CompletionKind::Reference,
+                ctx.source_range(),
+                build_import_label(&name, &path),
+            )
+            .text_edit(edit)
+            .add_to(acc)
+        });
+    }
+}
+
+fn build_import_label(name: &str, path: &Vec<SmolStr>) -> String {
+    let mut buf = String::with_capacity(64);
+    buf.push_str(name);
+    buf.push_str(" (");
+    fmt_import_path(path, &mut buf);
+    buf.push_str(")");
+    buf
+}
+
+fn fmt_import_path(path: &Vec<SmolStr>, buf: &mut String) {
+    let mut segments = path.iter();
+    if let Some(s) = segments.next() {
+        buf.push_str(&s);
+    }
+    for s in segments {
+        buf.push_str("::");
+        buf.push_str(&s);
+    }
 }
 
 #[cfg(test)]

@@ -14,14 +14,19 @@ use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
     SyntaxKind::*,
+    SmolStr,
 };
 
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
+<<<<<<< HEAD
     AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,
+=======
+    AsName, Module, HirFileId, Crate, Trait, Resolver, ImportResolver,
+>>>>>>> complete_import: add new import resolver infrastructure with some hardcoded importable name.
     expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
     ids::LocationCtx,
-    expr, AstId
+    expr, AstId,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
@@ -170,6 +175,7 @@ fn def_with_body_from_child_node(
 #[derive(Debug)]
 pub struct SourceAnalyzer {
     resolver: Resolver,
+    import_resolver: ImportResolver,
     body_source_map: Option<Arc<BodySourceMap>>,
     infer: Option<Arc<crate::ty::InferenceResult>>,
     scopes: Option<Arc<crate::expr::ExprScopes>>,
@@ -217,6 +223,7 @@ impl SourceAnalyzer {
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
         let def_with_body = def_with_body_from_child_node(db, file_id, node);
+        let import_resolver = ImportResolver::new();
         if let Some(def) = def_with_body {
             let source_map = def.body_source_map(db);
             let scopes = db.expr_scopes(def);
@@ -227,6 +234,7 @@ impl SourceAnalyzer {
             let resolver = expr::resolver_for_scope(def.body(db), db, scope);
             SourceAnalyzer {
                 resolver,
+                import_resolver,
                 body_source_map: Some(source_map),
                 infer: Some(def.infer(db)),
                 scopes: Some(scopes),
@@ -237,6 +245,7 @@ impl SourceAnalyzer {
                     .ancestors()
                     .find_map(|node| try_get_resolver_for_node(db, file_id, node))
                     .unwrap_or_default(),
+                import_resolver,
                 body_source_map: None,
                 infer: None,
                 scopes: None,
@@ -321,6 +330,14 @@ impl SourceAnalyzer {
 
     pub fn all_names(&self, db: &impl HirDatabase) -> FxHashMap<Name, PerNs<crate::Resolution>> {
         self.resolver.all_names(db)
+    }
+
+    pub fn all_import_names(
+        &self,
+        db: &impl HirDatabase,
+        name: &Name,
+    ) -> FxHashMap<SmolStr, Vec<SmolStr>> {
+        self.import_resolver.all_names(db, name)
     }
 
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
