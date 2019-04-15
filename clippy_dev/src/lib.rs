@@ -1,5 +1,3 @@
-#![allow(clippy::default_hash_types)]
-
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
