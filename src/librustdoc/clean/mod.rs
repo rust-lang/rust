@@ -2325,6 +2325,10 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     } else {
                         hir::Constness::NotConst
                     };
+                    let defaultness = match self.container {
+                        ty::ImplContainer(_) => Some(self.defaultness),
+                        ty::TraitContainer(_) => None,
+                    };
                     MethodItem(Method {
                         generics,
                         decl,
@@ -2334,7 +2338,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                             constness,
                             asyncness: hir::IsAsync::NotAsync,
                         },
-                        defaultness: Some(self.defaultness),
+                        defaultness,
                         all_types,
                         ret_types,
                     })
