@@ -183,14 +183,17 @@ impl GlobalState {
 
 /// We need to make at least the following things true:
 ///
-/// U1: After creating a `Uniq`, it is at the top (and unfrozen).
-/// U2: If the top is `Uniq` (and unfrozen), accesses must be through that `Uniq` or pop it.
+/// U1: After creating a `Uniq`, it is at the top.
+/// U2: If the top is `Uniq`, accesses must be through that `Uniq` or remove it it.
 /// U3: If an access happens with a `Uniq`, it requires the `Uniq` to be in the stack.
 ///
-/// F1: After creating a `&`, the parts outside `UnsafeCell` are frozen.
-/// F2: If a write access happens, it unfreezes.
+/// F1: After creating a `&`, the parts outside `UnsafeCell` have our `SharedReadOnly` on top.
+/// F2: If a write access happens, it pops the `SharedReadOnly`.  This has three pieces:
+///     F2a: If a write happens granted by an item below our `SharedReadOnly`, the `SharedReadOnly`
+///          gets popped.
+///     F2b: No `SharedReadWrite` or `Unique` will ever be added on top of our `SharedReadOnly`.
 /// F3: If an access happens with an `&` outside `UnsafeCell`,
-///     it requires the location to still be frozen.
+///     it requires the `SharedReadOnly` to still be in the stack.
 
 impl Default for Tag {
     #[inline(always)]
@@ -218,16 +221,11 @@ impl Permission {
         }
     }
 
-    /// This defines for a given permission, which other items it can tolerate "above" itself
+    /// This defines for a given permission, which other permissions it can tolerate "above" itself
     /// for which kinds of accesses.
     /// If true, then `other` is allowed to remain on top of `self` when `access` happens.
-    fn compatible_with(self, access: AccessKind, other: Item) -> bool {
+    fn compatible_with(self, access: AccessKind, other: Permission) -> bool {
         use self::Permission::*;
-
-        let other = match other {
-            Item::Permission(perm, _) => perm,
-            Item::FnBarrier(_) => return false, // Remove all barriers -- if they are active, cause UB.
-        };
 
         match (self, access, other) {
             // Some cases are impossible.
@@ -236,7 +234,7 @@ impl Permission {
                 bug!("There can never be a SharedReadWrite or a Unique on top of a SharedReadOnly"),
             // When `other` is `SharedReadOnly`, that is NEVER compatible with
             // write accesses.
-            // This makes sure read-only pointers become invalid on write accesses.
+            // This makes sure read-only pointers become invalid on write accesses (ensures F2a).
             (_, AccessKind::Write { .. }, SharedReadOnly) =>
                 false,
             // When `other` is `Unique`, that is compatible with nothing.
@@ -244,7 +242,7 @@ impl Permission {
             (_, _, Unique) =>
                 false,
             // When we are unique and this is a write/dealloc, we tolerate nothing.
-            // This makes sure we re-assert uniqueness on write accesses.
+            // This makes sure we re-assert uniqueness ("being on top") on write accesses.
             // (This is particularily important such that when a new mutable ref gets created, it gets
             // pushed into the right item -- this behaves like a write and we assert uniqueness of the
             // pointer from which this comes, *if* it was a unique pointer.)
@@ -307,6 +305,7 @@ impl<'tcx> Stack {
             .enumerate() // we also need to know *where* in the stack
             .rev() // search top-to-bottom
             // Return permission of first item that grants access.
+            // We require a permission with the right tag, ensuring U3 and F3.
             .filter_map(|(idx, item)| match item {
                 &Item::Permission(perm, item_tag) if perm.grants(access) && tag == item_tag =>
                     Some((idx, perm)),
@@ -324,6 +323,9 @@ impl<'tcx> Stack {
         global: &GlobalState,
     ) -> EvalResult<'tcx, usize> {
         // Two main steps: Find granting item, remove all incompatible items above.
+        // The second step is where barriers get implemented: they "protect" the items
+        // below them, meaning that if we remove an item and then further up encounter a barrier,
+        // we raise an error.
         // Afterwards we just do some post-processing for deallocation accesses.
 
         // Step 1: Find granting item.
@@ -338,20 +340,35 @@ impl<'tcx> Stack {
         // API for this.
         {
             let mut cur = granting_idx + 1;
+            let mut removed_item = None;
             while let Some(item) = self.borrows.get(cur) {
-                if granting_perm.compatible_with(access, *item) {
-                    // Keep this, check next.
-                    cur += 1;
-                } else {
-                    // Aha! This is a bad one, remove it, and if it is an *active* barrier
-                    // we have a problem.
-                    match self.borrows.remove(cur) {
-                        Item::FnBarrier(call) if global.is_active(call) => {
-                            return err!(MachineError(format!(
-                                "not granting access because of barrier ({})", call
-                            )));
+                match *item {
+                    Item::Permission(perm, _) => {
+                        if granting_perm.compatible_with(access, perm) {
+                            // Keep this, check next.
+                            cur += 1;
+                        } else {
+                            // Aha! This is a bad one, remove it.
+                            let item = self.borrows.remove(cur);
+                            trace!("access: popping item {}", item);
+                            removed_item = Some(item);
                         }
-                        _ => {}
+                    }
+                    Item::FnBarrier(call) if !global.is_active(call) => {
+                        // An inactive barrier, just get rid of it. (Housekeeping.)
+                        self.borrows.remove(cur);
+                    }
+                    Item::FnBarrier(call) => {
+                        // We hit an active barrier!  If we have already removed an item,
+                        // we got a problem!  The barrier was supposed to protect this item.
+                        if let Some(removed_item) = removed_item {
+                            return err!(MachineError(format!(
+                                    "not granting {} access to tag {} because barrier ({}) protects incompatible item {}",
+                                    access, tag, call, removed_item
+                                )));
+                        }
+                        // Keep this, check next.
+                        cur += 1;
                     }
                 }
             }
@@ -425,7 +442,7 @@ impl<'tcx> Stack {
         }
     }
 
-    /// Derived a new pointer from one with the given tag .
+    /// Derived a new pointer from one with the given tag.
     fn reborrow(
         &mut self,
         derived_from: Tag,
@@ -448,6 +465,8 @@ impl<'tcx> Stack {
         // ("unsafe" because this also applies to shared references with interior mutability).
         // This is because such pointers may be reborrowed to unique pointers that actually
         // remain valid when their "parents" get further reborrows!
+        // However, either way, we ensure that we insert the new item in a way that between
+        // `derived_from` and the new one, there are only items *compatible with* `derived_from`.
         if new_perm == Permission::SharedReadWrite {
             // A very liberal reborrow because the new pointer does not expect any kind of aliasing guarantee.
             // Just insert new permission as child of old permission, and maintain everything else.
@@ -456,6 +475,8 @@ impl<'tcx> Stack {
             // to actually get removed from the stack.  If we pushed a `SharedReadWrite` on top of
             // a `SharedReadOnly`, we'd violate the invariant that `SaredReadOnly` are at the top
             // and we'd allow write access without invalidating frozen shared references!
+            // This ensures F2b for `SharedReadWrite` by adding the new item below any
+            // potentially existing `SharedReadOnly`.
             self.grant(new_perm, new_tag, derived_from_idx+1);
 
             // No barrier. They can rightfully alias with `&mut`.
@@ -471,18 +492,20 @@ impl<'tcx> Stack {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access, and pops incompatible
             // stuff off the stack.
+            // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
             let check_idx = self.access(access, derived_from, global)?;
             assert_eq!(check_idx, derived_from_idx, "somehow we saw different items??");
-
-            // Now is a good time to add the barrier.
-            if let Some(call) = barrier {
-                self.barrier(call);
-            }
 
             // We insert "as far up as possible": We know only compatible items are remaining
             // on top of `derived_from`, and we want the new item at the top so that we
             // get the strongest possible guarantees.
+            // This ensures U1 and F1.
             self.grant(new_perm, new_tag, self.borrows.len());
+
+            // Now is a good time to add the barrier, protecting the item we just added.
+            if let Some(call) = barrier {
+                self.barrier(call);
+            }
         }
 
         // Make sure that after all this, the stack's invariant is still maintained.

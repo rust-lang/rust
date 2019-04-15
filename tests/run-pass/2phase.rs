@@ -51,14 +51,13 @@ fn with_interior_mutability() {
     impl<T> Thing for Cell<T> {}
 
     let mut x = Cell::new(1);
-    let l = &x;
+    //let l = &x;
 
-    #[allow(unknown_lints, mutable_borrow_reservation_conflict)]
     x
         .do_the_thing({
             x.set(3);
-            l.set(4);
-            x.get() + l.get()
+            // l.set(4); // FIXME: Enable this as an example of overlapping 2PB!
+            x.get() // FIXME same: + l.get()
         })
     ;
 }
