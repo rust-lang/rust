@@ -4,14 +4,14 @@
 #![allow(clippy::clone_on_copy)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![allow(clippy::redundant_closure)]
-#![feature(iter_copied)]
 
 fn main() {
     let _: Vec<i8> = vec![5_i8; 6].iter().map(|x| *x).collect();
     let _: Vec<String> = vec![String::new()].iter().map(|x| x.clone()).collect();
     let _: Vec<u32> = vec![42, 43].iter().map(|&x| x).collect();
     let _: Option<u64> = Some(Box::new(16)).map(|b| *b);
-    let _: Vec<u8> = vec![1; 6].iter().map(|x| x.clone()).collect();
+    let _: Option<u64> = Some(&16).map(|b| *b);
+    let _: Option<u8> = Some(&1).map(|x| x.clone());
 
     // Don't lint these
     let v = vec![5_i8; 6];
