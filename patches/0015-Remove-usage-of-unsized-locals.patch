@@ -62,7 +62,7 @@ index 1181b86..20f9251 100644
  }
 +*/
  
- pub fn push(f: Box<dyn FnBox()>) -> bool {
+ pub fn push(f: Box<dyn FnOnce()>) -> bool {
      unsafe {
 diff --git a/src/libstd/sys_common/mod.rs b/src/libstd/sys_common/mod.rs
 index 6260c3b..611ed7e 100644
@@ -89,7 +89,7 @@ index b2142e7..718bb1c 100644
 -    let _handler = stack_overflow::Handler::new();
 -
 -    // Finally, let's run some code.
--    Box::from_raw(main as *mut Box<dyn FnBox()>)()
+-    Box::from_raw(main as *mut Box<dyn FnOnce()>)()
 +    panic!("Threads are not yet supported, because cranelift doesn't support atomics.");
  }
  

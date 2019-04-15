@@ -173,7 +173,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         if sess.opts.cg.rpath {
             sess.err("rpath is not yet supported");
         }
-        if sess.opts.debugging_opts.pgo_gen.is_some() {
+        if sess.opts.debugging_opts.pgo_gen.enabled() {
             sess.err("pgo is not supported");
         }
     }

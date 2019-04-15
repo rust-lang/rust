@@ -410,8 +410,13 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 layout::Variants::Single { index } => {
                     assert_eq!(index, *variant_index);
                 }
-                layout::Variants::Multiple { discr_kind: layout::DiscriminantKind::Tag, .. } => {
-                    let ptr = place.place_field(fx, mir::Field::new(0));
+                layout::Variants::Multiple {
+                    discr: _,
+                    discr_index,
+                    discr_kind: layout::DiscriminantKind::Tag,
+                    variants: _,
+                } => {
+                    let ptr = place.place_field(fx, mir::Field::new(discr_index));
                     let to = layout
                         .ty
                         .ty_adt_def()
@@ -422,15 +427,17 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     ptr.write_cvalue(fx, discr);
                 }
                 layout::Variants::Multiple {
+                    discr: _,
+                    discr_index,
                     discr_kind: layout::DiscriminantKind::Niche {
                         dataful_variant,
                         ref niche_variants,
                         niche_start,
                     },
-                    ..
+                    variants: _,
                 } => {
                     if *variant_index != dataful_variant {
-                        let niche = place.place_field(fx, mir::Field::new(0));
+                        let niche = place.place_field(fx, mir::Field::new(discr_index));
                         //let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
                         let niche_value =
                             ((variant_index.as_u32() - niche_variants.start().as_u32()) as u128)
@@ -767,7 +774,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
         return trap_unreachable_ret_value(fx, dest_layout, "[panic] Tried to get discriminant for uninhabited type.");
     }
 
-    let (discr_scalar, discr_kind) = match &layout.variants {
+    let (discr_scalar, discr_index, discr_kind) = match &layout.variants {
         layout::Variants::Single { index } => {
             let discr_val = layout
                 .ty
@@ -777,10 +784,12 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 });
             return CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
         }
-        layout::Variants::Multiple { discr, discr_kind, variants: _ } => (discr, discr_kind),
+        layout::Variants::Multiple { discr, discr_index, discr_kind, variants: _ } => {
+            (discr, *discr_index, discr_kind)
+        }
     };
 
-    let discr = place.place_field(fx, mir::Field::new(0)).to_cvalue(fx);
+    let discr = place.place_field(fx, mir::Field::new(discr_index)).to_cvalue(fx);
     let discr_ty = discr.layout().ty;
     let lldiscr = discr.load_scalar(fx);
     match discr_kind {
