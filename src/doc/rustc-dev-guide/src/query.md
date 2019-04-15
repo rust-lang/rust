@@ -167,50 +167,45 @@ Well, defining a query takes place in two steps:
 
 To specify the query name and arguments, you simply add an entry to
 the big macro invocation in
-[`src/librustc/ty/query/mod.rs`][query-mod], which looks something like:
+[`src/librustc/query/mod.rs`][query-mod], which looks something like:
 
-[query-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/query/index.html
+[query-mod]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/query/index.html
 
 ```rust,ignore
-define_queries! { <'tcx>
-    /// Records the type of every item.
-    [] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
+rustc_queries! {
+    Other {
+        /// Records the type of every item.
+        query type_of(key: DefId) -> Ty<'tcx> {
+            cache { key.is_local() }
+        }
+    }
 
     ...
 }
 ```
 
-Each line of the macro defines one query. The name is broken up like this:
+Queries are grouped into categories (`Other`, `Codegen`, `TypeChecking`, etc.).
+Each group contains one or more queries. Each query definition is broken up like
+this:
 
 ```rust,ignore
-[] fn type_of: TypeOfItem(DefId) -> Ty<'tcx>,
-^^    ^^^^^^^  ^^^^^^^^^^ ^^^^^     ^^^^^^^^
-|     |        |          |         |
-|     |        |          |         result type of query
-|     |        |          query key type
-|     |        dep-node constructor
+query type_of(key: DefId) -> Ty<'tcx> { ... }
+^^    ^^^^^^^      ^^^^^     ^^^^^^^^   ^^^
+|     |            |         |          |
+|     |            |         |          query modifiers
+|     |            |         result type of query
+|     |            query key type
 |     name of query
-query flags
+query keyword
 ```
 
 Let's go over them one by one:
 
-- **Query flags:** these are largely unused right now, but the intention
-  is that we'll be able to customize various aspects of how the query is
-  processed.
+- **Query keyword:** indicates a start of a query definition.
 - **Name of query:** the name of the query method
   (`tcx.type_of(..)`). Also used as the name of a struct
   (`ty::queries::type_of`) that will be generated to represent
   this query.
-- **Dep-node constructor:** indicates the constructor function that
-  connects this query to incremental compilation. Typically, this is a
-  `DepNode` variant, which can be added by modifying the
-  `define_dep_nodes!` macro invocation in
-  [`librustc/dep_graph/dep_node.rs`][dep-node].
-  - However, sometimes we use a custom function, in which case the
-    name will be in snake case and the function will be defined at the
-    bottom of the file. This is typically used when the query key is
-    not a def-id, or just not the type that the dep-node expects.
 - **Query key type:** the type of the argument to this query.
   This type must implement the `ty::query::keys::Key` trait, which
   defines (for example) how to map it to a crate, and so forth.
@@ -222,19 +217,18 @@ Let's go over them one by one:
     which is used to cheaply modify MIR in place. See the definition
     of `Steal` for more details. New uses of `Steal` should **not** be
     added without alerting `@rust-lang/compiler`.
-
-[dep-node]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/dep_graph/struct.DepNode.html
+- **Query modifiers:** various flags and options that customize how the
+  query is processed.
 
 So, to add a query:
 
-- Add an entry to `define_queries!` using the format above.
-- Possibly add a corresponding entry to the dep-node macro.
+- Add an entry to `rustc_queries!` using the format above.
 - Link the provider by modifying the appropriate `provide` method;
   or add a new one if needed and ensure that `rustc_driver` is invoking it.
 
 #### Query structs and descriptions
 
-For each kind, the `define_queries` macro will generate a "query struct"
+For each kind, the `rustc_queries` macro will generate a "query struct"
 named after the query. This struct is a kind of a place-holder
 describing the query. Each such struct implements the
 `self::config::QueryConfig` trait, which has associated types for the
@@ -243,11 +237,14 @@ like this:
 
 ```rust,ignore
 // Dummy struct representing a particular kind of query:
-pub struct type_of<'tcx> { phantom: PhantomData<&'tcx ()> }
+pub struct type_of<'tcx> { data: PhantomData<&'tcx ()> }
 
 impl<'tcx> QueryConfig for type_of<'tcx> {
   type Key = DefId;
   type Value = Ty<'tcx>;
+
+  const NAME: QueryName = QueryName::type_of;
+  const CATEGORY: ProfileCategory = ProfileCategory::Other;
 }
 ```
 
@@ -262,9 +259,24 @@ You can put new impls into the `config` module. They look something like this:
 ```rust,ignore
 impl<'tcx> QueryDescription for queries::type_of<'tcx> {
     fn describe(tcx: TyCtxt, key: DefId) -> String {
-        format!("computing the type of `{}`", tcx.item_path_str(key))
+        format!("computing the type of `{}`", tcx.def_path_str(key))
     }
 }
 ```
+
+Another option is to add `desc` modifier:
+
+```rust,ignore
+rustc_queries! {
+    Other {
+        /// Records the type of every item.
+        query type_of(key: DefId) -> Ty<'tcx> {
+            desc { |tcx| "computing the type of `{}`", tcx.def_path_str(key) }
+        }
+    }
+}
+```
+
+`rustc_queries` macro will generate an appropriate `impl` automatically.
 
 [query-model]: queries/query-evaluation-model-in-detail.html
