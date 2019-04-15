@@ -277,6 +277,7 @@ impl<T, E> Result<T, E> {
     /// let x: Result<i32, &str> = Err("Some error message");
     /// assert_eq!(x.is_ok(), false);
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_ok(&self) -> bool {
@@ -301,6 +302,7 @@ impl<T, E> Result<T, E> {
     /// let x: Result<i32, &str> = Err("Some error message");
     /// assert_eq!(x.is_err(), true);
     /// ```
+    #[must_use]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_err(&self) -> bool {

@@ -32,6 +32,7 @@ impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B>
 /// from any borrow of a given type.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToOwned {
+    /// The resulting type after obtaining ownership.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned: Borrow<Self>;
 

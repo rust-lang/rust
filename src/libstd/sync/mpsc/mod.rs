@@ -1005,7 +1005,7 @@ impl<T> SyncSender<T> {
     /// thread::spawn(move || {
     ///     // This will return an error and send
     ///     // no message if the buffer is full
-    ///     sync_sender2.try_send(3).is_err();
+    ///     let _ = sync_sender2.try_send(3);
     /// });
     ///
     /// let mut msg;

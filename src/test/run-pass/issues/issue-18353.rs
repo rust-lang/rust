@@ -11,5 +11,5 @@ struct Str {
 
 fn main() {
     let str: Option<&Str> = None;
-    str.is_some();
+    let _ = str.is_some();
 }
