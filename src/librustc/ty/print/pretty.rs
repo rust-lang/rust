@@ -1577,7 +1577,7 @@ define_print_and_forward_display! {
                     p!(write("b\""));
                     for &c in slice {
                         for e in std::ascii::escape_default(c) {
-                            p!(write("{}", e));
+                            p!(write("{}", e as char));
                         }
                     }
                     p!(write("\""));
@@ -1593,7 +1593,7 @@ define_print_and_forward_display! {
                     p!(write("b\""));
                     for &c in slice {
                         for e in std::ascii::escape_default(c) {
-                            p!(write("{}", e));
+                            p!(write("{}", e as char));
                         }
                     }
                     p!(write("\""));
