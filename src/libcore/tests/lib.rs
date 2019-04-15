@@ -35,7 +35,6 @@
 
 extern crate core;
 extern crate test;
-extern crate rand;
 
 mod any;
 mod array;

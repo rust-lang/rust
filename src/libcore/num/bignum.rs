@@ -17,8 +17,8 @@
             issue = "0")]
 #![macro_use]
 
-use mem;
-use intrinsics;
+use crate::mem;
+use crate::intrinsics;
 
 /// Arithmetic operations required by bignums.
 pub trait FullOps: Sized {
@@ -128,7 +128,7 @@ macro_rules! define_bignum {
 
             /// Makes a bignum from `u64` value.
             pub fn from_u64(mut v: u64) -> $name {
-                use mem;
+                use crate::mem;
 
                 let mut base = [0; $n];
                 let mut sz = 0;
@@ -150,7 +150,7 @@ macro_rules! define_bignum {
             /// Returns the `i`-th bit where bit 0 is the least significant one.
             /// In other words, the bit with weight `2^i`.
             pub fn get_bit(&self, i: usize) -> u8 {
-                use mem;
+                use crate::mem;
 
                 let digitbits = mem::size_of::<$ty>() * 8;
                 let d = i / digitbits;
@@ -166,7 +166,7 @@ macro_rules! define_bignum {
             /// Returns the number of bits necessary to represent this value. Note that zero
             /// is considered to need 0 bits.
             pub fn bit_length(&self) -> usize {
-                use mem;
+                use crate::mem;
 
                 // Skip over the most significant digits which are zero.
                 let digits = self.digits();
@@ -190,8 +190,8 @@ macro_rules! define_bignum {
 
             /// Adds `other` to itself and returns its own mutable reference.
             pub fn add<'a>(&'a mut self, other: &$name) -> &'a mut $name {
-                use cmp;
-                use num::bignum::FullOps;
+                use crate::cmp;
+                use crate::num::bignum::FullOps;
 
                 let mut sz = cmp::max(self.size, other.size);
                 let mut carry = false;
@@ -209,7 +209,7 @@ macro_rules! define_bignum {
             }
 
             pub fn add_small(&mut self, other: $ty) -> &mut $name {
-                use num::bignum::FullOps;
+                use crate::num::bignum::FullOps;
 
                 let (mut carry, v) = self.base[0].full_add(other, false);
                 self.base[0] = v;
@@ -228,8 +228,8 @@ macro_rules! define_bignum {
 
             /// Subtracts `other` from itself and returns its own mutable reference.
             pub fn sub<'a>(&'a mut self, other: &$name) -> &'a mut $name {
-                use cmp;
-                use num::bignum::FullOps;
+                use crate::cmp;
+                use crate::num::bignum::FullOps;
 
                 let sz = cmp::max(self.size, other.size);
                 let mut noborrow = true;
@@ -246,7 +246,7 @@ macro_rules! define_bignum {
             /// Multiplies itself by a digit-sized `other` and returns its own
             /// mutable reference.
             pub fn mul_small(&mut self, other: $ty) -> &mut $name {
-                use num::bignum::FullOps;
+                use crate::num::bignum::FullOps;
 
                 let mut sz = self.size;
                 let mut carry = 0;
@@ -265,7 +265,7 @@ macro_rules! define_bignum {
 
             /// Multiplies itself by `2^bits` and returns its own mutable reference.
             pub fn mul_pow2(&mut self, bits: usize) -> &mut $name {
-                use mem;
+                use crate::mem;
 
                 let digitbits = mem::size_of::<$ty>() * 8;
                 let digits = bits / digitbits;
@@ -306,8 +306,8 @@ macro_rules! define_bignum {
 
             /// Multiplies itself by `5^e` and returns its own mutable reference.
             pub fn mul_pow5(&mut self, mut e: usize) -> &mut $name {
-                use mem;
-                use num::bignum::SMALL_POW5;
+                use crate::mem;
+                use crate::num::bignum::SMALL_POW5;
 
                 // There are exactly n trailing zeros on 2^n, and the only relevant digit sizes
                 // are consecutive powers of two, so this is well suited index for the table.
@@ -338,7 +338,7 @@ macro_rules! define_bignum {
             pub fn mul_digits<'a>(&'a mut self, other: &[$ty]) -> &'a mut $name {
                 // the internal routine. works best when aa.len() <= bb.len().
                 fn mul_inner(ret: &mut [$ty; $n], aa: &[$ty], bb: &[$ty]) -> usize {
-                    use num::bignum::FullOps;
+                    use crate::num::bignum::FullOps;
 
                     let mut retsz = 0;
                     for (i, &a) in aa.iter().enumerate() {
@@ -375,7 +375,7 @@ macro_rules! define_bignum {
             /// Divides itself by a digit-sized `other` and returns its own
             /// mutable reference *and* the remainder.
             pub fn div_rem_small(&mut self, other: $ty) -> (&mut $name, $ty) {
-                use num::bignum::FullOps;
+                use crate::num::bignum::FullOps;
 
                 assert!(other > 0);
 
@@ -392,7 +392,7 @@ macro_rules! define_bignum {
             /// Divide self by another bignum, overwriting `q` with the quotient and `r` with the
             /// remainder.
             pub fn div_rem(&self, d: &$name, q: &mut $name, r: &mut $name) {
-                use mem;
+                use crate::mem;
 
                 // Stupid slow base-2 long division taken from
                 // https://en.wikipedia.org/wiki/Division_algorithm
@@ -429,22 +429,22 @@ macro_rules! define_bignum {
             }
         }
 
-        impl ::cmp::PartialEq for $name {
+        impl crate::cmp::PartialEq for $name {
             fn eq(&self, other: &$name) -> bool { self.base[..] == other.base[..] }
         }
 
-        impl ::cmp::Eq for $name {
+        impl crate::cmp::Eq for $name {
         }
 
-        impl ::cmp::PartialOrd for $name {
-            fn partial_cmp(&self, other: &$name) -> ::option::Option<::cmp::Ordering> {
-                ::option::Option::Some(self.cmp(other))
+        impl crate::cmp::PartialOrd for $name {
+            fn partial_cmp(&self, other: &$name) -> crate::option::Option<crate::cmp::Ordering> {
+                crate::option::Option::Some(self.cmp(other))
             }
         }
 
-        impl ::cmp::Ord for $name {
-            fn cmp(&self, other: &$name) -> ::cmp::Ordering {
-                use cmp::max;
+        impl crate::cmp::Ord for $name {
+            fn cmp(&self, other: &$name) -> crate::cmp::Ordering {
+                use crate::cmp::max;
                 let sz = max(self.size, other.size);
                 let lhs = self.base[..sz].iter().cloned().rev();
                 let rhs = other.base[..sz].iter().cloned().rev();
@@ -452,15 +452,15 @@ macro_rules! define_bignum {
             }
         }
 
-        impl ::clone::Clone for $name {
+        impl crate::clone::Clone for $name {
             fn clone(&self) -> $name {
                 $name { size: self.size, base: self.base }
             }
         }
 
-        impl ::fmt::Debug for $name {
-            fn fmt(&self, f: &mut ::fmt::Formatter) -> ::fmt::Result {
-                use mem;
+        impl crate::fmt::Debug for $name {
+            fn fmt(&self, f: &mut crate::fmt::Formatter) -> crate::fmt::Result {
+                use crate::mem;
 
                 let sz = if self.size < 1 {1} else {self.size};
                 let digitlen = mem::size_of::<$ty>() * 2;
@@ -469,7 +469,7 @@ macro_rules! define_bignum {
                 for &v in self.base[..sz-1].iter().rev() {
                     write!(f, "_{:01$x}", v, digitlen)?;
                 }
-                ::result::Result::Ok(())
+                crate::result::Result::Ok(())
             }
         }
     )

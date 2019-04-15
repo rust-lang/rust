@@ -1,10 +1,11 @@
 //! impl char {}
 
-use slice;
-use str::from_utf8_unchecked_mut;
+use crate::slice;
+use crate::str::from_utf8_unchecked_mut;
+use crate::unicode::printable::is_printable;
+use crate::unicode::tables::{conversions, derived_property, general_category, property};
+
 use super::*;
-use unicode::printable::is_printable;
-use unicode::tables::{conversions, derived_property, general_category, property};
 
 #[lang = "char"]
 impl char {

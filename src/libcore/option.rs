@@ -135,9 +135,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use iter::{FromIterator, FusedIterator, TrustedLen};
-use {hint, mem, ops::{self, Deref}};
-use pin::Pin;
+use crate::iter::{FromIterator, FusedIterator, TrustedLen};
+use crate::{hint, mem, ops::{self, Deref}};
+use crate::pin::Pin;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of

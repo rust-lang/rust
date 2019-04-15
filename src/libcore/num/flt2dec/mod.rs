@@ -120,7 +120,7 @@ functions.
             reason = "internal routines only exposed for testing",
             issue = "0")]
 
-use i16;
+use crate::i16;
 pub use self::decoder::{decode, DecodableFloat, FullDecoded, Decoded};
 
 pub mod estimator;

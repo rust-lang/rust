@@ -1,4 +1,5 @@
-use cmp;
+use crate::cmp;
+
 use super::super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};
 
 /// An iterator that iterates two other iterators simultaneously.

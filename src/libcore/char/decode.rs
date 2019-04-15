@@ -1,6 +1,7 @@
 //! UTF-8 and UTF-16 decoding iterators
 
-use fmt;
+use crate::fmt;
+
 use super::from_u32_unchecked;
 
 /// An iterator that decodes UTF-16 encoded code points from an iterator of `u16`s.

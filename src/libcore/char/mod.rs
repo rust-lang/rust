@@ -37,12 +37,12 @@ pub use self::decode::{decode_utf16, DecodeUtf16, DecodeUtf16Error};
 
 // unstable re-exports
 #[unstable(feature = "unicode_version", issue = "49726")]
-pub use unicode::tables::UNICODE_VERSION;
+pub use crate::unicode::tables::UNICODE_VERSION;
 #[unstable(feature = "unicode_version", issue = "49726")]
-pub use unicode::version::UnicodeVersion;
+pub use crate::unicode::version::UnicodeVersion;
 
-use fmt::{self, Write};
-use iter::FusedIterator;
+use crate::fmt::{self, Write};
+use crate::iter::FusedIterator;
 
 // UTF-8 ranges and tags for encoding characters
 const TAG_CONT: u8     = 0b1000_0000;

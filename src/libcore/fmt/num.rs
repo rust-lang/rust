@@ -1,12 +1,12 @@
 //! Integer and floating-point number formatting
 
 
-use fmt;
-use ops::{Div, Rem, Sub};
-use str;
-use slice;
-use ptr;
-use mem::MaybeUninit;
+use crate::fmt;
+use crate::ops::{Div, Rem, Sub};
+use crate::str;
+use crate::slice;
+use crate::ptr;
+use crate::mem::MaybeUninit;
 
 #[doc(hidden)]
 trait Int: PartialEq + PartialOrd + Div<Output=Self> + Rem<Output=Self> +
@@ -196,7 +196,7 @@ macro_rules! impl_Display {
 
             unsafe {
                 // need at least 16 bits for the 4-characters-at-a-time to work.
-                assert!(::mem::size_of::<$u>() >= 2);
+                assert!(crate::mem::size_of::<$u>() >= 2);
 
                 // eagerly decode 4 characters at a time
                 while n >= 10000 {

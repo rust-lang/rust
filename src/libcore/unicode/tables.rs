@@ -2,8 +2,8 @@
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
-use unicode::version::UnicodeVersion;
-use unicode::bool_trie::{BoolTrie, SmallBoolTrie};
+use crate::unicode::version::UnicodeVersion;
+use crate::unicode::bool_trie::{BoolTrie, SmallBoolTrie};
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.

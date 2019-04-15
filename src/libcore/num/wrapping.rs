@@ -1,6 +1,6 @@
 use super::Wrapping;
 
-use ops::*;
+use crate::ops::*;
 
 #[allow(unused_macros)]
 macro_rules! sh_impl_signed {

@@ -63,6 +63,10 @@
 #![warn(missing_debug_implementations)]
 #![deny(intra_doc_link_resolution_failure)] // rustdoc is run without -D warnings
 
+#![deny(rust_2018_idioms)]
+#![allow(explicit_outlives_requirements)]
+#![allow(elided_lifetimes_in_paths)]
+
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]
 #![feature(asm)]

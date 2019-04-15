@@ -1,6 +1,6 @@
-use fmt;
-use marker;
-use usize;
+use crate::fmt;
+use crate::marker;
+use crate::usize;
 
 use super::{FusedIterator, TrustedLen};
 
@@ -283,7 +283,7 @@ pub const fn empty<T>() -> Empty<T> {
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
-    inner: ::option::IntoIter<T>
+    inner: crate::option::IntoIter<T>
 }
 
 #[stable(feature = "iter_once", since = "1.2.0")]

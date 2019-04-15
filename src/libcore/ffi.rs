@@ -4,7 +4,7 @@
 
 //! Utilities related to FFI bindings.
 
-use ::fmt;
+use crate::fmt;
 
 /// Equivalent to C's `void` type when used as a [pointer].
 ///

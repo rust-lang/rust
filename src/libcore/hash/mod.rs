@@ -81,8 +81,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fmt;
-use marker;
+use crate::fmt;
+use crate::marker;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
@@ -541,8 +541,9 @@ impl<H> Eq for BuildHasherDefault<H> {}
 //////////////////////////////////////////////////////////////////////////////
 
 mod impls {
-    use mem;
-    use slice;
+    use crate::mem;
+    use crate::slice;
+
     use super::*;
 
     macro_rules! impl_write {

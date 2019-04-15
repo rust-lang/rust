@@ -11,9 +11,9 @@
 
 #![stable(feature = "core_ascii", since = "1.26.0")]
 
-use fmt;
-use ops::Range;
-use iter::FusedIterator;
+use crate::fmt;
+use crate::ops::Range;
+use crate::iter::FusedIterator;
 
 /// An iterator over the escaped version of a byte.
 ///

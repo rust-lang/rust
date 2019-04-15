@@ -20,20 +20,20 @@
 // * The `raw` and `bytes` submodules.
 // * Boilerplate trait implementations.
 
-use cmp::Ordering::{self, Less, Equal, Greater};
-use cmp;
-use fmt;
-use intrinsics::assume;
-use isize;
-use iter::*;
-use ops::{FnMut, Try, self};
-use option::Option;
-use option::Option::{None, Some};
-use result::Result;
-use result::Result::{Ok, Err};
-use ptr;
-use mem;
-use marker::{Copy, Send, Sync, Sized, self};
+use crate::cmp::Ordering::{self, Less, Equal, Greater};
+use crate::cmp;
+use crate::fmt;
+use crate::intrinsics::assume;
+use crate::isize;
+use crate::iter::*;
+use crate::ops::{FnMut, Try, self};
+use crate::option::Option;
+use crate::option::Option::{None, Some};
+use crate::result::Result;
+use crate::result::Result::{Ok, Err};
+use crate::ptr;
+use crate::mem;
+use crate::marker::{Copy, Send, Sync, Sized, self};
 
 #[unstable(feature = "slice_internals", issue = "0",
            reason = "exposed from core to be reused in std; use the memchr crate")]
@@ -2256,13 +2256,14 @@ impl<T> [T] {
         // Luckily since all this is constant-evaluated... performance here matters not!
         #[inline]
         fn gcd(a: usize, b: usize) -> usize {
+            use crate::intrinsics;
             // iterative stein’s algorithm
             // We should still make this `const fn` (and revert to recursive algorithm if we do)
             // because relying on llvm to consteval all this is… well, it makes me uncomfortable.
             let (ctz_a, mut ctz_b) = unsafe {
                 if a == 0 { return b; }
                 if b == 0 { return a; }
-                (::intrinsics::cttz_nonzero(a), ::intrinsics::cttz_nonzero(b))
+                (intrinsics::cttz_nonzero(a), intrinsics::cttz_nonzero(b))
             };
             let k = ctz_a.min(ctz_b);
             let mut a = a >> ctz_a;
@@ -2271,21 +2272,21 @@ impl<T> [T] {
                 // remove all factors of 2 from b
                 b >>= ctz_b;
                 if a > b {
-                    ::mem::swap(&mut a, &mut b);
+                    mem::swap(&mut a, &mut b);
                 }
                 b = b - a;
                 unsafe {
                     if b == 0 {
                         break;
                     }
-                    ctz_b = ::intrinsics::cttz_nonzero(b);
+                    ctz_b = intrinsics::cttz_nonzero(b);
                 }
             }
             a << k
         }
-        let gcd: usize = gcd(::mem::size_of::<T>(), ::mem::size_of::<U>());
-        let ts: usize = ::mem::size_of::<U>() / gcd;
-        let us: usize = ::mem::size_of::<T>() / gcd;
+        let gcd: usize = gcd(mem::size_of::<T>(), mem::size_of::<U>());
+        let ts: usize = mem::size_of::<U>() / gcd;
+        let us: usize = mem::size_of::<T>() / gcd;
 
         // Armed with this knowledge, we can find how many `U`s we can fit!
         let us_len = self.len() / ts * us;
@@ -2326,7 +2327,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to<U>(&self) -> (&[T], &[U], &[T]) {
         // Note that most of this function will be constant-evaluated,
-        if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
+        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &[], &[]);
         }
@@ -2334,7 +2335,7 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
+        let offset = crate::ptr::align_offset(ptr, mem::align_of::<U>());
         if offset > self.len() {
             (self, &[], &[])
         } else {
@@ -2379,7 +2380,7 @@ impl<T> [T] {
     #[stable(feature = "slice_align_to", since = "1.30.0")]
     pub unsafe fn align_to_mut<U>(&mut self) -> (&mut [T], &mut [U], &mut [T]) {
         // Note that most of this function will be constant-evaluated,
-        if ::mem::size_of::<U>() == 0 || ::mem::size_of::<T>() == 0 {
+        if mem::size_of::<U>() == 0 || mem::size_of::<T>() == 0 {
             // handle ZSTs specially, which is – don't handle them at all.
             return (self, &mut [], &mut []);
         }
@@ -2387,7 +2388,7 @@ impl<T> [T] {
         // First, find at what point do we split between the first and 2nd slice. Easy with
         // ptr.align_offset.
         let ptr = self.as_ptr();
-        let offset = ::ptr::align_offset(ptr, ::mem::align_of::<U>());
+        let offset = crate::ptr::align_offset(ptr, mem::align_of::<U>());
         if offset > self.len() {
             (self, &mut [], &mut [])
         } else {

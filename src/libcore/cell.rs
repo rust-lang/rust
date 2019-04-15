@@ -186,12 +186,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cmp::Ordering;
-use fmt::{self, Debug, Display};
-use marker::Unsize;
-use mem;
-use ops::{Deref, DerefMut, CoerceUnsized};
-use ptr;
+use crate::cmp::Ordering;
+use crate::fmt::{self, Debug, Display};
+use crate::marker::Unsize;
+use crate::mem;
+use crate::ops::{Deref, DerefMut, CoerceUnsized};
+use crate::ptr;
 
 /// A mutable memory location.
 ///

@@ -2,8 +2,8 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use ops::Try;
-use result::Result;
+use crate::ops::Try;
+use crate::result::Result;
 
 /// Indicates whether a value is available or if the current task has been
 /// scheduled to receive a wakeup instead.

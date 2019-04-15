@@ -1,7 +1,6 @@
 #![feature(flt2dec)]
 #![feature(test)]
 
-extern crate core;
 extern crate test;
 
 mod any;

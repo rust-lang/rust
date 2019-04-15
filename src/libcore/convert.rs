@@ -40,7 +40,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fmt;
+use crate::fmt;
 
 /// An identity function.
 ///

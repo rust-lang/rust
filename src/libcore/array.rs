@@ -9,13 +9,13 @@
                       integer constants",
             issue = "27778")]
 
-use borrow::{Borrow, BorrowMut};
-use cmp::Ordering;
-use convert::TryFrom;
-use fmt;
-use hash::{Hash, self};
-use marker::Unsize;
-use slice::{Iter, IterMut};
+use crate::borrow::{Borrow, BorrowMut};
+use crate::cmp::Ordering;
+use crate::convert::TryFrom;
+use crate::fmt;
+use crate::hash::{Hash, self};
+use crate::marker::Unsize;
+use crate::slice::{Iter, IterMut};
 
 /// Utility trait implemented only on arrays of fixed size
 ///

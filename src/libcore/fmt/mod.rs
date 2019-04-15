@@ -2,14 +2,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
-use marker::PhantomData;
-use mem;
-use num::flt2dec;
-use ops::Deref;
-use result;
-use slice;
-use str;
+use crate::cell::{UnsafeCell, Cell, RefCell, Ref, RefMut};
+use crate::marker::PhantomData;
+use crate::mem;
+use crate::num::flt2dec;
+use crate::ops::Deref;
+use crate::result;
+use crate::slice;
+use crate::str;
 
 mod float;
 mod num;

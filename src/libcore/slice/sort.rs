@@ -6,9 +6,9 @@
 //! Unstable sorting is compatible with libcore because it doesn't allocate memory, unlike our
 //! stable sorting implementation.
 
-use cmp;
-use mem::{self, MaybeUninit};
-use ptr;
+use crate::cmp;
+use crate::mem::{self, MaybeUninit};
+use crate::ptr;
 
 /// When dropped, copies from `src` into `dest`.
 struct CopyOnDrop<T> {

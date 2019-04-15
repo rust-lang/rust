@@ -12,9 +12,9 @@
 //! assert_eq!(Duration::new(5, 0), Duration::from_secs(5));
 //! ```
 
-use {fmt, u64};
-use iter::Sum;
-use ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
+use crate::{fmt, u64};
+use crate::iter::Sum;
+use crate::ops::{Add, Sub, Mul, Div, AddAssign, SubAssign, MulAssign, DivAssign};
 
 const NANOS_PER_SEC: u32 = 1_000_000_000;
 const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -921,7 +921,7 @@ impl fmt::Debug for Duration {
             // Determine the end of the buffer: if precision is set, we just
             // use as many digits from the buffer (capped to 9). If it isn't
             // set, we only use all digits up to the last non-zero one.
-            let end = f.precision().map(|p| ::cmp::min(p, 9)).unwrap_or(pos);
+            let end = f.precision().map(|p| crate::cmp::min(p, 9)).unwrap_or(pos);
 
             // If we haven't emitted a single fractional digit and the precision
             // wasn't set to a non-zero value, we don't print the decimal point.
@@ -931,7 +931,7 @@ impl fmt::Debug for Duration {
                 // We are only writing ASCII digits into the buffer and it was
                 // initialized with '0's, so it contains valid UTF8.
                 let s = unsafe {
-                    ::str::from_utf8_unchecked(&buf[..end])
+                    crate::str::from_utf8_unchecked(&buf[..end])
                 };
 
                 // If the user request a precision > 9, we pad '0's at the end.

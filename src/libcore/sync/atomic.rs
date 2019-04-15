@@ -118,11 +118,11 @@
 
 use self::Ordering::*;
 
-use intrinsics;
-use cell::UnsafeCell;
-use fmt;
+use crate::intrinsics;
+use crate::cell::UnsafeCell;
+use crate::fmt;
 
-use hint::spin_loop;
+use crate::hint::spin_loop;
 
 /// Signals the processor that it is entering a busy-wait spin-loop.
 ///
@@ -195,7 +195,7 @@ pub struct AtomicPtr<T> {
 impl<T> Default for AtomicPtr<T> {
     /// Creates a null `AtomicPtr<T>`.
     fn default() -> AtomicPtr<T> {
-        AtomicPtr::new(::ptr::null_mut())
+        AtomicPtr::new(crate::ptr::null_mut())
     }
 }
 

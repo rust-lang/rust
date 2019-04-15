@@ -1,4 +1,4 @@
-use marker::Unsize;
+use crate::marker::Unsize;
 
 /// Trait that indicates that this is a pointer or a wrapper for one,
 /// where unsizing can be performed on the pointee.

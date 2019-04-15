@@ -6,10 +6,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use cell::UnsafeCell;
-use cmp;
-use hash::Hash;
-use hash::Hasher;
+use crate::cell::UnsafeCell;
+use crate::cmp;
+use crate::hash::Hash;
+use crate::hash::Hasher;
 
 /// Types that can be transferred across thread boundaries.
 ///

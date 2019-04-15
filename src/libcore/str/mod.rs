@@ -7,14 +7,14 @@
 use self::pattern::Pattern;
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
-use char;
-use fmt::{self, Write};
-use iter::{Map, Cloned, FusedIterator, TrustedLen, TrustedRandomAccess, Filter};
-use iter::{Flatten, FlatMap, Chain};
-use slice::{self, SliceIndex, Split as SliceSplit};
-use mem;
-use ops::Try;
-use option;
+use crate::char;
+use crate::fmt::{self, Write};
+use crate::iter::{Map, Cloned, FusedIterator, TrustedLen, TrustedRandomAccess, Filter};
+use crate::iter::{Flatten, FlatMap, Chain};
+use crate::slice::{self, SliceIndex, Split as SliceSplit};
+use crate::mem;
+use crate::ops::Try;
+use crate::option;
 
 pub mod pattern;
 
@@ -1557,9 +1557,9 @@ Section: Trait implementations
 */
 
 mod traits {
-    use cmp::Ordering;
-    use ops;
-    use slice::{self, SliceIndex};
+    use crate::cmp::Ordering;
+    use crate::ops;
+    use crate::slice::{self, SliceIndex};
 
     /// Implements ordering of strings.
     ///
