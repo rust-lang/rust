@@ -1,2 +1,5 @@
 [alias]
 uitest = "test --test compile-test"
+
+[build]
+rustflags = ["-Zunstable-options"]
