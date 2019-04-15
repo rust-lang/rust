@@ -1,36 +1,17 @@
-error: expected type, found `3`
-  --> $DIR/struct-literal-in-while.rs:13:12
-   |
-LL |         x: 3
-   |            ^ expecting a type here because of type ascription
-   |
-   = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression expects an ascribed type after the colon
-  --> $DIR/struct-literal-in-while.rs:13:9
-   |
-LL |         x: 3
-   |         ^
-   = help: this might be indicative of a syntax error elsewhere
-
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
-  --> $DIR/struct-literal-in-while.rs:14:12
-   |
-LL |     }.hi() {
-   |            ^ expected one of `.`, `;`, `?`, `}`, or an operator here
-
-error[E0423]: expected value, found struct `Foo`
+error: struct literals are not allowed here
   --> $DIR/struct-literal-in-while.rs:12:11
    |
-LL |     while Foo {
-   |           ^^^ did you mean `(Foo { /* fields */ })`?
-
-error[E0599]: no method named `hi` found for type `()` in the current scope
-  --> $DIR/struct-literal-in-while.rs:14:7
+LL |       while Foo {
+   |  ___________^
+LL | |         x: 3
+LL | |     }.hi() {
+   | |_____^
+help: surround the struct literal with parenthesis
    |
-LL |     }.hi() {
-   |       ^^
+LL |     while (Foo {
+LL |         x: 3
+LL |     }).hi() {
+   |
 
-error: aborting due to 4 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0423, E0599.
-For more information about an error, try `rustc --explain E0423`.

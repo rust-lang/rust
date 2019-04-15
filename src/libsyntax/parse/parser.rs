@@ -2855,11 +2855,13 @@ impl<'a> Parser<'a> {
                         let (delim, tts) = self.expect_delimited_token_tree()?;
                         hi = self.prev_span;
                         ex = ExprKind::Mac(respan(lo.to(hi), Mac_ { path, tts, delim }));
-                    } else if self.check(&token::OpenDelim(token::Brace)) &&
-                              !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL) {
-                        // This is a struct literal, unless we're prohibited
-                        // from parsing struct literals here.
-                        return self.parse_struct_expr(lo, path, attrs);
+                    } else if self.check(&token::OpenDelim(token::Brace)) {
+                        if let Some(expr) = self.should_parse_struct_expr(lo, path.clone(), attrs.clone()) {
+                            return expr;
+                        } else {
+                            hi = path.span;
+                            ex = ExprKind::Path(None, path);
+                        }
                     } else {
                         hi = path.span;
                         ex = ExprKind::Path(None, path);
@@ -2900,6 +2902,51 @@ impl<'a> Parser<'a> {
 
         let expr = self.mk_expr(lo.to(hi), ex, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn should_parse_struct_expr(
+        &mut self,
+        lo: Span,
+        path: ast::Path,
+        attrs: ThinVec<Attribute>,
+    ) -> Option<PResult<'a, P<Expr>>> {
+        let could_be_struct = self.look_ahead(1, |t| t.is_ident()) && (
+            self.look_ahead(2, |t| *t == token::Colon)
+            || self.look_ahead(2, |t| *t == token::Comma)
+            // We could also check for `token::CloseDelim(token::Brace)`, but that would
+            // have false positives in the case of `if x == y { z } { a }`.
+        );
+        let mut bad_struct = false;
+        let mut parse_struct = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
+        if self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL) && could_be_struct {
+            // This is a struct literal, but we don't can't accept them here
+            bad_struct = true;
+            parse_struct = true;
+        }
+        if parse_struct {
+            match self.parse_struct_expr(lo, path, attrs) {
+                Err(err) => return Some(Err(err)),
+                Ok(expr) => {
+                    if bad_struct {
+                        let mut err = self.diagnostic().struct_span_err(
+                            expr.span,
+                            "struct literals are not allowed here",
+                        );
+                        err.multipart_suggestion(
+                            "surround the struct literal with parenthesis",
+                            vec![
+                                (lo.shrink_to_lo(), "(".to_string()),
+                                (expr.span.shrink_to_hi(), ")".to_string()),
+                            ],
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                    }
+                    return Some(Ok(expr));
+                }
+            }
+        }
+        None
     }
 
     fn parse_struct_expr(&mut self, lo: Span, pth: ast::Path, mut attrs: ThinVec<Attribute>)
