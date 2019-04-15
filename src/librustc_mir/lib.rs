@@ -28,7 +28,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![recursion_limit="256"]
 
 #![deny(rust_2018_idioms)]
-#![cfg_attr(not(stage0), deny(internal))]
+#![deny(internal)]
 #![allow(explicit_outlives_requirements)]
 
 #[macro_use] extern crate log;

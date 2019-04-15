@@ -7,7 +7,7 @@
 #![cfg_attr(unix, feature(libc))]
 
 #![deny(rust_2018_idioms)]
-#![cfg_attr(not(stage0), deny(internal))]
+#![deny(internal)]
 
 #![allow(unused_imports)]
 
