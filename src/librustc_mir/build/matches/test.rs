@@ -11,7 +11,7 @@ use crate::hair::*;
 use crate::hair::pattern::compare_const_vals;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, adjustment::{PointerCast}};
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::layout::VariantIdx;
 use rustc::mir::*;
@@ -280,8 +280,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             ty = tcx.mk_imm_ref(region, tcx.mk_slice(elem_ty));
                             if opt_ref_ty.is_some() {
                                 place = self.temp(ty, test.span);
-                                self.cfg.push_assign(block, source_info, &place,
-                                                    Rvalue::Cast(CastKind::Unsize, val, ty));
+                                self.cfg.push_assign(
+                                    block, source_info, &place, Rvalue::Cast(
+                                        CastKind::Pointer(PointerCast::Unsize), val, ty
+                                    )
+                                );
                             }
                             if opt_ref_test_ty.is_some() {
                                 let array = self.literal_operand(
@@ -291,8 +294,11 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 );
 
                                 let slice = self.temp(ty, test.span);
-                                self.cfg.push_assign(block, source_info, &slice,
-                                                    Rvalue::Cast(CastKind::Unsize, array, ty));
+                                self.cfg.push_assign(
+                                    block, source_info, &slice, Rvalue::Cast(
+                                        CastKind::Pointer(PointerCast::Unsize), array, ty
+                                    )
+                                );
                                 expect = Operand::Move(slice);
                             }
                         },

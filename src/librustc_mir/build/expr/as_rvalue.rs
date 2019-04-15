@@ -10,6 +10,7 @@ use rustc::middle::region;
 use rustc::mir::interpret::InterpError;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
+use rustc::ty::adjustment::{PointerCast};
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
@@ -156,23 +157,33 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::ReifyFnPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::ReifyFnPointer, source, expr.ty))
+                block.and(Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::ReifyFnPointer), source, expr.ty)
+                )
             }
             ExprKind::UnsafeFnPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::UnsafeFnPointer, source, expr.ty))
+                block.and(Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::UnsafeFnPointer), source, expr.ty)
+                )
             }
             ExprKind::ClosureFnPointer { source, unsafety } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::ClosureFnPointer(unsafety), source, expr.ty))
+                block.and(Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)), source, expr.ty)
+                )
             }
             ExprKind::MutToConstPointer { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::MutToConstPointer, source, expr.ty))
+                block.and(Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::MutToConstPointer), source, expr.ty)
+                )
             }
             ExprKind::Unsize { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
-                block.and(Rvalue::Cast(CastKind::Unsize, source, expr.ty))
+                block.and(Rvalue::Cast(
+                    CastKind::Pointer(PointerCast::Unsize), source, expr.ty)
+                )
             }
             ExprKind::Array { fields } => {
                 // (*) We would (maybe) be closer to codegen if we

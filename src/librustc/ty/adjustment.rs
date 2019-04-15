@@ -5,6 +5,15 @@ use crate::ty::subst::SubstsRef;
 use rustc_macros::HashStable;
 
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+pub enum PointerCast {
+    ReifyFnPointer,
+    UnsafeFnPointer,
+    ClosureFnPointer(hir::Unsafety),
+    MutToConstPointer,
+    Unsize,
+}
+
 /// Represents coercing a value to a different type of value.
 ///
 /// We transform values by following a number of `Adjust` steps in order.

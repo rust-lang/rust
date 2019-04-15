@@ -10,6 +10,7 @@ use rustc::mir::{
     Projection, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
 };
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::adjustment::{PointerCast};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
@@ -580,7 +581,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         },
                         // If we see a unsized cast, then if it is our data we should check
                         // whether it is being cast to a trait object.
-                        Rvalue::Cast(CastKind::Unsize, operand, ty) => match operand {
+                        Rvalue::Cast(
+                            CastKind::Pointer(PointerCast::Unsize), operand, ty
+                        ) => match operand {
                             Operand::Copy(Place::Base(PlaceBase::Local(from)))
                             | Operand::Move(Place::Base(PlaceBase::Local(from)))
                                 if *from == target =>

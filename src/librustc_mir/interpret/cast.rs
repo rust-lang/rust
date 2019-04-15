@@ -1,5 +1,6 @@
 use rustc::ty::{self, Ty, TypeAndMut};
 use rustc::ty::layout::{self, TyLayout, Size};
+use rustc::ty::adjustment::{PointerCast};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 
 use rustc_apfloat::ieee::{Single, Double};
@@ -29,11 +30,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx> {
         use rustc::mir::CastKind::*;
         match kind {
-            Unsize => {
+            Pointer(PointerCast::Unsize) => {
                 self.unsize_into(src, dest)?;
             }
 
-            Misc | MutToConstPointer => {
+            Misc | Pointer(PointerCast::MutToConstPointer) => {
                 let src = self.read_immediate(src)?;
 
                 if self.type_is_fat_ptr(src.layout.ty) {
@@ -72,7 +73,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 }
             }
 
-            ReifyFnPointer => {
+            Pointer(PointerCast::ReifyFnPointer) => {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
@@ -93,7 +94,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 }
             }
 
-            UnsafeFnPointer => {
+            Pointer(PointerCast::UnsafeFnPointer) => {
                 let src = self.read_immediate(src)?;
                 match dest.layout.ty.sty {
                     ty::FnPtr(_) => {
@@ -104,7 +105,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 }
             }
 
-            ClosureFnPointer(_) => {
+            Pointer(PointerCast::ClosureFnPointer(_)) => {
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {

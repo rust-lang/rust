@@ -1,7 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::ty::{self, Predicate, TyCtxt};
+use rustc::ty::{self, Predicate, TyCtxt, adjustment::{PointerCast}};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use syntax_pos::Span;
@@ -152,16 +152,16 @@ fn check_rvalue(
                 _ => check_operand(tcx, mir, operand, span),
             }
         }
-        Rvalue::Cast(CastKind::MutToConstPointer, operand, _) => {
+        Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, _) => {
             check_operand(tcx, mir, operand, span)
         }
-        Rvalue::Cast(CastKind::UnsafeFnPointer, _, _) |
-        Rvalue::Cast(CastKind::ClosureFnPointer(_), _, _) |
-        Rvalue::Cast(CastKind::ReifyFnPointer, _, _) => Err((
+        Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), _, _) |
+        Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), _, _) |
+        Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), _, _) => Err((
             span,
             "function pointer casts are not allowed in const fn".into(),
         )),
-        Rvalue::Cast(CastKind::Unsize, _, _) => Err((
+        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), _, _) => Err((
             span,
             "unsizing casts are not allowed in const fn".into(),
         )),

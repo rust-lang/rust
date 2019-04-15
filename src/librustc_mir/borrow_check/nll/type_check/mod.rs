@@ -36,6 +36,7 @@ use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
+use rustc::ty::adjustment::{PointerCast};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef, UnpackedKind, UserSubsts};
 use rustc::ty::{
@@ -1972,7 +1973,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
             Rvalue::Cast(cast_kind, op, ty) => {
                 match cast_kind {
-                    CastKind::ReifyFnPointer => {
+                    CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         let fn_sig = op.ty(mir, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
@@ -2001,7 +2002,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    CastKind::ClosureFnPointer(unsafety) => {
+                    CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
                         let sig = match op.ty(mir, tcx).sty {
                             ty::Closure(def_id, substs) => {
                                 substs.closure_sig_ty(def_id, tcx).fn_sig(tcx)
@@ -2027,7 +2028,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    CastKind::UnsafeFnPointer => {
+                    CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
                         let fn_sig = op.ty(mir, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
@@ -2056,7 +2057,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
-                    CastKind::Unsize => {
+                    CastKind::Pointer(PointerCast::Unsize) => {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef {
                             def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
@@ -2070,7 +2071,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         );
                     }
 
-                    CastKind::MutToConstPointer => {
+                    CastKind::Pointer(PointerCast::MutToConstPointer) => {
                         let ty_from = match op.ty(mir, tcx).sty {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
