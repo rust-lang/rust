@@ -523,6 +523,7 @@ pub fn run_tests(config: &Config) {
 
 pub fn test_opts(config: &Config) -> test::TestOpts {
     test::TestOpts {
+        exclude_should_panic: false,
         filter: config.filter.clone(),
         filter_exact: config.filter_exact,
         run_ignored: if config.run_ignored {
