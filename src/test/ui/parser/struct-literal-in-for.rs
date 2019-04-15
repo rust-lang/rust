@@ -9,9 +9,9 @@ impl Foo {
 }
 
 fn main() {
-    for x in Foo { //~ ERROR expected value, found struct `Foo`
-        x: 3    //~ ERROR expected type, found `3`
-    }.hi() { //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
+    for x in Foo { //~ ERROR struct literals are not allowed here
+        x: 3       //~^ ERROR `bool` is not an iterator
+    }.hi() {
         println!("yo");
     }
 }

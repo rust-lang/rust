@@ -1,29 +1,30 @@
-error: expected type, found `3`
-  --> $DIR/struct-literal-in-for.rs:13:12
-   |
-LL |         x: 3
-   |            ^ expecting a type here because of type ascription
-   |
-   = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression expects an ascribed type after the colon
-  --> $DIR/struct-literal-in-for.rs:13:9
-   |
-LL |         x: 3
-   |         ^
-   = help: this might be indicative of a syntax error elsewhere
-
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
-  --> $DIR/struct-literal-in-for.rs:14:12
-   |
-LL |     }.hi() {
-   |            ^ expected one of `.`, `;`, `?`, `}`, or an operator here
-
-error[E0423]: expected value, found struct `Foo`
+error: struct literals are not allowed here
   --> $DIR/struct-literal-in-for.rs:12:14
    |
-LL |     for x in Foo {
-   |              ^^^ did you mean `(Foo { /* fields */ })`?
+LL |       for x in Foo {
+   |  ______________^
+LL | |         x: 3
+LL | |     }.hi() {
+   | |_____^
+help: surround the struct literal with parenthesis
+   |
+LL |     for x in (Foo {
+LL |         x: 3
+LL |     }).hi() {
+   |
 
-error: aborting due to 3 previous errors
+error[E0277]: `bool` is not an iterator
+  --> $DIR/struct-literal-in-for.rs:12:14
+   |
+LL |       for x in Foo {
+   |  ______________^
+LL | |         x: 3
+LL | |     }.hi() {
+   | |__________^ `bool` is not an iterator
+   |
+   = help: the trait `std::iter::Iterator` is not implemented for `bool`
+   = note: required by `std::iter::IntoIterator::into_iter`
 
-For more information about this error, try `rustc --explain E0423`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
