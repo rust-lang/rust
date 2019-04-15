@@ -105,10 +105,23 @@ macro_rules! define_dep_nodes {
                        $({ $($struct_arg_name:ident : $struct_arg_ty:ty),* })*
       ,)*
     ) => (
+        // Used to get an unique integer per dep kind
+        enum DepKindCounter {
+            $($variant),*
+        }
+
+        /// Encodes `eval_always` in the lowest bit of the discriminant
+        const fn dep_kind_discriminant(kind: DepKindCounter, eval_always: bool) -> isize {
+            (((kind as u16) << 1) | (eval_always as u16)) as isize
+        }
+
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
                  RustcEncodable, RustcDecodable)]
         pub enum DepKind {
-            $($variant),*
+            $($variant = dep_kind_discriminant(
+                DepKindCounter::$variant,
+                contains_eval_always_attr!($($attr),*),
+            )),*
         }
 
         impl DepKind {
@@ -154,11 +167,8 @@ macro_rules! define_dep_nodes {
 
             #[inline(always)]
             pub fn is_eval_always(&self) -> bool {
-                match *self {
-                    $(
-                        DepKind :: $variant => { contains_eval_always_attr!($($attr), *) }
-                    )*
-                }
+                // `eval_always` is encoded in the lowest bit of DepNodeKind
+                *self as u16 & 1 == 1
             }
 
             #[allow(unreachable_code)]
