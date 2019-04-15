@@ -5,9 +5,9 @@ pub mod intrinsics;
 pub mod tls;
 pub mod fs;
 pub mod time;
+pub mod panic;
 
 use rustc::{mir, ty};
-
 use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -18,6 +18,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         trace!(
@@ -26,11 +27,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             dest.map(|place| *place)
         );
 
-        // First, run the common hooks also supported by CTFE.
-        if this.hook_panic_fn(instance, args, dest)? {
-            this.goto_block(ret)?;
-            return Ok(None);
-        }
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
             let dest = dest.unwrap();
@@ -44,11 +40,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Try to see if we can do something about foreign items.
         if this.tcx.is_foreign_item(instance.def_id()) {
-            // An external function that we cannot find MIR for, but we can still run enough
-            // of them to make miri viable.
-            this.emulate_foreign_item(instance.def_id(), args, dest, ret)?;
-            // `goto_block` already handled.
-            return Ok(None);
+            // An external function call that does not have a MIR body. We either find MIR elsewhere
+            // or emulate its effect.
+            // This will be Ok(None) if we're emulating the intrinsic entirely within Miri (no need
+            // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
+            // foreign function
+            // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
+            return this.emulate_foreign_item(instance.def_id(), args, dest, ret, unwind);
         }
 
         // Otherwise, load the MIR.

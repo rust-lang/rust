@@ -8,12 +8,8 @@ use std::rc::Rc;
 use rand::rngs::StdRng;
 
 use rustc::hir::def_id::DefId;
+use rustc::ty::{self, layout::{Size, LayoutOf}, Ty, TyCtxt};
 use rustc::mir;
-use rustc::ty::{
-    self,
-    layout::{LayoutOf, Size},
-    Ty, TyCtxt,
-};
 use syntax::{attr, source_map::Span, symbol::sym};
 
 use crate::*;
@@ -23,6 +19,19 @@ pub const PAGE_SIZE: u64 = 4 * 1024; // FIXME: adjust to target architecture
 pub const STACK_ADDR: u64 = 32 * PAGE_SIZE; // not really about the "stack", but where we start assigning integer addresses to allocations
 pub const STACK_SIZE: u64 = 16 * PAGE_SIZE; // whatever
 pub const NUM_CPUS: u64 = 1;
+
+/// Extra data stored with each stack frame
+#[derive(Debug)]
+pub struct FrameData<'tcx> {
+    /// Extra data for Stacked Borrows.
+    pub call_id: stacked_borrows::CallId,
+    /// If this is Some(), then this is a special 'catch unwind'
+    /// frame. When this frame is popped during unwinding a panic,
+    /// we stop unwinding, and use the `CatchUnwindData` to
+    /// store the panic payload and continue execution in the parent frame.
+    pub catch_panic: Option<CatchUnwindData<'tcx>>,
+}
+
 
 /// Extra memory kinds
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -101,6 +110,10 @@ pub struct Evaluator<'tcx> {
     pub(crate) communicate: bool,
 
     pub(crate) file_handler: FileHandler,
+
+    /// The temporary used for storing the argument of
+    /// the call to `miri_start_panic` (the panic payload) when unwinding.
+    pub(crate) panic_payload: Option<ImmTy<'tcx, Tag>>
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -116,6 +129,7 @@ impl<'tcx> Evaluator<'tcx> {
             tls: TlsData::default(),
             communicate,
             file_handler: Default::default(),
+            panic_payload: None
         }
     }
 }
@@ -143,7 +157,7 @@ impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> 
 impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
-    type FrameExtra = stacked_borrows::CallId;
+    type FrameExtra = FrameData<'tcx>;
     type MemoryExtra = MemoryExtra;
     type AllocExtra = AllocExtra;
     type PointerTag = Tag;
@@ -173,9 +187,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
-        _unwind: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
-        ecx.find_fn(instance, args, dest, ret)
+        ecx.find_fn(instance, args, dest, ret, unwind)
     }
 
     #[inline(always)]
@@ -196,14 +210,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
-        _ret: Option<mir::BasicBlock>,
-        _unwind: Option<mir::BasicBlock>
+        ret: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        let dest = match dest {
-            Some(dest) => dest,
-            None => throw_ub!(Unreachable)
-        };
-        ecx.call_intrinsic(span, instance, args, dest)
+        ecx.call_intrinsic(span, instance, args, dest, ret, unwind)
     }
 
     #[inline(always)]
@@ -352,23 +362,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn stack_push(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-    ) -> InterpResult<'tcx, stacked_borrows::CallId> {
-        Ok(ecx.memory.extra.stacked_borrows.borrow_mut().new_call())
+    ) -> InterpResult<'tcx, FrameData<'tcx>> {
+        Ok(FrameData {
+            call_id: ecx.memory.extra.stacked_borrows.borrow_mut().new_call(),
+            catch_panic: None,
+        })
     }
 
     #[inline(always)]
     fn stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        extra: stacked_borrows::CallId,
-        _unwinding: bool
+        extra: FrameData<'tcx>,
+        unwinding: bool
     ) -> InterpResult<'tcx, StackPopInfo> {
-        ecx
-            .memory
-            .extra
-            .stacked_borrows
-            .borrow_mut()
-            .end_call(extra);
-        Ok(StackPopInfo::Normal)
+        ecx.handle_stack_pop(extra, unwinding)
     }
 
     #[inline(always)]

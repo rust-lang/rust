@@ -532,7 +532,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         protect: bool,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        let protector = if protect { Some(this.frame().extra) } else { None };
+        let protector = if protect { Some(this.frame().extra.call_id) } else { None };
         let ptr = place.ptr.to_ptr().expect("we should have a proper pointer");
         trace!("reborrow: {} reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
             kind, new_tag, ptr.tag, place.layout.ty, ptr.erase_tag(), size.bytes());

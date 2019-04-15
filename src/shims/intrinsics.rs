@@ -7,10 +7,7 @@ use rustc::ty::layout::{self, LayoutOf, Size, Align};
 use rustc::ty;
 use syntax::source_map::Span;
 
-use crate::{
-    PlaceTy, OpTy, Immediate, Scalar, Tag,
-    OperatorEvalContextExt
-};
+use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
@@ -19,10 +16,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
-        dest: PlaceTy<'tcx, Tag>,
+        dest: Option<PlaceTy<'tcx, Tag>>,
+        _ret: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if this.emulate_intrinsic(span, instance, args, Some(dest))? {
+        if this.emulate_intrinsic(span, instance, args, dest)? {
             return Ok(());
         }
         let tcx = &{this.tcx.tcx};
@@ -31,8 +30,27 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // All these intrinsics take raw pointers, so if we access memory directly
         // (as opposed to through a place), we have to remember to erase any tag
         // that might still hang around!
-
         let intrinsic_name = &*tcx.item_name(instance.def_id()).as_str();
+
+        // Handle diverging intrinsics
+        match intrinsic_name {
+            "abort" => {
+                // FIXME: Add a better way of indicating 'abnormal' termination,
+                // since this is not really an 'unsupported' behavior
+                throw_unsup_format!("the evaluated program aborted!");
+            }
+            "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
+            _ => {}
+        }
+
+        // Handle non-diverging intrinsics
+        // The intrinsic itself cannot diverge (otherwise, we would have handled it above),
+        // so if we got here without a return place... (can happen e.g., for transmute returning `!`)
+        let dest = match dest {
+            Some(dest) => dest,
+            None => throw_ub!(Unreachable)
+        };
+
         match intrinsic_name {
             "arith_offset" => {
                 let offset = this.read_scalar(args[1])?.to_machine_isize(this)?;
@@ -526,7 +544,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // However, this only affects direct calls of the intrinsic; calls to the stable
                 // functions wrapping them do get their validation.
                 // FIXME: should we check alignment for ZSTs?
-                use crate::ScalarMaybeUndef;
                 if !dest.layout.is_zst() {
                     match dest.layout.abi {
                         layout::Abi::Scalar(..) => {

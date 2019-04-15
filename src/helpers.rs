@@ -6,6 +6,7 @@ use rustc::mir;
 use rustc::ty::{
     self,
     List,
+    TyCtxt,
     layout::{self, LayoutOf, Size, TyLayout},
 };
 
@@ -15,40 +16,45 @@ use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 
-pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    /// Gets an instance for a path.
-    fn resolve_path(&self, path: &[&str]) -> InterpResult<'tcx, ty::Instance<'tcx>> {
-        let this = self.eval_context_ref();
-        this.tcx
-            .crates()
-            .iter()
-            .find(|&&krate| this.tcx.original_crate_name(krate).as_str() == path[0])
-            .and_then(|krate| {
-                let krate = DefId {
-                    krate: *krate,
-                    index: CRATE_DEF_INDEX,
-                };
-                let mut items = this.tcx.item_children(krate);
-                let mut path_it = path.iter().skip(1).peekable();
+/// Gets an instance for a path.
+fn resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> InterpResult<'tcx, DefId> {
+    tcx
+        .crates()
+        .iter()
+        .find(|&&krate| tcx.original_crate_name(krate).as_str() == path[0])
+        .and_then(|krate| {
+            let krate = DefId {
+                krate: *krate,
+                index: CRATE_DEF_INDEX,
+            };
+            let mut items = tcx.item_children(krate);
+            let mut path_it = path.iter().skip(1).peekable();
 
-                while let Some(segment) = path_it.next() {
-                    for item in mem::replace(&mut items, Default::default()).iter() {
-                        if item.ident.name.as_str() == *segment {
-                            if path_it.peek().is_none() {
-                                return Some(ty::Instance::mono(this.tcx.tcx, item.res.def_id()));
-                            }
-
-                            items = this.tcx.item_children(item.res.def_id());
-                            break;
+            while let Some(segment) = path_it.next() {
+                for item in mem::replace(&mut items, Default::default()).iter() {
+                    if item.ident.name.as_str() == *segment {
+                        if path_it.peek().is_none() {
+                            return Some(item.res.def_id())
                         }
+
+                        items = tcx.item_children(item.res.def_id());
+                        break;
                     }
                 }
-                None
-            })
-            .ok_or_else(|| {
-                let path = path.iter().map(|&s| s.to_owned()).collect();
-                err_unsup!(PathNotFound(path)).into()
-            })
+            }
+            None
+        })
+        .ok_or_else(|| {
+            let path = path.iter().map(|&s| s.to_owned()).collect();
+            err_unsup!(PathNotFound(path)).into()
+        })
+}
+
+
+pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
+
+    fn resolve_path(&self, path: &[&str]) -> InterpResult<'tcx, ty::Instance<'tcx>> {
+        Ok(ty::Instance::mono(self.eval_context_ref().tcx.tcx, resolve_did(self.eval_context_ref().tcx.tcx, path)?))
     }
 
     /// Write a 0 of the appropriate size to `dest`.

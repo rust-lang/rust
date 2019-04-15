@@ -39,10 +39,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(config.communicate),
-        MemoryExtra::new(
-            StdRng::seed_from_u64(config.seed.unwrap_or(0)),
-            config.validate,
-        ),
+        MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate),
     );
     // Complete initialization.
     EnvVars::init(&mut ecx, config.excluded_env_vars);

@@ -1,9 +1,10 @@
 use std::{iter, convert::TryInto};
 
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::layout::{Align, LayoutOf, Size};
+use rustc::hir::def_id::DefId;
 use rustc_apfloat::Float;
+use rustc::ty;
 use syntax::attr;
 use syntax::symbol::sym;
 
@@ -105,13 +106,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Emulates calling a foreign item, failing if the item is not supported.
     /// This function will handle `goto_block` if needed.
+    /// Returns Ok(None) if the foreign item was completely handled
+    /// by this function.
+    /// Returns Ok(Some(body)) if processing the foreign item
+    /// is delegated to another function.
     fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
         args: &[OpTy<'tcx, Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx> {
+        _unwind: Option<mir::BasicBlock>
+    ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
@@ -124,8 +130,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // First: functions that diverge.
         match link_name {
-            "__rust_start_panic" | "panic_impl" => {
-                throw_unsup_format!("the evaluated program panicked");
+            // Note that this matches calls to the *foreign* item "__rust_start_panic" -
+            // that is, calls `extern "Rust" { fn __rust_start_panic(...) }`
+            // We forward this to the underlying *implementation* in "libpanic_unwind"
+            "__rust_start_panic" => {
+                let start_panic_instance = this.resolve_path(&["panic_unwind", "__rust_start_panic"])?;
+                return Ok(Some(this.load_mir(start_panic_instance.def, None)?));
+            }
+
+            // During a normal (non-Miri) compilation,
+            // this gets resolved to the '#[panic_handler]` function at link time,
+            // which corresponds to the function with the `#[panic_handler]` attribute.
+            //
+            // Since we're interpreting mir, we forward it to the implementation of `panic_impl`
+            //
+            // This is used by libcore to forward panics to the actual
+            // panic impl
+            "panic_impl" => {
+                let panic_impl_id = this.tcx.lang_items().panic_impl().unwrap();
+                let panic_impl_instance = ty::Instance::mono(*this.tcx, panic_impl_id);
+                return Ok(Some(this.load_mir(panic_impl_instance.def, None)?));
             }
             "exit" | "ExitProcess" => {
                 // it's really u32 for ExitProcess, but we have to put it into the `Exit` error variant anyway
@@ -310,48 +334,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             "__rust_maybe_catch_panic" => {
-                // fn __rust_maybe_catch_panic(
-                //     f: fn(*mut u8),
-                //     data: *mut u8,
-                //     data_ptr: *mut usize,
-                //     vtable_ptr: *mut usize,
-                // ) -> u32
-                // We abort on panic, so not much is going on here, but we still have to call the closure.
-                let f = this.read_scalar(args[0])?.not_undef()?;
-                let data = this.read_scalar(args[1])?.not_undef()?;
-                let f_instance = this.memory.get_fn(f)?.as_instance()?;
-                this.write_null(dest)?;
-                trace!("__rust_maybe_catch_panic: {:?}", f_instance);
-
-                // Now we make a function call.
-                // TODO: consider making this reusable? `InterpCx::step` does something similar
-                // for the TLS destructors, and of course `eval_main`.
-                let mir = this.load_mir(f_instance.def, None)?;
-                let ret_place =
-                    MPlaceTy::dangling(this.layout_of(tcx.mk_unit())?, this).into();
-                this.push_stack_frame(
-                    f_instance,
-                    mir.span,
-                    mir,
-                    Some(ret_place),
-                    // Directly return to caller.
-                    StackPopCleanup::Goto { ret: Some(ret), unwind: None },
-                )?;
-                let mut args = this.frame().body.args_iter();
-
-                let arg_local = args
-                    .next()
-                    .expect("Argument to __rust_maybe_catch_panic does not take enough arguments.");
-                let arg_dest = this.local_place(arg_local)?;
-                this.write_scalar(data, arg_dest)?;
-
-                args.next().expect_none("__rust_maybe_catch_panic argument has more arguments than expected");
-
-                // We ourselves will return `0`, eventually (because we will not return if we paniced).
-                this.write_null(dest)?;
-
-                // Don't fall through, we do *not* want to `goto_block`!
-                return Ok(());
+                this.handle_catch_panic(args, dest, ret)?;
+                return Ok(None)
             }
 
             "memcmp" => {
@@ -943,7 +927,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.goto_block(Some(ret))?;
         this.dump_place(*dest);
-        Ok(())
+        Ok(None)
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
