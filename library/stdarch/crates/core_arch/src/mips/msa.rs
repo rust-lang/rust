@@ -17814,7 +17814,7 @@ mod tests {
             21, 22, 23, 24, 
             25, 26, 27, 28
         ];
-        __msa_st_b(::mem::transmute(a), arr.as_mut_ptr(), 0);
+        __msa_st_b(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
