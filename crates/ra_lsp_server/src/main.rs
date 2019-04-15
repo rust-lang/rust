@@ -54,7 +54,7 @@ fn main_inner() -> Result<()> {
         ra_lsp_server::main_loop(workspace_roots, opts, r, s)
     })?;
     log::info!("shutting down IO...");
-    threads.join()?;
+    threads.exit()?;
     log::info!("... IO is down");
     Ok(())
 }

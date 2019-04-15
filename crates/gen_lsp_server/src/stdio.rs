@@ -37,11 +37,9 @@ pub struct Threads {
 }
 
 impl Threads {
-    pub fn join(self) -> Result<()> {
-        match self.reader.join() {
-            Ok(r) => r?,
-            Err(_) => bail!("reader panicked"),
-        }
+    pub fn exit(self) -> Result<()> {
+        // We can't rely on stdin being closed
+        drop(self.reader);
         match self.writer.join() {
             Ok(r) => r,
             Err(_) => bail!("writer panicked"),
