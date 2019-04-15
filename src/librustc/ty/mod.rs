@@ -1,4 +1,4 @@
-#![cfg_attr(not(stage0), allow(usage_of_ty_tykind))]
+#![allow(usage_of_ty_tykind)]
 
 pub use self::Variance::*;
 pub use self::AssociatedItemContainer::*;
