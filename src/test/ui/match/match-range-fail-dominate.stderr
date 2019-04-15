@@ -62,5 +62,14 @@ error: unreachable pattern
 LL |       0.02f64 => {}
    |       ^^^^^^^
 
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-range-fail-dominate.rs:35:7
+   |
+LL |       0.01f64 ... 6.5f64 => {}
+   |       ^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
 error: aborting due to 5 previous errors
 

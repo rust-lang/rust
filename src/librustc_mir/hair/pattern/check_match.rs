@@ -603,7 +603,9 @@ fn check_legality_of_move_bindings(
             E0009,
             "cannot bind by-move and by-ref in the same pattern",
         );
-        err.span_label(by_ref_span.unwrap(), "both by-ref and by-move used");
+        if let Some(by_ref_span) = by_ref_span {
+            err.span_label(by_ref_span, "both by-ref and by-move used");
+        }
         for span in span_vec.iter(){
             err.span_label(*span, "by-move pattern here");
         }

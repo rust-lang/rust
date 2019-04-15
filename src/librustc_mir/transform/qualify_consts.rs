@@ -1502,9 +1502,11 @@ impl MirPass for QualifyAndPromoteConstants {
                                 tcx.sess,
                                 span,
                                 E0723,
-                                "{} (see issue #57563)",
+                                "{}",
                                 err,
                             );
+                            diag.note("for more information, see issue \
+                                       https://github.com/rust-lang/rust/issues/57563");
                             diag.help(
                                 "add #![feature(const_fn)] to the crate attributes to enable",
                             );

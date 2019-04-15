@@ -1,11 +1,17 @@
 error[E0004]: non-exhaustive patterns: `&S` not covered
-  --> $DIR/match_ice.rs:7:11
+  --> $DIR/match_ice.rs:8:11
    |
 LL |     match C {
    |           ^ pattern `&S` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to previous error
+error[E0277]: can't compare `S` with `S`
+   |
+   = help: the trait `std::cmp::PartialEq` is not implemented for `S`
+   = note: required because of the requirements on the impl of `std::cmp::PartialEq` for `&S`
 
-For more information about this error, try `rustc --explain E0004`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0004, E0277.
+For more information about an error, try `rustc --explain E0004`.

@@ -10,6 +10,8 @@ fn main() {
     match x {
         NAN => {}, //~ ERROR floating-point types cannot be used
         //~^ WARN this was previously accepted by the compiler but is being phased out
+        //~| ERROR floating-point types cannot be used in patterns
+        //~| WARN this was previously accepted by the compiler but is being phased out
         _ => {},
     };
 

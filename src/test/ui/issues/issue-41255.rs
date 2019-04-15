@@ -9,6 +9,8 @@ fn main() {
     match x {
         5.0 => {}, //~ ERROR floating-point types cannot be used in patterns
                    //~| WARNING hard error
+                   //~| ERROR floating-point types cannot be used in patterns
+                   //~| WARNING this was previously accepted by the compiler but is being
         5.0f32 => {}, //~ ERROR floating-point types cannot be used in patterns
                       //~| WARNING hard error
         -5.0 => {}, //~ ERROR floating-point types cannot be used in patterns

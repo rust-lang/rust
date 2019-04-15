@@ -14,5 +14,14 @@ LL |         f32::INFINITY => { }
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
 
+warning: floating-point types cannot be used in patterns
+  --> $DIR/match-forbidden-without-eq.rs:20:9
+   |
+LL |         f32::INFINITY => { }
+   |         ^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
+
 error: aborting due to previous error
 

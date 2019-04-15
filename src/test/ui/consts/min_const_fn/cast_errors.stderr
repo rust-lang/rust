@@ -1,41 +1,46 @@
-error[E0723]: unsizing casts are not allowed in const fn (see issue #57563)
+error[E0723]: unsizing casts are not allowed in const fn
   --> $DIR/cast_errors.rs:3:41
    |
 LL | const fn unsize(x: &[u8; 3]) -> &[u8] { x }
    |                                         ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable (see issue #57563)
+error[E0723]: function pointers in const fn are unstable
   --> $DIR/cast_errors.rs:5:23
    |
 LL | const fn closure() -> fn() { || {} }
    |                       ^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable (see issue #57563)
+error[E0723]: function pointers in const fn are unstable
   --> $DIR/cast_errors.rs:8:5
    |
 LL |     (|| {}) as fn();
    |     ^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable (see issue #57563)
+error[E0723]: function pointers in const fn are unstable
   --> $DIR/cast_errors.rs:11:28
    |
 LL | const fn reify(f: fn()) -> unsafe fn() { f }
    |                            ^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable (see issue #57563)
+error[E0723]: function pointers in const fn are unstable
   --> $DIR/cast_errors.rs:13:21
    |
 LL | const fn reify2() { main as unsafe fn(); }
    |                     ^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 5 previous errors

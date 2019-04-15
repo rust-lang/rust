@@ -10,7 +10,19 @@ error[E0303]: pattern bindings are not allowed after an `@`
 LL |         op_string @ Some(s) => {},
    |                          ^ not allowed after `@`
 
-error: aborting due to 2 previous errors
+error[E0382]: use of moved value
+  --> $DIR/E0007.rs:4:26
+   |
+LL |     let x = Some("s".to_string());
+   |         - move occurs because `x` has type `std::option::Option<std::string::String>`, which does not implement the `Copy` trait
+LL |     match x {
+LL |         op_string @ Some(s) => {},
+   |         -----------------^-
+   |         |                |
+   |         |                value used here after move
+   |         value moved here
 
-Some errors have detailed explanations: E0007, E0303.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0007, E0303, E0382.
 For more information about an error, try `rustc --explain E0007`.

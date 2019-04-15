@@ -10,18 +10,36 @@ note: ...which requires checking which parts of `A` are promotable to static...
 LL | const A: i32 = B;
    |                ^
 note: ...which requires const checking if rvalue is promotable to static `B`...
-  --> $DIR/issue-23302-3.rs:3:1
+  --> $DIR/issue-23302-3.rs:4:1
    |
 LL | const B: i32 = A;
    | ^^^^^^^^^^^^^^^^^
 note: ...which requires checking which parts of `B` are promotable to static...
-  --> $DIR/issue-23302-3.rs:3:16
+  --> $DIR/issue-23302-3.rs:4:16
    |
 LL | const B: i32 = A;
    |                ^
    = note: ...which again requires const checking if rvalue is promotable to static `A`, completing the cycle
    = note: cycle used when running analysis passes on this crate
 
-error: aborting due to previous error
+error[E0391]: cycle detected when processing `A`
+  --> $DIR/issue-23302-3.rs:1:16
+   |
+LL | const A: i32 = B;
+   |                ^
+   |
+note: ...which requires processing `B`...
+  --> $DIR/issue-23302-3.rs:4:16
+   |
+LL | const B: i32 = A;
+   |                ^
+   = note: ...which again requires processing `A`, completing the cycle
+note: cycle used when processing `A`
+  --> $DIR/issue-23302-3.rs:1:1
+   |
+LL | const A: i32 = B;
+   | ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

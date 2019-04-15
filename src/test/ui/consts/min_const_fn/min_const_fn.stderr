@@ -4,12 +4,13 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL |     const fn into_inner(self) -> T { self.0 }
    |                         ^^^^ constant functions cannot evaluate destructors
 
-error[E0723]: mutable references in const fn are unstable (see issue #57563)
+error[E0723]: mutable references in const fn are unstable
   --> $DIR/min_const_fn.rs:39:36
    |
 LL |     const fn get_mut(&mut self) -> &mut T { &mut self.0 }
    |                                    ^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0493]: destructors cannot be evaluated at compile-time
@@ -18,12 +19,13 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL |     const fn into_inner_lt(self) -> T { self.0 }
    |                            ^^^^ constant functions cannot evaluate destructors
 
-error[E0723]: mutable references in const fn are unstable (see issue #57563)
+error[E0723]: mutable references in const fn are unstable
   --> $DIR/min_const_fn.rs:46:42
    |
 LL |     const fn get_mut_lt(&'a mut self) -> &mut T { &mut self.0 }
    |                                          ^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0493]: destructors cannot be evaluated at compile-time
@@ -32,228 +34,256 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL |     const fn into_inner_s(self) -> T { self.0 }
    |                           ^^^^ constant functions cannot evaluate destructors
 
-error[E0723]: mutable references in const fn are unstable (see issue #57563)
+error[E0723]: mutable references in const fn are unstable
   --> $DIR/min_const_fn.rs:53:38
    |
 LL |     const fn get_mut_s(&mut self) -> &mut T { &mut self.0 }
    |                                      ^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: mutable references in const fn are unstable (see issue #57563)
+error[E0723]: mutable references in const fn are unstable
   --> $DIR/min_const_fn.rs:58:39
    |
 LL |     const fn get_mut_sq(&mut self) -> &mut T { &mut self.0 }
    |                                       ^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:76:16
    |
 LL | const fn foo11<T: std::fmt::Display>(t: T) -> T { t }
    |                ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:78:18
    |
 LL | const fn foo11_2<T: Send>(t: T) -> T { t }
    |                  ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: only int, `bool` and `char` operations are stable in const fn (see issue #57563)
+error[E0723]: only int, `bool` and `char` operations are stable in const fn
   --> $DIR/min_const_fn.rs:80:33
    |
 LL | const fn foo19(f: f32) -> f32 { f * 2.0 }
    |                                 ^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: only int, `bool` and `char` operations are stable in const fn (see issue #57563)
+error[E0723]: only int, `bool` and `char` operations are stable in const fn
   --> $DIR/min_const_fn.rs:82:35
    |
 LL | const fn foo19_2(f: f32) -> f32 { 2.0 - f }
    |                                   ^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: only int and `bool` operations are stable in const fn (see issue #57563)
+error[E0723]: only int and `bool` operations are stable in const fn
   --> $DIR/min_const_fn.rs:84:35
    |
 LL | const fn foo19_3(f: f32) -> f32 { -f }
    |                                   ^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: only int, `bool` and `char` operations are stable in const fn (see issue #57563)
+error[E0723]: only int, `bool` and `char` operations are stable in const fn
   --> $DIR/min_const_fn.rs:86:43
    |
 LL | const fn foo19_4(f: f32, g: f32) -> f32 { f / g }
    |                                           ^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: cannot access `static` items in const fn (see issue #57563)
+error[E0723]: cannot access `static` items in const fn
   --> $DIR/min_const_fn.rs:90:27
    |
 LL | const fn foo25() -> u32 { BAR }
    |                           ^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: cannot access `static` items in const fn (see issue #57563)
+error[E0723]: cannot access `static` items in const fn
   --> $DIR/min_const_fn.rs:91:36
    |
 LL | const fn foo26() -> &'static u32 { &BAR }
    |                                    ^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: casting pointers to ints is unstable in const fn (see issue #57563)
+error[E0723]: casting pointers to ints is unstable in const fn
   --> $DIR/min_const_fn.rs:92:42
    |
 LL | const fn foo30(x: *const u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: casting pointers to ints is unstable in const fn (see issue #57563)
+error[E0723]: casting pointers to ints is unstable in const fn
   --> $DIR/min_const_fn.rs:94:63
    |
 LL | const fn foo30_with_unsafe(x: *const u32) -> usize { unsafe { x as usize } }
    |                                                               ^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: casting pointers to ints is unstable in const fn (see issue #57563)
+error[E0723]: casting pointers to ints is unstable in const fn
   --> $DIR/min_const_fn.rs:96:42
    |
 LL | const fn foo30_2(x: *mut u32) -> usize { x as usize }
    |                                          ^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: casting pointers to ints is unstable in const fn (see issue #57563)
+error[E0723]: casting pointers to ints is unstable in const fn
   --> $DIR/min_const_fn.rs:98:63
    |
 LL | const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
    |                                                               ^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn (see issue #57563)
+error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn
   --> $DIR/min_const_fn.rs:100:38
    |
 LL | const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
    |                                      ^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn (see issue #57563)
+error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn
   --> $DIR/min_const_fn.rs:102:29
    |
 LL | const fn foo30_5(b: bool) { while b { } }
    |                             ^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn (see issue #57563)
+error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn
   --> $DIR/min_const_fn.rs:104:44
    |
 LL | const fn foo36(a: bool, b: bool) -> bool { a && b }
    |                                            ^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn (see issue #57563)
+error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn
   --> $DIR/min_const_fn.rs:106:44
    |
 LL | const fn foo37(a: bool, b: bool) -> bool { a || b }
    |                                            ^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: mutable references in const fn are unstable (see issue #57563)
+error[E0723]: mutable references in const fn are unstable
   --> $DIR/min_const_fn.rs:108:14
    |
 LL | const fn inc(x: &mut i32) { *x += 1 }
    |              ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:113:6
    |
 LL | impl<T: std::fmt::Debug> Foo<T> {
    |      ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:118:6
    |
 LL | impl<T: std::fmt::Debug + Sized> Foo<T> {
    |      ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:123:6
    |
 LL | impl<T: Sync + Sized> Foo<T> {
    |      ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: `impl Trait` in const fn is unstable (see issue #57563)
+error[E0723]: `impl Trait` in const fn is unstable
   --> $DIR/min_const_fn.rs:129:24
    |
 LL | const fn no_rpit2() -> AlanTuring<impl std::fmt::Debug> { AlanTuring(0) }
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:131:34
    |
 LL | const fn no_apit2(_x: AlanTuring<impl std::fmt::Debug>) {}
    |                                  ^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:133:22
    |
 LL | const fn no_apit(_x: impl std::fmt::Debug) {}
    |                      ^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: `impl Trait` in const fn is unstable (see issue #57563)
+error[E0723]: `impl Trait` in const fn is unstable
   --> $DIR/min_const_fn.rs:134:23
    |
 LL | const fn no_rpit() -> impl std::fmt::Debug {}
    |                       ^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:135:23
    |
 LL | const fn no_dyn_trait(_x: &dyn std::fmt::Debug) {}
    |                       ^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:136:32
    |
 LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 warning[E0515]: cannot return reference to temporary value
@@ -268,28 +298,31 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
-error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
+error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:144:41
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &std::fmt::Debug, ()).1 }
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable (see issue #57563)
+error[E0723]: function pointers in const fn are unstable
   --> $DIR/min_const_fn.rs:147:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: function pointers in const fn are unstable (see issue #57563)
+error[E0723]: function pointers in const fn are unstable
   --> $DIR/min_const_fn.rs:149:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 36 previous errors
