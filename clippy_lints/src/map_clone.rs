@@ -1,6 +1,6 @@
 use crate::utils::paths;
 use crate::utils::{
-    in_macro, match_trait_method, match_type, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
+    in_macro, match_trait_method, match_type, remove_blocks, snippet_with_applicability, span_lint_and_sugg, is_copy
 };
 use if_chain::if_chain;
 use rustc::hir;
@@ -88,8 +88,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
 
                                     let obj_ty = cx.tables.expr_ty(&obj[0]);
-                                    if let ty::Ref(..) = obj_ty.sty {
-                                        lint(cx, e.span, args[0].span, false);
+                                    if let ty::Ref(_, ty, _) = obj_ty.sty {
+                                        let copy = is_copy(cx, ty);
+                                        lint(cx, e.span, args[0].span, copy);
                                     } else {
                                         lint_needless_cloning(cx, e.span, args[0].span);
                                     }
