@@ -11,7 +11,7 @@ use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, LayoutOf, VariantIdx, Size};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc::util::common::ErrorReported;
@@ -21,7 +21,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use crate::interpret::{self,
-    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar, Pointer,
+    PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar,
     RawConst, ConstValue,
     EvalResult, EvalError, InterpError, GlobalId, InterpretCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
@@ -406,6 +406,15 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         Cow::Borrowed(alloc)
     }
 
+    #[inline(always)]
+    fn new_allocation(
+        _size: Size,
+        _extra: &Self::MemoryExtra,
+        _kind: MemoryKind<!>,
+    ) -> (Self::AllocExtra, Self::PointerTag) {
+        ((), ())
+    }
+
     fn box_alloc(
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
@@ -437,15 +446,6 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
             &ecx.memory,
             &ecx.stack[..],
         )
-    }
-
-    #[inline(always)]
-    fn tag_new_allocation(
-        _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer,
-        _kind: MemoryKind<Self::MemoryKinds>,
-    ) -> Pointer {
-        ptr
     }
 
     #[inline(always)]

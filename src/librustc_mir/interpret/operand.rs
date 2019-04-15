@@ -31,19 +31,6 @@ pub enum Immediate<Tag=(), Id=AllocId> {
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
 }
 
-impl Immediate {
-    #[inline]
-    pub fn with_default_tag<Tag>(self) -> Immediate<Tag>
-        where Tag: Default
-    {
-        match self {
-            Immediate::Scalar(x) => Immediate::Scalar(x.with_default_tag()),
-            Immediate::ScalarPair(x, y) =>
-                Immediate::ScalarPair(x.with_default_tag(), y.with_default_tag()),
-        }
-    }
-}
-
 impl<'tcx, Tag> Immediate<Tag> {
     #[inline]
     pub fn from_scalar(val: Scalar<Tag>) -> Self {
@@ -140,18 +127,6 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 pub enum Operand<Tag=(), Id=AllocId> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
-}
-
-impl Operand {
-    #[inline]
-    pub fn with_default_tag<Tag>(self) -> Operand<Tag>
-        where Tag: Default
-    {
-        match self {
-            Operand::Immediate(x) => Operand::Immediate(x.with_default_tag()),
-            Operand::Indirect(x) => Operand::Indirect(x.with_default_tag()),
-        }
-    }
 }
 
 impl<Tag> Operand<Tag> {
@@ -554,16 +529,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
                 Operand::Indirect(
-                    MemPlace::from_ptr(ptr, alloc.align)
-                ).with_default_tag()
+                    MemPlace::from_ptr(ptr.with_default_tag(), alloc.align)
+                )
             },
             ConstValue::Slice(a, b) =>
                 Operand::Immediate(Immediate::ScalarPair(
-                    a.into(),
-                    Scalar::from_uint(b, self.tcx.data_layout.pointer_size).into(),
-                )).with_default_tag(),
+                    a.with_default_tag().into(),
+                    Scalar::from_uint(b, self.tcx.data_layout.pointer_size)
+                        .with_default_tag().into(),
+                )),
             ConstValue::Scalar(x) =>
-                Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag(),
+                Operand::Immediate(Immediate::Scalar(x.with_default_tag().into())),
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
