@@ -334,11 +334,17 @@ impl<'tcx> Stack {
                     "no item granting {} access to tag {} found in borrow stack",
                     access, tag,
             )))?;
-        
+
         // Step 2: Remove everything incompatible above them.
-        // Implemented with indices because there does not seem to be a nice iterator and range-based
-        // API for this.
+        // Items below an active barrier however may not be removed, so we check that as well.
+        // We do *not* maintain a stack discipline here.  We could, in principle, decide to only
+        // keep the items immediately above `granting_idx` that are compatible, and then pop the rest.
+        // However, that kills off entire "branches" of pointer derivation too easily:
+        // in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement would pop the `Unique`
+        // from the reborrow of the first statement, and subequently also pop the `SharedReadWrite` for `raw`.
         {
+            // Implemented with indices because there does not seem to be a nice iterator and range-based
+            // API for this.
             let mut cur = granting_idx + 1;
             let mut removed_item = None;
             while let Some(item) = self.borrows.get(cur) {
@@ -454,6 +460,14 @@ impl<'tcx> Stack {
         // Find the permission "from which we derive".  To this end we first have to decide
         // if we derive from a permission that grants writes or just reads.
         let access = new_kind.access();
+        // Now we figure out which item grants our parent (`derived_from`) permission.
+        // We use that to determine (a) where to put the new item, and for raw pointers
+        // (b) whether to given read-only or read-write access.
+        // FIXME: This handling of raw pointers is fragile, very fragile.  What if we do
+        // not get "the right one", like when there are multiple items granting `derived_from`
+        // and we accidentally create a read-only pointer?  This can happen for two-phase borrows
+        // (then there's a `Unique` and a `SharedReadOnly` for the same tag), and for raw pointers
+        // (which currently all are `Untagged`).
         let (derived_from_idx, derived_from_perm) = self.find_granting(access, derived_from)
             .ok_or_else(|| InterpError::MachineError(format!(
                     "no item to reborrow as {} from tag {} found in borrow stack", new_kind, derived_from,
