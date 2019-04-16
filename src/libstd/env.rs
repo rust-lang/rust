@@ -359,9 +359,12 @@ fn _remove_var(k: &OsStr) {
 /// An iterator that splits an environment variable into paths according to
 /// platform-specific conventions.
 ///
+/// The iterator element type is [`PathBuf`].
+///
 /// This structure is created by the [`std::env::split_paths`] function. See its
 /// documentation for more.
 ///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 /// [`std::env::split_paths`]: fn.split_paths.html
 #[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
@@ -369,7 +372,8 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 /// Parses input according to platform conventions for the `PATH`
 /// environment variable.
 ///
-/// Returns an iterator over the paths contained in `unparsed`.
+/// Returns an iterator over the paths contained in `unparsed`. The iterator
+/// element type is [`PathBuf`].
 ///
 /// # Examples
 ///
@@ -386,6 +390,8 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
+///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
 #[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths<'_> {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
