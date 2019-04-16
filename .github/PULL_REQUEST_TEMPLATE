@@ -1,0 +1,15 @@
+<!--
+Thank you for making Clippy better!
+
+We're collecting our changelog from pull request descriptions.
+If your PR only updates to the latest nightly, you can leave the
+`changelog` entry as `none`. Otherwise, please write a short comment
+explaining your change.
+
+If your PR fixes an issue, you can add "fixes #issue_number" into this
+PR description. This way the issue will be automatically closed when
+your PR is merged.
+
+Delete this line and everything above before opening your PR -->
+
+changelog: none
