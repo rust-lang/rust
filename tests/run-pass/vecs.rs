@@ -85,4 +85,8 @@ fn main() {
     assert_eq!(make_vec_macro(), [1, 2]);
     assert_eq!(make_vec_macro_repeat(), [42; 5]);
     assert_eq!(make_vec_macro_repeat_zeroed(), [0; 7]);
+
+    // Test interesting empty slice comparison
+    // (one is a real pointer, one an integer pointer).
+    assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
 }
