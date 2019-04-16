@@ -4323,7 +4323,7 @@ impl u128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { usize, u16, 16, 65536, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
+    uint_impl! { usize, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
         "[0x34, 0x12]", "[0x12, 0x34]" }
 }
 #[cfg(target_pointer_width = "32")]
