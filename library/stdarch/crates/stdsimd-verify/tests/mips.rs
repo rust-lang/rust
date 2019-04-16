@@ -318,12 +318,18 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
         let actual = rust.instrs[0].replace(".", "_");
         let expected = mips.instruction.replace(".", "_");
         if actual != expected {
-            bail!("wrong instruction: \"{}\" != \"{}\"", rust.instrs[0], mips.instruction);
+            bail!(
+                "wrong instruction: \"{}\" != \"{}\"",
+                rust.instrs[0],
+                mips.instruction
+            );
         }
     } else {
         bail!(
             "missing assert_instr for \"{}\" (should be \"{}\")",
-            mips.id, mips.instruction);
+            mips.id,
+            mips.instruction
+        );
     }
 
     Ok(())
