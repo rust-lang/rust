@@ -12,3 +12,7 @@ pub struct SomeStruct;
 // @!matches - '"\.\./\.\./source-script\.js"'
 // @matches - '"\.\./\.\./source-files.js"'
 // @!matches - '"/cache/source-files\.js"'
+
+// @has settings.html
+// @matches - '/cache/settings\.js'
+// @!matches - '\./settings\.js'
