@@ -394,6 +394,7 @@ Before submitting your PR make sure you followed all of the basic requirements:
 - [ ] `cargo test` passes locally
 - [ ] Executed `util/dev update_lints`
 - [ ] Added lint documentation
+- [ ] Run `cargo fmt`
 
 ### Cheatsheet
 
