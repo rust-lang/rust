@@ -473,7 +473,7 @@ impl<'tcx> Stack {
                     "no item to reborrow as {} from tag {} found in borrow stack", new_kind, derived_from,
             )))?;
         // With this we can compute the permission for the new pointer.
-        let new_perm = new_kind.new_perm(derived_from_perm)?;
+        let new_perm = new_kind.new_perm(derived_from_perm).expect("this should never fail");
 
         // We behave very differently for the "unsafe" case of a shared-read-write pointer
         // ("unsafe" because this also applies to shared references with interior mutability).
