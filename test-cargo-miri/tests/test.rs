@@ -1,3 +1,5 @@
+#![allow(unused_imports)] // FIXME for macOS
+
 extern crate rand;
 
 use rand::{SeedableRng, FromEntropy, Rng, rngs::SmallRng};
