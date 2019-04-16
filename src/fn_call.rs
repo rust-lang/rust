@@ -241,9 +241,11 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                         // neither of which have any effect on our current PRNG
                         let _flags = this.read_scalar(args[3])?.to_i32()?;
 
-                        let data = gen_random(this, len as usize)?;
-                        this.memory_mut().get_mut(ptr.alloc_id)?
-                                    .write_bytes(tcx, ptr, &data)?;
+                        if len > 0 {
+                            let data = gen_random(this, len as usize)?;
+                            this.memory_mut().get_mut(ptr.alloc_id)?
+                                        .write_bytes(tcx, ptr, &data)?;
+                        }
 
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
@@ -769,9 +771,11 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 let ptr = this.read_scalar(args[0])?.to_ptr()?;
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
 
-                let data = gen_random(this, len as usize)?;
-                this.memory_mut().get_mut(ptr.alloc_id)?
-                    .write_bytes(tcx, ptr, &data)?;
+                if len > 0 {
+                    let data = gen_random(this, len as usize)?;
+                    this.memory_mut().get_mut(ptr.alloc_id)?
+                        .write_bytes(tcx, ptr, &data)?;
+                }
 
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
