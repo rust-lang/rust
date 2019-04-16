@@ -3466,7 +3466,9 @@ impl ProcRes {
              \n",
             self.status, self.cmdline, self.stdout, self.stderr
         );
-        panic!();
+        // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
+        // compiletest, which is unnecessary noise.
+        std::panic::resume_unwind(Box::new(()));
     }
 }
 
