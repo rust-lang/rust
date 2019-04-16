@@ -23,6 +23,10 @@ fn seeded_rng() {
     // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
     let mut rng = SmallRng::from_entropy();
     let _val = rng.gen::<i32>();
+
+    // Also try per-thread RNG.
+    let mut rng = rand::thread_rng();
+    let _val = rng.gen::<i32>();
 }
 
 // A test that won't work on miri

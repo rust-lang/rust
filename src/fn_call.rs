@@ -624,6 +624,11 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 this.write_null(dest)?;
             }
 
+            // We don't support fork so we don't have to do anything for atfork.
+            "pthread_atfork" => {
+                this.write_null(dest)?;
+            }
+
             "mmap" => {
                 // This is a horrible hack, but since the guard page mechanism calls mmap and expects a particular return value, we just give it that value.
                 let addr = this.read_scalar(args[0])?.not_undef()?;
