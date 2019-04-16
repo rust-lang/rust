@@ -152,8 +152,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // This accepts one-past-the end. Thus, there is still technically
                     // some non-determinism that we do not fully rule out when two
                     // allocations sit right next to each other. The C/C++ standards are
-                    // somewhat fuzzy about this case, so I think for now this check is
-                    // "good enough".
+                    // somewhat fuzzy about this case, so pragmatically speaking I think
+                    // for now this check is "good enough".
+                    // FIXME: Once we support intptrcast, we could try to fix these holes.
                     // Dead allocations in miri cannot overlap with live allocations, but
                     // on read hardware this can easily happen. Thus for comparisons we require
                     // both pointers to be live.
@@ -169,8 +170,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 assert_eq!(size as u64, self.pointer_size().bytes());
                 let bits = bits as u64;
 
-                // Case I: Comparing with NULL.
-                if bits == 0 {
+                // Case I: Comparing real pointers with "small" integers.
+                // Really we should only do this for NULL, but pragmatically speaking on non-bare-metal systems,
+                // an allocation will never be at the very bottom of the address space.
+                // Such comparisons can arise when comparing empty slices, which sometimes are "fake"
+                // integer pointers (okay because the slice is empty) and sometimes point into a
+                // real allocation.
+                // The most common source of such integer pointers is `NonNull::dangling()`, which
+                // equals the type's alignment. i128 might have an alignment of 16 bytes, but few types have
+                // alignment 32 or higher, hence the limit of 32.
+                // FIXME: Once we support intptrcast, we could try to fix these holes.
+                if bits < 32 {
                     // Test if the ptr is in-bounds. Then it cannot be NULL.
                     // Even dangling pointers cannot be NULL.
                     if self.memory().check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok() {
