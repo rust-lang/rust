@@ -10,7 +10,7 @@ fn simple() {
 // Having more than 1 test does seem to make a difference
 // (i.e., this calls ptr::swap which having just one test does not).
 #[test]
-fn rng() {
+fn fixed_rng() {
     let mut rng = rand::rngs::StdRng::seed_from_u64(0xdeadcafe);
     let x: u32 = rng.gen();
     let y: u32 = rng.gen();
@@ -19,7 +19,7 @@ fn rng() {
 
 #[test]
 #[cfg(not(target_os="macos"))] // FIXME entropy does not work on macOS
-fn seeded_rng() {
+fn entropy_rng() {
     // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
     let mut rng = SmallRng::from_entropy();
     let _val = rng.gen::<i32>();
