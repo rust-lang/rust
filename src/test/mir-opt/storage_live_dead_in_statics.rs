@@ -178,7 +178,7 @@ fn main() {
 //        _6 = [move _7, move _8, move _9, move _10, move _11, move _12, move _13, move _14, move _15, move _16, move _17, move _18, move _19, move _20, move _21, move _22, move _23, move _24, move _25, move _26, move _27, move _28, move _29, move _30, move _31, move _32, move _33, move _34, move _35, move _36, move _37, move _38, move _39, move _40, move _41, move _42, move _43, move _44, move _45, move _46, move _47, move _48];
 //        _5 = &_6;
 //        _4 = &(*_5);
-//        _3 = move _4 as &'static [(u32, u32)] (Unsize);
+//        _3 = move _4 as &'static [(u32, u32)] (Pointer(Unsize));
 //        _2 = Foo { tup: const "hi", data: move _3 };
 //        _1 = &_2;
 //        _0 = &(*_1);
