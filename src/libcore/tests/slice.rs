@@ -1024,7 +1024,7 @@ fn test_rotate_right() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(miri))] // Miri does not support entropy
+#[cfg(not(miri))] // Miri is too slow
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
@@ -1095,7 +1095,7 @@ fn sort_unstable() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(miri))] // Miri does not support entropy
+#[cfg(not(miri))] // Miri is too slow
 fn partition_at_index() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use rand::rngs::SmallRng;
