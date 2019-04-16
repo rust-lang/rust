@@ -8,9 +8,6 @@ fn main() {
     println!("{}", foo(&mut 0));
 }
 
-// If we replace the `*const` by `&`, my current dev version of miri
-// *does* find the problem, but not for a good reason: It finds it because
-// of barriers, and we shouldn't rely on unknown code using barriers.
-fn unknown_code(x: *const i32) {
-    unsafe { *(x as *mut i32) = 7; } //~ ERROR barrier
+fn unknown_code(x: &i32) {
+    unsafe { *(x as *const i32 as *mut i32) = 7; } //~ ERROR borrow stack
 }

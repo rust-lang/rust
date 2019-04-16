@@ -5,5 +5,5 @@ fn main() {
     let xraw = xref1 as *mut _;
     let xref2 = unsafe { &mut *xraw };
     let _val = unsafe { *xraw }; // use the raw again, this invalidates xref2 *even* with the special read except for uniq refs
-    let _illegal = *xref2; //~ ERROR does not exist on the borrow stack
+    let _illegal = *xref2; //~ ERROR borrow stack
 }

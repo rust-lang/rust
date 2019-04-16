@@ -9,5 +9,5 @@ fn main() {
     let ptr = reference as *const _ as *mut i32; // raw ptr, with raw tag
     let _mut_ref: &mut i32 = unsafe { mem::transmute(ptr) }; // &mut, with raw tag
     // Now we retag, making our ref top-of-stack -- and, in particular, unfreezing.
-    let _val = *reference; //~ ERROR is not frozen
+    let _val = *reference; //~ ERROR borrow stack
 }
