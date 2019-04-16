@@ -1,5 +1,5 @@
 use rustc::middle::lang_items;
-use rustc::ty::{self, Ty, TypeFoldable, InstanceDef};
+use rustc::ty::{self, ExistentialTraitRef, Ty, TypeFoldable, InstanceDef};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::InterpError;
@@ -478,7 +478,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                                      substs).unwrap();
                 let call_kind = if let InstanceDef::Virtual(..) = instance.def {
                     if let Some((trait_ref, method)) = instance.trait_ref_and_method(bx.tcx()) {
-                        CallKind::DynamicDispatch(trait_ref, method)
+                        let existential_trait_ref =
+                            ExistentialTraitRef::erase_self_ty(bx.tcx(), trait_ref);
+                        CallKind::DynamicDispatch(existential_trait_ref, method)
                     } else {
                         bug!("virtual instance is not a trait method {:?}", instance);
                     }

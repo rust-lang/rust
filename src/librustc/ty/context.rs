@@ -1,5 +1,6 @@
 //! Type context book-keeping.
 
+use crate::cg;
 use crate::dep_graph::DepGraph;
 use crate::dep_graph::{self, DepNode, DepConstructor};
 use crate::session::Session;
@@ -3098,5 +3099,22 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.is_compiler_builtins = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         attr::contains_name(tcx.hir().krate_attrs(), "compiler_builtins")
+    };
+
+    providers.all_call_graph_metadata = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        Lrc::new(cg::collect(tcx))
+    };
+    providers.is_function_pointer = |tcx, key| {
+        let cg = tcx.all_call_graph_metadata(LOCAL_CRATE);
+        cg.function_pointers.contains(&key)
+    };
+    providers.is_trait_object = |tcx, trait_ref| {
+        let cg = tcx.all_call_graph_metadata(LOCAL_CRATE);
+        cg.trait_objects.contains(&trait_ref)
+    };
+    providers.dynamic_drop_glue = |tcx, ty| {
+        let cg = tcx.all_call_graph_metadata(LOCAL_CRATE);
+        cg.dynamic_drop_glue.get(&ty).cloned()
     };
 }

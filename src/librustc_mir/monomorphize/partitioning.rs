@@ -97,13 +97,14 @@ use std::cmp;
 use std::sync::Arc;
 
 use syntax::symbol::InternedString;
+use rustc::cg::LocalCallGraphMetadata;
 use rustc::dep_graph::{WorkProductId, WorkProduct, DepNode, DepConstructor};
 use rustc::hir::{CodegenFnAttrFlags, HirId};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::DefPathData;
 use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
 use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::ty::{self, TyCtxt, InstanceDef, Instance, ExistentialTraitRef};
+use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
@@ -894,9 +895,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
 ) -> (
     Arc<DefIdSet>,
     Arc<Vec<Arc<CodegenUnit<'tcx>>>>,
-    Arc<FxHashSet<Instance<'tcx>>>,
-    Arc<FxHashSet<Instance<'tcx>>>,
-    Arc<FxHashMap<Instance<'tcx>, Arc<FxHashSet<ExistentialTraitRef<'tcx>>>>>,
+    Arc<LocalCallGraphMetadata<'tcx>>,
 ) {
     assert_eq!(cnum, LOCAL_CRATE);
 
@@ -926,7 +925,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
         }
     };
 
-    let (items, inlining_map, function_pointer, dynamic_dispatch, drop_glue) =
+    let (items, inlining_map, cg_meta) =
         time(tcx.sess, "monomorphization collection", || {
             collector::collect_crate_mono_items(tcx, collection_mode)
     });
@@ -1017,9 +1016,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
     (
         Arc::new(mono_items),
         Arc::new(codegen_units),
-        Arc::new(function_pointer),
-        Arc::new(dynamic_dispatch),
-        Arc::new(drop_glue),
+        Arc::new(cg_meta),
     )
 }
 
@@ -1027,35 +1024,24 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.collect_and_partition_mono_items =
         collect_and_partition_mono_items;
 
-    providers.function_pointer = |tcx, instance| {
-        let (_, _, function_pointer, _, _) =
-            tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-        function_pointer.contains(&instance)
-    };
-
-    providers.dynamic_dispatch = |tcx, instance| {
-        let (_, _, _, dynamic_dispatch, _) =
-            tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-        dynamic_dispatch.contains(&instance)
-    };
-
-    providers.drop_glue = |tcx, instance| {
-        let (_, _, _, _, drop_glue) =
-            tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-        drop_glue.get(&instance).cloned()
-    };
-
     providers.is_codegened_item = |tcx, def_id| {
-        let (all_mono_items, _, _, _, _) =
+        let (all_mono_items, _, _) =
             tcx.collect_and_partition_mono_items(LOCAL_CRATE);
         all_mono_items.contains(&def_id)
     };
 
     providers.codegen_unit = |tcx, name| {
-        let (_, all, _, _, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        let (_, all, _) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
         all.iter()
             .find(|cgu| *cgu.name() == name)
             .cloned()
             .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
+    };
+
+    providers.local_call_graph_metadata = |tcx, cnum| {
+        let (_, _, cg_meta) =
+            tcx.collect_and_partition_mono_items(cnum);
+
+        cg_meta.clone()
     };
 }

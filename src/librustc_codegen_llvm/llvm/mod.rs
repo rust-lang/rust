@@ -134,6 +134,30 @@ pub fn SetUnnamedAddr(global: &'a Value, unnamed: bool) {
     }
 }
 
+pub fn CreateMDString(llcx: &'a Context, s: &CStr) -> &'a Metadata {
+    unsafe {
+        LLVMRustCreateMDString(llcx, s.as_ptr())
+    }
+}
+
+pub fn CreateMDTuple(llcx: &'a Context, elems: &[&'a Metadata]) -> &'a Metadata {
+    unsafe {
+        LLVMRustCreateMDTuple(llcx, elems.as_ptr(), elems.len() as c_uint)
+    }
+}
+
+pub fn AddFunctionMetadata(llfn: &'a Value, meta: &'a Metadata) {
+    unsafe {
+        LLVMRustAddFunctionMetadata(llfn, meta)
+    }
+}
+
+pub fn AddInstructionMetadata(llfn: &'a Value, meta: &'a Metadata) {
+    unsafe {
+        LLVMRustAddInstructionMetadata(llfn, meta)
+    }
+}
+
 pub fn set_thread_local(global: &'a Value, is_thread_local: bool) {
     unsafe {
         LLVMSetThreadLocal(global, is_thread_local as Bool);

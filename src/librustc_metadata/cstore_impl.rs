@@ -250,6 +250,13 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         Arc::new(cdata.exported_symbols(tcx))
     }
+
+    extern_call_graph_metadata => {
+        let cnum = cdata.cnum;
+        assert!(cnum != LOCAL_CRATE);
+
+        Lrc::new(cdata.get_call_graph_metadata(tcx))
+    }
 }
 
 pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {

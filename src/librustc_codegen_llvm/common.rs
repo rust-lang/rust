@@ -12,8 +12,7 @@ use rustc_codegen_ssa::traits::*;
 
 use crate::consts::const_alloc_to_llvm;
 use rustc_data_structures::fx::FxHashSet;
-use rustc::ty;
-use rustc::ty::{ExistentialTraitRef, FnSig, Ty, Instance};
+use rustc::ty::{self, ExistentialTraitRef, FnSig, Ty, Instance, InstanceDef};
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
 use rustc::ty::layout::call::FnType;
 use rustc::mir::interpret::{Scalar, AllocKind, Allocation};
@@ -405,18 +404,12 @@ pub fn add_define_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
                                       instance: Instance<'tcx>,
                                       llfn: &'ll Value) {
     if cx.sess().opts.debugging_opts.call_metadata  {
-        if let Some(trait_refs) = cx.tcx.drop_glue(instance) {
-            add_define_drop_metadata(cx, &trait_refs, llfn);
+        if let InstanceDef::DropGlue(_, Some(self_ty)) = instance.def {
+            if let Some(traits) = cx.tcx.dynamic_drop_glue(self_ty) {
+                add_define_drop_metadata(cx, &traits, llfn);
+            }
         } else {
-            let dyn_ = if cx.tcx.dynamic_dispatch(instance) {
-                Some(instance.trait_ref_and_method(cx.tcx).unwrap_or_else(|| {
-                    bug!("`{}` marked for dynamic dispatch but it's not a trait method", instance)
-                }))
-            } else {
-                None
-            };
-
-            let fn_ = if cx.tcx.function_pointer(instance) {
+            let fn_ = if cx.tcx.is_function_pointer((instance.def_id(), instance.substs)) {
                 let sig = cx.tcx.normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
                     &instance.fn_sig(cx.tcx),
@@ -425,6 +418,17 @@ pub fn add_define_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
             } else {
                 None
             };
+
+            let dyn_ = instance.trait_ref_and_method(cx.tcx).and_then(|(trait_ref, method)| {
+                if cx.tcx.is_trait_object(trait_ref) {
+                    Some((
+                        ExistentialTraitRef::erase_self_ty(cx.tcx, trait_ref),
+                        method,
+                    ))
+                } else {
+                    None
+                }
+            });
 
             if dyn_.is_some() || fn_.is_some() {
                 add_define_dyn_fn_metadata(cx, dyn_, fn_, llfn);
@@ -437,47 +441,42 @@ fn add_define_dyn_fn_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
                                          dyn_: Option<(ExistentialTraitRef<'tcx>, Symbol)>,
                                          fn_: Option<FnSig<'tcx>>,
                                          llfn: &'ll Value) {
-    unsafe {
-        let dyn_ = dyn_.map(|(trait_ref, method)| {
+    let dyn_ = dyn_.map(|(trait_ref, method)| {
 
-            let trait_ref = CString::new(trait_ref.to_string()).unwrap();
-            let method = CString::new(method.to_string()).unwrap();
+        let trait_ref = CString::new(trait_ref.to_string()).unwrap();
+        let method = CString::new(method.to_string()).unwrap();
 
-            let tuple = [
-                llvm::LLVMRustCreateMDString(cx.llcx, const_cstr!("dyn").as_ptr()),
-                llvm::LLVMRustCreateMDString(cx.llcx, trait_ref.as_ptr()),
-                llvm::LLVMRustCreateMDString(cx.llcx, method.as_ptr())
-            ];
-            llvm::LLVMRustCreateMDTuple(cx.llcx, tuple.as_ptr(), tuple.len() as _)
-        });
+        let tuple = [
+            llvm::CreateMDString(cx.llcx, const_cstr!("dyn")),
+            llvm::CreateMDString(cx.llcx, &trait_ref),
+            llvm::CreateMDString(cx.llcx, &method)
+        ];
+        llvm::CreateMDTuple(cx.llcx, &tuple)
+    });
 
-        let fn_ = fn_.map(|sig| {
-            let fn_ = CString::new(sig_to_string(sig.inputs(), sig.output())).unwrap();
+    let fn_ = fn_.map(|sig| {
+        let fn_ = CString::new(sig_to_string(sig.inputs(), sig.output())).unwrap();
 
-            let tuple = [
-                llvm::LLVMRustCreateMDString(cx.llcx, const_cstr!("fn").as_ptr()),
-                llvm::LLVMRustCreateMDString(cx.llcx, fn_.as_ptr()),
-            ];
+        let tuple = [
+            llvm::CreateMDString(cx.llcx, const_cstr!("fn")),
+            llvm::CreateMDString(cx.llcx, &fn_),
+        ];
 
-            llvm::LLVMRustCreateMDTuple(cx.llcx, tuple.as_ptr(), tuple.len() as _)
-        });
+        llvm::CreateMDTuple(cx.llcx, &tuple)
+    });
 
-        match (dyn_, fn_) {
-            (Some(dyn_), Some(fn_)) => {
-                let tuple = [dyn_, fn_];
+    match (dyn_, fn_) {
+        (Some(dyn_), Some(fn_)) => {
+            let tuple = [dyn_, fn_];
 
-                llvm::LLVMRustAddFunctionMetadata(
-                    llfn,
-                    llvm::LLVMRustCreateMDTuple(cx.llcx, tuple.as_ptr(), tuple.len() as _),
-                );
-            }
-
-            (Some(meta), None) | (None, Some(meta)) => {
-                llvm::LLVMRustAddFunctionMetadata(llfn, meta);
-            }
-
-            (None, None) => {}
+            llvm::AddFunctionMetadata(llfn, llvm::CreateMDTuple(cx.llcx, &tuple));
         }
+
+        (Some(meta), None) | (None, Some(meta)) => {
+            llvm::AddFunctionMetadata(llfn, meta);
+        }
+
+        (None, None) => {}
     }
 }
 
@@ -488,26 +487,21 @@ fn add_define_drop_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
         return;
     }
 
-    unsafe {
-        let meta: SmallVec<[&Metadata; 4]> = trait_refs.iter().map(|trait_ref| {
-            let trait_ref = CString::new(trait_ref.to_string()).unwrap();
-            let tuple = [
-                llvm::LLVMRustCreateMDString(cx.llcx, const_cstr!("drop").as_ptr()),
-                llvm::LLVMRustCreateMDString(cx.llcx, trait_ref.as_ptr()),
-            ];
+    let meta: SmallVec<[&Metadata; 4]> = trait_refs.iter().map(|trait_ref| {
+        let trait_ref = CString::new(trait_ref.to_string()).unwrap();
+        let tuple = [
+            llvm::CreateMDString(cx.llcx, const_cstr!("drop")),
+            llvm::CreateMDString(cx.llcx, &trait_ref),
+        ];
 
-            llvm::LLVMRustCreateMDTuple(cx.llcx, tuple.as_ptr(), tuple.len() as _)
-        }).collect();
+        llvm::CreateMDTuple(cx.llcx, &tuple)
+    }).collect();
 
-        if meta.len() == 1 {
-            // don't create a tuple if there's only a single metadata node
-            llvm::LLVMRustAddFunctionMetadata(llfn, meta[0]);
-        } else {
-            llvm::LLVMRustAddFunctionMetadata(
-                llfn,
-                llvm::LLVMRustCreateMDTuple(cx.llcx, meta.as_ptr(), meta.len() as _),
-            );
-        }
+    if meta.len() == 1 {
+        // don't create a tuple if there's only a single metadata node
+        llvm::AddFunctionMetadata(llfn, meta[0]);
+    } else {
+        llvm::AddFunctionMetadata(llfn, llvm::CreateMDTuple(cx.llcx, &meta));
     }
 }
 
@@ -518,16 +512,13 @@ pub fn add_callsite_dyn_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
     let trait_ref = CString::new(trait_ref.to_string()).unwrap();
     let method = CString::new(method.to_string()).unwrap();
 
-    unsafe {
-        let trait_ref = llvm::LLVMRustCreateMDString(cx.llcx, trait_ref.as_ptr());
-        let method = llvm::LLVMRustCreateMDString(cx.llcx, method.as_ptr());
-        let scope = llvm::LLVMRustCreateMDString(cx.llcx, const_cstr!("dyn").as_ptr());
+    let trait_ref = llvm::CreateMDString(cx.llcx, &trait_ref);
+    let method = llvm::CreateMDString(cx.llcx, &method);
+    let scope = llvm::CreateMDString(cx.llcx, const_cstr!("dyn"));
 
-        let tuple = [scope, trait_ref, method];
-        let tuple = llvm::LLVMRustCreateMDTuple(cx.llcx, tuple.as_ptr(), tuple.len() as _);
+    let tuple = [scope, trait_ref, method];
 
-        llvm::LLVMRustAddInstructionMetadata(llfn, tuple);
-    }
+    llvm::AddInstructionMetadata(llfn, llvm::CreateMDTuple(cx.llcx, &tuple));
 }
 
 pub fn add_callsite_drop_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
@@ -535,16 +526,12 @@ pub fn add_callsite_drop_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
                                              llfn: &'ll Value) {
     let trait_ref = CString::new(trait_ref.to_string()).unwrap();
 
-    unsafe {
-        let scope = llvm::LLVMRustCreateMDString(cx.llcx, const_cstr!("drop").as_ptr());
-        let trait_ref = llvm::LLVMRustCreateMDString(cx.llcx, trait_ref.as_ptr());
+    let scope = llvm::CreateMDString(cx.llcx, const_cstr!("drop"));
+    let trait_ref = llvm::CreateMDString(cx.llcx, &trait_ref);
 
-        let tuple = [scope, trait_ref];
+    let tuple = [scope, trait_ref];
 
-        let tuple = llvm::LLVMRustCreateMDTuple(cx.llcx, tuple.as_ptr(), tuple.len() as _);
-
-        llvm::LLVMRustAddInstructionMetadata(llfn, tuple);
-    }
+    llvm::AddInstructionMetadata(llfn, llvm::CreateMDTuple(cx.llcx, &tuple));
 }
 
 pub fn add_callsite_fn_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
@@ -554,14 +541,11 @@ pub fn add_callsite_fn_metadata<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>,
     let ret = sig.ret.layout.ty;
     let fnty = CString::new(sig_to_string(&args, ret)).unwrap();
 
-    unsafe {
-        let scope = llvm::LLVMRustCreateMDString(cx.llcx, const_cstr!("fn").as_ptr());
-        let id = llvm::LLVMRustCreateMDString(cx.llcx, fnty.as_ptr());
-        let array = [scope, id];
-        let tuple = llvm::LLVMRustCreateMDTuple(cx.llcx, array.as_ptr(), array.len() as _);
+    let scope = llvm::CreateMDString(cx.llcx, const_cstr!("fn"));
+    let id = llvm::CreateMDString(cx.llcx, &fnty);
+    let array = [scope, id];
 
-        llvm::LLVMRustAddInstructionMetadata(llfn, tuple);
-    }
+    llvm::AddInstructionMetadata(llfn, llvm::CreateMDTuple(cx.llcx, &array));
 }
 
 pub fn sig_to_string<'tcx>(args: &[Ty<'tcx>], ret: Ty<'tcx>) -> String {

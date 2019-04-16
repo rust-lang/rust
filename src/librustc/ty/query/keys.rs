@@ -45,6 +45,16 @@ impl<'tcx> Key for ty::Instance<'tcx> {
     }
 }
 
+impl<'tcx> Key for ty::TraitRef<'tcx> {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+
+    fn default_span(&self, tcx: TyCtxt<'_, '_, '_>) -> Span {
+        tcx.def_span(self.def_id)
+    }
+}
+
 impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
     fn query_crate(&self) -> CrateNum {
         self.instance.query_crate()

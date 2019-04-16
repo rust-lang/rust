@@ -55,10 +55,12 @@ impl<'a, 'tcx> Instance<'tcx> {
         )
     }
 
+    /// If this `Instance` corresponds to a trait method this returns the `TraitRef` and the method
+    /// name
     pub fn trait_ref_and_method(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ) -> Option<(ty::ExistentialTraitRef<'tcx>, Symbol)> {
+    ) -> Option<(ty::TraitRef<'tcx>, Symbol)> {
         let def_id = self.def_id();
         if let Some(Def::Method(..)) = tcx.describe_def(def_id) {
             let item = tcx.associated_item(def_id);
@@ -69,17 +71,12 @@ impl<'a, 'tcx> Instance<'tcx> {
                 }
 
                 AssociatedItemContainer::ImplContainer(impl_def_id) => {
-                    if let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) {
-                        trait_ref
-                    } else {
-                        // inherent method
-                        return None;
-                    }
+                    tcx.impl_trait_ref(impl_def_id)?
                 }
             };
 
             Some((
-                ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref),
+                trait_ref,
                 item.ident.name,
             ))
         } else {

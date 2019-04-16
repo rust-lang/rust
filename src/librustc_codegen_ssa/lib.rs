@@ -123,6 +123,7 @@ pub enum ModuleKind {
     Allocator,
 }
 
+/// Used by `-Z call-metadata` to add informational LLVM metadata that doesn't affect optimizations
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum CallKind<'tcx> {
     Direct,

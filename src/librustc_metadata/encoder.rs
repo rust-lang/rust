@@ -462,6 +462,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             self.lazy_seq(interpret_alloc_index)
         };
 
+        // Encode call graph metadata
+        let call_graph_metadata = self.tracked(IsolatedEncoder::encode_call_graph_metadata, ());
+
         // Index the items
         i = self.position();
         let index = items.write_index(&mut self.opaque);
@@ -516,6 +519,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             impls,
             exported_symbols,
             interpret_alloc_index,
+            call_graph_metadata,
             index,
         });
 
@@ -1672,6 +1676,18 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             predicates_defined_on: None,
 
             mir: None,
+        }
+    }
+
+    fn encode_call_graph_metadata(&mut self, _: ()) -> EncodedCallGraphMetadata {
+        let cg = self.tcx.local_call_graph_metadata(LOCAL_CRATE);
+
+        let function_pointers = self.lazy_seq_ref(&cg.function_pointers);
+        let trait_objects = self.lazy_seq_ref(&cg.trait_objects);
+
+        EncodedCallGraphMetadata {
+            function_pointers: (function_pointers.position, function_pointers.len),
+            trait_objects: (trait_objects.position, trait_objects.len),
         }
     }
 }

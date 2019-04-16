@@ -4,6 +4,7 @@ use crate::cstore::{self, CrateMetadata, MetadataBlob, NativeLibrary, ForeignMod
 use crate::schema::*;
 
 use rustc_data_structures::sync::{Lrc, ReadGuard};
+use rustc::cg::ExternCallGraphMetadata;
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
 use rustc::hir;
 use rustc::middle::cstore::LinkagePreference;
@@ -17,8 +18,9 @@ use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
 use rustc::mir::interpret::AllocDecodingSession;
 use rustc::session::Session;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, TraitRef, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
+use rustc::ty::subst::SubstsRef;
 use rustc::mir::Mir;
 use rustc::util::captures::Captures;
 
@@ -1115,6 +1117,31 @@ impl<'a, 'tcx> CrateMetadata {
                 LazySeq::with_position_and_length(self.root.exported_symbols.position,
                                                   self.root.exported_symbols.len);
             lazy_seq.decode((self, tcx)).collect()
+        }
+    }
+
+    pub fn get_call_graph_metadata(&self,
+                                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                                   -> ExternCallGraphMetadata<'tcx> {
+        if self.proc_macros.is_some() {
+            // Proc macro crates are not relevant to call graph analysis
+            ExternCallGraphMetadata::empty()
+        } else {
+            let pos_len = self.root.call_graph_metadata.function_pointers;
+            let lazy_seq: LazySeq<(DefId, SubstsRef<'tcx>)> =
+                LazySeq::with_position_and_length(pos_len.0, pos_len.1);
+            let function_pointers = lazy_seq.decode((self, tcx)).collect::<Vec<_>>();
+
+            let pos_len = self.root.call_graph_metadata.trait_objects;
+            let lazy_seq: LazySeq<TraitRef<'tcx>> =
+                LazySeq::with_position_and_length(pos_len.0, pos_len.1);
+            let trait_objects = lazy_seq.decode((self, tcx)).collect::<Vec<_>>();
+
+            ExternCallGraphMetadata {
+                function_pointers,
+                trait_objects,
+                dynamic_drop_glue: vec![],
+            }
         }
     }
 

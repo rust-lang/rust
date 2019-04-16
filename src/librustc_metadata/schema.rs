@@ -201,6 +201,7 @@ pub struct CrateRoot {
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: EncodedExportedSymbols,
     pub interpret_alloc_index: LazySeq<u32>,
+    pub call_graph_metadata: EncodedCallGraphMetadata,
 
     pub index: LazySeq<index::Index>,
 
@@ -582,4 +583,12 @@ pub const TAG_INVALID_SPAN: u8 = 1;
 pub struct EncodedExportedSymbols {
     pub position: usize,
     pub len: usize,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+pub struct EncodedCallGraphMetadata {
+    // (`position`, `len`) for all fields
+    pub function_pointers: (usize, usize),
+    pub trait_objects: (usize, usize),
+    // FIXME(japaric) add dynamic_drop_glue
 }

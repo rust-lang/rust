@@ -1,3 +1,4 @@
+use crate::cg;
 use crate::dep_graph::{self, DepNode};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex};
 use crate::hir::def::{Def, Export};

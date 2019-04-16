@@ -854,7 +854,7 @@ impl CrateInfo {
 }
 
 fn is_codegened_item(tcx: TyCtxt<'_, '_, '_>, id: DefId) -> bool {
-    let (all_mono_items, _, _, _, _) =
+    let (all_mono_items, _, _) =
         tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     all_mono_items.contains(&id)
 }
@@ -879,7 +879,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             config::OptLevel::SizeMin => config::OptLevel::Default,
         };
 
-        let (defids, _, _, _, _) = tcx.collect_and_partition_mono_items(cratenum);
+        let (defids, _, _) = tcx.collect_and_partition_mono_items(cratenum);
         for id in &*defids {
             let hir::CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
             match optimize {

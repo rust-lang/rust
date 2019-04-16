@@ -864,9 +864,7 @@ rustc_queries! {
         query collect_and_partition_mono_items(_: CrateNum) -> (
             Arc<DefIdSet>,
             Arc<Vec<Arc<CodegenUnit<'tcx>>>>,
-            Arc<FxHashSet<ty::Instance<'tcx>>>,
-            Arc<FxHashSet<ty::Instance<'tcx>>>,
-            Arc<FxHashMap<ty::Instance<'tcx>, Arc<FxHashSet<ty::ExistentialTraitRef<'tcx>>>>>
+            Arc<cg::LocalCallGraphMetadata<'tcx>>,
         ) {
             eval_always
             desc { "collect_and_partition_mono_items" }
@@ -881,23 +879,41 @@ rustc_queries! {
         }
 
         // -Z call-metadata
-        // functions that may be called via a function pointer
-        query function_pointer(instance: ty::Instance<'tcx>) -> bool {
+        query extern_call_graph_metadata(_: CrateNum) -> Lrc<cg::ExternCallGraphMetadata<'tcx>> {
             no_force
-            desc { "checking if `{}` may be called via a function pointer", instance }
+            desc { "loading external call graph metadata" }
         }
 
-        // trait methods that may be called via dynamic dispatch
-        query dynamic_dispatch(instance: ty::Instance<'tcx>) -> bool {
+        query local_call_graph_metadata(_: CrateNum) -> Arc<cg::LocalCallGraphMetadata<'tcx>> {
             no_force
-            desc { "checking if `{}` may be called via dynamic dispatch", instance }
+            desc { "local call graph metadata" }
         }
 
-        query drop_glue(instance: ty::Instance<'tcx>) ->
+        query all_call_graph_metadata(_: CrateNum) -> Lrc<cg::AllCallGraphMetadata<'tcx>> {
+            no_force
+            desc { "all call graph metadata" }
+        }
+
+        // has this function being casted / coerced into a function pointer?
+        query is_function_pointer(key: (DefId, SubstsRef<'tcx>)) -> bool {
+            no_force
+            desc {
+                "checking if `{:?}` ({:?}) has been casted into a function pointer", key.0, key.1
+            }
+        }
+
+        // has this type being casted / coerced into a trait object?
+        query is_trait_object(trait_ref: ty::TraitRef<'tcx>) -> bool {
+            no_force
+            desc { "checking if `{}` has been casted / coerced into a trait object", trait_ref }
+        }
+
+        // returns the list of traits whose trait objects may call into this type drop glue (if any)
+        query dynamic_drop_glue(ty: Ty<'tcx>) ->
             Option<Arc<FxHashSet<ty::ExistentialTraitRef<'tcx>>>>
         {
             no_force
-            desc { "checking if `{}` may be called by a trait object destructor", instance }
+            desc { "checking if `{}` drop glue is called by trait objects drop glue", ty }
         }
     }
 

@@ -2,6 +2,9 @@
 //! from rustc::ty in no particular order.
 
 use crate::ich::{Fingerprint, StableHashingContext, NodeIdHashingMode};
+use crate::hir::def_id::DefId;
+use crate::ty::Ty;
+use crate::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
@@ -54,7 +57,7 @@ impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T
     }
 }
 
-impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for ty::Instance<'tcx> {
+impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for ty::ExistentialTraitRef<'tcx> {
     type KeyType = Fingerprint;
 
     #[inline]
@@ -66,7 +69,31 @@ impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for ty::Instance<'tcx> 
     }
 }
 
-impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for ty::ExistentialTraitRef<'tcx> {
+impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for ty::TraitRef<'tcx> {
+    type KeyType = Fingerprint;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
+        let mut hasher = StableHasher::new();
+        let mut hcx: StableHashingContext<'a> = hcx.clone();
+        self.hash_stable(&mut hcx, &mut hasher);
+        hasher.finish()
+    }
+}
+
+impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for (DefId, SubstsRef<'tcx>) {
+    type KeyType = Fingerprint;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Fingerprint {
+        let mut hasher = StableHasher::new();
+        let mut hcx: StableHashingContext<'a> = hcx.clone();
+        self.hash_stable(&mut hcx, &mut hasher);
+        hasher.finish()
+    }
+}
+
+impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for Ty<'tcx> {
     type KeyType = Fingerprint;
 
     #[inline]
