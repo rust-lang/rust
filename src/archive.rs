@@ -14,25 +14,29 @@ struct ArchiveConfig<'a> {
     pub lib_search_paths: Vec<PathBuf>,
 }
 
+enum ArchiveEntry {
+    FromArchive { archive_index: usize, entry_index: usize },
+    File(File),
+}
+
 pub struct ArArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
-    src_archive: Option<ar::Archive<File>>,
-    src_entries: HashMap<String, usize>,
-    builder: ar::Builder<File>,
+    src_archives: Vec<ar::Archive<File>>,
+    entries: HashMap<String, ArchiveEntry>,
     update_symbols: bool,
 }
 
 impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     fn new(sess: &'a Session, output: &Path, input: Option<&Path>) -> Self {
         use rustc_codegen_ssa::back::link::archive_search_paths;
-        let cfg = ArchiveConfig {
+        let config = ArchiveConfig {
             sess,
             dst: output.to_path_buf(),
             src: input.map(|p| p.to_path_buf()),
             lib_search_paths: archive_search_paths(sess),
         };
 
-        let (src_archive, src_entries) = if let Some(src) = &cfg.src {
+        let (src_archives, entries) = if let Some(src) = &config.src {
             let mut archive = ar::Archive::new(File::open(src).unwrap());
             let mut entries = HashMap::new();
 
@@ -41,33 +45,30 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 let entry = entry.unwrap();
                 entries.insert(
                     String::from_utf8(entry.header().identifier().to_vec()).unwrap(),
-                    i,
+                    ArchiveEntry::FromArchive { archive_index: 0, entry_index: i },
                 );
                 i += 1;
             }
 
-            (Some(archive), entries)
+            (vec![archive], entries)
         } else {
-            (None, HashMap::new())
+            (vec![], HashMap::new())
         };
 
-        let builder = ar::Builder::new(File::create(&cfg.dst).unwrap());
-
         ArArchiveBuilder {
-            config: cfg,
-            src_archive,
-            src_entries,
-            builder,
+            config,
+            src_archives,
+            entries,
             update_symbols: false,
         }
     }
 
     fn src_files(&mut self) -> Vec<String> {
-        self.src_entries.keys().cloned().collect()
+        self.entries.keys().cloned().collect()
     }
 
     fn remove_file(&mut self, name: &str) {
-        let file = self.src_entries.remove(name);
+        let file = self.entries.remove(name);
         assert!(
             file.is_some(),
             "Tried to remove file not existing in src archive",
@@ -75,7 +76,10 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn add_file(&mut self, file: &Path) {
-        self.builder.append_path(file).unwrap();
+        self.entries.insert(
+            file.file_name().unwrap().to_str().unwrap().to_string(),
+            ArchiveEntry::File(File::open(file).unwrap()),
+        );
     }
 
     fn add_native_library(&mut self, name: &str) {
@@ -115,23 +119,30 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn build(mut self) {
-        // Add files from original archive
-        if let Some(mut src_archive) = self.src_archive {
-            for (_entry_name, entry_idx) in self.src_entries.into_iter() {
-                let entry = src_archive.jump_to_entry(entry_idx).unwrap();
-                let orig_header = entry.header();
-                let mut header =
-                    ar::Header::new(orig_header.identifier().to_vec(), orig_header.size());
-                header.set_mtime(orig_header.mtime());
-                header.set_uid(orig_header.uid());
-                header.set_gid(orig_header.gid());
-                header.set_mode(orig_header.mode());
-                self.builder.append(&header, entry).unwrap();
+        let mut builder = ar::Builder::new(File::create(&self.config.dst).unwrap());
+
+        // Add all files
+        for (entry_name, entry) in self.entries.into_iter() {
+            match entry {
+                ArchiveEntry::FromArchive { archive_index, entry_index } => {
+                    let entry = self.src_archives[archive_index].jump_to_entry(entry_index).unwrap();
+                    let orig_header = entry.header();
+                    let mut header =
+                        ar::Header::new(orig_header.identifier().to_vec(), orig_header.size());
+                    header.set_mtime(orig_header.mtime());
+                    header.set_uid(orig_header.uid());
+                    header.set_gid(orig_header.gid());
+                    header.set_mode(orig_header.mode());
+                    builder.append(&header, entry).unwrap();
+                }
+                ArchiveEntry::File(mut file) => {
+                    builder.append_file(entry_name.as_bytes(), &mut file).unwrap();
+                }
             }
         }
 
         // Finalize archive
-        std::mem::drop(self.builder);
+        std::mem::drop(builder);
 
         // Run ranlib to be able to link the archive
         let status = std::process::Command::new("ranlib")
@@ -151,22 +162,22 @@ impl<'a> ArArchiveBuilder<'a> {
         where F: FnMut(&str) -> bool + 'static
     {
         let mut archive = ar::Archive::new(std::fs::File::open(archive)?);
+        let archive_index = self.src_archives.len();
+
+        let mut i = 0;
         while let Some(entry) = archive.next_entry() {
-            let entry = entry?;
-            let orig_header = entry.header();
-
-            if skip(std::str::from_utf8(orig_header.identifier()).unwrap()) {
-                continue;
+            let entry = entry.unwrap();
+            let file_name = String::from_utf8(entry.header().identifier().to_vec()).unwrap();
+            if !skip(&file_name) {
+                self.entries.insert(
+                    file_name,
+                    ArchiveEntry::FromArchive { archive_index, entry_index: i },
+                );
             }
-
-            let mut header =
-                ar::Header::new(orig_header.identifier().to_vec(), orig_header.size());
-            header.set_mtime(orig_header.mtime());
-            header.set_uid(orig_header.uid());
-            header.set_gid(orig_header.gid());
-            header.set_mode(orig_header.mode());
-            self.builder.append(&header, entry).unwrap();
+            i += 1;
         }
+
+        self.src_archives.push(archive);
         Ok(())
     }
 }
