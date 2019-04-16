@@ -26,7 +26,7 @@ extern crate rustc;
 #[macro_use]
 extern crate rustc_data_structures;
 
-mod diagnostics;
+mod error_codes;
 
 mod index_builder;
 mod index;

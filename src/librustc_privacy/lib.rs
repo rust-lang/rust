@@ -33,7 +33,7 @@ use syntax_pos::Span;
 use std::{cmp, fmt, mem};
 use std::marker::PhantomData;
 
-mod diagnostics;
+mod error_codes;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.

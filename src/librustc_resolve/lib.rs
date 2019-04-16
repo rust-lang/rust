@@ -65,7 +65,7 @@ use std::mem::replace;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
 
-use error_reporting::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
+use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{InvocationData, LegacyBinding, ParentScope};
 
@@ -73,8 +73,8 @@ type Def = def::Def<NodeId>;
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
+mod error_codes;
 mod diagnostics;
-mod error_reporting;
 mod macros;
 mod check_unused;
 mod build_reduced_graph;

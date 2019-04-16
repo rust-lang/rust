@@ -99,7 +99,7 @@ mod macros;
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
-pub mod diagnostics;
+pub mod error_codes;
 
 #[macro_use]
 pub mod query;

@@ -41,7 +41,7 @@ use syntax_pos::symbol::Symbol;
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
-mod diagnostics;
+mod error_codes;
 
 pub mod common;
 pub mod traits;
