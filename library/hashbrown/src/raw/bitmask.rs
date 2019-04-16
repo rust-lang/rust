@@ -54,6 +54,7 @@ impl BitMask {
     pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
         intrinsics::cttz_nonzero(self.0) as usize / BITMASK_STRIDE
     }
+    #[inline]
     #[cfg(not(feature = "nightly"))]
     pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
         self.trailing_zeros()
