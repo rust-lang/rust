@@ -22,7 +22,7 @@
 //!         sender,
 //!         main_loop,
 //!     )?;
-//!     io_threads.exit()?;
+//!     io_threads.join()?;
 //!     Ok(())
 //! }
 //!
