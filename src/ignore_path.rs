@@ -39,17 +39,17 @@ mod test {
 
     #[test]
     fn test_ignore_path_set() {
-        let config = Config::from_toml(
-            "ignore = [
-            \"foo.rs\",
-            \"bar_dir/*\",
-        ]",
-        )
-        .unwrap();
-        let ignore_path_set = IgnorePathSet::from_ignore_list(&config.ignore()).unwrap();
+        match option_env!("CFG_RELEASE_CHANNEL") {
+            // this test requires nightly
+            None | Some("nightly") => {
+                let config = Config::from_toml(r#"ignore = ["foo.rs", "bar_dir/*"]"#).unwrap();
+                let ignore_path_set = IgnorePathSet::from_ignore_list(&config.ignore()).unwrap();
 
-        assert!(ignore_path_set.is_match(&FileName::Real(PathBuf::from("src/foo.rs"))));
-        assert!(ignore_path_set.is_match(&FileName::Real(PathBuf::from("bar_dir/baz.rs"))));
-        assert!(!ignore_path_set.is_match(&FileName::Real(PathBuf::from("src/bar.rs"))));
+                assert!(ignore_path_set.is_match(&FileName::Real(PathBuf::from("src/foo.rs"))));
+                assert!(ignore_path_set.is_match(&FileName::Real(PathBuf::from("bar_dir/baz.rs"))));
+                assert!(!ignore_path_set.is_match(&FileName::Real(PathBuf::from("src/bar.rs"))));
+            }
+            _ => (),
+        };
     }
 }
