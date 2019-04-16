@@ -193,11 +193,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Cast { .. }
             | ExprKind::Use { .. }
             | ExprKind::NeverToAny { .. }
-            | ExprKind::ReifyFnPointer { .. }
-            | ExprKind::ClosureFnPointer { .. }
-            | ExprKind::UnsafeFnPointer { .. }
-            | ExprKind::MutToConstPointer { .. }
-            | ExprKind::Unsize { .. }
+            | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::If { .. }

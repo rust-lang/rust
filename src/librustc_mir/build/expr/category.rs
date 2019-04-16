@@ -59,11 +59,7 @@ impl Category {
             | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
             | ExprKind::Use { .. }
-            | ExprKind::ReifyFnPointer { .. }
-            | ExprKind::ClosureFnPointer { .. }
-            | ExprKind::UnsafeFnPointer { .. }
-            | ExprKind::MutToConstPointer { .. }
-            | ExprKind::Unsize { .. }
+            | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
             | ExprKind::Assign { .. }

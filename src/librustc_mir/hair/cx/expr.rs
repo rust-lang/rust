@@ -75,20 +75,20 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     -> Expr<'tcx> {
     let Expr { temp_lifetime, mut span, .. } = expr;
     let kind = match adjustment.kind {
-        Adjust::Pointer(PointerCast::ReifyFnPointer) => {
-            ExprKind::ReifyFnPointer { source: expr.to_ref() }
+        Adjust::Pointer(PointerCast::Unsize) => {
+            if let ExprKind::Block { body } = expr.kind {
+                if let Some(ref last_expr) = body.expr {
+                    span = last_expr.span;
+                    expr.span = span;
+                }
+            }
+            ExprKind::Pointer { cast: PointerCast::Unsize, source: expr.to_ref() }
         }
-        Adjust::Pointer(PointerCast::UnsafeFnPointer) => {
-            ExprKind::UnsafeFnPointer { source: expr.to_ref() }
-        }
-        Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
-            ExprKind::ClosureFnPointer { source: expr.to_ref(), unsafety }
+        Adjust::Pointer(cast) => {
+            ExprKind::Pointer { cast, source: expr.to_ref() }
         }
         Adjust::NeverToAny => {
             ExprKind::NeverToAny { source: expr.to_ref() }
-        }
-        Adjust::Pointer(PointerCast::MutToConstPointer) => {
-            ExprKind::MutToConstPointer { source: expr.to_ref() }
         }
         Adjust::Deref(None) => {
             // Adjust the span from the block, to the last expression of the
@@ -186,16 +186,6 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // We only need to worry about this kind of thing for coercions from refs to ptrs,
             // since they get rid of a borrow implicitly.
             ExprKind::Use { source: cast_expr.to_ref() }
-        }
-        Adjust::Pointer(PointerCast::Unsize) => {
-            // See the above comment for Adjust::Deref
-            if let ExprKind::Block { body } = expr.kind {
-                if let Some(ref last_expr) = body.expr {
-                    span = last_expr.span;
-                    expr.span = span;
-                }
-            }
-            ExprKind::Unsize { source: expr.to_ref() }
         }
     };
 

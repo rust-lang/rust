@@ -7,7 +7,6 @@ use crate::hir::def::Namespace;
 use crate::mir::ProjectionKind;
 use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt, ConstVid};
-use crate::ty::adjustment::{PointerCast};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -327,6 +326,7 @@ CloneTypeFoldableAndLiftImpls! {
     crate::ty::IntVarValue,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::adjustment::PointerCast,
     crate::ty::RegionVid,
     crate::ty::UniverseIndex,
     crate::ty::Variance,
@@ -627,16 +627,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjust<'a> {
         match *self {
             ty::adjustment::Adjust::NeverToAny =>
                 Some(ty::adjustment::Adjust::NeverToAny),
-            ty::adjustment::Adjust::Pointer(PointerCast::ReifyFnPointer) =>
-                Some(ty::adjustment::Adjust::Pointer(PointerCast::ReifyFnPointer)),
-            ty::adjustment::Adjust::Pointer(PointerCast::UnsafeFnPointer) =>
-                Some(ty::adjustment::Adjust::Pointer(PointerCast::UnsafeFnPointer)),
-            ty::adjustment::Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety)) =>
-                Some(ty::adjustment::Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety))),
-            ty::adjustment::Adjust::Pointer(PointerCast::MutToConstPointer) =>
-                Some(ty::adjustment::Adjust::Pointer(PointerCast::MutToConstPointer)),
-            ty::adjustment::Adjust::Pointer(PointerCast::Unsize) =>
-                Some(ty::adjustment::Adjust::Pointer(PointerCast::Unsize)),
+            ty::adjustment::Adjust::Pointer(ptr) =>
+                Some(ty::adjustment::Adjust::Pointer(ptr)),
             ty::adjustment::Adjust::Deref(ref overloaded) => {
                 tcx.lift(overloaded).map(ty::adjustment::Adjust::Deref)
             }
@@ -1189,16 +1181,6 @@ EnumTypeFoldableImpl! {
         (ty::adjustment::Adjust::Pointer)(a),
         (ty::adjustment::Adjust::Deref)(a),
         (ty::adjustment::Adjust::Borrow)(a),
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::PointerCast {
-        (ty::adjustment::PointerCast::ReifyFnPointer),
-        (ty::adjustment::PointerCast::UnsafeFnPointer),
-        (ty::adjustment::PointerCast::ClosureFnPointer)(a),
-        (ty::adjustment::PointerCast::MutToConstPointer),
-        (ty::adjustment::PointerCast::Unsize),
     }
 }
 
