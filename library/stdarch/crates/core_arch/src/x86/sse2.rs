@@ -2529,7 +2529,7 @@ pub unsafe fn _mm_movemask_pd(a: __m128d) -> i32 {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_load_pd(mem_addr: *const f64) -> __m128d {
     *(mem_addr as *const __m128d)
 }
@@ -2582,7 +2582,7 @@ pub unsafe fn _mm_loadl_pd(a: __m128d, mem_addr: *const f64) -> __m128d {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movntps))] // FIXME movntpd
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
     intrinsics::nontemporal_store(mem_addr as *mut __m128d, a);
 }
@@ -2608,7 +2608,7 @@ pub unsafe fn _mm_store_sd(mem_addr: *mut f64, a: __m128d) {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(movaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_store_pd(mem_addr: *mut f64, a: __m128d) {
     *(mem_addr as *mut __m128d) = a;
 }
@@ -2634,7 +2634,7 @@ pub unsafe fn _mm_storeu_pd(mem_addr: *mut f64, a: __m128d) {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_store1_pd(mem_addr: *mut f64, a: __m128d) {
     let b: __m128d = simd_shuffle2(a, a, [0, 0]);
     *(mem_addr as *mut __m128d) = b;
@@ -2648,7 +2648,7 @@ pub unsafe fn _mm_store1_pd(mem_addr: *mut f64, a: __m128d) {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_store_pd1(mem_addr: *mut f64, a: __m128d) {
     let b: __m128d = simd_shuffle2(a, a, [0, 0]);
     *(mem_addr as *mut __m128d) = b;
@@ -2663,7 +2663,7 @@ pub unsafe fn _mm_store_pd1(mem_addr: *mut f64, a: __m128d) {
 #[inline]
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
     let b: __m128d = simd_shuffle2(a, a, [1, 0]);
     *(mem_addr as *mut __m128d) = b;

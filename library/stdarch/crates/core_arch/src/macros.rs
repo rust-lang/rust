@@ -275,8 +275,7 @@ macro_rules! types {
         #[derive(Copy, Clone, Debug)]
         #[allow(non_camel_case_types)]
         #[repr(simd)]
-        #[cfg_attr(feature = "cargo-clippy",
-                   allow(clippy::missing_inline_in_public_items))]
+        #[allow(clippy::missing_inline_in_public_items)]
         pub struct $name($($fields)*);
     )*)
 }

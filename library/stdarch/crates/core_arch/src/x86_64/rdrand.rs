@@ -2,7 +2,7 @@
 //! on-chip hardware random number generator which has been seeded by an
 //! on-chip entropy source.
 
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
+#![allow(clippy::module_name_repetitions)]
 
 #[allow(improper_ctypes)]
 extern "unadjusted" {

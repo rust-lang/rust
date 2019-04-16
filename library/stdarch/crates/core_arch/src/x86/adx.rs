@@ -32,8 +32,7 @@ pub unsafe fn _addcarry_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
 #[stable(feature = "simd_x86_adx", since = "1.33.0")]
 #[cfg(not(stage0))]
 pub unsafe fn _addcarryx_u32(c_in: u8, a: u32, b: u32, out: &mut u32) -> u8 {
-    let r = llvm_addcarryx_u32(c_in, a, b, out as *mut _ as *mut u8);
-    r
+    llvm_addcarryx_u32(c_in, a, b, out as *mut _ as *mut u8)
 }
 
 /// Adds unsigned 32-bit integers `a` and `b` with unsigned 8-bit carry-in `c_in`

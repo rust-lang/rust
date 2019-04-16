@@ -243,17 +243,17 @@ fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
             continue;
         }
         let path = file.path();
-        if path.extension().and_then(|s| s.to_str()) != Some("rs") {
+        if path.extension().and_then(std::ffi::OsStr::to_str) != Some("rs") {
             continue;
         }
 
-        if path.file_name().and_then(|s| s.to_str()) == Some("test.rs") {
+        if path.file_name().and_then(std::ffi::OsStr::to_str) == Some("test.rs") {
             continue;
         }
 
         let mut contents = String::new();
         File::open(&path)
-            .expect(&format!("can't open file at path: {}", path.display()))
+            .unwrap_or_else(|_| panic!("can't open file at path: {}", path.display()))
             .read_to_string(&mut contents)
             .expect("failed to read file to string");
 
@@ -284,8 +284,8 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
         fn parse(content: syn::parse::ParseStream) -> syn::parse::Result<Self> {
             let input;
             parenthesized!(input in content);
-            drop(input.parse::<syn::Meta>()?);
-            drop(input.parse::<Token![,]>()?);
+            let _ = input.parse::<syn::Meta>()?;
+            let _ = input.parse::<Token![,]>()?;
             let ident = input.parse::<syn::Ident>()?;
             if ident != "assert_instr" {
                 return Err(input.error("expected `assert_instr`"));
@@ -358,7 +358,7 @@ struct RustcArgsRequiredConst {
 }
 
 impl syn::parse::Parse for RustcArgsRequiredConst {
-    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_possible_truncation))]
+    #[allow(clippy::cast_possible_truncation)]
     fn parse(input: syn::parse::ParseStream) -> syn::parse::Result<Self> {
         let content;
         parenthesized!(content in input);

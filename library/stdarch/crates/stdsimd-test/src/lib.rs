@@ -61,10 +61,10 @@ fn normalize(symbol: &str) -> String {
     };
     // Normalize to no leading underscore to handle platforms that may
     // inject extra ones in symbol names.
-    while ret.starts_with("_") {
+    while ret.starts_with('_') {
         ret.remove(0);
     }
-    return ret;
+    ret
 }
 
 /// Main entry point for this crate, called by the `#[assert_instr]` macro.

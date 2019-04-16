@@ -47,7 +47,7 @@ pub fn assert_instr(
         .replace('.', "_")
         .replace('/', "_")
         .replace(':', "_")
-        .replace(|c: char| c.is_whitespace(), "");
+        .replace(char::is_whitespace, "");
     let assert_name = syn::Ident::new(&format!("assert_{}_{}", name, instr_str), name.span());
     let shim_name = syn::Ident::new(&format!("{}_shim_{}", name, instr_str), name.span());
     let mut inputs = Vec::new();

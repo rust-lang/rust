@@ -14,18 +14,15 @@
 
 #![feature(stdsimd)]
 #![cfg_attr(test, feature(test))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(
-        clippy::result_unwrap_used,
-        clippy::print_stdout,
-        clippy::option_unwrap_used,
-        clippy::shadow_reuse,
-        clippy::cast_possible_wrap,
-        clippy::cast_ptr_alignment,
-        clippy::cast_sign_loss,
-        clippy::missing_docs_in_private_items
-    )
+#![allow(
+    clippy::result_unwrap_used,
+    clippy::print_stdout,
+    clippy::option_unwrap_used,
+    clippy::shadow_reuse,
+    clippy::cast_possible_wrap,
+    clippy::cast_ptr_alignment,
+    clippy::cast_sign_loss,
+    clippy::missing_docs_in_private_items
 )]
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]

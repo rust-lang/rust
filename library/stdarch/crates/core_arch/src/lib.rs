@@ -45,7 +45,6 @@
     clippy::cast_possible_truncation,
     clippy::cast_precision_loss,
     clippy::shadow_reuse,
-    clippy::cyclomatic_complexity,
     clippy::cognitive_complexity,
     clippy::similar_names,
     clippy::many_single_char_names

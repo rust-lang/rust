@@ -30,7 +30,7 @@ pub fn check_for(x: Feature) -> bool {
 /// [wiki_cpuid]: https://en.wikipedia.org/wiki/CPUID
 /// [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 /// [amd64_ref]: http://support.amd.com/TechDocs/24594.pdf
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::similar_names))]
+#[allow(clippy::similar_names)]
 fn detect_features() -> cache::Initializer {
     let mut value = cache::Initializer::default();
 

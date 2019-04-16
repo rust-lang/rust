@@ -1452,7 +1452,7 @@ pub unsafe fn _mm256_permute2f128_si256(a: __m256i, b: __m256i, imm8: i32) -> __
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::trivially_copy_pass_by_ref))]
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub unsafe fn _mm256_broadcast_ss(f: &f32) -> __m256 {
     _mm256_set1_ps(*f)
 }
@@ -1465,7 +1465,7 @@ pub unsafe fn _mm256_broadcast_ss(f: &f32) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastss))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::trivially_copy_pass_by_ref))]
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub unsafe fn _mm_broadcast_ss(f: &f32) -> __m128 {
     _mm_set1_ps(*f)
 }
@@ -1478,7 +1478,7 @@ pub unsafe fn _mm_broadcast_ss(f: &f32) -> __m128 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vbroadcastsd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::trivially_copy_pass_by_ref))]
+#[allow(clippy::trivially_copy_pass_by_ref)]
 pub unsafe fn _mm256_broadcast_sd(f: &f64) -> __m256d {
     _mm256_set1_pd(*f)
 }
@@ -1618,7 +1618,7 @@ pub unsafe fn _mm256_insert_epi32(a: __m256i, i: i32, index: i32) -> __m256i {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovapd expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
     *(mem_addr as *const __m256d)
 }
@@ -1633,7 +1633,7 @@ pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovapd expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_store_pd(mem_addr: *const f64, a: __m256d) {
     *(mem_addr as *mut __m256d) = a;
 }
@@ -1648,7 +1648,7 @@ pub unsafe fn _mm256_store_pd(mem_addr: *const f64, a: __m256d) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
     *(mem_addr as *const __m256)
 }
@@ -1663,7 +1663,7 @@ pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_store_ps(mem_addr: *const f32, a: __m256) {
     *(mem_addr as *mut __m256) = a;
 }
@@ -1959,7 +1959,7 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntpd
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
     intrinsics::nontemporal_store(mem_addr as *mut __m256d, a);
 }
@@ -1974,7 +1974,7 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
+#[allow(clippy::cast_ptr_alignment)]
 pub unsafe fn _mm256_stream_ps(mem_addr: *mut f32, a: __m256) {
     intrinsics::nontemporal_store(mem_addr as *mut __m256, a);
 }
