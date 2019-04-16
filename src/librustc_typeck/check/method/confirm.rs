@@ -7,7 +7,7 @@ use crate::hir::def_id::DefId;
 use rustc::ty::subst::{Subst, SubstsRef};
 use rustc::traits;
 use rustc::ty::{self, Ty, GenericParamDefKind};
-use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
+use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref, PointerCast};
 use rustc::ty::adjustment::{AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::infer::{self, InferOk};
@@ -179,7 +179,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     ty: unsize_target
                 });
                 adjustments.push(Adjustment {
-                    kind: Adjust::Unsize,
+                    kind: Adjust::Pointer(PointerCast::Unsize),
                     target
                 });
             }
@@ -565,7 +565,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             // If we have an autoref followed by unsizing at the end, fix the unsize target.
             match adjustments[..] {
                 [.., Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
-                 Adjustment { kind: Adjust::Unsize, ref mut target }] => {
+                 Adjustment { kind: Adjust::Pointer(PointerCast::Unsize), ref mut target }] => {
                     *target = method.sig.inputs()[0];
                 }
                 _ => {}

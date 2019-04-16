@@ -57,7 +57,9 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
-use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{
+    Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
+};
 use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
@@ -512,7 +514,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let coerce_target = self.next_ty_var(origin);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
             let unsize = Adjustment {
-                kind: Adjust::Unsize,
+                kind: Adjust::Pointer(PointerCast::Unsize),
                 target
             };
             match reborrow {
@@ -661,7 +663,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         debug!("coerce_from_fn_pointer(a={:?}, b={:?})", a, b);
 
         self.coerce_from_safe_fn(a, fn_ty_a, b,
-            simple(Adjust::UnsafeFnPointer), identity)
+            simple(Adjust::Pointer(PointerCast::UnsafeFnPointer)), identity)
     }
 
     fn coerce_from_fn_item(&self,
@@ -687,11 +689,17 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                     b,
                     |unsafe_ty| {
                         vec![
-                            Adjustment { kind: Adjust::ReifyFnPointer, target: a_fn_pointer },
-                            Adjustment { kind: Adjust::UnsafeFnPointer, target: unsafe_ty },
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::ReifyFnPointer),
+                                target: a_fn_pointer
+                            },
+                            Adjustment {
+                                kind: Adjust::Pointer(PointerCast::UnsafeFnPointer),
+                                target: unsafe_ty
+                            },
                         ]
                     },
-                    simple(Adjust::ReifyFnPointer)
+                    simple(Adjust::Pointer(PointerCast::ReifyFnPointer))
                 )?;
 
                 obligations.extend(o2);
@@ -727,7 +735,9 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 let pointer_ty = self.tcx.coerce_closure_fn_ty(sig, unsafety);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})",
                        a, b, pointer_ty);
-                self.unify_and(pointer_ty, b, simple(Adjust::ClosureFnPointer(unsafety)))
+                self.unify_and(pointer_ty, b, simple(
+                    Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety))
+                ))
             }
             _ => self.unify_and(a, b, identity),
         }
@@ -766,7 +776,9 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 }]
             })
         } else if mt_a.mutbl != mutbl_b {
-            self.unify_and(a_unsafe, b, simple(Adjust::MutToConstPointer))
+            self.unify_and(
+                a_unsafe, b, simple(Adjust::Pointer(PointerCast::MutToConstPointer))
+            )
         } else {
             self.unify_and(a_unsafe, b, identity)
         }
@@ -857,7 +869,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // The only adjustment that can produce an fn item is
                 // `NeverToAny`, so this should always be valid.
                 self.apply_adjustments(expr, vec![Adjustment {
-                    kind: Adjust::ReifyFnPointer,
+                    kind: Adjust::Pointer(PointerCast::ReifyFnPointer),
                     target: fn_ptr
                 }]);
             }

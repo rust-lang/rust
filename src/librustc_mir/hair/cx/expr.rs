@@ -7,7 +7,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def::{CtorOf, Def, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
@@ -75,19 +75,19 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     -> Expr<'tcx> {
     let Expr { temp_lifetime, mut span, .. } = expr;
     let kind = match adjustment.kind {
-        Adjust::ReifyFnPointer => {
+        Adjust::Pointer(PointerCast::ReifyFnPointer) => {
             ExprKind::ReifyFnPointer { source: expr.to_ref() }
         }
-        Adjust::UnsafeFnPointer => {
+        Adjust::Pointer(PointerCast::UnsafeFnPointer) => {
             ExprKind::UnsafeFnPointer { source: expr.to_ref() }
         }
-        Adjust::ClosureFnPointer(unsafety) => {
+        Adjust::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
             ExprKind::ClosureFnPointer { source: expr.to_ref(), unsafety }
         }
         Adjust::NeverToAny => {
             ExprKind::NeverToAny { source: expr.to_ref() }
         }
-        Adjust::MutToConstPointer => {
+        Adjust::Pointer(PointerCast::MutToConstPointer) => {
             ExprKind::MutToConstPointer { source: expr.to_ref() }
         }
         Adjust::Deref(None) => {
@@ -187,7 +187,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // since they get rid of a borrow implicitly.
             ExprKind::Use { source: cast_expr.to_ref() }
         }
-        Adjust::Unsize => {
+        Adjust::Pointer(PointerCast::Unsize) => {
             // See the above comment for Adjust::Deref
             if let ExprKind::Block { body } = expr.kind {
                 if let Some(ref last_expr) = body.expr {

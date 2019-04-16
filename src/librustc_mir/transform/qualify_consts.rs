@@ -12,7 +12,7 @@ use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::traits::{self, TraitEngine};
-use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, adjustment::{PointerCast}};
+use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::mir::*;
@@ -1106,11 +1106,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Rvalue::UnaryOp(UnOp::Not, _) |
             Rvalue::NullaryOp(NullOp::SizeOf, _) |
             Rvalue::CheckedBinaryOp(..) |
-            Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), ..) |
-            Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), ..) |
-            Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), ..) |
-            Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), ..) |
-            Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), ..) |
+            Rvalue::Cast(CastKind::Pointer(_), ..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) |
             Rvalue::Ref(..) |

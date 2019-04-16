@@ -584,12 +584,8 @@ fn check_adjustments<'a, 'tcx>(
     while let Some(adjustment) = adjustments.next() {
         match adjustment.kind {
             Adjust::NeverToAny |
-            Adjust::ReifyFnPointer |
-            Adjust::UnsafeFnPointer |
-            Adjust::ClosureFnPointer(_) |
-            Adjust::MutToConstPointer |
-            Adjust::Borrow(_) |
-            Adjust::Unsize => {}
+            Adjust::Pointer(_) |
+            Adjust::Borrow(_) => {}
 
             Adjust::Deref(_) => {
                 if let Some(next_adjustment) = adjustments.peek() {

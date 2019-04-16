@@ -705,11 +705,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
                 adjustment::Adjust::NeverToAny |
-                adjustment::Adjust::ReifyFnPointer |
-                adjustment::Adjust::UnsafeFnPointer |
-                adjustment::Adjust::ClosureFnPointer(_) |
-                adjustment::Adjust::MutToConstPointer |
-                adjustment::Adjust::Unsize => {
+                adjustment::Adjust::Pointer(_)  => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     self.delegate_consume(expr.hir_id, expr.span, &cmt);

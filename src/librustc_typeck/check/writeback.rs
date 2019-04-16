@@ -8,7 +8,7 @@ use rustc::hir;
 use rustc::hir::def_id::{DefId, DefIndex};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::InferCtxt;
-use rustc::ty::adjustment::{Adjust, Adjustment};
+use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -197,7 +197,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                             // Since this is "after" the other adjustment to be
                             // discarded, we do an extra `pop()`
                             Some(Adjustment {
-                                kind: Adjust::Unsize,
+                                kind: Adjust::Pointer(PointerCast::Unsize),
                                 ..
                             }) => {
                                 // So the borrow discard actually happens here
