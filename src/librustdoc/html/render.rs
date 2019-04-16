@@ -2113,7 +2113,8 @@ impl Context {
                  &final_file);
 
         // Generating settings page.
-        let settings = Settings::new("./", &self.shared.resource_suffix);
+        let settings = Settings::new(self.shared.static_root_path.deref().unwrap_or("./"),
+                                     &self.shared.resource_suffix);
         page.title = "Rustdoc settings";
         page.description = "Settings of Rustdoc";
         page.root_path = "./";

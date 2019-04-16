@@ -1,0 +1,39 @@
+error: unused variable: `field`
+  --> $DIR/issue-54180-unused-ref-field.rs:20:26
+   |
+LL |         E::Variant { ref field } => (),
+   |                      ----^^^^^
+   |                      |
+   |                      help: try ignoring the field: `field: _`
+   |
+note: lint level defined here
+  --> $DIR/issue-54180-unused-ref-field.rs:3:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: #[deny(unused_variables)] implied by #[deny(unused)]
+
+error: unused variable: `x`
+  --> $DIR/issue-54180-unused-ref-field.rs:29:45
+   |
+LL |     let _: i32 = points.iter().map(|Point { x, y }| y).sum();
+   |                                             ^ help: try ignoring the field: `x: _`
+
+error: unused variable: `f1`
+  --> $DIR/issue-54180-unused-ref-field.rs:26:17
+   |
+LL |     let S { ref f1 } = s;
+   |             ----^^
+   |             |
+   |             help: try ignoring the field: `f1: _`
+
+error: unused variable: `x`
+  --> $DIR/issue-54180-unused-ref-field.rs:32:28
+   |
+LL |         Point { y, ref mut x } => y,
+   |                    --------^
+   |                    |
+   |                    help: try ignoring the field: `x: _`
+
+error: aborting due to 4 previous errors
+

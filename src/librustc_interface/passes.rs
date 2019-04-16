@@ -886,10 +886,11 @@ fn analysis<'tcx>(
     assert_eq!(cnum, LOCAL_CRATE);
 
     let sess = tcx.sess;
+    let mut entry_point = None;
 
     time(sess, "misc checking 1", || {
         parallel!({
-            time(sess, "looking for entry point", || {
+            entry_point = time(sess, "looking for entry point", || {
                 middle::entry::find_entry_point(tcx)
             });
 
@@ -937,7 +938,10 @@ fn analysis<'tcx>(
 
     // Abort so we don't try to construct MIR with liveness errors.
     // We also won't want to continue with errors from rvalue promotion
-    tcx.sess.abort_if_errors();
+    // We only do so if the only error found so far *isn't* a missing `fn main()`
+    if !(entry_point.is_none() && sess.err_count() == 1) {
+        tcx.sess.abort_if_errors();
+    }
 
     time(sess, "borrow checking", || {
         if tcx.use_ast_borrowck() {
