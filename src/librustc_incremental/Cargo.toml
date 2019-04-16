@@ -21,3 +21,4 @@ rustc_ast = { path = "../librustc_ast" }
 rustc_span = { path = "../librustc_span" }
 rustc_fs_util = { path = "../librustc_fs_util" }
 rustc_session = { path = "../librustc_session" }
+rustc_query_system = { path = "../librustc_query_system" }

@@ -1,4 +1,4 @@
-use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::DepNodeIndex;
 use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use crate::mir::{self, interpret};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
@@ -12,7 +12,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, LOCAL_CRATE};
 use rustc_hir::definitions::DefPathHash;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc_serialize::{
     opaque, Decodable, Decoder, Encodable, Encoder, SpecializedDecoder, SpecializedEncoder,
     UseSpecializedDecodable, UseSpecializedEncodable,
@@ -60,11 +60,11 @@ pub struct OnDiskCache<'sess> {
 
     // A map from dep-node to the position of the cached query result in
     // `serialized_data`.
-    query_result_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+    query_result_index: FxHashMap<DepNodeIndex, AbsoluteBytePos>,
 
     // A map from dep-node to the position of any associated diagnostics in
     // `serialized_data`.
-    prev_diagnostics_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+    prev_diagnostics_index: FxHashMap<DepNodeIndex, AbsoluteBytePos>,
 
     alloc_decoding_state: AllocDecodingState,
 }
@@ -80,8 +80,8 @@ struct Footer {
     interpret_alloc_index: Vec<u32>,
 }
 
-type EncodedQueryResultIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
-type EncodedDiagnosticsIndex = Vec<(SerializedDepNodeIndex, AbsoluteBytePos)>;
+type EncodedQueryResultIndex = Vec<(DepNodeIndex, AbsoluteBytePos)>;
+type EncodedDiagnosticsIndex = Vec<(DepNodeIndex, AbsoluteBytePos)>;
 type EncodedDiagnostics = Vec<Diagnostic>;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -224,11 +224,10 @@ impl<'sess> OnDiskCache<'sess> {
                 .current_diagnostics
                 .borrow()
                 .iter()
-                .map(|(dep_node_index, diagnostics)| {
+                .map(|(&dep_node_index, diagnostics)| {
                     let pos = AbsoluteBytePos::new(encoder.position());
                     // Let's make sure we get the expected type here.
                     let diagnostics: &EncodedDiagnostics = diagnostics;
-                    let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
                     encoder.encode_tagged(dep_node_index, diagnostics)?;
 
                     Ok((dep_node_index, pos))
@@ -304,7 +303,7 @@ impl<'sess> OnDiskCache<'sess> {
     pub fn load_diagnostics(
         &self,
         tcx: TyCtxt<'_>,
-        dep_node_index: SerializedDepNodeIndex,
+        dep_node_index: DepNodeIndex,
     ) -> Vec<Diagnostic> {
         let diagnostics: Option<EncodedDiagnostics> =
             self.load_indexed(tcx, dep_node_index, &self.prev_diagnostics_index, "diagnostics");
@@ -328,11 +327,11 @@ impl<'sess> OnDiskCache<'sess> {
     }
 
     /// Returns the cached query result if there is something in the cache for
-    /// the given `SerializedDepNodeIndex`; otherwise returns `None`.
+    /// the given `DepNodeIndex`; otherwise returns `None`.
     pub fn try_load_query_result<T>(
         &self,
         tcx: TyCtxt<'_>,
-        dep_node_index: SerializedDepNodeIndex,
+        dep_node_index: DepNodeIndex,
     ) -> Option<T>
     where
         T: Decodable,
@@ -361,8 +360,8 @@ impl<'sess> OnDiskCache<'sess> {
     fn load_indexed<'tcx, T>(
         &self,
         tcx: TyCtxt<'tcx>,
-        dep_node_index: SerializedDepNodeIndex,
-        index: &FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
+        dep_node_index: DepNodeIndex,
+        index: &FxHashMap<DepNodeIndex, AbsoluteBytePos>,
         debug_tag: &'static str,
     ) -> Option<T>
     where
@@ -1009,12 +1008,10 @@ where
     state.iter_results(|results| {
         for (key, value, dep_node) in results {
             if Q::cache_on_disk(tcx, key.clone(), Some(&value)) {
-                let dep_node = SerializedDepNodeIndex::new(dep_node.index());
-
                 // Record position of the cache entry.
                 query_result_index.push((dep_node, AbsoluteBytePos::new(encoder.position())));
 
-                // Encode the type check tables with the `SerializedDepNodeIndex`
+                // Encode the type check tables with the `DepNodeIndex`
                 // as tag.
                 encoder.encode_tagged(dep_node, &value)?;
             }

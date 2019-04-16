@@ -30,16 +30,16 @@ pub struct Sharded<T> {
 impl<T: Default> Default for Sharded<T> {
     #[inline]
     fn default() -> Self {
-        Self::new(T::default)
+        Self::new(|_| T::default())
     }
 }
 
 impl<T> Sharded<T> {
     #[inline]
-    pub fn new(mut value: impl FnMut() -> T) -> Self {
+    pub fn new(mut value: impl FnMut(usize) -> T) -> Self {
         // Create a vector of the values we want
         let mut values: SmallVec<[_; SHARDS]> =
-            (0..SHARDS).map(|_| CacheAligned(Lock::new(value()))).collect();
+            (0..SHARDS).map(|i| CacheAligned(Lock::new(value(i)))).collect();
 
         // Create an uninitialized array
         let mut shards: mem::MaybeUninit<[CacheAligned<Lock<T>>; SHARDS]> =
@@ -61,6 +61,15 @@ impl<T> Sharded<T> {
     #[inline]
     pub fn get_shard_by_value<K: Hash + ?Sized>(&self, val: &K) -> &Lock<T> {
         if SHARDS == 1 { &self.shards[0].0 } else { self.get_shard_by_hash(make_hash(val)) }
+    }
+
+    /// The shard is selected by hashing `val` with `FxHasher`.
+    pub fn get_shard_by_value_mut<K: Hash + ?Sized>(&mut self, val: &K) -> &mut T {
+        if SHARDS == 1 {
+            self.shards[0].0.get_mut()
+        } else {
+            self.shards[self.get_shard_index_by_hash(make_hash(val))].0.get_mut()
+        }
     }
 
     /// Get a shard with a pre-computed hash value. If `get_shard_by_value` is

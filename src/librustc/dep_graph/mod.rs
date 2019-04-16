@@ -11,8 +11,8 @@ mod dep_node;
 
 pub(crate) use rustc_query_system::dep_graph::DepNodeParams;
 pub use rustc_query_system::dep_graph::{
-    debug, hash_result, DepContext, DepNodeColor, DepNodeIndex, SerializedDepNodeIndex,
-    WorkProduct, WorkProductFileKind, WorkProductId,
+    debug, hash_result, DepContext, DepNodeColor, DepNodeIndex, WorkProduct, WorkProductFileKind,
+    WorkProductId,
 };
 
 pub use dep_node::{label_strs, DepConstructor, DepKind, DepNode, DepNodeExt};
@@ -159,8 +159,8 @@ impl<'tcx> DepContext for TyCtxt<'tcx> {
         try_load_from_on_disk_cache(*self, dep_node)
     }
 
-    fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic> {
-        self.queries.on_disk_cache.load_diagnostics(*self, prev_dep_node_index)
+    fn load_diagnostics(&self, dep_node_index: DepNodeIndex) -> Vec<Diagnostic> {
+        self.queries.on_disk_cache.load_diagnostics(*self, dep_node_index)
     }
 
     fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>) {

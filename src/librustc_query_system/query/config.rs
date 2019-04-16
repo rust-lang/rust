@@ -1,7 +1,7 @@
 //! Query configuration and description traits.
 
 use crate::dep_graph::DepNode;
-use crate::dep_graph::SerializedDepNodeIndex;
+use crate::dep_graph::DepNodeIndex;
 use crate::query::caches::QueryCache;
 use crate::query::plumbing::CycleError;
 use crate::query::{QueryContext, QueryState};
@@ -54,7 +54,7 @@ pub trait QueryDescription<CTX: QueryContext>: QueryAccessors<CTX> {
         false
     }
 
-    fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
+    fn try_load_from_disk(_: CTX, _: DepNodeIndex) -> Option<Self::Value> {
         panic!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }
@@ -76,7 +76,7 @@ where
         false
     }
 
-    default fn try_load_from_disk(_: CTX, _: SerializedDepNodeIndex) -> Option<Self::Value> {
+    default fn try_load_from_disk(_: CTX, _: DepNodeIndex) -> Option<Self::Value> {
         panic!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }

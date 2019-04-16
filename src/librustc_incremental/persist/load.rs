@@ -1,9 +1,10 @@
 //! Code to save/load the dep-graph from files.
 
-use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc::dep_graph::{DepKind, PreviousDepGraph, SerializedDepGraph};
 use rustc::ty::query::OnDiskCache;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_query_system::dep_graph::{CurrentDepGraph, DepGraphArgs};
 use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_session::Session;
@@ -22,16 +23,14 @@ pub fn dep_graph_tcx_init(tcx: TyCtxt<'_>) {
     tcx.allocate_metadata_dep_nodes();
 }
 
-type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
-
 pub enum LoadResult<T> {
     Ok { data: T },
     DataOutOfDate,
     Error { message: String },
 }
 
-impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
-    pub fn open(self, sess: &Session) -> (PreviousDepGraph, WorkProductMap) {
+impl LoadResult<DepGraphArgs<DepKind>> {
+    pub fn open(self, sess: &Session) -> DepGraphArgs<DepKind> {
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
@@ -88,7 +87,7 @@ impl<T> MaybeAsync<T> {
     }
 }
 
-pub type DepGraphFuture = MaybeAsync<LoadResult<(PreviousDepGraph, WorkProductMap)>>;
+pub type DepGraphFuture = MaybeAsync<LoadResult<DepGraphArgs<DepKind>>>;
 
 /// Launch a thread and load the dependency graph in the background.
 pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
@@ -188,7 +187,13 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 let dep_graph = SerializedDepGraph::decode(&mut decoder)
                     .expect("Error reading cached dep-graph");
 
-                LoadResult::Ok { data: (PreviousDepGraph::new(dep_graph), prev_work_products) }
+                let (prev_graph, state) = PreviousDepGraph::new_and_state(dep_graph);
+                let current = prof
+                    .generic_activity("incr_comp_load_setup_dep_graph")
+                    .run(|| CurrentDepGraph::new(&prev_graph));
+                LoadResult::Ok {
+                    data: DepGraphArgs { state, prev_graph, prev_work_products, current },
+                }
             }
         }
     }))

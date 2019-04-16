@@ -2,8 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepKind, DepNode};
-use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::dep_graph::{DepKind, DepNode, DepNodeIndex};
 use crate::query::caches::QueryCache;
 use crate::query::config::QueryDescription;
 use crate::query::job::{QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryShardJobId};
@@ -439,12 +438,11 @@ where
         // `try_mark_green()`, so we can ignore them here.
         let loaded = tcx.start_query(job.id, None, |tcx| {
             let marked = tcx.dep_graph().try_mark_green_and_read(tcx, &dep_node);
-            marked.map(|(prev_dep_node_index, dep_node_index)| {
+            marked.map(|dep_node_index| {
                 (
                     load_from_disk_and_cache_in_memory::<Q, _>(
                         tcx,
                         key.clone(),
-                        prev_dep_node_index,
                         dep_node_index,
                         &dep_node,
                     ),
@@ -466,7 +464,6 @@ where
 fn load_from_disk_and_cache_in_memory<Q, CTX>(
     tcx: CTX,
     key: Q::Key,
-    prev_dep_node_index: SerializedDepNodeIndex,
     dep_node_index: DepNodeIndex,
     dep_node: &DepNode<CTX::DepKind>,
 ) -> Q::Value
@@ -482,7 +479,7 @@ where
     // First we try to load the result from the on-disk cache.
     let result = if Q::cache_on_disk(tcx, key.clone(), None) {
         let prof_timer = tcx.profiler().incr_cache_loading();
-        let result = Q::try_load_from_disk(tcx, prev_dep_node_index);
+        let result = Q::try_load_from_disk(tcx, dep_node_index);
         prof_timer.finish_with_query_invocation_id(dep_node_index.into());
 
         // We always expect to find a cached result for things that
@@ -516,7 +513,7 @@ where
     // If `-Zincremental-verify-ich` is specified, re-hash results from
     // the cache and make sure that they have the expected fingerprint.
     if unlikely!(tcx.incremental_verify_ich()) {
-        incremental_verify_ich::<Q, _>(tcx, &result, dep_node, dep_node_index);
+        incremental_verify_ich::<Q, _>(tcx, &result, dep_node);
     }
 
     result
@@ -524,31 +521,20 @@ where
 
 #[inline(never)]
 #[cold]
-fn incremental_verify_ich<Q, CTX>(
-    tcx: CTX,
-    result: &Q::Value,
-    dep_node: &DepNode<CTX::DepKind>,
-    dep_node_index: DepNodeIndex,
-) where
+fn incremental_verify_ich<Q, CTX>(tcx: CTX, result: &Q::Value, dep_node: &DepNode<CTX::DepKind>)
+where
     CTX: QueryContext,
     Q: QueryDescription<CTX>,
 {
-    assert!(
-        Some(tcx.dep_graph().fingerprint_of(dep_node_index))
-            == tcx.dep_graph().prev_fingerprint_of(dep_node),
-        "fingerprint for green query instance not loaded from cache: {:?}",
-        dep_node,
-    );
-
     debug!("BEGIN verify_ich({:?})", dep_node);
     let mut hcx = tcx.create_stable_hashing_context();
 
     let new_hash = Q::hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
     debug!("END verify_ich({:?})", dep_node);
 
-    let old_hash = tcx.dep_graph().fingerprint_of(dep_node_index);
+    let old_hash = tcx.dep_graph().prev_fingerprint_of(dep_node);
 
-    assert!(new_hash == old_hash, "found unstable fingerprints for {:?}", dep_node,);
+    assert!(Some(new_hash) == old_hash, "found unstable fingerprints for {:?}", dep_node,);
 }
 
 #[inline(always)]
@@ -659,7 +645,7 @@ where
             // in-memory cache, or another query down the line will.
             let _ = get_query::<Q, _>(tcx, DUMMY_SP, key);
         }
-        Some((_, dep_node_index)) => {
+        Some(dep_node_index) => {
             tcx.profiler().query_cache_hit(dep_node_index.into());
         }
     }

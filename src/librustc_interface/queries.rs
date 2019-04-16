@@ -191,16 +191,15 @@ impl<'tcx> Queries<'tcx> {
             Ok(match self.dep_graph_future()?.take() {
                 None => DepGraph::new_disabled(),
                 Some(future) => {
-                    let (prev_graph, prev_work_products) =
-                        self.session().time("blocked_on_dep_graph_loading", || {
-                            future
-                                .open()
-                                .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
-                                    message: format!("could not decode incremental cache: {:?}", e),
-                                })
-                                .open(self.session())
-                        });
-                    DepGraph::new(prev_graph, prev_work_products)
+                    let args = self.session().time("blocked_on_dep_graph_loading", || {
+                        future
+                            .open()
+                            .unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
+                                message: format!("could not decode incremental cache: {:?}", e),
+                            })
+                            .open(self.session())
+                    });
+                    DepGraph::new(args)
                 }
             })
         })

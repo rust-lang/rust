@@ -7,10 +7,13 @@ mod serialized;
 
 pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
 pub use graph::WorkProductFileKind;
-pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
+pub use graph::{
+    hash_result, CurrentDepGraph, DepGraph, DepGraphArgs, DepNodeColor, DepNodeIndex, DepNodeState,
+    TaskDeps, WorkProduct,
+};
 pub use prev::PreviousDepGraph;
 pub use query::DepGraphQuery;
-pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
+pub use serialized::SerializedDepGraph;
 
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sync::Lock;
@@ -42,7 +45,7 @@ pub trait DepContext: Copy {
     fn try_load_from_on_disk_cache(&self, dep_node: &DepNode<Self::DepKind>);
 
     /// Load diagnostics associated to the node in the previous session.
-    fn load_diagnostics(&self, prev_dep_node_index: SerializedDepNodeIndex) -> Vec<Diagnostic>;
+    fn load_diagnostics(&self, dep_node_index: DepNodeIndex) -> Vec<Diagnostic>;
 
     /// Register diagnostics for the given node, for use in next session.
     fn store_diagnostics(&self, dep_node_index: DepNodeIndex, diagnostics: ThinVec<Diagnostic>);
@@ -60,6 +63,7 @@ pub trait DepContext: Copy {
 
 /// Describe the different families of dependency nodes.
 pub trait DepKind: Copy + fmt::Debug + Eq + Ord + Hash {
+    /// An unused dep kind.
     const NULL: Self;
 
     /// Return whether this kind always require evaluation.
