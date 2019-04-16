@@ -166,6 +166,7 @@ nav.sub {
 	top: 0;
 	height: 100vh;
 	overflow: auto;
+	z-index: 1;
 }
 
 .sidebar .block > ul > li {
@@ -345,7 +346,7 @@ nav.sub {
 	margin: 0;
 }
 .docblock-short code {
-	white-space: nowrap;
+	white-space: pre-wrap;
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
