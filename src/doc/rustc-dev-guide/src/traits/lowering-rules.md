@@ -28,10 +28,10 @@ comment like so:
     // Rule Foo-Bar-Baz
 
 The reference implementation of these rules is to be found in
-[`chalk/src/rules.rs`][chalk_rules]. They are also ported in rustc in the
-[`librustc_traits`][librustc_traits] crate.
+[`chalk/chalk-rules/src/clauses.rs`][chalk_rules]. They are also ported in
+rustc in the [`librustc_traits`][librustc_traits] crate.
 
-[chalk_rules]: https://github.com/rust-lang-nursery/chalk/blob/master/src/rules.rs
+[chalk_rules]: https://github.com/rust-lang/chalk/blob/master/chalk-rules/src/clauses.rs
 [librustc_traits]: https://github.com/rust-lang/rust/tree/master/src/librustc_traits
 
 ## Lowering where clauses

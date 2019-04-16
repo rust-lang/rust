@@ -11,14 +11,14 @@ to prove it using the lowered rules we described in the
 [lowering rules](./lowering-rules.md) chapter. If we are able to prove it, we
 say that the construct is well-formed. If not, we report an error to the user.
 
-Well-formedness checking happens in the [`src/rules/wf.rs`][wf] module in
-chalk. After you have read this chapter, you may find useful to see an
-extended set of examples in the [`src/rules/wf/test.rs`][wf_test] submodule.
+Well-formedness checking happens in the [`chalk/chalk-rules/src/wf.rs`][wf]
+module in chalk. After you have read this chapter, you may find useful to see
+an extended set of examples in the [`chalk/src/test/wf.rs`][wf_test] submodule.
 
 The new-style WF checking has not been implemented in rustc yet.
 
-[wf]: https://github.com/rust-lang-nursery/chalk/blob/master/src/rules/wf.rs
-[wf_test]: https://github.com/rust-lang-nursery/chalk/blob/master/src/rules/wf/test.rs
+[wf]: https://github.com/rust-lang/chalk/blob/master/chalk-rules/src/wf.rs
+[wf_test]: https://github.com/rust-lang/chalk/blob/master/src/test/wf.rs
 
 We give here a complete reference of the generated goals for each Rust
 declaration.
