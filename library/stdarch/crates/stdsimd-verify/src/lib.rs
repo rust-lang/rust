@@ -265,13 +265,6 @@ fn walk(root: &Path, files: &mut Vec<(syn::File, String)>) {
 }
 
 fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
-    return attrs
-        .iter()
-        .filter(|a| a.path == syn::Ident::new("cfg_attr", Span::call_site()).into())
-        .filter_map(|a| syn::parse2::<AssertInstr>(a.tts.clone()).ok())
-        .map(|a| a.instr)
-        .collect();
-
     struct AssertInstr {
         instr: String,
     }
@@ -309,9 +302,19 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<String> {
                     return Err(input.error("failed to parse instruction"));
                 }
             }
-            Ok(AssertInstr { instr })
+            Ok(Self { instr })
         }
     }
+
+    attrs
+        .iter()
+        .filter(|a| a.path == syn::Ident::new("cfg_attr", Span::call_site()).into())
+        .filter_map(|a| {
+            syn::parse2::<AssertInstr>(a.tts.clone())
+                .ok()
+                .map(|a| a.instr)
+        })
+        .collect()
 }
 
 fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
