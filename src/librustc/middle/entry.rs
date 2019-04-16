@@ -163,7 +163,6 @@ fn configure_main(
                 err.span_note(span, "here is a function named 'main'");
             }
             err.emit();
-            tcx.sess.abort_if_errors();
         } else {
             if let Some(ref filename) = tcx.sess.local_crate_source_file {
                 err.note(&format!("consider adding a `main` function to `{}`", filename.display()));
