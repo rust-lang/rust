@@ -32,13 +32,11 @@ efficiently.
 
 ## Move path indices
 
-Although there is a [`MovePath`] data structure, they are never
-referenced directly.  Instead, all the code passes around *indices* of
-type
-[`MovePathIndex`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/indexes/struct.MovePathIndex.html). If
-you need to get information about a move path, you use this index with
-the [`move_paths` field of the `MoveData`][move_paths]. For example,
-to convert a [`MovePathIndex`] `mpi` into a MIR [`Place`], you might
+Although there is a [`MovePath`] data structure, they are never referenced
+directly.  Instead, all the code passes around *indices* of type
+[`MovePathIndex`]. If you need to get information about a move path, you use
+this index with the [`move_paths` field of the `MoveData`][move_paths]. For
+example, to convert a [`MovePathIndex`] `mpi` into a MIR [`Place`], you might
 access the [`MovePath::place`] field like so:
 
 ```rust,ignore
@@ -47,7 +45,7 @@ move_data.move_paths[mpi].place
 
 [move_paths]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#structfield.move_paths
 [`MovePath::place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePath.html#structfield.place
-[`MovePathIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/indexes/struct.MovePathIndex.html
+[`MovePathIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePathIndex.html
 
 ## Building move paths
 
