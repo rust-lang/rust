@@ -87,7 +87,9 @@ case ${TARGET} in
         export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa"
         cargo_test "--release"
 	      ;;
-    powerpc*)
+    powerpc64*)
+        # We don't build the ppc 32-bit targets with these - these targets
+        # are mostly unsupported for now.
         OLD_RUSTFLAGS="${RUSTFLAGS}"
         export RUSTFLAGS="${OLD_RUSTFLAGS} -C target-feature=+altivec"
         cargo_test "--release"
