@@ -3,7 +3,7 @@
 
 #[macro_use]
 extern crate rustc;
-use rustc::lint;
+use rustc::lint::{LintArray, LintPass};
 
 #[macro_use]
 extern crate clippy_lints;
@@ -21,8 +21,8 @@ declare_clippy_lint! {
 }
 
 pub struct Pass;
-impl lint::LintPass for Pass {
-    fn get_lints(&self) -> lint::LintArray {
+impl LintPass for Pass {
+    fn get_lints(&self) -> LintArray {
         lint_array!(TEST_LINT_REGISTERED)
     }
 
@@ -30,5 +30,10 @@ impl lint::LintPass for Pass {
         "TEST_LINT"
     }
 }
+
+declare_lint_pass!(Pass2 => [TEST_LINT_REGISTERED]);
+
+pub struct Pass3;
+impl_lint_pass!(Pass3 => [TEST_LINT_REGISTERED]);
 
 fn main() {}
