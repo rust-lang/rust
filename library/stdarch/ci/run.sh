@@ -80,11 +80,21 @@ case ${TARGET} in
         cargo_test "--release --no-run"
         ;;
     mips-*gnu* | mipsel-*gnu*)
-	export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa,+fp64,+mips32r5"
-	;;
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa,+fp64,+mips32r5"
+        cargo_test "--release"
+	      ;;
     mips64*)
-	export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa"
-	;;
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+msa"
+        cargo_test "--release"
+	      ;;
+    powerpc*)
+        OLD_RUSTFLAGS="${RUSTFLAGS}"
+        export RUSTFLAGS="${OLD_RUSTFLAGS} -C target-feature=+altivec"
+        cargo_test "--release"
+
+        export RUSTFLAGS="${OLD_RUSTFLAGS} -C target-feature=+vsx"
+        cargo_test "--release"
+        ;;
     *)
         ;;
 
