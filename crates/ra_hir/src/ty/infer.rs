@@ -469,38 +469,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     let typable: Option<TypableDef> = def.into();
                     let typable = typable?;
 
-                    // For example, this substs will take `Gen::make::*<u32>*`
-                    let mut substs =
-                        Ty::substs_from_path_segment(self.db, &self.resolver, segment, typable);
+                    let mut ty = self.db.type_for_def(typable, Namespace::Types);
 
                     if remaining_index > 0 {
                         // For example, this substs will take `Gen::*<u32>*::make`
-                        let parent_substs = Ty::substs_from_path_segment(
+                        let substs = Ty::substs_from_path_segment(
                             self.db,
                             &self.resolver,
                             &path.segments[remaining_index - 1],
                             typable,
                         );
 
-                        // merge parent and child substs
-                        let max_len = std::cmp::max(substs.len(), parent_substs.len());
-                        let mut merged = vec![];
-                        for i in 0..max_len {
-                            let s = match (substs.0.get(i), parent_substs.0.get(i)) {
-                                (Some(s @ Ty::Apply(_)), _) => s,
-                                (_, Some(s @ Ty::Apply(_))) => s,
-                                (Some(s), _) => s,
-                                (_, Some(s)) => s,
-                                _ => unreachable!(),
-                            };
-                            merged.push(s.clone());
-                        }
-
-                        substs = Substs(merged.into());
+                        ty = ty.subst(&substs);
                     }
 
-                    let ty = self.db.type_for_def(typable, Namespace::Types);
-                    ty.subst(&substs)
+                    ty
                 }
                 Resolution::LocalBinding(_) => {
                     // can't have a local binding in an associated item path
@@ -558,16 +541,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         match resolved {
             Resolution::Def(def) => {
-                let typable: Option<TypableDef> = def.into();
-                let typable = typable?;
-
-                let ty = self.db.type_for_def(typable, Namespace::Values);
-                let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = ty.subst(&substs);
-                let ty = self.insert_type_vars(ty);
-
-                // plug the old parent_ty in
-                let plug_self_types = || -> Option<()> {
+                // Helpper function for finding self types
+                let find_self_types = || -> Option<Substs> {
                     let actual_def_ty = actual_def_ty?;
 
                     if let crate::ModuleDef::Function(func) = def {
@@ -577,43 +552,40 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             return None;
                         }
 
-                        let impl_block = func.impl_block(self.db)?;
-                        let impl_block = impl_block.target_ty(self.db);
+                        let impl_block = func.impl_block(self.db)?.target_ty(self.db);
+                        let impl_block_substs = impl_block.substs()?;
+                        let actual_substs = actual_def_ty.substs()?;
 
-                        // We save the impl block type params for later use
-                        let old_params = impl_block.substs().unwrap().clone();
+                        let mut new_substs = vec![Ty::Unknown; gen.count_parent_params()];
 
-                        // Turn the impl block generic params to unknown
-                        let mut subst = vec![];
-                        for _ in 0..impl_block.substs().map(|x| x.len()).unwrap_or(0) {
-                            subst.push(Ty::Unknown);
-                        }
-                        let impl_block = impl_block.subst(&Substs(subst.into()));
-                        let impl_block = self.insert_type_vars(impl_block);
-
-                        // Unify *self type* and impl_block
-                        // e.g. Gen::<u32,u64> <=> Gen::<u64, T>
-                        self.unify(&impl_block, &actual_def_ty);
-
-                        // The following code *link up* the function parent generic param
-                        // and the impl_block generic param by unify them one by one
-                        if let Ty::Apply(ty) = &ty {
-                            old_params.iter().zip(impl_block.substs()?.iter()).for_each(
-                                |(param, pty)| {
-                                    if let Ty::Param { idx, .. } = param {
-                                        self.unify(pty, &ty.parameters.0[*idx as usize]);
+                        // The following code *link up* the function actual parma type
+                        // and impl_block type param index
+                        impl_block_substs.iter().zip(actual_substs.iter()).for_each(
+                            |(param, pty)| {
+                                if let Ty::Param { idx, .. } = param {
+                                    if let Some(s) = new_substs.get_mut(*idx as usize) {
+                                        *s = pty.clone();
                                     }
-                                },
-                            );
-                        }
+                                }
+                            },
+                        );
 
-                        return Some(());
+                        Some(Substs(new_substs.into()))
+                    } else {
+                        None
                     }
-                    None
                 };
 
-                plug_self_types();
+                let typable: Option<TypableDef> = def.into();
+                let typable = typable?;
+                let mut ty = self.db.type_for_def(typable, Namespace::Values);
+                if let Some(sts) = find_self_types() {
+                    ty = ty.subst(&sts);
+                }
 
+                let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
+                let ty = ty.subst(&substs);
+                let ty = self.insert_type_vars(ty);
                 Some(ty)
             }
             Resolution::LocalBinding(pat) => {
