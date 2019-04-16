@@ -139,7 +139,6 @@ export function deactivate(): Thenable<void> {
     return Server.client.stop();
 }
 
-
 async function reloadServer(startServer: () => void) {
     if (Server.client != null) {
         vscode.window.showInformationMessage('Reloading rust-analyzer...');
