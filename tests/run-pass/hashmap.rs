@@ -27,12 +27,13 @@ fn test_map<S: BuildHasher>(mut map: HashMap<i32, i32, S>) {
 }
 
 fn main() {
-    // TODO: Implement random number generation on OS X
     if cfg!(not(target_os = "macos")) {
-        let map_normal: HashMap<i32, i32> = HashMap::new();
-        test_map(map_normal);
+        let map: HashMap<i32, i32> = HashMap::default();
+        test_map(map);
     } else {
-        let map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = Default::default();
+        // TODO: Implement random number generation on OS X.
+        // Until then, use a deterministic map.
+        let map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = HashMap::default();
         test_map(map);
     }
 }
