@@ -35,25 +35,20 @@
     external_doc
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, untagged_unions))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    deny(clippy::missing_inline_in_public_items,)
-)]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(
-        clippy::inline_always,
-        clippy::too_many_arguments,
-        clippy::cast_sign_loss,
-        clippy::cast_lossless,
-        clippy::cast_possible_wrap,
-        clippy::cast_possible_truncation,
-        clippy::cast_precision_loss,
-        clippy::shadow_reuse,
-        clippy::cyclomatic_complexity,
-        clippy::similar_names,
-        clippy::many_single_char_names
-    )
+#![deny(clippy::missing_inline_in_public_items)]
+#![allow(
+    clippy::inline_always,
+    clippy::too_many_arguments,
+    clippy::cast_sign_loss,
+    clippy::cast_lossless,
+    clippy::cast_possible_wrap,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::shadow_reuse,
+    clippy::cyclomatic_complexity,
+    clippy::cognitive_complexity,
+    clippy::similar_names,
+    clippy::many_single_char_names
 )]
 #![cfg_attr(test, allow(unused_imports))]
 #![no_std]

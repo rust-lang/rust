@@ -3,11 +3,7 @@
 //! This basically just disassembles the current executable and then parses the
 //! output once globally and then provides the `assert` function which makes
 //! assertions about the disassembly of a function.
-
-#![cfg_attr(
-    feature = "cargo-clippy",
-    allow(clippy::missing_docs_in_private_items, clippy::print_stdout)
-)]
+#![allow(clippy::missing_docs_in_private_items, clippy::print_stdout)]
 
 extern crate assert_instr_macro;
 extern crate backtrace;

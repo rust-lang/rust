@@ -13,11 +13,8 @@
 
 #![unstable(feature = "stdsimd", issue = "27731")]
 #![feature(const_fn, staged_api, stdsimd, doc_cfg, allow_internal_unstable)]
-#![cfg_attr(feature = "cargo-clippy", allow(clippy::shadow_reuse))]
-#![cfg_attr(
-    feature = "cargo-clippy",
-    deny(clippy::missing_inline_in_public_items,)
-)]
+#![allow(clippy::shadow_reuse)]
+#![deny(clippy::missing_inline_in_public_items)]
 #![cfg_attr(target_os = "linux", feature(linkage))]
 #![cfg_attr(all(target_os = "freebsd", target_arch = "aarch64"), feature(asm))]
 #![cfg_attr(stdsimd_strict, deny(warnings))]
