@@ -18,6 +18,10 @@ checked during review or continuous integration.
 - [ ] `cargo test` passes locally
 - [ ] Executed `util/dev update_lints`
 - [ ] Added lint documentation
+- [ ] Run `cargo fmt`
+
+Note that you can skip the above if you are just opening a WIP PR in
+order to get feedback.
 
 Delete this line and everything above before opening your PR -->
 
