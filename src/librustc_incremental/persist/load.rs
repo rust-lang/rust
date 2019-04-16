@@ -1,19 +1,21 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::dep_graph::{PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc::dep_graph::{DepGraph, PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::OnDiskCache;
-use rustc::util::common::time_ext;
+use rustc::util::common::{time, time_ext};
 use rustc_serialize::Decodable as RustcDecodable;
 use rustc_serialize::opaque::Decoder;
+use rustc_serialize::Encodable;
 use std::path::Path;
 
 use super::data::*;
 use super::fs::*;
 use super::file_format;
 use super::work_product;
+use super::save::save_in;
 
 pub fn dep_graph_tcx_init<'tcx>(tcx: TyCtxt<'tcx>) {
     if !tcx.dep_graph.is_fully_enabled() {
@@ -21,6 +23,24 @@ pub fn dep_graph_tcx_init<'tcx>(tcx: TyCtxt<'tcx>) {
     }
 
     tcx.allocate_metadata_dep_nodes();
+}
+
+pub fn dep_graph_from_future(sess: &Session, future: DepGraphFuture) -> DepGraph {
+    let (prev_graph, prev_work_products) =
+        time(sess, "blocked while dep-graph loading finishes", || {
+            future.open().unwrap_or_else(|e| LoadResult::Error {
+                message: format!("could not decode incremental cache: {:?}", e),
+            }).open(sess)
+        });
+    let temp_path = temp_dep_graph_path_from(&sess.incr_comp_session_dir());
+
+    // Write the file header to the temp file
+    let file = save_in(sess, temp_path, |encoder| {
+        // Encode the commandline arguments hash
+        sess.opts.dep_tracking_hash().encode(encoder).unwrap();
+    }).unwrap();
+
+    DepGraph::new(prev_graph, prev_work_products, file)
 }
 
 type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;

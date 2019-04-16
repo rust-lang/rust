@@ -62,7 +62,11 @@ where
     let dep_node_index = dep_graph.input_task(dep_node, &mut *hcx, &input).1;
 
     let hash = if dep_graph.is_fully_enabled() {
-        dep_graph.fingerprint_of(dep_node_index)
+        let mut stable_hasher = StableHasher::new();
+        input.hash_stable(hcx, &mut stable_hasher);
+        stable_hasher.finish()
+        // FIXME
+        //dep_graph.fingerprint_of(dep_node_index)
     } else {
         let mut stable_hasher = StableHasher::new();
         input.hash_stable(hcx, &mut stable_hasher);

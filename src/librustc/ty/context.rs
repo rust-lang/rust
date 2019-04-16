@@ -4,7 +4,7 @@
 
 use crate::arena::Arena;
 use crate::dep_graph::DepGraph;
-use crate::dep_graph::{self, DepNode, DepConstructor};
+use crate::dep_graph::{DepNode, DepConstructor};
 use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
@@ -1489,12 +1489,7 @@ impl<'tcx> TyCtxt<'tcx> {
         for cnum in self.cstore.crates_untracked() {
             let dep_node = DepNode::new(self, DepConstructor::CrateMetadata(cnum));
             let crate_hash = self.cstore.crate_hash_untracked(cnum);
-            self.dep_graph.with_task(dep_node,
-                                     self,
-                                     crate_hash,
-                                     |_, x| x, // No transformation needed
-                                     dep_graph::hash_result,
-            );
+            self.dep_graph.input_task(dep_node, self, crate_hash);
         }
     }
 
@@ -1842,7 +1837,7 @@ pub mod tls {
     /// This is used to get the pointer to the current ImplicitCtxt.
     #[cfg(parallel_compiler)]
     #[inline]
-    fn get_tlv() -> usize {
+    pub fn get_tlv() -> usize {
         rayon_core::tlv::get()
     }
 

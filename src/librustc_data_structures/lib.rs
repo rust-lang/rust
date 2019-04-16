@@ -22,6 +22,7 @@
 #![feature(stmt_expr_attributes)]
 #![feature(core_intrinsics)]
 #![feature(integer_atomics)]
+#![feature(arbitrary_self_types)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]

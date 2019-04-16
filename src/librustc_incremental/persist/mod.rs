@@ -16,7 +16,7 @@ pub use fs::in_incr_comp_dir;
 pub use fs::in_incr_comp_dir_sess;
 pub use fs::prepare_session_directory;
 pub use load::dep_graph_tcx_init;
-pub use load::{DepGraphFuture, load_dep_graph};
+pub use load::{DepGraphFuture, load_dep_graph, dep_graph_from_future};
 pub use load::load_query_result_cache;
 pub use load::LoadResult;
 pub use save::save_dep_graph;

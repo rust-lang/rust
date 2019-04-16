@@ -1,7 +1,7 @@
 use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, ExpansionResult, BoxedGlobalCtxt, PluginInfo};
 
-use rustc_incremental::DepGraphFuture;
+use rustc_incremental::{DepGraphFuture, dep_graph_from_future};
 use rustc_data_structures::sync::Lrc;
 use rustc::session::config::{Input, OutputFilenames, OutputType};
 use rustc::session::Session;
@@ -172,15 +172,7 @@ impl Compiler {
         self.queries.dep_graph.compute(|| {
             Ok(match self.dep_graph_future()?.take() {
                 None => DepGraph::new_disabled(),
-                Some(future) => {
-                    let (prev_graph, prev_work_products) =
-                        time(self.session(), "blocked while dep-graph loading finishes", || {
-                            future.open().unwrap_or_else(|e| rustc_incremental::LoadResult::Error {
-                                message: format!("could not decode incremental cache: {:?}", e),
-                            }).open(self.session())
-                        });
-                    DepGraph::new(prev_graph, prev_work_products)
-                }
+                Some(future) => dep_graph_from_future(self.session(), future),
             })
         })
     }

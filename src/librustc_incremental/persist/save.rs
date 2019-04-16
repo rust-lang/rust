@@ -1,4 +1,4 @@
-use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
+use rustc::dep_graph::{DepGraph, /*DepKind,*/ WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::common::time;
@@ -6,7 +6,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::join;
 use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
-use std::fs;
+use std::fs::{self, File};
+use std::io::{self, Write};
 use std::path::PathBuf;
 
 use super::data::*;
@@ -24,6 +25,7 @@ pub fn save_dep_graph<'tcx>(tcx: TyCtxt<'tcx>) {
         }
 
         let query_cache_path = query_cache_path(sess);
+        let temp_dep_graph_path = temp_dep_graph_path_from(&sess.incr_comp_session_dir());
         let dep_graph_path = dep_graph_path(sess);
 
         join(move || {
@@ -31,18 +33,12 @@ pub fn save_dep_graph<'tcx>(tcx: TyCtxt<'tcx>) {
                 time(sess, "persist query result cache", || {
                     save_in(sess,
                             query_cache_path,
-                            |e| encode_query_cache(tcx, e));
+                            |e| encode_query_cache(tcx, e)).unwrap();
                 });
             }
         }, || {
-            time(sess, "persist dep-graph", || {
-                save_in(sess,
-                        dep_graph_path,
-                        |e| {
-                            time(sess, "encode dep-graph", || {
-                                encode_dep_graph(tcx, e)
-                            })
-                        });
+            time(sess, "swap dep-graph", || {
+                swap_dep_graph(tcx, temp_dep_graph_path, dep_graph_path)
             });
         });
 
@@ -60,7 +56,7 @@ pub fn save_work_product_index(sess: &Session,
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    save_in(sess, path, |e| encode_work_product_index(&new_work_products, e));
+    save_in(sess, path, |e| encode_work_product_index(&new_work_products, e)).unwrap();
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
@@ -86,8 +82,9 @@ pub fn save_work_product_index(sess: &Session,
     });
 }
 
-fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
-    where F: FnOnce(&mut Encoder)
+pub(super) fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F) -> io::Result<File>
+where
+    F: FnOnce(&mut Encoder)
 {
     debug!("save: storing data in {}", path_buf.display());
 
@@ -104,7 +101,7 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
                 sess.err(&format!("unable to delete old dep-graph at `{}`: {}",
                                   path_buf.display(),
                                   err));
-                return;
+                return Err(err);
             }
         }
     }
@@ -116,7 +113,9 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
 
     // write the data out
     let data = encoder.into_inner();
-    match fs::write(&path_buf, data) {
+    let mut file = File::create(&path_buf)?;
+
+    match file.write_all(&data) {
         Ok(_) => {
             debug!("save: data written to disk successfully");
         }
@@ -124,20 +123,42 @@ fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F)
             sess.err(&format!("failed to write dep-graph to `{}`: {}",
                               path_buf.display(),
                               err));
-            return;
+            return Err(err);
         }
     }
+
+    Ok(file)
 }
 
-fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
-    // First encode the commandline arguments hash
-    tcx.sess.opts.dep_tracking_hash().encode(encoder).unwrap();
-
+fn swap_dep_graph(tcx: TyCtxt<'_, '_>, temp: PathBuf, old: PathBuf) {
+    let sess = tcx.sess;
     // Encode the graph data.
-    let serialized_graph = time(tcx.sess, "getting serialized graph", || {
-        tcx.dep_graph.serialize()
+    time(tcx.sess, "finish graph serialization", || {
+        tcx.dep_graph.serialize();
     });
 
+    // delete the old dep-graph, if any
+    // Note: It's important that we actually delete the old file and not just
+    // truncate and overwrite it, since it might be a shared hard-link, the
+    // underlying data of which we don't want to modify
+    if old.exists() {
+        match fs::remove_file(&old) {
+            Ok(()) => {
+                debug!("save: remove old file");
+            }
+            Err(err) => {
+                sess.err(&format!("unable to delete old dep-graph at `{}`: {}",
+                                  old.display(),
+                                  err));
+                return;
+            }
+        }
+    }
+
+    fs::rename(temp, old).expect("unable to rename temp dep graph");
+
+
+/*
     if tcx.sess.opts.debugging_opts.incremental_info {
         #[derive(Clone)]
         struct Stat {
@@ -147,20 +168,19 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
         }
 
         let total_node_count = serialized_graph.nodes.len();
-        let total_edge_count = serialized_graph.edge_list_data.len();
+        let total_edge_count: usize = serialized_graph.nodes.iter().map(|d| d.deps.len()).sum();
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap::default();
 
-        for (i, &node) in serialized_graph.nodes.iter_enumerated() {
-            let stat = counts.entry(node.kind).or_insert(Stat {
-                kind: node.kind,
+        for node in serialized_graph.nodes.iter() {
+            let stat = counts.entry(node.node.kind).or_insert(Stat {
+                kind: node.node.kind,
                 node_counter: 0,
                 edge_counter: 0,
             });
 
             stat.node_counter += 1;
-            let (edge_start, edge_end) = serialized_graph.edge_list_indices[i];
-            stat.edge_counter += (edge_end - edge_start) as u64;
+            stat.edge_counter += node.deps.len() as u64;
         }
 
         let mut counts: Vec<_> = counts.values().cloned().collect();
@@ -212,10 +232,7 @@ fn encode_dep_graph(tcx: TyCtxt<'_>, encoder: &mut Encoder) {
         println!("{}", SEPARATOR);
         println!("[incremental]");
     }
-
-    time(tcx.sess, "encoding serialized graph", || {
-        serialized_graph.encode(encoder).unwrap();
-    });
+*/
 }
 
 fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduct>,
