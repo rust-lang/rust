@@ -43,7 +43,7 @@ def test_cargo_miri_run():
     )
 
 def test_cargo_miri_test():
-    test("cargo miri test", ["cargo", "miri", "test", "-q"], "test.stdout.ref", "test.stderr.ref")
+    test("cargo miri test", ["cargo", "miri", "test", "-q", "--", "-Zmiri-seed=feed"], "test.stdout.ref", "test.stderr.ref")
     test("cargo miri test (with filter)",
         ["cargo", "miri", "test", "-q", "--", "--", "impl"],
         "test.stdout.ref2", "test.stderr.ref"

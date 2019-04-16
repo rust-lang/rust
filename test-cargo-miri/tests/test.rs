@@ -1,6 +1,6 @@
 extern crate rand;
 
-use rand::{Rng, SeedableRng};
+use rand::{SeedableRng, FromEntropy, Rng, rngs::SmallRng};
 
 #[test]
 fn simple() {
@@ -15,6 +15,14 @@ fn rng() {
     let x: u32 = rng.gen();
     let y: u32 = rng.gen();
     assert_ne!(x, y);
+}
+
+#[test]
+#[cfg(not(target_os="macos"))] // FIXME entropy does not work on macOS
+fn seeded_rng() {
+    // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
+    let mut rng = SmallRng::from_entropy();
+    let _val = rng.gen::<i32>();
 }
 
 // A test that won't work on miri
