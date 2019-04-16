@@ -1,4 +1,4 @@
-#![feature(no_core, alloc)]
+#![feature(no_core)]
 #![no_core]
 
 // See rustc-std-workspace-core for why this crate is needed.
