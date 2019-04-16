@@ -1,5 +1,5 @@
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:16:13
+  --> $DIR/deref_addrof.rs:18:13
    |
 LL |     let b = *&a;
    |             ^^^ help: try this: `a`
@@ -7,64 +7,46 @@ LL |     let b = *&a;
    = note: `-D clippy::deref-addrof` implied by `-D warnings`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:18:13
+  --> $DIR/deref_addrof.rs:20:13
    |
 LL |     let b = *&get_number();
    |             ^^^^^^^^^^^^^^ help: try this: `get_number()`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:23:13
+  --> $DIR/deref_addrof.rs:25:13
    |
 LL |     let b = *&bytes[1..2][0];
    |             ^^^^^^^^^^^^^^^^ help: try this: `bytes[1..2][0]`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:27:13
+  --> $DIR/deref_addrof.rs:29:13
    |
 LL |     let b = *&(a);
    |             ^^^^^ help: try this: `(a)`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:29:13
+  --> $DIR/deref_addrof.rs:31:13
    |
 LL |     let b = *(&a);
    |             ^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:32:13
+  --> $DIR/deref_addrof.rs:34:13
    |
 LL |     let b = *((&a));
    |             ^^^^^^^ help: try this: `a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:34:13
+  --> $DIR/deref_addrof.rs:36:13
    |
 LL |     let b = *&&a;
    |             ^^^^ help: try this: `&a`
 
 error: immediately dereferencing a reference
-  --> $DIR/reference.rs:36:14
+  --> $DIR/deref_addrof.rs:38:14
    |
 LL |     let b = **&aref;
    |              ^^^^^^ help: try this: `aref`
 
-error: immediately dereferencing a reference
-  --> $DIR/reference.rs:40:14
-   |
-LL |     let b = **&&a;
-   |              ^^^^ help: try this: `&a`
-
-error: immediately dereferencing a reference
-  --> $DIR/reference.rs:44:17
-   |
-LL |         let y = *&mut x;
-   |                 ^^^^^^^ help: try this: `x`
-
-error: immediately dereferencing a reference
-  --> $DIR/reference.rs:51:18
-   |
-LL |         let y = **&mut &mut x;
-   |                  ^^^^^^^^^^^^ help: try this: `&mut x`
-
-error: aborting due to 11 previous errors
+error: aborting due to 8 previous errors
 
