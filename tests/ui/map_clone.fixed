@@ -10,6 +10,8 @@ fn main() {
     let _: Vec<String> = vec![String::new()].iter().cloned().collect();
     let _: Vec<u32> = vec![42, 43].iter().cloned().collect();
     let _: Option<u64> = Some(Box::new(16)).map(|b| *b);
+    let _: Option<u64> = Some(&16).copied();
+    let _: Option<u8> = Some(&1).copied();
 
     // Don't lint these
     let v = vec![5_i8; 6];
