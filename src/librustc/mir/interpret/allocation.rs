@@ -26,7 +26,7 @@ pub enum InboundsCheck {
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum CheckInAllocMsg {
     MemoryAccess,
-    NullPointer,
+    NullPointerTest,
     PointerArithmetic,
     OutOfBounds,
 }
