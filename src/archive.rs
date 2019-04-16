@@ -8,12 +8,14 @@ use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, find_library};
 
 struct ArchiveConfig<'a> {
-    pub sess: &'a Session,
-    pub dst: PathBuf,
-    pub src: Option<PathBuf>,
-    pub lib_search_paths: Vec<PathBuf>,
+    sess: &'a Session,
+    dst: PathBuf,
+    src: Option<PathBuf>,
+    lib_search_paths: Vec<PathBuf>,
+    is_like_osx: bool,
 }
 
+#[derive(Debug)]
 enum ArchiveEntry {
     FromArchive { archive_index: usize, entry_index: usize },
     File(File),
@@ -34,6 +36,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             dst: output.to_path_buf(),
             src: input.map(|p| p.to_path_buf()),
             lib_search_paths: archive_search_paths(sess),
+            is_like_osx: sess.target.target.options.is_like_osx,
         };
 
         let (src_archives, entries) = if let Some(src) = &config.src {
@@ -119,7 +122,23 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn build(mut self) {
-        let mut builder = ar::Builder::new(File::create(&self.config.dst).unwrap());
+        println!("{:?}", self.src_archives.len());
+        println!("{:?}", self.entries);
+
+        enum BuilderKind {
+            Bsd(ar::Builder<File>),
+            Gnu(ar::GnuBuilder<File>),
+        }
+
+        let archive_file = File::create(&self.config.dst).unwrap();
+        let mut builder = if self.config.is_like_osx {
+            BuilderKind::Bsd(ar::Builder::new(archive_file))
+        } else {
+            BuilderKind::Gnu(ar::GnuBuilder::new(
+                archive_file,
+                self.entries.keys().map(|key| key.as_bytes().to_vec()).collect(),
+            ))
+        };
 
         // Add all files
         for (entry_name, entry) in self.entries.into_iter() {
@@ -133,10 +152,16 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                     header.set_uid(orig_header.uid());
                     header.set_gid(orig_header.gid());
                     header.set_mode(orig_header.mode());
-                    builder.append(&header, entry).unwrap();
+                    match builder {
+                        BuilderKind::Bsd(ref mut builder) => builder.append(&header, entry).unwrap(),
+                        BuilderKind::Gnu(ref mut builder) => builder.append(&header, entry).unwrap(),
+                    }
                 }
                 ArchiveEntry::File(mut file) => {
-                    builder.append_file(entry_name.as_bytes(), &mut file).unwrap();
+                    match builder {
+                        BuilderKind::Bsd(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut file).unwrap(),
+                        BuilderKind::Gnu(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut file).unwrap(),
+                    }
                 }
             }
         }

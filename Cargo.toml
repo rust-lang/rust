@@ -38,5 +38,8 @@ indexmap = "1.0.2"
 #[patch."https://github.com/gimli-rs/gimli.git"]
 #gimli = { path = "../" }
 
+[patch.crates-io]
+ar = { git = "https://github.com/mdsteele/rust-ar.git" }
+
 [profile.dev.overrides."*"]
 opt-level = 3
