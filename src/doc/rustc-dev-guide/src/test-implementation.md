@@ -81,20 +81,18 @@ Now that our tests are accessible from the root of our crate, we need to do
 something with them. `libsyntax` generates a module like so:
 
 ```rust,ignore
-pub mod __test {
+#[main]
+pub fn main() {
   extern crate test;
-  const TESTS: &'static [self::test::TestDescAndFn] = &[/*...*/];
-
-  #[main]
-  pub fn main() {
-    self::test::test_static_main(TESTS);
-  }
+  test::test_main_static(&[&path::to::test1, /*...*/]);
 }
 ```
 
+where `path::to::test1` is a constant of type `test::TestDescAndFn`.
+
 While this transformation is simple, it gives us a lot of insight into how
 tests are actually run. The tests are aggregated into an array and passed to
-a test runner called `test_static_main`. We'll come back to exactly what
+a test runner called `test_main_static`. We'll come back to exactly what
 `TestDescAndFn` is, but for now, the key takeaway is that there is a crate
 called [`test`][test] that is part of Rust core, that implements all of the
 runtime for testing. `test`'s interface is unstable, so the only stable way
@@ -119,7 +117,7 @@ configuration information as well. `test` encodes this configuration data
 into a struct called [`TestDesc`][TestDesc]. For each test function in a
 crate, `libsyntax` will parse its attributes and generate a `TestDesc`
 instance. It then combines the `TestDesc` and test function into the
-predictably named `TestDescAndFn` struct, that `test_static_main` operates
+predictably named `TestDescAndFn` struct, that `test_main_static` operates
 on. For a given test, the generated `TestDescAndFn` instance looks like so:
 
 ```rust,ignore
