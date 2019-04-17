@@ -35,16 +35,17 @@ use crate::{
     expr::{Body, Expr, BindingAnnotation, Literal, ExprId, Pat, PatId, UnaryOp, BinaryOp, Statement, FieldPat,Array, self},
     generics::{GenericParams, HasGenericParams},
     path::{GenericArgs, GenericArg},
+    ModuleDef,
     adt::VariantDef,
     resolve::{Resolver, Resolution},
     nameres::Namespace,
+    ty::infer::diagnostics::InferenceDiagnostic,
     diagnostics::DiagnosticSink,
 };
 use super::{
     Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
     traits::{ Solution, Obligation, Guidance},
 };
-use self::diagnostics::InferenceDiagnostic;
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
@@ -459,18 +460,28 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             if remaining_index.is_none() { def.take_values()? } else { def.take_types()? };
 
         let remaining_index = remaining_index.unwrap_or(path.segments.len());
+        let mut actual_def_ty: Option<Ty> = None;
 
         // resolve intermediate segments
-        for segment in &path.segments[remaining_index..] {
+        for (i, segment) in path.segments[remaining_index..].iter().enumerate() {
             let ty = match resolved {
                 Resolution::Def(def) => {
                     // FIXME resolve associated items from traits as well
                     let typable: Option<TypableDef> = def.into();
                     let typable = typable?;
 
-                    let substs =
-                        Ty::substs_from_path_segment(self.db, &self.resolver, segment, typable);
-                    self.db.type_for_def(typable, Namespace::Types).subst(&substs)
+                    let ty = self.db.type_for_def(typable, Namespace::Types);
+
+                    // For example, this substs will take `Gen::*<u32>*::make`
+                    assert!(remaining_index > 0);
+                    let substs = Ty::substs_from_path_segment(
+                        self.db,
+                        &self.resolver,
+                        &path.segments[remaining_index + i - 1],
+                        typable,
+                    );
+
+                    ty.subst(&substs)
                 }
                 Resolution::LocalBinding(_) => {
                     // can't have a local binding in an associated item path
@@ -489,6 +500,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // Attempt to find an impl_item for the type which has a name matching
             // the current segment
             log::debug!("looking for path segment: {:?}", segment);
+            actual_def_ty = Some(ty.clone());
+
             let item: crate::ModuleDef = ty.iterate_impl_items(self.db, |item| {
                 let matching_def: Option<crate::ModuleDef> = match item {
                     crate::ImplItem::Method(func) => {
@@ -528,8 +541,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Resolution::Def(def) => {
                 let typable: Option<TypableDef> = def.into();
                 let typable = typable?;
+                let mut ty = self.db.type_for_def(typable, Namespace::Values);
+                if let Some(sts) = self.find_self_types(&def, actual_def_ty) {
+                    ty = ty.subst(&sts);
+                }
+
                 let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
-                let ty = self.db.type_for_def(typable, Namespace::Values).subst(&substs);
+                let ty = ty.subst(&substs);
                 let ty = self.insert_type_vars(ty);
                 Some(ty)
             }
@@ -546,6 +564,38 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 log::error!("path expr {:?} resolved to Self type in values ns", path);
                 None
             }
+        }
+    }
+
+    fn find_self_types(&self, def: &ModuleDef, actual_def_ty: Option<Ty>) -> Option<Substs> {
+        let actual_def_ty = actual_def_ty?;
+
+        if let crate::ModuleDef::Function(func) = def {
+            // We only do the infer if parent has generic params
+            let gen = func.generic_params(self.db);
+            if gen.count_parent_params() == 0 {
+                return None;
+            }
+
+            let impl_block = func.impl_block(self.db)?.target_ty(self.db);
+            let impl_block_substs = impl_block.substs()?;
+            let actual_substs = actual_def_ty.substs()?;
+
+            let mut new_substs = vec![Ty::Unknown; gen.count_parent_params()];
+
+            // The following code *link up* the function actual parma type
+            // and impl_block type param index
+            impl_block_substs.iter().zip(actual_substs.iter()).for_each(|(param, pty)| {
+                if let Ty::Param { idx, .. } = param {
+                    if let Some(s) = new_substs.get_mut(*idx as usize) {
+                        *s = pty.clone();
+                    }
+                }
+            });
+
+            Some(Substs(new_substs.into()))
+        } else {
+            None
         }
     }
 
