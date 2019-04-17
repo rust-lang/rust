@@ -165,6 +165,10 @@ pub struct Session {
 
     /// `Span`s of trait methods that weren't found to avoid emitting object safety errors
     pub trait_methods_not_found: Lock<FxHashSet<Span>>,
+
+    /// Mapping from ident span to path span for paths that don't exist as written, but that
+    /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
+    pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
 }
 
 pub struct PerfStats {
@@ -1248,6 +1252,7 @@ fn build_session_(
         has_panic_handler: Once::new(),
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
+        confused_type_with_std_module: Lock::new(Default::default()),
     };
 
     validate_commandline_args_with_session_available(&sess);
