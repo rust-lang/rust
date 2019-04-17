@@ -131,8 +131,8 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
     fn unify_values(value1: &Self, value2: &Self) -> Result<Self, Self::Error> {
         let val = match (value1.val, value2.val) {
             (
-                ConstVariableValue::Known { value: value1 },
-                ConstVariableValue::Known { value: value2 }
+                ConstVariableValue::Known { .. },
+                ConstVariableValue::Known { .. }
             ) => {
                 bug!("equating two const variables, both of which have known values")
             }
