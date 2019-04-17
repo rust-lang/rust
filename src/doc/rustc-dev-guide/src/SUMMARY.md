@@ -6,7 +6,7 @@
 
 - [Part 1: Building, debugging, and contributing to Rustc](./part-1-intro.md)
 - [About the compiler team](./compiler-team.md)
-- [How to build the compiler and run what you built](./how-to-build-and-run.md)
+- [How to Build and Run the Compiler](./how-to-build-and-run.md)
     - [Build and Install distribution artifacts](./build-install-distribution-artifacts.md)
     - [Documenting Compiler](./compiler-documenting.md)
 - [The compiler testing framework](./tests/intro.md)
