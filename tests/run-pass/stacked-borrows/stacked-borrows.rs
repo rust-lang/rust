@@ -10,6 +10,7 @@ fn main() {
     partially_invalidate_mut();
     drop_after_sharing();
     direct_mut_to_const_raw();
+    two_raw();
 }
 
 // Deref a raw ptr to access a field of a large struct, where the field
@@ -123,3 +124,15 @@ fn direct_mut_to_const_raw() {
     assert_eq!(*x, 1);
     */
 }
+
+// Make sure that we can create two raw pointers from a mutable reference and use them both.
+fn two_raw() { unsafe {
+    let x = &mut 0;
+    // Given the implicit reborrows, the only reason this currently works is that we
+    // do not track raw pointers: The creation of `y2` reborrows `x` and thus pops
+    // `y1` off the stack.
+    let y1 = x as *mut _;
+    let y2 = x as *mut _;
+    *y1 += 2;
+    *y2 += 1;
+} }
