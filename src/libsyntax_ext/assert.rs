@@ -74,7 +74,7 @@ fn parse_assert<'a>(
         return Err(err);
     }
 
-    Ok(Assert {
+    let assert = Assert {
         cond_expr: parser.parse_expr()?,
         custom_message: if parser.eat(&token::Comma) {
             let ts = parser.parse_tokens();
@@ -86,5 +86,12 @@ fn parse_assert<'a>(
         } else {
             None
         },
-    })
+    };
+
+    if parser.token != token::Eof {
+        parser.expect_one_of(&[], &[])?;
+        unreachable!();
+    }
+
+    Ok(assert)
 }
