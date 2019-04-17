@@ -1,3 +1,5 @@
+#![allow(mutable_borrow_reservation_conflict)]
+
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
 }
@@ -41,7 +43,6 @@ fn two_phase_raw() {
     );
 }
 
-/*
 fn two_phase_overlapping1() {
     let mut x = vec![];
     let p = &x;
@@ -54,7 +55,6 @@ fn two_phase_overlapping2() {
     let l = &x;
     x.add_assign(x + *l);
 }
-*/
 
 fn with_interior_mutability() {
     use std::cell::Cell;
@@ -66,13 +66,13 @@ fn with_interior_mutability() {
     impl<T> Thing for Cell<T> {}
 
     let mut x = Cell::new(1);
-    //let l = &x;
+    let l = &x;
 
     x
         .do_the_thing({
             x.set(3);
-            // l.set(4); // FIXME: Enable this as an example of overlapping 2PB!
-            x.get() // FIXME same: + l.get()
+            l.set(4);
+            x.get() + l.get()
         })
     ;
 }
@@ -84,7 +84,6 @@ fn main() {
     two_phase3(true);
     two_phase_raw();
     with_interior_mutability();
-    //FIXME: enable these, or remove them, depending on how https://github.com/rust-lang/rust/issues/56254 gets resolved
-    //two_phase_overlapping1();
-    //two_phase_overlapping2();
+    two_phase_overlapping1();
+    two_phase_overlapping2();
 }

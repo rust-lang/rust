@@ -1,4 +1,4 @@
-// error-pattern: deallocating with active barrier
+// error-pattern: deallocating with active protect
 
 fn inner(x: &mut i32, f: fn(&mut i32)) {
     // `f` may mutate, but it may not deallocate!

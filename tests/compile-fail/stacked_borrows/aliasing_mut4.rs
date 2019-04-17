@@ -2,7 +2,7 @@ use std::mem;
 use std::cell::Cell;
 
 // Make sure &mut UnsafeCell also is exclusive
-pub fn safe(_x: &i32, _y: &mut Cell<i32>) {} //~ ERROR barrier
+pub fn safe(_x: &i32, _y: &mut Cell<i32>) {} //~ ERROR protect
 
 fn main() {
     let mut x = 0;
