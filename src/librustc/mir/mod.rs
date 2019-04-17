@@ -20,6 +20,7 @@ use crate::rustc_serialize::{self as serialize};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
+use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 use std::slice;
 use std::vec::IntoIter;
@@ -2105,6 +2106,15 @@ pub enum PlaceProjections<'p, 'tcx: 'p> {
 }
 
 impl<'p, 'tcx> PlaceProjections<'p, 'tcx> {
+    fn iter(&self) -> PlaceProjectionsIter<'_, 'tcx> {
+        PlaceProjectionsIter { value: self }
+    }
+}
+
+impl<'p, 'tcx> IntoIterator for &'p PlaceProjections<'p, 'tcx> {
+    type Item = &'p PlaceProjection<'tcx>;
+    type IntoIter = PlaceProjectionsIter<'p, 'tcx>;
+
     /// Converts a list of `PlaceProjection` components into an iterator;
     /// this iterator yields up a never-ending stream of `Option<&Place>`.
     /// These begin with the "innermost" projection and then with each
@@ -2114,8 +2124,8 @@ impl<'p, 'tcx> PlaceProjections<'p, 'tcx> {
     /// ```notrust
     /// Some(`a`), Some(`a.b`), Some(`a.b.c`), None, None, ...
     /// ```
-    fn iter(&self) -> PlaceProjectionsIter<'_, 'tcx> {
-        PlaceProjectionsIter { value: self }
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 
@@ -2129,8 +2139,10 @@ pub struct PlaceProjectionsIter<'p, 'tcx: 'p> {
     pub value: &'p PlaceProjections<'p, 'tcx>,
 }
 
-impl<'p, 'tcx> PlaceProjectionsIter<'p, 'tcx> {
-    pub fn next(&mut self) -> Option<&'p PlaceProjection<'tcx>> {
+impl<'p, 'tcx> Iterator for PlaceProjectionsIter<'p, 'tcx> {
+    type Item = &'p PlaceProjection<'tcx>;
+
+    fn next(&mut self) -> Option<Self::Item> {
         if let &PlaceProjections::List { projection, next } = self.value {
             self.value = next;
             Some(projection)
@@ -2139,6 +2151,8 @@ impl<'p, 'tcx> PlaceProjectionsIter<'p, 'tcx> {
         }
     }
 }
+
+impl<'p, 'tcx> FusedIterator for PlaceProjectionsIter<'p, 'tcx> {}
 
 impl<'tcx> Debug for Place<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
