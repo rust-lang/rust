@@ -24,10 +24,8 @@ use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::CrateNum;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::map::{DefPathData, DisambiguatedDefPathData};
 use rustc::hir::Node;
 use rustc::hir::*;
 use rustc::lint::{LateContext, Level, Lint, LintContext};
@@ -43,7 +41,7 @@ use rustc_errors::Applicability;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
-use syntax::symbol::{keywords, LocalInternedString, Symbol};
+use syntax::symbol::{keywords, Symbol};
 
 use crate::reexport::*;
 
@@ -95,139 +93,10 @@ pub fn in_macro(span: Span) -> bool {
     span.ctxt().outer().expn_info().is_some()
 }
 
-/// Used to store the absolute path to a type.
-///
-/// See `match_def_path` for usage.
-pub struct AbsolutePathPrinter<'a, 'tcx> {
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-}
-
-use rustc::ty::print::Printer;
-
-#[allow(clippy::diverging_sub_expression)]
-impl<'tcx> Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
-    type Error = !;
-
-    type Path = Vec<LocalInternedString>;
-    type Region = ();
-    type Type = ();
-    type DynExistential = ();
-
-    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
-        self.tcx
-    }
-
-    fn print_region(self, _region: ty::Region<'_>) -> Result<Self::Region, Self::Error> {
-        Ok(())
-    }
-
-    fn print_type(self, _ty: Ty<'tcx>) -> Result<Self::Type, Self::Error> {
-        Ok(())
-    }
-
-    fn print_dyn_existential(
-        self,
-        _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
-    ) -> Result<Self::DynExistential, Self::Error> {
-        Ok(())
-    }
-
-    fn path_crate(self, cnum: CrateNum) -> Result<Self::Path, Self::Error> {
-        Ok(vec![self.tcx.original_crate_name(cnum).as_str()])
-    }
-
-    fn path_qualified(
-        self,
-        self_ty: Ty<'tcx>,
-        trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self::Path, Self::Error> {
-        if trait_ref.is_none() {
-            if let ty::Adt(def, substs) = self_ty.sty {
-                return self.print_def_path(def.did, substs);
-            }
-        }
-
-        // This shouldn't ever be needed, but just in case:
-        Ok(vec![match trait_ref {
-            Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)).as_str(),
-            None => Symbol::intern(&format!("<{}>", self_ty)).as_str(),
-        }])
-    }
-
-    fn path_append_impl(
-        self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        _disambiguated_data: &DisambiguatedDefPathData,
-        self_ty: Ty<'tcx>,
-        trait_ref: Option<ty::TraitRef<'tcx>>,
-    ) -> Result<Self::Path, Self::Error> {
-        let mut path = print_prefix(self)?;
-
-        // This shouldn't ever be needed, but just in case:
-        path.push(match trait_ref {
-            Some(trait_ref) => Symbol::intern(&format!("<impl {} for {}>", trait_ref, self_ty)).as_str(),
-            None => Symbol::intern(&format!("<impl {}>", self_ty)).as_str(),
-        });
-
-        Ok(path)
-    }
-
-    fn path_append(
-        self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        disambiguated_data: &DisambiguatedDefPathData,
-    ) -> Result<Self::Path, Self::Error> {
-        let mut path = print_prefix(self)?;
-
-        // Skip `::{{constructor}}` on tuple/unit structs.
-        if let DefPathData::Ctor = disambiguated_data.data {
-            return Ok(path);
-        }
-
-        path.push(disambiguated_data.data.as_interned_str().as_str());
-        Ok(path)
-    }
-
-    fn path_generic_args(
-        self,
-        print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        _args: &[Kind<'tcx>],
-    ) -> Result<Self::Path, Self::Error> {
-        print_prefix(self)
-    }
-}
-
-/// Checks if a `DefId`'s path matches the given absolute type path usage.
-///
-/// # Examples
-/// ```rust,ignore
-/// match_def_path(cx.tcx, id, &["core", "option", "Option"])
-/// ```
-///
-/// See also the `paths` module.
-pub fn match_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, path: &[&str]) -> bool {
-    let names = get_def_path(tcx, def_id);
-
-    names.len() == path.len() && names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
-}
-
-/// Gets the absolute path of `def_id` as a vector of `&str`.
-///
-/// # Examples
-/// ```rust,ignore
-/// let def_path = get_def_path(tcx, def_id);
-/// if let &["core", "option", "Option"] = &def_path[..] {
-///     // The given `def_id` is that of an `Option` type
-/// };
-/// ```
-pub fn get_def_path<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Vec<LocalInternedString> {
-    AbsolutePathPrinter { tcx }.print_def_path(def_id, &[]).unwrap()
-}
-
 /// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
-        ty::Adt(adt, _) => match_def_path(cx.tcx, adt.did, path),
+        ty::Adt(adt, _) => cx.match_def_path(adt.did, path),
         _ => false,
     }
 }
@@ -237,7 +106,7 @@ pub fn match_trait_method(cx: &LateContext<'_, '_>, expr: &Expr, path: &[&str]) 
     let def_id = cx.tables.type_dependent_def_id(expr.hir_id).unwrap();
     let trt_id = cx.tcx.trait_of_item(def_id);
     if let Some(trt_id) = trt_id {
-        match_def_path(cx.tcx, trt_id, path)
+        cx.match_def_path(trt_id, path)
     } else {
         false
     }
@@ -1120,7 +989,7 @@ pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Opt
     };
 
     for path in &INTO_ITER_COLLECTIONS {
-        if match_def_path(cx.tcx, def_id, path) {
+        if cx.match_def_path(def_id, path) {
             return Some(path.last().unwrap());
         }
     }

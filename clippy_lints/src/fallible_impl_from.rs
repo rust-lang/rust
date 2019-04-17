@@ -1,5 +1,5 @@
 use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
-use crate::utils::{is_expn_of, match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::{is_expn_of, method_chain_args, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -47,7 +47,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
         if_chain! {
             if let hir::ItemKind::Impl(.., ref impl_items) = item.node;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
-            if match_def_path(cx.tcx, impl_trait_ref.def_id, &FROM_TRAIT);
+            if cx.match_def_path(impl_trait_ref.def_id, &FROM_TRAIT);
             then {
                 lint_impl_body(cx, item.span, impl_items);
             }
@@ -60,7 +60,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     use rustc::hir::*;
 
     struct FindPanicUnwrap<'a, 'tcx: 'a> {
-        tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+        lcx: &'a LateContext<'a, 'tcx>,
         tables: &'tcx ty::TypeckTables<'tcx>,
         result: Vec<Span>,
     }
@@ -72,8 +72,8 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                 if let ExprKind::Call(ref func_expr, _) = expr.node;
                 if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.node;
                 if let Some(path_def_id) = path.def.opt_def_id();
-                if match_def_path(self.tcx, path_def_id, &BEGIN_PANIC) ||
-                    match_def_path(self.tcx, path_def_id, &BEGIN_PANIC_FMT);
+                if self.lcx.match_def_path(path_def_id, &BEGIN_PANIC) ||
+                    self.lcx.match_def_path(path_def_id, &BEGIN_PANIC_FMT);
                 if is_expn_of(expr.span, "unreachable").is_none();
                 then {
                     self.result.push(expr.span);
@@ -83,7 +83,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
             // check for `unwrap`
             if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
                 let reciever_ty = walk_ptrs_ty(self.tables.expr_ty(&arglists[0][0]));
-                if match_type(self.tcx, reciever_ty, &OPTION) || match_type(self.tcx, reciever_ty, &RESULT) {
+                if match_type(self.lcx, reciever_ty, &OPTION) || match_type(self.lcx, reciever_ty, &RESULT) {
                     self.result.push(expr.span);
                 }
             }
@@ -107,7 +107,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                 let body = cx.tcx.hir().body(body_id);
                 let impl_item_def_id = cx.tcx.hir().local_def_id_from_hir_id(impl_item.id.hir_id);
                 let mut fpu = FindPanicUnwrap {
-                    tcx: cx.tcx,
+                    lcx: cx,
                     tables: cx.tcx.typeck_tables_of(impl_item_def_id),
                     result: Vec::new(),
                 };
@@ -132,9 +132,9 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     }
 }
 
-fn match_type<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'_>, path: &[&str]) -> bool {
+fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
-        ty::Adt(adt, _) => match_def_path(tcx, adt.did, path),
+        ty::Adt(adt, _) => cx.match_def_path(adt.did, path),
         _ => false,
     }
 }

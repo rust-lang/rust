@@ -10,7 +10,6 @@ use rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisito
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::layout::LayoutOf;
-use rustc::ty::print::Printer;
 use rustc::ty::{self, InferTy, Ty, TyCtxt, TypeckTables};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_errors::Applicability;
@@ -24,8 +23,8 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
-    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext, AbsolutePathPrinter,
+    match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability, span_help_and_lint,
+    span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 /// Handles all the linting of funky types
@@ -229,7 +228,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
         });
         if let TyKind::Path(ref qpath) = ty.node;
         if let Some(did) = cx.tables.qpath_def(qpath, ty.hir_id).opt_def_id();
-        if match_def_path(cx.tcx, did, path);
+        if cx.match_def_path(did, path);
         then {
             return true;
         }
@@ -263,7 +262,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         );
                         return; // don't recurse into the type
                     }
-                } else if match_def_path(cx.tcx, def_id, &paths::VEC) {
+                } else if cx.match_def_path(def_id, &paths::VEC) {
                     if_chain! {
                         // Get the _ part of Vec<_>
                         if let Some(ref last) = last_path_segment(qpath).args;
@@ -298,7 +297,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                             }
                         }
                     }
-                } else if match_def_path(cx.tcx, def_id, &paths::OPTION) {
+                } else if cx.match_def_path(def_id, &paths::OPTION) {
                     if match_type_parameter(cx, qpath, &paths::OPTION) {
                         span_lint(
                             cx,
@@ -309,7 +308,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         );
                         return; // don't recurse into the type
                     }
-                } else if match_def_path(cx.tcx, def_id, &paths::LINKED_LIST) {
+                } else if cx.match_def_path(def_id, &paths::LINKED_LIST) {
                     span_help_and_lint(
                         cx,
                         LINKEDLIST,
@@ -1136,9 +1135,9 @@ impl LintPass for CastPass {
 
 // Check if the given type is either `core::ffi::c_void` or
 // one of the platform specific `libc::<platform>::c_void` of libc.
-fn is_c_void<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'_>) -> bool {
+fn is_c_void(cx: &LateContext<'_, '_>, ty: Ty<'_>) -> bool {
     if let ty::Adt(adt, _) = ty.sty {
-        let names = AbsolutePathPrinter { tcx }.print_def_path(adt.did, &[]).unwrap();
+        let names = cx.get_def_path(adt.did);
 
         if names.is_empty() {
             return false;
@@ -1262,7 +1261,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                 if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi);
                 if from_align < to_align;
                 // with c_void, we inherently need to trust the user
-                if !is_c_void(cx.tcx, from_ptr_ty.ty);
+                if !is_c_void(cx, from_ptr_ty.ty);
                 then {
                     span_lint(
                         cx,

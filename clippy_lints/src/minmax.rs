@@ -1,5 +1,5 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{match_def_path, paths, span_lint};
+use crate::utils::{paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
@@ -73,9 +73,9 @@ fn min_max<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<(MinMax, Cons
     if let ExprKind::Call(ref path, ref args) = expr.node {
         if let ExprKind::Path(ref qpath) = path.node {
             cx.tables.qpath_def(qpath, path.hir_id).opt_def_id().and_then(|def_id| {
-                if match_def_path(cx.tcx, def_id, &paths::CMP_MIN) {
+                if cx.match_def_path(def_id, &paths::CMP_MIN) {
                     fetch_const(cx, args, MinMax::Min)
-                } else if match_def_path(cx.tcx, def_id, &paths::CMP_MAX) {
+                } else if cx.match_def_path(def_id, &paths::CMP_MAX) {
                     fetch_const(cx, args, MinMax::Max)
                 } else {
                     None

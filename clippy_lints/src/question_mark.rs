@@ -8,7 +8,7 @@ use syntax::ptr::P;
 
 use crate::utils::paths::*;
 use crate::utils::sugg::Sugg;
-use crate::utils::{match_def_path, match_type, span_lint_and_then, SpanlessEq};
+use crate::utils::{match_type, span_lint_and_then, SpanlessEq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions that could be replaced by the question mark operator.
@@ -129,7 +129,7 @@ impl Pass {
             ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
                 if let Def::Ctor(def_id, def::CtorOf::Variant, _) = cx.tables.qpath_def(qp, expression.hir_id) {
-                    return match_def_path(cx.tcx, def_id, &OPTION_NONE);
+                    return cx.match_def_path(def_id, &OPTION_NONE);
                 }
 
                 false

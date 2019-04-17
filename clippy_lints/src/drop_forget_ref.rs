@@ -1,4 +1,4 @@
-use crate::utils::{is_copy, match_def_path, paths, span_note_and_lint};
+use crate::utils::{is_copy, paths, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -132,10 +132,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let arg_ty = cx.tables.expr_ty(arg);
 
                 if let ty::Ref(..) = arg_ty.sty {
-                    if match_def_path(cx.tcx, def_id, &paths::DROP) {
+                    if cx.match_def_path(def_id, &paths::DROP) {
                         lint = DROP_REF;
                         msg = DROP_REF_SUMMARY.to_string();
-                    } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
+                    } else if cx.match_def_path(def_id, &paths::MEM_FORGET) {
                         lint = FORGET_REF;
                         msg = FORGET_REF_SUMMARY.to_string();
                     } else {
@@ -148,10 +148,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                        arg.span,
                                        &format!("argument has type {}", arg_ty));
                 } else if is_copy(cx, arg_ty) {
-                    if match_def_path(cx.tcx, def_id, &paths::DROP) {
+                    if cx.match_def_path(def_id, &paths::DROP) {
                         lint = DROP_COPY;
                         msg = DROP_COPY_SUMMARY.to_string();
-                    } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
+                    } else if cx.match_def_path(def_id, &paths::MEM_FORGET) {
                         lint = FORGET_COPY;
                         msg = FORGET_COPY_SUMMARY.to_string();
                     } else {

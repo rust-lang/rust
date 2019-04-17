@@ -1,4 +1,4 @@
-use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, paths, resolve_node, span_lint};
+use crate::utils::{is_direct_expn_of, is_expn_of, paths, resolve_node, span_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let ExprKind::Call(ref fun, ref params) = ex.node;
             if let ExprKind::Path(ref qpath) = fun.node;
             if let Some(fun_def_id) = resolve_node(cx, qpath, fun.hir_id).opt_def_id();
-            if match_def_path(cx.tcx, fun_def_id, &paths::BEGIN_PANIC);
+            if cx.match_def_path(fun_def_id, &paths::BEGIN_PANIC);
             if params.len() == 2;
             then {
                 if is_expn_of(expr.span, "unimplemented").is_some() {
