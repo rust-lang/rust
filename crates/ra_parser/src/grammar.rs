@@ -65,6 +65,10 @@ pub(crate) fn pattern(p: &mut Parser) {
     patterns::pattern(p)
 }
 
+pub(crate) fn stmt(p: &mut Parser, with_semi: bool) {
+    expressions::stmt(p, with_semi)
+}
+
 pub(crate) fn reparser(
     node: SyntaxKind,
     first_child: Option<SyntaxKind>,

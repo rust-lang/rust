@@ -48,6 +48,104 @@ fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
     }
 }
 
+pub(super) fn stmt(p: &mut Parser, with_semi: bool) {
+    // test block_items
+    // fn a() { fn b() {} }
+    let m = p.start();
+    // test attr_on_expr_stmt
+    // fn foo() {
+    //     #[A] foo();
+    //     #[B] bar!{}
+    //     #[C] #[D] {}
+    //     #[D] return ();
+    // }
+    let has_attrs = p.at(POUND);
+    attributes::outer_attributes(p);
+
+    if p.at(LET_KW) {
+        let_stmt(p, m, with_semi);
+        return;
+    }
+
+    let m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
+        Ok(()) => return,
+        Err(m) => m,
+    };
+
+    let (cm, blocklike) = expr_stmt(p);
+    let kind = cm.as_ref().map(|cm| cm.kind()).unwrap_or(ERROR);
+
+    if has_attrs && !is_expr_stmt_attr_allowed(kind) {
+        // test_err attr_on_expr_not_allowed
+        // fn foo() {
+        //    #[A] 1 + 2;
+        //    #[B] if true {};
+        // }
+        p.error(format!("attributes are not allowed on {:?}", kind));
+    }
+
+    if p.at(R_CURLY) {
+        // test attr_on_last_expr_in_block
+        // fn foo() {
+        //     { #[A] bar!()? }
+        //     #[B] &()
+        // }
+        if let Some(cm) = cm {
+            cm.undo_completion(p).abandon(p);
+            m.complete(p, kind);
+        } else {
+            m.abandon(p);
+        }
+    } else {
+        // test no_semi_after_block
+        // fn foo() {
+        //     if true {}
+        //     loop {}
+        //     match () {}
+        //     while true {}
+        //     for _ in () {}
+        //     {}
+        //     {}
+        //     macro_rules! test {
+        //          () => {}
+        //     }
+        //     test!{}
+        // }
+        if with_semi {
+            if blocklike.is_block() {
+                p.eat(SEMI);
+            } else {
+                p.expect(SEMI);
+            }
+        }
+        m.complete(p, EXPR_STMT);
+    }
+
+    // test let_stmt;
+    // fn foo() {
+    //     let a;
+    //     let b: i32;
+    //     let c = 92;
+    //     let d: i32 = 92;
+    // }
+    fn let_stmt(p: &mut Parser, m: Marker, with_semi: bool) {
+        assert!(p.at(LET_KW));
+        p.bump();
+        patterns::pattern(p);
+        if p.at(COLON) {
+            types::ascription(p);
+        }
+        if p.eat(EQ) {
+            expressions::expr(p);
+        }
+
+        if with_semi {
+            p.expect(SEMI);
+        }
+        m.complete(p, LET_STMT);
+    }
+}
+
 pub(crate) fn expr_block_contents(p: &mut Parser) {
     // This is checked by a validator
     attributes::inner_attributes(p);
@@ -62,95 +160,7 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             continue;
         }
 
-        // test block_items
-        // fn a() { fn b() {} }
-        let m = p.start();
-        // test attr_on_expr_stmt
-        // fn foo() {
-        //     #[A] foo();
-        //     #[B] bar!{}
-        //     #[C] #[D] {}
-        //     #[D] return ();
-        // }
-        let has_attrs = p.at(POUND);
-        attributes::outer_attributes(p);
-        if p.at(LET_KW) {
-            let_stmt(p, m);
-            continue;
-        }
-
-        let m = match items::maybe_item(p, m, items::ItemFlavor::Mod) {
-            Ok(()) => continue,
-            Err(m) => m,
-        };
-
-        let (cm, blocklike) = expr_stmt(p);
-        let kind = cm.as_ref().map(|cm| cm.kind()).unwrap_or(ERROR);
-
-        if has_attrs && !is_expr_stmt_attr_allowed(kind) {
-            // test_err attr_on_expr_not_allowed
-            // fn foo() {
-            //    #[A] 1 + 2;
-            //    #[B] if true {};
-            // }
-            p.error(format!("attributes are not allowed on {:?}", kind));
-        }
-
-        if p.at(R_CURLY) {
-            // test attr_on_last_expr_in_block
-            // fn foo() {
-            //     { #[A] bar!()? }
-            //     #[B] &()
-            // }
-            if let Some(cm) = cm {
-                cm.undo_completion(p).abandon(p);
-                m.complete(p, kind);
-            } else {
-                m.abandon(p);
-            }
-        } else {
-            // test no_semi_after_block
-            // fn foo() {
-            //     if true {}
-            //     loop {}
-            //     match () {}
-            //     while true {}
-            //     for _ in () {}
-            //     {}
-            //     {}
-            //     macro_rules! test {
-            //          () => {}
-            //     }
-            //     test!{}
-            // }
-            if blocklike.is_block() {
-                p.eat(SEMI);
-            } else {
-                p.expect(SEMI);
-            }
-            m.complete(p, EXPR_STMT);
-        }
-    }
-
-    // test let_stmt;
-    // fn foo() {
-    //     let a;
-    //     let b: i32;
-    //     let c = 92;
-    //     let d: i32 = 92;
-    // }
-    fn let_stmt(p: &mut Parser, m: Marker) {
-        assert!(p.at(LET_KW));
-        p.bump();
-        patterns::pattern(p);
-        if p.at(COLON) {
-            types::ascription(p);
-        }
-        if p.eat(EQ) {
-            expressions::expr(p);
-        }
-        p.expect(SEMI);
-        m.complete(p, LET_STMT);
+        stmt(p, true)
     }
 }
 

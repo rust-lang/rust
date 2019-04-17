@@ -157,6 +157,10 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             let pat = input.eat_pat().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(pat.into()));
                         }
+                        "stmt" => {
+                            let pat = input.eat_stmt().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(pat.into()));
+                        }
                         _ => return Err(ExpandError::UnexpectedToken),
                     }
                 }

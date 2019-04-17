@@ -582,4 +582,19 @@ SOURCE_FILE@[0; 40)
         );
         assert_expansion(&rules, "foo! { (a, b) }", "fn foo () {let (a , b) ;}");
     }
+
+    #[test]
+    fn test_stmt() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:stmt) => (
+                fn bar() { $ i; }
+            )
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { 2 }", "fn bar () {2 ;}");
+        assert_expansion(&rules, "foo! { let a = 0 }", "fn bar () {let a = 0 ;}");
+    }
 }
