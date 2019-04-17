@@ -1135,8 +1135,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    let counts = tcx.generics_of(method.def_id).own_counts();
-                    if counts.types + counts.consts != 0 {
+                    if tcx.generics_of(method.def_id).own_requires_monomorphization() {
                         continue;
                     }
 
