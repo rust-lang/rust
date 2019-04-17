@@ -3002,7 +3002,7 @@ fn short_stability(item: &clean::Item, cx: &Context) -> Vec<String> {
 fn item_constant(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
     write!(w, "<pre class='rust const'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "{vis}const \
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
@@ -3014,7 +3014,7 @@ fn item_constant(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 fn item_static(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Static) -> fmt::Result {
     write!(w, "<pre class='rust static'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "{vis}static {mutability}\
                {name}: {typ}</pre>",
            vis = VisSpace(&it.visibility),
@@ -3037,7 +3037,7 @@ fn item_function(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
         f.generics
     ).len();
     write!(w, "{}<pre class='rust fn'>", render_spotlight_traits(it)?)?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w,
            "{vis}{constness}{unsafety}{asyncness}{abi}fn \
            {name}{generics}{decl}{where_clause}</pre>",
@@ -3126,7 +3126,7 @@ fn item_trait(
     // Output the trait definition
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust trait'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         write!(w, "{}{}{}trait {}{}{}",
                VisSpace(&it.visibility),
                UnsafetySpace(t.unsafety),
@@ -3479,7 +3479,7 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
         } else {
             (0, true)
         };
-        render_attributes(w, meth)?;
+        render_attributes(w, meth, false)?;
         write!(w, "{}{}{}{}{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                if parent == ItemType::Trait { "    " } else { "" },
@@ -3526,7 +3526,7 @@ fn item_struct(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust struct'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         render_struct(w,
                       it,
                       Some(&s.generics),
@@ -3577,7 +3577,7 @@ fn item_union(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                s: &clean::Union) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust union'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         render_union(w,
                      it,
                      Some(&s.generics),
@@ -3622,7 +3622,7 @@ fn item_enum(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
     wrap_into_docblock(w, |w| {
         write!(w, "<pre class='rust enum'>")?;
-        render_attributes(w, it)?;
+        render_attributes(w, it, true)?;
         write!(w, "{}enum {}{}{}",
                VisSpace(&it.visibility),
                it.name.as_ref().unwrap(),
@@ -3783,7 +3783,7 @@ const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "non_exhaustive"
 ];
 
-fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
+fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item, top: bool) -> fmt::Result {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
@@ -3795,7 +3795,8 @@ fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
         }
     }
     if attrs.len() > 0 {
-        write!(w, "<div class=\"docblock attributes\">{}</div>", &attrs)?;
+        write!(w, "<div class=\"docblock attributes{}\">{}</div>",
+               if top { " top-attr" } else { "" }, &attrs)?;
     }
     Ok(())
 }
@@ -4344,7 +4345,7 @@ fn item_existential(
     t: &clean::Existential,
 ) -> fmt::Result {
     write!(w, "<pre class='rust existential'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "existential type {}{}{where_clause}: {bounds};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4363,7 +4364,7 @@ fn item_existential(
 fn item_trait_alias(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                     t: &clean::TraitAlias) -> fmt::Result {
     write!(w, "<pre class='rust trait-alias'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "trait {}{}{} = {};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4382,7 +4383,7 @@ fn item_trait_alias(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 fn item_typedef(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     write!(w, "<pre class='rust typedef'>")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(w, "type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
@@ -4400,7 +4401,7 @@ fn item_typedef(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item,
 
 fn item_foreign_type(w: &mut fmt::Formatter<'_>, cx: &Context, it: &clean::Item) -> fmt::Result {
     writeln!(w, "<pre class='rust foreigntype'>extern {{")?;
-    render_attributes(w, it)?;
+    render_attributes(w, it, false)?;
     write!(
         w,
         "    {}type {};\n}}</pre>",

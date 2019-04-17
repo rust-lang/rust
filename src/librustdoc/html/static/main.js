@@ -2325,7 +2325,11 @@ if (!DOMTokenList.prototype.remove) {
     }
     var attributesToggle = createToggleWrapper(createSimpleToggle(false));
     onEachLazy(main.getElementsByClassName("attributes"), function(i_e) {
-        i_e.parentNode.insertBefore(attributesToggle.cloneNode(true), i_e);
+        var attr_tog = attributesToggle.cloneNode(true);
+        if (hasClass(i_e, "top-attr") === true) {
+            addClass(attr_tog, "top-attr");
+        }
+        i_e.parentNode.insertBefore(attr_tog, i_e);
         itemAttributesFunc(i_e);
     });
 
