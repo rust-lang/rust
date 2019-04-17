@@ -468,16 +468,16 @@ fn test_sort() {
 #[test]
 fn test_sort_stability() {
     #[cfg(not(miri))] // Miri is too slow
-    let large_limit = 510;
+    let large_range = 500..510;
     #[cfg(not(miri))] // Miri is too slow
     let rounds = 10;
 
     #[cfg(miri)]
-    let large_limit = 500; // effectively skips the large tests
+    let large_range = 0..0; // empty range
     #[cfg(miri)]
     let rounds = 1;
 
-    for len in (2..25).chain(500..large_limit) {
+    for len in (2..25).chain(large_range) {
         for _ in 0..rounds {
             let mut counts = [0; 10];
 
