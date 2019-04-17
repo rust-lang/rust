@@ -492,7 +492,7 @@ impl<'tcx> Stack {
 }
 // # Stacked Borrows Core End
 
-/// Higher-level per-location operations: deref, access, dealloc, reborrow.
+/// Map per-stack operations to higher-level per-location-range operations.
 impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
     pub(crate) fn new(
@@ -510,61 +510,17 @@ impl<'tcx> Stacks {
         }
     }
 
-    /// `ptr` got used, reflect that in the stack.
-    fn access(
+    /// Call `f` on every stack in the range.
+    fn for_each(
         &self,
         ptr: Pointer<Tag>,
         size: Size,
-        access: AccessKind,
+        f: impl Fn(&mut Stack, Tag, &GlobalState) -> EvalResult<'tcx>,
     ) -> EvalResult<'tcx> {
-        trace!("{} access of tag {}: {:?}, size {}", access, ptr.tag, ptr, size.bytes());
-        // Even reads can have a side-effect, by invalidating other references.
-        // This is fundamentally necessary since `&mut` asserts that there
-        // are no accesses through other references, not even reads.
         let global = self.global.borrow();
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.access(access, ptr.tag, &*global)?;
-        }
-        Ok(())
-    }
-
-    /// `ptr` is used to deallocate.
-    fn dealloc(
-        &self,
-        ptr: Pointer<Tag>,
-        size: Size,
-    ) -> EvalResult<'tcx> {
-        trace!("deallocation with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
-        // Even reads can have a side-effect, by invalidating other references.
-        // This is fundamentally necessary since `&mut` asserts that there
-        // are no accesses through other references, not even reads.
-        let global = self.global.borrow();
-        let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.dealloc(ptr.tag, &*global)?;
-        }
-        Ok(())
-    }
-
-    /// Reborrow the given pointer to the new tag for the given kind of reference.
-    /// This works on `&self` because we might encounter references to constant memory.
-    fn reborrow(
-        &self,
-        ptr: Pointer<Tag>,
-        size: Size,
-        barrier: Option<CallId>,
-        new_perm: Permission,
-        new_tag: Tag,
-    ) -> EvalResult<'tcx> {
-        trace!(
-            "reborrow tag {} as {:?} {}: {:?}, size {}",
-            ptr.tag, new_perm, new_tag, ptr, size.bytes(),
-        );
-        let global = self.global.borrow();
-        let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.reborrow(ptr.tag, barrier, new_perm, new_tag, &*global)?;
+            f(stack, ptr.tag, &*global)?;
         }
         Ok(())
     }
@@ -605,7 +561,11 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, AccessKind::Read)
+        trace!("read access with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        alloc.extra.for_each(ptr, size, |stack, tag, global| {
+            stack.access(AccessKind::Read, tag, global)?;
+            Ok(())
+        })
     }
 
     #[inline(always)]
@@ -614,7 +574,11 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, AccessKind::Write)
+        trace!("write access with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        alloc.extra.for_each(ptr, size, |stack, tag, global| {
+            stack.access(AccessKind::Write, tag, global)?;
+            Ok(())
+        })
     }
 
     #[inline(always)]
@@ -623,7 +587,10 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.dealloc(ptr, size)
+        trace!("deallocation with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        alloc.extra.for_each(ptr, size, |stack, tag, global| {
+            stack.dealloc(tag, global)
+        })
     }
 }
 
@@ -642,8 +609,8 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let this = self.eval_context_mut();
         let barrier = if fn_barrier { Some(this.frame().extra) } else { None };
         let ptr = place.ptr.to_ptr()?;
-        trace!("reborrow: creating new reference for {:?} (pointee {}): {}, {:?}",
-            ptr, place.layout.ty, kind, new_tag);
+        trace!("reborrow: {:?} reference {} derived from {} (pointee {}): {:?}, size {}",
+            kind, new_tag, ptr.tag, place.layout.ty, ptr, size.bytes());
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
@@ -659,12 +626,16 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 return this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                     // We are only ever `SharedReadOnly` inside the frozen bits.
                     let perm = if frozen { Permission::SharedReadOnly } else { Permission::SharedReadWrite };
-                    alloc.extra.reborrow(cur_ptr, size, barrier, perm, new_tag)
+                    alloc.extra.for_each(cur_ptr, size, |stack, tag, global| {
+                        stack.reborrow(tag, barrier, perm, new_tag, global)
+                    })
                 });
             }
         };
         debug_assert_ne!(perm, Permission::SharedReadOnly, "SharedReadOnly must be used frozen-sensitive");
-        return alloc.extra.reborrow(ptr, size, barrier, perm, new_tag);
+        alloc.extra.for_each(ptr, size, |stack, tag, global| {
+            stack.reborrow(tag, barrier, perm, new_tag, global)
+        })
     }
 
     /// Retags an indidual pointer, returning the retagged version.
