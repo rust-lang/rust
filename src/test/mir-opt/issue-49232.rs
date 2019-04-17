@@ -93,7 +93,7 @@ fn main() {
 //         StorageDead(_3);
 //         StorageLive(_6);
 //         _6 = &_2;
-//         _5 = const std::mem::drop(move _6) -> [return: bb19, unwind: bb4];
+//         _5 = const std::mem::drop::<&i32>(move _6) -> [return: bb19, unwind: bb4];
 //     }
 //     bb19: {
 //         StorageDead(_6);

@@ -1539,8 +1539,8 @@ define_print_and_forward_display! {
 
     &'tcx ty::Const<'tcx> {
         let u8 = cx.tcx().types.u8;
-        if let ty::FnDef(did, _) = self.ty.sty {
-            p!(write("{}", cx.tcx().def_path_str(did)));
+        if let ty::FnDef(did, substs) = self.ty.sty {
+            p!(print_value_path(did, substs));
             return Ok(cx);
         }
         if let ConstValue::Unevaluated(did, substs) = self.val {

@@ -68,7 +68,7 @@ fn main() {
 // }
 // bb7: {
 //     _2 = &mut (*_1);
-//     _3 = const std::ops::Drop::drop(move _2) -> [return: bb6, unwind: bb5];
+//     _3 = const <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb6, unwind: bb5];
 // }
 // END rustc.ptr-real_drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
 
