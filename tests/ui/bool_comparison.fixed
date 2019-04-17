@@ -3,73 +3,73 @@
 #[warn(clippy::bool_comparison)]
 fn main() {
     let x = true;
-    if x == true {
+    if x {
         "yes"
     } else {
         "no"
     };
-    if x == false {
+    if !x {
         "yes"
     } else {
         "no"
     };
-    if true == x {
+    if x {
         "yes"
     } else {
         "no"
     };
-    if false == x {
+    if !x {
         "yes"
     } else {
         "no"
     };
-    if x != true {
+    if !x {
         "yes"
     } else {
         "no"
     };
-    if x != false {
+    if x {
         "yes"
     } else {
         "no"
     };
-    if true != x {
+    if !x {
         "yes"
     } else {
         "no"
     };
-    if false != x {
+    if x {
         "yes"
     } else {
         "no"
     };
-    if x < true {
+    if !x {
         "yes"
     } else {
         "no"
     };
-    if false < x {
+    if x {
         "yes"
     } else {
         "no"
     };
-    if x > false {
+    if x {
         "yes"
     } else {
         "no"
     };
-    if true > x {
+    if !x {
         "yes"
     } else {
         "no"
     };
     let y = true;
-    if x < y {
+    if !x & y {
         "yes"
     } else {
         "no"
     };
-    if x > y {
+    if x & !y {
         "yes"
     } else {
         "no"

@@ -1,5 +1,5 @@
 error: equality checks against true are unnecessary
-  --> $DIR/bool_comparison.rs:4:8
+  --> $DIR/bool_comparison.rs:6:8
    |
 LL |     if x == true {
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
@@ -7,79 +7,79 @@ LL |     if x == true {
    = note: `-D clippy::bool-comparison` implied by `-D warnings`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/bool_comparison.rs:9:8
+  --> $DIR/bool_comparison.rs:11:8
    |
 LL |     if x == false {
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: equality checks against true are unnecessary
-  --> $DIR/bool_comparison.rs:14:8
+  --> $DIR/bool_comparison.rs:16:8
    |
 LL |     if true == x {
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: equality checks against false can be replaced by a negation
-  --> $DIR/bool_comparison.rs:19:8
+  --> $DIR/bool_comparison.rs:21:8
    |
 LL |     if false == x {
    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: inequality checks against true can be replaced by a negation
-  --> $DIR/bool_comparison.rs:24:8
+  --> $DIR/bool_comparison.rs:26:8
    |
 LL |     if x != true {
    |        ^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: inequality checks against false are unnecessary
-  --> $DIR/bool_comparison.rs:29:8
+  --> $DIR/bool_comparison.rs:31:8
    |
 LL |     if x != false {
    |        ^^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: inequality checks against true can be replaced by a negation
-  --> $DIR/bool_comparison.rs:34:8
+  --> $DIR/bool_comparison.rs:36:8
    |
 LL |     if true != x {
    |        ^^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: inequality checks against false are unnecessary
-  --> $DIR/bool_comparison.rs:39:8
+  --> $DIR/bool_comparison.rs:41:8
    |
 LL |     if false != x {
    |        ^^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: less than comparison against true can be replaced by a negation
-  --> $DIR/bool_comparison.rs:44:8
+  --> $DIR/bool_comparison.rs:46:8
    |
 LL |     if x < true {
    |        ^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: greater than checks against false are unnecessary
-  --> $DIR/bool_comparison.rs:49:8
+  --> $DIR/bool_comparison.rs:51:8
    |
 LL |     if false < x {
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: greater than checks against false are unnecessary
-  --> $DIR/bool_comparison.rs:54:8
+  --> $DIR/bool_comparison.rs:56:8
    |
 LL |     if x > false {
    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
 
 error: less than comparison against true can be replaced by a negation
-  --> $DIR/bool_comparison.rs:59:8
+  --> $DIR/bool_comparison.rs:61:8
    |
 LL |     if true > x {
    |        ^^^^^^^^ help: try simplifying it as shown: `!x`
 
 error: order comparisons between booleans can be simplified
-  --> $DIR/bool_comparison.rs:65:8
+  --> $DIR/bool_comparison.rs:67:8
    |
 LL |     if x < y {
    |        ^^^^^ help: try simplifying it as shown: `!x & y`
 
 error: order comparisons between booleans can be simplified
-  --> $DIR/bool_comparison.rs:70:8
+  --> $DIR/bool_comparison.rs:72:8
    |
 LL |     if x > y {
    |        ^^^^^ help: try simplifying it as shown: `x & !y`
