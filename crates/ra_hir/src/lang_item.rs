@@ -11,7 +11,7 @@ use crate::{
 pub enum LangItemTarget {
     Enum(Enum),
     Function(Function),
-    Impl(ImplBlock),
+    ImplBlock(ImplBlock),
     Static(Static),
     Struct(Struct),
     Trait(Trait),
@@ -22,7 +22,7 @@ impl LangItemTarget {
         match self {
             LangItemTarget::Enum(e) => e.module(db).krate(db),
             LangItemTarget::Function(f) => f.module(db).krate(db),
-            LangItemTarget::Impl(i) => i.module().krate(db),
+            LangItemTarget::ImplBlock(i) => i.module().krate(db),
             LangItemTarget::Static(s) => s.module(db).krate(db),
             LangItemTarget::Struct(s) => s.module(db).krate(db),
             LangItemTarget::Trait(t) => t.module(db).krate(db),
@@ -65,7 +65,7 @@ impl LangItems {
                 .nth(0);
             if let Some(lang_item_name) = lang_item_name {
                 let imp = ImplBlock::from_id(*module, impl_id);
-                self.items.entry(lang_item_name).or_insert(LangItemTarget::Impl(imp));
+                self.items.entry(lang_item_name).or_insert(LangItemTarget::ImplBlock(imp));
             }
         }
 

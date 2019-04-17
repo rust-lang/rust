@@ -5,13 +5,15 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     ModuleDef,
+    code_model_api::Crate,
     db::HirDatabase,
     name::{Name, KnownName},
     nameres::{PerNs, CrateDefMap, CrateModuleId},
     generics::GenericParams,
     expr::{scope::{ExprScopes, ScopeId}, PatId},
     impl_block::ImplBlock,
-    path::Path, Trait
+    path::Path,
+    Trait
 };
 
 #[derive(Debug, Clone, Default)]
@@ -190,12 +192,16 @@ impl Resolver {
             .flatten()
     }
 
-    pub(crate) fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
+    fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
             _ => None,
         })
+    }
+
+    pub(crate) fn krate(&self) -> Option<Crate> {
+        self.module().map(|t| t.0.krate())
     }
 }
 

@@ -39,7 +39,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         hir::ModuleDef::Struct(s) => {
             let ty = s.ty(ctx.db);
             let krate = ctx.module.and_then(|m| m.krate(ctx.db));
-            krate.map_or((), |krate| {
+            if let Some(krate) = krate {
                 ty.iterate_impl_items(ctx.db, krate, |item| {
                     match item {
                         hir::ImplItem::Method(func) => {
@@ -53,7 +53,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                     }
                     None::<()>
                 });
-            });
+            }
         }
         _ => return,
     };

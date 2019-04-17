@@ -112,33 +112,19 @@ impl CrateImplBlocks {
     }
 }
 
-/// Rudimentary check whether an impl exists for a given type and trait; this
-/// will actually be done by chalk.
-pub(crate) fn implements(db: &impl HirDatabase, trait_ref: TraitRef) -> bool {
-    // FIXME use all trait impls in the whole crate graph
-    let krate = trait_ref.trait_.module(db).krate(db);
-    let krate = match krate {
-        Some(krate) => krate,
-        None => return false,
-    };
-    let crate_impl_blocks = db.impls_in_crate(krate);
-    let mut impl_blocks = crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_ref.trait_);
-    impl_blocks.any(|impl_block| &impl_block.target_ty(db) == trait_ref.self_ty())
-}
-
-fn def_crate(db: &impl HirDatabase, cur_krate: Crate, ty: &Ty) -> Option<Crate> {
+fn def_crate(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<Crate> {
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
             TypeCtor::Adt(def_id) => def_id.krate(db),
-            TypeCtor::Bool => lang_item_lookup(db, cur_krate, "bool")?.krate(db),
-            TypeCtor::Char => lang_item_lookup(db, cur_krate, "char")?.krate(db),
+            TypeCtor::Bool => lang_item_lookup(db, cur_crate, "bool")?.krate(db),
+            TypeCtor::Char => lang_item_lookup(db, cur_crate, "char")?.krate(db),
             TypeCtor::Float(UncertainFloatTy::Known(f)) => {
-                lang_item_lookup(db, cur_krate, f.ty_to_string())?.krate(db)
+                lang_item_lookup(db, cur_crate, f.ty_to_string())?.krate(db)
             }
             TypeCtor::Int(UncertainIntTy::Known(i)) => {
-                lang_item_lookup(db, cur_krate, i.ty_to_string())?.krate(db)
+                lang_item_lookup(db, cur_crate, i.ty_to_string())?.krate(db)
             }
-            TypeCtor::Str => lang_item_lookup(db, cur_krate, "str")?.krate(db),
+            TypeCtor::Str => lang_item_lookup(db, cur_crate, "str")?.krate(db),
             _ => None,
         },
         _ => None,
@@ -175,7 +161,7 @@ impl Ty {
         // find in the end takes &self, we still do the autoderef step (just as
         // rustc does an autoderef and then autoref again).
 
-        let krate = resolver.module().map(|t| t.0.krate())?;
+        let krate = resolver.krate()?;
         for derefed_ty in self.autoderef(db) {
             if let Some(result) =
                 derefed_ty.iterate_inherent_methods(db, name, krate, &mut callback)

@@ -462,7 +462,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let remaining_index = remaining_index.unwrap_or(path.segments.len());
         let mut actual_def_ty: Option<Ty> = None;
 
-        let krate = resolver.module().map(|t| t.0.krate());
+        let krate = resolver.krate()?;
         // resolve intermediate segments
         for (i, segment) in path.segments[remaining_index..].iter().enumerate() {
             let ty = match resolved {
@@ -504,38 +504,36 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
             actual_def_ty = Some(ty.clone());
 
-            let item: crate::ModuleDef = krate.and_then(|k| {
-                ty.iterate_impl_items(self.db, k, |item| {
-                    let matching_def: Option<crate::ModuleDef> = match item {
-                        crate::ImplItem::Method(func) => {
-                            let sig = func.signature(self.db);
-                            if segment.name == *sig.name() {
-                                Some(func.into())
-                            } else {
-                                None
-                            }
+            let item: crate::ModuleDef = ty.iterate_impl_items(self.db, krate, |item| {
+                let matching_def: Option<crate::ModuleDef> = match item {
+                    crate::ImplItem::Method(func) => {
+                        let sig = func.signature(self.db);
+                        if segment.name == *sig.name() {
+                            Some(func.into())
+                        } else {
+                            None
                         }
-
-                        crate::ImplItem::Const(konst) => {
-                            let sig = konst.signature(self.db);
-                            if segment.name == *sig.name() {
-                                Some(konst.into())
-                            } else {
-                                None
-                            }
-                        }
-
-                        // FIXME: Resolve associated types
-                        crate::ImplItem::TypeAlias(_) => None,
-                    };
-                    match matching_def {
-                        Some(_) => {
-                            self.write_assoc_resolution(id, item);
-                            return matching_def;
-                        }
-                        None => None,
                     }
-                })
+
+                    crate::ImplItem::Const(konst) => {
+                        let sig = konst.signature(self.db);
+                        if segment.name == *sig.name() {
+                            Some(konst.into())
+                        } else {
+                            None
+                        }
+                    }
+
+                    // FIXME: Resolve associated types
+                    crate::ImplItem::TypeAlias(_) => None,
+                };
+                match matching_def {
+                    Some(_) => {
+                        self.write_assoc_resolution(id, item);
+                        return matching_def;
+                    }
+                    None => None,
+                }
             })?;
 
             resolved = Resolution::Def(item.into());
