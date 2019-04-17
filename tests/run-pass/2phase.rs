@@ -26,6 +26,21 @@ fn two_phase3(b: bool) {
     ));
 }
 
+#[allow(unreachable_code)]
+fn two_phase_raw() {
+    let x: &mut Vec<i32> = &mut vec![];
+    x.push(
+        {
+            // Unfortunately this does not trigger the problem of creating a
+            // raw ponter from a pointer that had a two-phase borrow derived from
+            // it because of the implicit &mut reborrow.
+            let raw = x as *mut _;
+            unsafe { *raw = vec![1]; }
+            return
+        }
+    );
+}
+
 /*
 fn two_phase_overlapping1() {
     let mut x = vec![];
@@ -67,6 +82,7 @@ fn main() {
     two_phase2();
     two_phase3(false);
     two_phase3(true);
+    two_phase_raw();
     with_interior_mutability();
     //FIXME: enable these, or remove them, depending on how https://github.com/rust-lang/rust/issues/56254 gets resolved
     //two_phase_overlapping1();
