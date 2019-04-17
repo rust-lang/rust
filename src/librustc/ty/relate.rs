@@ -596,9 +596,6 @@ pub fn super_relate_consts<'a, 'gcx, 'tcx, R>(
 where
     R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
 {
-    // Only consts whose types are equal should be compared.
-    assert_eq!(a.ty, b.ty);
-
     let tcx = relation.tcx();
 
     // Currently, the values that can be unified are those that
