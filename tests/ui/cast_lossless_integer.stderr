@@ -108,5 +108,11 @@ error: casting u32 to u64 may become silently lossy if types change
 LL |     1u32 as u64;
    |     ^^^^^^^^^^^ help: try: `u64::from(1u32)`
 
-error: aborting due to 18 previous errors
+error: casting u8 to u16 may become silently lossy if types change
+  --> $DIR/cast_lossless_integer.rs:28:5
+   |
+LL |     (1u8 + 1u8) as u16;
+   |     ^^^^^^^^^^^^^^^^^^ help: try: `u16::from(1u8 + 1u8)`
+
+error: aborting due to 19 previous errors
 

@@ -23,6 +23,9 @@ fn main() {
     1i32 as i64;
     1u32 as i64;
     1u32 as u64;
+
+    // Test with an expression wrapped in parens
+    (1u8 + 1u8) as u16;
 }
 
 // The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,
