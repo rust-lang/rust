@@ -290,9 +290,7 @@ fn main() {
     }
 
     // This is required for internal lints.
-    if stage != "0" {
-        cmd.arg("-Zunstable-options");
-    }
+    cmd.arg("-Zunstable-options");
 
     // Force all crates compiled by this compiler to (a) be unstable and (b)
     // allow the `rustc_private` feature to link to other unstable crates

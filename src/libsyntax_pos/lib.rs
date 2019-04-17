@@ -7,7 +7,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![deny(rust_2018_idioms)]
-#![cfg_attr(not(stage0), deny(internal))]
+#![deny(internal)]
 
 #![feature(const_fn)]
 #![feature(crate_visibility_modifier)]
