@@ -1,3 +1,5 @@
+// run-rustfix
+
 fn get_number() -> usize {
     10
 }
@@ -7,7 +9,7 @@ fn get_reference(n: &usize) -> &usize {
 }
 
 #[allow(clippy::many_single_char_names, clippy::double_parens)]
-#[allow(unused_variables)]
+#[allow(unused_variables, unused_parens)]
 #[warn(clippy::deref_addrof)]
 fn main() {
     let a = 10;
@@ -34,20 +36,4 @@ fn main() {
     let b = *&&a;
 
     let b = **&aref;
-
-    //This produces a suggestion of 'let b = *&a;' which
-    //will trigger the 'clippy::deref_addrof' lint again
-    let b = **&&a;
-
-    {
-        let mut x = 10;
-        let y = *&mut x;
-    }
-
-    {
-        //This produces a suggestion of 'let y = *&mut x' which
-        //will trigger the 'clippy::deref_addrof' lint again
-        let mut x = 10;
-        let y = **&mut &mut x;
-    }
 }
