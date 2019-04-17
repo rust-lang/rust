@@ -16,8 +16,8 @@ except ImportError:
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk @phansch',
-    'rls': '@nrc @Xanewok',
-    'rustfmt': '@nrc @topecongiro',
+    'rls': '@Xanewok',
+    'rustfmt': '@topecongiro',
     'book': '@carols10cents @steveklabnik',
     'nomicon': '@frewsxcv @Gankro',
     'reference': '@steveklabnik @Havvy @matthewjasper @ehuss',
