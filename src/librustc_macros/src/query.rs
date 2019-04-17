@@ -55,7 +55,7 @@ enum QueryModifier {
     /// Generate a dep node based on the dependencies of the query
     Anon,
 
-    // Always evaluate the query, ignoring its depdendencies
+    /// Always evaluate the query, ignoring its depdendencies
     EvalAlways,
 }
 

@@ -327,7 +327,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     // Writing this out by hand with 'ignored_span':
     //        pub fn main() {
     //            #![main]
-    //            test::test_main_static(::std::os::args().as_slice(), &[..tests]);
+    //            test::test_main_static(&[..tests]);
     //        }
     let sp = ignored_span(cx, DUMMY_SP);
     let ecx = &cx.ext_cx;
