@@ -234,12 +234,12 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                 },
                 Def::TyParam(def_id) => {
                     if let Some(span) = resolver.definitions.opt_span(def_id) {
-                        err.span_label(span, "type variable from outer function");
+                        err.span_label(span, "type parameter from outer function");
                     }
                 }
                 Def::ConstParam(def_id) => {
                     if let Some(span) = resolver.definitions.opt_span(def_id) {
-                        err.span_label(span, "const variable from outer function");
+                        err.span_label(span, "const parameter from outer function");
                     }
                 }
                 _ => {
