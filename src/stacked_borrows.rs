@@ -5,7 +5,7 @@ use std::fmt;
 use std::num::NonZeroU64;
 
 use rustc::ty::{self, layout::Size};
-use rustc::hir::{Mutability, MutMutable, MutImmutable};
+use rustc::hir::{MutMutable, MutImmutable};
 use rustc::mir::RetagKind;
 
 use crate::{
@@ -96,50 +96,38 @@ pub type MemoryState = Rc<RefCell<GlobalState>>;
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum AccessKind {
     Read,
-    Write { dealloc: bool },
-}
-
-// "Fake" constructors
-impl AccessKind {
-    fn write() -> AccessKind {
-        AccessKind::Write { dealloc: false }
-    }
-
-    fn dealloc() -> AccessKind {
-        AccessKind::Write { dealloc: true }
-    }
+    Write,
 }
 
 impl fmt::Display for AccessKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             AccessKind::Read => write!(f, "read"),
-            AccessKind::Write { dealloc: false } => write!(f, "write"),
-            AccessKind::Write { dealloc: true } => write!(f, "deallocation"),
+            AccessKind::Write => write!(f, "write"),
         }
     }
 }
 
 /// Indicates which kind of reference is being created.
-/// Used by `reborrow` to compute which permissions to grant to the
+/// Used by high-level `reborrow` to compute which permissions to grant to the
 /// new pointer.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum RefKind {
-    /// `&mut`.
-    Mutable,
+    /// `&mut` and `Box`.
+    Unique,
     /// `&` with or without interior mutability.
-    Shared { frozen: bool },
-    /// `*` (raw pointer).
-    Raw,
+    Shared,
+    /// `*mut`/`*const` (raw pointers).
+    Raw { mutable: bool },
 }
 
 impl fmt::Display for RefKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RefKind::Mutable => write!(f, "mutable"),
-            RefKind::Shared { frozen: true } => write!(f, "shared (frozen)"),
-            RefKind::Shared { frozen: false } => write!(f, "shared (mutable)"),
-            RefKind::Raw => write!(f, "raw"),
+            RefKind::Unique => write!(f, "unique"),
+            RefKind::Shared => write!(f, "shared"),
+            RefKind::Raw { mutable: true } => write!(f, "raw (mutable)"),
+            RefKind::Raw { mutable: false } => write!(f, "raw (constant)"),
         }
     }
 }
@@ -216,7 +204,7 @@ impl Permission {
             // SharedReadOnly only permits read access.
             (Permission::SharedReadOnly, AccessKind::Read) =>
                 true,
-            (Permission::SharedReadOnly, AccessKind::Write { .. }) =>
+            (Permission::SharedReadOnly, AccessKind::Write) =>
                 false,
         }
     }
@@ -235,7 +223,7 @@ impl Permission {
             // When `other` is `SharedReadOnly`, that is NEVER compatible with
             // write accesses.
             // This makes sure read-only pointers become invalid on write accesses (ensures F2a).
-            (_, AccessKind::Write { .. }, SharedReadOnly) =>
+            (_, AccessKind::Write, SharedReadOnly) =>
                 false,
             // When `other` is `Unique`, that is compatible with nothing.
             // This makes sure unique pointers become invalid on incompatible accesses (ensures U2).
@@ -246,7 +234,7 @@ impl Permission {
             // (This is particularily important such that when a new mutable ref gets created, it gets
             // pushed into the right item -- this behaves like a write and we assert uniqueness of the
             // pointer from which this comes, *if* it was a unique pointer.)
-            (Unique, AccessKind::Write { .. }, _) =>
+            (Unique, AccessKind::Write, _) =>
                 false,
             // `SharedReadWrite` items can tolerate any other akin items for any kind of access.
             (SharedReadWrite, _, SharedReadWrite) =>
@@ -262,42 +250,7 @@ impl Permission {
     }
 }
 
-impl<'tcx> RefKind {
-    /// Defines which kind of access the "parent" must grant to create this reference.
-    fn access(self) -> AccessKind {
-        match self {
-            RefKind::Mutable | RefKind::Shared { frozen: false } => AccessKind::write(),
-            RefKind::Raw | RefKind::Shared { frozen: true } => AccessKind::Read,
-            // FIXME: Just requiring read-only access for raw means that a raw ptr might not be writeable
-            // even when we think it should be!  Think about this some more.
-        }
-    }
-
-    /// This defines the new permission used when a pointer gets created: For raw pointers, whether these are read-only
-    /// or read-write depends on the permission from which they derive.
-    fn new_perm(self, derived_from: Permission) -> EvalResult<'tcx, Permission> {
-        Ok(match (self, derived_from) {
-            // Do not derive writable safe pointer from read-only pointer!
-            (RefKind::Mutable, Permission::SharedReadOnly) =>
-                return err!(MachineError(format!(
-                    "deriving mutable reference from read-only pointer"
-                ))),
-            (RefKind::Shared { frozen: false }, Permission::SharedReadOnly) =>
-                return err!(MachineError(format!(
-                    "deriving shared reference with interior mutability from read-only pointer"
-                ))),
-            // Safe pointer cases.
-            (RefKind::Mutable, _) => Permission::Unique,
-            (RefKind::Shared { frozen: true }, _) => Permission::SharedReadOnly,
-            (RefKind::Shared { frozen: false }, _) => Permission::SharedReadWrite,
-            // Raw pointer cases.
-            (RefKind::Raw, Permission::SharedReadOnly) => Permission::SharedReadOnly,
-            (RefKind::Raw, _) => Permission::SharedReadWrite,
-        })
-    }
-}
-
-/// Core per-location operations: access, create.
+/// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
     /// Find the item granting the given kind of access to the given tag, and where that item is in the stack.
     fn find_granting(&self, access: AccessKind, tag: Tag) -> Option<(usize, Permission)> {
@@ -326,7 +279,6 @@ impl<'tcx> Stack {
         // The second step is where barriers get implemented: they "protect" the items
         // below them, meaning that if we remove an item and then further up encounter a barrier,
         // we raise an error.
-        // Afterwards we just do some post-processing for deallocation accesses.
 
         // Step 1: Find granting item.
         let (granting_idx, granting_perm) = self.find_granting(access, tag)
@@ -356,7 +308,7 @@ impl<'tcx> Stack {
                         } else {
                             // Aha! This is a bad one, remove it.
                             let item = self.borrows.remove(cur);
-                            trace!("access: popping item {}", item);
+                            trace!("access: removing item {}", item);
                             removed_item = Some(item);
                         }
                     }
@@ -380,25 +332,38 @@ impl<'tcx> Stack {
             }
         }
 
-        // Post-processing.
-        // If we got here, we found a matching item. Congratulations!
-        // However, we are not done yet: If this access is deallocating, we must make sure
-        // there are no active barriers remaining on the stack.
-        if access == AccessKind::dealloc() {
-            for &itm in self.borrows.iter().rev() {
-                match itm {
-                    Item::FnBarrier(call) if global.is_active(call) => {
-                        return err!(MachineError(format!(
-                            "deallocating with active barrier ({})", call
-                        )))
-                    }
-                    _ => {},
+        // Done.
+        return Ok(granting_idx);
+    }
+
+    /// Deallocate a location: Like a write access, but also there must be no
+    /// barriers at all.
+    fn dealloc(
+        &mut self,
+        tag: Tag,
+        global: &GlobalState,
+    ) -> EvalResult<'tcx> {
+        // Step 1: Find granting item.
+        self.find_granting(AccessKind::Write, tag)
+            .ok_or_else(|| InterpError::MachineError(format!(
+                    "no item granting write access for deallocation to tag {} found in borrow stack",
+                    tag,
+            )))?;
+
+        // We must make sure there are no active barriers remaining on the stack.
+        // Also clear the stack, no more accesses are possible.
+        while let Some(itm) = self.borrows.pop() {
+            match itm {
+                Item::FnBarrier(call) if global.is_active(call) => {
+                    return err!(MachineError(format!(
+                        "deallocating with active barrier ({})", call
+                    )))
                 }
+                _ => {},
             }
         }
 
-        // Done.
-        return Ok(granting_idx);
+        Ok(())
     }
 
     /// `reborrow` helper function.
@@ -412,7 +377,7 @@ impl<'tcx> Stack {
             trace!("reborrow: avoiding redundant item {}", item);
             return;
         }
-        trace!("reborrow: pushing item {}", item);
+        trace!("reborrow: adding item {}", item);
         self.borrows.insert(position, item);
     }
 
@@ -427,7 +392,7 @@ impl<'tcx> Stack {
             // that overlap.
             trace!("reborrow: avoiding redundant extra barrier");
         } else {
-            trace!("reborrow: pushing barrier for call {}", call);
+            trace!("reborrow: adding barrier for call {}", call);
             self.borrows.push(itm);
         }
     }
@@ -453,27 +418,22 @@ impl<'tcx> Stack {
         &mut self,
         derived_from: Tag,
         barrier: Option<CallId>,
-        new_kind: RefKind,
+        new_perm: Permission,
         new_tag: Tag,
         global: &GlobalState,
     ) -> EvalResult<'tcx> {
-        // Find the permission "from which we derive".  To this end we first have to decide
-        // if we derive from a permission that grants writes or just reads.
-        let access = new_kind.access();
-        // Now we figure out which item grants our parent (`derived_from`) permission.
-        // We use that to determine (a) where to put the new item, and for raw pointers
-        // (b) whether to given read-only or read-write access.
-        // FIXME: This handling of raw pointers is fragile, very fragile.  What if we do
-        // not get "the right one", like when there are multiple items granting `derived_from`
-        // and we accidentally create a read-only pointer?  This can happen for two-phase borrows
-        // (then there's a `Unique` and a `SharedReadOnly` for the same tag), and for raw pointers
-        // (which currently all are `Untagged`).
-        let (derived_from_idx, derived_from_perm) = self.find_granting(access, derived_from)
+        // Figure out which access `perm` corresponds to.
+        let access = if new_perm.grants(AccessKind::Write) {
+                AccessKind::Write
+            } else {
+                AccessKind::Read
+            };
+        // Now we figure out which item grants our parent (`derived_from`) this kind of access.
+        // We use that to determine where to put the new item.
+        let (derived_from_idx, _) = self.find_granting(access, derived_from)
             .ok_or_else(|| InterpError::MachineError(format!(
-                    "no item to reborrow as {} from tag {} found in borrow stack", new_kind, derived_from,
+                    "no item to reborrow for {:?} from tag {} found in borrow stack", new_perm, derived_from,
             )))?;
-        // With this we can compute the permission for the new pointer.
-        let new_perm = new_kind.new_perm(derived_from_perm).expect("this should never fail");
 
         // We behave very differently for the "unsafe" case of a shared-read-write pointer
         // ("unsafe" because this also applies to shared references with interior mutability).
@@ -530,8 +490,9 @@ impl<'tcx> Stack {
         Ok(())
     }
 }
+// # Stacked Borrows Core End
 
-/// Higher-level per-location operations: deref, access, reborrow.
+/// Higher-level per-location operations: deref, access, dealloc, reborrow.
 impl<'tcx> Stacks {
     /// Creates new stack with initial tag.
     pub(crate) fn new(
@@ -554,16 +515,34 @@ impl<'tcx> Stacks {
         &self,
         ptr: Pointer<Tag>,
         size: Size,
-        kind: AccessKind,
+        access: AccessKind,
     ) -> EvalResult<'tcx> {
-        trace!("{} access of tag {}: {:?}, size {}", kind, ptr.tag, ptr, size.bytes());
+        trace!("{} access of tag {}: {:?}, size {}", access, ptr.tag, ptr, size.bytes());
         // Even reads can have a side-effect, by invalidating other references.
         // This is fundamentally necessary since `&mut` asserts that there
         // are no accesses through other references, not even reads.
         let global = self.global.borrow();
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.access(kind, ptr.tag, &*global)?;
+            stack.access(access, ptr.tag, &*global)?;
+        }
+        Ok(())
+    }
+
+    /// `ptr` is used to deallocate.
+    fn dealloc(
+        &self,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        trace!("deallocation with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        // Even reads can have a side-effect, by invalidating other references.
+        // This is fundamentally necessary since `&mut` asserts that there
+        // are no accesses through other references, not even reads.
+        let global = self.global.borrow();
+        let mut stacks = self.stacks.borrow_mut();
+        for stack in stacks.iter_mut(ptr.offset, size) {
+            stack.dealloc(ptr.tag, &*global)?;
         }
         Ok(())
     }
@@ -575,26 +554,23 @@ impl<'tcx> Stacks {
         ptr: Pointer<Tag>,
         size: Size,
         barrier: Option<CallId>,
-        new_kind: RefKind,
+        new_perm: Permission,
         new_tag: Tag,
     ) -> EvalResult<'tcx> {
         trace!(
-            "{} reborrow for tag {} to {}: {:?}, size {}",
-            new_kind, ptr.tag, new_tag, ptr, size.bytes(),
+            "reborrow tag {} as {:?} {}: {:?}, size {}",
+            ptr.tag, new_perm, new_tag, ptr, size.bytes(),
         );
         let global = self.global.borrow();
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.reborrow(ptr.tag, barrier, new_kind, new_tag, &*global)?;
+            stack.reborrow(ptr.tag, barrier, new_perm, new_tag, &*global)?;
         }
         Ok(())
     }
 }
 
-// # Stacked Borrows Core End
-
-// Glue code to connect with Miri Machine Hooks
-
+/// Glue code to connect with Miri Machine Hooks
 impl Stacks {
     pub fn new_allocation(
         size: Size,
@@ -638,7 +614,7 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, AccessKind::write())
+        alloc.extra.access(ptr, size, AccessKind::Write)
     }
 
     #[inline(always)]
@@ -647,42 +623,48 @@ impl AllocationExtra<Tag> for Stacks {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, AccessKind::dealloc())
+        alloc.extra.dealloc(ptr, size)
     }
 }
 
 impl<'a, 'mir, 'tcx> EvalContextPrivExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
 trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
+    /// High-level `reborrow` operation.  This decides which reference gets which kind
+    /// of permission!
     fn reborrow(
         &mut self,
         place: MPlaceTy<'tcx, Tag>,
         size: Size,
-        mutbl: Option<Mutability>,
+        kind: RefKind,
         new_tag: Tag,
         fn_barrier: bool,
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
         let barrier = if fn_barrier { Some(this.frame().extra) } else { None };
         let ptr = place.ptr.to_ptr()?;
-        trace!("reborrow: creating new reference for {:?} (pointee {}): {:?}",
-            ptr, place.layout.ty, new_tag);
+        trace!("reborrow: creating new reference for {:?} (pointee {}): {}, {:?}",
+            ptr, place.layout.ty, kind, new_tag);
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
         alloc.check_bounds(this, ptr, size)?;
         // Update the stacks.
-        if mutbl == Some(MutImmutable) {
-            // Reference that cares about freezing. We need a frozen-sensitive reborrow.
-            this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
-                let new_kind = RefKind::Shared { frozen };
-                alloc.extra.reborrow(cur_ptr, size, barrier, new_kind, new_tag)
-            })?;
-        } else {
-            // Just treat this as one big chunk.
-            let new_kind = if mutbl == Some(MutMutable) { RefKind::Mutable } else { RefKind::Raw };
-            alloc.extra.reborrow(ptr, size, barrier, new_kind, new_tag)?;
-        }
-        Ok(())
+        let perm = match kind {
+            RefKind::Unique => Permission::Unique,
+            RefKind::Raw { mutable: true } => Permission::SharedReadWrite,
+            RefKind::Shared | RefKind::Raw { mutable: false } => {
+                // Shared references and *const are a whole different kind of game, the
+                // permission is not uniform across the entire range!
+                // We need a frozen-sensitive reborrow.
+                return this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
+                    // We are only ever `SharedReadOnly` inside the frozen bits.
+                    let perm = if frozen { Permission::SharedReadOnly } else { Permission::SharedReadWrite };
+                    alloc.extra.reborrow(cur_ptr, size, barrier, perm, new_tag)
+                });
+            }
+        };
+        debug_assert_ne!(perm, Permission::SharedReadOnly, "SharedReadOnly must be used frozen-sensitive");
+        return alloc.extra.reborrow(ptr, size, barrier, perm, new_tag);
     }
 
     /// Retags an indidual pointer, returning the retagged version.
@@ -690,7 +672,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
     fn retag_reference(
         &mut self,
         val: ImmTy<'tcx, Tag>,
-        mutbl: Option<Mutability>,
+        kind: RefKind,
         fn_barrier: bool,
         two_phase: bool,
     ) -> EvalResult<'tcx, Immediate<Tag>> {
@@ -706,24 +688,24 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         }
 
         // Compute new borrow.
-        let new_tag = match mutbl {
-            Some(_) => Tag::Tagged(this.memory().extra.borrow_mut().new_ptr()),
-            None => Tag::Untagged,
+        let new_tag = match kind {
+            RefKind::Raw { .. } => Tag::Untagged,
+            _ => Tag::Tagged(this.memory().extra.borrow_mut().new_ptr()),
         };
 
         // Reborrow.
-        this.reborrow(place, size, mutbl, new_tag, fn_barrier)?;
+        this.reborrow(place, size, kind, new_tag, fn_barrier)?;
         let new_place = place.replace_tag(new_tag);
         // Handle two-phase borrows.
         if two_phase {
-            assert!(mutbl == Some(MutMutable), "two-phase shared borrows make no sense");
+            assert!(kind == RefKind::Unique, "two-phase shared borrows make no sense");
             // Grant read access *to the parent pointer* with the old tag.  This means the same pointer
             // has multiple items in the stack now!
             // FIXME: Think about this some more, in particular about the interaction with cast-to-raw.
             // Maybe find a better way to express 2-phase, now that we have a "more expressive language"
             // in the stack.
             let old_tag = place.ptr.to_ptr().unwrap().tag;
-            this.reborrow(new_place, size, Some(MutImmutable), old_tag, /* fn_barrier: */ false)?;
+            this.reborrow(new_place, size, RefKind::Shared, old_tag, /* fn_barrier: */ false)?;
         }
 
         // Return new pointer.
@@ -742,15 +724,19 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         // Determine mutability and whether to add a barrier.
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
-        fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(Option<Mutability>, bool)> {
+        fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
             match ty.sty {
                 // References are simple.
-                ty::Ref(_, _, mutbl) => Some((Some(mutbl), kind == RetagKind::FnEntry)),
+                ty::Ref(_, _, MutMutable) =>
+                    Some((RefKind::Unique, kind == RetagKind::FnEntry)),
+                ty::Ref(_, _, MutImmutable) =>
+                    Some((RefKind::Shared, kind == RetagKind::FnEntry)),
                 // Raw pointers need to be enabled.
-                ty::RawPtr(..) if kind == RetagKind::Raw => Some((None, false)),
+                ty::RawPtr(tym) if kind == RetagKind::Raw =>
+                    Some((RefKind::Raw { mutable: tym.mutbl == MutMutable }, false)),
                 // Boxes do not get a barrier: barriers reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
-                ty::Adt(..) if ty.is_box() => Some((Some(MutMutable), false)),
+                ty::Adt(..) if ty.is_box() => Some((RefKind::Unique, false)),
                 _ => None,
             }
         }
