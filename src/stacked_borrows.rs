@@ -263,14 +263,13 @@ impl<'tcx> Stack {
             .rev() // search top-to-bottom
             // Return permission of first item that grants access.
             // We require a permission with the right tag, ensuring U3 and F3.
-            .filter_map(|(idx, item)|
+            .find_map(|(idx, item)|
                 if item.perm.grants(access) && tag == item.tag {
                     Some((idx, item.perm))
                 } else {
                     None
                 }
             )
-            .next()
     }
 
     /// Test if a memory `access` using pointer tagged `tag` is granted.
@@ -286,8 +285,8 @@ impl<'tcx> Stack {
         // Step 1: Find granting item.
         let (granting_idx, granting_perm) = self.find_granting(access, tag)
             .ok_or_else(|| InterpError::MachineError(format!(
-                    "no item granting {} access to tag {} found in borrow stack",
-                    access, tag,
+                "no item granting {} access to tag {} found in borrow stack",
+                access, tag,
             )))?;
 
         // Step 2: Remove everything incompatible above them.  Make sure we do not remove protected
@@ -313,9 +312,9 @@ impl<'tcx> Stack {
                     if let Some(call) = item.protector {
                         if global.is_active(call) {
                             return err!(MachineError(format!(
-                                    "not granting {} access to tag {} because incompatible item {} is protected",
-                                    access, tag, item
-                                )));
+                                "not granting {} access to tag {} because incompatible item {} is protected",
+                                access, tag, item
+                            )));
                         }
                     }
                     trace!("access: removing item {}", item);
@@ -337,8 +336,8 @@ impl<'tcx> Stack {
         // Step 1: Find granting item.
         self.find_granting(AccessKind::Write, tag)
             .ok_or_else(|| InterpError::MachineError(format!(
-                    "no item granting write access for deallocation to tag {} found in borrow stack",
-                    tag,
+                "no item granting write access for deallocation to tag {} found in borrow stack",
+                tag,
             )))?;
 
         // We must make sure there are no protected items remaining on the stack.
@@ -386,10 +385,10 @@ impl<'tcx> Stack {
     ) -> EvalResult<'tcx> {
         // Figure out which access `perm` corresponds to.
         let access = if new.perm.grants(AccessKind::Write) {
-                AccessKind::Write
-            } else {
-                AccessKind::Read
-            };
+            AccessKind::Write
+        } else {
+            AccessKind::Read
+        };
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
         let (derived_from_idx, _) = self.find_granting(access, derived_from)
