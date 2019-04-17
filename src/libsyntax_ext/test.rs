@@ -86,7 +86,7 @@ pub fn expand_test_or_bench(
         cx.path(sp, vec![test_id, cx.ident_of(name)])
     };
 
-    // creates test::$name
+    // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
         cx.path(sp, vec![test_id, cx.ident_of("ShouldPanic"), cx.ident_of(name)])
     };
