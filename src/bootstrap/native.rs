@@ -156,8 +156,10 @@ impl Step for Llvm {
            .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
         if builder.config.llvm_thin_lto && !emscripten {
-            cfg.define("LLVM_ENABLE_LTO", "Thin")
-               .define("LLVM_ENABLE_LLD", "ON");
+            cfg.define("LLVM_ENABLE_LTO", "Thin");
+            if !target.contains("apple") {
+               cfg.define("LLVM_ENABLE_LLD", "ON");
+            }
         }
 
         // By default, LLVM will automatically find OCaml and, if it finds it,
