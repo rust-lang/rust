@@ -114,7 +114,7 @@ pub mod diagnostics {
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
-pub mod diagnostic_list;
+pub mod error_codes;
 
 pub mod util {
     pub mod lev_distance;
