@@ -119,7 +119,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // for a particular item are assigned continuous indices.
 
         let arena = self.arena;
-        self.inferred_terms.extend((start..start+count).map(|i| {
+        self.inferred_terms.extend((start..(start + count)).map(|i| {
             &*arena.alloc(InferredTerm(InferredIndex(i)))
         }));
     }
