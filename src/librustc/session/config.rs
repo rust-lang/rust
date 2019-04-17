@@ -19,6 +19,7 @@ use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
 use syntax::feature_gate::UnstableFeatures;
+use errors::emitter::HumanReadableErrorType;
 
 use errors::{ColorConfig, FatalError, Handler};
 
@@ -219,14 +220,18 @@ impl OutputType {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ErrorOutputType {
-    HumanReadable(ColorConfig),
-    Json(bool),
-    Short(ColorConfig),
+    HumanReadable(HumanReadableErrorType),
+    Json {
+        /// Render the json in a human readable way (with indents and newlines)
+        pretty: bool,
+        /// The way the `rendered` field is created
+        json_rendered: HumanReadableErrorType,
+    },
 }
 
 impl Default for ErrorOutputType {
     fn default() -> ErrorOutputType {
-        ErrorOutputType::HumanReadable(ColorConfig::Auto)
+        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(ColorConfig::Auto))
     }
 }
 
@@ -1372,6 +1377,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "print some statistics about AST and HIR"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata"),
+    json_rendered: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "describes how to render the `rendered` field of json diagnostics"),
     unleash_the_miri_inside_of_you: bool = (false, parse_bool, [TRACKED],
         "take the breaks off const evaluation. NOTE: this is unsound"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
@@ -1825,6 +1832,12 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "How errors and other messages are produced",
             "human|json|short",
         ),
+        opt::opt(
+            "",
+            "json-rendered",
+            "Choose `rendered` field of json diagnostics render scheme",
+            "plain|termcolor",
+        ),
         opt::opt_s(
             "",
             "color",
@@ -1965,6 +1978,17 @@ pub fn build_session_options_and_crate_config(
         )
     }
 
+    let json_rendered = matches.opt_str("json-rendered").and_then(|s| match s.as_str() {
+        "plain" => None,
+        "termcolor" => Some(HumanReadableErrorType::Default(ColorConfig::Always)),
+        _ => early_error(
+            ErrorOutputType::default(),
+            &format!(
+                "argument for --json-rendered must be `plain` or `termcolor` (instead was `{}`)",
+                s,
+            ),
+        ),
+    }).unwrap_or(HumanReadableErrorType::Default(ColorConfig::Never));
 
     // We need the opts_present check because the driver will send us Matches
     // with only stable options if no unstable options are used. Since error-format
@@ -1972,14 +1996,14 @@ pub fn build_session_options_and_crate_config(
     // opt_present because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-            Some("human") => ErrorOutputType::HumanReadable(color),
-            Some("json") => ErrorOutputType::Json(false),
-            Some("pretty-json") => ErrorOutputType::Json(true),
-            Some("short") => ErrorOutputType::Short(color),
-            None => ErrorOutputType::HumanReadable(color),
+            None |
+            Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
+            Some("json") => ErrorOutputType::Json { pretty: false, json_rendered },
+            Some("pretty-json") => ErrorOutputType::Json { pretty: true, json_rendered },
+            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
 
             Some(arg) => early_error(
-                ErrorOutputType::HumanReadable(color),
+                ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
                 &format!(
                     "argument for --error-format must be `human`, `json` or \
                      `short` (instead was `{}`)",
@@ -1988,7 +2012,7 @@ pub fn build_session_options_and_crate_config(
             ),
         }
     } else {
-        ErrorOutputType::HumanReadable(color)
+        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color))
     };
 
     let unparsed_crate_types = matches.opt_strs("crate-type");
@@ -2000,11 +2024,16 @@ pub fn build_session_options_and_crate_config(
 
     let mut debugging_opts = build_debugging_options(matches, error_format);
 
-    if !debugging_opts.unstable_options && error_format == ErrorOutputType::Json(true) {
-        early_error(
-            ErrorOutputType::Json(false),
-            "--error-format=pretty-json is unstable",
-        );
+    if !debugging_opts.unstable_options {
+        if matches.opt_str("json-rendered").is_some() {
+            early_error(error_format, "`--json-rendered=x` is unstable");
+        }
+        if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
+            early_error(
+                ErrorOutputType::Json { pretty: false, json_rendered },
+                "--error-format=pretty-json is unstable",
+            );
+        }
     }
 
     if debugging_opts.pgo_gen.enabled() && !debugging_opts.pgo_use.is_empty() {
@@ -2928,50 +2957,55 @@ mod tests {
         let mut v3 = Options::default();
         let mut v4 = Options::default();
 
+        const JSON: super::ErrorOutputType = super::ErrorOutputType::Json {
+            pretty: false,
+            json_rendered: super::HumanReadableErrorType::Default(super::ColorConfig::Never),
+        };
+
         // Reference
         v1.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
         v1.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
 
         v2.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
         v2.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
 
         v3.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v3.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
 
         v4.search_paths
-            .push(SearchPath::from_cli_opt("all=mno", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("all=mno", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("native=abc", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("native=abc", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("crate=def", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("crate=def", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("dependency=ghi", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("dependency=ghi", JSON));
         v4.search_paths
-            .push(SearchPath::from_cli_opt("framework=jkl", super::ErrorOutputType::Json(false)));
+            .push(SearchPath::from_cli_opt("framework=jkl", JSON));
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());

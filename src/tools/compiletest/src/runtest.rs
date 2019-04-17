@@ -2090,48 +2090,8 @@ impl<'test> TestCx<'test> {
     }
 
     fn fatal_proc_rec(&self, err: &str, proc_res: &ProcRes) -> ! {
-        self.try_print_open_handles();
         self.error(err);
         proc_res.fatal(None);
-    }
-
-    // This function is a poor man's attempt to debug rust-lang/rust#38620, if
-    // that's closed then this should be deleted
-    //
-    // This is a very "opportunistic" debugging attempt, so we ignore all
-    // errors here.
-    fn try_print_open_handles(&self) {
-        if !cfg!(windows) {
-            return;
-        }
-        if self.config.mode != Incremental {
-            return;
-        }
-
-        let filename = match self.testpaths.file.file_stem() {
-            Some(path) => path,
-            None => return,
-        };
-
-        let mut cmd = Command::new("handle.exe");
-        cmd.arg("-a").arg("-u");
-        cmd.arg(filename);
-        cmd.arg("-nobanner");
-        cmd.stdout(Stdio::piped());
-        cmd.stderr(Stdio::piped());
-        let output = match cmd.spawn().and_then(read2_abbreviated) {
-            Ok(output) => output,
-            Err(_) => return,
-        };
-        println!("---------------------------------------------------");
-        println!("ran extra command to debug rust-lang/rust#38620: ");
-        println!("{:?}", cmd);
-        println!("result: {}", output.status);
-        println!("--- stdout ----------------------------------------");
-        println!("{}", String::from_utf8_lossy(&output.stdout));
-        println!("--- stderr ----------------------------------------");
-        println!("{}", String::from_utf8_lossy(&output.stderr));
-        println!("---------------------------------------------------");
     }
 
     // codegen tests (using FileCheck)
@@ -2844,7 +2804,7 @@ impl<'test> TestCx<'test> {
         let stderr = if explicit {
             proc_res.stderr.clone()
         } else {
-            json::extract_rendered(&proc_res.stderr, &proc_res)
+            json::extract_rendered(&proc_res.stderr)
         };
 
         let normalized_stderr = self.normalize_output(&stderr, &self.props.normalize_stderr);
@@ -3464,7 +3424,9 @@ impl ProcRes {
              {}\n\
              ------------------------------------------\n\
              \n",
-            self.status, self.cmdline, self.stdout, self.stderr
+            self.status, self.cmdline,
+            json::extract_rendered(&self.stdout),
+            json::extract_rendered(&self.stderr),
         );
         // Use resume_unwind instead of panic!() to prevent a panic message + backtrace from
         // compiletest, which is unnecessary noise.

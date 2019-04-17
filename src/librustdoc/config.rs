@@ -3,7 +3,7 @@ use std::fmt;
 use std::path::PathBuf;
 
 use errors;
-use errors::emitter::ColorConfig;
+use errors::emitter::{ColorConfig, HumanReadableErrorType};
 use getopts;
 use rustc::lint::Level;
 use rustc::session::early_error;
@@ -254,12 +254,19 @@ impl Options {
                                       (instead was `{}`)", arg));
             }
         };
+        // FIXME: deduplicate this code from the identical code in librustc/session/config.rs
         let error_format = match matches.opt_str("error-format").as_ref().map(|s| &s[..]) {
-            Some("human") => ErrorOutputType::HumanReadable(color),
-            Some("json") => ErrorOutputType::Json(false),
-            Some("pretty-json") => ErrorOutputType::Json(true),
-            Some("short") => ErrorOutputType::Short(color),
-            None => ErrorOutputType::HumanReadable(color),
+            None |
+            Some("human") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Default(color)),
+            Some("json") => ErrorOutputType::Json {
+                pretty: false,
+                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
+            },
+            Some("pretty-json") => ErrorOutputType::Json {
+                pretty: true,
+                json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
+            },
+            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short(color)),
             Some(arg) => {
                 early_error(ErrorOutputType::default(),
                             &format!("argument for --error-format must be `human`, `json` or \

@@ -299,15 +299,18 @@ pub fn new_handler(error_format: ErrorOutputType,
     // stick to the defaults
     let sessopts = Options::default();
     let emitter: Box<dyn Emitter + sync::Send> = match error_format {
-        ErrorOutputType::HumanReadable(color_config) => Box::new(
-            EmitterWriter::stderr(
-                color_config,
-                source_map.map(|cm| cm as _),
-                false,
-                sessopts.debugging_opts.teach,
-            ).ui_testing(ui_testing)
-        ),
-        ErrorOutputType::Json(pretty) => {
+        ErrorOutputType::HumanReadable(kind) => {
+            let (short, color_config) = kind.unzip();
+            Box::new(
+                EmitterWriter::stderr(
+                    color_config,
+                    source_map.map(|cm| cm as _),
+                    short,
+                    sessopts.debugging_opts.teach,
+                ).ui_testing(ui_testing)
+            )
+        },
+        ErrorOutputType::Json { pretty, json_rendered } => {
             let source_map = source_map.unwrap_or_else(
                 || Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping())));
             Box::new(
@@ -315,16 +318,10 @@ pub fn new_handler(error_format: ErrorOutputType,
                     None,
                     source_map,
                     pretty,
+                    json_rendered,
                 ).ui_testing(ui_testing)
             )
         },
-        ErrorOutputType::Short(color_config) => Box::new(
-            EmitterWriter::stderr(
-                color_config,
-                source_map.map(|cm| cm as _),
-                true,
-                false)
-        ),
     };
 
     errors::Handler::with_emitter_and_flags(
