@@ -2933,11 +2933,11 @@ dependencies = [
  "rls-data 0.18.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rls-span 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc-serialize 0.3.24 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_target 0.0.0",
  "rustc_typeck 0.0.0",
+ "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
