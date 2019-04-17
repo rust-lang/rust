@@ -68,35 +68,35 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     }
 }
 
-/// Adjust the span from the block, to the last expression of the
-/// block. This is a better span when returning a mutable reference
-/// with too short a lifetime. The error message will use the span
-/// from the assignment to the return place, which should only point
-/// at the returned value, not the entire function body.
-///
-/// fn return_short_lived<'a>(x: &'a mut i32) -> &'static mut i32 {
-///      x
-///   // ^ error message points at this expression.
-/// }
-fn adjust_span<'tcx>(expr: &mut Expr<'tcx>) -> Span {
-    if let ExprKind::Block { body } = expr.kind {
-        if let Some(ref last_expr) = body.expr {
-            expr.span = last_expr.span;
-        }
-    }
-
-    expr.span
-}
-
 fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     hir_expr: &'tcx hir::Expr,
                                     mut expr: Expr<'tcx>,
                                     adjustment: &Adjustment<'tcx>)
                                     -> Expr<'tcx> {
     let Expr { temp_lifetime, mut span, .. } = expr;
+
+    // Adjust the span from the block, to the last expression of the
+    // block. This is a better span when returning a mutable reference
+    // with too short a lifetime. The error message will use the span
+    // from the assignment to the return place, which should only point
+    // at the returned value, not the entire function body.
+    //
+    // fn return_short_lived<'a>(x: &'a mut i32) -> &'static mut i32 {
+    //      x
+    //   // ^ error message points at this expression.
+    // }
+    let mut adjust_span = |expr: &mut Expr<'tcx>| {
+        if let ExprKind::Block { body } = expr.kind {
+            if let Some(ref last_expr) = body.expr {
+                span = last_expr.span;
+                expr.span = span;
+            }
+        }
+    };
+
     let kind = match adjustment.kind {
         Adjust::Pointer(PointerCast::Unsize) => {
-            span = adjust_span(&mut expr);
+            adjust_span(&mut expr);
             ExprKind::Pointer { cast: PointerCast::Unsize, source: expr.to_ref() }
         }
         Adjust::Pointer(cast) => {
@@ -106,7 +106,7 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::NeverToAny { source: expr.to_ref() }
         }
         Adjust::Deref(None) => {
-            span = adjust_span(&mut expr);
+            adjust_span(&mut expr);
             ExprKind::Deref { arg: expr.to_ref() }
         }
         Adjust::Deref(Some(deref)) => {
