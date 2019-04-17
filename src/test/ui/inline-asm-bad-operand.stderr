@@ -42,4 +42,3 @@ LL |                            "r"("hello e0669"));
 
 error: aborting due to 7 previous errors
 
-For more information about this error, try `rustc --explain E0669`.

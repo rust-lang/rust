@@ -50,4 +50,3 @@ LL | fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0495`.

@@ -12,5 +12,5 @@ LL | impl Self::N for S {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0405, E0411.
+Some errors have detailed explanations: E0405, E0411.
 For more information about an error, try `rustc --explain E0405`.

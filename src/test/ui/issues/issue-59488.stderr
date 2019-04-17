@@ -71,5 +71,5 @@ LL |     foo > bar;
 
 error: aborting due to 7 previous errors
 
-Some errors occurred: E0308, E0369.
+Some errors have detailed explanations: E0308, E0369.
 For more information about an error, try `rustc --explain E0308`.

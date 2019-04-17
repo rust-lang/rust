@@ -63,5 +63,5 @@ LL | impl Sized for &'static [NotSync] {}
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0117, E0322.
+Some errors have detailed explanations: E0117, E0322.
 For more information about an error, try `rustc --explain E0117`.

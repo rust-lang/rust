@@ -142,5 +142,5 @@ LL |         A = u8,
 
 error: aborting due to 15 previous errors
 
-Some errors occurred: E0038, E0223, E0599, E0624.
+Some errors have detailed explanations: E0038, E0223, E0599, E0624.
 For more information about an error, try `rustc --explain E0038`.

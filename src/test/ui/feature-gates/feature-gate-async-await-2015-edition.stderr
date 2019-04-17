@@ -27,5 +27,5 @@ LL | async fn foo() {}
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0422, E0425, E0658, E0670.
+Some errors have detailed explanations: E0422, E0425, E0658, E0670.
 For more information about an error, try `rustc --explain E0422`.

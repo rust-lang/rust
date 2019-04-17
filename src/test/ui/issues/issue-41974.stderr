@@ -25,5 +25,5 @@ LL | impl<T> Drop for T where T: A {
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0119, E0120, E0210.
+Some errors have detailed explanations: E0119, E0120, E0210.
 For more information about an error, try `rustc --explain E0119`.

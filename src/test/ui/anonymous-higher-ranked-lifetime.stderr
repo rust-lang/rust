@@ -308,4 +308,3 @@ LL | fn h2<F>(_: F) where F: for<'t0> Fn(&(), Box<Fn(&())>, &'t0 (), fn(&(), &()
 
 error: aborting due to 22 previous errors
 
-For more information about this error, try `rustc --explain E0631`.

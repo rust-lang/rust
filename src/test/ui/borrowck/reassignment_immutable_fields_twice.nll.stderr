@@ -15,5 +15,4 @@ LL |     x.0 = 1;
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0381, E0594.
-For more information about an error, try `rustc --explain E0381`.
+For more information about this error, try `rustc --explain E0381`.

@@ -77,5 +77,4 @@ LL | fn ty_param_wont_outlive_static<T:Debug>(x: T) -> impl Debug + 'static {
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0310, E0623.
-For more information about an error, try `rustc --explain E0310`.
+For more information about this error, try `rustc --explain E0310`.

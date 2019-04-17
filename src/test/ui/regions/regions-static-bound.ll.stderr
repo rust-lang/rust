@@ -30,5 +30,4 @@ LL |     static_id_indirect(&v);
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0312, E0621.
-For more information about an error, try `rustc --explain E0312`.
+For more information about this error, try `rustc --explain E0621`.

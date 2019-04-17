@@ -27,5 +27,5 @@ LL | fn main(arguments: Vec<String>) {
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0425, E0580.
+Some errors have detailed explanations: E0425, E0580.
 For more information about an error, try `rustc --explain E0425`.

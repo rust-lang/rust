@@ -61,5 +61,5 @@ LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut Dummy>) -> Wrapper<&'b mut Dummy> {
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0308, E0478, E0495.
+Some errors have detailed explanations: E0308, E0478.
 For more information about an error, try `rustc --explain E0308`.

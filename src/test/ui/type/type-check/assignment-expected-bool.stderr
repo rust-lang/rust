@@ -147,5 +147,5 @@ LL |     let _: usize = 0 = 0;
 
 error: aborting due to 13 previous errors
 
-Some errors occurred: E0070, E0308.
+Some errors have detailed explanations: E0070, E0308.
 For more information about an error, try `rustc --explain E0070`.

@@ -52,5 +52,4 @@ LL |     drop(x);
 
 error: aborting due to 7 previous errors
 
-Some errors occurred: E0381, E0594.
-For more information about an error, try `rustc --explain E0381`.
+For more information about this error, try `rustc --explain E0381`.

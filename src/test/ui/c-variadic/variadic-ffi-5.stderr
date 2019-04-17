@@ -69,5 +69,5 @@ LL | }
 
 error: aborting due to 7 previous errors
 
-Some errors occurred: E0597, E0621.
+Some errors have detailed explanations: E0597, E0621.
 For more information about an error, try `rustc --explain E0597`.

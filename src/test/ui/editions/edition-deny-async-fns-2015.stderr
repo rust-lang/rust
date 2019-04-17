@@ -54,5 +54,4 @@ LL |     async fn foo() {}
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0670, E0706.
-For more information about an error, try `rustc --explain E0670`.
+For more information about this error, try `rustc --explain E0670`.

@@ -14,5 +14,5 @@ LL |     if let S { a, b, c, d } = S(1, 2, 3, 4) {
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0026, E0027.
+Some errors have detailed explanations: E0026, E0027.
 For more information about an error, try `rustc --explain E0026`.

@@ -18,5 +18,5 @@ LL | impl<R> External for (Q, R) {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0119, E0210.
+Some errors have detailed explanations: E0119, E0210.
 For more information about an error, try `rustc --explain E0119`.

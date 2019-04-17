@@ -120,5 +120,5 @@ LL | type I = ty!()::AssocTy;
 
 error: aborting due to 19 previous errors
 
-Some errors occurred: E0121, E0223.
+Some errors have detailed explanations: E0121, E0223.
 For more information about an error, try `rustc --explain E0121`.

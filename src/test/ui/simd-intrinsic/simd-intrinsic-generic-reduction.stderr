@@ -72,4 +72,3 @@ LL |     simd_reduce_mul_ordered(z, x);
 
 error: aborting due to 12 previous errors
 
-For more information about this error, try `rustc --explain E0511`.

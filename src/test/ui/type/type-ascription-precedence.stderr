@@ -68,5 +68,5 @@ LL |     (S .. S): S;
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0308, E0600, E0614.
+Some errors have detailed explanations: E0308, E0600, E0614.
 For more information about an error, try `rustc --explain E0308`.

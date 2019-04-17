@@ -28,5 +28,5 @@ LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0019, E0080.
+Some errors have detailed explanations: E0019, E0080.
 For more information about an error, try `rustc --explain E0019`.

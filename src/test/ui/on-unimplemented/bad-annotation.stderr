@@ -72,5 +72,5 @@ LL | #[rustc_on_unimplemented(on(desugared, on(desugared, message="x")), message
 
 error: aborting due to 10 previous errors
 
-Some errors occurred: E0230, E0231, E0232.
+Some errors have detailed explanations: E0230, E0231, E0232.
 For more information about an error, try `rustc --explain E0230`.

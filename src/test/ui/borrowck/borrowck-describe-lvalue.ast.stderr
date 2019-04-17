@@ -242,5 +242,5 @@ LL |                 drop(x);
 
 error: aborting due to 26 previous errors
 
-Some errors occurred: E0382, E0499, E0502, E0503.
+Some errors have detailed explanations: E0382, E0499, E0502, E0503.
 For more information about an error, try `rustc --explain E0382`.

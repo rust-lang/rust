@@ -68,5 +68,5 @@ LL | impl Debug for FooTypeForMethod {
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0046, E0323, E0324, E0325, E0437.
+Some errors have detailed explanations: E0046, E0323, E0324, E0325, E0437.
 For more information about an error, try `rustc --explain E0046`.
