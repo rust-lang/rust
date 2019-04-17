@@ -29,7 +29,7 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
     static RELOC_STATE: AtomicUsize = AtomicUsize::new(UNINIT);
 
     if secondary && RELOC_STATE.load(Ordering::Relaxed) != DONE {
-        panic::panic_msg("Entered secondary TCS before main TCS!")
+        rtabort!("Entered secondary TCS before main TCS!")
     }
 
     // Try to atomically swap UNINIT with BUSY. The returned state can be:
@@ -91,4 +91,10 @@ pub(super) fn exit_with_code(code: isize) -> ! {
         }
     }
     usercalls::exit(code != 0);
+}
+
+#[cfg(not(test))]
+#[no_mangle]
+extern "C" fn abort_reentry() -> ! {
+    usercalls::exit(false)
 }
