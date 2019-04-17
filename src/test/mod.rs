@@ -13,7 +13,7 @@ use crate::config::{Color, Config, EmitMode, FileName, NewlineStyle, ReportTacti
 use crate::formatting::{ReportedErrors, SourceFile};
 use crate::rustfmt_diff::{make_diff, print_diff, DiffLine, Mismatch, ModifiedChunk, OutputWriter};
 use crate::source_file;
-use crate::{FormatReport, Input, Session};
+use crate::{FormatReport, FormatReportFormatterBuilder, Input, Session};
 
 const DIFF_CONTEXT_SIZE: usize = 3;
 const CONFIGURATIONS_FILE_NAME: &str = "Configurations.md";
@@ -299,7 +299,10 @@ fn self_tests() {
     assert_eq!(fails, 0, "{} self tests failed", fails);
 
     for format_report in reports {
-        println!("{}", format_report);
+        println!(
+            "{}",
+            FormatReportFormatterBuilder::new(&format_report).build()
+        );
         warnings += format_report.warning_count();
     }
 
@@ -427,7 +430,7 @@ fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<Format
 
         match idempotent_check(&file_name, &opt_config) {
             Ok(ref report) if report.has_warnings() => {
-                print!("{}", report);
+                print!("{}", FormatReportFormatterBuilder::new(&report).build());
                 fails += 1;
             }
             Ok(report) => reports.push(report),

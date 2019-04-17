@@ -11,7 +11,7 @@ use env_logger;
 use getopts::{Matches, Options};
 use rustfmt_nightly as rustfmt;
 
-use crate::rustfmt::{load_config, CliOptions, Input, Session};
+use crate::rustfmt::{load_config, CliOptions, FormatReportFormatterBuilder, Input, Session};
 
 fn prune_files(files: Vec<&str>) -> Vec<&str> {
     let prefixes: Vec<_> = files
@@ -67,7 +67,7 @@ fn fmt_files(files: &[&str]) -> i32 {
     for file in files {
         let report = session.format(Input::File(PathBuf::from(file))).unwrap();
         if report.has_warnings() {
-            eprintln!("{}", report);
+            eprintln!("{}", FormatReportFormatterBuilder::new(&report).build());
         }
         if !session.has_no_errors() {
             exit_code = 1;

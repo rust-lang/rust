@@ -34,6 +34,8 @@ pub use crate::config::{
     Range, Verbosity,
 };
 
+pub use crate::format_report_formatter::{FormatReportFormatter, FormatReportFormatterBuilder};
+
 pub use crate::rustfmt_diff::{ModifiedChunk, ModifiedLines};
 
 #[macro_use]
@@ -46,6 +48,7 @@ mod closures;
 mod comment;
 pub(crate) mod config;
 mod expr;
+mod format_report_formatter;
 pub(crate) mod formatting;
 mod ignore_path;
 mod imports;
@@ -162,7 +165,7 @@ impl FormattedSnippet {
 
 /// Reports on any issues that occurred during a run of Rustfmt.
 ///
-/// Can be reported to the user via its `Display` implementation of `print_fancy`.
+/// Can be reported to the user using the `Display` impl on [`FormatReportFormatter`].
 #[derive(Clone)]
 pub struct FormatReport {
     // Maps stringified file paths to their associated formatting errors.
@@ -245,126 +248,27 @@ impl FormatReport {
 
     /// Print the report to a terminal using colours and potentially other
     /// fancy output.
+    #[deprecated(note = "Use FormatReportFormatter with colors enabled instead")]
     pub fn fancy_print(
         &self,
         mut t: Box<dyn term::Terminal<Output = io::Stderr>>,
     ) -> Result<(), term::Error> {
-        for (file, errors) in &self.internal.borrow().0 {
-            for error in errors {
-                let prefix_space_len = error.line.to_string().len();
-                let prefix_spaces = " ".repeat(1 + prefix_space_len);
-
-                // First line: the overview of error
-                t.fg(term::color::RED)?;
-                t.attr(term::Attr::Bold)?;
-                write!(t, "{} ", error.msg_prefix())?;
-                t.reset()?;
-                t.attr(term::Attr::Bold)?;
-                writeln!(t, "{}", error.kind)?;
-
-                // Second line: file info
-                write!(t, "{}--> ", &prefix_spaces[1..])?;
-                t.reset()?;
-                writeln!(t, "{}:{}", file, error.line)?;
-
-                // Third to fifth lines: show the line which triggered error, if available.
-                if !error.line_buffer.is_empty() {
-                    let (space_len, target_len) = error.format_len();
-                    t.attr(term::Attr::Bold)?;
-                    write!(t, "{}|\n{} | ", prefix_spaces, error.line)?;
-                    t.reset()?;
-                    writeln!(t, "{}", error.line_buffer)?;
-                    t.attr(term::Attr::Bold)?;
-                    write!(t, "{}| ", prefix_spaces)?;
-                    t.fg(term::color::RED)?;
-                    writeln!(t, "{}", FormatReport::target_str(space_len, target_len))?;
-                    t.reset()?;
-                }
-
-                // The last line: show note if available.
-                let msg_suffix = error.msg_suffix();
-                if !msg_suffix.is_empty() {
-                    t.attr(term::Attr::Bold)?;
-                    write!(t, "{}= note: ", prefix_spaces)?;
-                    t.reset()?;
-                    writeln!(t, "{}", error.msg_suffix())?;
-                } else {
-                    writeln!(t)?;
-                }
-                t.reset()?;
-            }
-        }
-
-        if !self.internal.borrow().0.is_empty() {
-            t.attr(term::Attr::Bold)?;
-            write!(t, "warning: ")?;
-            t.reset()?;
-            write!(
-                t,
-                "rustfmt may have failed to format. See previous {} errors.\n\n",
-                self.warning_count(),
-            )?;
-        }
-
+        writeln!(
+            t,
+            "{}",
+            FormatReportFormatterBuilder::new(&self)
+                .enable_colors(true)
+                .build()
+        )?;
         Ok(())
-    }
-
-    fn target_str(space_len: usize, target_len: usize) -> String {
-        let empty_line = " ".repeat(space_len);
-        let overflowed = "^".repeat(target_len);
-        empty_line + &overflowed
     }
 }
 
+#[deprecated(note = "Use FormatReportFormatter instead")]
 impl fmt::Display for FormatReport {
     // Prints all the formatting errors.
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        for (file, errors) in &self.internal.borrow().0 {
-            for error in errors {
-                let prefix_space_len = error.line.to_string().len();
-                let prefix_spaces = " ".repeat(1 + prefix_space_len);
-
-                let error_line_buffer = if error.line_buffer.is_empty() {
-                    String::from(" ")
-                } else {
-                    let (space_len, target_len) = error.format_len();
-                    format!(
-                        "{}|\n{} | {}\n{}| {}",
-                        prefix_spaces,
-                        error.line,
-                        error.line_buffer,
-                        prefix_spaces,
-                        FormatReport::target_str(space_len, target_len)
-                    )
-                };
-
-                let error_info = format!("{} {}", error.msg_prefix(), error.kind);
-                let file_info = format!("{}--> {}:{}", &prefix_spaces[1..], file, error.line);
-                let msg_suffix = error.msg_suffix();
-                let note = if msg_suffix.is_empty() {
-                    String::new()
-                } else {
-                    format!("{}note= ", prefix_spaces)
-                };
-
-                writeln!(
-                    fmt,
-                    "{}\n{}\n{}\n{}{}",
-                    error_info,
-                    file_info,
-                    error_line_buffer,
-                    note,
-                    error.msg_suffix()
-                )?;
-            }
-        }
-        if !self.internal.borrow().0.is_empty() {
-            writeln!(
-                fmt,
-                "warning: rustfmt may have failed to format. See previous {} errors.",
-                self.warning_count(),
-            )?;
-        }
+        write!(fmt, "{}", FormatReportFormatterBuilder::new(&self).build())?;
         Ok(())
     }
 }

@@ -275,18 +275,14 @@ impl FormattingError {
         }
     }
 
-    pub(crate) fn msg_prefix(&self) -> &str {
+    pub(crate) fn is_internal(&self) -> bool {
         match self.kind {
             ErrorKind::LineOverflow(..)
             | ErrorKind::TrailingWhitespace
             | ErrorKind::IoError(_)
             | ErrorKind::ParseError
-            | ErrorKind::LostComment => "internal error:",
-            ErrorKind::LicenseCheck
-            | ErrorKind::BadAttr
-            | ErrorKind::InvalidGlobPattern(..)
-            | ErrorKind::VersionMismatch => "error:",
-            ErrorKind::BadIssue(_) | ErrorKind::DeprecatedAttr => "warning:",
+            | ErrorKind::LostComment => true,
+            _ => false,
         }
     }
 
