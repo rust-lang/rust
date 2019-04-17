@@ -1,5 +1,5 @@
-// ignore-macos
-// ignore-windows
+// ignore-macos: Uses Linux-only APIs
+// ignore-windows: Uses Linux-only APIs
 
 #![feature(rustc_private)]
 extern crate libc;

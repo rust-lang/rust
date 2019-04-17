@@ -1,6 +1,8 @@
+#![allow(unused_imports)] // FIXME for macOS
+
 extern crate rand;
 
-use rand::{Rng, SeedableRng};
+use rand::{SeedableRng, FromEntropy, Rng, rngs::SmallRng};
 
 #[test]
 fn simple() {
@@ -10,11 +12,26 @@ fn simple() {
 // Having more than 1 test does seem to make a difference
 // (i.e., this calls ptr::swap which having just one test does not).
 #[test]
-fn rng() {
+fn fixed_rng() {
     let mut rng = rand::rngs::StdRng::seed_from_u64(0xdeadcafe);
     let x: u32 = rng.gen();
     let y: u32 = rng.gen();
     assert_ne!(x, y);
+}
+
+#[test]
+fn entropy_rng() {
+    #[cfg(not(target_os="macos"))] // FIXME entropy does not work on macOS
+    // (Not disabling the entire test as that would change the output.)
+    {
+        // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
+        let mut rng = SmallRng::from_entropy();
+        let _val = rng.gen::<i32>();
+
+        // Also try per-thread RNG.
+        let mut rng = rand::thread_rng();
+        let _val = rng.gen::<i32>();
+    }
 }
 
 // A test that won't work on miri
