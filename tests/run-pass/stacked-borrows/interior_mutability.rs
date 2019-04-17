@@ -1,8 +1,12 @@
+#![feature(maybe_uninit, maybe_uninit_ref)]
+use std::mem::MaybeUninit;
+use std::cell::Cell;
 use std::cell::RefCell;
 
 fn main() {
     aliasing_mut_and_shr();
     aliasing_frz_and_shr();
+    into_interior_mutability();
 }
 
 fn aliasing_mut_and_shr() {
@@ -41,4 +45,15 @@ fn aliasing_frz_and_shr() {
     let bshr = rc.borrow();
     inner(&rc, &*bshr);
     assert_eq!(*rc.borrow(), 23);
+}
+
+// Getting a pointer into a union with interior mutability used to be tricky
+// business (https://github.com/rust-lang/miri/issues/615), but it should work
+// now.
+fn into_interior_mutability() {
+    let mut x: MaybeUninit<(Cell<u32>, u32)> = MaybeUninit::uninit();
+    x.as_ptr();
+    x.write((Cell::new(0), 1));
+    let ptr = unsafe { x.get_ref() };
+    assert_eq!(ptr.1, 1);
 }
