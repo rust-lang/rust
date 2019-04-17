@@ -11,6 +11,7 @@ fn main() {
     drop_after_sharing();
     direct_mut_to_const_raw();
     two_raw();
+    shr_and_raw();
 }
 
 // Deref a raw ptr to access a field of a large struct, where the field
@@ -136,3 +137,15 @@ fn two_raw() { unsafe {
     *y1 += 2;
     *y2 += 1;
 } }
+
+// Make sure that creating a *mut does not invalidate existing shared references.
+fn shr_and_raw() { /* unsafe {
+    use std::mem;
+    // FIXME: This is currently disabled because "as *mut _" incurs a reborrow.
+    let x = &mut 0;
+    let y1: &i32 = mem::transmute(&*x); // launder lifetimes
+    let y2 = x as *mut _;
+    let _val = *y1;
+    *y2 += 1;
+    // TODO: Once this works, add compile-fail test that tries to read from y1 again.
+} */ }
