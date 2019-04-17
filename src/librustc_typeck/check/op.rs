@@ -430,6 +430,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         (lhs_ty, rhs_ty, return_ty)
     }
 
+    /// If one of the types is an uncalled function and calling it would yield the other type,
+    /// suggest calling the function. Returns wether a suggestion was given.
     fn add_type_neq_err_label(
         &self,
         err: &mut errors::DiagnosticBuilder<'_>,
@@ -438,7 +440,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         other_ty: Ty<'tcx>,
         op: hir::BinOp,
         is_assign: IsAssign,
-    ) -> bool {
+    ) -> bool /* did we suggest to call a function because of missing parenthesis? */ {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.sty {
             let source_map = self.tcx.sess.source_map();
