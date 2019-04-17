@@ -42,6 +42,10 @@ impl<'a> Parser<'a> {
         self.parse(ra_parser::parse_pat)
     }
 
+    pub fn parse_stmt(self) -> Option<tt::TokenTree> {
+        self.parse(|src, sink| ra_parser::parse_stmt(src, sink, false))
+    }
+
     fn parse<F>(self, f: F) -> Option<tt::TokenTree>
     where
         F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),

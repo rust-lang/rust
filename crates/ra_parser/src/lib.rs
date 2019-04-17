@@ -88,6 +88,11 @@ pub fn parse_pat(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::pattern);
 }
 
+/// Parse given tokens into the given sink as a statement
+pub fn parse_stmt(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink, with_semi: bool) {
+    parse_from_tokens(token_source, tree_sink, |p| grammar::stmt(p, with_semi));
+}
+
 /// A parsing function for a specific braced-block.
 pub struct Reparser(fn(&mut parser::Parser));
 

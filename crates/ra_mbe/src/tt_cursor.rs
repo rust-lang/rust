@@ -99,6 +99,11 @@ impl<'a> TtCursor<'a> {
         parser.parse_pat()
     }
 
+    pub(crate) fn eat_stmt(&mut self) -> Option<tt::TokenTree> {
+        let parser = Parser::new(&mut self.pos, self.subtree);
+        parser.parse_stmt()
+    }
+
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {
         if self.at_char(char) {
             self.bump();
