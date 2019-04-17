@@ -134,10 +134,7 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
                 ConstVariableValue::Known { value: value1 },
                 ConstVariableValue::Known { value: value2 }
             ) => {
-                match <&'tcx ty::Const<'tcx>>::unify_values(&value1, &value2) {
-                    Ok(value) => Ok(ConstVariableValue::Known { value }),
-                    Err(err) => Err(err),
-                }
+                bug!("equating two const variables, both of which have known values")
             }
 
             // If one side is known, prefer that one.
