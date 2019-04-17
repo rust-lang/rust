@@ -109,6 +109,7 @@ fn add_missing_impl_members_inner(
         let replaced_text_range = TextUnit::of_str(&func_bodies);
 
         edit.replace(changed_range, func_bodies);
+        // FIXME: place the cursor on the first unimplemented?
         edit.set_cursor(
             changed_range.start() + replaced_text_range - TextUnit::of_str(&trailing_whitespace),
         );
@@ -138,7 +139,7 @@ fn build_func_body(def: &ast::FnDef) -> String {
 
     for child in def.syntax().children_with_tokens() {
         match (child.prev_sibling_or_token().map(|c| c.kind()), child.kind()) {
-            (_, SyntaxKind::SEMI) => buf.push_str(" { unimplemented!() }"),
+            (_, SyntaxKind::SEMI) => buf.push_str(" {\n    unimplemented!()\n}"),
             (_, SyntaxKind::ATTR) | (_, SyntaxKind::COMMENT) => {}
             (Some(SyntaxKind::ATTR), SyntaxKind::WHITESPACE)
             | (Some(SyntaxKind::COMMENT), SyntaxKind::WHITESPACE) => {}
@@ -182,8 +183,12 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    fn foo(&self) { unimplemented!() }
-    fn baz(&self) { unimplemented!() }<|>
+    fn foo(&self) {
+        unimplemented!()
+    }
+    fn baz(&self) {
+        unimplemented!()
+    }<|>
 }",
         );
     }
@@ -216,7 +221,9 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    fn foo(&self) { unimplemented!() }<|>
+    fn foo(&self) {
+        unimplemented!()
+    }<|>
 }",
         );
     }
@@ -233,7 +240,9 @@ impl Foo for S { <|> }",
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    fn foo(&self) { unimplemented!() }<|>
+    fn foo(&self) {
+        unimplemented!()
+    }<|>
 }",
         );
     }
@@ -250,7 +259,9 @@ impl Foo for S {}<|>",
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    fn foo(&self) { unimplemented!() }<|>
+    fn foo(&self) {
+        unimplemented!()
+    }<|>
 }",
         )
     }
@@ -301,7 +312,9 @@ struct S;
 
 mod my_mod {
     impl crate::Foo for S {
-        fn valid(some: u32) -> bool { unimplemented!() }<|>
+        fn valid(some: u32) -> bool {
+            unimplemented!()
+        }<|>
     }
 }",
         )
@@ -329,7 +342,9 @@ trait Foo {
 }
 struct S;
 impl Foo for S {
-    fn foo(&self) { unimplemented!() }<|>
+    fn foo(&self) {
+        unimplemented!()
+    }<|>
 }"#,
         )
     }
