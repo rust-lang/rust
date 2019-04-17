@@ -11,10 +11,9 @@ pub enum Foo {
     Bar = 18_446_745_000_000_000_123,
 }
 
-// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "None",{{.*}}extraData:{{.*}}
+// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "None",{{.*}}extraData:18446745000000000124
 pub fn foo() -> Option<Foo> {
     None
 }
 
-// CHECK: declare void @llvm.dbg.value
 fn main() {}
