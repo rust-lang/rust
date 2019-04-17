@@ -91,6 +91,7 @@ mod tests {
     #[cfg(target_arch = "powerpc64")]
     use crate::core_arch::arch::powerpc64::*;
 
+    use super::mem;
     use crate::core_arch::simd::*;
     use stdsimd_test::simd_test;
 
@@ -98,13 +99,13 @@ mod tests {
         {$name:ident, $shorttype:ident, $longtype:ident, [$($a:expr),+], [$($b:expr),+], [$($c:expr),+], [$($d:expr),+]} => {
             #[simd_test(enable = "vsx")]
             unsafe fn $name() {
-                let a: $longtype = ::mem::transmute($shorttype::new($($a),+, $($b),+));
-                let b = ::mem::transmute($shorttype::new($($c),+, $($d),+));
+                let a: $longtype = mem::transmute($shorttype::new($($a),+, $($b),+));
+                let b = mem::transmute($shorttype::new($($c),+, $($d),+));
 
-                assert_eq!($shorttype::new($($a),+, $($c),+), ::mem::transmute(vec_xxpermdi(a, b, 0)));
-                assert_eq!($shorttype::new($($b),+, $($c),+), ::mem::transmute(vec_xxpermdi(a, b, 1)));
-                assert_eq!($shorttype::new($($a),+, $($d),+), ::mem::transmute(vec_xxpermdi(a, b, 2)));
-                assert_eq!($shorttype::new($($b),+, $($d),+), ::mem::transmute(vec_xxpermdi(a, b, 3)));
+                assert_eq!($shorttype::new($($a),+, $($c),+), mem::transmute(vec_xxpermdi(a, b, 0)));
+                assert_eq!($shorttype::new($($b),+, $($c),+), mem::transmute(vec_xxpermdi(a, b, 1)));
+                assert_eq!($shorttype::new($($a),+, $($d),+), mem::transmute(vec_xxpermdi(a, b, 2)));
+                assert_eq!($shorttype::new($($b),+, $($d),+), mem::transmute(vec_xxpermdi(a, b, 3)));
             }
         }
     }

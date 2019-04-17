@@ -147,11 +147,10 @@ pub unsafe fn _mm_cvtsi64x_sd(a: __m128d, b: i64) -> __m128d {
 
 #[cfg(test)]
 mod tests {
-    use std::{f64, i64};
-
-    use stdsimd_test::simd_test;
-
     use crate::core_arch::arch::x86_64::*;
+    use std::boxed;
+    use std::{f64, i64};
+    use stdsimd_test::simd_test;
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_cvtsd_si64() {
@@ -185,7 +184,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_stream_si64() {
         let a: i64 = 7;
-        let mut mem = ::std::boxed::Box::<i64>::new(-1);
+        let mut mem = boxed::Box::<i64>::new(-1);
         _mm_stream_si64(&mut *mem as *mut i64, a);
         assert_eq!(a, *mem);
     }

@@ -169,9 +169,9 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vaeseq_u8() {
-        let data = ::mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
-        let key = ::mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
-        let r: u8x16 = ::mem::transmute(vaeseq_u8(data, key));
+        let data = mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
+        let key = mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
+        let r: u8x16 = mem::transmute(vaeseq_u8(data, key));
         assert_eq!(
             r,
             u8x16::new(
@@ -182,9 +182,9 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vaesdq_u8() {
-        let data = ::mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
-        let key = ::mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
-        let r: u8x16 = ::mem::transmute(vaesdq_u8(data, key));
+        let data = mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
+        let key = mem::transmute(u8x16::new(0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7));
+        let r: u8x16 = mem::transmute(vaesdq_u8(data, key));
         assert_eq!(
             r,
             u8x16::new(9, 213, 9, 251, 9, 213, 9, 56, 9, 213, 9, 251, 9, 213, 9, 56)
@@ -193,8 +193,8 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vaesmcq_u8() {
-        let data = ::mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
-        let r: u8x16 = ::mem::transmute(vaesmcq_u8(data));
+        let data = mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
+        let r: u8x16 = mem::transmute(vaesmcq_u8(data));
         assert_eq!(
             r,
             u8x16::new(3, 4, 9, 10, 15, 8, 21, 30, 3, 4, 9, 10, 15, 8, 21, 30)
@@ -203,8 +203,8 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vaesimcq_u8() {
-        let data = ::mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
-        let r: u8x16 = ::mem::transmute(vaesimcq_u8(data));
+        let data = mem::transmute(u8x16::new(1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8));
+        let r: u8x16 = mem::transmute(vaesimcq_u8(data));
         assert_eq!(
             r,
             u8x16::new(43, 60, 33, 50, 103, 80, 125, 70, 43, 60, 33, 50, 103, 80, 125, 70)
@@ -219,19 +219,19 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1su0q_u32() {
-        let r: u32x4 = ::mem::transmute(vsha1su0q_u32(
-            ::mem::transmute(u32x4::new(0x1234_u32, 0x5678_u32, 0x9abc_u32, 0xdef0_u32)),
-            ::mem::transmute(u32x4::new(0x1234_u32, 0x5678_u32, 0x9abc_u32, 0xdef0_u32)),
-            ::mem::transmute(u32x4::new(0x1234_u32, 0x5678_u32, 0x9abc_u32, 0xdef0_u32)),
+        let r: u32x4 = mem::transmute(vsha1su0q_u32(
+            mem::transmute(u32x4::new(0x1234_u32, 0x5678_u32, 0x9abc_u32, 0xdef0_u32)),
+            mem::transmute(u32x4::new(0x1234_u32, 0x5678_u32, 0x9abc_u32, 0xdef0_u32)),
+            mem::transmute(u32x4::new(0x1234_u32, 0x5678_u32, 0x9abc_u32, 0xdef0_u32)),
         ));
         assert_eq!(r, u32x4::new(0x9abc, 0xdef0, 0x1234, 0x5678));
     }
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1su1q_u32() {
-        let r: u32x4 = ::mem::transmute(vsha1su1q_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha1su1q_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,
@@ -241,10 +241,10 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1cq_u32() {
-        let r: u32x4 = ::mem::transmute(vsha1cq_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha1cq_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
             0x1234,
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,
@@ -254,10 +254,10 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1pq_u32() {
-        let r: u32x4 = ::mem::transmute(vsha1pq_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha1pq_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
             0x1234,
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,
@@ -267,10 +267,10 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha1mq_u32() {
-        let r: u32x4 = ::mem::transmute(vsha1mq_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha1mq_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
             0x1234,
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,
@@ -280,10 +280,10 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256hq_u32() {
-        let r: u32x4 = ::mem::transmute(vsha256hq_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha256hq_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,
@@ -293,10 +293,10 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256h2q_u32() {
-        let r: u32x4 = ::mem::transmute(vsha256h2q_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha256h2q_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,
@@ -306,9 +306,9 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256su0q_u32() {
-        let r: u32x4 = ::mem::transmute(vsha256su0q_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha256su0q_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,
@@ -318,10 +318,10 @@ mod tests {
 
     #[simd_test(enable = "crypto")]
     unsafe fn test_vsha256su1q_u32() {
-        let r: u32x4 = ::mem::transmute(vsha256su1q_u32(
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
-            ::mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+        let r: u32x4 = mem::transmute(vsha256su1q_u32(
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
+            mem::transmute(u32x4::new(0x1234, 0x5678, 0x9abc, 0xdef0)),
         ));
         assert_eq!(
             r,

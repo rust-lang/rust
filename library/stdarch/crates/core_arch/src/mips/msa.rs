@@ -8,6 +8,8 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+use crate::mem;
+
 #[macro_use]
 mod macros;
 
@@ -1142,7 +1144,7 @@ extern "C" {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.b))]
 pub unsafe fn __msa_add_a_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_add_a_b(a, ::mem::transmute(b))
+    msa_add_a_b(a, mem::transmute(b))
 }
 
 /// Vector Add Absolute Values
@@ -1155,7 +1157,7 @@ pub unsafe fn __msa_add_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.h))]
 pub unsafe fn __msa_add_a_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_add_a_h(a, ::mem::transmute(b))
+    msa_add_a_h(a, mem::transmute(b))
 }
 
 /// Vector Add Absolute Values
@@ -1168,7 +1170,7 @@ pub unsafe fn __msa_add_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.w))]
 pub unsafe fn __msa_add_a_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_add_a_w(a, ::mem::transmute(b))
+    msa_add_a_w(a, mem::transmute(b))
 }
 
 /// Vector Add Absolute Values
@@ -1181,7 +1183,7 @@ pub unsafe fn __msa_add_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(add_a.d))]
 pub unsafe fn __msa_add_a_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_add_a_d(a, ::mem::transmute(b))
+    msa_add_a_d(a, mem::transmute(b))
 }
 
 /// Signed Saturated Vector Saturated Add of Absolute Values
@@ -1194,7 +1196,7 @@ pub unsafe fn __msa_add_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.b))]
 pub unsafe fn __msa_adds_a_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_adds_a_b(a, ::mem::transmute(b))
+    msa_adds_a_b(a, mem::transmute(b))
 }
 
 /// Vector Saturated Add of Absolute Values
@@ -1207,7 +1209,7 @@ pub unsafe fn __msa_adds_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.h))]
 pub unsafe fn __msa_adds_a_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_adds_a_h(a, ::mem::transmute(b))
+    msa_adds_a_h(a, mem::transmute(b))
 }
 
 /// Vector Saturated Add of Absolute Values
@@ -1220,7 +1222,7 @@ pub unsafe fn __msa_adds_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.w))]
 pub unsafe fn __msa_adds_a_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_adds_a_w(a, ::mem::transmute(b))
+    msa_adds_a_w(a, mem::transmute(b))
 }
 
 /// Vector Saturated Add of Absolute Values
@@ -1233,7 +1235,7 @@ pub unsafe fn __msa_adds_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_a.d))]
 pub unsafe fn __msa_adds_a_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_adds_a_d(a, ::mem::transmute(b))
+    msa_adds_a_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Add of Signed Values
@@ -1247,7 +1249,7 @@ pub unsafe fn __msa_adds_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.b))]
 pub unsafe fn __msa_adds_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_adds_s_b(a, ::mem::transmute(b))
+    msa_adds_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Add of Signed Values
@@ -1261,7 +1263,7 @@ pub unsafe fn __msa_adds_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.h))]
 pub unsafe fn __msa_adds_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_adds_s_h(a, ::mem::transmute(b))
+    msa_adds_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Add of Signed Values
@@ -1275,7 +1277,7 @@ pub unsafe fn __msa_adds_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.w))]
 pub unsafe fn __msa_adds_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_adds_s_w(a, ::mem::transmute(b))
+    msa_adds_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Add of Signed Values
@@ -1289,7 +1291,7 @@ pub unsafe fn __msa_adds_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_s.d))]
 pub unsafe fn __msa_adds_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_adds_s_d(a, ::mem::transmute(b))
+    msa_adds_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Add of Unsigned Values
@@ -1303,7 +1305,7 @@ pub unsafe fn __msa_adds_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.b))]
 pub unsafe fn __msa_adds_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_adds_u_b(a, ::mem::transmute(b))
+    msa_adds_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Add of Unsigned Values
@@ -1317,7 +1319,7 @@ pub unsafe fn __msa_adds_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.h))]
 pub unsafe fn __msa_adds_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_adds_u_h(a, ::mem::transmute(b))
+    msa_adds_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Add of Unsigned Values
@@ -1331,7 +1333,7 @@ pub unsafe fn __msa_adds_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.w))]
 pub unsafe fn __msa_adds_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_adds_u_w(a, ::mem::transmute(b))
+    msa_adds_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Add of Unsigned Values
@@ -1345,7 +1347,7 @@ pub unsafe fn __msa_adds_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(adds_u.d))]
 pub unsafe fn __msa_adds_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_adds_u_d(a, ::mem::transmute(b))
+    msa_adds_u_d(a, mem::transmute(b))
 }
 
 /// Vector Add
@@ -1358,7 +1360,7 @@ pub unsafe fn __msa_adds_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.b))]
 pub unsafe fn __msa_addv_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_addv_b(a, ::mem::transmute(b))
+    msa_addv_b(a, mem::transmute(b))
 }
 
 /// Vector Add
@@ -1371,7 +1373,7 @@ pub unsafe fn __msa_addv_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.h))]
 pub unsafe fn __msa_addv_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_addv_h(a, ::mem::transmute(b))
+    msa_addv_h(a, mem::transmute(b))
 }
 
 /// Vector Add
@@ -1384,7 +1386,7 @@ pub unsafe fn __msa_addv_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.w))]
 pub unsafe fn __msa_addv_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_addv_w(a, ::mem::transmute(b))
+    msa_addv_w(a, mem::transmute(b))
 }
 
 /// Vector Add
@@ -1397,7 +1399,7 @@ pub unsafe fn __msa_addv_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(addv.d))]
 pub unsafe fn __msa_addv_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_addv_d(a, ::mem::transmute(b))
+    msa_addv_d(a, mem::transmute(b))
 }
 
 /// Immediate Add
@@ -1487,7 +1489,7 @@ pub unsafe fn __msa_addvi_d(a: v2i64, imm5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(and.v))]
 pub unsafe fn __msa_and_v(a: v16u8, b: v16u8) -> v16u8 {
-    msa_and_v(a, ::mem::transmute(b))
+    msa_and_v(a, mem::transmute(b))
 }
 
 /// Immediate Logical And
@@ -1519,7 +1521,7 @@ pub unsafe fn __msa_andi_b(a: v16u8, imm8: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.b))]
 pub unsafe fn __msa_asub_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_asub_s_b(a, ::mem::transmute(b))
+    msa_asub_s_b(a, mem::transmute(b))
 }
 
 /// Vector Absolute Values of Signed Subtract
@@ -1532,7 +1534,7 @@ pub unsafe fn __msa_asub_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.h))]
 pub unsafe fn __msa_asub_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_asub_s_h(a, ::mem::transmute(b))
+    msa_asub_s_h(a, mem::transmute(b))
 }
 
 /// Vector Absolute Values of Signed Subtract
@@ -1545,7 +1547,7 @@ pub unsafe fn __msa_asub_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.w))]
 pub unsafe fn __msa_asub_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_asub_s_w(a, ::mem::transmute(b))
+    msa_asub_s_w(a, mem::transmute(b))
 }
 
 /// Vector Absolute Values of Signed Subtract
@@ -1558,7 +1560,7 @@ pub unsafe fn __msa_asub_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_s.d))]
 pub unsafe fn __msa_asub_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_asub_s_d(a, ::mem::transmute(b))
+    msa_asub_s_d(a, mem::transmute(b))
 }
 
 /// Vector Absolute Values of Unsigned Subtract
@@ -1571,7 +1573,7 @@ pub unsafe fn __msa_asub_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.b))]
 pub unsafe fn __msa_asub_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_asub_u_b(a, ::mem::transmute(b))
+    msa_asub_u_b(a, mem::transmute(b))
 }
 
 /// Vector Absolute Values of Unsigned Subtract
@@ -1584,7 +1586,7 @@ pub unsafe fn __msa_asub_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.h))]
 pub unsafe fn __msa_asub_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_asub_u_h(a, ::mem::transmute(b))
+    msa_asub_u_h(a, mem::transmute(b))
 }
 
 /// Vector Absolute Values of Unsigned Subtract
@@ -1597,7 +1599,7 @@ pub unsafe fn __msa_asub_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.w))]
 pub unsafe fn __msa_asub_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_asub_u_w(a, ::mem::transmute(b))
+    msa_asub_u_w(a, mem::transmute(b))
 }
 
 /// Vector Absolute Values of Unsigned Subtract
@@ -1610,7 +1612,7 @@ pub unsafe fn __msa_asub_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(asub_u.d))]
 pub unsafe fn __msa_asub_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_asub_u_d(a, ::mem::transmute(b))
+    msa_asub_u_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Average
@@ -1625,7 +1627,7 @@ pub unsafe fn __msa_asub_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.b))]
 pub unsafe fn __msa_ave_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_ave_s_b(a, ::mem::transmute(b))
+    msa_ave_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Average
@@ -1640,7 +1642,7 @@ pub unsafe fn __msa_ave_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.h))]
 pub unsafe fn __msa_ave_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_ave_s_h(a, ::mem::transmute(b))
+    msa_ave_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Average
@@ -1655,7 +1657,7 @@ pub unsafe fn __msa_ave_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.w))]
 pub unsafe fn __msa_ave_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_ave_s_w(a, ::mem::transmute(b))
+    msa_ave_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Average
@@ -1670,7 +1672,7 @@ pub unsafe fn __msa_ave_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_s.d))]
 pub unsafe fn __msa_ave_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_ave_s_d(a, ::mem::transmute(b))
+    msa_ave_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average
@@ -1685,7 +1687,7 @@ pub unsafe fn __msa_ave_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.b))]
 pub unsafe fn __msa_ave_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_ave_u_b(a, ::mem::transmute(b))
+    msa_ave_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average
@@ -1700,7 +1702,7 @@ pub unsafe fn __msa_ave_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.h))]
 pub unsafe fn __msa_ave_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_ave_u_h(a, ::mem::transmute(b))
+    msa_ave_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average
@@ -1715,7 +1717,7 @@ pub unsafe fn __msa_ave_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.w))]
 pub unsafe fn __msa_ave_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_ave_u_w(a, ::mem::transmute(b))
+    msa_ave_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average
@@ -1730,7 +1732,7 @@ pub unsafe fn __msa_ave_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ave_u.d))]
 pub unsafe fn __msa_ave_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_ave_u_d(a, ::mem::transmute(b))
+    msa_ave_u_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Average Rounded
@@ -1746,7 +1748,7 @@ pub unsafe fn __msa_ave_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.b))]
 pub unsafe fn __msa_aver_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_aver_s_b(a, ::mem::transmute(b))
+    msa_aver_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Average Rounded
@@ -1762,7 +1764,7 @@ pub unsafe fn __msa_aver_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.h))]
 pub unsafe fn __msa_aver_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_aver_s_h(a, ::mem::transmute(b))
+    msa_aver_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Average Rounded
@@ -1778,7 +1780,7 @@ pub unsafe fn __msa_aver_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.w))]
 pub unsafe fn __msa_aver_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_aver_s_w(a, ::mem::transmute(b))
+    msa_aver_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Average Rounded
@@ -1794,7 +1796,7 @@ pub unsafe fn __msa_aver_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_s.d))]
 pub unsafe fn __msa_aver_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_aver_s_d(a, ::mem::transmute(b))
+    msa_aver_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average Rounded
@@ -1810,7 +1812,7 @@ pub unsafe fn __msa_aver_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.b))]
 pub unsafe fn __msa_aver_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_aver_u_b(a, ::mem::transmute(b))
+    msa_aver_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average Rounded
@@ -1826,7 +1828,7 @@ pub unsafe fn __msa_aver_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.h))]
 pub unsafe fn __msa_aver_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_aver_u_h(a, ::mem::transmute(b))
+    msa_aver_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average Rounded
@@ -1842,7 +1844,7 @@ pub unsafe fn __msa_aver_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.w))]
 pub unsafe fn __msa_aver_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_aver_u_w(a, ::mem::transmute(b))
+    msa_aver_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Average Rounded
@@ -1858,7 +1860,7 @@ pub unsafe fn __msa_aver_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(aver_u.d))]
 pub unsafe fn __msa_aver_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_aver_u_d(a, ::mem::transmute(b))
+    msa_aver_u_d(a, mem::transmute(b))
 }
 
 /// Vector Bit Clear
@@ -1872,7 +1874,7 @@ pub unsafe fn __msa_aver_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.b))]
 pub unsafe fn __msa_bclr_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_bclr_b(a, ::mem::transmute(b))
+    msa_bclr_b(a, mem::transmute(b))
 }
 
 /// Vector Bit Clear
@@ -1886,7 +1888,7 @@ pub unsafe fn __msa_bclr_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.h))]
 pub unsafe fn __msa_bclr_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_bclr_h(a, ::mem::transmute(b))
+    msa_bclr_h(a, mem::transmute(b))
 }
 
 /// Vector Bit Clear
@@ -1900,7 +1902,7 @@ pub unsafe fn __msa_bclr_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.w))]
 pub unsafe fn __msa_bclr_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_bclr_w(a, ::mem::transmute(b))
+    msa_bclr_w(a, mem::transmute(b))
 }
 
 /// Vector Bit Clear
@@ -1914,7 +1916,7 @@ pub unsafe fn __msa_bclr_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bclr.d))]
 pub unsafe fn __msa_bclr_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_bclr_d(a, ::mem::transmute(b))
+    msa_bclr_d(a, mem::transmute(b))
 }
 
 /// Immediate Bit Clear
@@ -2004,7 +2006,7 @@ pub unsafe fn __msa_bclri_d(a: v2u64, imm6: i32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.b))]
 pub unsafe fn __msa_binsl_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
-    msa_binsl_b(a, ::mem::transmute(b), c)
+    msa_binsl_b(a, mem::transmute(b), c)
 }
 
 /// Vector Bit Insert Left
@@ -2018,7 +2020,7 @@ pub unsafe fn __msa_binsl_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.h))]
 pub unsafe fn __msa_binsl_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
-    msa_binsl_h(a, ::mem::transmute(b), c)
+    msa_binsl_h(a, mem::transmute(b), c)
 }
 
 /// Vector Bit Insert Left
@@ -2032,7 +2034,7 @@ pub unsafe fn __msa_binsl_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.w))]
 pub unsafe fn __msa_binsl_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
-    msa_binsl_w(a, ::mem::transmute(b), c)
+    msa_binsl_w(a, mem::transmute(b), c)
 }
 
 /// Vector Bit Insert Left
@@ -2046,7 +2048,7 @@ pub unsafe fn __msa_binsl_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsl.d))]
 pub unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
-    msa_binsl_d(a, ::mem::transmute(b), c)
+    msa_binsl_d(a, mem::transmute(b), c)
 }
 
 /// Immediate Bit Insert Left
@@ -2062,7 +2064,7 @@ pub unsafe fn __msa_binsl_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 pub unsafe fn __msa_binsli_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
-            msa_binsli_b(a, ::mem::transmute(b), $imm3)
+            msa_binsli_b(a, mem::transmute(b), $imm3)
         };
     }
     constify_imm3!(imm3, call)
@@ -2081,7 +2083,7 @@ pub unsafe fn __msa_binsli_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
 pub unsafe fn __msa_binsli_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
-            msa_binsli_h(a, ::mem::transmute(b), $imm4)
+            msa_binsli_h(a, mem::transmute(b), $imm4)
         };
     }
     constify_imm4!(imm4, call)
@@ -2100,7 +2102,7 @@ pub unsafe fn __msa_binsli_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
 pub unsafe fn __msa_binsli_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
-            msa_binsli_w(a, ::mem::transmute(b), $imm5)
+            msa_binsli_w(a, mem::transmute(b), $imm5)
         };
     }
     constify_imm5!(imm5, call)
@@ -2119,7 +2121,7 @@ pub unsafe fn __msa_binsli_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
 pub unsafe fn __msa_binsli_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
-            msa_binsli_d(a, ::mem::transmute(b), $imm6)
+            msa_binsli_d(a, mem::transmute(b), $imm6)
         };
     }
     constify_imm6!(imm6, call)
@@ -2136,7 +2138,7 @@ pub unsafe fn __msa_binsli_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.b))]
 pub unsafe fn __msa_binsr_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
-    msa_binsr_b(a, ::mem::transmute(b), c)
+    msa_binsr_b(a, mem::transmute(b), c)
 }
 
 /// Vector Bit Insert Right
@@ -2150,7 +2152,7 @@ pub unsafe fn __msa_binsr_b(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.h))]
 pub unsafe fn __msa_binsr_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
-    msa_binsr_h(a, ::mem::transmute(b), c)
+    msa_binsr_h(a, mem::transmute(b), c)
 }
 
 /// Vector Bit Insert Right
@@ -2164,7 +2166,7 @@ pub unsafe fn __msa_binsr_h(a: v8u16, b: v8u16, c: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.w))]
 pub unsafe fn __msa_binsr_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
-    msa_binsr_w(a, ::mem::transmute(b), c)
+    msa_binsr_w(a, mem::transmute(b), c)
 }
 
 /// Vector Bit Insert Right
@@ -2178,7 +2180,7 @@ pub unsafe fn __msa_binsr_w(a: v4u32, b: v4u32, c: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(binsr.d))]
 pub unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
-    msa_binsr_d(a, ::mem::transmute(b), c)
+    msa_binsr_d(a, mem::transmute(b), c)
 }
 
 /// Immediate Bit Insert Right
@@ -2194,7 +2196,7 @@ pub unsafe fn __msa_binsr_d(a: v2u64, b: v2u64, c: v2u64) -> v2u64 {
 pub unsafe fn __msa_binsri_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
     macro_rules! call {
         ($imm3:expr) => {
-            msa_binsri_b(a, ::mem::transmute(b), $imm3)
+            msa_binsri_b(a, mem::transmute(b), $imm3)
         };
     }
     constify_imm3!(imm3, call)
@@ -2213,7 +2215,7 @@ pub unsafe fn __msa_binsri_b(a: v16u8, b: v16u8, imm3: i32) -> v16u8 {
 pub unsafe fn __msa_binsri_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
     macro_rules! call {
         ($imm4:expr) => {
-            msa_binsri_h(a, ::mem::transmute(b), $imm4)
+            msa_binsri_h(a, mem::transmute(b), $imm4)
         };
     }
     constify_imm4!(imm4, call)
@@ -2232,7 +2234,7 @@ pub unsafe fn __msa_binsri_h(a: v8u16, b: v8u16, imm4: i32) -> v8u16 {
 pub unsafe fn __msa_binsri_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
     macro_rules! call {
         ($imm5:expr) => {
-            msa_binsri_w(a, ::mem::transmute(b), $imm5)
+            msa_binsri_w(a, mem::transmute(b), $imm5)
         };
     }
     constify_imm5!(imm5, call)
@@ -2251,7 +2253,7 @@ pub unsafe fn __msa_binsri_w(a: v4u32, b: v4u32, imm5: i32) -> v4u32 {
 pub unsafe fn __msa_binsri_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
     macro_rules! call {
         ($imm6:expr) => {
-            msa_binsri_d(a, ::mem::transmute(b), $imm6)
+            msa_binsri_d(a, mem::transmute(b), $imm6)
         };
     }
     constify_imm6!(imm6, call)
@@ -2268,7 +2270,7 @@ pub unsafe fn __msa_binsri_d(a: v2u64, b: v2u64, imm6: i32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmnz.v))]
 pub unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
-    msa_bmnz_v(a, ::mem::transmute(b), c)
+    msa_bmnz_v(a, mem::transmute(b), c)
 }
 
 /// Immediate Bit Move If Not Zero
@@ -2284,7 +2286,7 @@ pub unsafe fn __msa_bmnz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 pub unsafe fn __msa_bmnzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
-            msa_bmnzi_b(a, ::mem::transmute(b), $imm8)
+            msa_bmnzi_b(a, mem::transmute(b), $imm8)
         };
     }
     constify_imm8!(imm8, call)
@@ -2301,7 +2303,7 @@ pub unsafe fn __msa_bmnzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bmz.v))]
 pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
-    msa_bmz_v(a, ::mem::transmute(b), c)
+    msa_bmz_v(a, mem::transmute(b), c)
 }
 
 /// Immediate Bit Move If Zero
@@ -2317,7 +2319,7 @@ pub unsafe fn __msa_bmz_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 pub unsafe fn __msa_bmzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
-            msa_bmzi_b(a, ::mem::transmute(b), $imm8)
+            msa_bmzi_b(a, mem::transmute(b), $imm8)
         };
     }
     constify_imm8!(imm8, call)
@@ -2334,7 +2336,7 @@ pub unsafe fn __msa_bmzi_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.b))]
 pub unsafe fn __msa_bneg_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_bneg_b(a, ::mem::transmute(b))
+    msa_bneg_b(a, mem::transmute(b))
 }
 
 /// Vector Bit Negate
@@ -2348,7 +2350,7 @@ pub unsafe fn __msa_bneg_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.h))]
 pub unsafe fn __msa_bneg_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_bneg_h(a, ::mem::transmute(b))
+    msa_bneg_h(a, mem::transmute(b))
 }
 
 /// Vector Bit Negate
@@ -2362,7 +2364,7 @@ pub unsafe fn __msa_bneg_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.w))]
 pub unsafe fn __msa_bneg_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_bneg_w(a, ::mem::transmute(b))
+    msa_bneg_w(a, mem::transmute(b))
 }
 
 /// Vector Bit Negate
@@ -2376,7 +2378,7 @@ pub unsafe fn __msa_bneg_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bneg.d))]
 pub unsafe fn __msa_bneg_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_bneg_d(a, ::mem::transmute(b))
+    msa_bneg_d(a, mem::transmute(b))
 }
 
 /// Immediate Bit Negate
@@ -2522,7 +2524,7 @@ pub unsafe fn __msa_bnz_v(a: v16u8) -> i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bsel.v))]
 pub unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
-    msa_bsel_v(a, ::mem::transmute(b), c)
+    msa_bsel_v(a, mem::transmute(b), c)
 }
 
 /// Immediate Bit Select
@@ -2538,7 +2540,7 @@ pub unsafe fn __msa_bsel_v(a: v16u8, b: v16u8, c: v16u8) -> v16u8 {
 pub unsafe fn __msa_bseli_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
     macro_rules! call {
         ($imm8:expr) => {
-            msa_bseli_b(a, ::mem::transmute(b), $imm8)
+            msa_bseli_b(a, mem::transmute(b), $imm8)
         };
     }
     constify_imm8!(imm8, call)
@@ -2555,7 +2557,7 @@ pub unsafe fn __msa_bseli_b(a: v16u8, b: v16u8, imm8: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.b))]
 pub unsafe fn __msa_bset_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_bset_b(a, ::mem::transmute(b))
+    msa_bset_b(a, mem::transmute(b))
 }
 
 /// Vector Bit Set
@@ -2569,7 +2571,7 @@ pub unsafe fn __msa_bset_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.h))]
 pub unsafe fn __msa_bset_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_bset_h(a, ::mem::transmute(b))
+    msa_bset_h(a, mem::transmute(b))
 }
 
 /// Vector Bit Set
@@ -2583,7 +2585,7 @@ pub unsafe fn __msa_bset_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.w))]
 pub unsafe fn __msa_bset_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_bset_w(a, ::mem::transmute(b))
+    msa_bset_w(a, mem::transmute(b))
 }
 
 /// Vector Bit Set
@@ -2597,7 +2599,7 @@ pub unsafe fn __msa_bset_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(bset.d))]
 pub unsafe fn __msa_bset_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_bset_d(a, ::mem::transmute(b))
+    msa_bset_d(a, mem::transmute(b))
 }
 
 /// Immediate Bit Set
@@ -2742,7 +2744,7 @@ pub unsafe fn __msa_bz_v(a: v16u8) -> i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.b))]
 pub unsafe fn __msa_ceq_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_ceq_b(a, ::mem::transmute(b))
+    msa_ceq_b(a, mem::transmute(b))
 }
 
 /// Vector Compare Equal
@@ -2755,7 +2757,7 @@ pub unsafe fn __msa_ceq_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.h))]
 pub unsafe fn __msa_ceq_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_ceq_h(a, ::mem::transmute(b))
+    msa_ceq_h(a, mem::transmute(b))
 }
 
 /// Vector Compare Equal
@@ -2768,7 +2770,7 @@ pub unsafe fn __msa_ceq_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.w))]
 pub unsafe fn __msa_ceq_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_ceq_w(a, ::mem::transmute(b))
+    msa_ceq_w(a, mem::transmute(b))
 }
 
 /// Vector Compare Equal
@@ -2781,7 +2783,7 @@ pub unsafe fn __msa_ceq_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ceq.d))]
 pub unsafe fn __msa_ceq_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_ceq_d(a, ::mem::transmute(b))
+    msa_ceq_d(a, mem::transmute(b))
 }
 
 /// Immediate Compare Equal
@@ -2889,7 +2891,7 @@ pub unsafe fn __msa_cfcmsa(imm5: i32) -> i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.b))]
 pub unsafe fn __msa_cle_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_cle_s_b(a, ::mem::transmute(b))
+    msa_cle_s_b(a, mem::transmute(b))
 }
 
 /// Vector Compare Signed Less Than or Equal
@@ -2903,7 +2905,7 @@ pub unsafe fn __msa_cle_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.h))]
 pub unsafe fn __msa_cle_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_cle_s_h(a, ::mem::transmute(b))
+    msa_cle_s_h(a, mem::transmute(b))
 }
 
 /// Vector Compare Signed Less Than or Equal
@@ -2917,7 +2919,7 @@ pub unsafe fn __msa_cle_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.w))]
 pub unsafe fn __msa_cle_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_cle_s_w(a, ::mem::transmute(b))
+    msa_cle_s_w(a, mem::transmute(b))
 }
 
 /// Vector Compare Signed Less Than or Equal
@@ -2931,7 +2933,7 @@ pub unsafe fn __msa_cle_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_s.d))]
 pub unsafe fn __msa_cle_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_cle_s_d(a, ::mem::transmute(b))
+    msa_cle_s_d(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than or Equal
@@ -2945,7 +2947,7 @@ pub unsafe fn __msa_cle_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.b))]
 pub unsafe fn __msa_cle_u_b(a: v16u8, b: v16u8) -> v16i8 {
-    msa_cle_u_b(a, ::mem::transmute(b))
+    msa_cle_u_b(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than or Equal
@@ -2959,7 +2961,7 @@ pub unsafe fn __msa_cle_u_b(a: v16u8, b: v16u8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.h))]
 pub unsafe fn __msa_cle_u_h(a: v8u16, b: v8u16) -> v8i16 {
-    msa_cle_u_h(a, ::mem::transmute(b))
+    msa_cle_u_h(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than or Equal
@@ -2973,7 +2975,7 @@ pub unsafe fn __msa_cle_u_h(a: v8u16, b: v8u16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.w))]
 pub unsafe fn __msa_cle_u_w(a: v4u32, b: v4u32) -> v4i32 {
-    msa_cle_u_w(a, ::mem::transmute(b))
+    msa_cle_u_w(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than or Equal
@@ -2987,7 +2989,7 @@ pub unsafe fn __msa_cle_u_w(a: v4u32, b: v4u32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(cle_u.d))]
 pub unsafe fn __msa_cle_u_d(a: v2u64, b: v2u64) -> v2i64 {
-    msa_cle_u_d(a, ::mem::transmute(b))
+    msa_cle_u_d(a, mem::transmute(b))
 }
 
 /// Immediate Compare Signed Less Than or Equal
@@ -3161,7 +3163,7 @@ pub unsafe fn __msa_clei_u_d(a: v2u64, imm5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.b))]
 pub unsafe fn __msa_clt_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_clt_s_b(a, ::mem::transmute(b))
+    msa_clt_s_b(a, mem::transmute(b))
 }
 
 /// Vector Compare Signed Less Than
@@ -3175,7 +3177,7 @@ pub unsafe fn __msa_clt_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.h))]
 pub unsafe fn __msa_clt_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_clt_s_h(a, ::mem::transmute(b))
+    msa_clt_s_h(a, mem::transmute(b))
 }
 
 /// Vector Compare Signed Less Than
@@ -3189,7 +3191,7 @@ pub unsafe fn __msa_clt_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.w))]
 pub unsafe fn __msa_clt_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_clt_s_w(a, ::mem::transmute(b))
+    msa_clt_s_w(a, mem::transmute(b))
 }
 
 /// Vector Compare Signed Less Than
@@ -3203,7 +3205,7 @@ pub unsafe fn __msa_clt_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_s.d))]
 pub unsafe fn __msa_clt_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_clt_s_d(a, ::mem::transmute(b))
+    msa_clt_s_d(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than
@@ -3217,7 +3219,7 @@ pub unsafe fn __msa_clt_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.b))]
 pub unsafe fn __msa_clt_u_b(a: v16u8, b: v16u8) -> v16i8 {
-    msa_clt_u_b(a, ::mem::transmute(b))
+    msa_clt_u_b(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than
@@ -3231,7 +3233,7 @@ pub unsafe fn __msa_clt_u_b(a: v16u8, b: v16u8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.h))]
 pub unsafe fn __msa_clt_u_h(a: v8u16, b: v8u16) -> v8i16 {
-    msa_clt_u_h(a, ::mem::transmute(b))
+    msa_clt_u_h(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than
@@ -3245,7 +3247,7 @@ pub unsafe fn __msa_clt_u_h(a: v8u16, b: v8u16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.w))]
 pub unsafe fn __msa_clt_u_w(a: v4u32, b: v4u32) -> v4i32 {
-    msa_clt_u_w(a, ::mem::transmute(b))
+    msa_clt_u_w(a, mem::transmute(b))
 }
 
 /// Vector Compare Unsigned Less Than
@@ -3259,7 +3261,7 @@ pub unsafe fn __msa_clt_u_w(a: v4u32, b: v4u32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(clt_u.d))]
 pub unsafe fn __msa_clt_u_d(a: v2u64, b: v2u64) -> v2i64 {
-    msa_clt_u_d(a, ::mem::transmute(b))
+    msa_clt_u_d(a, mem::transmute(b))
 }
 
 /// Immediate Compare Signed Less Than
@@ -3593,7 +3595,7 @@ pub unsafe fn __msa_ctcmsa(imm5: i32, a: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.b))]
 pub unsafe fn __msa_div_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_div_s_b(a, ::mem::transmute(b))
+    msa_div_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Divide
@@ -3606,7 +3608,7 @@ pub unsafe fn __msa_div_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.h))]
 pub unsafe fn __msa_div_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_div_s_h(a, ::mem::transmute(b))
+    msa_div_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Divide
@@ -3619,7 +3621,7 @@ pub unsafe fn __msa_div_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.w))]
 pub unsafe fn __msa_div_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_div_s_w(a, ::mem::transmute(b))
+    msa_div_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Divide
@@ -3632,7 +3634,7 @@ pub unsafe fn __msa_div_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_s.d))]
 pub unsafe fn __msa_div_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_div_s_d(a, ::mem::transmute(b))
+    msa_div_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Divide
@@ -3645,7 +3647,7 @@ pub unsafe fn __msa_div_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.b))]
 pub unsafe fn __msa_div_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_div_u_b(a, ::mem::transmute(b))
+    msa_div_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Divide
@@ -3658,7 +3660,7 @@ pub unsafe fn __msa_div_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.h))]
 pub unsafe fn __msa_div_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_div_u_h(a, ::mem::transmute(b))
+    msa_div_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Divide
@@ -3671,7 +3673,7 @@ pub unsafe fn __msa_div_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.w))]
 pub unsafe fn __msa_div_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_div_u_w(a, ::mem::transmute(b))
+    msa_div_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Divide
@@ -3684,7 +3686,7 @@ pub unsafe fn __msa_div_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(div_u.d))]
 pub unsafe fn __msa_div_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_div_u_d(a, ::mem::transmute(b))
+    msa_div_u_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Dot Product
@@ -3699,7 +3701,7 @@ pub unsafe fn __msa_div_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_s.h))]
 pub unsafe fn __msa_dotp_s_h(a: v16i8, b: v16i8) -> v8i16 {
-    msa_dotp_s_h(a, ::mem::transmute(b))
+    msa_dotp_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Dot Product
@@ -3714,7 +3716,7 @@ pub unsafe fn __msa_dotp_s_h(a: v16i8, b: v16i8) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_s.w))]
 pub unsafe fn __msa_dotp_s_w(a: v8i16, b: v8i16) -> v4i32 {
-    msa_dotp_s_w(a, ::mem::transmute(b))
+    msa_dotp_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Dot Product
@@ -3729,7 +3731,7 @@ pub unsafe fn __msa_dotp_s_w(a: v8i16, b: v8i16) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_s.d))]
 pub unsafe fn __msa_dotp_s_d(a: v4i32, b: v4i32) -> v2i64 {
-    msa_dotp_s_d(a, ::mem::transmute(b))
+    msa_dotp_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Dot Product
@@ -3744,7 +3746,7 @@ pub unsafe fn __msa_dotp_s_d(a: v4i32, b: v4i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_u.h))]
 pub unsafe fn __msa_dotp_u_h(a: v16u8, b: v16u8) -> v8u16 {
-    msa_dotp_u_h(a, ::mem::transmute(b))
+    msa_dotp_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Dot Product
@@ -3759,7 +3761,7 @@ pub unsafe fn __msa_dotp_u_h(a: v16u8, b: v16u8) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_u.w))]
 pub unsafe fn __msa_dotp_u_w(a: v8u16, b: v8u16) -> v4u32 {
-    msa_dotp_u_w(a, ::mem::transmute(b))
+    msa_dotp_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Dot Product
@@ -3774,7 +3776,7 @@ pub unsafe fn __msa_dotp_u_w(a: v8u16, b: v8u16) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dotp_u.d))]
 pub unsafe fn __msa_dotp_u_d(a: v4u32, b: v4u32) -> v2u64 {
-    msa_dotp_u_d(a, ::mem::transmute(b))
+    msa_dotp_u_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Dot Product and Add
@@ -3788,7 +3790,7 @@ pub unsafe fn __msa_dotp_u_d(a: v4u32, b: v4u32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_s.h))]
 pub unsafe fn __msa_dpadd_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
-    msa_dpadd_s_h(a, ::mem::transmute(b), c)
+    msa_dpadd_s_h(a, mem::transmute(b), c)
 }
 
 /// Vector Signed Dot Product and Add
@@ -3802,7 +3804,7 @@ pub unsafe fn __msa_dpadd_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_s.w))]
 pub unsafe fn __msa_dpadd_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
-    msa_dpadd_s_w(a, ::mem::transmute(b), c)
+    msa_dpadd_s_w(a, mem::transmute(b), c)
 }
 
 /// Vector Signed Dot Product and Add
@@ -3816,7 +3818,7 @@ pub unsafe fn __msa_dpadd_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_s.d))]
 pub unsafe fn __msa_dpadd_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
-    msa_dpadd_s_d(a, ::mem::transmute(b), c)
+    msa_dpadd_s_d(a, mem::transmute(b), c)
 }
 
 /// Vector Unsigned Dot Product and Add
@@ -3830,7 +3832,7 @@ pub unsafe fn __msa_dpadd_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_u.h))]
 pub unsafe fn __msa_dpadd_u_h(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
-    msa_dpadd_u_h(a, ::mem::transmute(b), c)
+    msa_dpadd_u_h(a, mem::transmute(b), c)
 }
 
 /// Vector Unsigned Dot Product and Add
@@ -3844,7 +3846,7 @@ pub unsafe fn __msa_dpadd_u_h(a: v8u16, b: v16u8, c: v16u8) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_u.w))]
 pub unsafe fn __msa_dpadd_u_w(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
-    msa_dpadd_u_w(a, ::mem::transmute(b), c)
+    msa_dpadd_u_w(a, mem::transmute(b), c)
 }
 
 /// Vector Unsigned Dot Product and Add
@@ -3858,7 +3860,7 @@ pub unsafe fn __msa_dpadd_u_w(a: v4u32, b: v8u16, c: v8u16) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpadd_u.d))]
 pub unsafe fn __msa_dpadd_u_d(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
-    msa_dpadd_u_d(a, ::mem::transmute(b), c)
+    msa_dpadd_u_d(a, mem::transmute(b), c)
 }
 
 /// Vector Signed Dot Product and Add
@@ -3873,7 +3875,7 @@ pub unsafe fn __msa_dpadd_u_d(a: v2u64, b: v4u32, c: v4u32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_s.h))]
 pub unsafe fn __msa_dpsub_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
-    msa_dpsub_s_h(a, ::mem::transmute(b), c)
+    msa_dpsub_s_h(a, mem::transmute(b), c)
 }
 
 /// Vector Signed Dot Product and Add
@@ -3888,7 +3890,7 @@ pub unsafe fn __msa_dpsub_s_h(a: v8i16, b: v16i8, c: v16i8) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_s.w))]
 pub unsafe fn __msa_dpsub_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
-    msa_dpsub_s_w(a, ::mem::transmute(b), c)
+    msa_dpsub_s_w(a, mem::transmute(b), c)
 }
 
 /// Vector Signed Dot Product and Add
@@ -3903,7 +3905,7 @@ pub unsafe fn __msa_dpsub_s_w(a: v4i32, b: v8i16, c: v8i16) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_s.d))]
 pub unsafe fn __msa_dpsub_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
-    msa_dpsub_s_d(a, ::mem::transmute(b), c)
+    msa_dpsub_s_d(a, mem::transmute(b), c)
 }
 
 /// Vector Unsigned Dot Product and Add
@@ -3918,7 +3920,7 @@ pub unsafe fn __msa_dpsub_s_d(a: v2i64, b: v4i32, c: v4i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_u.h))]
 pub unsafe fn __msa_dpsub_u_h(a: v8i16, b: v16u8, c: v16u8) -> v8i16 {
-    msa_dpsub_u_h(a, ::mem::transmute(b), c)
+    msa_dpsub_u_h(a, mem::transmute(b), c)
 }
 
 /// Vector Unsigned Dot Product and Add
@@ -3933,7 +3935,7 @@ pub unsafe fn __msa_dpsub_u_h(a: v8i16, b: v16u8, c: v16u8) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_u.w))]
 pub unsafe fn __msa_dpsub_u_w(a: v4i32, b: v8u16, c: v8u16) -> v4i32 {
-    msa_dpsub_u_w(a, ::mem::transmute(b), c)
+    msa_dpsub_u_w(a, mem::transmute(b), c)
 }
 
 /// Vector Unsigned Dot Product and Add
@@ -3948,7 +3950,7 @@ pub unsafe fn __msa_dpsub_u_w(a: v4i32, b: v8u16, c: v8u16) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(dpsub_u.d))]
 pub unsafe fn __msa_dpsub_u_d(a: v2i64, b: v4u32, c: v4u32) -> v2i64 {
-    msa_dpsub_u_d(a, ::mem::transmute(b), c)
+    msa_dpsub_u_d(a, mem::transmute(b), c)
 }
 
 /// Vector Floating-Point Addition
@@ -3961,7 +3963,7 @@ pub unsafe fn __msa_dpsub_u_d(a: v2i64, b: v4u32, c: v4u32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fadd.w))]
 pub unsafe fn __msa_fadd_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fadd_w(a, ::mem::transmute(b))
+    msa_fadd_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Addition
@@ -3974,7 +3976,7 @@ pub unsafe fn __msa_fadd_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fadd.d))]
 pub unsafe fn __msa_fadd_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fadd_d(a, ::mem::transmute(b))
+    msa_fadd_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Always False
@@ -3987,7 +3989,7 @@ pub unsafe fn __msa_fadd_d(a: v2f64, b: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcaf.w))]
 pub unsafe fn __msa_fcaf_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcaf_w(a, ::mem::transmute(b))
+    msa_fcaf_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Always False
@@ -4000,7 +4002,7 @@ pub unsafe fn __msa_fcaf_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcaf.d))]
 pub unsafe fn __msa_fcaf_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcaf_d(a, ::mem::transmute(b))
+    msa_fcaf_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Equal
@@ -4014,7 +4016,7 @@ pub unsafe fn __msa_fcaf_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fceq.w))]
 pub unsafe fn __msa_fceq_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fceq_w(a, ::mem::transmute(b))
+    msa_fceq_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Equal
@@ -4028,7 +4030,7 @@ pub unsafe fn __msa_fceq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fceq.d))]
 pub unsafe fn __msa_fceq_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fceq_d(a, ::mem::transmute(b))
+    msa_fceq_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Class Mask
@@ -4074,7 +4076,7 @@ pub unsafe fn __msa_fclass_d(a: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcle.w))]
 pub unsafe fn __msa_fcle_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcle_w(a, ::mem::transmute(b))
+    msa_fcle_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Less or Equal
@@ -4088,7 +4090,7 @@ pub unsafe fn __msa_fcle_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcle.d))]
 pub unsafe fn __msa_fcle_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcle_d(a, ::mem::transmute(b))
+    msa_fcle_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Less Than
@@ -4102,7 +4104,7 @@ pub unsafe fn __msa_fcle_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fclt.w))]
 pub unsafe fn __msa_fclt_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fclt_w(a, ::mem::transmute(b))
+    msa_fclt_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Less Than
@@ -4116,7 +4118,7 @@ pub unsafe fn __msa_fclt_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fclt.d))]
 pub unsafe fn __msa_fclt_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fclt_d(a, ::mem::transmute(b))
+    msa_fclt_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Not Equal
@@ -4130,7 +4132,7 @@ pub unsafe fn __msa_fclt_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcne.w))]
 pub unsafe fn __msa_fcne_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcne_w(a, ::mem::transmute(b))
+    msa_fcne_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Not Equal
@@ -4144,7 +4146,7 @@ pub unsafe fn __msa_fcne_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcne.d))]
 pub unsafe fn __msa_fcne_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcne_d(a, ::mem::transmute(b))
+    msa_fcne_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Ordered
@@ -4158,7 +4160,7 @@ pub unsafe fn __msa_fcne_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcor.w))]
 pub unsafe fn __msa_fcor_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcor_w(a, ::mem::transmute(b))
+    msa_fcor_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Ordered
@@ -4172,7 +4174,7 @@ pub unsafe fn __msa_fcor_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcor.d))]
 pub unsafe fn __msa_fcor_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcor_d(a, ::mem::transmute(b))
+    msa_fcor_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Equal
@@ -4186,7 +4188,7 @@ pub unsafe fn __msa_fcor_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcueq.w))]
 pub unsafe fn __msa_fcueq_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcueq_w(a, ::mem::transmute(b))
+    msa_fcueq_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Equal
@@ -4200,7 +4202,7 @@ pub unsafe fn __msa_fcueq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcueq.d))]
 pub unsafe fn __msa_fcueq_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcueq_d(a, ::mem::transmute(b))
+    msa_fcueq_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Less or Equal
@@ -4214,7 +4216,7 @@ pub unsafe fn __msa_fcueq_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcule.w))]
 pub unsafe fn __msa_fcule_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcule_w(a, ::mem::transmute(b))
+    msa_fcule_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Less or Equal
@@ -4228,7 +4230,7 @@ pub unsafe fn __msa_fcule_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcule.d))]
 pub unsafe fn __msa_fcule_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcule_d(a, ::mem::transmute(b))
+    msa_fcule_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Less Than
@@ -4242,7 +4244,7 @@ pub unsafe fn __msa_fcule_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcult.w))]
 pub unsafe fn __msa_fcult_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcult_w(a, ::mem::transmute(b))
+    msa_fcult_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Less Than
@@ -4256,7 +4258,7 @@ pub unsafe fn __msa_fcult_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcult.d))]
 pub unsafe fn __msa_fcult_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcult_d(a, ::mem::transmute(b))
+    msa_fcult_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered
@@ -4270,7 +4272,7 @@ pub unsafe fn __msa_fcult_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcun.w))]
 pub unsafe fn __msa_fcun_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcun_w(a, ::mem::transmute(b))
+    msa_fcun_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered
@@ -4284,7 +4286,7 @@ pub unsafe fn __msa_fcun_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcun.d))]
 pub unsafe fn __msa_fcun_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcun_d(a, ::mem::transmute(b))
+    msa_fcun_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Not Equal
@@ -4298,7 +4300,7 @@ pub unsafe fn __msa_fcun_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcune.w))]
 pub unsafe fn __msa_fcune_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fcune_w(a, ::mem::transmute(b))
+    msa_fcune_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Quiet Compare Unordered or Not Equal
@@ -4312,7 +4314,7 @@ pub unsafe fn __msa_fcune_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fcune.d))]
 pub unsafe fn __msa_fcune_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fcune_d(a, ::mem::transmute(b))
+    msa_fcune_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Division
@@ -4325,7 +4327,7 @@ pub unsafe fn __msa_fcune_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fdiv.w))]
 pub unsafe fn __msa_fdiv_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fdiv_w(a, ::mem::transmute(b))
+    msa_fdiv_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Division
@@ -4338,7 +4340,7 @@ pub unsafe fn __msa_fdiv_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fdiv.d))]
 pub unsafe fn __msa_fdiv_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fdiv_d(a, ::mem::transmute(b))
+    msa_fdiv_d(a, mem::transmute(b))
 }
 
 /* FIXME: 16-bit float
@@ -4353,7 +4355,7 @@ pub unsafe fn __msa_fdiv_d(a: v2f64, b: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexdo.h))]
 pub unsafe fn __msa_fexdo_h(a: v4f32, b: v4f32) -> f16x8 {
-    msa_fexdo_h(a, ::mem::transmute(b))
+    msa_fexdo_h(a, mem::transmute(b))
 }*/
 
 /// Vector Floating-Point Down-Convert Interchange Format
@@ -4367,7 +4369,7 @@ pub unsafe fn __msa_fexdo_h(a: v4f32, b: v4f32) -> f16x8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexdo.w))]
 pub unsafe fn __msa_fexdo_w(a: v2f64, b: v2f64) -> v4f32 {
-    msa_fexdo_w(a, ::mem::transmute(b))
+    msa_fexdo_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Down-Convert Interchange Format
@@ -4381,7 +4383,7 @@ pub unsafe fn __msa_fexdo_w(a: v2f64, b: v2f64) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexp2.w))]
 pub unsafe fn __msa_fexp2_w(a: v4f32, b: v4i32) -> v4f32 {
-    msa_fexp2_w(a, ::mem::transmute(b))
+    msa_fexp2_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Down-Convert Interchange Format
@@ -4395,7 +4397,7 @@ pub unsafe fn __msa_fexp2_w(a: v4f32, b: v4i32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fexp2.d))]
 pub unsafe fn __msa_fexp2_d(a: v2f64, b: v2i64) -> v2f64 {
-    msa_fexp2_d(a, ::mem::transmute(b))
+    msa_fexp2_d(a, mem::transmute(b))
 }
 
 /* FIXME: 16-bit float
@@ -4652,7 +4654,7 @@ pub unsafe fn __msa_flog2_d(a: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmadd.w))]
 pub unsafe fn __msa_fmadd_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
-    msa_fmadd_w(a, ::mem::transmute(b), c)
+    msa_fmadd_w(a, mem::transmute(b), c)
 }
 
 /// Vector Floating-Point Multiply-Add
@@ -4665,7 +4667,7 @@ pub unsafe fn __msa_fmadd_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmadd.d))]
 pub unsafe fn __msa_fmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
-    msa_fmadd_d(a, ::mem::transmute(b), c)
+    msa_fmadd_d(a, mem::transmute(b), c)
 }
 
 /// Vector Floating-Point Maximum
@@ -4678,7 +4680,7 @@ pub unsafe fn __msa_fmadd_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax.w))]
 pub unsafe fn __msa_fmax_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fmax_w(a, ::mem::transmute(b))
+    msa_fmax_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Maximum
@@ -4691,7 +4693,7 @@ pub unsafe fn __msa_fmax_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax.d))]
 pub unsafe fn __msa_fmax_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fmax_d(a, ::mem::transmute(b))
+    msa_fmax_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Maximum Based on Absolute Values
@@ -4705,7 +4707,7 @@ pub unsafe fn __msa_fmax_d(a: v2f64, b: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax_a.w))]
 pub unsafe fn __msa_fmax_a_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fmax_a_w(a, ::mem::transmute(b))
+    msa_fmax_a_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Maximum Based on Absolute Values
@@ -4719,7 +4721,7 @@ pub unsafe fn __msa_fmax_a_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmax_a.d))]
 pub unsafe fn __msa_fmax_a_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fmax_a_d(a, ::mem::transmute(b))
+    msa_fmax_a_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Minimum
@@ -4732,7 +4734,7 @@ pub unsafe fn __msa_fmax_a_d(a: v2f64, b: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin.w))]
 pub unsafe fn __msa_fmin_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fmin_w(a, ::mem::transmute(b))
+    msa_fmin_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Minimum
@@ -4745,7 +4747,7 @@ pub unsafe fn __msa_fmin_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin.d))]
 pub unsafe fn __msa_fmin_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fmin_d(a, ::mem::transmute(b))
+    msa_fmin_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Minimum Based on Absolute Values
@@ -4759,7 +4761,7 @@ pub unsafe fn __msa_fmin_d(a: v2f64, b: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin_a.w))]
 pub unsafe fn __msa_fmin_a_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fmin_a_w(a, ::mem::transmute(b))
+    msa_fmin_a_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Minimum Based on Absolute Values
@@ -4773,7 +4775,7 @@ pub unsafe fn __msa_fmin_a_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmin_a.d))]
 pub unsafe fn __msa_fmin_a_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fmin_a_d(a, ::mem::transmute(b))
+    msa_fmin_a_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Multiply-Sub
@@ -4786,7 +4788,7 @@ pub unsafe fn __msa_fmin_a_d(a: v2f64, b: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmsub.w))]
 pub unsafe fn __msa_fmsub_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
-    msa_fmsub_w(a, ::mem::transmute(b), c)
+    msa_fmsub_w(a, mem::transmute(b), c)
 }
 
 /// Vector Floating-Point Multiply-Sub
@@ -4799,7 +4801,7 @@ pub unsafe fn __msa_fmsub_w(a: v4f32, b: v4f32, c: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmsub.d))]
 pub unsafe fn __msa_fmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
-    msa_fmsub_d(a, ::mem::transmute(b), c)
+    msa_fmsub_d(a, mem::transmute(b), c)
 }
 
 /// Vector Floating-Point Multiplication
@@ -4811,7 +4813,7 @@ pub unsafe fn __msa_fmsub_d(a: v2f64, b: v2f64, c: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmul.w))]
 pub unsafe fn __msa_fmul_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fmul_w(a, ::mem::transmute(b))
+    msa_fmul_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Multiplication
@@ -4823,7 +4825,7 @@ pub unsafe fn __msa_fmul_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fmul.d))]
 pub unsafe fn __msa_fmul_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fmul_d(a, ::mem::transmute(b))
+    msa_fmul_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Round to Integer
@@ -4911,7 +4913,7 @@ pub unsafe fn __msa_frsqrt_d(a: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsaf.w))]
 pub unsafe fn __msa_fsaf_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsaf_w(a, ::mem::transmute(b))
+    msa_fsaf_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Always False
@@ -4925,7 +4927,7 @@ pub unsafe fn __msa_fsaf_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsaf.d))]
 pub unsafe fn __msa_fsaf_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsaf_d(a, ::mem::transmute(b))
+    msa_fsaf_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Equal
@@ -4938,7 +4940,7 @@ pub unsafe fn __msa_fsaf_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fseq.w))]
 pub unsafe fn __msa_fseq_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fseq_w(a, ::mem::transmute(b))
+    msa_fseq_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Equal
@@ -4951,7 +4953,7 @@ pub unsafe fn __msa_fseq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fseq.d))]
 pub unsafe fn __msa_fseq_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fseq_d(a, ::mem::transmute(b))
+    msa_fseq_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Less or Equal
@@ -4964,7 +4966,7 @@ pub unsafe fn __msa_fseq_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsle.w))]
 pub unsafe fn __msa_fsle_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsle_w(a, ::mem::transmute(b))
+    msa_fsle_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Less or Equal
@@ -4977,7 +4979,7 @@ pub unsafe fn __msa_fsle_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsle.d))]
 pub unsafe fn __msa_fsle_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsle_d(a, ::mem::transmute(b))
+    msa_fsle_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Less Than
@@ -4990,7 +4992,7 @@ pub unsafe fn __msa_fsle_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fslt.w))]
 pub unsafe fn __msa_fslt_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fslt_w(a, ::mem::transmute(b))
+    msa_fslt_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Less Than
@@ -5003,7 +5005,7 @@ pub unsafe fn __msa_fslt_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fslt.d))]
 pub unsafe fn __msa_fslt_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fslt_d(a, ::mem::transmute(b))
+    msa_fslt_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Not Equal
@@ -5016,7 +5018,7 @@ pub unsafe fn __msa_fslt_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsne.w))]
 pub unsafe fn __msa_fsne_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsne_w(a, ::mem::transmute(b))
+    msa_fsne_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Not Equal
@@ -5029,7 +5031,7 @@ pub unsafe fn __msa_fsne_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsne.d))]
 pub unsafe fn __msa_fsne_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsne_d(a, ::mem::transmute(b))
+    msa_fsne_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Ordered
@@ -5043,7 +5045,7 @@ pub unsafe fn __msa_fsne_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsor.w))]
 pub unsafe fn __msa_fsor_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsor_w(a, ::mem::transmute(b))
+    msa_fsor_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Ordered
@@ -5057,7 +5059,7 @@ pub unsafe fn __msa_fsor_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsor.d))]
 pub unsafe fn __msa_fsor_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsor_d(a, ::mem::transmute(b))
+    msa_fsor_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point  Square Root
@@ -5097,7 +5099,7 @@ pub unsafe fn __msa_fsqrt_d(a: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsub.w))]
 pub unsafe fn __msa_fsub_w(a: v4f32, b: v4f32) -> v4f32 {
-    msa_fsub_w(a, ::mem::transmute(b))
+    msa_fsub_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Subtraction
@@ -5111,7 +5113,7 @@ pub unsafe fn __msa_fsub_w(a: v4f32, b: v4f32) -> v4f32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsub.d))]
 pub unsafe fn __msa_fsub_d(a: v2f64, b: v2f64) -> v2f64 {
-    msa_fsub_d(a, ::mem::transmute(b))
+    msa_fsub_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Ordered
@@ -5125,7 +5127,7 @@ pub unsafe fn __msa_fsub_d(a: v2f64, b: v2f64) -> v2f64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsueq.w))]
 pub unsafe fn __msa_fsueq_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsueq_w(a, ::mem::transmute(b))
+    msa_fsueq_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Ordered
@@ -5139,7 +5141,7 @@ pub unsafe fn __msa_fsueq_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsueq.d))]
 pub unsafe fn __msa_fsueq_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsueq_d(a, ::mem::transmute(b))
+    msa_fsueq_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered or Less or Equal
@@ -5153,7 +5155,7 @@ pub unsafe fn __msa_fsueq_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsule.w))]
 pub unsafe fn __msa_fsule_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsule_w(a, ::mem::transmute(b))
+    msa_fsule_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered or Less or Equal
@@ -5167,7 +5169,7 @@ pub unsafe fn __msa_fsule_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsule.d))]
 pub unsafe fn __msa_fsule_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsule_d(a, ::mem::transmute(b))
+    msa_fsule_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered or Less Than
@@ -5181,7 +5183,7 @@ pub unsafe fn __msa_fsule_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsult.w))]
 pub unsafe fn __msa_fsult_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsult_w(a, ::mem::transmute(b))
+    msa_fsult_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered or Less Than
@@ -5195,7 +5197,7 @@ pub unsafe fn __msa_fsult_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsult.d))]
 pub unsafe fn __msa_fsult_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsult_d(a, ::mem::transmute(b))
+    msa_fsult_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered
@@ -5209,7 +5211,7 @@ pub unsafe fn __msa_fsult_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsun.w))]
 pub unsafe fn __msa_fsun_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsun_w(a, ::mem::transmute(b))
+    msa_fsun_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered
@@ -5223,7 +5225,7 @@ pub unsafe fn __msa_fsun_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsun.d))]
 pub unsafe fn __msa_fsun_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsun_d(a, ::mem::transmute(b))
+    msa_fsun_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered or Not Equal
@@ -5237,7 +5239,7 @@ pub unsafe fn __msa_fsun_d(a: v2f64, b: v2f64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsune.w))]
 pub unsafe fn __msa_fsune_w(a: v4f32, b: v4f32) -> v4i32 {
-    msa_fsune_w(a, ::mem::transmute(b))
+    msa_fsune_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Signaling Compare Unordered or Not Equal
@@ -5251,7 +5253,7 @@ pub unsafe fn __msa_fsune_w(a: v4f32, b: v4f32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(fsune.d))]
 pub unsafe fn __msa_fsune_d(a: v2f64, b: v2f64) -> v2i64 {
-    msa_fsune_d(a, ::mem::transmute(b))
+    msa_fsune_d(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Convert to Signed Integer
@@ -5322,7 +5324,7 @@ pub unsafe fn __msa_ftint_u_d(a: v2f64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftq.h))]
 pub unsafe fn __msa_ftq_h(a: v4f32, b: v4f32) -> v8i16 {
-    msa_ftq_h(a, ::mem::transmute(b))
+    msa_ftq_h(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Convert to Fixed-Point
@@ -5337,7 +5339,7 @@ pub unsafe fn __msa_ftq_h(a: v4f32, b: v4f32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ftq.w))]
 pub unsafe fn __msa_ftq_w(a: v2f64, b: v2f64) -> v4i32 {
-    msa_ftq_w(a, ::mem::transmute(b))
+    msa_ftq_w(a, mem::transmute(b))
 }
 
 /// Vector Floating-Point Truncate and Convert to Signed Integer
@@ -5403,7 +5405,7 @@ pub unsafe fn __msa_ftrunc_u_d(a: v2f64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_s.h))]
 pub unsafe fn __msa_hadd_s_h(a: v16i8, b: v16i8) -> v8i16 {
-    msa_hadd_s_h(a, ::mem::transmute(b))
+    msa_hadd_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Horizontal Add
@@ -5417,7 +5419,7 @@ pub unsafe fn __msa_hadd_s_h(a: v16i8, b: v16i8) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_s.w))]
 pub unsafe fn __msa_hadd_s_w(a: v8i16, b: v8i16) -> v4i32 {
-    msa_hadd_s_w(a, ::mem::transmute(b))
+    msa_hadd_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Horizontal Add
@@ -5431,7 +5433,7 @@ pub unsafe fn __msa_hadd_s_w(a: v8i16, b: v8i16) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_s.d))]
 pub unsafe fn __msa_hadd_s_d(a: v4i32, b: v4i32) -> v2i64 {
-    msa_hadd_s_d(a, ::mem::transmute(b))
+    msa_hadd_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Horizontal Add
@@ -5445,7 +5447,7 @@ pub unsafe fn __msa_hadd_s_d(a: v4i32, b: v4i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_u.h))]
 pub unsafe fn __msa_hadd_u_h(a: v16u8, b: v16u8) -> v8u16 {
-    msa_hadd_u_h(a, ::mem::transmute(b))
+    msa_hadd_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Horizontal Add
@@ -5459,7 +5461,7 @@ pub unsafe fn __msa_hadd_u_h(a: v16u8, b: v16u8) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_u.w))]
 pub unsafe fn __msa_hadd_u_w(a: v8u16, b: v8u16) -> v4u32 {
-    msa_hadd_u_w(a, ::mem::transmute(b))
+    msa_hadd_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Horizontal Add
@@ -5473,7 +5475,7 @@ pub unsafe fn __msa_hadd_u_w(a: v8u16, b: v8u16) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hadd_u.d))]
 pub unsafe fn __msa_hadd_u_d(a: v4u32, b: v4u32) -> v2u64 {
-    msa_hadd_u_d(a, ::mem::transmute(b))
+    msa_hadd_u_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Horizontal Subtract
@@ -5487,7 +5489,7 @@ pub unsafe fn __msa_hadd_u_d(a: v4u32, b: v4u32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_s.h))]
 pub unsafe fn __msa_hsub_s_h(a: v16i8, b: v16i8) -> v8i16 {
-    msa_hsub_s_h(a, ::mem::transmute(b))
+    msa_hsub_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Horizontal Subtract
@@ -5501,7 +5503,7 @@ pub unsafe fn __msa_hsub_s_h(a: v16i8, b: v16i8) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_s.w))]
 pub unsafe fn __msa_hsub_s_w(a: v8i16, b: v8i16) -> v4i32 {
-    msa_hsub_s_w(a, ::mem::transmute(b))
+    msa_hsub_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Horizontal Subtract
@@ -5515,7 +5517,7 @@ pub unsafe fn __msa_hsub_s_w(a: v8i16, b: v8i16) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_s.d))]
 pub unsafe fn __msa_hsub_s_d(a: v4i32, b: v4i32) -> v2i64 {
-    msa_hsub_s_d(a, ::mem::transmute(b))
+    msa_hsub_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Horizontal Subtract
@@ -5529,7 +5531,7 @@ pub unsafe fn __msa_hsub_s_d(a: v4i32, b: v4i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_u.h))]
 pub unsafe fn __msa_hsub_u_h(a: v16u8, b: v16u8) -> v8i16 {
-    msa_hsub_u_h(a, ::mem::transmute(b))
+    msa_hsub_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Horizontal Subtract
@@ -5543,7 +5545,7 @@ pub unsafe fn __msa_hsub_u_h(a: v16u8, b: v16u8) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_u.w))]
 pub unsafe fn __msa_hsub_u_w(a: v8u16, b: v8u16) -> v4i32 {
-    msa_hsub_u_w(a, ::mem::transmute(b))
+    msa_hsub_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Horizontal Subtract
@@ -5557,7 +5559,7 @@ pub unsafe fn __msa_hsub_u_w(a: v8u16, b: v8u16) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(hsub_u.d))]
 pub unsafe fn __msa_hsub_u_d(a: v4u32, b: v4u32) -> v2i64 {
-    msa_hsub_u_d(a, ::mem::transmute(b))
+    msa_hsub_u_d(a, mem::transmute(b))
 }
 
 /// Vector Interleave Even
@@ -5571,7 +5573,7 @@ pub unsafe fn __msa_hsub_u_d(a: v4u32, b: v4u32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.b))]
 pub unsafe fn __msa_ilvev_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_ilvev_b(a, ::mem::transmute(b))
+    msa_ilvev_b(a, mem::transmute(b))
 }
 
 /// Vector Interleave Even
@@ -5585,7 +5587,7 @@ pub unsafe fn __msa_ilvev_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.h))]
 pub unsafe fn __msa_ilvev_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_ilvev_h(a, ::mem::transmute(b))
+    msa_ilvev_h(a, mem::transmute(b))
 }
 
 /// Vector Interleave Even
@@ -5599,7 +5601,7 @@ pub unsafe fn __msa_ilvev_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.w))]
 pub unsafe fn __msa_ilvev_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_ilvev_w(a, ::mem::transmute(b))
+    msa_ilvev_w(a, mem::transmute(b))
 }
 
 /// Vector Interleave Even
@@ -5613,7 +5615,7 @@ pub unsafe fn __msa_ilvev_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvev.d))]
 pub unsafe fn __msa_ilvev_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_ilvev_d(a, ::mem::transmute(b))
+    msa_ilvev_d(a, mem::transmute(b))
 }
 
 /// Vector Interleave Left
@@ -5627,7 +5629,7 @@ pub unsafe fn __msa_ilvev_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.b))]
 pub unsafe fn __msa_ilvl_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_ilvl_b(a, ::mem::transmute(b))
+    msa_ilvl_b(a, mem::transmute(b))
 }
 
 /// Vector Interleave Left
@@ -5641,7 +5643,7 @@ pub unsafe fn __msa_ilvl_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.h))]
 pub unsafe fn __msa_ilvl_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_ilvl_h(a, ::mem::transmute(b))
+    msa_ilvl_h(a, mem::transmute(b))
 }
 
 /// Vector Interleave Left
@@ -5655,7 +5657,7 @@ pub unsafe fn __msa_ilvl_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.w))]
 pub unsafe fn __msa_ilvl_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_ilvl_w(a, ::mem::transmute(b))
+    msa_ilvl_w(a, mem::transmute(b))
 }
 
 /// Vector Interleave Left
@@ -5669,7 +5671,7 @@ pub unsafe fn __msa_ilvl_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvl.d))]
 pub unsafe fn __msa_ilvl_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_ilvl_d(a, ::mem::transmute(b))
+    msa_ilvl_d(a, mem::transmute(b))
 }
 
 /// Vector Interleave Odd
@@ -5683,7 +5685,7 @@ pub unsafe fn __msa_ilvl_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.b))]
 pub unsafe fn __msa_ilvod_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_ilvod_b(a, ::mem::transmute(b))
+    msa_ilvod_b(a, mem::transmute(b))
 }
 
 /// Vector Interleave Odd
@@ -5697,7 +5699,7 @@ pub unsafe fn __msa_ilvod_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.h))]
 pub unsafe fn __msa_ilvod_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_ilvod_h(a, ::mem::transmute(b))
+    msa_ilvod_h(a, mem::transmute(b))
 }
 
 /// Vector Interleave Odd
@@ -5711,7 +5713,7 @@ pub unsafe fn __msa_ilvod_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.w))]
 pub unsafe fn __msa_ilvod_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_ilvod_w(a, ::mem::transmute(b))
+    msa_ilvod_w(a, mem::transmute(b))
 }
 
 /// Vector Interleave Odd
@@ -5725,7 +5727,7 @@ pub unsafe fn __msa_ilvod_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvod.d))]
 pub unsafe fn __msa_ilvod_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_ilvod_d(a, ::mem::transmute(b))
+    msa_ilvod_d(a, mem::transmute(b))
 }
 
 /// Vector Interleave Right
@@ -5739,7 +5741,7 @@ pub unsafe fn __msa_ilvod_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.b))]
 pub unsafe fn __msa_ilvr_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_ilvr_b(a, ::mem::transmute(b))
+    msa_ilvr_b(a, mem::transmute(b))
 }
 
 /// Vector Interleave Right
@@ -5753,7 +5755,7 @@ pub unsafe fn __msa_ilvr_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.h))]
 pub unsafe fn __msa_ilvr_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_ilvr_h(a, ::mem::transmute(b))
+    msa_ilvr_h(a, mem::transmute(b))
 }
 
 /// Vector Interleave Right
@@ -5767,7 +5769,7 @@ pub unsafe fn __msa_ilvr_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.w))]
 pub unsafe fn __msa_ilvr_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_ilvr_w(a, ::mem::transmute(b))
+    msa_ilvr_w(a, mem::transmute(b))
 }
 
 /// Vector Interleave Right
@@ -5781,7 +5783,7 @@ pub unsafe fn __msa_ilvr_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(ilvr.d))]
 pub unsafe fn __msa_ilvr_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_ilvr_d(a, ::mem::transmute(b))
+    msa_ilvr_d(a, mem::transmute(b))
 }
 
 /// GPR Insert Element
@@ -6100,7 +6102,7 @@ pub unsafe fn __msa_ldi_d(imm_s10: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(madd_q.h))]
 pub unsafe fn __msa_madd_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    msa_madd_q_h(a, ::mem::transmute(b), c)
+    msa_madd_q_h(a, mem::transmute(b), c)
 }
 
 /// Vector Fixed-Point Multiply and Add
@@ -6115,7 +6117,7 @@ pub unsafe fn __msa_madd_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(madd_q.w))]
 pub unsafe fn __msa_madd_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    msa_madd_q_w(a, ::mem::transmute(b), c)
+    msa_madd_q_w(a, mem::transmute(b), c)
 }
 
 /// Vector Fixed-Point Multiply and Add Rounded
@@ -6130,7 +6132,7 @@ pub unsafe fn __msa_madd_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddr_q.h))]
 pub unsafe fn __msa_maddr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    msa_maddr_q_h(a, ::mem::transmute(b), c)
+    msa_maddr_q_h(a, mem::transmute(b), c)
 }
 
 /// Vector Fixed-Point Multiply and Add Rounded
@@ -6145,7 +6147,7 @@ pub unsafe fn __msa_maddr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddr_q.w))]
 pub unsafe fn __msa_maddr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    msa_maddr_q_w(a, ::mem::transmute(b), c)
+    msa_maddr_q_w(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Add
@@ -6159,7 +6161,7 @@ pub unsafe fn __msa_maddr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.b))]
 pub unsafe fn __msa_maddv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
-    msa_maddv_b(a, ::mem::transmute(b), c)
+    msa_maddv_b(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Add
@@ -6173,7 +6175,7 @@ pub unsafe fn __msa_maddv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.h))]
 pub unsafe fn __msa_maddv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    msa_maddv_h(a, ::mem::transmute(b), c)
+    msa_maddv_h(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Add
@@ -6187,7 +6189,7 @@ pub unsafe fn __msa_maddv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.w))]
 pub unsafe fn __msa_maddv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    msa_maddv_w(a, ::mem::transmute(b), c)
+    msa_maddv_w(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Add
@@ -6201,7 +6203,7 @@ pub unsafe fn __msa_maddv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(maddv.d))]
 pub unsafe fn __msa_maddv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    msa_maddv_d(a, ::mem::transmute(b), c)
+    msa_maddv_d(a, mem::transmute(b), c)
 }
 
 /// Vector Maximum Based on Absolute Values
@@ -6215,7 +6217,7 @@ pub unsafe fn __msa_maddv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.b))]
 pub unsafe fn __msa_max_a_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_max_a_b(a, ::mem::transmute(b))
+    msa_max_a_b(a, mem::transmute(b))
 }
 
 /// Vector Maximum Based on Absolute Values
@@ -6229,7 +6231,7 @@ pub unsafe fn __msa_max_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.h))]
 pub unsafe fn __msa_max_a_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_max_a_h(a, ::mem::transmute(b))
+    msa_max_a_h(a, mem::transmute(b))
 }
 
 /// Vector Maximum Based on Absolute Values
@@ -6243,7 +6245,7 @@ pub unsafe fn __msa_max_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.w))]
 pub unsafe fn __msa_max_a_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_max_a_w(a, ::mem::transmute(b))
+    msa_max_a_w(a, mem::transmute(b))
 }
 
 /// Vector Maximum Based on Absolute Values
@@ -6257,7 +6259,7 @@ pub unsafe fn __msa_max_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_a.d))]
 pub unsafe fn __msa_max_a_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_max_a_d(a, ::mem::transmute(b))
+    msa_max_a_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Maximum
@@ -6270,7 +6272,7 @@ pub unsafe fn __msa_max_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.b))]
 pub unsafe fn __msa_max_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_max_s_b(a, ::mem::transmute(b))
+    msa_max_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Maximum
@@ -6283,7 +6285,7 @@ pub unsafe fn __msa_max_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.h))]
 pub unsafe fn __msa_max_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_max_s_h(a, ::mem::transmute(b))
+    msa_max_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Maximum
@@ -6296,7 +6298,7 @@ pub unsafe fn __msa_max_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.w))]
 pub unsafe fn __msa_max_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_max_s_w(a, ::mem::transmute(b))
+    msa_max_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Maximum
@@ -6309,7 +6311,7 @@ pub unsafe fn __msa_max_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_s.d))]
 pub unsafe fn __msa_max_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_max_s_d(a, ::mem::transmute(b))
+    msa_max_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Maximum
@@ -6322,7 +6324,7 @@ pub unsafe fn __msa_max_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.b))]
 pub unsafe fn __msa_max_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_max_u_b(a, ::mem::transmute(b))
+    msa_max_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Maximum
@@ -6335,7 +6337,7 @@ pub unsafe fn __msa_max_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.h))]
 pub unsafe fn __msa_max_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_max_u_h(a, ::mem::transmute(b))
+    msa_max_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Maximum
@@ -6348,7 +6350,7 @@ pub unsafe fn __msa_max_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.w))]
 pub unsafe fn __msa_max_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_max_u_w(a, ::mem::transmute(b))
+    msa_max_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Maximum
@@ -6361,7 +6363,7 @@ pub unsafe fn __msa_max_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(max_u.d))]
 pub unsafe fn __msa_max_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_max_u_d(a, ::mem::transmute(b))
+    msa_max_u_d(a, mem::transmute(b))
 }
 
 /// Immediate Signed Maximum
@@ -6527,7 +6529,7 @@ pub unsafe fn __msa_maxi_u_d(a: v2u64, imm5: i32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.b))]
 pub unsafe fn __msa_min_a_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_min_a_b(a, ::mem::transmute(b))
+    msa_min_a_b(a, mem::transmute(b))
 }
 
 /// Vector Minimum Based on Absolute Value
@@ -6541,7 +6543,7 @@ pub unsafe fn __msa_min_a_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.h))]
 pub unsafe fn __msa_min_a_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_min_a_h(a, ::mem::transmute(b))
+    msa_min_a_h(a, mem::transmute(b))
 }
 
 /// Vector Minimum Based on Absolute Value
@@ -6555,7 +6557,7 @@ pub unsafe fn __msa_min_a_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.w))]
 pub unsafe fn __msa_min_a_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_min_a_w(a, ::mem::transmute(b))
+    msa_min_a_w(a, mem::transmute(b))
 }
 
 /// Vector Minimum Based on Absolute Value
@@ -6569,7 +6571,7 @@ pub unsafe fn __msa_min_a_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_a.d))]
 pub unsafe fn __msa_min_a_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_min_a_d(a, ::mem::transmute(b))
+    msa_min_a_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Minimum
@@ -6582,7 +6584,7 @@ pub unsafe fn __msa_min_a_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.b))]
 pub unsafe fn __msa_min_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_min_s_b(a, ::mem::transmute(b))
+    msa_min_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Minimum
@@ -6595,7 +6597,7 @@ pub unsafe fn __msa_min_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.h))]
 pub unsafe fn __msa_min_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_min_s_h(a, ::mem::transmute(b))
+    msa_min_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Minimum
@@ -6608,7 +6610,7 @@ pub unsafe fn __msa_min_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.w))]
 pub unsafe fn __msa_min_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_min_s_w(a, ::mem::transmute(b))
+    msa_min_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Minimum
@@ -6621,7 +6623,7 @@ pub unsafe fn __msa_min_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_s.d))]
 pub unsafe fn __msa_min_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_min_s_d(a, ::mem::transmute(b))
+    msa_min_s_d(a, mem::transmute(b))
 }
 
 /// Immediate Signed Minimum
@@ -6710,7 +6712,7 @@ pub unsafe fn __msa_mini_s_d(a: v2i64, imm_s5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.b))]
 pub unsafe fn __msa_min_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_min_u_b(a, ::mem::transmute(b))
+    msa_min_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Minimum
@@ -6723,7 +6725,7 @@ pub unsafe fn __msa_min_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.h))]
 pub unsafe fn __msa_min_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_min_u_h(a, ::mem::transmute(b))
+    msa_min_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Minimum
@@ -6736,7 +6738,7 @@ pub unsafe fn __msa_min_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.w))]
 pub unsafe fn __msa_min_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_min_u_w(a, ::mem::transmute(b))
+    msa_min_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Minimum
@@ -6749,7 +6751,7 @@ pub unsafe fn __msa_min_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(min_u.d))]
 pub unsafe fn __msa_min_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_min_u_d(a, ::mem::transmute(b))
+    msa_min_u_d(a, mem::transmute(b))
 }
 
 /// Immediate Unsigned Minimum
@@ -6840,7 +6842,7 @@ pub unsafe fn __msa_mini_u_d(a: v2u64, imm5: i32) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.b))]
 pub unsafe fn __msa_mod_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_mod_s_b(a, ::mem::transmute(b))
+    msa_mod_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Modulo
@@ -6855,7 +6857,7 @@ pub unsafe fn __msa_mod_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.h))]
 pub unsafe fn __msa_mod_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_mod_s_h(a, ::mem::transmute(b))
+    msa_mod_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Modulo
@@ -6870,7 +6872,7 @@ pub unsafe fn __msa_mod_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.w))]
 pub unsafe fn __msa_mod_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_mod_s_w(a, ::mem::transmute(b))
+    msa_mod_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Modulo
@@ -6885,7 +6887,7 @@ pub unsafe fn __msa_mod_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_s.d))]
 pub unsafe fn __msa_mod_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_mod_s_d(a, ::mem::transmute(b))
+    msa_mod_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Modulo
@@ -6900,7 +6902,7 @@ pub unsafe fn __msa_mod_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.b))]
 pub unsafe fn __msa_mod_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_mod_u_b(a, ::mem::transmute(b))
+    msa_mod_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Modulo
@@ -6915,7 +6917,7 @@ pub unsafe fn __msa_mod_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.h))]
 pub unsafe fn __msa_mod_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_mod_u_h(a, ::mem::transmute(b))
+    msa_mod_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Modulo
@@ -6930,7 +6932,7 @@ pub unsafe fn __msa_mod_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.w))]
 pub unsafe fn __msa_mod_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_mod_u_w(a, ::mem::transmute(b))
+    msa_mod_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Modulo
@@ -6945,7 +6947,7 @@ pub unsafe fn __msa_mod_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mod_u.d))]
 pub unsafe fn __msa_mod_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_mod_u_d(a, ::mem::transmute(b))
+    msa_mod_u_d(a, mem::transmute(b))
 }
 
 /// Vector Move
@@ -6973,7 +6975,7 @@ pub unsafe fn __msa_move_v(a: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msub_q.h))]
 pub unsafe fn __msa_msub_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    msa_msub_q_h(a, ::mem::transmute(b), c)
+    msa_msub_q_h(a, mem::transmute(b), c)
 }
 
 /// Vector Fixed-Point Multiply and Subtract
@@ -6989,7 +6991,7 @@ pub unsafe fn __msa_msub_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msub_q.w))]
 pub unsafe fn __msa_msub_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    msa_msub_q_w(a, ::mem::transmute(b), c)
+    msa_msub_q_w(a, mem::transmute(b), c)
 }
 
 /// Vector Fixed-Point Multiply and Subtract Rounded
@@ -7005,7 +7007,7 @@ pub unsafe fn __msa_msub_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubr_q.h))]
 pub unsafe fn __msa_msubr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    msa_msubr_q_h(a, ::mem::transmute(b), c)
+    msa_msubr_q_h(a, mem::transmute(b), c)
 }
 
 /// Vector Fixed-Point Multiply and Subtract Rounded
@@ -7021,7 +7023,7 @@ pub unsafe fn __msa_msubr_q_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubr_q.w))]
 pub unsafe fn __msa_msubr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    msa_msubr_q_w(a, ::mem::transmute(b), c)
+    msa_msubr_q_w(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Subtract
@@ -7035,7 +7037,7 @@ pub unsafe fn __msa_msubr_q_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.b))]
 pub unsafe fn __msa_msubv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
-    msa_msubv_b(a, ::mem::transmute(b), c)
+    msa_msubv_b(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Subtract
@@ -7049,7 +7051,7 @@ pub unsafe fn __msa_msubv_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.h))]
 pub unsafe fn __msa_msubv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    msa_msubv_h(a, ::mem::transmute(b), c)
+    msa_msubv_h(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Subtract
@@ -7063,7 +7065,7 @@ pub unsafe fn __msa_msubv_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.w))]
 pub unsafe fn __msa_msubv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    msa_msubv_w(a, ::mem::transmute(b), c)
+    msa_msubv_w(a, mem::transmute(b), c)
 }
 
 /// Vector Multiply and Subtract
@@ -7077,7 +7079,7 @@ pub unsafe fn __msa_msubv_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(msubv.d))]
 pub unsafe fn __msa_msubv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    msa_msubv_d(a, ::mem::transmute(b), c)
+    msa_msubv_d(a, mem::transmute(b), c)
 }
 
 /// Vector Fixed-Point Multiply
@@ -7090,7 +7092,7 @@ pub unsafe fn __msa_msubv_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mul_q.h))]
 pub unsafe fn __msa_mul_q_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_mul_q_h(a, ::mem::transmute(b))
+    msa_mul_q_h(a, mem::transmute(b))
 }
 
 /// Vector Fixed-Point Multiply
@@ -7103,7 +7105,7 @@ pub unsafe fn __msa_mul_q_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mul_q.w))]
 pub unsafe fn __msa_mul_q_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_mul_q_w(a, ::mem::transmute(b))
+    msa_mul_q_w(a, mem::transmute(b))
 }
 
 /// Vector Fixed-Point Multiply Rounded
@@ -7116,7 +7118,7 @@ pub unsafe fn __msa_mul_q_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulr_q.h))]
 pub unsafe fn __msa_mulr_q_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_mulr_q_h(a, ::mem::transmute(b))
+    msa_mulr_q_h(a, mem::transmute(b))
 }
 
 /// Vector Fixed-Point Multiply Rounded
@@ -7129,7 +7131,7 @@ pub unsafe fn __msa_mulr_q_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulr_q.w))]
 pub unsafe fn __msa_mulr_q_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_mulr_q_w(a, ::mem::transmute(b))
+    msa_mulr_q_w(a, mem::transmute(b))
 }
 
 /// Vector Multiply
@@ -7143,7 +7145,7 @@ pub unsafe fn __msa_mulr_q_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.b))]
 pub unsafe fn __msa_mulv_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_mulv_b(a, ::mem::transmute(b))
+    msa_mulv_b(a, mem::transmute(b))
 }
 
 /// Vector Multiply
@@ -7157,7 +7159,7 @@ pub unsafe fn __msa_mulv_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.h))]
 pub unsafe fn __msa_mulv_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_mulv_h(a, ::mem::transmute(b))
+    msa_mulv_h(a, mem::transmute(b))
 }
 
 /// Vector Multiply
@@ -7171,7 +7173,7 @@ pub unsafe fn __msa_mulv_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.w))]
 pub unsafe fn __msa_mulv_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_mulv_w(a, ::mem::transmute(b))
+    msa_mulv_w(a, mem::transmute(b))
 }
 
 /// Vector Multiply
@@ -7185,7 +7187,7 @@ pub unsafe fn __msa_mulv_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(mulv.d))]
 pub unsafe fn __msa_mulv_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_mulv_d(a, ::mem::transmute(b))
+    msa_mulv_d(a, mem::transmute(b))
 }
 
 /// Vector Leading Ones Count
@@ -7295,7 +7297,7 @@ pub unsafe fn __msa_nlzc_d(a: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(nor.v))]
 pub unsafe fn __msa_nor_v(a: v16u8, b: v16u8) -> v16u8 {
-    msa_nor_v(a, ::mem::transmute(b))
+    msa_nor_v(a, mem::transmute(b))
 }
 
 /// Immediate Logical Negated Or
@@ -7329,7 +7331,7 @@ pub unsafe fn __msa_nori_b(a: v16u8, imm8: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(or.v))]
 pub unsafe fn __msa_or_v(a: v16u8, b: v16u8) -> v16u8 {
-    msa_or_v(a, ::mem::transmute(b))
+    msa_or_v(a, mem::transmute(b))
 }
 
 /// Immediate Logical Or
@@ -7362,7 +7364,7 @@ pub unsafe fn __msa_ori_b(a: v16u8, imm8: i32) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.b))]
 pub unsafe fn __msa_pckev_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_pckev_b(a, ::mem::transmute(b))
+    msa_pckev_b(a, mem::transmute(b))
 }
 
 /// Vector Pack Even
@@ -7375,7 +7377,7 @@ pub unsafe fn __msa_pckev_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.h))]
 pub unsafe fn __msa_pckev_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_pckev_h(a, ::mem::transmute(b))
+    msa_pckev_h(a, mem::transmute(b))
 }
 
 /// Vector Pack Even
@@ -7388,7 +7390,7 @@ pub unsafe fn __msa_pckev_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.w))]
 pub unsafe fn __msa_pckev_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_pckev_w(a, ::mem::transmute(b))
+    msa_pckev_w(a, mem::transmute(b))
 }
 
 /// Vector Pack Even
@@ -7401,7 +7403,7 @@ pub unsafe fn __msa_pckev_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckev.d))]
 pub unsafe fn __msa_pckev_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_pckev_d(a, ::mem::transmute(b))
+    msa_pckev_d(a, mem::transmute(b))
 }
 
 /// Vector Pack Odd
@@ -7414,7 +7416,7 @@ pub unsafe fn __msa_pckev_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.b))]
 pub unsafe fn __msa_pckod_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_pckod_b(a, ::mem::transmute(b))
+    msa_pckod_b(a, mem::transmute(b))
 }
 
 /// Vector Pack Odd
@@ -7427,7 +7429,7 @@ pub unsafe fn __msa_pckod_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.h))]
 pub unsafe fn __msa_pckod_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_pckod_h(a, ::mem::transmute(b))
+    msa_pckod_h(a, mem::transmute(b))
 }
 
 /// Vector Pack Odd
@@ -7440,7 +7442,7 @@ pub unsafe fn __msa_pckod_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.w))]
 pub unsafe fn __msa_pckod_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_pckod_w(a, ::mem::transmute(b))
+    msa_pckod_w(a, mem::transmute(b))
 }
 
 /// Vector Pack Odd
@@ -7453,7 +7455,7 @@ pub unsafe fn __msa_pckod_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(pckod.d))]
 pub unsafe fn __msa_pckod_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_pckod_d(a, ::mem::transmute(b))
+    msa_pckod_d(a, mem::transmute(b))
 }
 
 /// Vector Population Count
@@ -7733,7 +7735,7 @@ pub unsafe fn __msa_shf_w(a: v4i32, imm8: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.b))]
 pub unsafe fn __msa_sld_b(a: v16i8, b: v16i8, c: i32) -> v16i8 {
-    msa_sld_b(a, ::mem::transmute(b), c)
+    msa_sld_b(a, mem::transmute(b), c)
 }
 
 /// GPR Columns Slide
@@ -7753,7 +7755,7 @@ pub unsafe fn __msa_sld_b(a: v16i8, b: v16i8, c: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.h))]
 pub unsafe fn __msa_sld_h(a: v8i16, b: v8i16, c: i32) -> v8i16 {
-    msa_sld_h(a, ::mem::transmute(b), c)
+    msa_sld_h(a, mem::transmute(b), c)
 }
 
 /// GPR Columns Slide
@@ -7773,7 +7775,7 @@ pub unsafe fn __msa_sld_h(a: v8i16, b: v8i16, c: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.w))]
 pub unsafe fn __msa_sld_w(a: v4i32, b: v4i32, c: i32) -> v4i32 {
-    msa_sld_w(a, ::mem::transmute(b), c)
+    msa_sld_w(a, mem::transmute(b), c)
 }
 
 /// GPR Columns Slide
@@ -7793,7 +7795,7 @@ pub unsafe fn __msa_sld_w(a: v4i32, b: v4i32, c: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sld.d))]
 pub unsafe fn __msa_sld_d(a: v2i64, b: v2i64, c: i32) -> v2i64 {
-    msa_sld_d(a, ::mem::transmute(b), c)
+    msa_sld_d(a, mem::transmute(b), c)
 }
 
 /// Immediate Columns Slide
@@ -7814,7 +7816,7 @@ pub unsafe fn __msa_sld_d(a: v2i64, b: v2i64, c: i32) -> v2i64 {
 pub unsafe fn __msa_sldi_b(a: v16i8, b: v16i8, imm4: i32) -> v16i8 {
     macro_rules! call {
         ($imm4:expr) => {
-            msa_sldi_b(a, ::mem::transmute(b), $imm4)
+            msa_sldi_b(a, mem::transmute(b), $imm4)
         };
     }
     constify_imm4!(imm4, call)
@@ -7838,7 +7840,7 @@ pub unsafe fn __msa_sldi_b(a: v16i8, b: v16i8, imm4: i32) -> v16i8 {
 pub unsafe fn __msa_sldi_h(a: v8i16, b: v8i16, imm3: i32) -> v8i16 {
     macro_rules! call {
         ($imm3:expr) => {
-            msa_sldi_h(a, ::mem::transmute(b), $imm3)
+            msa_sldi_h(a, mem::transmute(b), $imm3)
         };
     }
     constify_imm3!(imm3, call)
@@ -7862,7 +7864,7 @@ pub unsafe fn __msa_sldi_h(a: v8i16, b: v8i16, imm3: i32) -> v8i16 {
 pub unsafe fn __msa_sldi_w(a: v4i32, b: v4i32, imm2: i32) -> v4i32 {
     macro_rules! call {
         ($imm2:expr) => {
-            msa_sldi_w(a, ::mem::transmute(b), $imm2)
+            msa_sldi_w(a, mem::transmute(b), $imm2)
         };
     }
     constify_imm2!(imm2, call)
@@ -7886,7 +7888,7 @@ pub unsafe fn __msa_sldi_w(a: v4i32, b: v4i32, imm2: i32) -> v4i32 {
 pub unsafe fn __msa_sldi_d(a: v2i64, b: v2i64, imm1: i32) -> v2i64 {
     macro_rules! call {
         ($imm1:expr) => {
-            msa_sldi_d(a, ::mem::transmute(b), $imm1)
+            msa_sldi_d(a, mem::transmute(b), $imm1)
         };
     }
     constify_imm1!(imm1, call)
@@ -7903,7 +7905,7 @@ pub unsafe fn __msa_sldi_d(a: v2i64, b: v2i64, imm1: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.b))]
 pub unsafe fn __msa_sll_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_sll_b(a, ::mem::transmute(b))
+    msa_sll_b(a, mem::transmute(b))
 }
 
 /// Vector Shift Left
@@ -7917,7 +7919,7 @@ pub unsafe fn __msa_sll_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.h))]
 pub unsafe fn __msa_sll_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_sll_h(a, ::mem::transmute(b))
+    msa_sll_h(a, mem::transmute(b))
 }
 
 /// Vector Shift Left
@@ -7931,7 +7933,7 @@ pub unsafe fn __msa_sll_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.w))]
 pub unsafe fn __msa_sll_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_sll_w(a, ::mem::transmute(b))
+    msa_sll_w(a, mem::transmute(b))
 }
 
 /// Vector Shift Left
@@ -7945,7 +7947,7 @@ pub unsafe fn __msa_sll_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sll.d))]
 pub unsafe fn __msa_sll_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_sll_d(a, ::mem::transmute(b))
+    msa_sll_d(a, mem::transmute(b))
 }
 
 /// Immediate Shift Left
@@ -8035,7 +8037,7 @@ pub unsafe fn __msa_slli_d(a: v2i64, imm1: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.b))]
 pub unsafe fn __msa_splat_b(a: v16i8, b: i32) -> v16i8 {
-    msa_splat_b(a, ::mem::transmute(b))
+    msa_splat_b(a, mem::transmute(b))
 }
 
 /// GPR Element Splat
@@ -8049,7 +8051,7 @@ pub unsafe fn __msa_splat_b(a: v16i8, b: i32) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.h))]
 pub unsafe fn __msa_splat_h(a: v8i16, b: i32) -> v8i16 {
-    msa_splat_h(a, ::mem::transmute(b))
+    msa_splat_h(a, mem::transmute(b))
 }
 
 /// GPR Element Splat
@@ -8063,7 +8065,7 @@ pub unsafe fn __msa_splat_h(a: v8i16, b: i32) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.w))]
 pub unsafe fn __msa_splat_w(a: v4i32, b: i32) -> v4i32 {
-    msa_splat_w(a, ::mem::transmute(b))
+    msa_splat_w(a, mem::transmute(b))
 }
 
 /// GPR Element Splat
@@ -8077,7 +8079,7 @@ pub unsafe fn __msa_splat_w(a: v4i32, b: i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(splat.d))]
 pub unsafe fn __msa_splat_d(a: v2i64, b: i32) -> v2i64 {
-    msa_splat_d(a, ::mem::transmute(b))
+    msa_splat_d(a, mem::transmute(b))
 }
 
 /// Immediate Element Splat
@@ -8163,7 +8165,7 @@ pub unsafe fn __msa_splati_d(a: v2i64, imm1: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.b))]
 pub unsafe fn __msa_sra_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_sra_b(a, ::mem::transmute(b))
+    msa_sra_b(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Arithmetic
@@ -8177,7 +8179,7 @@ pub unsafe fn __msa_sra_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.h))]
 pub unsafe fn __msa_sra_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_sra_h(a, ::mem::transmute(b))
+    msa_sra_h(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Arithmetic
@@ -8191,7 +8193,7 @@ pub unsafe fn __msa_sra_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.w))]
 pub unsafe fn __msa_sra_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_sra_w(a, ::mem::transmute(b))
+    msa_sra_w(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Arithmetic
@@ -8205,7 +8207,7 @@ pub unsafe fn __msa_sra_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(sra.d))]
 pub unsafe fn __msa_sra_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_sra_d(a, ::mem::transmute(b))
+    msa_sra_d(a, mem::transmute(b))
 }
 
 /// Immediate Shift Right Arithmetic
@@ -8296,7 +8298,7 @@ pub unsafe fn __msa_srai_d(a: v2i64, imm6: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.b))]
 pub unsafe fn __msa_srar_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_srar_b(a, ::mem::transmute(b))
+    msa_srar_b(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Arithmetic Rounded
@@ -8311,7 +8313,7 @@ pub unsafe fn __msa_srar_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.h))]
 pub unsafe fn __msa_srar_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_srar_h(a, ::mem::transmute(b))
+    msa_srar_h(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Arithmetic Rounded
@@ -8326,7 +8328,7 @@ pub unsafe fn __msa_srar_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.w))]
 pub unsafe fn __msa_srar_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_srar_w(a, ::mem::transmute(b))
+    msa_srar_w(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Arithmetic Rounded
@@ -8341,7 +8343,7 @@ pub unsafe fn __msa_srar_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srar.d))]
 pub unsafe fn __msa_srar_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_srar_d(a, ::mem::transmute(b))
+    msa_srar_d(a, mem::transmute(b))
 }
 
 /// Immediate Shift Right Arithmetic Rounded
@@ -8435,7 +8437,7 @@ pub unsafe fn __msa_srari_d(a: v2i64, imm6: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.b))]
 pub unsafe fn __msa_srl_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_srl_b(a, ::mem::transmute(b))
+    msa_srl_b(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Logical
@@ -8449,7 +8451,7 @@ pub unsafe fn __msa_srl_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.h))]
 pub unsafe fn __msa_srl_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_srl_h(a, ::mem::transmute(b))
+    msa_srl_h(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Logical
@@ -8463,7 +8465,7 @@ pub unsafe fn __msa_srl_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.w))]
 pub unsafe fn __msa_srl_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_srl_w(a, ::mem::transmute(b))
+    msa_srl_w(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Logical
@@ -8477,7 +8479,7 @@ pub unsafe fn __msa_srl_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srl.d))]
 pub unsafe fn __msa_srl_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_srl_d(a, ::mem::transmute(b))
+    msa_srl_d(a, mem::transmute(b))
 }
 
 /// Immediate Shift Right Logical
@@ -8568,7 +8570,7 @@ pub unsafe fn __msa_srli_d(a: v2i64, imm1: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.b))]
 pub unsafe fn __msa_srlr_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_srlr_b(a, ::mem::transmute(b))
+    msa_srlr_b(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Logical Rounded
@@ -8583,7 +8585,7 @@ pub unsafe fn __msa_srlr_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.h))]
 pub unsafe fn __msa_srlr_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_srlr_h(a, ::mem::transmute(b))
+    msa_srlr_h(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Logical Rounded
@@ -8598,7 +8600,7 @@ pub unsafe fn __msa_srlr_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.w))]
 pub unsafe fn __msa_srlr_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_srlr_w(a, ::mem::transmute(b))
+    msa_srlr_w(a, mem::transmute(b))
 }
 
 /// Vector Shift Right Logical Rounded
@@ -8613,7 +8615,7 @@ pub unsafe fn __msa_srlr_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(srlr.d))]
 pub unsafe fn __msa_srlr_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_srlr_d(a, ::mem::transmute(b))
+    msa_srlr_d(a, mem::transmute(b))
 }
 
 /// Immediate Shift Right Logical Rounded
@@ -8783,7 +8785,7 @@ pub unsafe fn __msa_st_d(a: v2i64, mem_addr: *mut u8, imm_s13: i32) -> () {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.b))]
 pub unsafe fn __msa_subs_s_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_subs_s_b(a, ::mem::transmute(b))
+    msa_subs_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Subtract of Signed Values
@@ -8797,7 +8799,7 @@ pub unsafe fn __msa_subs_s_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.h))]
 pub unsafe fn __msa_subs_s_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_subs_s_h(a, ::mem::transmute(b))
+    msa_subs_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Subtract of Signed Values
@@ -8811,7 +8813,7 @@ pub unsafe fn __msa_subs_s_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.w))]
 pub unsafe fn __msa_subs_s_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_subs_s_w(a, ::mem::transmute(b))
+    msa_subs_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Subtract of Signed Values
@@ -8825,7 +8827,7 @@ pub unsafe fn __msa_subs_s_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_s.d))]
 pub unsafe fn __msa_subs_s_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_subs_s_d(a, ::mem::transmute(b))
+    msa_subs_s_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Unsigned Values
@@ -8839,7 +8841,7 @@ pub unsafe fn __msa_subs_s_d(a: v2i64, b: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.b))]
 pub unsafe fn __msa_subs_u_b(a: v16u8, b: v16u8) -> v16u8 {
-    msa_subs_u_b(a, ::mem::transmute(b))
+    msa_subs_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Unsigned Values
@@ -8853,7 +8855,7 @@ pub unsafe fn __msa_subs_u_b(a: v16u8, b: v16u8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.h))]
 pub unsafe fn __msa_subs_u_h(a: v8u16, b: v8u16) -> v8u16 {
-    msa_subs_u_h(a, ::mem::transmute(b))
+    msa_subs_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Unsigned Values
@@ -8867,7 +8869,7 @@ pub unsafe fn __msa_subs_u_h(a: v8u16, b: v8u16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.w))]
 pub unsafe fn __msa_subs_u_w(a: v4u32, b: v4u32) -> v4u32 {
-    msa_subs_u_w(a, ::mem::transmute(b))
+    msa_subs_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Unsigned Values
@@ -8881,7 +8883,7 @@ pub unsafe fn __msa_subs_u_w(a: v4u32, b: v4u32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subs_u.d))]
 pub unsafe fn __msa_subs_u_d(a: v2u64, b: v2u64) -> v2u64 {
-    msa_subs_u_d(a, ::mem::transmute(b))
+    msa_subs_u_d(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Signed from Unsigned
@@ -8895,7 +8897,7 @@ pub unsafe fn __msa_subs_u_d(a: v2u64, b: v2u64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.b))]
 pub unsafe fn __msa_subsus_u_b(a: v16u8, b: v16i8) -> v16u8 {
-    msa_subsus_u_b(a, ::mem::transmute(b))
+    msa_subsus_u_b(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Signed from Unsigned
@@ -8909,7 +8911,7 @@ pub unsafe fn __msa_subsus_u_b(a: v16u8, b: v16i8) -> v16u8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.h))]
 pub unsafe fn __msa_subsus_u_h(a: v8u16, b: v8i16) -> v8u16 {
-    msa_subsus_u_h(a, ::mem::transmute(b))
+    msa_subsus_u_h(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Signed from Unsigned
@@ -8923,7 +8925,7 @@ pub unsafe fn __msa_subsus_u_h(a: v8u16, b: v8i16) -> v8u16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.w))]
 pub unsafe fn __msa_subsus_u_w(a: v4u32, b: v4i32) -> v4u32 {
-    msa_subsus_u_w(a, ::mem::transmute(b))
+    msa_subsus_u_w(a, mem::transmute(b))
 }
 
 /// Vector Unsigned Saturated Subtract of Signed from Unsigned
@@ -8937,7 +8939,7 @@ pub unsafe fn __msa_subsus_u_w(a: v4u32, b: v4i32) -> v4u32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsus_u.d))]
 pub unsafe fn __msa_subsus_u_d(a: v2u64, b: v2i64) -> v2u64 {
-    msa_subsus_u_d(a, ::mem::transmute(b))
+    msa_subsus_u_d(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Subtract of Unsigned Values
@@ -8951,7 +8953,7 @@ pub unsafe fn __msa_subsus_u_d(a: v2u64, b: v2i64) -> v2u64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.b))]
 pub unsafe fn __msa_subsuu_s_b(a: v16u8, b: v16u8) -> v16i8 {
-    msa_subsuu_s_b(a, ::mem::transmute(b))
+    msa_subsuu_s_b(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Subtract of Unsigned Values
@@ -8965,7 +8967,7 @@ pub unsafe fn __msa_subsuu_s_b(a: v16u8, b: v16u8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.h))]
 pub unsafe fn __msa_subsuu_s_h(a: v8u16, b: v8u16) -> v8i16 {
-    msa_subsuu_s_h(a, ::mem::transmute(b))
+    msa_subsuu_s_h(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Subtract of Unsigned Values
@@ -8979,7 +8981,7 @@ pub unsafe fn __msa_subsuu_s_h(a: v8u16, b: v8u16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.w))]
 pub unsafe fn __msa_subsuu_s_w(a: v4u32, b: v4u32) -> v4i32 {
-    msa_subsuu_s_w(a, ::mem::transmute(b))
+    msa_subsuu_s_w(a, mem::transmute(b))
 }
 
 /// Vector Signed Saturated Subtract of Unsigned Values
@@ -8993,7 +8995,7 @@ pub unsafe fn __msa_subsuu_s_w(a: v4u32, b: v4u32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subsuu_s.d))]
 pub unsafe fn __msa_subsuu_s_d(a: v2u64, b: v2u64) -> v2i64 {
-    msa_subsuu_s_d(a, ::mem::transmute(b))
+    msa_subsuu_s_d(a, mem::transmute(b))
 }
 
 /// Vector Subtract
@@ -9006,7 +9008,7 @@ pub unsafe fn __msa_subsuu_s_d(a: v2u64, b: v2u64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.b))]
 pub unsafe fn __msa_subv_b(a: v16i8, b: v16i8) -> v16i8 {
-    msa_subv_b(a, ::mem::transmute(b))
+    msa_subv_b(a, mem::transmute(b))
 }
 
 /// Vector Subtract
@@ -9019,7 +9021,7 @@ pub unsafe fn __msa_subv_b(a: v16i8, b: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.h))]
 pub unsafe fn __msa_subv_h(a: v8i16, b: v8i16) -> v8i16 {
-    msa_subv_h(a, ::mem::transmute(b))
+    msa_subv_h(a, mem::transmute(b))
 }
 
 /// Vector Subtract
@@ -9032,7 +9034,7 @@ pub unsafe fn __msa_subv_h(a: v8i16, b: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.w))]
 pub unsafe fn __msa_subv_w(a: v4i32, b: v4i32) -> v4i32 {
-    msa_subv_w(a, ::mem::transmute(b))
+    msa_subv_w(a, mem::transmute(b))
 }
 
 /// Vector Subtract
@@ -9045,7 +9047,7 @@ pub unsafe fn __msa_subv_w(a: v4i32, b: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(subv.d))]
 pub unsafe fn __msa_subv_d(a: v2i64, b: v2i64) -> v2i64 {
-    msa_subv_d(a, ::mem::transmute(b))
+    msa_subv_d(a, mem::transmute(b))
 }
 
 /// Immediate Subtract
@@ -9138,7 +9140,7 @@ pub unsafe fn __msa_subvi_d(a: v2i64, imm5: i32) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.b))]
 pub unsafe fn __msa_vshf_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
-    msa_vshf_b(a, ::mem::transmute(b), c)
+    msa_vshf_b(a, mem::transmute(b), c)
 }
 
 /// Vector Data Preserving Shuffle
@@ -9155,7 +9157,7 @@ pub unsafe fn __msa_vshf_b(a: v16i8, b: v16i8, c: v16i8) -> v16i8 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.h))]
 pub unsafe fn __msa_vshf_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
-    msa_vshf_h(a, ::mem::transmute(b), c)
+    msa_vshf_h(a, mem::transmute(b), c)
 }
 
 /// Vector Data Preserving Shuffle
@@ -9172,7 +9174,7 @@ pub unsafe fn __msa_vshf_h(a: v8i16, b: v8i16, c: v8i16) -> v8i16 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.w))]
 pub unsafe fn __msa_vshf_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
-    msa_vshf_w(a, ::mem::transmute(b), c)
+    msa_vshf_w(a, mem::transmute(b), c)
 }
 
 /// Vector Data Preserving Shuffle
@@ -9189,7 +9191,7 @@ pub unsafe fn __msa_vshf_w(a: v4i32, b: v4i32, c: v4i32) -> v4i32 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(vshf.d))]
 pub unsafe fn __msa_vshf_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
-    msa_vshf_d(a, ::mem::transmute(b), c)
+    msa_vshf_d(a, mem::transmute(b), c)
 }
 
 /// Vector Logical Exclusive Or
@@ -9203,7 +9205,7 @@ pub unsafe fn __msa_vshf_d(a: v2i64, b: v2i64, c: v2i64) -> v2i64 {
 #[target_feature(enable = "msa")]
 #[cfg_attr(test, assert_instr(xor.v))]
 pub unsafe fn __msa_xor_v(a: v16u8, b: v16u8) -> v16u8 {
-    msa_xor_v(a, ::mem::transmute(b))
+    msa_xor_v(a, mem::transmute(b))
 }
 
 /// Immediate Logical Exclusive Or
@@ -9229,10 +9231,10 @@ pub unsafe fn __msa_xori_b(a: v16u8, imm8: i32) -> v16u8 {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::mips::msa::*;
-    use core_arch::simd::*;
+    use crate::mem;
+    use crate::core_arch::simd::*;
     use std::f32;
     use std::f64;
-    use std::mem;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "msa")]
@@ -9261,7 +9263,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_add_a_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_add_a_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9276,7 +9278,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_add_a_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_add_a_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9291,7 +9293,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_add_a_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_add_a_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9306,7 +9308,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_add_a_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_add_a_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9336,7 +9338,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_a_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_a_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9357,7 +9359,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_a_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_a_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9372,7 +9374,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_a_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_a_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9387,7 +9389,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_a_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_a_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9417,7 +9419,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9438,7 +9440,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9453,7 +9455,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9468,7 +9470,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9498,7 +9500,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9519,7 +9521,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9534,7 +9536,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9549,7 +9551,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_adds_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_adds_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9579,7 +9581,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_addv_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_addv_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9597,7 +9599,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_addv_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_addv_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9612,7 +9614,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_addv_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_addv_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9627,7 +9629,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_addv_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_addv_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9648,7 +9650,7 @@ mod tests {
             103, -126, 103, -126
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_addvi_b(::mem::transmute(a), 67)));
+        assert_eq!(r, mem::transmute(__msa_addvi_b(mem::transmute(a), 67)));
     }
 
     #[simd_test(enable = "msa")]
@@ -9664,7 +9666,7 @@ mod tests {
             -32766, 3279, -97, -124
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_addvi_h(::mem::transmute(a), 67)));
+        assert_eq!(r, mem::transmute(__msa_addvi_h(mem::transmute(a), 67)));
     }
 
     #[simd_test(enable = "msa")]
@@ -9674,7 +9676,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(103, -2147483646, 103, -2147483645);
 
-        assert_eq!(r, ::mem::transmute(__msa_addvi_w(::mem::transmute(a), 67)));
+        assert_eq!(r, mem::transmute(__msa_addvi_w(mem::transmute(a), 67)));
     }
 
     #[simd_test(enable = "msa")]
@@ -9684,7 +9686,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(117, -9223372036854775791);
 
-        assert_eq!(r, ::mem::transmute(__msa_addvi_d(::mem::transmute(a), 17)));
+        assert_eq!(r, mem::transmute(__msa_addvi_d(mem::transmute(a), 17)));
     }
 
     #[simd_test(enable = "msa")]
@@ -9713,7 +9715,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_and_v(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_and_v(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9734,7 +9736,7 @@ mod tests {
             4, 5, 4, 5
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_andi_b(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_andi_b(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -9763,7 +9765,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9778,7 +9780,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9793,7 +9795,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9808,7 +9810,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9838,7 +9840,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9853,7 +9855,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9868,7 +9870,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9883,7 +9885,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_asub_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_asub_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9913,7 +9915,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9928,7 +9930,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9943,7 +9945,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9958,7 +9960,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -9988,7 +9990,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10003,7 +10005,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10018,7 +10020,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10033,7 +10035,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ave_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ave_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10063,7 +10065,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10078,7 +10080,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10093,7 +10095,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10108,7 +10110,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10138,7 +10140,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10153,7 +10155,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10168,7 +10170,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10183,7 +10185,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_aver_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_aver_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10213,7 +10215,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bclr_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bclr_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10228,7 +10230,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bclr_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bclr_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10243,7 +10245,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bclr_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bclr_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10258,7 +10260,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bclr_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bclr_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10279,7 +10281,7 @@ mod tests {
             247, 147, 55, 1
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_bclri_b(::mem::transmute(a), 3)));
+        assert_eq!(r, mem::transmute(__msa_bclri_b(mem::transmute(a), 3)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10289,7 +10291,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u16x8::new(107, 1155, 155, 1, 107, 1155, 155, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_bclri_h(::mem::transmute(a), 11)));
+        assert_eq!(r, mem::transmute(__msa_bclri_h(mem::transmute(a), 11)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10299,7 +10301,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(202722547, 102722547, 2722547, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_bclri_w(::mem::transmute(a), 23)));
+        assert_eq!(r, mem::transmute(__msa_bclri_w(mem::transmute(a), 23)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10309,7 +10311,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(73672157683, 11110973672157683);
 
-        assert_eq!(r, ::mem::transmute(__msa_bclri_d(::mem::transmute(a), 37)));
+        assert_eq!(r, mem::transmute(__msa_bclri_d(mem::transmute(a), 37)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10345,10 +10347,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsl_b(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsl_b(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10378,10 +10380,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsl_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsl_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10399,10 +10401,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsl_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsl_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10420,10 +10422,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsl_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsl_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10454,7 +10456,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsli_b(::mem::transmute(a), ::mem::transmute(b), 5))
+            mem::transmute(__msa_binsli_b(mem::transmute(a), mem::transmute(b), 5))
         );
     }
 
@@ -10478,7 +10480,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsli_h(::mem::transmute(a), ::mem::transmute(b), 13))
+            mem::transmute(__msa_binsli_h(mem::transmute(a), mem::transmute(b), 13))
         );
     }
 
@@ -10493,7 +10495,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsli_w(::mem::transmute(a), ::mem::transmute(b), 17))
+            mem::transmute(__msa_binsli_w(mem::transmute(a), mem::transmute(b), 17))
         );
     }
 
@@ -10508,7 +10510,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsli_d(::mem::transmute(a), ::mem::transmute(b), 48))
+            mem::transmute(__msa_binsli_d(mem::transmute(a), mem::transmute(b), 48))
         );
     }
 
@@ -10545,10 +10547,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsr_b(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsr_b(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10578,10 +10580,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsr_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsr_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10599,10 +10601,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsr_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsr_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10620,10 +10622,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsr_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_binsr_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10654,7 +10656,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsri_b(::mem::transmute(a), ::mem::transmute(b), 5))
+            mem::transmute(__msa_binsri_b(mem::transmute(a), mem::transmute(b), 5))
         );
     }
 
@@ -10678,7 +10680,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsri_h(::mem::transmute(a), ::mem::transmute(b), 13))
+            mem::transmute(__msa_binsri_h(mem::transmute(a), mem::transmute(b), 13))
         );
     }
 
@@ -10693,7 +10695,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsri_w(::mem::transmute(a), ::mem::transmute(b), 17))
+            mem::transmute(__msa_binsri_w(mem::transmute(a), mem::transmute(b), 17))
         );
     }
 
@@ -10708,7 +10710,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_binsri_d(::mem::transmute(a), ::mem::transmute(b), 48))
+            mem::transmute(__msa_binsri_d(mem::transmute(a), mem::transmute(b), 48))
         );
     }
 
@@ -10745,10 +10747,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bmnz_v(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_bmnz_v(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10779,7 +10781,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bmnzi_b(::mem::transmute(a), ::mem::transmute(b), 7))
+            mem::transmute(__msa_bmnzi_b(mem::transmute(a), mem::transmute(b), 7))
         );
     }
 
@@ -10816,10 +10818,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bmz_v(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_bmz_v(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -10850,7 +10852,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bmzi_b(::mem::transmute(a), ::mem::transmute(b), 7))
+            mem::transmute(__msa_bmzi_b(mem::transmute(a), mem::transmute(b), 7))
         );
     }
 
@@ -10880,7 +10882,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bneg_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bneg_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10895,7 +10897,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bneg_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bneg_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10910,7 +10912,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bneg_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bneg_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10925,7 +10927,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bneg_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bneg_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -10946,7 +10948,7 @@ mod tests {
             34, 116, 111, 239
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_bnegi_b(::mem::transmute(a), 4)));
+        assert_eq!(r, mem::transmute(__msa_bnegi_b(mem::transmute(a), 4)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10962,7 +10964,7 @@ mod tests {
             30719, 1228, 2148, 2175
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_bnegi_h(::mem::transmute(a), 11)));
+        assert_eq!(r, mem::transmute(__msa_bnegi_h(mem::transmute(a), 11)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10972,7 +10974,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(16777316, 2130706431, 16777316, 2164260864);
 
-        assert_eq!(r, ::mem::transmute(__msa_bnegi_w(::mem::transmute(a), 24)));
+        assert_eq!(r, mem::transmute(__msa_bnegi_w(mem::transmute(a), 24)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10982,7 +10984,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(4398046511204, 9223376434901286912);
 
-        assert_eq!(r, ::mem::transmute(__msa_bnegi_d(::mem::transmute(a), 42)));
+        assert_eq!(r, mem::transmute(__msa_bnegi_d(mem::transmute(a), 42)));
     }
 
     #[simd_test(enable = "msa")]
@@ -10996,7 +10998,7 @@ mod tests {
         );
         let r = 0 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bnz_b(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bnz_b(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11008,7 +11010,7 @@ mod tests {
         );
         let r = 0 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bnz_h(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bnz_h(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11017,7 +11019,7 @@ mod tests {
         let a = u32x4::new(100, 2147483647, 0, 2147483648);
         let r = 0 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bnz_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bnz_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11027,7 +11029,7 @@ mod tests {
         #[rustfmt::skip]
         let r = 1 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bnz_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bnz_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11041,7 +11043,7 @@ mod tests {
         );
         let r = 1 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bnz_v(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bnz_v(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11077,10 +11079,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bsel_v(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_bsel_v(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -11111,7 +11113,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bseli_b(::mem::transmute(a), ::mem::transmute(b), 121))
+            mem::transmute(__msa_bseli_b(mem::transmute(a), mem::transmute(b), 121))
         );
     }
 
@@ -11141,7 +11143,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bset_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bset_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11156,7 +11158,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bset_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bset_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11171,7 +11173,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bset_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bset_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11186,7 +11188,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_bset_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_bset_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11207,7 +11209,7 @@ mod tests {
             255, 159, 55, 5
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_bseti_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_bseti_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11217,7 +11219,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u16x8::new(255, 159, 55, 5, 255, 159, 55, 5);
 
-        assert_eq!(r, ::mem::transmute(__msa_bseti_h(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_bseti_h(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11227,7 +11229,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(255, 159, 55, 5);
 
-        assert_eq!(r, ::mem::transmute(__msa_bseti_w(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_bseti_w(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11237,7 +11239,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(255, 159);
 
-        assert_eq!(r, ::mem::transmute(__msa_bseti_d(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_bseti_d(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11251,7 +11253,7 @@ mod tests {
         );
         let r = 0 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bz_b(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bz_b(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11260,7 +11262,7 @@ mod tests {
         let a = u16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
         let r = 1 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bz_h(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bz_h(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11269,7 +11271,7 @@ mod tests {
         let a = u32x4::new(255, 0, 55, 1);
         let r = 1 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bz_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bz_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11278,7 +11280,7 @@ mod tests {
         let a = u64x2::new(255, 0);
         let r = 1 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bz_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bz_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11292,7 +11294,7 @@ mod tests {
         );
         let r = 1 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_bz_v(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_bz_v(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -11321,7 +11323,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ceq_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ceq_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11336,7 +11338,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ceq_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ceq_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11351,7 +11353,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ceq_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ceq_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11366,7 +11368,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ceq_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ceq_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11387,7 +11389,7 @@ mod tests {
             0, 0, -1, 0
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ceqi_b(::mem::transmute(a), -4)));
+        assert_eq!(r, mem::transmute(__msa_ceqi_b(mem::transmute(a), -4)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11400,7 +11402,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(0, 0, 0, -1, 0, 0, 0, -1);
 
-        assert_eq!(r, ::mem::transmute(__msa_ceqi_h(::mem::transmute(a), -11)));
+        assert_eq!(r, mem::transmute(__msa_ceqi_h(mem::transmute(a), -11)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11410,7 +11412,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(0, 0, -1, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_ceqi_w(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_ceqi_w(mem::transmute(a), 5)));
     }
 
     // FIXME: https://reviews.llvm.org/D59884
@@ -11423,7 +11425,7 @@ mod tests {
     //     #[rustfmt::skip]
     //     let r = i64x2::new(-1, 0);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_ceqi_d(::mem::transmute(a), -3)));
+    //     assert_eq!(r, mem::transmute(__msa_ceqi_d(mem::transmute(a), -3)));
     // }
 
     // Can not be tested in user mode
@@ -11431,7 +11433,7 @@ mod tests {
     // unsafe fn test_msa_cfcmsa() {
     //     let r = 5;
 
-    //     assert_eq!(r, ::mem::transmute(__msa_cfcmsa(5));
+    //     assert_eq!(r, mem::transmute(__msa_cfcmsa(5));
     // }
 
     #[simd_test(enable = "msa")]
@@ -11460,7 +11462,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11475,7 +11477,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11490,7 +11492,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11505,7 +11507,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11530,7 +11532,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11551,7 +11553,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11566,7 +11568,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11581,7 +11583,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_cle_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_cle_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11597,7 +11599,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i8x16::new(-1, -1, 0, -1, -1, -1, 0, -1, -1, -1, 0, -1, -1, -1, 0, -1);
 
-        assert_eq!(r, ::mem::transmute(__msa_clei_s_b(::mem::transmute(a), -2)));
+        assert_eq!(r, mem::transmute(__msa_clei_s_b(mem::transmute(a), -2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11610,7 +11612,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(0, 0, 0, -1, 0, 0, 0, -1);
 
-        assert_eq!(r, ::mem::transmute(__msa_clei_s_h(::mem::transmute(a), -1)));
+        assert_eq!(r, mem::transmute(__msa_clei_s_h(mem::transmute(a), -1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11620,7 +11622,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(0, 0, -1, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clei_s_w(::mem::transmute(a), 6)));
+        assert_eq!(r, mem::transmute(__msa_clei_s_w(mem::transmute(a), 6)));
     }
 
     // FIXME: https://reviews.llvm.org/D59884
@@ -11633,7 +11635,7 @@ mod tests {
     //     #[rustfmt::skip]
     //     let r = i64x2::new(-1, 0);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_clei_s_d(::mem::transmute(a), -3)));
+    //     assert_eq!(r, mem::transmute(__msa_clei_s_d(mem::transmute(a), -3)));
     // }
 
     #[simd_test(enable = "msa")]
@@ -11653,7 +11655,7 @@ mod tests {
             -1, 0, 0, 0
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_clei_u_b(::mem::transmute(a), 25)));
+        assert_eq!(r, mem::transmute(__msa_clei_u_b(mem::transmute(a), 25)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11666,7 +11668,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(-1, 0, -1, 0, -1, 0, -1, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clei_u_h(::mem::transmute(a), 25)));
+        assert_eq!(r, mem::transmute(__msa_clei_u_h(mem::transmute(a), 25)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11676,7 +11678,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(-1, 0, -1, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clei_u_w(::mem::transmute(a), 31)));
+        assert_eq!(r, mem::transmute(__msa_clei_u_w(mem::transmute(a), 31)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11686,7 +11688,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(-1, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clei_u_d(::mem::transmute(a), 25)));
+        assert_eq!(r, mem::transmute(__msa_clei_u_d(mem::transmute(a), 25)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11715,7 +11717,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11730,7 +11732,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11745,7 +11747,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11760,7 +11762,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11790,7 +11792,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11805,7 +11807,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11820,7 +11822,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11835,7 +11837,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_clt_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_clt_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -11856,7 +11858,7 @@ mod tests {
             0, -1, 0, 0
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_clti_s_b(::mem::transmute(a), -5)));
+        assert_eq!(r, mem::transmute(__msa_clti_s_b(mem::transmute(a), -5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11869,7 +11871,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(-1, 0, 0, 0, -1, 0, 0, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clti_s_h(::mem::transmute(a), 15)));
+        assert_eq!(r, mem::transmute(__msa_clti_s_h(mem::transmute(a), 15)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11879,10 +11881,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(-1, 0, -1, 0);
 
-        assert_eq!(
-            r,
-            ::mem::transmute(__msa_clti_s_w(::mem::transmute(a), -10))
-        );
+        assert_eq!(r, mem::transmute(__msa_clti_s_w(mem::transmute(a), -10)));
     }
 
     // FIXME: https://reviews.llvm.org/D59884
@@ -11895,7 +11894,7 @@ mod tests {
     //     #[rustfmt::skip]
     //     let r = i64x2::new(-1, 0);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_clti_s_d(::mem::transmute(a), -3)));
+    //     assert_eq!(r, mem::transmute(__msa_clti_s_d(mem::transmute(a), -3)));
     // }
 
     #[simd_test(enable = "msa")]
@@ -11909,13 +11908,13 @@ mod tests {
         );
         #[rustfmt::skip]
         let r = i8x16::new(
-            -1, 0, 0, 0, 
-            -1, 0, 0, 0, 
-            -1, 0, 0, 0, 
+            -1, 0, 0, 0,
+            -1, 0, 0, 0,
+            -1, 0, 0, 0,
             -1, 0, 0, 0
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_clti_u_b(::mem::transmute(a), 50)));
+        assert_eq!(r, mem::transmute(__msa_clti_u_b(mem::transmute(a), 50)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11928,7 +11927,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(0, 0, 0, 0, 0, 0, 0, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clti_u_h(::mem::transmute(a), 30)));
+        assert_eq!(r, mem::transmute(__msa_clti_u_h(mem::transmute(a), 30)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11938,7 +11937,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(0, 0, 0, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clti_u_w(::mem::transmute(a), 10)));
+        assert_eq!(r, mem::transmute(__msa_clti_u_w(mem::transmute(a), 10)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11948,7 +11947,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(-1, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_clti_u_d(::mem::transmute(a), 10)));
+        assert_eq!(r, mem::transmute(__msa_clti_u_d(mem::transmute(a), 10)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11963,7 +11962,7 @@ mod tests {
         #[rustfmt::skip]
         let r = -100 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_s_b(::mem::transmute(a), 12)));
+        assert_eq!(r, mem::transmute(__msa_copy_s_b(mem::transmute(a), 12)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11976,7 +11975,7 @@ mod tests {
         #[rustfmt::skip]
         let r = 32767 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_s_h(::mem::transmute(a), 4)));
+        assert_eq!(r, mem::transmute(__msa_copy_s_h(mem::transmute(a), 4)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11985,7 +11984,7 @@ mod tests {
         let a = i32x4::new(100, 2147483647, 5, -2147483647);
         let r = 2147483647 as i32;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_s_w(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_copy_s_w(mem::transmute(a), 1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -11995,7 +11994,7 @@ mod tests {
         #[rustfmt::skip]
         let r = 9223372036854775807 as i64;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_s_d(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_copy_s_d(mem::transmute(a), 1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -12010,7 +12009,7 @@ mod tests {
         #[rustfmt::skip]
         let r = 100 as u32;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_u_b(::mem::transmute(a), 12)));
+        assert_eq!(r, mem::transmute(__msa_copy_u_b(mem::transmute(a), 12)));
     }
 
     #[simd_test(enable = "msa")]
@@ -12023,7 +12022,7 @@ mod tests {
         #[rustfmt::skip]
         let r = 32767 as u32;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_u_h(::mem::transmute(a), 4)));
+        assert_eq!(r, mem::transmute(__msa_copy_u_h(mem::transmute(a), 4)));
     }
 
     #[simd_test(enable = "msa")]
@@ -12033,7 +12032,7 @@ mod tests {
         #[rustfmt::skip]
         let r = 2147483647 as u32;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_u_w(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_copy_u_w(mem::transmute(a), 1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -12043,7 +12042,7 @@ mod tests {
         #[rustfmt::skip]
         let r = 9223372036854775807 as u64;
 
-        assert_eq!(r, ::mem::transmute(__msa_copy_u_d(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_copy_u_d(mem::transmute(a), 1)));
     }
 
     // Can not be tested in user mode
@@ -12077,7 +12076,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12092,7 +12091,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12107,7 +12106,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12122,7 +12121,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12152,7 +12151,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12167,7 +12166,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12182,7 +12181,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12197,7 +12196,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_div_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_div_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12222,7 +12221,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dotp_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_dotp_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12237,7 +12236,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dotp_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_dotp_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12252,7 +12251,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dotp_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_dotp_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12277,7 +12276,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dotp_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_dotp_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12292,7 +12291,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dotp_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_dotp_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12307,7 +12306,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dotp_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_dotp_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12334,10 +12333,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpadd_s_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpadd_s_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12361,10 +12360,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpadd_s_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpadd_s_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12382,10 +12381,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpadd_s_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpadd_s_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12413,10 +12412,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpadd_u_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpadd_u_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12440,10 +12439,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpadd_u_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpadd_u_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12461,10 +12460,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpadd_u_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpadd_u_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12492,10 +12491,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpsub_s_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpsub_s_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12519,10 +12518,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpsub_s_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpsub_s_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12540,10 +12539,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpsub_s_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpsub_s_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12571,10 +12570,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpsub_u_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpsub_u_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12598,10 +12597,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpsub_u_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpsub_u_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12619,10 +12618,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_dpsub_u_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_dpsub_u_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -12638,7 +12637,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fadd_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fadd_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12653,7 +12652,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fadd_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fadd_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12670,7 +12669,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcaf_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcaf_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12687,7 +12686,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcaf_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcaf_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12702,7 +12701,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fceq_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fceq_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12717,7 +12716,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fceq_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fceq_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12728,7 +12727,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(128, 8, 128, 2);
 
-        assert_eq!(r, ::mem::transmute(__msa_fclass_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_fclass_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -12738,7 +12737,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(128, 8);
 
-        assert_eq!(r, ::mem::transmute(__msa_fclass_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_fclass_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -12752,7 +12751,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcle_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcle_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12767,7 +12766,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcle_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcle_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12782,7 +12781,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fclt_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fclt_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12797,7 +12796,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fclt_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fclt_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12812,7 +12811,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcne_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcne_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12827,7 +12826,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcne_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcne_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12842,7 +12841,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcor_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcor_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12857,7 +12856,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcor_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcor_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12872,7 +12871,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcueq_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcueq_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12887,7 +12886,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcueq_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcueq_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12902,7 +12901,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcule_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcule_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12917,7 +12916,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcule_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcule_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12932,7 +12931,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcult_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcult_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12947,7 +12946,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcult_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcult_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12962,7 +12961,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcun_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcun_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12977,7 +12976,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcun_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcun_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -12992,7 +12991,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcune_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcune_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13007,7 +13006,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fcune_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fcune_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13022,7 +13021,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fdiv_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fdiv_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13037,7 +13036,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fdiv_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fdiv_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13050,7 +13049,7 @@ mod tests {
         let b = f32x4::new(1.1, 1.0, 1.0, 1.0);
         let r = i16x8::new(1, 9, 30, 51, 1, 9, 30, 51);
 
-        assert_eq!(r, ::mem::transmute(__msa_fexdo_h(::mem::transmute(a), ::mem::transmute(b))));
+        assert_eq!(r, mem::transmute(__msa_fexdo_h(mem::transmute(a), mem::transmute(b))));
     }*/
 
     #[simd_test(enable = "msa")]
@@ -13067,7 +13066,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fexdo_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fexdo_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13082,7 +13081,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fexp2_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fexp2_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13097,7 +13096,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fexp2_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fexp2_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13109,7 +13108,7 @@ mod tests {
     //     #[rustfmt::skip]
     //     let r = f32x4::new(5.5, 6.5, 7.5, 8.5);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_fexupl_w(::mem::transmute(a))));
+    //     assert_eq!(r, mem::transmute(__msa_fexupl_w(mem::transmute(a))));
     // }
 
     #[simd_test(enable = "msa")]
@@ -13119,7 +13118,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(7.5, 8.5);
 
-        assert_eq!(r, ::mem::transmute(__msa_fexupl_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_fexupl_d(mem::transmute(a))));
     }
 
     // FIXME: 16-bit floats
@@ -13130,7 +13129,7 @@ mod tests {
     //     #[rustfmt::skip]
     //     let r = f32x4::new(1.5, 2.5, 3.5, 4.5);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_fexupr_w(::mem::transmute(a))));
+    //     assert_eq!(r, mem::transmute(__msa_fexupr_w(mem::transmute(a))));
     // }
 
     #[simd_test(enable = "msa")]
@@ -13140,7 +13139,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(5.5, 6.5);
 
-        assert_eq!(r, ::mem::transmute(__msa_fexupr_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_fexupr_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13150,7 +13149,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f32x4::new(-1.0, 2.0, -3.0, 4.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_ffint_s_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffint_s_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13160,7 +13159,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(-1.0,     2.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_ffint_s_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffint_s_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13170,7 +13169,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f32x4::new(1.0, 2.0, 3.0, 4.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_ffint_u_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffint_u_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13180,7 +13179,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(1.0, 2.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_ffint_u_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffint_u_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13193,7 +13192,7 @@ mod tests {
             0.0010070801, 0.0014343262
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ffql_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffql_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13206,7 +13205,7 @@ mod tests {
             0.0000020693987607955933
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ffql_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffql_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13219,7 +13218,7 @@ mod tests {
             0.0010375977, 0.0014648438
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ffqr_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffqr_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13232,7 +13231,7 @@ mod tests {
             0.0000011897645890712738
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ffqr_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ffqr_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13245,7 +13244,7 @@ mod tests {
             2, 2, 2, 2
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_fill_b(2)));
+        assert_eq!(r, mem::transmute(__msa_fill_b(2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -13253,7 +13252,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(2, 2, 2, 2, 2, 2, 2, 2);
 
-        assert_eq!(r, ::mem::transmute(__msa_fill_h(2)));
+        assert_eq!(r, mem::transmute(__msa_fill_h(2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -13261,7 +13260,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(2, 2, 2, 2);
 
-        assert_eq!(r, ::mem::transmute(__msa_fill_w(2)));
+        assert_eq!(r, mem::transmute(__msa_fill_w(2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -13269,7 +13268,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(2, 2);
 
-        assert_eq!(r, ::mem::transmute(__msa_fill_d(2)));
+        assert_eq!(r, mem::transmute(__msa_fill_d(2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -13279,7 +13278,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f32x4::new(3.0, 4.0, 5.0, 6.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_flog2_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_flog2_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13289,7 +13288,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(3.0, 4.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_flog2_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_flog2_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13305,10 +13304,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmadd_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_fmadd_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -13326,10 +13325,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmadd_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_fmadd_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -13345,7 +13344,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmax_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmax_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13360,7 +13359,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmax_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmax_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13375,7 +13374,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmax_a_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmax_a_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13390,7 +13389,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmax_a_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmax_a_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13405,7 +13404,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmin_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmin_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13420,7 +13419,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmin_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmin_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13435,7 +13434,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmin_a_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmin_a_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13450,7 +13449,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmin_a_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmin_a_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13467,10 +13466,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmsub_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_fmsub_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -13488,10 +13487,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmsub_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_fmsub_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -13507,7 +13506,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmul_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmul_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13522,7 +13521,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fmul_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fmul_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13533,7 +13532,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f32x4::new(3.0, -3.0, 1.0, -2.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_frint_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_frint_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13543,7 +13542,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(3.0, 1.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_frint_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_frint_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13556,7 +13555,7 @@ mod tests {
             0.7692308, -0.58823526
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_frcp_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_frcp_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13566,7 +13565,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(0.3846153846153846, 0.7692307692307692);
 
-        assert_eq!(r, ::mem::transmute(__msa_frcp_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_frcp_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13579,7 +13578,7 @@ mod tests {
             0.87705797, 0.766965
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_frsqrt_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_frsqrt_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13589,7 +13588,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(0.6201736729460422, 0.8770580193070292);
 
-        assert_eq!(r, ::mem::transmute(__msa_frsqrt_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_frsqrt_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13603,7 +13602,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsaf_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsaf_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13618,7 +13617,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsaf_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsaf_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13633,7 +13632,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fseq_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fseq_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13648,7 +13647,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fseq_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fseq_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13663,7 +13662,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsle_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsle_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13678,7 +13677,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsle_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsle_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13693,7 +13692,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fslt_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fslt_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13708,7 +13707,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fslt_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fslt_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13723,7 +13722,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsne_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsne_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13738,7 +13737,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsne_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsne_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13753,7 +13752,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsor_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsor_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13768,7 +13767,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsor_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsor_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13779,7 +13778,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f32x4::new(3.0, 9.0, 33.0, 100.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_fsqrt_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_fsqrt_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13789,7 +13788,7 @@ mod tests {
         #[rustfmt::skip]
         let r = f64x2::new(9.0, 100.0);
 
-        assert_eq!(r, ::mem::transmute(__msa_fsqrt_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_fsqrt_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13803,7 +13802,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsub_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsub_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13818,7 +13817,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsub_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsub_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13833,7 +13832,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsueq_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsueq_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13848,7 +13847,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsueq_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsueq_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13863,7 +13862,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsule_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsule_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13878,7 +13877,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsule_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsule_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13893,7 +13892,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsult_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsult_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13908,7 +13907,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsult_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsult_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13923,7 +13922,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsun_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsun_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13938,7 +13937,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsun_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsun_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13953,7 +13952,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsune_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsune_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13968,7 +13967,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_fsune_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_fsune_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -13979,7 +13978,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(-6, 76, -1001, 1219);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftint_s_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftint_s_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13989,7 +13988,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(-6, 25656);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftint_s_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftint_s_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -13999,7 +13998,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(0, 76, 0, 1219);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftint_u_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftint_u_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -14009,7 +14008,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(6, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftint_u_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftint_u_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -14023,7 +14022,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ftq_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ftq_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14038,7 +14037,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ftq_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ftq_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14049,7 +14048,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(-5, 75, -1000, 1219);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftrunc_s_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftrunc_s_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -14059,7 +14058,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(-5, 25656);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftrunc_s_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftrunc_s_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -14069,7 +14068,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(0, 75, 0, 1219);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftrunc_u_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftrunc_u_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -14079,7 +14078,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(5, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_ftrunc_u_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_ftrunc_u_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -14103,7 +14102,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hadd_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hadd_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14124,7 +14123,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hadd_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hadd_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14139,7 +14138,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hadd_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hadd_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14164,7 +14163,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hadd_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hadd_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14185,7 +14184,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hadd_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hadd_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14200,7 +14199,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hadd_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hadd_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14225,7 +14224,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hsub_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hsub_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14246,7 +14245,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hsub_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hsub_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14261,7 +14260,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hsub_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hsub_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14286,7 +14285,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hsub_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hsub_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14307,7 +14306,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hsub_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hsub_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14322,7 +14321,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_hsub_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_hsub_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14352,7 +14351,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvev_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvev_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14373,7 +14372,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvev_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvev_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14388,7 +14387,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvev_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvev_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14403,7 +14402,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvev_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvev_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14433,7 +14432,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvl_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvl_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14454,7 +14453,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvl_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvl_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14469,7 +14468,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvl_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvl_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14484,7 +14483,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvl_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvl_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14514,7 +14513,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvod_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvod_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14535,7 +14534,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvod_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvod_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14550,7 +14549,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvod_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvod_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14565,7 +14564,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvod_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvod_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14595,7 +14594,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvr_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvr_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14616,7 +14615,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvr_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvr_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14631,7 +14630,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvr_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvr_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14646,7 +14645,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_ilvr_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_ilvr_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -14667,10 +14666,7 @@ mod tests {
             5, 127, 4, 127
         );
 
-        assert_eq!(
-            r,
-            ::mem::transmute(__msa_insert_b(::mem::transmute(a), 12, 5))
-        );
+        assert_eq!(r, mem::transmute(__msa_insert_b(mem::transmute(a), 12, 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14686,10 +14682,7 @@ mod tests {
             5, 3276, 100, 11
         );
 
-        assert_eq!(
-            r,
-            ::mem::transmute(__msa_insert_h(::mem::transmute(a), 4, 5))
-        );
+        assert_eq!(r, mem::transmute(__msa_insert_h(mem::transmute(a), 4, 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14699,10 +14692,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(100, 7, 5, -2147483647);
 
-        assert_eq!(
-            r,
-            ::mem::transmute(__msa_insert_w(::mem::transmute(a), 1, 7))
-        );
+        assert_eq!(r, mem::transmute(__msa_insert_w(mem::transmute(a), 1, 7)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14712,10 +14702,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(3, 100);
 
-        assert_eq!(
-            r,
-            ::mem::transmute(__msa_insert_d(::mem::transmute(a), 1, 100))
-        );
+        assert_eq!(r, mem::transmute(__msa_insert_d(mem::transmute(a), 1, 100)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14744,7 +14731,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_insve_b(::mem::transmute(a), 12, ::mem::transmute(b)))
+            mem::transmute(__msa_insve_b(mem::transmute(a), 12, mem::transmute(b)))
         );
     }
 
@@ -14768,7 +14755,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_insve_h(::mem::transmute(a), 4, ::mem::transmute(b)))
+            mem::transmute(__msa_insve_h(mem::transmute(a), 4, mem::transmute(b)))
         );
     }
 
@@ -14783,7 +14770,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_insve_w(::mem::transmute(a), 3, ::mem::transmute(b)))
+            mem::transmute(__msa_insve_w(mem::transmute(a), 3, mem::transmute(b)))
         );
     }
 
@@ -14798,7 +14785,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_insve_d(::mem::transmute(a), 1, ::mem::transmute(b)))
+            mem::transmute(__msa_insve_d(mem::transmute(a), 1, mem::transmute(b)))
         );
     }
 
@@ -14820,7 +14807,7 @@ mod tests {
             25, 26, 27, 28
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ld_b(p, 9)));
+        assert_eq!(r, mem::transmute(__msa_ld_b(p, 9)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14834,7 +14821,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(3, 4, 5, 6, 7, 8, 9, 10);
 
-        assert_eq!(r, ::mem::transmute(__msa_ld_h(p, -2)));
+        assert_eq!(r, mem::transmute(__msa_ld_h(p, -2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14845,7 +14832,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(2, 3, 4, 5);
 
-        assert_eq!(r, ::mem::transmute(__msa_ld_w(p, -4)));
+        assert_eq!(r, mem::transmute(__msa_ld_w(p, -4)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14856,7 +14843,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(0, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_ld_d(p, -32)));
+        assert_eq!(r, mem::transmute(__msa_ld_d(p, -32)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14869,7 +14856,7 @@ mod tests {
             -20, -20, -20, -20
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ldi_b(-20)));
+        assert_eq!(r, mem::transmute(__msa_ldi_b(-20)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14880,7 +14867,7 @@ mod tests {
             255, 255, 255, 255
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ldi_h(255)));
+        assert_eq!(r, mem::transmute(__msa_ldi_h(255)));
     }
 
     #[simd_test(enable = "msa")]
@@ -14888,7 +14875,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(-509, -509, -509, -509);
 
-        assert_eq!(r, ::mem::transmute(__msa_ldi_w(-509)));
+        assert_eq!(r, mem::transmute(__msa_ldi_w(-509)));
     }
 
     // FIXME: https://reviews.llvm.org/D59884
@@ -14898,7 +14885,7 @@ mod tests {
     // unsafe fn test_msa_ldi_d() {
     //     let r = i64x2::new(-111, -111);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_ldi_d(-111)));
+    //     assert_eq!(r, mem::transmute(__msa_ldi_d(-111)));
     // }
 
     #[simd_test(enable = "msa")]
@@ -14923,10 +14910,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_madd_q_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_madd_q_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -14944,10 +14931,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_madd_q_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_madd_q_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -14974,10 +14961,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_maddr_q_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_maddr_q_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -14995,10 +14982,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_maddr_q_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_maddr_q_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -15036,10 +15023,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_maddv_b(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_maddv_b(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -15057,10 +15044,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_maddv_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_maddv_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -15078,10 +15065,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_maddv_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_maddv_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -15099,10 +15086,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_maddv_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_maddv_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -15133,7 +15120,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_a_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_a_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15148,7 +15135,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_a_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_a_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15163,7 +15150,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_a_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_a_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15178,7 +15165,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_a_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_a_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15208,7 +15195,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15223,7 +15210,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15238,7 +15225,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15253,7 +15240,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15283,7 +15270,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15298,7 +15285,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15313,7 +15300,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15328,7 +15315,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_max_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_max_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15349,10 +15336,7 @@ mod tests {
             1, -16, -6, 8
         );
 
-        assert_eq!(
-            r,
-            ::mem::transmute(__msa_maxi_s_b(::mem::transmute(a), -16))
-        );
+        assert_eq!(r, mem::transmute(__msa_maxi_s_b(mem::transmute(a), -16)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15362,7 +15346,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(15, 15, 15, 15, 15, 15, 15, 15);
 
-        assert_eq!(r, ::mem::transmute(__msa_maxi_s_h(::mem::transmute(a), 15)));
+        assert_eq!(r, mem::transmute(__msa_maxi_s_h(mem::transmute(a), 15)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15372,7 +15356,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(1, 3, -5, -5);
 
-        assert_eq!(r, ::mem::transmute(__msa_maxi_s_w(::mem::transmute(a), -5)));
+        assert_eq!(r, mem::transmute(__msa_maxi_s_w(mem::transmute(a), -5)));
     }
 
     // FIXME: https://reviews.llvm.org/D59884
@@ -15385,7 +15369,7 @@ mod tests {
     //     #[rustfmt::skip]
     //     let r = i64x2::new(-3, -3);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_maxi_s_d(::mem::transmute(a), -3)));
+    //     assert_eq!(r, mem::transmute(__msa_maxi_s_d(mem::transmute(a), -3)));
     // }
 
     #[simd_test(enable = "msa")]
@@ -15405,7 +15389,7 @@ mod tests {
             5, 5, 6, 8
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_maxi_u_b(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_maxi_u_b(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15415,7 +15399,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u16x8::new(5, 5, 6, 8, 5, 5, 6, 8);
 
-        assert_eq!(r, ::mem::transmute(__msa_maxi_u_h(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_maxi_u_h(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15425,7 +15409,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(5, 5, 6, 8);
 
-        assert_eq!(r, ::mem::transmute(__msa_maxi_u_w(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_maxi_u_w(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15435,7 +15419,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(5, 8);
 
-        assert_eq!(r, ::mem::transmute(__msa_maxi_u_d(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_maxi_u_d(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15464,7 +15448,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_a_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_a_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15479,7 +15463,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_a_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_a_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15494,7 +15478,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_a_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_a_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15509,7 +15493,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_a_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_a_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15539,7 +15523,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15554,7 +15538,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15569,7 +15553,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15584,7 +15568,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15605,10 +15589,7 @@ mod tests {
             -10, -10, -10, -10
         );
 
-        assert_eq!(
-            r,
-            ::mem::transmute(__msa_mini_s_b(::mem::transmute(a), -10))
-        );
+        assert_eq!(r, mem::transmute(__msa_mini_s_b(mem::transmute(a), -10)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15618,7 +15599,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(-3, -3, -3, -4, -3, -3, -3, -4);
 
-        assert_eq!(r, ::mem::transmute(__msa_mini_s_h(::mem::transmute(a), -3)));
+        assert_eq!(r, mem::transmute(__msa_mini_s_h(mem::transmute(a), -3)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15628,7 +15609,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(-3, -3, -3, -4);
 
-        assert_eq!(r, ::mem::transmute(__msa_mini_s_w(::mem::transmute(a), -3)));
+        assert_eq!(r, mem::transmute(__msa_mini_s_w(mem::transmute(a), -3)));
     }
 
     // FIXME: https://reviews.llvm.org/D59884
@@ -15641,7 +15622,7 @@ mod tests {
     //     #[rustfmt::skip]
     //     let r = i64x2::new(-1, -3);
 
-    //     assert_eq!(r, ::mem::transmute(__msa_mini_s_d(::mem::transmute(a), -3)));
+    //     assert_eq!(r, mem::transmute(__msa_mini_s_d(mem::transmute(a), -3)));
     // }
 
     #[simd_test(enable = "msa")]
@@ -15670,7 +15651,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15685,7 +15666,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15700,7 +15681,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15715,7 +15696,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_min_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_min_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15736,7 +15717,7 @@ mod tests {
             1, 3, 5, 5
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_mini_u_b(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_mini_u_b(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15746,7 +15727,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u16x8::new(1, 3, 5, 5, 1, 3, 5, 5);
 
-        assert_eq!(r, ::mem::transmute(__msa_mini_u_h(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_mini_u_h(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15756,7 +15737,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(1, 3, 5, 5);
 
-        assert_eq!(r, ::mem::transmute(__msa_mini_u_w(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_mini_u_w(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15766,7 +15747,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(1, 5);
 
-        assert_eq!(r, ::mem::transmute(__msa_mini_u_d(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_mini_u_d(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -15795,7 +15776,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15810,7 +15791,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15825,7 +15806,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15840,7 +15821,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15870,7 +15851,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15885,7 +15866,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15900,7 +15881,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15915,7 +15896,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mod_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mod_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -15936,7 +15917,7 @@ mod tests {
             5, 6, 7, 8
             );
 
-        assert_eq!(r, ::mem::transmute(__msa_move_v(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_move_v(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -15961,10 +15942,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msub_q_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msub_q_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -15982,10 +15963,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msub_q_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msub_q_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -16012,10 +15993,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msubr_q_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msubr_q_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -16033,10 +16014,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msubr_q_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msubr_q_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -16074,10 +16055,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msubv_b(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msubv_b(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -16095,10 +16076,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msubv_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msubv_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -16116,10 +16097,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msubv_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msubv_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -16137,10 +16118,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_msubv_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_msubv_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -16162,7 +16143,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mul_q_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mul_q_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16180,7 +16161,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mul_q_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mul_q_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16201,7 +16182,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mulr_q_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mulr_q_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16219,7 +16200,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mulr_q_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mulr_q_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16249,7 +16230,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mulv_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mulv_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16270,7 +16251,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mulv_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mulv_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16285,7 +16266,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mulv_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mulv_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16300,7 +16281,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_mulv_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_mulv_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16321,7 +16302,7 @@ mod tests {
             0, 0, 0, 0
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_nloc_b(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nloc_b(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16334,7 +16315,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(1, 2, 3, 4, 0, 0, 0, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_nloc_h(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nloc_h(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16347,7 +16328,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(1, 2, 0, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_nloc_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nloc_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16357,7 +16338,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(1, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_nloc_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nloc_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16377,7 +16358,7 @@ mod tests {
             4, 4, 4, 3
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_nlzc_b(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nlzc_b(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16390,7 +16371,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(15, 14, 14, 13, 13, 13, 13, 12);
 
-        assert_eq!(r, ::mem::transmute(__msa_nlzc_h(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nlzc_h(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16400,7 +16381,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(31, 30, 30, 29);
 
-        assert_eq!(r, ::mem::transmute(__msa_nlzc_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nlzc_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16410,7 +16391,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(63, 62);
 
-        assert_eq!(r, ::mem::transmute(__msa_nlzc_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_nlzc_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16439,7 +16420,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_nor_v(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_nor_v(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16460,7 +16441,7 @@ mod tests {
             242, 241, 240, 235
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_nori_b(::mem::transmute(a), 4)));
+        assert_eq!(r, mem::transmute(__msa_nori_b(mem::transmute(a), 4)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16489,7 +16470,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_or_v(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_or_v(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16510,7 +16491,7 @@ mod tests {
             13, 14, 15, 20
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_ori_b(::mem::transmute(a), 4)));
+        assert_eq!(r, mem::transmute(__msa_ori_b(mem::transmute(a), 4)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16539,7 +16520,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckev_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckev_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16554,7 +16535,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckev_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckev_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16569,7 +16550,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckev_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckev_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16584,7 +16565,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckev_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckev_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16614,7 +16595,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckod_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckod_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16629,7 +16610,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckod_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckod_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16644,7 +16625,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckod_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckod_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16659,7 +16640,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_pckod_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_pckod_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -16680,7 +16661,7 @@ mod tests {
             1, 1, 1, 7
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_pcnt_b(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_pcnt_b(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16693,7 +16674,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(1, 2, 3, 4, 1, 1, 1, 15);
 
-        assert_eq!(r, ::mem::transmute(__msa_pcnt_h(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_pcnt_h(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16706,7 +16687,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(1, 2, 1, 31);
 
-        assert_eq!(r, ::mem::transmute(__msa_pcnt_w(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_pcnt_w(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16716,7 +16697,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(33, 31);
 
-        assert_eq!(r, ::mem::transmute(__msa_pcnt_d(::mem::transmute(a))));
+        assert_eq!(r, mem::transmute(__msa_pcnt_d(mem::transmute(a))));
     }
 
     #[simd_test(enable = "msa")]
@@ -16736,7 +16717,7 @@ mod tests {
             3, 3, 3, 1
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_s_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_sat_s_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16749,7 +16730,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(127, 127, 127, 1, 127, 127, 127, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_s_h(::mem::transmute(a), 7)));
+        assert_eq!(r, mem::transmute(__msa_sat_s_h(mem::transmute(a), 7)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16759,7 +16740,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(131071, 131071, 131071, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_s_w(::mem::transmute(a), 17)));
+        assert_eq!(r, mem::transmute(__msa_sat_s_w(mem::transmute(a), 17)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16769,7 +16750,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(137438953471, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_s_d(::mem::transmute(a), 37)));
+        assert_eq!(r, mem::transmute(__msa_sat_s_d(mem::transmute(a), 37)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16789,7 +16770,7 @@ mod tests {
             7, 7, 7, 1
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_u_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_sat_u_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16802,7 +16783,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u16x8::new(255, 255, 155, 1, 255, 255, 155, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_u_h(::mem::transmute(a), 7)));
+        assert_eq!(r, mem::transmute(__msa_sat_u_h(mem::transmute(a), 7)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16812,7 +16793,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u32x4::new(262143, 262143, 262143, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_u_w(::mem::transmute(a), 17)));
+        assert_eq!(r, mem::transmute(__msa_sat_u_w(mem::transmute(a), 17)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16822,7 +16803,7 @@ mod tests {
         #[rustfmt::skip]
         let r = u64x2::new(274877906943, 1);
 
-        assert_eq!(r, ::mem::transmute(__msa_sat_u_d(::mem::transmute(a), 37)));
+        assert_eq!(r, mem::transmute(__msa_sat_u_d(mem::transmute(a), 37)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16842,7 +16823,7 @@ mod tests {
             11, 3, 4, 12
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_shf_b(::mem::transmute(a), 120)));
+        assert_eq!(r, mem::transmute(__msa_shf_b(mem::transmute(a), 120)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16855,7 +16836,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(11, 14, 12, 13, 11, 14, 12, 13);
 
-        assert_eq!(r, ::mem::transmute(__msa_shf_h(::mem::transmute(a), 156)));
+        assert_eq!(r, mem::transmute(__msa_shf_h(mem::transmute(a), 156)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16865,7 +16846,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(1, 3, 2, 4);
 
-        assert_eq!(r, ::mem::transmute(__msa_shf_w(::mem::transmute(a), 216)));
+        assert_eq!(r, mem::transmute(__msa_shf_w(mem::transmute(a), 216)));
     }
 
     #[simd_test(enable = "msa")]
@@ -16894,7 +16875,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sld_b(::mem::transmute(a), ::mem::transmute(b), 5))
+            mem::transmute(__msa_sld_b(mem::transmute(a), mem::transmute(b), 5))
         );
     }
 
@@ -16909,7 +16890,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sld_h(::mem::transmute(a), ::mem::transmute(b), 2))
+            mem::transmute(__msa_sld_h(mem::transmute(a), mem::transmute(b), 2))
         );
     }
 
@@ -16924,7 +16905,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sld_w(::mem::transmute(a), ::mem::transmute(b), 4))
+            mem::transmute(__msa_sld_w(mem::transmute(a), mem::transmute(b), 4))
         );
     }
 
@@ -16939,7 +16920,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sld_d(::mem::transmute(a), ::mem::transmute(b), 2))
+            mem::transmute(__msa_sld_d(mem::transmute(a), mem::transmute(b), 2))
         );
     }
 
@@ -16969,7 +16950,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sldi_b(::mem::transmute(a), ::mem::transmute(b), 5))
+            mem::transmute(__msa_sldi_b(mem::transmute(a), mem::transmute(b), 5))
         );
     }
 
@@ -16984,7 +16965,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sldi_h(::mem::transmute(a), ::mem::transmute(b), 2))
+            mem::transmute(__msa_sldi_h(mem::transmute(a), mem::transmute(b), 2))
         );
     }
 
@@ -16999,7 +16980,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sldi_w(::mem::transmute(a), ::mem::transmute(b), 4))
+            mem::transmute(__msa_sldi_w(mem::transmute(a), mem::transmute(b), 4))
         );
     }
 
@@ -17014,7 +16995,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sldi_d(::mem::transmute(a), ::mem::transmute(b), 2))
+            mem::transmute(__msa_sldi_d(mem::transmute(a), mem::transmute(b), 2))
         );
     }
 
@@ -17044,7 +17025,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sll_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sll_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17059,7 +17040,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sll_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sll_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17074,7 +17055,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sll_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sll_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17089,7 +17070,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sll_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sll_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17110,7 +17091,7 @@ mod tests {
             4, 8, 12, 16
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_slli_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_slli_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17123,7 +17104,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(4, 8, 12, 16, 4, 8, 12, 16);
 
-        assert_eq!(r, ::mem::transmute(__msa_slli_h(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_slli_h(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17133,7 +17114,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(4, 8, 12, 16);
 
-        assert_eq!(r, ::mem::transmute(__msa_slli_w(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_slli_w(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17143,7 +17124,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(2, 4);
 
-        assert_eq!(r, ::mem::transmute(__msa_slli_d(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_slli_d(mem::transmute(a), 1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17163,7 +17144,7 @@ mod tests {
             4, 4, 4, 4
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_splat_b(::mem::transmute(a), 3)));
+        assert_eq!(r, mem::transmute(__msa_splat_b(mem::transmute(a), 3)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17176,7 +17157,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(4, 4, 4, 4, 4, 4, 4, 4);
 
-        assert_eq!(r, ::mem::transmute(__msa_splat_h(::mem::transmute(a), 3)));
+        assert_eq!(r, mem::transmute(__msa_splat_h(mem::transmute(a), 3)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17186,7 +17167,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(4, 4, 4, 4);
 
-        assert_eq!(r, ::mem::transmute(__msa_splat_w(::mem::transmute(a), 3)));
+        assert_eq!(r, mem::transmute(__msa_splat_w(mem::transmute(a), 3)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17196,7 +17177,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(2, 2);
 
-        assert_eq!(r, ::mem::transmute(__msa_splat_d(::mem::transmute(a), 3)));
+        assert_eq!(r, mem::transmute(__msa_splat_d(mem::transmute(a), 3)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17216,7 +17197,7 @@ mod tests {
             3, 3, 3, 3
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_splati_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_splati_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17229,7 +17210,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(3, 3, 3, 3, 3, 3, 3, 3);
 
-        assert_eq!(r, ::mem::transmute(__msa_splati_h(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_splati_h(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17239,7 +17220,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(3, 3, 3, 3);
 
-        assert_eq!(r, ::mem::transmute(__msa_splati_w(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_splati_w(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17249,7 +17230,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(2, 2);
 
-        assert_eq!(r, ::mem::transmute(__msa_splati_d(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_splati_d(mem::transmute(a), 1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17278,7 +17259,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sra_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sra_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17302,7 +17283,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sra_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sra_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17317,7 +17298,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sra_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sra_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17332,7 +17313,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_sra_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_sra_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17353,7 +17334,7 @@ mod tests {
             31, 31, 13, 0
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_srai_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srai_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17366,7 +17347,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(8191, 31, 13, 0, 8191, 31, 13, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_srai_h(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srai_h(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17375,7 +17356,7 @@ mod tests {
         let a = i32x4::new(i32::max_value(), 125, 55, 1);
         let r = i32x4::new(536870911, 31, 13, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_srai_w(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srai_w(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17385,7 +17366,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(2305843009213693951, 13);
 
-        assert_eq!(r, ::mem::transmute(__msa_srai_d(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srai_d(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17414,7 +17395,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srar_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srar_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17438,7 +17419,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srar_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srar_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17453,7 +17434,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srar_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srar_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17468,7 +17449,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srar_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srar_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17489,7 +17470,7 @@ mod tests {
             31, 32, 14, 0
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_srari_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srari_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17499,7 +17480,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i16x8::new(539, 289, 39, 0, 539, 289, 39, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_srari_h(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srari_h(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17509,7 +17490,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(52777789, 27777789, 2777789, 0);
 
-        assert_eq!(r, ::mem::transmute(__msa_srari_w(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srari_w(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17519,7 +17500,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(52777777789, 27777777789);
 
-        assert_eq!(r, ::mem::transmute(__msa_srari_d(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srari_d(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17548,7 +17529,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srl_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srl_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17569,7 +17550,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srl_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srl_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17584,7 +17565,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srl_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srl_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17599,7 +17580,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srl_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srl_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17620,7 +17601,7 @@ mod tests {
             6, 12, 25, 31
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_srli_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srli_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17636,7 +17617,7 @@ mod tests {
             8191, 819, 25, 31
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_srli_h(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srli_h(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17646,7 +17627,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(25, 536870911, 25, 536870911);
 
-        assert_eq!(r, ::mem::transmute(__msa_srli_w(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srli_w(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17656,7 +17637,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(50, 4611686018427387903);
 
-        assert_eq!(r, ::mem::transmute(__msa_srli_d(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_srli_d(mem::transmute(a), 1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17685,7 +17666,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srlr_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srlr_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17706,7 +17687,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srlr_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srlr_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17720,7 +17701,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srlr_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srlr_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17735,7 +17716,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_srlr_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_srlr_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17756,7 +17737,7 @@ mod tests {
             6, 13, 25, 32
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_srlri_b(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srlri_b(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17768,7 +17749,7 @@ mod tests {
         );
         let r = i16x8::new(8192, 819, 25, 32, 8192, 819, 25, 32);
 
-        assert_eq!(r, ::mem::transmute(__msa_srlri_h(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srlri_h(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17778,7 +17759,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(25, 38, 50, 536870912);
 
-        assert_eq!(r, ::mem::transmute(__msa_srlri_w(::mem::transmute(a), 2)));
+        assert_eq!(r, mem::transmute(__msa_srlri_w(mem::transmute(a), 2)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17788,7 +17769,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(50, 4611686018427387904);
 
-        assert_eq!(r, ::mem::transmute(__msa_srlri_d(::mem::transmute(a), 1)));
+        assert_eq!(r, mem::transmute(__msa_srlri_d(mem::transmute(a), 1)));
     }
 
     #[simd_test(enable = "msa")]
@@ -17814,7 +17795,7 @@ mod tests {
             21, 22, 23, 24, 
             25, 26, 27, 28
         ];
-        __msa_st_b(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
+        __msa_st_b(mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
@@ -17825,7 +17806,7 @@ mod tests {
         let mut arr: [i16; 8] = [0, 0, 0, 0, 0, 0, 0, 0];
         #[rustfmt::skip]
         let r  : [i16; 8] = [13, 14, 15, 16, 17, 18, 19, 20];
-        __msa_st_h(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
+        __msa_st_h(mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
@@ -17836,7 +17817,7 @@ mod tests {
         let mut arr: [i32; 4] = [0, 0, 0, 0];
         #[rustfmt::skip]
         let r  : [i32; 4] = [13, 14, 15, 16];
-        __msa_st_w(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
+        __msa_st_w(mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
@@ -17847,7 +17828,7 @@ mod tests {
         let mut arr: [i64; 2] = [0, 0];
         #[rustfmt::skip]
         let r : [i64; 2] = [13, 14];
-        __msa_st_d(::mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
+        __msa_st_d(mem::transmute(a), arr.as_mut_ptr() as *mut u8, 0);
         assert_eq!(arr, r);
     }
 
@@ -17877,7 +17858,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17898,7 +17879,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17913,7 +17894,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17928,7 +17909,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17958,7 +17939,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17976,7 +17957,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -17991,7 +17972,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18006,7 +17987,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subs_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subs_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18036,7 +18017,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsus_u_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsus_u_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18054,7 +18035,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsus_u_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsus_u_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18069,7 +18050,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsus_u_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsus_u_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18084,7 +18065,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsus_u_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsus_u_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18114,7 +18095,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsuu_s_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsuu_s_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18132,7 +18113,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsuu_s_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsuu_s_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18147,7 +18128,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsuu_s_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsuu_s_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18162,7 +18143,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subsuu_s_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subsuu_s_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18192,7 +18173,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subv_b(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subv_b(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18210,7 +18191,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subv_h(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subv_h(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18225,7 +18206,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subv_w(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subv_w(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18240,7 +18221,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_subv_d(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_subv_d(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18261,7 +18242,7 @@ mod tests {
             95, 122, 45, 123
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_subvi_b(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_subvi_b(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -18277,7 +18258,7 @@ mod tests {
             32762, 3271, -105, 32763
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_subvi_h(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_subvi_h(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -18287,7 +18268,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i32x4::new(95, 145, 195, 2147483642);
 
-        assert_eq!(r, ::mem::transmute(__msa_subvi_w(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_subvi_w(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -18297,7 +18278,7 @@ mod tests {
         #[rustfmt::skip]
         let r = i64x2::new(95, 9223372036854775802);
 
-        assert_eq!(r, ::mem::transmute(__msa_subvi_d(::mem::transmute(a), 5)));
+        assert_eq!(r, mem::transmute(__msa_subvi_d(mem::transmute(a), 5)));
     }
 
     #[simd_test(enable = "msa")]
@@ -18333,10 +18314,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_vshf_b(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_vshf_b(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -18362,10 +18343,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_vshf_h(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_vshf_h(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -18383,10 +18364,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_vshf_w(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_vshf_w(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -18404,10 +18385,10 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_vshf_d(
-                ::mem::transmute(a),
-                ::mem::transmute(b),
-                ::mem::transmute(c)
+            mem::transmute(__msa_vshf_d(
+                mem::transmute(a),
+                mem::transmute(b),
+                mem::transmute(c)
             ))
         );
     }
@@ -18438,7 +18419,7 @@ mod tests {
 
         assert_eq!(
             r,
-            ::mem::transmute(__msa_xor_v(::mem::transmute(a), ::mem::transmute(b)))
+            mem::transmute(__msa_xor_v(mem::transmute(a), mem::transmute(b)))
         );
     }
 
@@ -18459,6 +18440,6 @@ mod tests {
             9, 10, 11, 20
         );
 
-        assert_eq!(r, ::mem::transmute(__msa_xori_b(::mem::transmute(a), 4)));
+        assert_eq!(r, mem::transmute(__msa_xori_b(mem::transmute(a), 4)));
     }
 }

@@ -238,6 +238,7 @@ pub unsafe fn __smlawt(a: i32, b: int16x2_t, c: i32) -> i32 {
 mod tests {
     use crate::core_arch::arm::*;
     use crate::core_arch::simd::{i16x2, i8x4, u8x4};
+    use std::i32;
     use std::mem::transmute;
     use stdsimd_test::simd_test;
 
@@ -299,8 +300,8 @@ mod tests {
     fn qadd() {
         unsafe {
             assert_eq!(super::__qadd(-10, 60), 50);
-            assert_eq!(super::__qadd(::std::i32::MAX, 10), ::std::i32::MAX);
-            assert_eq!(super::__qadd(::std::i32::MIN, -10), ::std::i32::MIN);
+            assert_eq!(super::__qadd(i32::MAX, 10), i32::MAX);
+            assert_eq!(super::__qadd(i32::MIN, -10), i32::MIN);
         }
     }
 
@@ -308,15 +309,15 @@ mod tests {
     fn qsub() {
         unsafe {
             assert_eq!(super::__qsub(10, 60), -50);
-            assert_eq!(super::__qsub(::std::i32::MAX, -10), ::std::i32::MAX);
-            assert_eq!(super::__qsub(::std::i32::MIN, 10), ::std::i32::MIN);
+            assert_eq!(super::__qsub(i32::MAX, -10), i32::MAX);
+            assert_eq!(super::__qsub(i32::MIN, 10), i32::MIN);
         }
     }
 
     fn qdbl() {
         unsafe {
             assert_eq!(super::__qdbl(10), 20);
-            assert_eq!(super::__qdbl(::std::i32::MAX), ::std::i32::MAX);
+            assert_eq!(super::__qdbl(i32::MAX), i32::MAX);
         }
     }
 

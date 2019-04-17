@@ -65,8 +65,6 @@ extern crate std;
 extern crate std_detect;
 #[cfg(test)]
 extern crate stdsimd_test;
-#[cfg(test)]
-extern crate test;
 
 #[cfg(all(test, target_arch = "wasm32"))]
 extern crate wasm_bindgen_test;
@@ -78,3 +76,6 @@ pub use self::core_arch::arch::*;
 
 #[allow(unused_imports)]
 use core::{ffi, intrinsics, marker, mem, ptr, sync};
+
+#[cfg(test)]
+use core::hint;

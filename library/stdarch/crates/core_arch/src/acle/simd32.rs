@@ -65,8 +65,8 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
+use crate::core_arch::acle::dsp::int16x2_t;
 use crate::mem::transmute;
-use core_arch::acle::dsp::int16x2_t;
 
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.
@@ -465,15 +465,17 @@ pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::simd::{i16x2, i8x4, u8x4};
+    use std::i16;
+    use std::i8;
     use std::mem::transmute;
     use stdsimd_test::simd_test;
 
     #[test]
     fn qadd8() {
         unsafe {
-            let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
+            let a = i8x4::new(1, 2, 3, i8::MAX);
             let b = i8x4::new(2, -1, 0, 1);
-            let c = i8x4::new(3, 1, 3, ::std::i8::MAX);
+            let c = i8x4::new(3, 1, 3, i8::MAX);
             let r: i8x4 = dsp_call!(super::__qadd8, a, b);
             assert_eq!(r, c);
         }
@@ -482,9 +484,9 @@ mod tests {
     #[test]
     fn qsub8() {
         unsafe {
-            let a = i8x4::new(1, 2, 3, ::std::i8::MIN);
+            let a = i8x4::new(1, 2, 3, i8::MIN);
             let b = i8x4::new(2, -1, 0, 1);
-            let c = i8x4::new(-1, 3, 3, ::std::i8::MIN);
+            let c = i8x4::new(-1, 3, 3, i8::MIN);
             let r: i8x4 = dsp_call!(super::__qsub8, a, b);
             assert_eq!(r, c);
         }
@@ -515,9 +517,9 @@ mod tests {
     #[test]
     fn qasx() {
         unsafe {
-            let a = i16x2::new(1, ::std::i16::MAX);
+            let a = i16x2::new(1, i16::MAX);
             let b = i16x2::new(2, 2);
-            let c = i16x2::new(-1, ::std::i16::MAX);
+            let c = i16x2::new(-1, i16::MAX);
             let r: i16x2 = dsp_call!(super::__qasx, a, b);
             assert_eq!(r, c);
         }
@@ -526,9 +528,9 @@ mod tests {
     #[test]
     fn qsax() {
         unsafe {
-            let a = i16x2::new(1, ::std::i16::MAX);
+            let a = i16x2::new(1, i16::MAX);
             let b = i16x2::new(2, 2);
-            let c = i16x2::new(3, ::std::i16::MAX - 2);
+            let c = i16x2::new(3, i16::MAX - 2);
             let r: i16x2 = dsp_call!(super::__qsax, a, b);
             assert_eq!(r, c);
         }
@@ -537,9 +539,9 @@ mod tests {
     #[test]
     fn sadd16() {
         unsafe {
-            let a = i16x2::new(1, ::std::i16::MAX);
+            let a = i16x2::new(1, i16::MAX);
             let b = i16x2::new(2, 2);
-            let c = i16x2::new(3, -::std::i16::MAX);
+            let c = i16x2::new(3, -i16::MAX);
             let r: i16x2 = dsp_call!(super::__sadd16, a, b);
             assert_eq!(r, c);
         }
@@ -548,9 +550,9 @@ mod tests {
     #[test]
     fn sadd8() {
         unsafe {
-            let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
+            let a = i8x4::new(1, 2, 3, i8::MAX);
             let b = i8x4::new(4, 3, 2, 2);
-            let c = i8x4::new(5, 5, 5, -::std::i8::MAX);
+            let c = i8x4::new(5, 5, 5, -i8::MAX);
             let r: i8x4 = dsp_call!(super::__sadd8, a, b);
             assert_eq!(r, c);
         }
@@ -590,11 +592,11 @@ mod tests {
     #[test]
     fn sel() {
         unsafe {
-            let a = i8x4::new(1, 2, 3, ::std::i8::MAX);
+            let a = i8x4::new(1, 2, 3, i8::MAX);
             let b = i8x4::new(4, 3, 2, 2);
             // call sadd8() to set GE bits
             super::__sadd8(transmute(a), transmute(b));
-            let c = i8x4::new(1, 2, 3, ::std::i8::MAX);
+            let c = i8x4::new(1, 2, 3, i8::MAX);
             let r: i8x4 = dsp_call!(super::__sel, a, b);
             assert_eq!(r, c);
         }

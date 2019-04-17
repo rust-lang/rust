@@ -2497,10 +2497,11 @@ pub unsafe fn _mm_cvtps_pi8(a: __m128) -> __m64 {
 
 #[cfg(test)]
 mod tests {
+    use crate::hint::black_box;
     use crate::mem::transmute;
+    use std::boxed;
     use std::f32::NAN;
-    use stdsimd_test::simd_test;
-    use test::black_box; // Used to inhibit constant-folding.
+    use stdsimd_test::simd_test; // Used to inhibit constant-folding.
 
     use crate::core_arch::{simd::*, x86::*};
 
@@ -3909,7 +3910,7 @@ mod tests {
     #[simd_test(enable = "sse,mmx")]
     unsafe fn test_mm_stream_pi() {
         let a = transmute(i8x8::new(0, 0, 0, 0, 0, 0, 0, 7));
-        let mut mem = ::std::boxed::Box::<__m64>::new(transmute(i8x8::splat(1)));
+        let mut mem = boxed::Box::<__m64>::new(transmute(i8x8::splat(1)));
         _mm_stream_pi(&mut *mem as *mut _ as *mut _, a);
         assert_eq_m64(a, *mem);
     }

@@ -977,7 +977,13 @@ pub unsafe fn vtbx4_p8(a: poly8x8_t, b: poly8x8x4_t, c: uint8x8_t) -> poly8x8_t 
 #[cfg(test)]
 mod tests {
     use crate::core_arch::{arm::*, simd::*};
+    use std::i16;
+    use std::i32;
+    use std::i8;
     use std::mem::transmute;
+    use std::u16;
+    use std::u32;
+    use std::u8;
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "neon")]
@@ -1108,7 +1114,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vaddl_s8() {
-        let v = ::std::i8::MAX;
+        let v = i8::MAX;
         let a = i8x8::new(v, v, v, v, v, v, v, v);
         let v = 2 * (v as i16);
         let e = i16x8::new(v, v, v, v, v, v, v, v);
@@ -1118,7 +1124,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vaddl_s16() {
-        let v = ::std::i16::MAX;
+        let v = i16::MAX;
         let a = i16x4::new(v, v, v, v);
         let v = 2 * (v as i32);
         let e = i32x4::new(v, v, v, v);
@@ -1128,7 +1134,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vaddl_s32() {
-        let v = ::std::i32::MAX;
+        let v = i32::MAX;
         let a = i32x2::new(v, v);
         let v = 2 * (v as i64);
         let e = i64x2::new(v, v);
@@ -1138,7 +1144,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vaddl_u8() {
-        let v = ::std::u8::MAX;
+        let v = u8::MAX;
         let a = u8x8::new(v, v, v, v, v, v, v, v);
         let v = 2 * (v as u16);
         let e = u16x8::new(v, v, v, v, v, v, v, v);
@@ -1148,7 +1154,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vaddl_u16() {
-        let v = ::std::u16::MAX;
+        let v = u16::MAX;
         let a = u16x4::new(v, v, v, v);
         let v = 2 * (v as u32);
         let e = u32x4::new(v, v, v, v);
@@ -1158,7 +1164,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vaddl_u32() {
-        let v = ::std::u32::MAX;
+        let v = u32::MAX;
         let a = u32x2::new(v, v);
         let v = 2 * (v as u64);
         let e = u64x2::new(v, v);

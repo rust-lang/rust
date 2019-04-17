@@ -3183,14 +3183,14 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
+    use crate::core_arch::{simd::*, x86::*};
+    use crate::hint::black_box;
+    use std::boxed;
     use std::f32;
     use std::f64::{self, NAN};
     use std::i32;
     use std::mem::{self, transmute};
-
-    use crate::core_arch::{simd::*, x86::*};
-    use stdsimd_test::simd_test;
-    use test::black_box; // Used to inhibit constant-folding.
+    use stdsimd_test::simd_test; // Used to inhibit constant-folding.
 
     #[test]
     fn test_mm_pause() {
@@ -4090,7 +4090,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_stream_si32() {
         let a: i32 = 7;
-        let mut mem = ::std::boxed::Box::<i32>::new(-1);
+        let mut mem = boxed::Box::<i32>::new(-1);
         _mm_stream_si32(&mut *mem as *mut i32, a);
         assert_eq!(a, *mem);
     }
