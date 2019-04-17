@@ -8,6 +8,7 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
+#![deny(internal)]
 #![feature(crate_visibility_modifier)]
 
 // FIXME: switch to something more ergonomic here, once available.
@@ -423,7 +424,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box serde_api::Serde);
     reg.register_early_lint_pass(box utils::internal_lints::Clippy);
     reg.register_late_lint_pass(box utils::internal_lints::CompilerLintFunctions::new());
-    reg.register_early_lint_pass(box utils::internal_lints::DefaultHashTypes::default());
     reg.register_late_lint_pass(box utils::internal_lints::LintWithoutLintPass::default());
     reg.register_late_lint_pass(box utils::inspector::Pass);
     reg.register_late_lint_pass(box utils::author::Pass);
@@ -647,7 +647,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_lint_group("clippy::internal", Some("clippy_internal"), vec![
         utils::internal_lints::CLIPPY_LINTS_INTERNAL,
         utils::internal_lints::COMPILER_LINT_FUNCTIONS,
-        utils::internal_lints::DEFAULT_HASH_TYPES,
         utils::internal_lints::LINT_WITHOUT_LINT_PASS,
     ]);
 

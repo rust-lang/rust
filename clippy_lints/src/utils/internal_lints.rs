@@ -1,6 +1,4 @@
-use crate::utils::{
-    match_def_path, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
-};
+use crate::utils::{match_def_path, match_type, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::Def;
@@ -9,8 +7,7 @@ use rustc::hir::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, lint_array};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::Applicability;
-use syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
+use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::source_map::Span;
 use syntax::symbol::LocalInternedString;
 
@@ -54,17 +51,6 @@ declare_clippy_lint! {
     pub LINT_WITHOUT_LINT_PASS,
     internal,
     "declaring a lint without associating it in a LintPass"
-}
-
-declare_clippy_lint! {
-    /// **What it does:** Checks for the presence of the default hash types "HashMap" or "HashSet"
-    /// and recommends the FxHash* variants.
-    ///
-    /// **Why is this bad?** The FxHash variants have better performance
-    /// and we don't need any collision prevention in clippy.
-    pub DEFAULT_HASH_TYPES,
-    internal,
-    "forbid HashMap and HashSet and suggest the FxHash* variants"
 }
 
 declare_clippy_lint! {
@@ -238,51 +224,6 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for LintCollector<'a, 'tcx> {
     }
 }
 
-pub struct DefaultHashTypes {
-    map: FxHashMap<String, String>,
-}
-
-impl DefaultHashTypes {
-    pub fn default() -> Self {
-        let mut map = FxHashMap::default();
-        map.insert("HashMap".to_string(), "FxHashMap".to_string());
-        map.insert("HashSet".to_string(), "FxHashSet".to_string());
-        Self { map }
-    }
-}
-
-impl LintPass for DefaultHashTypes {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DEFAULT_HASH_TYPES)
-    }
-
-    fn name(&self) -> &'static str {
-        "DefaultHashType"
-    }
-}
-
-impl EarlyLintPass for DefaultHashTypes {
-    fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
-        let ident_string = ident.to_string();
-        if let Some(replace) = self.map.get(&ident_string) {
-            let msg = format!(
-                "Prefer {} over {}, it has better performance \
-                 and we don't need any collision prevention in clippy",
-                replace, ident_string
-            );
-            span_lint_and_sugg(
-                cx,
-                DEFAULT_HASH_TYPES,
-                ident.span,
-                &msg,
-                "use",
-                replace.to_string(),
-                Applicability::MaybeIncorrect, // FxHashMap, ... needs another import
-            );
-        }
-    }
-}
-
 #[derive(Clone, Default)]
 pub struct CompilerLintFunctions {
     map: FxHashMap<String, String>,
@@ -325,7 +266,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CompilerLintFunctions {
                     COMPILER_LINT_FUNCTIONS,
                     path.ident.span,
                     "usage of a compiler lint function",
-                    &format!("Please use the Clippy variant of this function: `{}`", sugg),
+                    &format!("please use the Clippy variant of this function: `{}`", sugg),
                 );
             }
         }

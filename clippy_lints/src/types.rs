@@ -1,4 +1,4 @@
-#![allow(clippy::default_hash_types)]
+#![allow(default_hash_types)]
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
