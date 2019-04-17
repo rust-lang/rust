@@ -766,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.2.0"
+version = "1.2.1"
 dependencies = [
  "annotate-snippets 0.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
