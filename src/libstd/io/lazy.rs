@@ -23,17 +23,17 @@ impl<T> Lazy<T> {
 }
 
 impl<T: Send + Sync + 'static> Lazy<T> {
-    /// Safety: `init` must not call `get` on the variable that is being
-    /// initialized.
-    pub unsafe fn get(&'static self, init: fn() -> Arc<T>) -> Option<Arc<T>> {
+    /// Warning: `init` must not call `get` on the variable that is being
+    /// initialized. Doing so will cause a deadlock.
+    pub fn get(&'static self, init: fn() -> Arc<T>) -> Option<Arc<T>> {
         let _guard = self.lock.lock();
         let ptr = self.ptr.get();
         if ptr.is_null() {
-            Some(self.init(init))
+            Some(unsafe { self.init(init) })
         } else if ptr == done() {
             None
         } else {
-            Some((*ptr).clone())
+            Some(unsafe { (*ptr).clone() })
         }
     }
 
