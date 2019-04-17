@@ -2,7 +2,7 @@ error[E0401]: can't use generic parameters from outer function
   --> $DIR/resolve-type-param-in-item-in-trait.rs:8:22
    |
 LL | trait TraitA<A> {
-   |              - type variable from outer function
+   |              - type parameter from outer function
 LL |     fn outer(&self) {
    |        ----- try adding a local generic parameter in this method instead
 LL |         enum Foo<B> {
@@ -13,7 +13,7 @@ error[E0401]: can't use generic parameters from outer function
   --> $DIR/resolve-type-param-in-item-in-trait.rs:16:23
    |
 LL | trait TraitB<A> {
-   |              - type variable from outer function
+   |              - type parameter from outer function
 LL |     fn outer(&self) {
    |        ----- try adding a local generic parameter in this method instead
 LL |         struct Foo<B>(A);
@@ -23,7 +23,7 @@ error[E0401]: can't use generic parameters from outer function
   --> $DIR/resolve-type-param-in-item-in-trait.rs:23:28
    |
 LL | trait TraitC<A> {
-   |              - type variable from outer function
+   |              - type parameter from outer function
 LL |     fn outer(&self) {
    |        ----- try adding a local generic parameter in this method instead
 LL |         struct Foo<B> { a: A }
@@ -33,7 +33,7 @@ error[E0401]: can't use generic parameters from outer function
   --> $DIR/resolve-type-param-in-item-in-trait.rs:30:22
    |
 LL | trait TraitD<A> {
-   |              - type variable from outer function
+   |              - type parameter from outer function
 LL |     fn outer(&self) {
 LL |         fn foo<B>(a: A) { }
    |            ------    ^ use of generic parameter from outer function
