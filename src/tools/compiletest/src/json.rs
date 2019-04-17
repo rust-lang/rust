@@ -62,7 +62,7 @@ struct DiagnosticCode {
     explanation: Option<String>,
 }
 
-pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
+pub fn extract_rendered(output: &str) -> String {
     output
         .lines()
         .filter_map(|line| {
@@ -70,11 +70,12 @@ pub fn extract_rendered(output: &str, proc_res: &ProcRes) -> String {
                 match serde_json::from_str::<Diagnostic>(line) {
                     Ok(diagnostic) => diagnostic.rendered,
                     Err(error) => {
-                        proc_res.fatal(Some(&format!(
+                        print!(
                             "failed to decode compiler output as json: \
                              `{}`\nline: {}\noutput: {}",
                             error, line, output
-                        )));
+                        );
+                        panic!()
                     }
                 }
             } else {

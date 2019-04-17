@@ -1,5 +1,6 @@
 // ignore-cloudabi
-// compile-flags: --error-format pretty-json -Zunstable-options
+// ignore-windows
+// compile-flags: --error-format pretty-json -Zunstable-options --json-rendered=termcolor
 
 // The output for humans should just highlight the whole span without showing
 // the suggested replacement, but we also want to test that suggested

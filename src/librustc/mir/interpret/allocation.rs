@@ -45,12 +45,10 @@ pub struct Allocation<Tag=(),Extra=()> {
 }
 
 
-pub trait AllocationExtra<Tag, MemoryExtra>: ::std::fmt::Debug + Clone {
-    /// Hook to initialize the extra data when an allocation gets created.
-    fn memory_allocated(
-        _size: Size,
-        _memory_extra: &MemoryExtra
-    ) -> Self;
+pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Clone {
+    // There is no constructor in here because the constructor's type depends
+    // on `MemoryKind`, and making things sufficiently generic leads to painful
+    // inference failure.
 
     /// Hook for performing extra checks on a memory read access.
     ///
@@ -88,15 +86,8 @@ pub trait AllocationExtra<Tag, MemoryExtra>: ::std::fmt::Debug + Clone {
     }
 }
 
-impl AllocationExtra<(), ()> for () {
-    #[inline(always)]
-    fn memory_allocated(
-        _size: Size,
-        _memory_extra: &()
-    ) -> Self {
-        ()
-    }
-}
+// For Tag=() and no extra state, we have is a trivial implementation.
+impl AllocationExtra<()> for () { }
 
 impl<Tag, Extra> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
@@ -159,7 +150,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 }
 
 /// Byte accessors
-impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
+impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes. You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
@@ -167,15 +158,13 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// This function also guarantees that the resulting pointer will remain stable
     /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
     /// on that.
-    fn get_bytes_internal<MemoryExtra>(
+    fn get_bytes_internal(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
         check_defined_and_ptr: bool,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.check_bounds(cx, ptr, size)?;
 
@@ -196,14 +185,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     }
 
     #[inline]
-    pub fn get_bytes<MemoryExtra>(
+    pub fn get_bytes(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.get_bytes_internal(cx, ptr, size, true)
     }
@@ -211,28 +198,24 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// It is the caller's responsibility to handle undefined and pointer bytes.
     /// However, this still checks that there are no relocations on the *edges*.
     #[inline]
-    pub fn get_bytes_with_undef_and_ptr<MemoryExtra>(
+    pub fn get_bytes_with_undef_and_ptr(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.get_bytes_internal(cx, ptr, size, false)
     }
 
     /// Just calling this already marks everything as defined and removes relocations,
     /// so be sure to actually put data there!
-    pub fn get_bytes_mut<MemoryExtra>(
+    pub fn get_bytes_mut(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &mut [u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_bounds(cx, ptr, size)?;
@@ -250,16 +233,14 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
 }
 
 /// Reading and writing
-impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
+impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Reads bytes until a `0` is encountered. Will error if the end of the allocation is reached
     /// before a `0` is found.
-    pub fn read_c_str<MemoryExtra>(
+    pub fn read_c_str(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
     ) -> EvalResult<'tcx, &[u8]>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
@@ -278,15 +259,13 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
     /// relocation. If `allow_ptr_and_undef` is `false`, also enforces that the memory in the
     /// given range contains neither relocations nor undef bytes.
-    pub fn check_bytes<MemoryExtra>(
+    pub fn check_bytes(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // Check bounds and relocations on the edges
         self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
@@ -301,14 +280,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Writes `src` to the memory starting at `ptr.offset`.
     ///
     /// Will do bounds checks on the allocation.
-    pub fn write_bytes<MemoryExtra>(
+    pub fn write_bytes(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         src: &[u8],
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
         bytes.clone_from_slice(src);
@@ -316,15 +293,13 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     }
 
     /// Sets `count` bytes starting at `ptr.offset` with `val`. Basically `memset`.
-    pub fn write_repeat<MemoryExtra>(
+    pub fn write_repeat(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         val: u8,
         count: Size
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let bytes = self.get_bytes_mut(cx, ptr, count)?;
         for b in bytes {
@@ -341,14 +316,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     ///   being valid for ZSTs
     ///
     /// Note: This function does not do *any* alignment checks, you need to do these before calling
-    pub fn read_scalar<MemoryExtra>(
+    pub fn read_scalar(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size
     ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         // get_bytes_unchecked tests relocation edges
         let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
@@ -379,13 +352,11 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     }
 
     /// Note: This function does not do *any* alignment checks, you need to do these before calling
-    pub fn read_ptr_sized<MemoryExtra>(
+    pub fn read_ptr_sized(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
     ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
     }
@@ -398,15 +369,13 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     ///   being valid for ZSTs
     ///
     /// Note: This function does not do *any* alignment checks, you need to do these before calling
-    pub fn write_scalar<MemoryExtra>(
+    pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>,
         type_size: Size,
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let val = match val {
             ScalarMaybeUndef::Scalar(scalar) => scalar,
@@ -446,14 +415,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     }
 
     /// Note: This function does not do *any* alignment checks, you need to do these before calling
-    pub fn write_ptr_sized<MemoryExtra>(
+    pub fn write_ptr_sized(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         val: ScalarMaybeUndef<Tag>
     ) -> EvalResult<'tcx>
-        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
-        where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         let ptr_size = cx.data_layout().pointer_size;
         self.write_scalar(cx, ptr.into(), val, ptr_size)

@@ -1920,6 +1920,7 @@ mod tests {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
                                                           Some(sm.clone()),
                                                           false,
+                                                          false,
                                                           false);
         ParseSess {
             span_diagnostic: errors::Handler::with_emitter(true, None, Box::new(emitter)),

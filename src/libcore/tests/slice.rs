@@ -1024,22 +1024,31 @@ fn test_rotate_right() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(miri))] // Miri does not support entropy
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
     use rand::{FromEntropy, Rng, rngs::SmallRng, seq::SliceRandom};
 
+    #[cfg(not(miri))] // Miri is too slow
+    let large_range = 500..510;
+    #[cfg(not(miri))] // Miri is too slow
+    let rounds = 100;
+
+    #[cfg(miri)]
+    let large_range = 0..0; // empty range
+    #[cfg(miri)]
+    let rounds = 1;
+
     let mut v = [0; 600];
     let mut tmp = [0; 600];
     let mut rng = SmallRng::from_entropy();
 
-    for len in (2..25).chain(500..510) {
+    for len in (2..25).chain(large_range) {
         let v = &mut v[0..len];
         let tmp = &mut tmp[0..len];
 
         for &modulus in &[5, 10, 100, 1000] {
-            for _ in 0..100 {
+            for _ in 0..rounds {
                 for i in 0..len {
                     v[i] = rng.gen::<i32>() % modulus;
                 }
@@ -1095,7 +1104,7 @@ fn sort_unstable() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(miri))] // Miri does not support entropy
+#[cfg(not(miri))] // Miri is too slow
 fn partition_at_index() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use rand::rngs::SmallRng;
