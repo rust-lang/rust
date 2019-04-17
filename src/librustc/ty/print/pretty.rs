@@ -1,5 +1,5 @@
 use crate::hir;
-use crate::hir::def::Namespace;
+use crate::hir::def::{Namespace, Def};
 use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
@@ -1540,9 +1540,15 @@ define_print_and_forward_display! {
     &'tcx ty::Const<'tcx> {
         let u8 = cx.tcx().types.u8;
         match (self.val, &self.ty.sty) {
-            | (ConstValue::Unevaluated(..), _)
-            | (ConstValue::Infer(..), _)
-            => p!(write("_: "), print(self.ty)),
+            (ConstValue::Unevaluated(did, substs), _) => {
+                match cx.tcx().describe_def(did) {
+                    | Some(Def::Static(_, _))
+                    | Some(Def::Const(_))
+                    | Some(Def::AssociatedConst(_)) => p!(write("{}", cx.tcx().def_path_str(did))),
+                    _ => p!(write("_")),
+                }
+            }
+            (ConstValue::Infer(..), _) => p!(write("_: "), print(self.ty)),
             (ConstValue::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
             (ConstValue::Scalar(Scalar::Bits { bits: 0, .. }), ty::Bool) => p!(write("false")),
             (ConstValue::Scalar(Scalar::Bits { bits: 1, .. }), ty::Bool) => p!(write("true")),
