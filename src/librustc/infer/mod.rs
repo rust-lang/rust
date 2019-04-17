@@ -1368,8 +1368,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         &self,
         vid: ty::ConstVid<'tcx>
     ) -> Result<&'tcx ty::Const<'tcx>, ty::UniverseIndex> {
-        use self::unify_key::ConstVariableValue;
-
         match self.const_unification_table.borrow_mut().probe_value(vid).val {
             ConstVariableValue::Known { value } => Ok(value),
             ConstVariableValue::Unknown { universe } => Err(universe),
