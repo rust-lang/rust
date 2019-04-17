@@ -148,6 +148,23 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 }
             }
 
+            "realloc" => {
+                let ptr = this.read_scalar(args[0])?.to_ptr()?;
+                let new_size = this.read_scalar(args[1])?.to_usize(this)?;
+                let align = this.tcx.data_layout.pointer_align.abi;
+                let memory = this.memory_mut();
+                let old_size = memory.get(ptr.alloc_id)?.bytes.len();
+                let new_ptr = memory.reallocate(
+                    ptr,
+                    Size::from_bytes(old_size as u64),
+                    align,
+                    Size::from_bytes(new_size),
+                    align,
+                    MiriMemoryKind::C.into(),
+                )?;
+                this.write_scalar(Scalar::Ptr(new_ptr.with_default_tag()), dest)?;
+            }
+
             "__rust_alloc" => {
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
                 let align = this.read_scalar(args[1])?.to_usize(this)?;
