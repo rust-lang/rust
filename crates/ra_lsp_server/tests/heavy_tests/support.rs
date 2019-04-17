@@ -77,7 +77,7 @@ pub struct Server {
     req_id: Cell<u64>,
     messages: RefCell<Vec<RawMessage>>,
     dir: TempDir,
-    worker: Option<Worker<RawMessage, RawMessage>>,
+    worker: Worker<RawMessage, RawMessage>,
 }
 
 impl Server {
@@ -99,12 +99,7 @@ impl Server {
                 .unwrap()
             },
         );
-        let res = Server {
-            req_id: Cell::new(1),
-            dir,
-            messages: Default::default(),
-            worker: Some(worker),
-        };
+        let res = Server { req_id: Cell::new(1), dir, messages: Default::default(), worker };
 
         for (path, text) in files {
             res.send_notification(RawNotification::new::<DidOpenTextDocument>(
@@ -157,7 +152,7 @@ impl Server {
     }
     fn send_request_(&self, r: RawRequest) -> Value {
         let id = r.id;
-        self.worker.as_ref().unwrap().sender().send(RawMessage::Request(r)).unwrap();
+        self.worker.sender().send(RawMessage::Request(r)).unwrap();
         while let Some(msg) = self.recv() {
             match msg {
                 RawMessage::Request(req) => panic!("unexpected request: {:?}", req),
@@ -197,13 +192,13 @@ impl Server {
         }
     }
     fn recv(&self) -> Option<RawMessage> {
-        recv_timeout(&self.worker.as_ref().unwrap().receiver()).map(|msg| {
+        recv_timeout(&self.worker.receiver()).map(|msg| {
             self.messages.borrow_mut().push(msg.clone());
             msg
         })
     }
     fn send_notification(&self, not: RawNotification) {
-        self.worker.as_ref().unwrap().sender().send(RawMessage::Notification(not)).unwrap();
+        self.worker.sender().send(RawMessage::Notification(not)).unwrap();
     }
 
     pub fn path(&self) -> &Path {

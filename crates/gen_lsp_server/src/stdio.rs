@@ -27,9 +27,7 @@ pub fn stdio_transport() -> (Receiver<RawMessage>, Sender<RawMessage>, Threads) 
                 _ => false,
             };
 
-            if let Err(_) = reader_sender.send(msg) {
-                break;
-            }
+            reader_sender.send(msg).unwrap();
 
             if is_exit {
                 break;
