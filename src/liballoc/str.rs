@@ -68,6 +68,8 @@ pub use core::str::pattern;
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
 pub use core::str::SplitAsciiWhitespace;
+#[stable(feature = "str_escape", since = "1.34.0")]
+pub use core::str::{EscapeDebug, EscapeDefault, EscapeUnicode};
 
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
