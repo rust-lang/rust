@@ -1343,6 +1343,7 @@ pub fn can_be_overflowed_expr(
     args_len: usize,
 ) -> bool {
     match expr.node {
+        _ if !expr.attrs.is_empty() => false,
         ast::ExprKind::Match(..) => {
             (context.use_block_indent() && args_len == 1)
                 || (context.config.indent_style() == IndentStyle::Visual && args_len > 1)
