@@ -296,7 +296,7 @@ impl<'tcx> Stack {
         // keep the items immediately above `granting_idx` that are compatible, and then pop the rest.
         // However, that kills off entire "branches" of pointer derivation too easily:
         // in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement would pop the `Unique`
-        // from the reborrow of the first statement, and subequently also pop the `SharedReadWrite` for `raw`.
+        // from the reborrow of the first statement, and subsequently also pop the `SharedReadWrite` for `raw`.
         // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
         // reference and use that.
         {
@@ -343,7 +343,7 @@ impl<'tcx> Stack {
 
         // We must make sure there are no protected items remaining on the stack.
         // Also clear the stack, no more accesses are possible.
-        while let Some(item) = self.borrows.pop() {
+        for item in self.borrows.drain(..) {
             if let Some(call) = item.protector {
                 if global.is_active(call) {
                     return err!(MachineError(format!(
@@ -394,7 +394,7 @@ impl<'tcx> Stack {
         // We use that to determine where to put the new item.
         let (derived_from_idx, _) = self.find_granting(access, derived_from)
             .ok_or_else(|| InterpError::MachineError(format!(
-                    "no item to reborrow for {:?} from tag {} found in borrow stack", new.perm, derived_from,
+                "no item to reborrow for {:?} from tag {} found in borrow stack", new.perm, derived_from,
             )))?;
 
         // Compute where to put the new item.
@@ -410,7 +410,7 @@ impl<'tcx> Stack {
             // and we'd allow write access without invalidating frozen shared references!
             // This ensures F2b for `SharedReadWrite` by adding the new item below any
             // potentially existing `SharedReadOnly`.
-            derived_from_idx+1
+            derived_from_idx + 1
         } else {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access, and pops incompatible
