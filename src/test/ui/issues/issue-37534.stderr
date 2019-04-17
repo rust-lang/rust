@@ -18,7 +18,7 @@ error[E0392]: parameter `T` is never used
   --> $DIR/issue-37534.rs:1:12
    |
 LL | struct Foo<T: ?Hash> { }
-   |            ^ unused type parameter
+   |            ^ unused parameter
    |
    = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
 

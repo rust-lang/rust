@@ -2,7 +2,7 @@ error[E0392]: parameter `'a` is never used
   --> $DIR/variance-unused-region-param.rs:3:19
    |
 LL | struct SomeStruct<'a> { x: u32 }
-   |                   ^^ unused type parameter
+   |                   ^^ unused parameter
    |
    = help: consider removing `'a` or using a marker such as `std::marker::PhantomData`
 
@@ -10,7 +10,7 @@ error[E0392]: parameter `'a` is never used
   --> $DIR/variance-unused-region-param.rs:4:15
    |
 LL | enum SomeEnum<'a> { Nothing }
-   |               ^^ unused type parameter
+   |               ^^ unused parameter
    |
    = help: consider removing `'a` or using a marker such as `std::marker::PhantomData`
 
