@@ -231,15 +231,23 @@ MIRI_SYSROOT=$(rustc +custom --print sysroot) cargo +custom run --manifest-path 
 
 Several `-Z` flags are relevant for Miri:
 
-* `-Zmir-opt-level` controls how many MIR optimizations are performed.  miri
+* `-Zmiri-seed=<hex>` is a custom `-Z` flag added by Miri.  It enables the
+  interpreted program to seed an RNG with system entropy.  Miri will keep an RNG
+  on its own that is seeded with the given seed, and use that to generate the
+  "system entropy" that seeds the RNG(s) in the interpreted program.
+  **NOTE**: This entropy is not good enough for cryptographic use!  Do not
+  generate secret keys in Miri or perform other kinds of cryptographic
+  operations that rely on proper random numbers.
+* `-Zmiri-disable-validation` disables enforcing the validity invariant, which
+  is enforced by default.  This is mostly useful for debugging; it means Miri
+  will miss bugs in your program.  However, this can also help to make Miri run
+  faster.
+* `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
   overrides the default to be `0`; be advised that using any higher level can
-  make miri miss bugs in your program because they got optimized away.
+  make Miri miss bugs in your program because they got optimized away.
 * `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
-  functions.  This is needed so that miri can execute such functions, so miri
+  functions.  This is needed so that Miri can execute such functions, so Miri
   sets this flag per default.
-* `-Zmiri-disable-validation` is a custom `-Z` flag added by miri.  It disables
-  enforcing the validity invariant, which is enforced by default.  This is
-  mostly useful for debugging; it means miri will miss bugs in your program.
 
 Moreover, Miri recognizes some environment variables:
 
