@@ -132,9 +132,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> Pointer {
-        let extra = AllocationExtra::memory_allocated(size, &self.extra);
-        Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind))
+    ) -> Pointer<M::PointerTag> {
+        let (extra, tag) = M::new_allocation(size, &self.extra, kind);
+        Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind)).with_tag(tag)
     }
 
     pub fn reallocate(
@@ -145,7 +145,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer> {
+    ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
         if ptr.offset.bytes() != 0 {
             return err!(ReallocateNonBasePtr);
         }
@@ -156,7 +156,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.copy(
             ptr.into(),
             old_align,
-            new_ptr.with_default_tag().into(),
+            new_ptr.into(),
             new_align,
             old_size.min(new_size),
             /*nonoverlapping*/ true,

@@ -7,11 +7,11 @@ use std::hash::Hash;
 
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
-use rustc::ty::{self, query::TyCtxtAt};
+use rustc::ty::{self, query::TyCtxtAt, layout::Size};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
-    InterpretCx, PlaceTy, MPlaceTy, OpTy, ImmTy, Pointer, MemoryKind,
+    InterpretCx, PlaceTy, MPlaceTy, OpTy, ImmTy, MemoryKind,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -76,7 +76,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     type MemoryExtra: Default;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra> + 'static;
+    type AllocExtra: AllocationExtra<Self::PointerTag> + 'static;
 
     /// Memory's allocation map
     type MemoryMap:
@@ -139,18 +139,6 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         memory_extra: &Self::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
-    /// Called to turn an allocation obtained from the `tcx` into one that has
-    /// the right type for this machine.
-    ///
-    /// This should avoid copying if no work has to be done! If this returns an owned
-    /// allocation (because a copy had to be done to add tags or metadata), machine memory will
-    /// cache the result. (This relies on `AllocMap::get_or` being able to add the
-    /// owned allocation to the map even when the map is shared.)
-    fn adjust_static_allocation<'b>(
-        alloc: &'b Allocation,
-        memory_extra: &Self::MemoryExtra,
-    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
-
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
     /// value, and for the `Offset` operation that is inherently about pointers.
     ///
@@ -168,12 +156,24 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Adds the tag for a newly allocated pointer.
-    fn tag_new_allocation(
-        ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer,
+    /// Called to turn an allocation obtained from the `tcx` into one that has
+    /// the right type for this machine.
+    ///
+    /// This should avoid copying if no work has to be done! If this returns an owned
+    /// allocation (because a copy had to be done to add tags or metadata), machine memory will
+    /// cache the result. (This relies on `AllocMap::get_or` being able to add the
+    /// owned allocation to the map even when the map is shared.)
+    fn adjust_static_allocation<'b>(
+        alloc: &'b Allocation,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
+
+    /// Computes the extra state and the tag for a new allocation.
+    fn new_allocation(
+        size: Size,
+        extra: &Self::MemoryExtra,
         kind: MemoryKind<Self::MemoryKinds>,
-    ) -> Pointer<Self::PointerTag>;
+    ) -> (Self::AllocExtra, Self::PointerTag);
 
     /// Executed when evaluating the `*` operator: Following a reference.
     /// This has the chance to adjust the tag. It should not change anything else!

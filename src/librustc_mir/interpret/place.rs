@@ -83,37 +83,23 @@ impl<'tcx, Tag> From<MPlaceTy<'tcx, Tag>> for PlaceTy<'tcx, Tag> {
     }
 }
 
-impl MemPlace {
+impl<Tag> MemPlace<Tag> {
+    /// Replace ptr tag, maintain vtable tag (if any)
     #[inline]
-    pub fn with_default_tag<Tag>(self) -> MemPlace<Tag>
-        where Tag: Default
-    {
+    pub fn replace_tag(self, new_tag: Tag) -> Self {
         MemPlace {
-            ptr: self.ptr.with_default_tag(),
+            ptr: self.ptr.erase_tag().with_tag(new_tag),
             align: self.align,
-            meta: self.meta.map(Scalar::with_default_tag),
+            meta: self.meta,
         }
     }
-}
 
-impl<Tag> MemPlace<Tag> {
     #[inline]
-    pub fn erase_tag(self) -> MemPlace
-    {
+    pub fn erase_tag(self) -> MemPlace {
         MemPlace {
             ptr: self.ptr.erase_tag(),
             align: self.align,
             meta: self.meta.map(Scalar::erase_tag),
-        }
-    }
-
-    #[inline]
-    pub fn with_tag(self, new_tag: Tag) -> Self
-    {
-        MemPlace {
-            ptr: self.ptr.with_tag(new_tag),
-            align: self.align,
-            meta: self.meta,
         }
     }
 
@@ -189,11 +175,11 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
         }
     }
 
+    /// Replace ptr tag, maintain vtable tag (if any)
     #[inline]
-    pub fn with_tag(self, new_tag: Tag) -> Self
-    {
+    pub fn replace_tag(self, new_tag: Tag) -> Self {
         MPlaceTy {
-            mplace: self.mplace.with_tag(new_tag),
+            mplace: self.mplace.replace_tag(new_tag),
             layout: self.layout,
         }
     }
@@ -312,7 +298,7 @@ where
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
     // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
-    M::AllocExtra: AllocationExtra<Tag, M::MemoryExtra>,
+    M::AllocExtra: AllocationExtra<Tag>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
@@ -943,7 +929,6 @@ where
                         let (size, align) = self.size_and_align_of(meta, local_layout)?
                             .expect("Cannot allocate for non-dyn-sized type");
                         let ptr = self.memory.allocate(size, align, MemoryKind::Stack);
-                        let ptr = M::tag_new_allocation(self, ptr, MemoryKind::Stack);
                         let mplace = MemPlace { ptr: ptr.into(), align, meta };
                         if let Some(value) = old_val {
                             // Preserve old value.
@@ -981,7 +966,6 @@ where
         kind: MemoryKind<M::MemoryKinds>,
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);
-        let ptr = M::tag_new_allocation(self, ptr, kind);
         MPlaceTy::from_aligned_ptr(ptr, layout)
     }
 
