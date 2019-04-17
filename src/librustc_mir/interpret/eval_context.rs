@@ -21,7 +21,7 @@ use rustc_data_structures::fx::FxHashMap;
 
 use super::{
     Immediate, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
-    Memory, Machine
+    Memory, Machine, PointerArithmetic, FnVal, StackPopInfo
 };
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -96,7 +96,9 @@ pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
     /// we can validate it at that layout.
-    Goto(Option<mir::BasicBlock>),
+    /// 'ret' stores the block we jump to on a normal return, while 'unwind'
+    /// stores the block used for cleanup during unwinding
+    Goto { ret: Option<mir::BasicBlock>, unwind: Option<mir::BasicBlock> },
     /// Just do nohing: Used by Main and for the box_alloc hook in miri.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
@@ -547,22 +549,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    pub(super) fn pop_stack_frame(&mut self) -> InterpResult<'tcx> {
-        info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
+    pub(super) fn pop_stack_frame_internal(
+        &mut self,
+        unwinding: bool
+    ) -> InterpResult<'tcx, (StackPopCleanup, StackPopInfo)> {
+        info!("LEAVING({}) {} (unwinding = {})",
+            self.cur_frame(), self.frame().instance, unwinding);
+
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
-        M::stack_pop(self, frame.extra)?;
+        let stack_pop_info = M::stack_pop(self, frame.extra)?;
+
         // Abort early if we do not want to clean up: We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
         match frame.return_to_block {
-            StackPopCleanup::Goto(_) => {},
-            StackPopCleanup::None { cleanup } => {
+            StackPopCleanup::Goto{ .. } => {},
+            StackPopCleanup::None { cleanup, .. } => {
+                assert!(!unwinding, "Encountered StackPopCleanup::None while unwinding");
+
                 if !cleanup {
                     assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
                     // Leak the locals, skip validation.
-                    return Ok(());
+                    return Ok((frame.return_to_block, stack_pop_info));
                 }
             }
         }
@@ -570,33 +580,111 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for local in frame.locals {
             self.deallocate_local(local.value)?;
         }
-        // Validate the return value. Do this after deallocating so that we catch dangling
-        // references.
-        if let Some(return_place) = frame.return_place {
-            if M::enforce_validity(self) {
-                // Data got changed, better make sure it matches the type!
-                // It is still possible that the return place held invalid data while
-                // the function is running, but that's okay because nobody could have
-                // accessed that same data from the "outside" to observe any broken
-                // invariant -- that is, unless a function somehow has a ptr to
-                // its return place... but the way MIR is currently generated, the
-                // return place is always a local and then this cannot happen.
-                self.validate_operand(
-                    self.place_to_op(return_place)?,
-                    vec![],
-                    None,
-                )?;
+
+        // If we're popping frames due to unwinding, and we didn't just exit
+        // unwinding, we skip a bunch of validation and cleanup logic (including
+        // jumping to the regular return block specified in the StackPopCleanu)
+        let cur_unwinding = unwinding && stack_pop_info != StackPopInfo::StopUnwinding;
+
+        info!("StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
+               frame.return_to_block, stack_pop_info, cur_unwinding);
+
+
+        // When we're popping a stack frame for unwinding purposes,
+        // we don't care at all about returning-related stuff (i.e. return_place
+        // and return_to_block), because we're not performing a return from this frame.
+        if !cur_unwinding  {
+            // Validate the return value. Do this after deallocating so that we catch dangling
+            // references.
+            if let Some(return_place) = frame.return_place {
+                if M::enforce_validity(self) {
+                    // Data got changed, better make sure it matches the type!
+                    // It is still possible that the return place held invalid data while
+                    // the function is running, but that's okay because nobody could have
+                    // accessed that same data from the "outside" to observe any broken
+                    // invariant -- that is, unless a function somehow has a ptr to
+                    // its return place... but the way MIR is currently generated, the
+                    // return place is always a local and then this cannot happen.
+                    self.validate_operand(
+                        self.place_to_op(return_place)?,
+                        vec![],
+                        None,
+                    )?;
+                }
+            } else {
+                // Uh, that shouldn't happen... the function did not intend to return
+                throw_ub!(Unreachable);
             }
-        } else {
-            // Uh, that shouldn't happen... the function did not intend to return
-            throw_ub!(Unreachable)
+
+            // Jump to new block -- *after* validation so that the spans make more sense.
+            match frame.return_to_block {
+                StackPopCleanup::Goto { ret, ..  } => {
+                    self.goto_block(ret)?;
+                }
+                StackPopCleanup::None { .. } => {}
+            }
         }
-        // Jump to new block -- *after* validation so that the spans make more sense.
-        match frame.return_to_block {
-            StackPopCleanup::Goto(block) => {
-                self.goto_block(block)?;
+
+
+        Ok((frame.return_to_block, stack_pop_info))
+    }
+
+    pub(super) fn pop_stack_frame(&mut self, unwinding: bool) -> InterpResult<'tcx> {
+        let (mut cleanup, mut stack_pop_info) = self.pop_stack_frame_internal(unwinding)?;
+
+        // There are two cases where we want to unwind the stack:
+        // * The caller explicitly told us (i.e. we hit a Resume terminator)
+        // * The machine indicated that we've just started unwinding (i.e.
+        // a panic has just occured)
+        if unwinding || stack_pop_info == StackPopInfo::StartUnwinding {
+            trace!("unwinding: starting stack unwind...");
+            // Overwrite our current stack_pop_info, so that the check
+            // below doesn't fail.
+            stack_pop_info = StackPopInfo::Normal;
+            // There are three posible ways that we can exit the loop:
+            // 1) We find an unwind block - we jump to it to allow cleanup
+            // to occur for that frame
+            // 2) pop_stack_frame_internal reports that we're no longer unwinding
+            //    - this means that the panic has been caught, and that execution
+            //    should continue as normal
+            // 3) We pop all of our frames off the stack - this should never happen.
+            while !self.stack.is_empty() {
+                match stack_pop_info {
+                    // We tried to start unwinding while we were already
+                    // unwinding. Note that this **is not** the same thing
+                    // as a double panic, which will be intercepted by
+                    // libcore/libstd before we actually attempt to unwind.
+                    StackPopInfo::StartUnwinding => {
+                        throw_ub_format!("Attempted to start unwinding while already unwinding!");
+                    },
+                    StackPopInfo::StopUnwinding => {
+                        trace!("unwinding: no longer unwinding!");
+                        break;
+                    }
+                    StackPopInfo::Normal => {}
+                }
+
+                match cleanup {
+                    StackPopCleanup::Goto { unwind, .. } if unwind.is_some() => {
+
+                        info!("unwind: found cleanup block {:?}", unwind);
+                        self.goto_block(unwind)?;
+                        break;
+                    },
+                    _ => {}
+                }
+
+                info!("unwinding: popping frame!");
+                let res = self.pop_stack_frame_internal(true)?;
+                cleanup = res.0;
+                stack_pop_info = res.1;
             }
-            StackPopCleanup::None { .. } => {}
+            if self.stack.is_empty() {
+                // We should never get here:
+                // The 'start_fn' lang item should always install a panic handler
+                throw_ub!(Unreachable);
+            }
+
         }
 
         if self.stack.len() > 0 {
@@ -759,5 +847,26 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames
+    }
+
+    /// Resolve the function at the specified slot in the provided
+    /// vtable. An index of '0' corresponds to the first method
+    /// declared in the trait of the provided vtable
+    pub fn get_vtable_slot(
+        &self,
+        vtable: Scalar<M::PointerTag>,
+        idx: usize
+    ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
+        let ptr_size = self.pointer_size();
+        // Skip over the 'drop_ptr', 'size', and 'align' fields
+        let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
+        let vtable_slot = self.memory.check_ptr_access(
+            vtable_slot,
+            ptr_size,
+            self.tcx.data_layout.pointer_align.abi,
+        )?.expect("cannot be a ZST");
+        let fn_ptr = self.memory.get(vtable_slot.alloc_id)?
+            .read_ptr_sized(self, vtable_slot)?.not_undef()?;
+        Ok(self.memory.get_fn(fn_ptr)?)
     }
 }

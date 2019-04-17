@@ -290,6 +290,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         let old_stack = self.cur_frame();
         let old_bb = self.frame().block;
+
         self.eval_terminator(terminator)?;
         if !self.stack.is_empty() {
             // This should change *something*

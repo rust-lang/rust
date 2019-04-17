@@ -16,6 +16,22 @@ use super::{
     Frame, Operand,
 };
 
+/// Data returned by Machine::stack_pop,
+/// to provide further control over the popping of the stack frame
+#[derive(Eq, PartialEq, Debug)]
+pub enum StackPopInfo {
+    /// Indicates that we have just started unwinding
+    /// as the result of panic
+    StartUnwinding,
+
+    /// Indicates that we performed a normal return
+    Normal,
+
+    /// Indicates that we should stop unwinding,
+    /// as we've reached a catch frame
+    StopUnwinding
+}
+
 /// Whether this kind of memory is allowed to leak
 pub trait MayLeak: Copy {
     fn may_leak(self) -> bool;
@@ -137,6 +153,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         args: &[OpTy<'tcx, Self::PointerTag>],
         dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
         ret: Option<mir::BasicBlock>,
+        unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
     /// Execute `fn_val`.  it is the hook's responsibility to advance the instruction
@@ -156,7 +173,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: PlaceTy<'tcx, Self::PointerTag>,
+        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
     ) -> InterpResult<'tcx>;
 
     /// Called for read access to a foreign static item.
@@ -253,7 +270,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     fn stack_pop(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         extra: Self::FrameExtra,
-    ) -> InterpResult<'tcx>;
+    ) -> InterpResult<'tcx, StackPopInfo>;
 
     fn int_to_ptr(
         _mem: &Memory<'mir, 'tcx, Self>,

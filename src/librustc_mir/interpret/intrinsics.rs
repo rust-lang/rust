@@ -91,11 +91,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        dest: PlaceTy<'tcx, M::PointerTag>,
+        dest: Option<PlaceTy<'tcx, M::PointerTag>>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
 
-        let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
+        // The intrinsic itself cannot diverge, so if we got here without a return
+        // place... (can happen e.g., for transmute returning `!`)
+        let dest = match dest {
+            Some(dest) => dest,
+            None => throw_ub!(Unreachable)
+        };
+        let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str();
+
         match intrinsic_name {
             "caller_location" => {
                 let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);

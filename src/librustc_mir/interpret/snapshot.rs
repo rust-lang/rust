@@ -315,7 +315,7 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
 }
 
 impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
-    Goto(block),
+    Goto { ret, unwind },
     None { cleanup },
 });
 
