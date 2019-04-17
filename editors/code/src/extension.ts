@@ -120,11 +120,16 @@ export function activate(context: vscode.ExtensionContext) {
         context.subscriptions
     );
 
+    const startServer = () => Server.start(allNotifications);
+    const reloadCommand = () => reloadServer(startServer);
+
+    vscode.commands.registerCommand('rust-analyzer.reload', reloadCommand);
+
     // Executing `cargo watch` provides us with inline diagnostics on save
     interactivelyStartCargoWatch(context);
 
     // Start the language server, finally!
-    Server.start(allNotifications);
+    startServer();
 }
 
 export function deactivate(): Thenable<void> {
@@ -132,4 +137,12 @@ export function deactivate(): Thenable<void> {
         return Promise.resolve();
     }
     return Server.client.stop();
+}
+
+async function reloadServer(startServer: () => void) {
+    if (Server.client != null) {
+        vscode.window.showInformationMessage('Reloading rust-analyzer...');
+        await Server.client.stop();
+        startServer();
+    }
 }

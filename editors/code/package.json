@@ -114,6 +114,11 @@
                 "command": "rust-analyzer.collectGarbage",
                 "title": "Run garbage collection",
                 "category": "Rust Analyzer"
+            },
+            {
+                "command": "rust-analyzer.reload",
+                "title": "Restart server",
+                "category": "Rust Analyzer"
             }
         ],
         "keybindings": [

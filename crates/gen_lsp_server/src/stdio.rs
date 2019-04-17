@@ -5,6 +5,7 @@ use std::{
 
 use crossbeam_channel::{bounded, Receiver, Sender};
 use failure::bail;
+use lsp_types::notification::Exit;
 
 use crate::{RawMessage, Result};
 
@@ -21,7 +22,16 @@ pub fn stdio_transport() -> (Receiver<RawMessage>, Sender<RawMessage>, Threads) 
         let stdin = stdin();
         let mut stdin = stdin.lock();
         while let Some(msg) = RawMessage::read(&mut stdin)? {
+            let is_exit = match &msg {
+                RawMessage::Notification(n) => n.is::<Exit>(),
+                _ => false,
+            };
+
             if let Err(_) = reader_sender.send(msg) {
+                break;
+            }
+
+            if is_exit {
                 break;
             }
         }
