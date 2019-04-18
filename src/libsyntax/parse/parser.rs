@@ -2910,27 +2910,22 @@ impl<'a> Parser<'a> {
         path: &ast::Path,
         attrs: &ThinVec<Attribute>,
     ) -> Option<PResult<'a, P<Expr>>> {
-        // We don't want to assume it's a struct when encountering `{ <ident>: <ident> }` because
-        // it could be type ascription, like in `{ ident: u32 }`.
-        let isnt_ascription = self.look_ahead(1, |t| t.is_ident()) &&
-            self.look_ahead(2, |t| *t == token::Colon) && (
-                (self.look_ahead(3, |t| t.is_ident()) &&
-                 self.look_ahead(4, |t| *t == token::Comma)) ||
-                self.look_ahead(3, |t| t.is_lit()) ||
-                self.look_ahead(3, |t| *t == token::BinOp(token::Minus)) &&
-                self.look_ahead(4, |t| t.is_lit())
-            );
-        let could_be_struct = self.look_ahead(1, |t| t.is_ident()) && (
-            self.look_ahead(2, |t| *t == token::Colon) && isnt_ascription
-            || self.look_ahead(2, |t| *t == token::Comma)
-            // We could also check for `token::CloseDelim(token::Brace)`, but that would
-            // have false positives in the case of `if x == y { z } { a }`.
+        let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
+        let certainly_not_a_block = || self.look_ahead(1, |t| t.is_ident()) && (
+            // `{ ident, ` cannot start a block
+            self.look_ahead(2, |t| t == &token::Comma) ||
+            self.look_ahead(2, |t| t == &token::Colon) && (
+                // `{ ident: token, ` cannot start a block
+                self.look_ahead(4, |t| t == &token::Comma) ||
+                // `{ ident: ` cannot start a block unless it's a type ascription `ident: Type`
+                self.look_ahead(3, |t| !t.can_begin_type())
+            )
         );
-        let bad_struct = self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
-        if !bad_struct || could_be_struct {
+
+        if struct_allowed || certainly_not_a_block() {
             // This is a struct literal, but we don't can't accept them here
             let expr = self.parse_struct_expr(lo, path.clone(), attrs.clone());
-            if let (Ok(expr), true) = (&expr, bad_struct) {
+            if let (Ok(expr), false) = (&expr, struct_allowed) {
                 let mut err = self.diagnostic().struct_span_err(
                     expr.span,
                     "struct literals are not allowed here",
