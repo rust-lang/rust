@@ -58,11 +58,11 @@ impl WithIsEmpty for Wither {
 
 fn main() {
     let x = [1, 2];
-    if x.len() == 0 {
+    if x.is_empty() {
         println!("This should not happen!");
     }
 
-    if "".len() == 0 {}
+    if "".is_empty() {}
 
     let y = One;
     if y.len() == 0 {
@@ -77,19 +77,19 @@ fn main() {
     }
 
     let has_is_empty = HasIsEmpty;
-    if has_is_empty.len() == 0 {
+    if has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if has_is_empty.len() != 0 {
+    if !has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if has_is_empty.len() > 0 {
+    if !has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if has_is_empty.len() < 1 {
+    if has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if has_is_empty.len() >= 1 {
+    if !has_is_empty.is_empty() {
         println!("Or this!");
     }
     if has_is_empty.len() > 1 {
@@ -100,19 +100,19 @@ fn main() {
         // No error.
         println!("This can happen.");
     }
-    if 0 == has_is_empty.len() {
+    if has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if 0 != has_is_empty.len() {
+    if !has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if 0 < has_is_empty.len() {
+    if !has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if 1 <= has_is_empty.len() {
+    if !has_is_empty.is_empty() {
         println!("Or this!");
     }
-    if 1 > has_is_empty.len() {
+    if has_is_empty.is_empty() {
         println!("Or this!");
     }
     if 1 < has_is_empty.len() {
@@ -126,7 +126,7 @@ fn main() {
     assert!(!has_is_empty.is_empty());
 
     let with_is_empty: &WithIsEmpty = &Wither;
-    if with_is_empty.len() == 0 {
+    if with_is_empty.is_empty() {
         println!("Or this!");
     }
     assert!(!with_is_empty.is_empty());
@@ -139,5 +139,5 @@ fn main() {
 }
 
 fn test_slice(b: &[u8]) {
-    if b.len() != 0 {}
+    if !b.is_empty() {}
 }
