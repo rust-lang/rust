@@ -2070,7 +2070,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
                 if sig.decl.c_variadic {
                     gate_feature_post!(&self, c_variadic, ti.span,
-                                       "C-varaidic functions are unstable");
+                                       "C-variadic functions are unstable");
                 }
                 if sig.header.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
