@@ -8,12 +8,16 @@
 //! ```
 //! #![feature(rustc_private)]
 //!
+//! extern crate syntax;
+//!
+//! use syntax::edition::Edition;
 //! use rustdoc::html::markdown::{IdMap, Markdown, ErrorCodes};
 //! use std::cell::RefCell;
 //!
 //! let s = "My *markdown* _text_";
 //! let mut id_map = IdMap::new();
-//! let html = format!("{}", Markdown(s, &[], RefCell::new(&mut id_map), ErrorCodes::Yes));
+//! let html = format!("{}", Markdown(s, &[], RefCell::new(&mut id_map),
+//!                                   ErrorCodes::Yes, Edition::Edition2015));
 //! // ... something using html
 //! ```
 
