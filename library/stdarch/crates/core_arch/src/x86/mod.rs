@@ -565,3 +565,6 @@ pub use self::avx512ifma::*;
 
 mod bt;
 pub use self::bt::*;
+
+mod rtm;
+pub use self::rtm::*;

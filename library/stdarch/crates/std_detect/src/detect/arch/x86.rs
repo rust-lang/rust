@@ -74,6 +74,8 @@
 /// * `"xsaveopt"`
 /// * `"xsaves"`
 /// * `"xsavec"`
+/// * `"adx"`
+/// * `"rtm"`
 ///
 /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
 #[macro_export]
@@ -233,6 +235,10 @@ macro_rules! is_x86_feature_detected {
         cfg!(target_feature = "adx") || $crate::detect::check_for(
             $crate::detect::Feature::adx)
     };
+    ("rtm") => {
+        cfg!(target_feature = "rtm") || $crate::detect::check_for(
+            $crate::detect::Feature::rtm)
+    };
     ($t:tt,) => {
         is_x86_feature_detected!($t);
     };
@@ -330,4 +336,6 @@ pub enum Feature {
     cmpxchg16b,
     /// ADX, Intel ADX (Multi-Precision Add-Carry Instruction Extensions)
     adx,
+    /// RTM, Intel (Restricted Transactional Memory)
+    rtm,
 }

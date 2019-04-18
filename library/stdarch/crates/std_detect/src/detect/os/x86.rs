@@ -123,6 +123,7 @@ fn detect_features() -> cache::Initializer {
         enable(proc_info_ecx, 30, Feature::rdrand);
         enable(extended_features_ebx, 18, Feature::rdseed);
         enable(extended_features_ebx, 19, Feature::adx);
+        enable(extended_features_ebx, 11, Feature::rtm);
         enable(proc_info_edx, 4, Feature::tsc);
         enable(proc_info_edx, 23, Feature::mmx);
         enable(proc_info_edx, 24, Feature::fxsr);
@@ -290,6 +291,7 @@ mod tests {
         println!("xsavec: {:?}", is_x86_feature_detected!("xsavec"));
         println!("cmpxchg16b: {:?}", is_x86_feature_detected!("cmpxchg16b"));
         println!("adx: {:?}", is_x86_feature_detected!("adx"));
+        println!("rtm: {:?}", is_x86_feature_detected!("rtm"));
     }
 
     #[test]
@@ -353,6 +355,10 @@ mod tests {
         assert_eq!(
             is_x86_feature_detected!("adx"),
             information.adx(),
+        );
+        assert_eq!(
+            is_x86_feature_detected!("rtm"),
+            information.rtm(),
         );
     }
 }
