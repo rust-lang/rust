@@ -47,29 +47,44 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                 if let ExprKind::Lit(ref inner) = lit.node {
                     match inner.node {
                         LitKind::Bool(true) => {
-                            span_help_and_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
-                                "assert!(true) will be optimized out by the compiler",
-                                "remove it");
+                            span_help_and_lint(
+                                cx,
+                                ASSERTIONS_ON_CONSTANTS,
+                                e.span,
+                                "`assert!(true)` will be optimized out by the compiler",
+                                "remove it"
+                            );
                         },
                         LitKind::Bool(false) if !is_debug_assert => {
                             span_help_and_lint(
-                                cx, ASSERTIONS_ON_CONSTANTS, e.span,
-                                "assert!(false) should probably be replaced",
-                                "use panic!() or unreachable!()");
+                                cx,
+                                ASSERTIONS_ON_CONSTANTS,
+                                e.span,
+                                "`assert!(false)` should probably be replaced",
+                                "use `panic!()` or `unreachable!()`"
+                            );
                         },
                         _ => (),
                     }
                 } else if let Some(bool_const) = constant(cx, cx.tables, lit) {
                     match bool_const.0 {
                         Constant::Bool(true) => {
-                            span_help_and_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
-                                "assert!(const: true) will be optimized out by the compiler",
-                                "remove it");
+                            span_help_and_lint(
+                                cx,
+                                ASSERTIONS_ON_CONSTANTS,
+                                e.span,
+                                "`assert!(const: true)` will be optimized out by the compiler",
+                                "remove it"
+                            );
                         },
                         Constant::Bool(false) if !is_debug_assert => {
-                            span_help_and_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
-                                "assert!(const: false) should probably be replaced",
-                                "use panic!() or unreachable!()");
+                            span_help_and_lint(
+                                cx,
+                                ASSERTIONS_ON_CONSTANTS,
+                                e.span,
+                                "`assert!(const: false)` should probably be replaced",
+                                "use `panic!()` or `unreachable!()`"
+                            );
                         },
                         _ => (),
                     }
