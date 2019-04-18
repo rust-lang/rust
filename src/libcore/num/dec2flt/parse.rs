@@ -44,7 +44,7 @@ pub enum ParseResult<'a> {
 
 /// Checks if the input string is a valid floating point number and if so, locate the integral
 /// part, the fractional part, and the exponent in it. Does not handle signs.
-pub fn parse_decimal(s: &str) -> ParseResult {
+pub fn parse_decimal(s: &str) -> ParseResult<'_> {
     if s.is_empty() {
         return Invalid;
     }

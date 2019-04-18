@@ -602,21 +602,21 @@ impl<P: Receiver> Receiver for Pin<P> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P: fmt::Debug> fmt::Debug for Pin<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.pointer, f)
     }
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P: fmt::Display> fmt::Display for Pin<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.pointer, f)
     }
 }
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.pointer, f)
     }
 }

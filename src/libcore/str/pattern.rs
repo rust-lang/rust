@@ -658,7 +658,7 @@ pub struct CharPredicateSearcher<'a, F>(<MultiCharEqPattern<F> as Pattern<'a>>::
 impl<F> fmt::Debug for CharPredicateSearcher<'_, F>
     where F: FnMut(char) -> bool
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("CharPredicateSearcher")
             .field("haystack", &self.0.haystack)
             .field("char_indices", &self.0.char_indices)

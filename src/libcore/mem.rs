@@ -862,7 +862,7 @@ impl<T> hash::Hash for Discriminant<T> {
 
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 impl<T> fmt::Debug for Discriminant<T> {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt.debug_tuple("Discriminant")
            .field(&self.0)
            .finish()
