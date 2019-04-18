@@ -87,9 +87,9 @@ sorts of identifiers in active use:
   offset within that item.
   - the key point of a [`HirId`] is that it is *relative* to some item
     (which is named via a [`DefId`]).
-- [`BodyId`], this is an absolute identifier that refers to a specific
+- [`BodyId`], this is an identifier that refers to a specific
   body (definition of a function or constant) in the crate. It is currently
-  effectively a "newtype'd" [`NodeId`].
+  effectively a "newtype'd" [`HirId`].
 - [`NodeId`], which is an absolute id that identifies a single node in the HIR
   tree.
   - While these are still in common use, **they are being slowly phased out**.
