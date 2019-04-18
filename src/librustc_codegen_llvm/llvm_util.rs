@@ -154,6 +154,7 @@ const X86_WHITELIST: &[(&str, Option<&str>)] = &[
     ("popcnt", None),
     ("rdrand", None),
     ("rdseed", None),
+    ("rtm", Some("rtm_target_feature")),
     ("sha", None),
     ("sse", None),
     ("sse2", None),
