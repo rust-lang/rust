@@ -838,7 +838,7 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
-    /// beginning of the slice.
+    /// end of the slice.
     ///
     /// The chunks are slices and do not overlap. If `chunk_size` does not divide the length of the
     /// slice, then the last up to `chunk_size-1` elements will be omitted and can be retrieved
@@ -849,7 +849,7 @@ impl<T> [T] {
     ///
     /// See [`rchunks`] for a variant of this iterator that also returns the remainder as a smaller
     /// chunk, and [`chunks_exact`] for the same iterator but starting at the beginning of the
-    /// slice of the slice.
+    /// slice.
     ///
     /// # Panics
     ///
@@ -890,7 +890,7 @@ impl<T> [T] {
     ///
     /// See [`rchunks_mut`] for a variant of this iterator that also returns the remainder as a
     /// smaller chunk, and [`chunks_exact_mut`] for the same iterator but starting at the beginning
-    /// of the slice of the slice.
+    /// of the slice.
     ///
     /// # Panics
     ///
