@@ -37,9 +37,15 @@ pub enum ExpandError {
     NoMatchingRule,
     UnexpectedToken,
     BindingError(String),
+    ConversionError,
 }
 
-pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list, syntax_node_to_token_tree};
+pub use crate::syntax_bridge::{
+    ast_to_token_tree,
+    token_tree_to_ast_item_list,
+    syntax_node_to_token_tree,
+    token_tree_to_macro_items,
+};
 
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as
@@ -192,21 +198,21 @@ impl_froms!(TokenTree: Leaf, Subtree);
     pub(crate) fn expand_to_syntax(
         rules: &MacroRules,
         invocation: &str,
-    ) -> ra_syntax::TreeArc<ast::SourceFile> {
+    ) -> ra_syntax::TreeArc<ast::MacroItems> {
         let expanded = expand(rules, invocation);
-        token_tree_to_ast_item_list(&expanded)
+        token_tree_to_macro_items(&expanded)
     }
 
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
 
-        let tree = token_tree_to_ast_item_list(&expanded);
+        let tree = token_tree_to_macro_items(&expanded);
 
         // Eat all white space by parse it back and forth
         let expansion = ast::SourceFile::parse(expansion);
         let expansion = syntax_node_to_token_tree(expansion.syntax()).unwrap().0;
-        let file = token_tree_to_ast_item_list(&expansion);
+        let file = token_tree_to_macro_items(&expansion);
 
         assert_eq!(tree.syntax().debug_dump().trim(), file.syntax().debug_dump().trim());
     }
@@ -346,11 +352,11 @@ impl_froms!(TokenTree: Leaf, Subtree);
             ",
         );
         let expansion = expand(&rules, "structs!(Foo, Bar)");
-        let tree = token_tree_to_ast_item_list(&expansion);
+        let tree = token_tree_to_macro_items(&expansion);
         assert_eq!(
             tree.syntax().debug_dump().trim(),
             r#"
-SOURCE_FILE@[0; 40)
+MACRO_ITEMS@[0; 40)
   STRUCT_DEF@[0; 20)
     STRUCT_KW@[0; 6) "struct"
     NAME@[6; 9)
@@ -527,7 +533,7 @@ SOURCE_FILE@[0; 40)
 
         assert_eq!(
             expand_to_syntax(&rules, "foo! { 1 + 1  }").syntax().debug_dump().trim(),
-            r#"SOURCE_FILE@[0; 15)
+            r#"MACRO_ITEMS@[0; 15)
   FN_DEF@[0; 15)
     FN_KW@[0; 2) "fn"
     NAME@[2; 5)

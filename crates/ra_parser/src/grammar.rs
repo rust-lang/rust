@@ -49,6 +49,12 @@ pub(crate) fn root(p: &mut Parser) {
     m.complete(p, SOURCE_FILE);
 }
 
+pub(crate) fn macro_items(p: &mut Parser) {
+    let m = p.start();
+    items::mod_contents(p, false);
+    m.complete(p, MACRO_ITEMS);
+}
+
 pub(crate) fn path(p: &mut Parser) {
     paths::type_path(p);
 }

@@ -1770,6 +1770,72 @@ impl MacroCall {
     }
 }
 
+// MacroItems
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MacroItems {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for MacroItems {
+    type Repr = rowan::SyntaxNode;
+}
+
+impl AstNode for MacroItems {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            MACRO_ITEMS => Some(MacroItems::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for MacroItems {
+    type Owned = TreeArc<MacroItems>;
+    fn to_owned(&self) -> TreeArc<MacroItems> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl ast::ModuleItemOwner for MacroItems {}
+impl ast::FnDefOwner for MacroItems {}
+impl MacroItems {}
+
+// MacroStmts
+#[derive(Debug, PartialEq, Eq, Hash)]
+#[repr(transparent)]
+pub struct MacroStmts {
+    pub(crate) syntax: SyntaxNode,
+}
+unsafe impl TransparentNewType for MacroStmts {
+    type Repr = rowan::SyntaxNode;
+}
+
+impl AstNode for MacroStmts {
+    fn cast(syntax: &SyntaxNode) -> Option<&Self> {
+        match syntax.kind() {
+            MACRO_STMTS => Some(MacroStmts::from_repr(syntax.into_repr())),
+            _ => None,
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
+
+impl ToOwned for MacroStmts {
+    type Owned = TreeArc<MacroStmts>;
+    fn to_owned(&self) -> TreeArc<MacroStmts> { TreeArc::cast(self.syntax.to_owned()) }
+}
+
+
+impl MacroStmts {
+    pub fn statements(&self) -> impl Iterator<Item = &Stmt> {
+        super::children(self)
+    }
+
+    pub fn expr(&self) -> Option<&Expr> {
+        super::child_opt(self)
+    }
+}
+
 // MatchArm
 #[derive(Debug, PartialEq, Eq, Hash)]
 #[repr(transparent)]

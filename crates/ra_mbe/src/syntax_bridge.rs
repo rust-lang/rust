@@ -30,6 +30,29 @@ pub fn syntax_node_to_token_tree(node: &SyntaxNode) -> Option<(tt::Subtree, Toke
     Some((tt, token_map))
 }
 
+// The following items are what `rustc` macro can be parsed into :
+// link: https://github.com/rust-lang/rust/blob/9ebf47851a357faa4cd97f4b1dc7835f6376e639/src/libsyntax/ext/expand.rs#L141
+// * Expr(P<ast::Expr>)
+// * Pat(P<ast::Pat>)
+// * Ty(P<ast::Ty>)
+// * Stmts(SmallVec<[ast::Stmt; 1]>)
+// * Items(SmallVec<[P<ast::Item>; 1]>)
+//
+// * TraitItems(SmallVec<[ast::TraitItem; 1]>)
+// * ImplItems(SmallVec<[ast::ImplItem; 1]>)
+// * ForeignItems(SmallVec<[ast::ForeignItem; 1]>
+//
+//
+
+/// Parses the token tree (result of macro expansion) as a sequence of items
+pub fn token_tree_to_macro_items(tt: &tt::Subtree) -> TreeArc<ast::MacroItems> {
+    let token_source = SubtreeTokenSource::new(tt);
+    let mut tree_sink = TtTreeSink::new(token_source.querier());
+    ra_parser::parse_macro_items(&token_source, &mut tree_sink);
+    let syntax = tree_sink.inner.finish();
+    ast::MacroItems::cast(&syntax).unwrap().to_owned()
+}
+
 /// Parses the token tree (result of macro expansion) as a sequence of items
 pub fn token_tree_to_ast_item_list(tt: &tt::Subtree) -> TreeArc<ast::SourceFile> {
     let token_source = SubtreeTokenSource::new(tt);
