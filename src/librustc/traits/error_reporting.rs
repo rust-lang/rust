@@ -638,6 +638,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         let OnUnimplementedNote { message, label, note }
                             = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
+                        let is_try = self.tcx.sess.source_map().span_to_snippet(span)
+                            .map(|s| &s == "?")
+                            .unwrap_or(false);
+                        let is_from = format!("{}", trait_ref).starts_with("std::convert::From<");
+                        let message = if is_try && is_from {
+                            Some(format!(
+                                "`?` couldn't convert the error to `{}`",
+                                trait_ref.self_ty(),
+                            ))
+                        } else {
+                            message
+                        };
 
                         let mut err = struct_span_err!(
                             self.tcx.sess,

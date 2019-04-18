@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `i32: std::convert::From<&str>` is not satisfied
-  --> $DIR/try-block-bad-type.rs:7:9
+error[E0277]: `?` couldn't convert the error to `i32`
+  --> $DIR/try-block-bad-type.rs:7:16
    |
 LL |         Err("")?;
-   |         ^^^^^^^^ the trait `std::convert::From<&str>` is not implemented for `i32`
+   |                ^ the trait `std::convert::From<&str>` is not implemented for `i32`
    |
    = help: the following implementations were found:
              <i32 as std::convert::From<bool>>
