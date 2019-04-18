@@ -2855,11 +2855,13 @@ impl<'a> Parser<'a> {
                         let (delim, tts) = self.expect_delimited_token_tree()?;
                         hi = self.prev_span;
                         ex = ExprKind::Mac(respan(lo.to(hi), Mac_ { path, tts, delim }));
-                    } else if self.check(&token::OpenDelim(token::Brace)) &&
-                              !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL) {
-                        // This is a struct literal, unless we're prohibited
-                        // from parsing struct literals here.
-                        return self.parse_struct_expr(lo, path, attrs);
+                    } else if self.check(&token::OpenDelim(token::Brace)) {
+                        if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
+                            return expr;
+                        } else {
+                            hi = path.span;
+                            ex = ExprKind::Path(None, path);
+                        }
                     } else {
                         hi = path.span;
                         ex = ExprKind::Path(None, path);
@@ -2900,6 +2902,47 @@ impl<'a> Parser<'a> {
 
         let expr = self.mk_expr(lo.to(hi), ex, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn maybe_parse_struct_expr(
+        &mut self,
+        lo: Span,
+        path: &ast::Path,
+        attrs: &ThinVec<Attribute>,
+    ) -> Option<PResult<'a, P<Expr>>> {
+        let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
+        let certainly_not_a_block = || self.look_ahead(1, |t| t.is_ident()) && (
+            // `{ ident, ` cannot start a block
+            self.look_ahead(2, |t| t == &token::Comma) ||
+            self.look_ahead(2, |t| t == &token::Colon) && (
+                // `{ ident: token, ` cannot start a block
+                self.look_ahead(4, |t| t == &token::Comma) ||
+                // `{ ident: ` cannot start a block unless it's a type ascription `ident: Type`
+                self.look_ahead(3, |t| !t.can_begin_type())
+            )
+        );
+
+        if struct_allowed || certainly_not_a_block() {
+            // This is a struct literal, but we don't can't accept them here
+            let expr = self.parse_struct_expr(lo, path.clone(), attrs.clone());
+            if let (Ok(expr), false) = (&expr, struct_allowed) {
+                let mut err = self.diagnostic().struct_span_err(
+                    expr.span,
+                    "struct literals are not allowed here",
+                );
+                err.multipart_suggestion(
+                    "surround the struct literal with parenthesis",
+                    vec![
+                        (lo.shrink_to_lo(), "(".to_string()),
+                        (expr.span.shrink_to_hi(), ")".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+            }
+            return Some(expr);
+        }
+        None
     }
 
     fn parse_struct_expr(&mut self, lo: Span, pth: ast::Path, mut attrs: ThinVec<Attribute>)
