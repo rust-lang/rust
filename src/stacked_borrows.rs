@@ -1,127 +1,164 @@
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
+use std::fmt;
+use std::num::NonZeroU64;
 
 use rustc::ty::{self, layout::Size};
-use rustc::hir::{Mutability, MutMutable, MutImmutable};
+use rustc::hir::{MutMutable, MutImmutable};
 use rustc::mir::RetagKind;
 
 use crate::{
     EvalResult, InterpError, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
-    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
+    MemoryKind, MiriMemoryKind, RangeMap, Allocation, AllocationExtra,
     Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
-pub type Timestamp = u64;
-pub type CallId = u64;
+pub type PtrId = NonZeroU64;
+pub type CallId = NonZeroU64;
 
-/// Information about which kind of borrow was used to create the reference this is tagged with.
+/// Tracking pointer provenance
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Borrow {
-    /// A unique (mutable) reference.
-    Uniq(Timestamp),
-    /// An aliasing reference. This is also used by raw pointers, which do not track details
-    /// of how or when they were created, hence the timestamp is optional.
-    /// `Shr(Some(_))` does *not* mean that the destination of this reference is frozen;
-    /// that depends on the type! Only those parts outside of an `UnsafeCell` are actually
-    /// frozen.
-    Alias(Option<Timestamp>),
+pub enum Tag {
+    Tagged(PtrId),
+    Untagged,
 }
 
-impl Borrow {
-    #[inline(always)]
-    pub fn is_aliasing(self) -> bool {
+impl fmt::Display for Tag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Borrow::Alias(_) => true,
-            _ => false,
-        }
-    }
-
-    #[inline(always)]
-    pub fn is_unique(self) -> bool {
-        match self {
-            Borrow::Uniq(_) => true,
-            _ => false,
+            Tag::Tagged(id) => write!(f, "{}", id),
+            Tag::Untagged => write!(f, "<untagged>"),
         }
     }
 }
 
-impl Default for Borrow {
-    fn default() -> Self {
-        Borrow::Alias(None)
-    }
+/// Indicates which permission is granted (by this item to some pointers)
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Permission {
+    /// Grants unique mutable access.
+    Unique,
+    /// Grants shared mutable access.
+    SharedReadWrite,
+    /// Greants shared read-only access.
+    SharedReadOnly,
 }
 
 /// An item in the per-location borrow stack.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum BorStackItem {
-    /// Indicates the unique reference that may mutate.
-    Uniq(Timestamp),
-    /// Indicates that the location has been mutably shared. Used for raw pointers as
-    /// well as for unfrozen shared references.
-    Raw,
-    /// A barrier, tracking the function it belongs to by its index on the call stack.
-    FnBarrier(CallId)
+pub struct Item {
+    /// The permission this item grants.
+    perm: Permission,
+    /// The pointers the permission is granted to.
+    tag: Tag,
+    /// An optional protector, ensuring the item cannot get popped until `CallId` is over.
+    protector: Option<CallId>,
+}
+
+impl fmt::Display for Item {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{:?} for {}", self.perm, self.tag)?;
+        if let Some(call) = self.protector {
+            write!(f, " (call {})", call)?;
+        }
+        write!(f, "]")?;
+        Ok(())
+    }
 }
 
 /// Extra per-location state.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Stack {
-    /// Used as the stack; never empty.
-    borrows: Vec<BorStackItem>,
-    /// A virtual frozen "item" on top of the stack.
-    frozen_since: Option<Timestamp>,
+    /// Used *mostly* as a stack; never empty.
+    /// We sometimes push into the middle but never remove from the middle.
+    /// The same tag may occur multiple times, e.g. from a two-phase borrow.
+    /// Invariants:
+    /// * Above a `SharedReadOnly` there can only be more `SharedReadOnly`.
+    borrows: Vec<Item>,
 }
 
-impl Stack {
-    #[inline(always)]
-    pub fn is_frozen(&self) -> bool {
-        self.frozen_since.is_some()
-    }
+
+/// Extra per-allocation state.
+#[derive(Clone, Debug)]
+pub struct Stacks {
+    // Even reading memory can have effects on the stack, so we need a `RefCell` here.
+    stacks: RefCell<RangeMap<Stack>>,
+    // Pointer to global state
+    global: MemoryState,
 }
 
-/// Indicates which kind of reference is being used.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum RefKind {
-    /// `&mut`.
-    Unique,
-    /// `&` without interior mutability.
-    Frozen,
-    /// `*` (raw pointer) or `&` to `UnsafeCell`.
-    Raw,
+/// Extra global state, available to the memory access hooks.
+#[derive(Debug)]
+pub struct GlobalState {
+    next_ptr_id: PtrId,
+    next_call_id: CallId,
+    active_calls: HashSet<CallId>,
 }
+pub type MemoryState = Rc<RefCell<GlobalState>>;
 
 /// Indicates which kind of access is being performed.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum AccessKind {
     Read,
     Write,
-    Dealloc,
 }
 
-/// Extra global state in the memory, available to the memory access hooks.
-#[derive(Debug)]
-pub struct BarrierTracking {
-    next_id: CallId,
-    active_calls: HashSet<CallId>,
+impl fmt::Display for AccessKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AccessKind::Read => write!(f, "read"),
+            AccessKind::Write => write!(f, "write"),
+        }
+    }
 }
-pub type MemoryState = Rc<RefCell<BarrierTracking>>;
 
-impl Default for BarrierTracking {
+/// Indicates which kind of reference is being created.
+/// Used by high-level `reborrow` to compute which permissions to grant to the
+/// new pointer.
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub enum RefKind {
+    /// `&mut` and `Box`.
+    Unique,
+    /// `&` with or without interior mutability.
+    Shared,
+    /// `*mut`/`*const` (raw pointers).
+    Raw { mutable: bool },
+}
+
+impl fmt::Display for RefKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            RefKind::Unique => write!(f, "unique"),
+            RefKind::Shared => write!(f, "shared"),
+            RefKind::Raw { mutable: true } => write!(f, "raw (mutable)"),
+            RefKind::Raw { mutable: false } => write!(f, "raw (constant)"),
+        }
+    }
+}
+
+/// Utilities for initialization and ID generation
+impl Default for GlobalState {
     fn default() -> Self {
-        BarrierTracking {
-            next_id: 0,
+        GlobalState {
+            next_ptr_id: NonZeroU64::new(1).unwrap(),
+            next_call_id: NonZeroU64::new(1).unwrap(),
             active_calls: HashSet::default(),
         }
     }
 }
 
-impl BarrierTracking {
+impl GlobalState {
+    pub fn new_ptr(&mut self) -> PtrId {
+        let id = self.next_ptr_id;
+        self.next_ptr_id = NonZeroU64::new(id.get() + 1).unwrap();
+        id
+    }
+
     pub fn new_call(&mut self) -> CallId {
-        let id = self.next_id;
+        let id = self.next_call_id;
         trace!("new_call: Assigning ID {}", id);
         self.active_calls.insert(id);
-        self.next_id += 1;
+        self.next_call_id = NonZeroU64::new(id.get() + 1).unwrap();
         id
     }
 
@@ -134,441 +171,442 @@ impl BarrierTracking {
     }
 }
 
-/// Extra global machine state.
-#[derive(Clone, Debug)]
-pub struct State {
-    clock: Timestamp
-}
+// # Stacked Borrows Core Begin
 
-impl Default for State {
-    fn default() -> Self {
-        State { clock: 0 }
-    }
-}
-
-impl State {
-    fn increment_clock(&mut self) -> Timestamp {
-        let val = self.clock;
-        self.clock = val + 1;
-        val
-    }
-}
-
-/// Extra per-allocation state.
-#[derive(Clone, Debug)]
-pub struct Stacks {
-    // Even reading memory can have effects on the stack, so we need a `RefCell` here.
-    stacks: RefCell<RangeMap<Stack>>,
-    barrier_tracking: MemoryState,
-}
-
-/// Core per-location operations: deref, access, create.
 /// We need to make at least the following things true:
 ///
-/// U1: After creating a `Uniq`, it is at the top (and unfrozen).
-/// U2: If the top is `Uniq` (and unfrozen), accesses must be through that `Uniq` or pop it.
-/// U3: If an access (deref sufficient?) happens with a `Uniq`, it requires the `Uniq` to be in the stack.
+/// U1: After creating a `Uniq`, it is at the top.
+/// U2: If the top is `Uniq`, accesses must be through that `Uniq` or remove it it.
+/// U3: If an access happens with a `Uniq`, it requires the `Uniq` to be in the stack.
 ///
-/// F1: After creating a `&`, the parts outside `UnsafeCell` are frozen.
-/// F2: If a write access happens, it unfreezes.
-/// F3: If an access (well, a deref) happens with an `&` outside `UnsafeCell`,
-///     it requires the location to still be frozen.
+/// F1: After creating a `&`, the parts outside `UnsafeCell` have our `SharedReadOnly` on top.
+/// F2: If a write access happens, it pops the `SharedReadOnly`.  This has three pieces:
+///     F2a: If a write happens granted by an item below our `SharedReadOnly`, the `SharedReadOnly`
+///          gets popped.
+///     F2b: No `SharedReadWrite` or `Unique` will ever be added on top of our `SharedReadOnly`.
+/// F3: If an access happens with an `&` outside `UnsafeCell`,
+///     it requires the `SharedReadOnly` to still be in the stack.
+
+impl Default for Tag {
+    #[inline(always)]
+    fn default() -> Tag {
+        Tag::Untagged
+    }
+}
+
+/// Core relations on `Permission` define which accesses are allowed:
+/// On every access, we try to find a *granting* item, and then we remove all
+/// *incompatible* items above it.
+impl Permission {
+    /// This defines for a given permission, whether it permits the given kind of access.
+    fn grants(self, access: AccessKind) -> bool {
+        match (self, access) {
+            // Unique and SharedReadWrite allow any kind of access.
+            (Permission::Unique, _) |
+            (Permission::SharedReadWrite, _) =>
+                true,
+            // SharedReadOnly only permits read access.
+            (Permission::SharedReadOnly, AccessKind::Read) =>
+                true,
+            (Permission::SharedReadOnly, AccessKind::Write) =>
+                false,
+        }
+    }
+
+    /// This defines for a given permission, which other permissions it can tolerate "above" itself
+    /// for which kinds of accesses.
+    /// If true, then `other` is allowed to remain on top of `self` when `access` happens.
+    fn compatible_with(self, access: AccessKind, other: Permission) -> bool {
+        use self::Permission::*;
+
+        match (self, access, other) {
+            // Some cases are impossible.
+            (SharedReadOnly, _, SharedReadWrite) |
+            (SharedReadOnly, _, Unique) =>
+                bug!("There can never be a SharedReadWrite or a Unique on top of a SharedReadOnly"),
+            // When `other` is `SharedReadOnly`, that is NEVER compatible with
+            // write accesses.
+            // This makes sure read-only pointers become invalid on write accesses (ensures F2a).
+            (_, AccessKind::Write, SharedReadOnly) =>
+                false,
+            // When `other` is `Unique`, that is compatible with nothing.
+            // This makes sure unique pointers become invalid on incompatible accesses (ensures U2).
+            (_, _, Unique) =>
+                false,
+            // When we are unique and this is a write/dealloc, we tolerate nothing.
+            // This makes sure we re-assert uniqueness ("being on top") on write accesses.
+            // (This is particularily important such that when a new mutable ref gets created, it gets
+            // pushed onto the right item -- this behaves like a write and we assert uniqueness of the
+            // pointer from which this comes, *if* it was a unique pointer.)
+            (Unique, AccessKind::Write, _) =>
+                false,
+            // `SharedReadWrite` items can tolerate any other akin items for any kind of access.
+            (SharedReadWrite, _, SharedReadWrite) =>
+                true,
+            // Any item can tolerate read accesses for shared items.
+            // This includes unique items!  Reads from unique pointers do not invalidate
+            // other pointers.
+            (_, AccessKind::Read, SharedReadWrite) |
+            (_, AccessKind::Read, SharedReadOnly) =>
+                true,
+            // That's it.
+        }
+    }
+}
+
+/// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
-    /// Deref `bor`: check if the location is frozen and the tag in the stack.
-    /// This dos *not* constitute an access! "Deref" refers to the `*` operator
-    /// in Rust, and includs cases like `&*x` or `(*x).foo` where no or only part
-    /// of the memory actually gets accessed. Also we cannot know if we are
-    /// going to read or write.
-    /// Returns the index of the item we matched, `None` if it was the frozen one.
-    /// `kind` indicates which kind of reference is being dereferenced.
-    fn deref(
-        &self,
-        bor: Borrow,
-        kind: RefKind,
-    ) -> Result<Option<usize>, String> {
-        // Exclude unique ref with frozen tag.
-        if let (RefKind::Unique, Borrow::Alias(Some(_))) = (kind, bor) {
-            return Err(format!("encountered mutable reference with frozen tag ({:?})", bor));
-        }
-        // Checks related to freezing.
-        match bor {
-            Borrow::Alias(Some(bor_t)) if kind == RefKind::Frozen => {
-                // We need the location to be frozen. This ensures F3.
-                let frozen = self.frozen_since.map_or(false, |itm_t| itm_t <= bor_t);
-                return if frozen { Ok(None) } else {
-                    Err(format!("location is not frozen long enough"))
+    /// Find the item granting the given kind of access to the given tag, and where that item is in the stack.
+    fn find_granting(&self, access: AccessKind, tag: Tag) -> Option<(usize, Permission)> {
+        self.borrows.iter()
+            .enumerate() // we also need to know *where* in the stack
+            .rev() // search top-to-bottom
+            // Return permission of first item that grants access.
+            // We require a permission with the right tag, ensuring U3 and F3.
+            .find_map(|(idx, item)|
+                if item.perm.grants(access) && tag == item.tag {
+                    Some((idx, item.perm))
+                } else {
+                    None
+                }
+            )
+    }
+
+    /// Test if a memory `access` using pointer tagged `tag` is granted.
+    /// If yes, return the index of the item that granted it.
+    fn access(
+        &mut self,
+        access: AccessKind,
+        tag: Tag,
+        global: &GlobalState,
+    ) -> EvalResult<'tcx, usize> {
+        // Two main steps: Find granting item, remove all incompatible items above.
+
+        // Step 1: Find granting item.
+        let (granting_idx, granting_perm) = self.find_granting(access, tag)
+            .ok_or_else(|| InterpError::MachineError(format!(
+                "no item granting {} access to tag {} found in borrow stack",
+                access, tag,
+            )))?;
+
+        // Step 2: Remove everything incompatible above them.  Make sure we do not remove protected
+        // items.
+        // We do *not* maintain a stack discipline here.  We could, in principle, decide to only
+        // keep the items immediately above `granting_idx` that are compatible, and then pop the rest.
+        // However, that kills off entire "branches" of pointer derivation too easily:
+        // in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement would pop the `Unique`
+        // from the reborrow of the first statement, and subsequently also pop the `SharedReadWrite` for `raw`.
+        // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
+        // reference and use that.
+        {
+            // Implemented with indices because there does not seem to be a nice iterator and range-based
+            // API for this.
+            let mut cur = granting_idx + 1;
+            while let Some(item) = self.borrows.get(cur) {
+                if granting_perm.compatible_with(access, item.perm) {
+                    // Keep this, check next.
+                    cur += 1;
+                } else {
+                    // Aha! This is a bad one, remove it, and make sure it is not protected.
+                    let item = self.borrows.remove(cur);
+                    if let Some(call) = item.protector {
+                        if global.is_active(call) {
+                            return err!(MachineError(format!(
+                                "not granting {} access to tag {} because incompatible item {} is protected",
+                                access, tag, item
+                            )));
+                        }
+                    }
+                    trace!("access: removing item {}", item);
                 }
             }
-            Borrow::Alias(_) if self.frozen_since.is_some() => {
-                // Shared deref to frozen location; looking good.
-                return Ok(None)
-            }
-            // Not sufficient; go on looking.
-            _ => {}
         }
-        // If we got here, we have to look for our item in the stack.
-        for (idx, &itm) in self.borrows.iter().enumerate().rev() {
-            match (itm, bor) {
-                (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
-                    // Found matching unique item. This satisfies U3.
-                    return Ok(Some(idx))
+
+        // Done.
+        return Ok(granting_idx);
+    }
+
+    /// Deallocate a location: Like a write access, but also there must be no
+    /// active protectors at all.
+    fn dealloc(
+        &mut self,
+        tag: Tag,
+        global: &GlobalState,
+    ) -> EvalResult<'tcx> {
+        // Step 1: Find granting item.
+        self.find_granting(AccessKind::Write, tag)
+            .ok_or_else(|| InterpError::MachineError(format!(
+                "no item granting write access for deallocation to tag {} found in borrow stack",
+                tag,
+            )))?;
+
+        // We must make sure there are no protected items remaining on the stack.
+        // Also clear the stack, no more accesses are possible.
+        for item in self.borrows.drain(..) {
+            if let Some(call) = item.protector {
+                if global.is_active(call) {
+                    return err!(MachineError(format!(
+                        "deallocating with active protector ({})", call
+                    )))
                 }
-                (BorStackItem::Raw, Borrow::Alias(_)) => {
-                    // Found matching aliasing/raw item.
-                    return Ok(Some(idx))
+            }
+        }
+
+        Ok(())
+    }
+
+    /// `reborrow` helper function: test that the stack invariants are still maintained.
+    fn test_invariants(&self) {
+        let mut saw_shared_read_only = false;
+        for item in self.borrows.iter() {
+            match item.perm {
+                Permission::SharedReadOnly => {
+                    saw_shared_read_only = true;
                 }
-                // Go on looking. We ignore barriers! When an `&mut` and an `&` alias,
-                // dereferencing the `&` is still possible (to reborrow), but doing
-                // an access is not.
+                // Otherwise, if we saw one before, that's a bug.
+                perm if saw_shared_read_only => {
+                    bug!("Found {:?} on top of a SharedReadOnly!", perm);
+                }
                 _ => {}
             }
         }
-        // If we got here, we did not find our item. We have to error to satisfy U3.
-        Err(format!("Borrow being dereferenced ({:?}) does not exist on the borrow stack", bor))
     }
 
-    /// Performs an actual memory access using `bor`. We do not know any types here
-    /// or whether things should be frozen, but we *do* know if this is reading
-    /// or writing.
-    fn access(
-        &mut self,
-        bor: Borrow,
-        kind: AccessKind,
-        barrier_tracking: &BarrierTracking,
-    ) -> EvalResult<'tcx> {
-        // Check if we can match the frozen "item".
-        // Not possible on writes!
-        if self.is_frozen() {
-            if kind == AccessKind::Read {
-                // When we are frozen, we just accept all reads. No harm in this.
-                // The deref already checked that `Uniq` items are in the stack, and that
-                // the location is frozen if it should be.
-                return Ok(());
-            }
-            trace!("access: unfreezing");
-        }
-        // Unfreeze on writes. This ensures F2.
-        self.frozen_since = None;
-        // Pop the stack until we have something matching.
-        while let Some(&itm) = self.borrows.last() {
-            match (itm, bor) {
-                (BorStackItem::FnBarrier(call), _) if barrier_tracking.is_active(call) => {
-                    return err!(MachineError(format!(
-                        "stopping looking for borrow being accessed ({:?}) because of barrier ({})",
-                        bor, call
-                    )))
-                }
-                (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
-                    // Found matching unique item. Continue after the match.
-                }
-                (BorStackItem::Raw, _) if kind == AccessKind::Read => {
-                    // When reading, everything can use a raw item!
-                    // We do not want to do this when writing: Writing to an `&mut`
-                    // should reaffirm its exclusivity (i.e., make sure it is
-                    // on top of the stack). Continue after the match.
-                }
-                (BorStackItem::Raw, Borrow::Alias(_)) => {
-                    // Found matching raw item. Continue after the match.
-                }
-                _ => {
-                    // Pop this, go on. This ensures U2.
-                    let itm = self.borrows.pop().unwrap();
-                    trace!("access: Popping {:?}", itm);
-                    continue
-                }
-            }
-            // If we got here, we found a matching item. Congratulations!
-            // However, we are not done yet: If this access is deallocating, we must make sure
-            // there are no active barriers remaining on the stack.
-            if kind == AccessKind::Dealloc {
-                for &itm in self.borrows.iter().rev() {
-                    match itm {
-                        BorStackItem::FnBarrier(call) if barrier_tracking.is_active(call) => {
-                            return err!(MachineError(format!(
-                                "deallocating with active barrier ({})", call
-                            )))
-                        }
-                        _ => {},
-                    }
-                }
-            }
-            // Now we are done.
-            return Ok(())
-        }
-        // If we got here, we did not find our item.
-        err!(MachineError(format!(
-            "borrow being accessed ({:?}) does not exist on the borrow stack",
-            bor
-        )))
-    }
-
-    /// Initiate `bor`; mostly this means pushing.
-    /// This operation cannot fail; it is up to the caller to ensure that the precondition
-    /// is met: We cannot push `Uniq` onto frozen stacks.
-    /// `kind` indicates which kind of reference is being created.
-    fn create(&mut self, bor: Borrow, kind: RefKind) {
-        // When creating a frozen reference, freeze. This ensures F1.
-        // We also do *not* push anything else to the stack, making sure that no nother kind
-        // of access (like writing through raw pointers) is permitted.
-        if kind == RefKind::Frozen {
-            let bor_t = match bor {
-                Borrow::Alias(Some(t)) => t,
-                _ => bug!("Creating illegal borrow {:?} for frozen ref", bor),
-            };
-            // It is possible that we already are frozen (e.g., if we just pushed a barrier,
-            // the redundancy check would not have kicked in).
-            match self.frozen_since {
-                Some(loc_t) => assert!(
-                    loc_t <= bor_t,
-                    "trying to freeze location for longer than it was already frozen"
-                ),
-                None => {
-                    trace!("create: Freezing");
-                    self.frozen_since = Some(bor_t);
-                }
-            }
-            return;
-        }
-        assert!(
-            self.frozen_since.is_none(),
-            "trying to create non-frozen reference to frozen location"
-        );
-
-        // Push new item to the stack.
-        let itm = match bor {
-            Borrow::Uniq(t) => BorStackItem::Uniq(t),
-            Borrow::Alias(_) => BorStackItem::Raw,
-        };
-        if *self.borrows.last().unwrap() == itm {
-            // This is just an optimization, no functional change: Avoid stacking
-            // multiple `Shr` on top of each other.
-            assert!(bor.is_aliasing());
-            trace!("create: sharing a shared location is a NOP");
-        } else {
-            // This ensures U1.
-            trace!("create: pushing {:?}", itm);
-            self.borrows.push(itm);
-        }
-    }
-
-    /// Adds a barrier.
-    fn barrier(&mut self, call: CallId) {
-        let itm = BorStackItem::FnBarrier(call);
-        if *self.borrows.last().unwrap() == itm {
-            // This is just an optimization, no functional change: Avoid stacking
-            // multiple identical barriers on top of each other.
-            // This can happen when a function receives several shared references
-            // that overlap.
-            trace!("barrier: avoiding redundant extra barrier");
-        } else {
-            trace!("barrier: pushing barrier for call {}", call);
-            self.borrows.push(itm);
-        }
-    }
-}
-
-/// Higher-level per-location operations: deref, access, reborrow.
-impl<'tcx> Stacks {
-    /// Checks that this stack is fine with being dereferenced.
-    fn deref(
-        &self,
-        ptr: Pointer<Borrow>,
-        size: Size,
-        kind: RefKind,
-    ) -> EvalResult<'tcx> {
-        trace!("deref for tag {:?} as {:?}: {:?}, size {}",
-            ptr.tag, kind, ptr, size.bytes());
-        let stacks = self.stacks.borrow();
-        for stack in stacks.iter(ptr.offset, size) {
-            stack.deref(ptr.tag, kind).map_err(InterpError::MachineError)?;
-        }
-        Ok(())
-    }
-
-    /// `ptr` got used, reflect that in the stack.
-    fn access(
-        &self,
-        ptr: Pointer<Borrow>,
-        size: Size,
-        kind: AccessKind,
-    ) -> EvalResult<'tcx> {
-        trace!("{:?} access of tag {:?}: {:?}, size {}", kind, ptr.tag, ptr, size.bytes());
-        // Even reads can have a side-effect, by invalidating other references.
-        // This is fundamentally necessary since `&mut` asserts that there
-        // are no accesses through other references, not even reads.
-        let barrier_tracking = self.barrier_tracking.borrow();
-        let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.access(ptr.tag, kind, &*barrier_tracking)?;
-        }
-        Ok(())
-    }
-
-    /// Reborrow the given pointer to the new tag for the given kind of reference.
-    /// This works on `&self` because we might encounter references to constant memory.
+    /// Derived a new pointer from one with the given tag.
+    /// `weak` controls whether this is a weak reborrow: weak reborrows do not act as
+    /// accesses, and they add the new item directly on top of the one it is derived
+    /// from instead of all the way at the top of the stack.
     fn reborrow(
-        &self,
-        ptr: Pointer<Borrow>,
-        size: Size,
-        mut barrier: Option<CallId>,
-        new_bor: Borrow,
-        new_kind: RefKind,
+        &mut self,
+        derived_from: Tag,
+        weak: bool,
+        new: Item,
+        global: &GlobalState,
     ) -> EvalResult<'tcx> {
-        assert_eq!(new_bor.is_unique(), new_kind == RefKind::Unique);
-        trace!(
-            "reborrow for tag {:?} to {:?} as {:?}: {:?}, size {}",
-            ptr.tag, new_bor, new_kind, ptr, size.bytes(),
-        );
-        if new_kind == RefKind::Raw {
-            // No barrier for raw, including `&UnsafeCell`. They can rightfully alias with `&mut`.
-            // FIXME: This means that the `dereferencable` attribute on non-frozen shared references
-            // is incorrect! They are dereferencable when the function is called, but might become
-            // non-dereferencable during the course of execution.
-            // Also see [1], [2].
-            //
-            // [1]: <https://internals.rust-lang.org/t/
-            //       is-it-possible-to-be-memory-safe-with-deallocated-self/8457/8>,
-            // [2]: <https://lists.llvm.org/pipermail/llvm-dev/2018-July/124555.html>
-            barrier = None;
+        // Figure out which access `perm` corresponds to.
+        let access = if new.perm.grants(AccessKind::Write) {
+            AccessKind::Write
+        } else {
+            AccessKind::Read
+        };
+        // Now we figure out which item grants our parent (`derived_from`) this kind of access.
+        // We use that to determine where to put the new item.
+        let (derived_from_idx, _) = self.find_granting(access, derived_from)
+            .ok_or_else(|| InterpError::MachineError(format!(
+                "no item to reborrow for {:?} from tag {} found in borrow stack", new.perm, derived_from,
+            )))?;
+
+        // Compute where to put the new item.
+        // Either way, we ensure that we insert the new item in a way that between
+        // `derived_from` and the new one, there are only items *compatible with* `derived_from`.
+        let new_idx = if weak {
+            // A very liberal reborrow because the new pointer does not expect any kind of aliasing guarantee.
+            // Just insert new permission as child of old permission, and maintain everything else.
+            // This inserts "as far down as possible", which is good because it makes this pointer as
+            // long-lived as possible *and* we want all the items that are incompatible with this
+            // to actually get removed from the stack.  If we pushed a `SharedReadWrite` on top of
+            // a `SharedReadOnly`, we'd violate the invariant that `SaredReadOnly` are at the top
+            // and we'd allow write access without invalidating frozen shared references!
+            // This ensures F2b for `SharedReadWrite` by adding the new item below any
+            // potentially existing `SharedReadOnly`.
+            derived_from_idx + 1
+        } else {
+            // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
+            // Here, creating a reference actually counts as an access, and pops incompatible
+            // stuff off the stack.
+            // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
+            let check_idx = self.access(access, derived_from, global)?;
+            assert_eq!(check_idx, derived_from_idx, "somehow we saw different items??");
+
+            // We insert "as far up as possible": We know only compatible items are remaining
+            // on top of `derived_from`, and we want the new item at the top so that we
+            // get the strongest possible guarantees.
+            // This ensures U1 and F1.
+            self.borrows.len()
+        };
+
+        // Put the new item there. As an optimization, deduplicate if it is equal to one of its new neighbors.
+        if self.borrows[new_idx-1] == new || self.borrows.get(new_idx) == Some(&new) {
+            // Optimization applies, done.
+            trace!("reborrow: avoiding adding redundant item {}", new);
+        } else {
+            trace!("reborrow: adding item {}", new);
+            self.borrows.insert(new_idx, new);
         }
-        let barrier_tracking = self.barrier_tracking.borrow();
-        let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            // Access source `ptr`, create new ref.
-            let ptr_idx = stack.deref(ptr.tag, new_kind).map_err(InterpError::MachineError)?;
-            // If we can deref the new tag already, and if that tag lives higher on
-            // the stack than the one we come from, just use that.
-            // That is, we check if `new_bor` *already* is "derived from" `ptr.tag`.
-            // This also checks frozenness, if required.
-            let bor_redundant = barrier.is_none() &&
-                match (ptr_idx, stack.deref(new_bor, new_kind)) {
-                    // If the new borrow works with the frozen item, or else if it lives
-                    // above the old one in the stack, our job here is done.
-                    (_, Ok(None)) => true,
-                    (Some(ptr_idx), Ok(Some(new_idx))) if new_idx >= ptr_idx => true,
-                    // Otherwise, we need to create a new borrow.
-                    _ => false,
-                };
-            if bor_redundant {
-                assert!(new_bor.is_aliasing(), "a unique reborrow can never be redundant");
-                trace!("reborrow is redundant");
-                continue;
-            }
-            // We need to do some actual work.
-            let access_kind = if new_kind == RefKind::Unique {
-                AccessKind::Write
-            } else {
-                AccessKind::Read
-            };
-            stack.access(ptr.tag, access_kind, &*barrier_tracking)?;
-            if let Some(call) = barrier {
-                stack.barrier(call);
-            }
-            stack.create(new_bor, new_kind);
+
+        // Make sure that after all this, the stack's invariant is still maintained.
+        if cfg!(debug_assertions) {
+            self.test_invariants();
         }
+
         Ok(())
     }
 }
+// # Stacked Borrows Core End
 
-/// Hooks and glue.
-impl AllocationExtra<Borrow, MemoryState> for Stacks {
-    #[inline(always)]
-    fn memory_allocated<'tcx>(size: Size, extra: &MemoryState) -> Self {
+/// Map per-stack operations to higher-level per-location-range operations.
+impl<'tcx> Stacks {
+    /// Creates new stack with initial tag.
+    pub(crate) fn new(
+        size: Size,
+        tag: Tag,
+        extra: MemoryState,
+    ) -> Self {
+        let item = Item { perm: Permission::Unique, tag, protector: None };
         let stack = Stack {
-            borrows: vec![BorStackItem::Raw],
-            frozen_since: None,
+            borrows: vec![item],
         };
         Stacks {
             stacks: RefCell::new(RangeMap::new(size, stack)),
-            barrier_tracking: Rc::clone(extra),
+            global: extra,
         }
     }
 
+    /// Call `f` on every stack in the range.
+    fn for_each(
+        &self,
+        ptr: Pointer<Tag>,
+        size: Size,
+        f: impl Fn(&mut Stack, &GlobalState) -> EvalResult<'tcx>,
+    ) -> EvalResult<'tcx> {
+        let global = self.global.borrow();
+        let mut stacks = self.stacks.borrow_mut();
+        for stack in stacks.iter_mut(ptr.offset, size) {
+            f(stack, &*global)?;
+        }
+        Ok(())
+    }
+}
+
+/// Glue code to connect with Miri Machine Hooks
+impl Stacks {
+    pub fn new_allocation(
+        size: Size,
+        extra: &MemoryState,
+        kind: MemoryKind<MiriMemoryKind>,
+    ) -> (Self, Tag) {
+        let tag = match kind {
+            MemoryKind::Stack => {
+                // New unique borrow. This `Uniq` is not accessible by the program,
+                // so it will only ever be used when using the local directly (i.e.,
+                // not through a pointer). That is, whenever we directly use a local, this will pop
+                // everything else off the stack, invalidating all previous pointers,
+                // and in particular, *all* raw pointers. This subsumes the explicit
+                // `reset` which the blog post [1] says to perform when accessing a local.
+                //
+                // [1]: <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>
+                Tag::Tagged(extra.borrow_mut().new_ptr())
+            }
+            _ => {
+                Tag::Untagged
+            }
+        };
+        let stack = Stacks::new(size, tag, Rc::clone(extra));
+        (stack, tag)
+    }
+}
+
+impl AllocationExtra<Tag> for Stacks {
     #[inline(always)]
     fn memory_read<'tcx>(
-        alloc: &Allocation<Borrow, Stacks>,
-        ptr: Pointer<Borrow>,
+        alloc: &Allocation<Tag, Stacks>,
+        ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, AccessKind::Read)
+        trace!("read access with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        alloc.extra.for_each(ptr, size, |stack, global| {
+            stack.access(AccessKind::Read, ptr.tag, global)?;
+            Ok(())
+        })
     }
 
     #[inline(always)]
     fn memory_written<'tcx>(
-        alloc: &mut Allocation<Borrow, Stacks>,
-        ptr: Pointer<Borrow>,
+        alloc: &mut Allocation<Tag, Stacks>,
+        ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, AccessKind::Write)
+        trace!("write access with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        alloc.extra.for_each(ptr, size, |stack, global| {
+            stack.access(AccessKind::Write, ptr.tag, global)?;
+            Ok(())
+        })
     }
 
     #[inline(always)]
     fn memory_deallocated<'tcx>(
-        alloc: &mut Allocation<Borrow, Stacks>,
-        ptr: Pointer<Borrow>,
+        alloc: &mut Allocation<Tag, Stacks>,
+        ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, AccessKind::Dealloc)
+        trace!("deallocation with tag {}: {:?}, size {}", ptr.tag, ptr, size.bytes());
+        alloc.extra.for_each(ptr, size, |stack, global| {
+            stack.dealloc(ptr.tag, global)
+        })
     }
 }
 
-impl<'tcx> Stacks {
-    /// Pushes the first item to the stacks.
-    pub(crate) fn first_item(
-        &mut self,
-        itm: BorStackItem,
-        size: Size
-    ) {
-        for stack in self.stacks.get_mut().iter_mut(Size::ZERO, size) {
-            assert!(stack.borrows.len() == 1);
-            assert_eq!(stack.borrows.pop().unwrap(), BorStackItem::Raw);
-            stack.borrows.push(itm);
-        }
-    }
-}
-
+/// Retagging/reborrowing.  There is some policy in here, such as which permissions
+/// to grant for which references, when to add protectors, and how to realize two-phase
+/// borrows in terms of the primitives above.
 impl<'a, 'mir, 'tcx> EvalContextPrivExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
 trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
     fn reborrow(
         &mut self,
-        place: MPlaceTy<'tcx, Borrow>,
+        place: MPlaceTy<'tcx, Tag>,
         size: Size,
-        fn_barrier: bool,
-        new_bor: Borrow
+        kind: RefKind,
+        new_tag: Tag,
+        force_weak: bool,
+        protect: bool,
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
+        let protector = if protect { Some(this.frame().extra) } else { None };
         let ptr = place.ptr.to_ptr()?;
-        let barrier = if fn_barrier { Some(this.frame().extra) } else { None };
-        trace!("reborrow: creating new reference for {:?} (pointee {}): {:?}",
-            ptr, place.layout.ty, new_bor);
+        trace!("reborrow: {:?} reference {} derived from {} (pointee {}): {:?}, size {}",
+            kind, new_tag, ptr.tag, place.layout.ty, ptr, size.bytes());
 
         // Get the allocation. It might not be mutable, so we cannot use `get_mut`.
         let alloc = this.memory().get(ptr.alloc_id)?;
         alloc.check_bounds(this, ptr, size)?;
         // Update the stacks.
-        if let Borrow::Alias(Some(_)) = new_bor {
-            // Reference that cares about freezing. We need a frozen-sensitive reborrow.
-            this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
-                let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
-                alloc.extra.reborrow(cur_ptr, size, barrier, new_bor, kind)
-            })?;
-        } else {
-            // Just treat this as one big chunk.
-            let kind = if new_bor.is_unique() { RefKind::Unique } else { RefKind::Raw };
-            alloc.extra.reborrow(ptr, size, barrier, new_bor, kind)?;
-        }
-        Ok(())
+        // Make sure that raw pointers and mutable shared references are reborrowed "weak":
+        // There could be existing unique pointers reborrowed from them that should remain valid!
+        let perm = match kind {
+            RefKind::Unique => Permission::Unique,
+            RefKind::Raw { mutable: true } => Permission::SharedReadWrite,
+            RefKind::Shared | RefKind::Raw { mutable: false } => {
+                // Shared references and *const are a whole different kind of game, the
+                // permission is not uniform across the entire range!
+                // We need a frozen-sensitive reborrow.
+                return this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
+                    // We are only ever `SharedReadOnly` inside the frozen bits.
+                    let weak = !frozen || kind != RefKind::Shared; // `RefKind::Raw` is always weak, as is `SharedReadWrite`.
+                    let perm = if frozen { Permission::SharedReadOnly } else { Permission::SharedReadWrite };
+                    let item = Item { perm, tag: new_tag, protector };
+                    alloc.extra.for_each(cur_ptr, size, |stack, global| {
+                        stack.reborrow(cur_ptr.tag, force_weak || weak, item, global)
+                    })
+                });
+            }
+        };
+        debug_assert_ne!(perm, Permission::SharedReadOnly, "SharedReadOnly must be used frozen-sensitive");
+        let weak = perm == Permission::SharedReadWrite;
+        let item = Item { perm, tag: new_tag, protector };
+        alloc.extra.for_each(ptr, size, |stack, global| {
+            stack.reborrow(ptr.tag, force_weak || weak, item, global)
+        })
     }
 
     /// Retags an indidual pointer, returning the retagged version.
     /// `mutbl` can be `None` to make this a raw pointer.
     fn retag_reference(
         &mut self,
-        val: ImmTy<'tcx, Borrow>,
-        mutbl: Option<Mutability>,
-        fn_barrier: bool,
+        val: ImmTy<'tcx, Tag>,
+        kind: RefKind,
+        protect: bool,
         two_phase: bool,
-    ) -> EvalResult<'tcx, Immediate<Borrow>> {
+    ) -> EvalResult<'tcx, Immediate<Tag>> {
         let this = self.eval_context_mut();
         // We want a place for where the ptr *points to*, so we get one.
         let place = this.ref_to_mplace(val)?;
@@ -581,23 +619,22 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         }
 
         // Compute new borrow.
-        let time = this.machine.stacked_borrows.increment_clock();
-        let new_bor = match mutbl {
-            Some(MutMutable) => Borrow::Uniq(time),
-            Some(MutImmutable) => Borrow::Alias(Some(time)),
-            None => Borrow::default(),
+        let new_tag = match kind {
+            RefKind::Raw { .. } => Tag::Untagged,
+            _ => Tag::Tagged(this.memory().extra.borrow_mut().new_ptr()),
         };
 
         // Reborrow.
-        this.reborrow(place, size, fn_barrier, new_bor)?;
-        let new_place = place.with_tag(new_bor);
+        this.reborrow(place, size, kind, new_tag, /*force_weak:*/ two_phase, protect)?;
+        let new_place = place.replace_tag(new_tag);
         // Handle two-phase borrows.
         if two_phase {
-            assert!(mutbl == Some(MutMutable), "two-phase shared borrows make no sense");
-            // We immediately share it, to allow read accesses
-            let two_phase_time = this.machine.stacked_borrows.increment_clock();
-            let two_phase_bor = Borrow::Alias(Some(two_phase_time));
-            this.reborrow(new_place, size, false /* fn_barrier */, two_phase_bor)?;
+            assert!(kind == RefKind::Unique, "two-phase shared borrows make no sense");
+            // Grant read access *to the parent pointer* with the old tag *derived from the new tag* (`new_place`). 
+            // This means the old pointer has multiple items in the stack now, which otherwise cannot happen
+            // for unique references -- but in this case it precisely expresses the semantics we want.
+            let old_tag = place.ptr.to_ptr().unwrap().tag;
+            this.reborrow(new_place, size, RefKind::Shared, old_tag, /*force_weak:*/ false, /*protect:*/ false)?;
         }
 
         // Return new pointer.
@@ -607,104 +644,28 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'a, 'mir, 'tcx> for crate::MiriEvalContext<'a, 'mir, 'tcx> {}
 pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a, 'mir, 'tcx> {
-    fn tag_new_allocation(
-        &mut self,
-        id: AllocId,
-        kind: MemoryKind<MiriMemoryKind>,
-    ) -> Borrow {
-        let this = self.eval_context_mut();
-        let time = match kind {
-            MemoryKind::Stack => {
-                // New unique borrow. This `Uniq` is not accessible by the program,
-                // so it will only ever be used when using the local directly (i.e.,
-                // not through a pointer). That is, whenever we directly use a local, this will pop
-                // everything else off the stack, invalidating all previous pointers,
-                // and in particular, *all* raw pointers. This subsumes the explicit
-                // `reset` which the blog post [1] says to perform when accessing a local.
-                //
-                // [1]: <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>
-                this.machine.stacked_borrows.increment_clock()
-            }
-            _ => {
-                // Nothing to do for everything else.
-                return Borrow::default()
-            }
-        };
-        // Make this the active borrow for this allocation.
-        let alloc = this
-            .memory_mut()
-            .get_mut(id)
-            .expect("this is a new allocation; it must still exist");
-        let size = Size::from_bytes(alloc.bytes.len() as u64);
-        alloc.extra.first_item(BorStackItem::Uniq(time), size);
-        Borrow::Uniq(time)
-    }
-
-    /// Called for value-to-place conversion. `mutability` is `None` for raw pointers.
-    ///
-    /// Note that this does *not* mean that all this memory will actually get accessed/referenced!
-    /// We could be in the middle of `&(*var).1`.
-    fn ptr_dereference(
-        &self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-        mutability: Option<Mutability>,
-    ) -> EvalResult<'tcx> {
-        let this = self.eval_context_ref();
-        trace!(
-            "ptr_dereference: Accessing {} reference for {:?} (pointee {})",
-            if let Some(mutability) = mutability {
-                format!("{:?}", mutability)
-            } else {
-                format!("raw")
-            },
-            place.ptr, place.layout.ty
-        );
-        let ptr = place.ptr.to_ptr()?;
-        if mutability.is_none() {
-            // No further checks on raw derefs -- only the access itself will be checked.
-            return Ok(());
-        }
-
-        // Get the allocation
-        let alloc = this.memory().get(ptr.alloc_id)?;
-        alloc.check_bounds(this, ptr, size)?;
-        // If we got here, we do some checking, *but* we leave the tag unchanged.
-        if let Borrow::Alias(Some(_)) = ptr.tag {
-            assert_eq!(mutability, Some(MutImmutable));
-            // We need a frozen-sensitive check.
-            this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
-                let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
-                alloc.extra.deref(cur_ptr, size, kind)
-            })?;
-        } else {
-            // Just treat this as one big chunk.
-            let kind = if mutability == Some(MutMutable) { RefKind::Unique } else { RefKind::Raw };
-            alloc.extra.deref(ptr, size, kind)?;
-        }
-
-        // All is good.
-        Ok(())
-    }
-
     fn retag(
         &mut self,
         kind: RetagKind,
-        place: PlaceTy<'tcx, Borrow>
+        place: PlaceTy<'tcx, Tag>
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
-        // Determine mutability and whether to add a barrier.
+        // Determine mutability and whether to add a protector.
         // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
         // making it useless.
-        fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(Option<Mutability>, bool)> {
+        fn qualify(ty: ty::Ty<'_>, kind: RetagKind) -> Option<(RefKind, bool)> {
             match ty.sty {
                 // References are simple.
-                ty::Ref(_, _, mutbl) => Some((Some(mutbl), kind == RetagKind::FnEntry)),
+                ty::Ref(_, _, MutMutable) =>
+                    Some((RefKind::Unique, kind == RetagKind::FnEntry)),
+                ty::Ref(_, _, MutImmutable) =>
+                    Some((RefKind::Shared, kind == RetagKind::FnEntry)),
                 // Raw pointers need to be enabled.
-                ty::RawPtr(..) if kind == RetagKind::Raw => Some((None, false)),
-                // Boxes do not get a barrier: barriers reflect that references outlive the call
+                ty::RawPtr(tym) if kind == RetagKind::Raw =>
+                    Some((RefKind::Raw { mutable: tym.mutbl == MutMutable }, false)),
+                // Boxes do not get a protector: protectors reflect that references outlive the call
                 // they were passed in to; that's just not the case for boxes.
-                ty::Adt(..) if ty.is_box() => Some((Some(MutMutable), false)),
+                ty::Adt(..) if ty.is_box() => Some((RefKind::Unique, false)),
                 _ => None,
             }
         }
@@ -712,10 +673,10 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         // We need a visitor to visit all references. However, that requires
         // a `MemPlace`, so we have a fast path for reference types that
         // avoids allocating.
-        if let Some((mutbl, barrier)) = qualify(place.layout.ty, kind) {
+        if let Some((mutbl, protector)) = qualify(place.layout.ty, kind) {
             // Fast path.
             let val = this.read_immediate(this.place_to_op(place)?)?;
-            let val = this.retag_reference(val, mutbl, barrier, kind == RetagKind::TwoPhase)?;
+            let val = this.retag_reference(val, mutbl, protector, kind == RetagKind::TwoPhase)?;
             this.write_immediate(val, place)?;
             return Ok(());
         }
@@ -734,7 +695,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         for
             RetagVisitor<'ecx, 'a, 'mir, 'tcx>
         {
-            type V = MPlaceTy<'tcx, Borrow>;
+            type V = MPlaceTy<'tcx, Tag>;
 
             #[inline(always)]
             fn ecx(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx> {
@@ -742,16 +703,16 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
             }
 
             // Primitives of reference type, that is the one thing we are interested in.
-            fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
+            fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Tag>) -> EvalResult<'tcx>
             {
                 // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
                 // making it useless.
-                if let Some((mutbl, barrier)) = qualify(place.layout.ty, self.kind) {
+                if let Some((mutbl, protector)) = qualify(place.layout.ty, self.kind) {
                     let val = self.ecx.read_immediate(place.into())?;
                     let val = self.ecx.retag_reference(
                         val,
                         mutbl,
-                        barrier,
+                        protector,
                         self.kind == RetagKind::TwoPhase
                     )?;
                     self.ecx.write_immediate(val, place.into())?;

@@ -4,7 +4,7 @@ use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
 use crate::{
-    PlaceTy, OpTy, ImmTy, Immediate, Scalar, ScalarMaybeUndef, Borrow,
+    PlaceTy, OpTy, ImmTy, Immediate, Scalar, ScalarMaybeUndef, Tag,
     OperatorEvalContextExt
 };
 
@@ -13,8 +13,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Borrow>],
-        dest: PlaceTy<'tcx, Borrow>,
+        args: &[OpTy<'tcx, Tag>],
+        dest: PlaceTy<'tcx, Tag>,
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
         if this.emulate_intrinsic(instance, args, dest)? {

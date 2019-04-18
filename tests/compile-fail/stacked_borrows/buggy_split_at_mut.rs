@@ -9,7 +9,7 @@ mod safe {
             assert!(mid <= len);
 
             (from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
-            //~^ ERROR does not exist on the borrow stack
+            //~^ ERROR borrow stack
             from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
         }
     }

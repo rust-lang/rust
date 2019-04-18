@@ -22,14 +22,14 @@ struct Ccx {
     x: isize
 }
 
-fn alloc<'a>(_bcx : &'a Arena) -> &'a Bcx<'a> {
+fn alloc<'a>(_bcx : &'a Arena) -> &'a mut Bcx<'a> {
     unsafe {
         mem::transmute(libc::malloc(mem::size_of::<Bcx<'a>>()
             as libc::size_t))
     }
 }
 
-fn h<'a>(bcx : &'a Bcx<'a>) -> &'a Bcx<'a> {
+fn h<'a>(bcx : &'a Bcx<'a>) -> &'a mut Bcx<'a> {
     return alloc(bcx.fcx.arena);
 }
 

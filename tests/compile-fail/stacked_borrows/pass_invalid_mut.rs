@@ -6,5 +6,5 @@ fn main() {
     let xraw = x as *mut _;
     let xref = unsafe { &mut *xraw };
     let _val = unsafe { *xraw }; // invalidate xref
-    foo(xref); //~ ERROR does not exist on the borrow stack
+    foo(xref); //~ ERROR borrow stack
 }
