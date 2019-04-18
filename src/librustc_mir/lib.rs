@@ -40,7 +40,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 #[macro_use]
 extern crate syntax;
 
-mod diagnostics;
+mod error_codes;
 
 mod borrow_check;
 mod build;

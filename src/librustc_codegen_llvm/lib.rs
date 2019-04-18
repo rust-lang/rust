@@ -70,7 +70,7 @@ use rustc_mir::monomorphize;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
-mod diagnostics;
+mod error_codes;
 
 mod back {
     mod archive;

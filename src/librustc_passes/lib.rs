@@ -19,7 +19,7 @@ extern crate rustc;
 
 use rustc::ty::query::Providers;
 
-mod diagnostics;
+mod error_codes;
 
 pub mod ast_validation;
 pub mod rvalue_promotion;

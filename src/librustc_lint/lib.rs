@@ -25,7 +25,7 @@
 #[macro_use]
 extern crate rustc;
 
-mod diagnostics;
+mod error_codes;
 mod nonstandard_style;
 pub mod builtin;
 mod types;

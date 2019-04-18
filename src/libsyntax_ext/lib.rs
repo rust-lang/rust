@@ -17,7 +17,7 @@
 
 extern crate proc_macro;
 
-mod diagnostics;
+mod error_codes;
 
 mod asm;
 mod assert;

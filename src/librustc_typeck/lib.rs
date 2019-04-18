@@ -81,7 +81,7 @@ This API is completely unstable and subject to change.
 
 // N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
-mod diagnostics;
+mod error_codes;
 
 mod astconv;
 mod check;
