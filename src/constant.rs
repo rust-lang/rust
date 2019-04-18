@@ -407,12 +407,12 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         Cow::Borrowed(alloc)
     }
 
-    fn tag_new_allocation(
-        _: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer,
+    fn new_allocation(
+        _: Size,
+        _: &(),
         _: MemoryKind<!>,
-    ) -> Pointer {
-        ptr
+    ) -> ((), ()) {
+        ((), ())
     }
 
     fn stack_push(_: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
