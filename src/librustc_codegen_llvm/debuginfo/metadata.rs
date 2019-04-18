@@ -23,6 +23,7 @@ use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ich::NodeIdHashingMode;
 use rustc::mir::Field;
+use rustc::mir::GeneratorLayout;
 use rustc::mir::interpret::truncate;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
@@ -1291,7 +1292,10 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
         let variant_info_for = |index: VariantIdx| {
             match &self.enum_type.sty {
                 ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
-                ty::Generator(_, substs, _) => VariantInfo::Generator(*substs, index),
+                ty::Generator(def_id, substs, _) => {
+                    let generator_layout = cx.tcx.generator_layout(*def_id);
+                    VariantInfo::Generator(*substs, generator_layout, index)
+                }
                 _ => bug!(),
             }
         };
@@ -1567,14 +1571,14 @@ enum EnumDiscriminantInfo<'ll> {
 #[derive(Copy, Clone)]
 enum VariantInfo<'tcx> {
     Adt(&'tcx ty::VariantDef),
-    Generator(ty::GeneratorSubsts<'tcx>, VariantIdx),
+    Generator(ty::GeneratorSubsts<'tcx>, &'tcx GeneratorLayout<'tcx>, VariantIdx),
 }
 
 impl<'tcx> VariantInfo<'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
             VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
-            VariantInfo::Generator(substs, variant_index) =>
+            VariantInfo::Generator(substs, _, variant_index) =>
                 substs.map_variant_name(*variant_index, f),
         }
     }
@@ -1582,7 +1586,7 @@ impl<'tcx> VariantInfo<'tcx> {
     fn variant_name(&self) -> String {
         match self {
             VariantInfo::Adt(variant) => variant.ident.to_string(),
-            VariantInfo::Generator(_, variant_index) => {
+            VariantInfo::Generator(_, _, variant_index) => {
                 // Since GDB currently prints out the raw discriminant along
                 // with every variant, make each variant name be just the value
                 // of the discriminant. The struct name for the variant includes
@@ -1593,11 +1597,16 @@ impl<'tcx> VariantInfo<'tcx> {
     }
 
     fn field_name(&self, i: usize) -> String {
-        match self {
+        let field_name = match self {
             VariantInfo::Adt(variant) if variant.ctor_kind != CtorKind::Fn =>
-                variant.fields[i].ident.to_string(),
-            _ => format!("__{}", i),
-        }
+                Some(variant.fields[i].ident.to_string()),
+            VariantInfo::Generator(_, generator_layout, variant_index) => {
+                let variant_decls = &generator_layout.variant_fields[*variant_index];
+                variant_decls[i].name.map(|name| name.to_string())
+            }
+            _ => None,
+        };
+        field_name.unwrap_or_else(|| format!("__{}", i))
     }
 }
 

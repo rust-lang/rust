@@ -2997,7 +2997,7 @@ pub struct UnsafetyCheckResult {
 /// The layout of generator state
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GeneratorLayout<'tcx> {
-    pub variant_fields: Vec<Vec<LocalDecl<'tcx>>>,
+    pub variant_fields: IndexVec<VariantIdx, Vec<LocalDecl<'tcx>>>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]

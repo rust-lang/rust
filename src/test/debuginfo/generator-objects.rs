@@ -10,16 +10,16 @@
 
 // gdb-command:run
 // gdb-command:print b
-// gdb-check:$1 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 0, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 ([...]), 4: generator_objects::main::generator::variant#4 ([...])}}
+// gdb-check:$1 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 0, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 {[...]}, 4: generator_objects::main::generator::variant#4 {[...]}}}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$2 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 3, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 (6, 7), 4: generator_objects::main::generator::variant#4 ([...])}}
+// gdb-check:$2 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 3, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 {c: 6, d: 7}, 4: generator_objects::main::generator::variant#4 {[...]}}}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$3 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 4, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 ([...]), 4: generator_objects::main::generator::variant#4 (7, 8)}}
+// gdb-check:$3 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 4, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 {[...]}, 4: generator_objects::main::generator::variant#4 {c: 7, d: 8}}}
 // gdb-command:continue
 // gdb-command:print b
-// gdb-check:$4 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 1, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 ([...]), 4: generator_objects::main::generator::variant#4 ([...])}}
+// gdb-check:$4 = generator_objects::main::generator {__0: 0x[...], <<variant>>: {__state: 1, 0: generator_objects::main::generator::Unresumed, 1: generator_objects::main::generator::Returned, 2: generator_objects::main::generator::Panicked, 3: generator_objects::main::generator::variant#3 {[...]}, 4: generator_objects::main::generator::variant#4 {[...]}}}
 
 // === LLDB TESTS ==================================================================================
 
