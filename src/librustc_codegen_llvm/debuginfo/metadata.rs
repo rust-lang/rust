@@ -1333,7 +1333,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         name: if fallback {
                             String::new()
                         } else {
-                            variant_info.name_as_string()
+                            variant_info.variant_name()
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
@@ -1388,7 +1388,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         name: if fallback {
                             String::new()
                         } else {
-                            variant_info.name_as_string()
+                            variant_info.variant_name()
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
@@ -1455,7 +1455,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                        self.layout,
                                        self.layout.fields.offset(discr_index),
                                        self.layout.field(cx, discr_index).size);
-                    variant_info_for(*niche_variants.start()).map_name(|variant_name| {
+                    variant_info_for(*niche_variants.start()).map_struct_name(|variant_name| {
                         name.push_str(variant_name);
                     });
 
@@ -1506,7 +1506,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         };
 
                         MemberDescription {
-                            name: variant_info.name_as_string(),
+                            name: variant_info.variant_name(),
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
                             size: self.layout.size,
@@ -1571,7 +1571,7 @@ enum VariantInfo<'tcx> {
 }
 
 impl<'tcx> VariantInfo<'tcx> {
-    fn map_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
+    fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
             VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
             VariantInfo::Generator(substs, variant_index) =>
@@ -1579,8 +1579,17 @@ impl<'tcx> VariantInfo<'tcx> {
         }
     }
 
-    fn name_as_string(&self) -> String {
-        self.map_name(|name| name.to_string())
+    fn variant_name(&self) -> String {
+        match self {
+            VariantInfo::Adt(variant) => variant.ident.to_string(),
+            VariantInfo::Generator(_, variant_index) => {
+                // Since GDB currently prints out the raw discriminant along
+                // with every variant, make each variant name be just the value
+                // of the discriminant. The struct name for the variant includes
+                // the actual variant description.
+                format!("{}", variant_index.as_usize()).to_string()
+            }
+        }
     }
 
     fn field_name(&self, i: usize) -> String {
@@ -1604,7 +1613,7 @@ fn describe_enum_variant(
     containing_scope: &'ll DIScope,
     span: Span,
 ) -> (&'ll DICompositeType, MemberDescriptionFactory<'ll, 'tcx>) {
-    let metadata_stub = variant.map_name(|variant_name| {
+    let metadata_stub = variant.map_struct_name(|variant_name| {
         let unique_type_id = debug_context(cx).type_map
                                               .borrow_mut()
                                               .get_unique_type_id_of_enum_variant(
