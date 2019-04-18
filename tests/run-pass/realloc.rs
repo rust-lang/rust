@@ -2,7 +2,7 @@
 
 #![feature(rustc_private)]
 
-use core::slice;
+use core::{slice, ptr};
 
 extern crate libc;
 
@@ -27,5 +27,19 @@ fn main() {
         assert_eq!(&slice, &[0_u8; 10]);
 
         libc::free(p4);
+    }
+
+    unsafe {
+        let p1 = libc::malloc(20);
+
+        let p2 = libc::realloc(p1, 0);
+        assert!(p2.is_null());
+    }
+
+    unsafe {
+        let p1 = libc::realloc(ptr::null_mut(), 20);
+        assert!(!p1.is_null());
+
+        libc::free(p1);
     }
 }
