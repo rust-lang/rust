@@ -30,6 +30,7 @@ install:
 build_script:
     - set RUST_TEST_NOCAPTURE=1
     - set RUST_BACKTRACE=1
+    - set RUSTFLAGS=-C debug-assertions
     # Build and install miri
     - cargo build --release --all-features --all-targets
     - cargo install --all-features --force --path .

@@ -1,7 +1,5 @@
 #![feature(inner_deref)]
 
-extern crate cargo_metadata;
-
 use std::fs::{self, File};
 use std::io::{self, Write, BufRead};
 use std::path::{PathBuf, Path};
