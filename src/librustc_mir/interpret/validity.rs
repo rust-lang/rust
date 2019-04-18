@@ -394,7 +394,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         try_validation!(
                             self.ecx.memory
                                 .get(ptr.alloc_id)?
-                                .check_bounds(self.ecx, ptr, size, CheckInAllocMsg::OutOfBounds),
+                                .check_bounds(self.ecx, ptr, size, CheckInAllocMsg::InboundsTest),
                             "dangling (not entirely in bounds) reference", self.path);
                     }
                     // Check if we have encountered this pointer+layout combination

@@ -668,7 +668,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
                             self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead,
-                                                         CheckInAllocMsg::OutOfBounds).is_ok();
+                                                         CheckInAllocMsg::NullPointerTest).is_ok();
                         if !ptr_valid {
                             return err!(InvalidDiscriminant(raw_discr.erase_tag()));
                         }

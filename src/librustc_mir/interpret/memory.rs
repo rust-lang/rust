@@ -253,7 +253,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
                 let align = self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead,
-                                                  CheckInAllocMsg::NullPointer)?;
+                                                  CheckInAllocMsg::NullPointerTest)?;
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {

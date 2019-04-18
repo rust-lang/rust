@@ -25,19 +25,19 @@ pub enum InboundsCheck {
 /// Used by `check_in_alloc` to indicate context of check
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum CheckInAllocMsg {
-    MemoryAccess,
+    MemoryAccessTest,
     NullPointerTest,
-    PointerArithmetic,
-    OutOfBounds,
+    PointerArithmeticTest,
+    InboundsTest,
 }
 
 impl Display for CheckInAllocMsg {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", match *self {
-            CheckInAllocMsg::MemoryAccess => "memory access",
-            CheckInAllocMsg::NullPointer => "null pointer",
-            CheckInAllocMsg::PointerArithmetic => "pointer arithmetic",
-            CheckInAllocMsg::OutOfBounds => "out of bounds",
+            CheckInAllocMsg::MemoryAccessTest => "Memory access",
+            CheckInAllocMsg::NullPointerTest => "Null pointer",
+            CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
+            CheckInAllocMsg::InboundsTest => "Inbounds",
         })
     }
 }
