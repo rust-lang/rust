@@ -4685,6 +4685,14 @@ impl<'a> LoweringContext<'a> {
                         Symbol::intern("try_trait")
                     ].into()),
                 );
+                let try_span = self.sess.source_map().end_point(e.span);
+                let try_span = self.mark_span_with_reason(
+                    CompilerDesugaringKind::QuestionMark,
+                    try_span,
+                    Some(vec![
+                        Symbol::intern("try_trait")
+                    ].into()),
+                );
 
                 // `Try::into_result(<expr>)`
                 let discr = {
@@ -4729,14 +4737,14 @@ impl<'a> LoweringContext<'a> {
                 //              return Try::from_error(From::from(err)),`
                 let err_arm = {
                     let err_ident = self.str_to_ident("err");
-                    let (err_local, err_local_nid) = self.pat_ident(e.span, err_ident);
+                    let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
                     let from_expr = {
                         let path = &["convert", "From", "from"];
                         let from = P(self.expr_std_path(
-                                e.span, path, None, ThinVec::new()));
-                        let err_expr = self.expr_ident(e.span, err_ident, err_local_nid);
+                                try_span, path, None, ThinVec::new()));
+                        let err_expr = self.expr_ident(try_span, err_ident, err_local_nid);
 
-                        self.expr_call(e.span, from, hir_vec![err_expr])
+                        self.expr_call(try_span, from, hir_vec![err_expr])
                     };
                     let from_err_expr =
                         self.wrap_in_try_constructor("from_error", from_expr, unstable_span);
@@ -4745,7 +4753,7 @@ impl<'a> LoweringContext<'a> {
                     let ret_expr = if let Some(catch_node) = catch_scope {
                         let target_id = Ok(self.lower_node_id(catch_node).hir_id);
                         P(self.expr(
-                            e.span,
+                            try_span,
                             hir::ExprKind::Break(
                                 hir::Destination {
                                     label: None,
@@ -4756,10 +4764,10 @@ impl<'a> LoweringContext<'a> {
                             thin_attrs,
                         ))
                     } else {
-                        P(self.expr(e.span, hir::ExprKind::Ret(Some(from_err_expr)), thin_attrs))
+                        P(self.expr(try_span, hir::ExprKind::Ret(Some(from_err_expr)), thin_attrs))
                     };
 
-                    let err_pat = self.pat_err(e.span, err_local);
+                    let err_pat = self.pat_err(try_span, err_local);
                     self.arm(hir_vec![err_pat], ret_expr)
                 };
 

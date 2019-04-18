@@ -4,7 +4,7 @@
 
 pub fn main() {
     let res: Result<u32, i32> = try {
-        Err("")?; //~ ERROR the trait bound `i32: std::convert::From<&str>` is not satisfied
+        Err("")?; //~ ERROR `?` couldn't convert the error
         5
     };
 
