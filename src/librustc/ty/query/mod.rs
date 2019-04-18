@@ -54,7 +54,7 @@ use rustc_target::spec::PanicStrategy;
 use std::borrow::Cow;
 use std::ops::Deref;
 use std::sync::Arc;
-use std::intrinsics::type_name;
+use std::any::type_name;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax_pos::symbol::InternedString;
 use syntax::attr;

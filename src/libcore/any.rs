@@ -450,3 +450,29 @@ impl TypeId {
         }
     }
 }
+
+/// Returns the name of a type as a string slice.
+///
+/// # Note
+///
+/// This is intended for diagnostic use. The exact contents and format of the
+/// string are not specified, other than being a best-effort description of the
+/// type. For example, `type_name::<Option<String>>()` could return the
+/// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
+/// `"foobar"`. In addition, the output may change between versions of the
+/// compiler.
+///
+/// The type name should not be considered a unique identifier of a type;
+/// multiple types may share the same type name.
+///
+/// The current implementation uses the same infrastructure as compiler
+/// diagnostics and debuginfo, but this is not guaranteed.
+#[stable(feature = "type_name", since = "1.38.0")]
+pub fn type_name<T: ?Sized>() -> &'static str {
+    #[cfg(bootstrap)]
+    unsafe {
+        intrinsics::type_name::<T>()
+    }
+    #[cfg(not(bootstrap))]
+    intrinsics::type_name::<T>()
+}

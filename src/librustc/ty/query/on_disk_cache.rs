@@ -1060,7 +1060,7 @@ where
     Q::Value: Encodable,
 {
     let desc = &format!("encode_query_results for {}",
-        unsafe { ::std::intrinsics::type_name::<Q>() });
+        ::std::any::type_name::<Q>());
 
     time_ext(tcx.sess.time_extended(), Some(tcx.sess), desc, || {
         let map = Q::query_cache(tcx).borrow();

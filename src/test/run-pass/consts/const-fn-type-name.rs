@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 
 const fn type_name_wrapper<T>(_: &T) -> &'static str {
-    unsafe { core::intrinsics::type_name::<T>() }
+    core::intrinsics::type_name::<T>()
 }
 
 struct Struct<TA, TB, TC> {
