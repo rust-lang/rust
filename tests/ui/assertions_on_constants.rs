@@ -18,6 +18,8 @@ fn main() {
     assert!(C);
 
     debug_assert!(true);
+    // Don't lint this, since there is no better way for expressing "Only panic in debug mode".
+    debug_assert!(false); // #3948
     assert_const!(3);
     assert_const!(-1);
 }
