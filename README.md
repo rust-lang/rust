@@ -297,6 +297,7 @@ Miri has already found a number of bugs in the Rust standard library, which we c
 * [Futures turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/56319)
 * [`str` turning a shared reference into a mutable one](https://github.com/rust-lang/rust/pull/58200)
 * [`BTreeMap` creating mutable references that overlap with shared references](https://github.com/rust-lang/rust/pull/58431)
+* [`LinkedList` creating overlapping mutable references](https://github.com/rust-lang/rust/pull/60072)
 
 ## License
 
