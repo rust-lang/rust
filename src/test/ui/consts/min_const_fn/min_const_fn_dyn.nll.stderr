@@ -28,5 +28,5 @@ LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0716, E0723.
+Some errors have detailed explanations: E0716, E0723.
 For more information about an error, try `rustc --explain E0716`.

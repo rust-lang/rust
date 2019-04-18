@@ -36,5 +36,5 @@ LL |         y.use_mut();
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0499, E0502.
+Some errors have detailed explanations: E0499, E0502.
 For more information about an error, try `rustc --explain E0499`.

@@ -31,5 +31,5 @@ LL |     (box 10 as Box<bar>).dup();
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0038, E0107.
+Some errors have detailed explanations: E0038, E0107.
 For more information about an error, try `rustc --explain E0038`.

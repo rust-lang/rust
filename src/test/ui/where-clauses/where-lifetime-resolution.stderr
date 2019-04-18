@@ -18,5 +18,4 @@ LL |     for<'a> for<'b> Trait2<'a, 'b>: Trait2<'a, 'b>,
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0261, E0316.
-For more information about an error, try `rustc --explain E0261`.
+For more information about this error, try `rustc --explain E0261`.

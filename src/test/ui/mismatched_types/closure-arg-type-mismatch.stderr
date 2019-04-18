@@ -51,5 +51,4 @@ LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0271, E0631.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.

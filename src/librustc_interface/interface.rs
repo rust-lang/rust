@@ -111,7 +111,9 @@ where
         crate_name: config.crate_name,
     };
 
-    let _sess_abort_error = OnDrop(|| compiler.sess.diagnostic().print_error_count());
+    let _sess_abort_error = OnDrop(|| {
+        compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());
+    });
 
     if compiler.sess.profile_queries() {
         profile::begin(&compiler.sess);

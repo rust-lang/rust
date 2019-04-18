@@ -76,5 +76,5 @@ LL |     &mut f;
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0382, E0502, E0505, E0507.
+Some errors have detailed explanations: E0382, E0502, E0505, E0507.
 For more information about an error, try `rustc --explain E0382`.

@@ -33,5 +33,5 @@ LL | fn bar() where Vec<dyn Copy>:, {}
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0038, E0277.
+Some errors have detailed explanations: E0038, E0277.
 For more information about an error, try `rustc --explain E0038`.

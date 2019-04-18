@@ -88,5 +88,5 @@ LL |     mem::transmute::<_, Option<fn()>>(Some(baz));
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0512, E0591.
+Some errors have detailed explanations: E0512, E0591.
 For more information about an error, try `rustc --explain E0512`.

@@ -33,5 +33,5 @@ LL | impl std::fmt::Display for MyType4 {}
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0046, E0050, E0053, E0186.
+Some errors have detailed explanations: E0046, E0050, E0053, E0186.
 For more information about an error, try `rustc --explain E0046`.

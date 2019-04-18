@@ -54,5 +54,5 @@ LL |         S::A {} => {}
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0071, E0109, E0223.
+Some errors have detailed explanations: E0071, E0109, E0223.
 For more information about an error, try `rustc --explain E0071`.

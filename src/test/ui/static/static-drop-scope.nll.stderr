@@ -68,5 +68,4 @@ LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
 
 error: aborting due to 10 previous errors
 
-Some errors occurred: E0493, E0716.
-For more information about an error, try `rustc --explain E0493`.
+For more information about this error, try `rustc --explain E0716`.

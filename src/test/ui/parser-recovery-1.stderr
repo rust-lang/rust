@@ -36,5 +36,5 @@ error[E0601]: `main` function not found in crate `parser_recovery_1`
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0425, E0601.
+Some errors have detailed explanations: E0425, E0601.
 For more information about an error, try `rustc --explain E0425`.

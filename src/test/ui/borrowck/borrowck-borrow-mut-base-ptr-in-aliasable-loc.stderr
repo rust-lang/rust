@@ -25,5 +25,5 @@ LL |     let x:  &mut isize = &mut **t0;
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0389, E0502.
+Some errors have detailed explanations: E0389, E0502.
 For more information about an error, try `rustc --explain E0389`.

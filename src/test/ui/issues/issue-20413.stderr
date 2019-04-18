@@ -169,5 +169,5 @@ LL | trait Foo {
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0275, E0392.
+Some errors have detailed explanations: E0275, E0392.
 For more information about an error, try `rustc --explain E0275`.

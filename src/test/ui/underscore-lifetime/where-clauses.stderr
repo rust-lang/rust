@@ -12,4 +12,3 @@ LL | impl<T: '_> Foo<'static> for Vec<T> {}
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0637`.

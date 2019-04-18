@@ -30,5 +30,5 @@ LL |     let g = BitXor::bitor;
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0191, E0599.
+Some errors have detailed explanations: E0191, E0599.
 For more information about an error, try `rustc --explain E0191`.

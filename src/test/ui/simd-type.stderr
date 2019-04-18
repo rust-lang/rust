@@ -12,5 +12,5 @@ LL | struct i64f64(i64, f64);
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0075, E0076.
+Some errors have detailed explanations: E0075, E0076.
 For more information about an error, try `rustc --explain E0075`.

@@ -185,5 +185,5 @@ LL |     let (y, _z): (&'static u32, u32) = (x, 44);
 
 error: aborting due to 19 previous errors
 
-Some errors occurred: E0597, E0716.
+Some errors have detailed explanations: E0597, E0716.
 For more information about an error, try `rustc --explain E0597`.

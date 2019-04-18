@@ -18,5 +18,5 @@ LL | use std::fmt::{self, self};
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0252, E0430.
+Some errors have detailed explanations: E0252, E0430.
 For more information about an error, try `rustc --explain E0252`.

@@ -12,5 +12,5 @@ LL | unsafe impl SafeTrait for u32 { }
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0199, E0200.
+Some errors have detailed explanations: E0199, E0200.
 For more information about an error, try `rustc --explain E0199`.

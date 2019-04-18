@@ -192,5 +192,5 @@ LL |         use std::prelude::v1::drop;
 
 error: aborting due to 18 previous errors
 
-Some errors occurred: E0405, E0425.
+Some errors have detailed explanations: E0405, E0425.
 For more information about an error, try `rustc --explain E0405`.

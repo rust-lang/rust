@@ -66,5 +66,5 @@ LL |     let b = u.x;
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0382, E0502.
+Some errors have detailed explanations: E0382, E0502.
 For more information about an error, try `rustc --explain E0382`.

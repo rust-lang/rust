@@ -39,5 +39,5 @@ LL |     let p = s.url; p
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0509, E0713.
+Some errors have detailed explanations: E0509, E0713.
 For more information about an error, try `rustc --explain E0509`.

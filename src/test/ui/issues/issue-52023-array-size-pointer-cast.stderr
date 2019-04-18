@@ -17,5 +17,5 @@ LL |     let _ = [0; (&0 as *const i32) as usize];
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0080, E0658.
+Some errors have detailed explanations: E0080, E0658.
 For more information about an error, try `rustc --explain E0080`.

@@ -20,5 +20,5 @@ LL | #[link(name = "foo", kind = "bar")]
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0454, E0458, E0459.
+Some errors have detailed explanations: E0454, E0458, E0459.
 For more information about an error, try `rustc --explain E0454`.

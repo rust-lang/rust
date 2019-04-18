@@ -32,5 +32,5 @@ LL | |             Sub;
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0191, E0225, E0393.
+Some errors have detailed explanations: E0191, E0225, E0393.
 For more information about an error, try `rustc --explain E0191`.

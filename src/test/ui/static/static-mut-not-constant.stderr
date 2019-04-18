@@ -12,5 +12,5 @@ LL | static mut a: Box<isize> = box 3;
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0010, E0019.
+Some errors have detailed explanations: E0010, E0019.
 For more information about an error, try `rustc --explain E0010`.

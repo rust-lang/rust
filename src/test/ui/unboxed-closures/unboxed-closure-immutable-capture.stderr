@@ -65,5 +65,5 @@ LL |     move || set(&mut x);
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0594, E0595, E0596.
-For more information about an error, try `rustc --explain E0594`.
+Some errors have detailed explanations: E0595, E0596.
+For more information about an error, try `rustc --explain E0595`.

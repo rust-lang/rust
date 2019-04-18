@@ -49,5 +49,5 @@ LL | #[derive(HashStable)]
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0601, E0658.
+Some errors have detailed explanations: E0601, E0658.
 For more information about an error, try `rustc --explain E0601`.

@@ -243,5 +243,5 @@ LL |     vec![0.0].iter().map(|s| s as f32).collect::<Vec<f32>>();
 
 error: aborting due to 34 previous errors
 
-Some errors occurred: E0054, E0277, E0604, E0605, E0606, E0607, E0609.
+Some errors have detailed explanations: E0054, E0277, E0604, E0605, E0606, E0607, E0609.
 For more information about an error, try `rustc --explain E0054`.

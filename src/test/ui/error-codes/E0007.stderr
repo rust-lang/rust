@@ -12,5 +12,5 @@ LL |         op_string @ Some(s) => {},
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0007, E0303.
+Some errors have detailed explanations: E0007, E0303.
 For more information about an error, try `rustc --explain E0007`.

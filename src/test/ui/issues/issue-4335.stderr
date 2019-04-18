@@ -18,5 +18,5 @@ LL |     id(Box::new(|| *v))
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0373, E0507.
+Some errors have detailed explanations: E0373, E0507.
 For more information about an error, try `rustc --explain E0373`.

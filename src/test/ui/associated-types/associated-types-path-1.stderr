@@ -18,5 +18,5 @@ LL | pub fn f2<T: Foo + Bar>(a: T, x: T::A) {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0220, E0221.
+Some errors have detailed explanations: E0220, E0221.
 For more information about an error, try `rustc --explain E0220`.
