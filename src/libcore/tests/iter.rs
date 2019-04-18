@@ -390,6 +390,24 @@ fn test_iterator_enumerate_nth() {
 }
 
 #[test]
+fn test_iterator_enumerate_nth_back() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let mut it = xs.iter().enumerate();
+    while let Some((i, &x)) = it.nth_back(0) {
+        assert_eq!(i, x);
+    }
+
+    let mut it = xs.iter().enumerate();
+    while let Some((i, &x)) = it.nth_back(1) {
+        assert_eq!(i, x);
+    }
+
+    let (i, &x) = xs.iter().enumerate().nth_back(3).unwrap();
+    assert_eq!(i, x);
+    assert_eq!(i, 2);
+}
+
+#[test]
 fn test_iterator_enumerate_count() {
     let xs = [0, 1, 2, 3, 4, 5];
     assert_eq!(xs.iter().enumerate().count(), 6);
