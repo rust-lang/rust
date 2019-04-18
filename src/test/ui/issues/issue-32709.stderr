@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): std::convert::From<{integer}>` is not satisfied
+error[E0277]: `?` couldn't convert the error to `()`
   --> $DIR/issue-32709.rs:4:11
    |
 LL |     Err(5)?;

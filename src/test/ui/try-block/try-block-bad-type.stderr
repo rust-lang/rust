@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `i32: std::convert::From<&str>` is not satisfied
+error[E0277]: `?` couldn't convert the error to `i32`
   --> $DIR/try-block-bad-type.rs:7:16
    |
 LL |         Err("")?;

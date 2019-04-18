@@ -4,12 +4,12 @@ fn main() {}
 
 fn foo() -> Result<u32, ()> {
     let x: Option<u32> = None;
-    x?; //~ the trait bound
+    x?; //~ ERROR `?` couldn't convert the error
     Ok(22)
 }
 
 fn bar() -> u32 {
     let x: Option<u32> = None;
-    x?; //~ the `?` operator
+    x?; //~ ERROR the `?` operator
     22
 }

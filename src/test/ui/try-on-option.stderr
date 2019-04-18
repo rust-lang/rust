@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `(): std::convert::From<std::option::NoneError>` is not satisfied
+error[E0277]: `?` couldn't convert the error to `()`
   --> $DIR/try-on-option.rs:7:6
    |
 LL |     x?;
