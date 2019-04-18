@@ -228,7 +228,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        self.get_bytes_internal(cx, ptr, size, true, CheckInAllocMsg::MemoryAccess)
+        self.get_bytes_internal(cx, ptr, size, true, CheckInAllocMsg::MemoryAccessTest)
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
@@ -243,7 +243,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
-        self.get_bytes_internal(cx, ptr, size, false, CheckInAllocMsg::MemoryAccess)
+        self.get_bytes_internal(cx, ptr, size, false, CheckInAllocMsg::MemoryAccessTest)
     }
 
     /// Just calling this already marks everything as defined and removes relocations,
@@ -258,7 +258,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
-        self.check_bounds(cx, ptr, size, CheckInAllocMsg::MemoryAccess)?;
+        self.check_bounds(cx, ptr, size, CheckInAllocMsg::MemoryAccessTest)?;
 
         self.mark_definedness(ptr, size, true)?;
         self.clear_relocations(cx, ptr, size)?;
