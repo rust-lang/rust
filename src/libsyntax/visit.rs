@@ -31,6 +31,16 @@ pub enum FnKind<'a> {
     Closure(&'a Expr),
 }
 
+impl<'a> FnKind<'a> {
+    pub fn header(&self) -> Option<&'a FnHeader> {
+        match *self {
+            FnKind::ItemFn(_, header, _, _) => Some(header),
+            FnKind::Method(_, sig, _, _) => Some(&sig.header),
+            FnKind::Closure(_) => None,
+        }
+    }
+}
+
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
 /// the substructure of the input via the corresponding `walk` method;

@@ -2035,28 +2035,22 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 fn_decl: &'a ast::FnDecl,
                 span: Span,
                 _node_id: NodeId) {
-        match fn_kind {
-            FnKind::ItemFn(_, header, _, _) => {
-                // Check for const fn and async fn declarations.
-                if header.asyncness.node.is_async() {
-                    gate_feature_post!(&self, async_await, span, "async fn is unstable");
-                }
-
-                if fn_decl.c_variadic {
-                    gate_feature_post!(&self, c_variadic, span,
-                                       "C-varaidic functions are unstable");
-                }
-                // Stability of const fn methods are covered in
-                // `visit_trait_item` and `visit_impl_item` below; this is
-                // because default methods don't pass through this point.
-
-                self.check_abi(header.abi, span);
+        if let Some(header) = fn_kind.header() {
+            // Check for const fn and async fn declarations.
+            if header.asyncness.node.is_async() {
+                gate_feature_post!(&self, async_await, span, "async fn is unstable");
             }
-            FnKind::Method(_, sig, _, _) => {
-                self.check_abi(sig.header.abi, span);
-            }
-            _ => {}
+
+            // Stability of const fn methods are covered in
+            // `visit_trait_item` and `visit_impl_item` below; this is
+            // because default methods don't pass through this point.
+            self.check_abi(header.abi, span);
         }
+
+        if fn_decl.c_variadic {
+            gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
+        }
+
         visit::walk_fn(self, fn_kind, fn_decl, span);
     }
 
@@ -2074,9 +2068,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
                 }
+                if sig.header.asyncness.node.is_async() {
+                    gate_feature_post!(&self, async_await, ti.span, "async fn is unstable");
+                }
                 if sig.decl.c_variadic {
                     gate_feature_post!(&self, c_variadic, ti.span,
-                                       "C-varaidic functions are unstable");
+                                       "C-variadic functions are unstable");
                 }
                 if sig.header.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
