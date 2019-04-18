@@ -86,6 +86,9 @@ impl<T> Clone for Iter<'_, T> {
 /// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
+    // We do *not* exclusively own the entire list here, references to node's `element`
+    // have been handed out by the iterator!  So be careful when using this; the methods
+    // called must be aware that there can be aliasing pointers to `element`.
     list: &'a mut LinkedList<T>,
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
@@ -143,6 +146,8 @@ impl<T> LinkedList<T> {
     /// Adds the given node to the front of the list.
     #[inline]
     fn push_front_node(&mut self, mut node: Box<Node<T>>) {
+        // This method takes care not to create mutable references to whole nodes,
+        // to maintain validity of aliasing pointers into `element`.
         unsafe {
             node.next = self.head;
             node.prev = None;
@@ -150,7 +155,8 @@ impl<T> LinkedList<T> {
 
             match self.head {
                 None => self.tail = node,
-                Some(mut head) => head.as_mut().prev = node,
+                // Not creating new mutable (unique!) references overlapping `element`.
+                Some(head) => (*head.as_ptr()).prev = node,
             }
 
             self.head = node;
@@ -161,13 +167,16 @@ impl<T> LinkedList<T> {
     /// Removes and returns the node at the front of the list.
     #[inline]
     fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
+        // This method takes care not to create mutable references to whole nodes,
+        // to maintain validity of aliasing pointers into `element`.
         self.head.map(|node| unsafe {
             let node = Box::from_raw(node.as_ptr());
             self.head = node.next;
 
             match self.head {
                 None => self.tail = None,
-                Some(mut head) => head.as_mut().prev = None,
+                // Not creating new mutable (unique!) references overlapping `element`.
+                Some(head) => (*head.as_ptr()).prev = None,
             }
 
             self.len -= 1;
@@ -178,6 +187,8 @@ impl<T> LinkedList<T> {
     /// Adds the given node to the back of the list.
     #[inline]
     fn push_back_node(&mut self, mut node: Box<Node<T>>) {
+        // This method takes care not to create mutable references to whole nodes,
+        // to maintain validity of aliasing pointers into `element`.
         unsafe {
             node.next = None;
             node.prev = self.tail;
@@ -185,7 +196,8 @@ impl<T> LinkedList<T> {
 
             match self.tail {
                 None => self.head = node,
-                Some(mut tail) => tail.as_mut().next = node,
+                // Not creating new mutable (unique!) references overlapping `element`.
+                Some(tail) => (*tail.as_ptr()).next = node,
             }
 
             self.tail = node;
@@ -196,13 +208,16 @@ impl<T> LinkedList<T> {
     /// Removes and returns the node at the back of the list.
     #[inline]
     fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
+        // This method takes care not to create mutable references to whole nodes,
+        // to maintain validity of aliasing pointers into `element`.
         self.tail.map(|node| unsafe {
             let node = Box::from_raw(node.as_ptr());
             self.tail = node.prev;
 
             match self.tail {
                 None => self.head = None,
-                Some(mut tail) => tail.as_mut().next = None,
+                // Not creating new mutable (unique!) references overlapping `element`.
+                Some(tail) => (*tail.as_ptr()).next = None,
             }
 
             self.len -= 1;
@@ -213,18 +228,22 @@ impl<T> LinkedList<T> {
     /// Unlinks the specified node from the current list.
     ///
     /// Warning: this will not check that the provided node belongs to the current list.
+    ///
+    /// This method takes care not to create mutable references to `element`, to
+    /// maintain validity of aliasing pointers.
     #[inline]
     unsafe fn unlink_node(&mut self, mut node: NonNull<Node<T>>) {
-        let node = node.as_mut();
+        let node = node.as_mut(); // this one is ours now, we can create an &mut.
 
+        // Not creating new mutable (unique!) references overlapping `element`.
         match node.prev {
-            Some(mut prev) => prev.as_mut().next = node.next.clone(),
+            Some(prev) => (*prev.as_ptr()).next = node.next.clone(),
             // this node is the head node
             None => self.head = node.next.clone(),
         };
 
         match node.next {
-            Some(mut next) => next.as_mut().prev = node.prev.clone(),
+            Some(next) => (*next.as_ptr()).prev = node.prev.clone(),
             // this node is the tail node
             None => self.tail = node.prev.clone(),
         };
@@ -297,6 +316,8 @@ impl<T> LinkedList<T> {
         match self.tail {
             None => mem::swap(self, other),
             Some(mut tail) => {
+                // `as_mut` is okay here because we have exclusive access to the entirety
+                // of both lists.
                 if let Some(mut other_head) = other.head.take() {
                     unsafe {
                         tail.as_mut().next = Some(other_head);
@@ -916,9 +937,11 @@ impl<T> IterMut<'_, T> {
                issue = "27794")]
     pub fn insert_next(&mut self, element: T) {
         match self.head {
+            // `push_back` is okay with aliasing `element` references
             None => self.list.push_back(element),
-            Some(mut head) => unsafe {
-                let mut prev = match head.as_ref().prev {
+            Some(head) => unsafe {
+                let prev = match head.as_ref().prev {
+                    // `push_front` is okay with aliasing nodes
                     None => return self.list.push_front(element),
                     Some(prev) => prev,
                 };
@@ -929,8 +952,10 @@ impl<T> IterMut<'_, T> {
                     element,
                 }));
 
-                prev.as_mut().next = node;
-                head.as_mut().prev = node;
+                // Not creating references to entire nodes to not invalidate the
+                // reference to `element` we handed to the user.
+                (*prev.as_ptr()).next = node;
+                (*head.as_ptr()).prev = node;
 
                 self.list.len += 1;
             },
@@ -994,6 +1019,7 @@ impl<T, F> Iterator for DrainFilter<'_, T, F>
                 self.idx += 1;
 
                 if (self.pred)(&mut node.as_mut().element) {
+                    // `unlink_node` is okay with aliasing `element` references.
                     self.list.unlink_node(node);
                     return Some(Box::from_raw(node.as_ptr()).element);
                 }
