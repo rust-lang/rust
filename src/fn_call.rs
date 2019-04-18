@@ -147,6 +147,45 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     )?;
                 }
             }
+            "realloc" => {
+                let old_ptr = this.read_scalar(args[0])?.not_undef()?;
+                let new_size = this.read_scalar(args[1])?.to_usize(this)?;
+                let align = this.tcx.data_layout.pointer_align.abi;
+                if old_ptr.is_null_ptr(this) {
+                    if new_size == 0 {
+                        this.write_null(dest)?;
+                    } else {
+                        let new_ptr = this.memory_mut().allocate(
+                            Size::from_bytes(new_size),
+                            align,
+                            MiriMemoryKind::C.into()
+                        );
+                        this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
+                    }
+                } else {
+                    let old_ptr = old_ptr.to_ptr()?;
+                    let memory = this.memory_mut();
+                    let old_size = Size::from_bytes(memory.get(old_ptr.alloc_id)?.bytes.len() as u64);
+                    if new_size == 0 {
+                        memory.deallocate(
+                            old_ptr,
+                            Some((old_size, align)),
+                            MiriMemoryKind::C.into(),
+                        )?;
+                        this.write_null(dest)?;
+                    } else {
+                        let new_ptr = memory.reallocate(
+                            old_ptr,
+                            old_size,
+                            align,
+                            Size::from_bytes(new_size),
+                            align,
+                            MiriMemoryKind::C.into(),
+                        )?;
+                        this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
+                    }
+                }
+            }
 
             "__rust_alloc" => {
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
