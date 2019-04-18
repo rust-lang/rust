@@ -2,6 +2,7 @@ use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
+use syntax_pos::Span;
 
 use crate::consts::{constant, Constant};
 use crate::utils::{in_macro, is_direct_expn_of, span_help_and_lint};
@@ -33,14 +34,16 @@ declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         let mut is_debug_assert = false;
+        let debug_assert_not_in_macro = |span: Span| {
+            is_debug_assert = true;
+            // Check that `debug_assert!` itself is not inside a macro
+            !in_macro(span)
+        };
         if_chain! {
             if let Some(assert_span) = is_direct_expn_of(e.span, "assert");
             if !in_macro(assert_span)
-                || is_direct_expn_of(assert_span, "debug_assert").map_or(false, |span| {
-                    is_debug_assert = true;
-                    // Check that `debug_assert!` itself is not inside a macro
-                    !in_macro(span)
-                });
+                || is_direct_expn_of(assert_span, "debug_assert")
+                    .map_or(false, debug_assert_not_in_macro);
             if let ExprKind::Unary(_, ref lit) = e.node;
             if let Some(bool_const) = constant(cx, cx.tables, lit);
             then {
