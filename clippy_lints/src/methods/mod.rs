@@ -359,7 +359,7 @@ declare_clippy_lint! {
     /// **Why is this bad?** The function will always be called.
     ///
     /// **Known problems:** If the function has side-effects, not calling it will
-    /// change the semantic of the program, but you shouldn't rely on that anyway.
+    /// change the semantics of the program, but you shouldn't rely on that anyway.
     ///
     /// **Example:**
     /// ```rust
