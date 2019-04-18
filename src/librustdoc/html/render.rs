@@ -3389,8 +3389,10 @@ fn assoc_const(w: &mut fmt::Formatter<'_>,
                it: &clean::Item,
                ty: &clean::Type,
                _default: Option<&String>,
-               link: AssocItemLink<'_>) -> fmt::Result {
-    write!(w, "{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
+               link: AssocItemLink<'_>,
+               extra: &str) -> fmt::Result {
+    write!(w, "{}{}const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
+           extra,
            VisSpace(&it.visibility),
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap(),
@@ -3401,8 +3403,10 @@ fn assoc_const(w: &mut fmt::Formatter<'_>,
 fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
                              bounds: &[clean::GenericBound],
                              default: Option<&clean::Type>,
-                             link: AssocItemLink<'_>) -> fmt::Result {
-    write!(w, "type <a href='{}' class=\"type\">{}</a>",
+                             link: AssocItemLink<'_>,
+                             extra: &str) -> fmt::Result {
+    write!(w, "{}type <a href='{}' class=\"type\">{}</a>",
+           extra,
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
@@ -3513,10 +3517,12 @@ fn render_assoc_item(w: &mut fmt::Formatter<'_>,
             method(w, item, m.header, &m.generics, &m.decl, link, parent)
         }
         clean::AssociatedConstItem(ref ty, ref default) => {
-            assoc_const(w, item, ty, default.as_ref(), link)
+            assoc_const(w, item, ty, default.as_ref(), link,
+                        if parent == ItemType::Trait { "    " } else { "" })
         }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
-            assoc_type(w, item, bounds, default.as_ref(), link)
+            assoc_type(w, item, bounds, default.as_ref(), link,
+                       if parent == ItemType::Trait { "    " } else { "" })
         }
         _ => panic!("render_assoc_item called on non-associated-item")
     }
@@ -4129,7 +4135,8 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                             out.push_str("<span class=\"where fmt-newline\">    ");
                             assoc_type(&mut out, it, &[],
                                        Some(&tydef.type_),
-                                       AssocItemLink::GotoSource(t_did, &FxHashSet::default()))?;
+                                       AssocItemLink::GotoSource(t_did, &FxHashSet::default()),
+                                       "")?;
                             out.push_str(";</span>");
                         }
                     }
@@ -4165,7 +4172,8 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                     if let clean::TypedefItem(ref tydef, _) = it.inner {
                         write!(w, "<span class=\"where fmt-newline\">  ")?;
                         assoc_type(w, it, &vec![], Some(&tydef.type_),
-                                   AssocItemLink::Anchor(None))?;
+                                   AssocItemLink::Anchor(None),
+                                   "")?;
                         write!(w, ";</span>")?;
                     }
                 }
@@ -4235,7 +4243,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
+                assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id), "")?;
                 write!(w, "</code></h4>")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
@@ -4243,7 +4251,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
+                assoc_const(w, item, ty, default.as_ref(), link.anchor(&id), "")?;
                 write!(w, "</code>")?;
                 render_stability_since_raw(w, item.stable_since(), outer_version)?;
                 if let Some(l) = (Item { cx, item }).src_href() {
@@ -4257,7 +4265,7 @@ fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocIt
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<code id='{}'>", ns_id)?;
-                assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
+                assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id), "")?;
                 write!(w, "</code></h4>")?;
             }
             clean::StrippedItem(..) => return Ok(()),
