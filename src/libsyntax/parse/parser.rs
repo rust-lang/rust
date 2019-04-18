@@ -2856,7 +2856,7 @@ impl<'a> Parser<'a> {
                         hi = self.prev_span;
                         ex = ExprKind::Mac(respan(lo.to(hi), Mac_ { path, tts, delim }));
                     } else if self.check(&token::OpenDelim(token::Brace)) {
-                        if let Some(expr) = self.should_parse_struct_expr(lo, &path, &attrs) {
+                        if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
                             return expr;
                         } else {
                             hi = path.span;
@@ -2904,47 +2904,48 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn should_parse_struct_expr(
+    fn maybe_parse_struct_expr(
         &mut self,
         lo: Span,
         path: &ast::Path,
         attrs: &ThinVec<Attribute>,
     ) -> Option<PResult<'a, P<Expr>>> {
+        // We don't want to assume it's a struct when encountering `{ <ident>: <ident> }` because
+        // it could be type ascription, like in `{ ident: u32 }`.
+        let isnt_ascription = self.look_ahead(1, |t| t.is_ident()) &&
+            self.look_ahead(2, |t| *t == token::Colon) && (
+                (self.look_ahead(3, |t| t.is_ident()) &&
+                 self.look_ahead(4, |t| *t == token::Comma)) ||
+                self.look_ahead(3, |t| t.is_lit()) ||
+                self.look_ahead(3, |t| *t == token::BinOp(token::Minus)) &&
+                self.look_ahead(4, |t| t.is_lit())
+            );
         let could_be_struct = self.look_ahead(1, |t| t.is_ident()) && (
-            self.look_ahead(2, |t| *t == token::Colon)
+            self.look_ahead(2, |t| *t == token::Colon) && isnt_ascription
             || self.look_ahead(2, |t| *t == token::Comma)
             // We could also check for `token::CloseDelim(token::Brace)`, but that would
             // have false positives in the case of `if x == y { z } { a }`.
         );
-        let mut bad_struct = false;
-        let mut parse_struct = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
-        if self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL) && could_be_struct {
+        let bad_struct = self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
+        if !bad_struct || could_be_struct {
             // This is a struct literal, but we don't can't accept them here
-            bad_struct = true;
-            parse_struct = true;
-        }
-        if parse_struct {
-            match self.parse_struct_expr(lo, path.clone(), attrs.clone()) {
-                Err(err) => return Some(Err(err)),
-                Ok(expr) => {
-                    if bad_struct {
-                        let mut err = self.diagnostic().struct_span_err(
-                            expr.span,
-                            "struct literals are not allowed here",
-                        );
-                        err.multipart_suggestion(
-                            "surround the struct literal with parenthesis",
-                            vec![
-                                (lo.shrink_to_lo(), "(".to_string()),
-                                (expr.span.shrink_to_hi(), ")".to_string()),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
-                        err.emit();
-                    }
-                    return Some(Ok(expr));
-                }
+            let expr = self.parse_struct_expr(lo, path.clone(), attrs.clone());
+            if let (Ok(expr), true) = (&expr, bad_struct) {
+                let mut err = self.diagnostic().struct_span_err(
+                    expr.span,
+                    "struct literals are not allowed here",
+                );
+                err.multipart_suggestion(
+                    "surround the struct literal with parenthesis",
+                    vec![
+                        (lo.shrink_to_lo(), "(".to_string()),
+                        (expr.span.shrink_to_hi(), ")".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
             }
+            return Some(expr);
         }
         None
     }
