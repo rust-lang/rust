@@ -4,7 +4,6 @@ use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 
 use crate::consts::{constant, Constant};
-use crate::syntax::ast::LitKind;
 use crate::utils::{in_macro, is_direct_expn_of, span_help_and_lint};
 
 declare_clippy_lint! {
@@ -43,51 +42,28 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                     !in_macro(span)
                 });
             if let ExprKind::Unary(_, ref lit) = e.node;
+            if let Some(bool_const) = constant(cx, cx.tables, lit);
             then {
-                if let ExprKind::Lit(ref inner) = lit.node {
-                    match inner.node {
-                        LitKind::Bool(true) => {
-                            span_help_and_lint(
-                                cx,
-                                ASSERTIONS_ON_CONSTANTS,
-                                e.span,
-                                "`assert!(true)` will be optimized out by the compiler",
-                                "remove it"
-                            );
-                        },
-                        LitKind::Bool(false) if !is_debug_assert => {
-                            span_help_and_lint(
-                                cx,
-                                ASSERTIONS_ON_CONSTANTS,
-                                e.span,
-                                "`assert!(false)` should probably be replaced",
-                                "use `panic!()` or `unreachable!()`"
-                            );
-                        },
-                        _ => (),
-                    }
-                } else if let Some(bool_const) = constant(cx, cx.tables, lit) {
-                    match bool_const.0 {
-                        Constant::Bool(true) => {
-                            span_help_and_lint(
-                                cx,
-                                ASSERTIONS_ON_CONSTANTS,
-                                e.span,
-                                "`assert!(const: true)` will be optimized out by the compiler",
-                                "remove it"
-                            );
-                        },
-                        Constant::Bool(false) if !is_debug_assert => {
-                            span_help_and_lint(
-                                cx,
-                                ASSERTIONS_ON_CONSTANTS,
-                                e.span,
-                                "`assert!(const: false)` should probably be replaced",
-                                "use `panic!()` or `unreachable!()`"
-                            );
-                        },
-                        _ => (),
-                    }
+                match bool_const.0 {
+                    Constant::Bool(true) => {
+                        span_help_and_lint(
+                            cx,
+                            ASSERTIONS_ON_CONSTANTS,
+                            e.span,
+                            "`assert!(true)` will be optimized out by the compiler",
+                            "remove it"
+                        );
+                    },
+                    Constant::Bool(false) if !is_debug_assert => {
+                        span_help_and_lint(
+                            cx,
+                            ASSERTIONS_ON_CONSTANTS,
+                            e.span,
+                            "`assert!(false)` should probably be replaced",
+                            "use `panic!()` or `unreachable!()`"
+                        );
+                    },
+                    _ => (),
                 }
             }
         }
