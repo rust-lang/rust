@@ -271,13 +271,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let ll_t_in = bx.cx().immediate_backend_type(operand.layout);
                         match operand.layout.variants {
                             layout::Variants::Single { index } => {
-                                if let Some(def) = operand.layout.ty.ty_adt_def() {
-                                    let discr_val = def
-                                        .discriminant_for_variant(bx.cx().tcx(), index)
-                                        .val;
-                                    let discr = bx.cx().const_uint_big(ll_t_out, discr_val);
+                                if let Some(discr) =
+                                    operand.layout.ty.discriminant_for_variant(bx.tcx(), index)
+                                {
+                                    let discr_val = bx.cx().const_uint_big(ll_t_out, discr.val);
                                     return (bx, OperandRef {
-                                        val: OperandValue::Immediate(discr),
+                                        val: OperandValue::Immediate(discr_val),
                                         layout: cast,
                                     });
                                 }

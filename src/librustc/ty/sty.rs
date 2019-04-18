@@ -9,7 +9,7 @@ use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, Kind, UnpackedKind};
-use crate::ty::{self, AdtDef, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
@@ -18,6 +18,7 @@ use crate::mir::interpret::{Scalar, Pointer};
 use smallvec::SmallVec;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
+use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{keywords, InternedString};
@@ -478,14 +479,35 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     const RETURNED_NAME: &'static str = "Returned";
     const POISONED_NAME: &'static str = "Panicked";
 
-    /// The variants of this Generator.
+    /// The valid variant indices of this Generator.
     #[inline]
-    pub fn variants(&self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item = VariantIdx>
-    {
+    pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
         let num_variants = self.state_tys(def_id, tcx).count();
-        (0..num_variants).map(VariantIdx::new)
+        (VariantIdx::new(0)..VariantIdx::new(num_variants))
+    }
+
+    /// The discriminant for the given variant. Panics if the variant_index is
+    /// out of range.
+    #[inline]
+    pub fn discriminant_for_variant(
+        &self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>, variant_index: VariantIdx
+    ) -> Discr<'tcx> {
+        // Generators don't support explicit discriminant values, so they are
+        // the same as the variant index.
+        assert!(self.variant_range(def_id, tcx).contains(&variant_index));
+        Discr { val: variant_index.as_usize() as u128, ty: self.discr_ty(tcx) }
+    }
+
+    /// The set of all discriminants for the Generator, enumerated with their
+    /// variant indices.
+    #[inline]
+    pub fn discriminants(
+        &'a self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>
+    ) -> impl Iterator<Item=(VariantIdx, Discr<'tcx>)> + Captures<'gcx> + 'a {
+        self.variant_range(def_id, tcx).map(move |index| {
+            (index, Discr { val: index.as_usize() as u128, ty: self.discr_ty(tcx) })
+        })
     }
 
     /// Calls `f` with a reference to the name of the enumerator for the given
@@ -503,7 +525,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
         f(name)
     }
 
-    /// The type of the state "discriminant" used in the generator type.
+    /// The type of the state discriminant used in the generator type.
     #[inline]
     pub fn discr_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         tcx.types.u32
@@ -2024,6 +2046,34 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             Adt(adt, _) => Some(adt),
+            _ => None,
+        }
+    }
+
+    /// If the type contains variants, returns the valid range of variant indices.
+    /// FIXME This requires the optimized MIR in the case of generators.
+    #[inline]
+    pub fn variant_range(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Range<VariantIdx>> {
+        match self.sty {
+            TyKind::Adt(adt, _) => Some(adt.variant_range()),
+            TyKind::Generator(def_id, substs, _) => Some(substs.variant_range(def_id, tcx)),
+            _ => None,
+        }
+    }
+
+    /// If the type contains variants, returns the variant for `variant_index`.
+    /// Panics if `variant_index` is out of range.
+    /// FIXME This requires the optimized MIR in the case of generators.
+    #[inline]
+    pub fn discriminant_for_variant(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        variant_index: VariantIdx
+    ) -> Option<Discr<'tcx>> {
+        match self.sty {
+            TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
+            TyKind::Generator(def_id, substs, _) =>
+                Some(substs.discriminant_for_variant(def_id, tcx, variant_index)),
             _ => None,
         }
     }

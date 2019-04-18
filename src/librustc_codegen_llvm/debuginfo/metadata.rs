@@ -1382,12 +1382,6 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                                   variant_type_metadata,
                                                   member_descriptions);
 
-                    // TODO make this into a helper
-                    let discriminant = match &self.layout.ty.sty {
-                        ty::Adt(adt, _) => adt.discriminant_for_variant(cx.tcx, i).val as u64,
-                        ty::Generator(..) => i.as_usize() as u64,
-                        _ => bug!(),
-                    }.into();
                     MemberDescription {
                         name: if fallback {
                             String::new()
@@ -1399,7 +1393,9 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         size: self.layout.size,
                         align: self.layout.align.abi,
                         flags: DIFlags::FlagZero,
-                        discriminant,
+                        discriminant: Some(
+                            self.layout.ty.discriminant_for_variant(cx.tcx, i).unwrap().val as u64
+                        ),
                     }
                 }).collect()
             }
@@ -1722,7 +1718,7 @@ fn prepare_enum_metadata(
                 })
                 .collect(),
             ty::Generator(_, substs, _) => substs
-                .variants(enum_def_id, cx.tcx)
+                .variant_range(enum_def_id, cx.tcx)
                 .map(|v| substs.map_variant_name(v, |name| {
                     let name = SmallCStr::new(name);
                     unsafe {

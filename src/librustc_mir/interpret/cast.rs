@@ -54,14 +54,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 } else {
                     match src.layout.variants {
                         layout::Variants::Single { index } => {
-                            if let Some(def) = src.layout.ty.ty_adt_def() {
+                            if let Some(discr) =
+                                src.layout.ty.discriminant_for_variant(*self.tcx, index)
+                            {
                                 // Cast from a univariant enum
                                 assert!(src.layout.is_zst());
-                                let discr_val = def
-                                    .discriminant_for_variant(*self.tcx, index)
-                                    .val;
                                 return self.write_scalar(
-                                    Scalar::from_uint(discr_val, dest.layout.size),
+                                    Scalar::from_uint(discr.val, dest.layout.size),
                                     dest);
                             }
                         }
