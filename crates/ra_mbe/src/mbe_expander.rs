@@ -161,6 +161,11 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             let pat = input.eat_stmt().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(pat.into()));
                         }
+                        "item" => {
+                            let item =
+                                input.eat_item().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(item.into()));
+                        }
                         _ => return Err(ExpandError::UnexpectedToken),
                     }
                 }
@@ -278,6 +283,9 @@ mod tests {
 
         assert_err("($i) => ($i)", "foo!{a}", ExpandError::UnexpectedToken);
         assert_err("($i:) => ($i)", "foo!{a}", ExpandError::UnexpectedToken);
+
+        // FIXME:
+        // Add an err test case for ($($i:ident)) => ($())
     }
 
     fn assert_err(macro_body: &str, invocation: &str, err: ExpandError) {

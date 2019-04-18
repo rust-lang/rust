@@ -597,4 +597,48 @@ SOURCE_FILE@[0; 40)
         assert_expansion(&rules, "foo! { 2 }", "fn bar () {2 ;}");
         assert_expansion(&rules, "foo! { let a = 0 }", "fn bar () {let a = 0 ;}");
     }
+
+    #[test]
+    fn test_single_item() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:item) => (
+                $ i
+            )
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! {mod c {}}", "mod c {}");
+    }
+
+    #[test]
+    fn test_all_items() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:item)*) => ($ (
+                $ i
+            )*)
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"
+        foo! {
+            extern crate a;
+            mod b;
+            mod c {}
+            use d;
+            const E: i32 = 0;
+            static F: i32 = 0;
+            impl G {}
+            struct H;
+            enum I { Foo }
+            trait J {}
+            fn h() {}
+            extern {}
+            type T = u8;
+        }
+"#, r#"extern crate a ; mod b ; mod c {} use d ; const E : i32 = 0 ; static F : i32 = 0 ; impl G {} struct H ; enum I {Foo} trait J {} fn h () {} extern {} type T = u8 ;"#);
+    }
 }
