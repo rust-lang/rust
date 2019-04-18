@@ -2,6 +2,12 @@
 
 #![feature(futures_api)]
 
+struct S;
+
+impl S {
+    async fn foo() {} //~ ERROR async fn is unstable
+}
+
 async fn foo() {} //~ ERROR async fn is unstable
 
 fn main() {
