@@ -20,5 +20,5 @@ LL |         *z.pointer += 1;
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0503, E0506.
+Some errors have detailed explanations: E0503, E0506.
 For more information about an error, try `rustc --explain E0503`.

@@ -20,5 +20,5 @@ LL |     cast!(2);
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0308, E0605.
+Some errors have detailed explanations: E0308, E0605.
 For more information about an error, try `rustc --explain E0308`.

@@ -30,5 +30,5 @@ LL |     f(1, 2);
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0382, E0502, E0596.
+Some errors have detailed explanations: E0382, E0502, E0596.
 For more information about an error, try `rustc --explain E0382`.

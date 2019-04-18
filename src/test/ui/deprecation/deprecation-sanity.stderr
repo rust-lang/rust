@@ -54,5 +54,5 @@ LL | #[deprecated(since = "a", since = "b", note = "c")]
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0538, E0541, E0550, E0551, E0565.
+Some errors have detailed explanations: E0538, E0541, E0565.
 For more information about an error, try `rustc --explain E0538`.

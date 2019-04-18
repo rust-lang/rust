@@ -20,5 +20,5 @@ LL |                 state: 0
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0025, E0026.
+Some errors have detailed explanations: E0025, E0026.
 For more information about an error, try `rustc --explain E0025`.

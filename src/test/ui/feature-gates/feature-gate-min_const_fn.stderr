@@ -36,5 +36,5 @@ LL |     const fn bar() -> u32 { 0 }
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0379, E0658.
+Some errors have detailed explanations: E0379, E0658.
 For more information about an error, try `rustc --explain E0379`.

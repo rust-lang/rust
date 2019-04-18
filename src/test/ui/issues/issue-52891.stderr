@@ -127,5 +127,5 @@ LL | use issue_52891::n;
 
 error: aborting due to 10 previous errors
 
-Some errors occurred: E0252, E0254.
+Some errors have detailed explanations: E0252, E0254.
 For more information about an error, try `rustc --explain E0252`.

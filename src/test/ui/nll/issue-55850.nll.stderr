@@ -14,5 +14,5 @@ LL |         yield &s[..]
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0597, E0626.
+Some errors have detailed explanations: E0597, E0626.
 For more information about an error, try `rustc --explain E0597`.

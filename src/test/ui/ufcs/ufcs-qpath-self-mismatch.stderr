@@ -20,5 +20,5 @@ LL |     <i32 as Add<i32>>::add(1, 2u32);
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0277, E0308.
+Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

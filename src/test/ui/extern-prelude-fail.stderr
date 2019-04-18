@@ -12,5 +12,5 @@ LL |     let s = ::extern_prelude::S;
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0432, E0433.
+Some errors have detailed explanations: E0432, E0433.
 For more information about an error, try `rustc --explain E0432`.

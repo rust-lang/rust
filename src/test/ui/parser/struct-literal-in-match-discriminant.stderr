@@ -38,5 +38,5 @@ LL | |         } => {}
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0308, E0423, E0425.
+Some errors have detailed explanations: E0308, E0423, E0425.
 For more information about an error, try `rustc --explain E0308`.

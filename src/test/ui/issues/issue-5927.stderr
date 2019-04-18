@@ -12,5 +12,4 @@ LL |         x(1) => x(1)
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0425, E0531.
-For more information about an error, try `rustc --explain E0425`.
+For more information about this error, try `rustc --explain E0425`.

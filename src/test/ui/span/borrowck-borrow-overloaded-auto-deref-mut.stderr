@@ -86,5 +86,5 @@ LL |     *x.y_mut() = 3;
 
 error: aborting due to 10 previous errors
 
-Some errors occurred: E0499, E0596.
+Some errors have detailed explanations: E0499, E0596.
 For more information about an error, try `rustc --explain E0499`.

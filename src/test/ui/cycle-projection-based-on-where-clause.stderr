@@ -19,5 +19,5 @@ LL |           T : Add<T::Item>
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0220, E0391.
+Some errors have detailed explanations: E0220, E0391.
 For more information about an error, try `rustc --explain E0220`.

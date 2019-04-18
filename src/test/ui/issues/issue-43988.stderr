@@ -68,5 +68,5 @@ LL |     let _z = #[repr] 1;
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0517, E0518.
+Some errors have detailed explanations: E0517, E0518.
 For more information about an error, try `rustc --explain E0517`.

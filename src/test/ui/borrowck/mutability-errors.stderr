@@ -304,5 +304,5 @@ LL |     &mut X.0;
 
 error: aborting due to 35 previous errors
 
-Some errors occurred: E0387, E0594, E0595, E0596.
+Some errors have detailed explanations: E0387, E0595, E0596.
 For more information about an error, try `rustc --explain E0387`.

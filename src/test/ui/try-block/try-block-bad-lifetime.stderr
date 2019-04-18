@@ -48,5 +48,5 @@ LL |         let i_ptr = if let Err(i_ptr) = j { i_ptr } else { panic ! ("") };
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0382, E0506, E0597.
+Some errors have detailed explanations: E0382, E0506, E0597.
 For more information about an error, try `rustc --explain E0382`.

@@ -10,5 +10,5 @@ error[E0601]: `main` function not found in crate `issue_46101`
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0433, E0601.
+Some errors have detailed explanations: E0433, E0601.
 For more information about an error, try `rustc --explain E0433`.

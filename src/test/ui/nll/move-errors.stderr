@@ -183,5 +183,5 @@ LL |         Ok(s) | Err(s) => (),
 
 error: aborting due to 14 previous errors
 
-Some errors occurred: E0507, E0508, E0509.
+Some errors have detailed explanations: E0507, E0508, E0509.
 For more information about an error, try `rustc --explain E0507`.

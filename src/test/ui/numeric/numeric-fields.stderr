@@ -14,5 +14,5 @@ LL |         S{0: a, 0x1: b, ..} => {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0026, E0560.
+Some errors have detailed explanations: E0026, E0560.
 For more information about an error, try `rustc --explain E0026`.

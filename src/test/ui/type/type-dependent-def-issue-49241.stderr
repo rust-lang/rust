@@ -12,5 +12,5 @@ LL |     let s: [u32; l] = v.into_iter().collect();
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0080, E0435.
+Some errors have detailed explanations: E0080, E0435.
 For more information about an error, try `rustc --explain E0080`.

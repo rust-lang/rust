@@ -58,5 +58,5 @@ LL |         existential type Exist: PrivTr;
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0445, E0446.
+Some errors have detailed explanations: E0445, E0446.
 For more information about an error, try `rustc --explain E0445`.

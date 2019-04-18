@@ -6,4 +6,3 @@ LL | const A: u8 = { yield 3u8; 3u8};
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0627`.

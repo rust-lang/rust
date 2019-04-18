@@ -52,5 +52,4 @@ LL |     A
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0625, E0712.
-For more information about an error, try `rustc --explain E0625`.
+For more information about this error, try `rustc --explain E0712`.

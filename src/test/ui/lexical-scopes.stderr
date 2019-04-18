@@ -16,5 +16,4 @@ LL |     Foo::f();
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0574, E0599.
-For more information about an error, try `rustc --explain E0574`.
+For more information about this error, try `rustc --explain E0599`.
