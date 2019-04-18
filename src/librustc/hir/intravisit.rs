@@ -57,6 +57,14 @@ impl<'a> FnKind<'a> {
             FnKind::Closure(attrs) => attrs,
         }
     }
+
+    pub fn header(&self) -> Option<FnHeader> {
+        match *self {
+            FnKind::ItemFn(_, _, header, _, _) => Some(header),
+            FnKind::Method(_, sig, _, _) => Some(sig.header),
+            FnKind::Closure(_) => None,
+        }
+    }
 }
 
 /// Specifies what nested things a visitor wants to visit. The most
