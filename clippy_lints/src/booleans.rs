@@ -4,7 +4,7 @@ use crate::utils::{
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
@@ -51,18 +51,7 @@ declare_clippy_lint! {
 // For each pairs, both orders are considered.
 const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_err", "is_ok")];
 
-#[derive(Copy, Clone)]
-pub struct NonminimalBool;
-
-impl LintPass for NonminimalBool {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NONMINIMAL_BOOL, LOGIC_BUG)
-    }
-
-    fn name(&self) -> &'static str {
-        "NonminimalBool"
-    }
-}
+declare_lint_pass!(NonminimalBool => [NONMINIMAL_BOOL, LOGIC_BUG]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonminimalBool {
     fn check_fn(

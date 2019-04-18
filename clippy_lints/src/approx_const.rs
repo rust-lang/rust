@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use std::f64::consts as f64;
 use syntax::ast::{FloatTy, Lit, LitKind};
 use syntax::symbol;
@@ -53,20 +53,9 @@ const KNOWN_CONSTS: &[(f64, &str, usize)] = &[
     (f64::SQRT_2, "SQRT_2", 5),
 ];
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(APPROX_CONSTANT)
-    }
-
-    fn name(&self) -> &'static str {
-        "ApproxConstant"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ApproxConstant {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprKind::Lit(lit) = &e.node {
             check_lit(cx, lit, e);

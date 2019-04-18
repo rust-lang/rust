@@ -1,7 +1,7 @@
 use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast;
 use syntax::ptr::P;
 
@@ -79,22 +79,11 @@ declare_clippy_lint! {
     "possible missing comma in array"
 }
 
-#[derive(Copy, Clone)]
-pub struct Formatting;
-
-impl LintPass for Formatting {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            SUSPICIOUS_ASSIGNMENT_FORMATTING,
-            SUSPICIOUS_ELSE_FORMATTING,
-            POSSIBLE_MISSING_COMMA
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "Formatting"
-    }
-}
+declare_lint_pass!(Formatting => [
+    SUSPICIOUS_ASSIGNMENT_FORMATTING,
+    SUSPICIOUS_ELSE_FORMATTING,
+    POSSIBLE_MISSING_COMMA
+]);
 
 impl EarlyLintPass for Formatting {
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {

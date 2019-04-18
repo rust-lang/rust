@@ -2,7 +2,7 @@ use crate::utils::{paths, span_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for generics with `std::ops::Drop` as bounds.
@@ -35,19 +35,9 @@ declare_clippy_lint! {
 const DROP_BOUNDS_SUMMARY: &str = "Bounds of the form `T: Drop` are useless. \
                                    Use `std::mem::needs_drop` to detect if a type has drop glue.";
 
-pub struct Pass;
+declare_lint_pass!(DropBounds => [DROP_BOUNDS]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DROP_BOUNDS)
-    }
-
-    fn name(&self) -> &'static str {
-        "DropBounds"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropBounds {
     fn check_generic_param(&mut self, cx: &rustc::lint::LateContext<'a, 'tcx>, p: &'tcx GenericParam) {
         for bound in &p.bounds {
             lint_bound(cx, bound);

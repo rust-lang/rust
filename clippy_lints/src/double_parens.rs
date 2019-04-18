@@ -1,6 +1,6 @@
 use crate::utils::{in_macro, span_lint};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 
 declare_clippy_lint! {
@@ -22,18 +22,7 @@ declare_clippy_lint! {
     "Warn on unnecessary double parentheses"
 }
 
-#[derive(Copy, Clone)]
-pub struct DoubleParens;
-
-impl LintPass for DoubleParens {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DOUBLE_PARENS)
-    }
-
-    fn name(&self) -> &'static str {
-        "DoubleParens"
-    }
-}
+declare_lint_pass!(DoubleParens => [DOUBLE_PARENS]);
 
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {

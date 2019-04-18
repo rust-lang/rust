@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::source_map::Span;
 
 declare_clippy_lint! {
@@ -62,17 +62,7 @@ declare_clippy_lint! {
     "implementing `Clone` explicitly on `Copy` types"
 }
 
-pub struct Derive;
-
-impl LintPass for Derive {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ)
-    }
-
-    fn name(&self) -> &'static str {
-        "Derive"
-    }
-}
+declare_lint_pass!(Derive => [EXPL_IMPL_CLONE_ON_COPY, DERIVE_HASH_XOR_EQ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Derive {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {

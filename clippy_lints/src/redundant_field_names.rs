@@ -1,6 +1,6 @@
 use crate::utils::span_lint_and_sugg;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::*;
 
@@ -32,17 +32,7 @@ declare_clippy_lint! {
     "checks for fields in struct literals where shorthands could be used"
 }
 
-pub struct RedundantFieldNames;
-
-impl LintPass for RedundantFieldNames {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(REDUNDANT_FIELD_NAMES)
-    }
-
-    fn name(&self) -> &'static str {
-        "RedundantFieldNames"
-    }
-}
+declare_lint_pass!(RedundantFieldNames => [REDUNDANT_FIELD_NAMES]);
 
 impl EarlyLintPass for RedundantFieldNames {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {

@@ -2,7 +2,7 @@ use crate::utils::{is_direct_expn_of, is_expn_of, paths, resolve_node, span_lint
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
 use syntax::ptr::P;
 use syntax_pos::Span;
@@ -42,19 +42,9 @@ declare_clippy_lint! {
     "`unimplemented!` should not be present in production code"
 }
 
-pub struct Pass;
+declare_lint_pass!(PanicUnimplemented => [PANIC_PARAMS, UNIMPLEMENTED]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(PANIC_PARAMS, UNIMPLEMENTED)
-    }
-
-    fn name(&self) -> &'static str {
-        "PanicUnimplemented"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PanicUnimplemented {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             if let ExprKind::Block(ref block, _) = expr.node;

@@ -1,6 +1,6 @@
 use crate::utils::{in_macro, snippet_with_applicability, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::*;
 use syntax::source_map::Spanned;
@@ -28,18 +28,7 @@ declare_clippy_lint! {
     "operations where precedence may be unclear"
 }
 
-#[derive(Copy, Clone)]
-pub struct Precedence;
-
-impl LintPass for Precedence {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(PRECEDENCE)
-    }
-
-    fn name(&self) -> &'static str {
-        "Precedence"
-    }
-}
+declare_lint_pass!(Precedence => [PRECEDENCE]);
 
 impl EarlyLintPass for Precedence {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {

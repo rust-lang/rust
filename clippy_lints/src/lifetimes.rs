@@ -3,7 +3,7 @@ use rustc::hir::def::Def;
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::source_map::Span;
 use syntax::symbol::keywords;
@@ -55,20 +55,9 @@ declare_clippy_lint! {
     "unused lifetimes in function definitions"
 }
 
-#[derive(Copy, Clone)]
-pub struct LifetimePass;
+declare_lint_pass!(Lifetimes => [NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES]);
 
-impl LintPass for LifetimePass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_LIFETIMES, EXTRA_UNUSED_LIFETIMES)
-    }
-
-    fn name(&self) -> &'static str {
-        "LifeTimes"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LifetimePass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Lifetimes {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Fn(ref decl, _, ref generics, id) = item.node {
             check_fn_inner(cx, decl, Some(id), generics, item.span);

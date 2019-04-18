@@ -1,6 +1,6 @@
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::source_map::Span;
@@ -83,10 +83,9 @@ declare_clippy_lint! {
     "needless unit expression"
 }
 
-#[derive(Copy, Clone)]
-pub struct ReturnPass;
+declare_lint_pass!(Return => [NEEDLESS_RETURN, LET_AND_RETURN, UNUSED_UNIT]);
 
-impl ReturnPass {
+impl Return {
     // Check the final stmt or expr in a block for unnecessary return.
     fn check_block_return(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         if let Some(stmt) = block.stmts.last() {
@@ -177,17 +176,7 @@ impl ReturnPass {
     }
 }
 
-impl LintPass for ReturnPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_RETURN, LET_AND_RETURN, UNUSED_UNIT)
-    }
-
-    fn name(&self) -> &'static str {
-        "Return"
-    }
-}
-
-impl EarlyLintPass for ReturnPass {
+impl EarlyLintPass for Return {
     fn check_fn(&mut self, cx: &EarlyContext<'_>, kind: FnKind<'_>, decl: &ast::FnDecl, span: Span, _: ast::NodeId) {
         match kind {
             FnKind::ItemFn(.., block) | FnKind::Method(.., block) => self.check_block_return(cx, block),

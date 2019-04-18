@@ -3,7 +3,7 @@ use matches::matches;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `if` conditions that use blocks to contain an
@@ -42,18 +42,7 @@ declare_clippy_lint! {
     "complex blocks in conditions, e.g., `if { let x = true; x } ...`"
 }
 
-#[derive(Copy, Clone)]
-pub struct BlockInIfCondition;
-
-impl LintPass for BlockInIfCondition {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(BLOCK_IN_IF_CONDITION_EXPR, BLOCK_IN_IF_CONDITION_STMT)
-    }
-
-    fn name(&self) -> &'static str {
-        "BlockInIfCondition"
-    }
-}
+declare_lint_pass!(BlockInIfCondition => [BLOCK_IN_IF_CONDITION_EXPR, BLOCK_IN_IF_CONDITION_STMT]);
 
 struct ExVisitor<'a, 'tcx: 'a> {
     found_block: Option<&'tcx Expr>,

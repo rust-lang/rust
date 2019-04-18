@@ -1,7 +1,7 @@
 use crate::utils::{is_try, match_qpath, match_trait_method, paths, span_lint};
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for unused written/read amount.
@@ -30,17 +30,7 @@ declare_clippy_lint! {
     "unused written/read amount"
 }
 
-pub struct UnusedIoAmount;
-
-impl LintPass for UnusedIoAmount {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_IO_AMOUNT)
-    }
-
-    fn name(&self) -> &'static str {
-        "UnusedIoAmount"
-    }
-}
+declare_lint_pass!(UnusedIoAmount => [UNUSED_IO_AMOUNT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
     fn check_stmt(&mut self, cx: &LateContext<'_, '_>, s: &hir::Stmt) {

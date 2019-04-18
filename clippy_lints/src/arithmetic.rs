@@ -2,7 +2,7 @@ use crate::consts::constant_simple;
 use crate::utils::span_lint;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::source_map::Span;
 
 declare_clippy_lint! {
@@ -48,15 +48,7 @@ pub struct Arithmetic {
     const_span: Option<Span>,
 }
 
-impl LintPass for Arithmetic {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INTEGER_ARITHMETIC, FLOAT_ARITHMETIC)
-    }
-
-    fn name(&self) -> &'static str {
-        "Arithmetic"
-    }
-}
+impl_lint_pass!(Arithmetic => [INTEGER_ARITHMETIC, FLOAT_ARITHMETIC]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {

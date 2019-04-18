@@ -2,7 +2,7 @@ use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 use crate::utils::{
@@ -53,18 +53,7 @@ declare_clippy_lint! {
     "having a variable on both sides of an assign op"
 }
 
-#[derive(Copy, Clone, Default)]
-pub struct AssignOps;
-
-impl LintPass for AssignOps {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP)
-    }
-
-    fn name(&self) -> &'static str {
-        "AssignOps"
-    }
-}
+declare_lint_pass!(AssignOps => [ASSIGN_OP_PATTERN, MISREFACTORED_ASSIGN_OP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
     #[allow(clippy::too_many_lines)]

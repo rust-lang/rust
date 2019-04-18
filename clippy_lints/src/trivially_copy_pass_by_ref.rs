@@ -9,7 +9,7 @@ use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::session::config::Config as SessionConfig;
 use rustc::ty::{self, FnSig};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
 use rustc_target::abi::LayoutOf;
 use rustc_target::spec::abi::Abi;
@@ -137,15 +137,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
     }
 }
 
-impl LintPass for TriviallyCopyPassByRef {
-    fn get_lints(&self) -> LintArray {
-        lint_array![TRIVIALLY_COPY_PASS_BY_REF]
-    }
-
-    fn name(&self) -> &'static str {
-        "TrivallyCopyPassByRef"
-    }
-}
+impl_lint_pass!(TriviallyCopyPassByRef => [TRIVIALLY_COPY_PASS_BY_REF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {

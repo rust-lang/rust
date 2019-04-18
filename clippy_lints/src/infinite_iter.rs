@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{get_trait_def_id, higher, implements_trait, match_qpath, match_type, paths, span_lint};
 
@@ -41,20 +41,9 @@ declare_clippy_lint! {
     "possible infinite iteration"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(InfiniteIter => [INFINITE_ITER, MAYBE_INFINITE_ITER]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INFINITE_ITER, MAYBE_INFINITE_ITER)
-    }
-
-    fn name(&self) -> &'static str {
-        "InfiniteIter"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InfiniteIter {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let (lint, msg) = match complete_infinite_iter(cx, expr) {
             Infinite => (INFINITE_ITER, "infinite iteration detected"),

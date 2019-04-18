@@ -4,7 +4,7 @@ use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax_pos::Span;
 
 declare_clippy_lint! {
@@ -28,17 +28,7 @@ declare_clippy_lint! {
     "Warn on impls of `From<..>` that contain `panic!()` or `unwrap()`"
 }
 
-pub struct FallibleImplFrom;
-
-impl LintPass for FallibleImplFrom {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(FALLIBLE_IMPL_FROM)
-    }
-
-    fn name(&self) -> &'static str {
-        "FallibleImpleFrom"
-    }
-}
+declare_lint_pass!(FallibleImplFrom => [FALLIBLE_IMPL_FROM]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {

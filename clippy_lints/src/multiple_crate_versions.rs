@@ -2,7 +2,7 @@
 
 use crate::utils::span_lint;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::{ast::*, source_map::DUMMY_SP};
 
 use cargo_metadata;
@@ -31,19 +31,9 @@ declare_clippy_lint! {
     "multiple versions of the same crate being used"
 }
 
-pub struct Pass;
+declare_lint_pass!(MultipleCrateVersions => [MULTIPLE_CRATE_VERSIONS]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MULTIPLE_CRATE_VERSIONS)
-    }
-
-    fn name(&self) -> &'static str {
-        "MultipleCrateVersions"
-    }
-}
-
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for MultipleCrateVersions {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
         let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().exec() {
             metadata

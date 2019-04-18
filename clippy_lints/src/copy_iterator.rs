@@ -1,7 +1,7 @@
 use crate::utils::{is_copy, match_path, paths, span_note_and_lint};
 use rustc::hir::{Item, ItemKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for types that implement `Copy` as well as
@@ -29,17 +29,7 @@ declare_clippy_lint! {
     "implementing `Iterator` on a `Copy` type"
 }
 
-pub struct CopyIterator;
-
-impl LintPass for CopyIterator {
-    fn get_lints(&self) -> LintArray {
-        lint_array![COPY_ITERATOR]
-    }
-
-    fn name(&self) -> &'static str {
-        "CopyIterator"
-    }
-}
+declare_lint_pass!(CopyIterator => [COPY_ITERATOR]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyIterator {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {

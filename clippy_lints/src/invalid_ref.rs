@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for creation of references to zeroed or uninitialized memory.
@@ -26,17 +26,7 @@ const UNINIT_REF_SUMMARY: &str = "reference to uninitialized memory";
 const HELP: &str = "Creation of a null reference is undefined behavior; \
                     see https://doc.rust-lang.org/reference/behavior-considered-undefined.html";
 
-pub struct InvalidRef;
-
-impl LintPass for InvalidRef {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INVALID_REF)
-    }
-
-    fn name(&self) -> &'static str {
-        "InvalidRef"
-    }
-}
+declare_lint_pass!(InvalidRef => [INVALID_REF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

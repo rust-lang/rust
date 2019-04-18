@@ -3,7 +3,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use syntax::ast::{Lit, LitKind, Name};
@@ -69,18 +69,7 @@ declare_clippy_lint! {
     "traits or impls with a public `len` method but no corresponding `is_empty` method"
 }
 
-#[derive(Copy, Clone)]
-pub struct LenZero;
-
-impl LintPass for LenZero {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(LEN_ZERO, LEN_WITHOUT_IS_EMPTY)
-    }
-
-    fn name(&self) -> &'static str {
-        "LenZero"
-    }
-}
+declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {

@@ -1,7 +1,7 @@
 use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::ptr::P;
@@ -42,20 +42,9 @@ declare_clippy_lint! {
     "use the proper utility function avoiding an `if let`"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(RedundantPatternMatching => [REDUNDANT_PATTERN_MATCHING]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(REDUNDANT_PATTERN_MATCHING)
-    }
-
-    fn name(&self) -> &'static str {
-        "RedundantPatternMatching"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantPatternMatching {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Match(ref op, ref arms, ref match_source) = expr.node {
             match match_source {

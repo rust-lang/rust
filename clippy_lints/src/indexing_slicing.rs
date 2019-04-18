@@ -7,7 +7,7 @@ use crate::utils::higher::Range;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::RangeLimits;
 
 declare_clippy_lint! {
@@ -85,18 +85,7 @@ declare_clippy_lint! {
     "indexing/slicing usage"
 }
 
-#[derive(Copy, Clone)]
-pub struct IndexingSlicing;
-
-impl LintPass for IndexingSlicing {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING)
-    }
-
-    fn name(&self) -> &'static str {
-        "IndexSlicing"
-    }
-}
+declare_lint_pass!(IndexingSlicing => [INDEXING_SLICING, OUT_OF_BOUNDS_INDEXING]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

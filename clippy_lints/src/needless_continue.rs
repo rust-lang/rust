@@ -34,7 +34,7 @@
 //!
 //! This lint is **warn** by default.
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use std::borrow::Cow;
 use syntax::ast;
 use syntax::source_map::{original_sp, DUMMY_SP};
@@ -106,18 +106,7 @@ declare_clippy_lint! {
     "`continue` statements that can be replaced by a rearrangement of code"
 }
 
-#[derive(Copy, Clone)]
-pub struct NeedlessContinue;
-
-impl LintPass for NeedlessContinue {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_CONTINUE)
-    }
-
-    fn name(&self) -> &'static str {
-        "NeedlessContinue"
-    }
-}
+declare_lint_pass!(NeedlessContinue => [NEEDLESS_CONTINUE]);
 
 impl EarlyLintPass for NeedlessContinue {
     fn check_expr(&mut self, ctx: &EarlyContext<'_>, expr: &ast::Expr) {

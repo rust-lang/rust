@@ -9,7 +9,7 @@ use rustc::mir::interpret::GlobalId;
 use rustc::ty;
 use rustc::ty::subst::InternalSubsts;
 use rustc::ty::util::IntTypeExt;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::{IntTy, UintTy};
 
 declare_clippy_lint! {
@@ -34,17 +34,7 @@ declare_clippy_lint! {
     "C-like enums that are `repr(isize/usize)` and have values that don't fit into an `i32`"
 }
 
-pub struct UnportableVariant;
-
-impl LintPass for UnportableVariant {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(ENUM_CLIKE_UNPORTABLE_VARIANT)
-    }
-
-    fn name(&self) -> &'static str {
-        "UnportableVariant"
-    }
-}
+declare_lint_pass!(UnportableVariant => [ENUM_CLIKE_UNPORTABLE_VARIANT]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
     #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]

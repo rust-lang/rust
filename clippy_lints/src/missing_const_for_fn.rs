@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::{Body, Constness, FnDecl, HirId};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_mir::transform::qualify_min_const_fn::is_min_const_fn;
 use syntax_pos::Span;
 
@@ -57,18 +57,7 @@ declare_clippy_lint! {
     "Lint functions definitions that could be made `const fn`"
 }
 
-#[derive(Clone)]
-pub struct MissingConstForFn;
-
-impl LintPass for MissingConstForFn {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MISSING_CONST_FOR_FN)
-    }
-
-    fn name(&self) -> &'static str {
-        "MissingConstForFn"
-    }
-}
+declare_lint_pass!(MissingConstForFn => [MISSING_CONST_FOR_FN]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingConstForFn {
     fn check_fn(

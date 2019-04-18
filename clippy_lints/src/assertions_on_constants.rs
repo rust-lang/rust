@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 use crate::consts::{constant, Constant};
 use crate::syntax::ast::LitKind;
@@ -29,17 +29,7 @@ declare_clippy_lint! {
     "`assert!(true)` / `assert!(false)` will be optimized out by the compiler, and should probably be replaced by a `panic!()` or `unreachable!()`"
 }
 
-pub struct AssertionsOnConstants;
-
-impl LintPass for AssertionsOnConstants {
-    fn get_lints(&self) -> LintArray {
-        lint_array![ASSERTIONS_ON_CONSTANTS]
-    }
-
-    fn name(&self) -> &'static str {
-        "AssertionsOnConstants"
-    }
-}
+declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

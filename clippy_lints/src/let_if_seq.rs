@@ -4,7 +4,7 @@ use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::BindingAnnotation;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -52,18 +52,7 @@ declare_clippy_lint! {
     "unidiomatic `let mut` declaration followed by initialization in `if`"
 }
 
-#[derive(Copy, Clone)]
-pub struct LetIfSeq;
-
-impl LintPass for LetIfSeq {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(USELESS_LET_IF_SEQ)
-    }
-
-    fn name(&self) -> &'static str {
-        "LetIfSeq"
-    }
-}
+declare_lint_pass!(LetIfSeq => [USELESS_LET_IF_SEQ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
     fn check_block(&mut self, cx: &LateContext<'a, 'tcx>, block: &'tcx hir::Block) {

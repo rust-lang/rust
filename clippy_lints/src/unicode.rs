@@ -1,7 +1,7 @@
 use crate::utils::{is_allowed, snippet, span_help_and_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
 use syntax::source_map::Span;
 use unicode_normalization::UnicodeNormalization;
@@ -58,18 +58,7 @@ declare_clippy_lint! {
     "using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }
 
-#[derive(Copy, Clone)]
-pub struct Unicode;
-
-impl LintPass for Unicode {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC)
-    }
-
-    fn name(&self) -> &'static str {
-        "Unicode"
-    }
-}
+declare_lint_pass!(Unicode => [ZERO_WIDTH_SPACE, NON_ASCII_LITERAL, UNICODE_NOT_NFC]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

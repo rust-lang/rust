@@ -7,7 +7,7 @@ use rustc::hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedV
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::middle::region;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
@@ -439,39 +439,28 @@ declare_clippy_lint! {
     "variables used within while expression are not mutated in the body"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(Loops => [
+    MANUAL_MEMCPY,
+    NEEDLESS_RANGE_LOOP,
+    EXPLICIT_ITER_LOOP,
+    EXPLICIT_INTO_ITER_LOOP,
+    ITER_NEXT_LOOP,
+    FOR_LOOP_OVER_RESULT,
+    FOR_LOOP_OVER_OPTION,
+    WHILE_LET_LOOP,
+    UNUSED_COLLECT,
+    NEEDLESS_COLLECT,
+    REVERSE_RANGE_LOOP,
+    EXPLICIT_COUNTER_LOOP,
+    EMPTY_LOOP,
+    WHILE_LET_ON_ITERATOR,
+    FOR_KV_MAP,
+    NEVER_LOOP,
+    MUT_RANGE_BOUND,
+    WHILE_IMMUTABLE_CONDITION,
+]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            MANUAL_MEMCPY,
-            NEEDLESS_RANGE_LOOP,
-            EXPLICIT_ITER_LOOP,
-            EXPLICIT_INTO_ITER_LOOP,
-            ITER_NEXT_LOOP,
-            FOR_LOOP_OVER_RESULT,
-            FOR_LOOP_OVER_OPTION,
-            WHILE_LET_LOOP,
-            UNUSED_COLLECT,
-            NEEDLESS_COLLECT,
-            REVERSE_RANGE_LOOP,
-            EXPLICIT_COUNTER_LOOP,
-            EMPTY_LOOP,
-            WHILE_LET_ON_ITERATOR,
-            FOR_KV_MAP,
-            NEVER_LOOP,
-            MUT_RANGE_BOUND,
-            WHILE_IMMUTABLE_CONDITION,
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "Loops"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
     #[allow(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // we don't want to check expanded macros

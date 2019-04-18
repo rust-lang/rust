@@ -2,7 +2,7 @@ use crate::utils::span_lint;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for needlessly including a base struct on update
@@ -26,20 +26,9 @@ declare_clippy_lint! {
     "using `Foo { ..base }` when there are no missing fields"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(NeedlessUpdate => [NEEDLESS_UPDATE]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_UPDATE)
-    }
-
-    fn name(&self) -> &'static str {
-        "NeedUpdate"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessUpdate {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Struct(_, ref fields, Some(ref base)) = expr.node {
             let ty = cx.tables.expr_ty(expr);

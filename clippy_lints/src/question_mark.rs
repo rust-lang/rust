@@ -2,7 +2,7 @@ use if_chain::if_chain;
 use rustc::hir::def::Def;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ptr::P;
 
@@ -34,20 +34,9 @@ declare_clippy_lint! {
     "checks for expressions that could be replaced by the question mark operator"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(QuestionMark => [QUESTION_MARK]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(QUESTION_MARK)
-    }
-
-    fn name(&self) -> &'static str {
-        "QuestionMark"
-    }
-}
-
-impl Pass {
+impl QuestionMark {
     /// Checks if the given expression on the given context matches the following structure:
     ///
     /// ```ignore
@@ -165,7 +154,7 @@ impl Pass {
     }
 }
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for QuestionMark {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         Self::check_is_none_and_early_return_none(cx, expr);
     }

@@ -2,7 +2,7 @@ use crate::utils::{match_type, method_chain_args, paths, snippet, span_help_and_
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:*** Checks for unnecessary `ok()` in if let.
@@ -34,20 +34,9 @@ declare_clippy_lint! {
     "usage of `ok()` in `if let Some(pat)` statements is unnecessary, match on `Ok(pat)` instead"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(OkIfLet => [IF_LET_SOME_RESULT]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(IF_LET_SOME_RESULT)
-    }
-
-    fn name(&self) -> &'static str {
-        "OkIfLet"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for OkIfLet {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! { //begin checking variables
             if let ExprKind::Match(ref op, ref body, ref source) = expr.node; //test if expr is a match

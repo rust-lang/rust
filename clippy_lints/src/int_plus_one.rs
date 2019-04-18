@@ -1,7 +1,7 @@
 //! lint on blocks unnecessarily using >= with a + 1 or - 1
 
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::*;
 
@@ -30,17 +30,7 @@ declare_clippy_lint! {
     "instead of using x >= y + 1, use x > y"
 }
 
-pub struct IntPlusOne;
-
-impl LintPass for IntPlusOne {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INT_PLUS_ONE)
-    }
-
-    fn name(&self) -> &'static str {
-        "IntPlusOne"
-    }
-}
+declare_lint_pass!(IntPlusOne => [INT_PLUS_ONE]);
 
 // cases:
 // BinOpKind::Ge
@@ -59,14 +49,14 @@ enum Side {
 
 impl IntPlusOne {
     #[allow(clippy::cast_sign_loss)]
-    fn check_lit(&self, lit: &Lit, target_value: i128) -> bool {
+    fn check_lit(self, lit: &Lit, target_value: i128) -> bool {
         if let LitKind::Int(value, ..) = lit.node {
             return value == (target_value as u128);
         }
         false
     }
 
-    fn check_binop(&self, cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
+    fn check_binop(self, cx: &EarlyContext<'_>, binop: BinOpKind, lhs: &Expr, rhs: &Expr) -> Option<String> {
         match (binop, &lhs.node, &rhs.node) {
             // case where `x - 1 >= ...` or `-1 + x >= ...`
             (BinOpKind::Ge, &ExprKind::Binary(ref lhskind, ref lhslhs, ref lhsrhs), _) => {
@@ -131,7 +121,7 @@ impl IntPlusOne {
     }
 
     fn generate_recommendation(
-        &self,
+        self,
         cx: &EarlyContext<'_>,
         binop: BinOpKind,
         node: &Expr,
@@ -155,7 +145,7 @@ impl IntPlusOne {
         None
     }
 
-    fn emit_warning(&self, cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
+    fn emit_warning(self, cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
         span_lint_and_then(
             cx,
             INT_PLUS_ONE,

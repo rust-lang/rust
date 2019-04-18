@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc::hir::intravisit;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use syntax::source_map::Span;
@@ -93,15 +93,7 @@ impl Functions {
     }
 }
 
-impl LintPass for Functions {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(TOO_MANY_ARGUMENTS, TOO_MANY_LINES, NOT_UNSAFE_PTR_ARG_DEREF)
-    }
-
-    fn name(&self) -> &'static str {
-        "Functions"
-    }
-}
+impl_lint_pass!(Functions => [TOO_MANY_ARGUMENTS, TOO_MANY_LINES, NOT_UNSAFE_PTR_ARG_DEREF]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
     fn check_fn(

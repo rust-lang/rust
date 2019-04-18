@@ -6,7 +6,7 @@ use crate::utils::{match_type, paths, span_lint};
 use rustc::hir::Expr;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast;
 
 declare_clippy_lint! {
@@ -49,19 +49,9 @@ declare_clippy_lint! {
     "using a mutex for an integer type"
 }
 
-impl LintPass for MutexAtomic {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(MUTEX_ATOMIC, MUTEX_INTEGER)
-    }
+declare_lint_pass!(Mutex => [MUTEX_ATOMIC, MUTEX_INTEGER]);
 
-    fn name(&self) -> &'static str {
-        "Mutex"
-    }
-}
-
-pub struct MutexAtomic;
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutexAtomic {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let ty = cx.tables.expr_ty(expr);
         if let ty::Adt(_, subst) = ty.sty {

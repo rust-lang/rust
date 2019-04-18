@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 use crate::utils::{self, paths, span_lint};
 
@@ -42,17 +42,7 @@ declare_clippy_lint! {
     "The use of negated comparison operators on partially ordered types may produce confusing code."
 }
 
-pub struct NoNegCompOpForPartialOrd;
-
-impl LintPass for NoNegCompOpForPartialOrd {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEG_CMP_OP_ON_PARTIAL_ORD)
-    }
-
-    fn name(&self) -> &'static str {
-        "NoNegCompOpForPartialOrd"
-    }
-}
+declare_lint_pass!(NoNegCompOpForPartialOrd => [NEG_CMP_OP_ON_PARTIAL_ORD]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

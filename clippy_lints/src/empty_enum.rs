@@ -3,7 +3,7 @@
 use crate::utils::span_lint_and_then;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `enum`s with no variants.
@@ -23,18 +23,7 @@ declare_clippy_lint! {
     "enum with no variants"
 }
 
-#[derive(Copy, Clone)]
-pub struct EmptyEnum;
-
-impl LintPass for EmptyEnum {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(EMPTY_ENUM)
-    }
-
-    fn name(&self) -> &'static str {
-        "EmptyEnum"
-    }
-}
+declare_lint_pass!(EmptyEnum => [EMPTY_ENUM]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EmptyEnum {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &Item) {

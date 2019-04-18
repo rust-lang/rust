@@ -12,7 +12,7 @@ use rustc::lint::{
     LintContext, LintPass,
 };
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use semver::Version;
 use syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
@@ -187,26 +187,15 @@ declare_clippy_lint! {
     "usage of `cfg_attr(rustfmt)` instead of `tool_attributes`"
 }
 
-#[derive(Copy, Clone)]
-pub struct AttrPass;
+declare_lint_pass!(Attributes => [
+    INLINE_ALWAYS,
+    DEPRECATED_SEMVER,
+    USELESS_ATTRIBUTE,
+    EMPTY_LINE_AFTER_OUTER_ATTR,
+    UNKNOWN_CLIPPY_LINTS,
+]);
 
-impl LintPass for AttrPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            INLINE_ALWAYS,
-            DEPRECATED_SEMVER,
-            USELESS_ATTRIBUTE,
-            EMPTY_LINE_AFTER_OUTER_ATTR,
-            UNKNOWN_CLIPPY_LINTS,
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "Attributes"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
@@ -506,20 +495,9 @@ fn is_present_in_source(cx: &LateContext<'_, '_>, span: Span) -> bool {
     true
 }
 
-#[derive(Copy, Clone)]
-pub struct CfgAttrPass;
+declare_lint_pass!(DeprecatedCfgAttribute => [DEPRECATED_CFG_ATTR]);
 
-impl LintPass for CfgAttrPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED_CFG_ATTR,)
-    }
-
-    fn name(&self) -> &'static str {
-        "DeprecatedCfgAttribute"
-    }
-}
-
-impl EarlyLintPass for CfgAttrPass {
+impl EarlyLintPass for DeprecatedCfgAttribute {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
         if_chain! {
             // check cfg_attr

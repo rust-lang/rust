@@ -2,7 +2,7 @@ use crate::utils::{match_qpath, paths, snippet_with_applicability, span_lint_and
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind, MutMutable, QPath};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -32,17 +32,7 @@ declare_clippy_lint! {
     "replacing an `Option` with `None` instead of `take()`"
 }
 
-pub struct MemReplace;
-
-impl LintPass for MemReplace {
-    fn get_lints(&self) -> LintArray {
-        lint_array![MEM_REPLACE_OPTION_WITH_NONE]
-    }
-
-    fn name(&self) -> &'static str {
-        "MemReplace"
-    }
-}
+declare_lint_pass!(MemReplace => [MEM_REPLACE_OPTION_WITH_NONE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

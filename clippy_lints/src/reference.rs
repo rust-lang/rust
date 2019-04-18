@@ -1,7 +1,7 @@
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::{Expr, ExprKind, UnOp};
 
@@ -24,17 +24,7 @@ declare_clippy_lint! {
     "use of `*&` or `*&mut` in an expression"
 }
 
-pub struct Pass;
-
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DEREF_ADDROF)
-    }
-
-    fn name(&self) -> &'static str {
-        "DerefAddrOf"
-    }
-}
+declare_lint_pass!(DerefAddrOf => [DEREF_ADDROF]);
 
 fn without_parens(mut e: &Expr) -> &Expr {
     while let ExprKind::Paren(ref child_e) = e.node {
@@ -43,7 +33,7 @@ fn without_parens(mut e: &Expr) -> &Expr {
     e
 }
 
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for DerefAddrOf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.node;
@@ -82,19 +72,9 @@ declare_clippy_lint! {
     "Use of reference in auto dereference expression."
 }
 
-pub struct DerefPass;
+declare_lint_pass!(RefInDeref => [REF_IN_DEREF]);
 
-impl LintPass for DerefPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(REF_IN_DEREF)
-    }
-
-    fn name(&self) -> &'static str {
-        "RefInDeref"
-    }
-}
-
-impl EarlyLintPass for DerefPass {
+impl EarlyLintPass for RefInDeref {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
             if let ExprKind::Field(ref object, _) = e.node;

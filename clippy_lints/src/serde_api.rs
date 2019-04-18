@@ -1,7 +1,7 @@
 use crate::utils::{get_trait_def_id, paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for mis-uses of the serde API.
@@ -18,20 +18,9 @@ declare_clippy_lint! {
     "various things that will negatively affect your serde experience"
 }
 
-#[derive(Copy, Clone)]
-pub struct Serde;
+declare_lint_pass!(SerdeAPI => [SERDE_API_MISUSE]);
 
-impl LintPass for Serde {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(SERDE_API_MISUSE)
-    }
-
-    fn name(&self) -> &'static str {
-        "SerdeAPI"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Serde {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SerdeAPI {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
         if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, ref items) = item.node {
             let did = trait_ref.path.def.def_id();

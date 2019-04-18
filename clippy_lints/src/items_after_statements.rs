@@ -3,7 +3,7 @@
 use crate::utils::{in_macro, span_lint};
 use matches::matches;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
 
 declare_clippy_lint! {
@@ -34,17 +34,7 @@ declare_clippy_lint! {
     "blocks where an item comes after a statement"
 }
 
-pub struct ItemsAfterStatements;
-
-impl LintPass for ItemsAfterStatements {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(ITEMS_AFTER_STATEMENTS)
-    }
-
-    fn name(&self) -> &'static str {
-        "ItemsAfterStatements"
-    }
-}
+declare_lint_pass!(ItemsAfterStatements => [ITEMS_AFTER_STATEMENTS]);
 
 impl EarlyLintPass for ItemsAfterStatements {
     fn check_block(&mut self, cx: &EarlyContext<'_>, item: &Block) {

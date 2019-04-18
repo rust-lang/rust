@@ -4,7 +4,7 @@ use crate::utils::span_lint_and_then;
 use crate::utils::sugg::DiagnosticBuilderExt;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::ast::{Attribute, Name};
 
@@ -28,20 +28,9 @@ declare_clippy_lint! {
     "use of `#[inline]` on trait methods without bodies"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
+declare_lint_pass!(InlineFnWithoutBody => [INLINE_FN_WITHOUT_BODY]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(INLINE_FN_WITHOUT_BODY)
-    }
-
-    fn name(&self) -> &'static str {
-        "InlineFnWithoutBody"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InlineFnWithoutBody {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx TraitItem) {
         if let TraitItemKind::Method(_, TraitMethod::Required(_)) = item.node {
             check_attrs(cx, item.ident.name, &item.attrs);

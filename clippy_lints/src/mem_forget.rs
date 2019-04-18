@@ -1,7 +1,7 @@
 use crate::utils::{paths, span_lint};
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is
@@ -21,17 +21,7 @@ declare_clippy_lint! {
     "`mem::forget` usage on `Drop` types, likely to cause memory leaks"
 }
 
-pub struct MemForget;
-
-impl LintPass for MemForget {
-    fn get_lints(&self) -> LintArray {
-        lint_array![MEM_FORGET]
-    }
-
-    fn name(&self) -> &'static str {
-        "MemForget"
-    }
-}
+declare_lint_pass!(MemForget => [MEM_FORGET]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemForget {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

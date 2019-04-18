@@ -3,7 +3,7 @@ use crate::utils::{match_qpath, span_lint};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::LitKind;
 
 declare_clippy_lint! {
@@ -24,22 +24,11 @@ declare_clippy_lint! {
     "transmutes from a null pointer to a reference, which is undefined behavior"
 }
 
-#[derive(Copy, Clone)]
-pub struct Pass;
-
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(TRANSMUTING_NULL,)
-    }
-
-    fn name(&self) -> &'static str {
-        "TransmutingNull"
-    }
-}
+declare_lint_pass!(TransmutingNull => [TRANSMUTING_NULL]);
 
 const LINT_MSG: &str = "transmuting a known null pointer into a reference.";
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TransmutingNull {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_external_macro(cx.sess(), expr.span) {
             return;

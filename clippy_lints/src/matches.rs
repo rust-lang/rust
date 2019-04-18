@@ -10,7 +10,7 @@ use rustc::hir::def::CtorKind;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::cmp::Ordering;
 use std::collections::Bound;
@@ -215,29 +215,18 @@ declare_clippy_lint! {
     "a wildcard enum match arm using `_`"
 }
 
-#[allow(missing_copy_implementations)]
-pub struct MatchPass;
+declare_lint_pass!(Matches => [
+    SINGLE_MATCH,
+    MATCH_REF_PATS,
+    MATCH_BOOL,
+    SINGLE_MATCH_ELSE,
+    MATCH_OVERLAPPING_ARM,
+    MATCH_WILD_ERR_ARM,
+    MATCH_AS_REF,
+    WILDCARD_ENUM_MATCH_ARM
+]);
 
-impl LintPass for MatchPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(
-            SINGLE_MATCH,
-            MATCH_REF_PATS,
-            MATCH_BOOL,
-            SINGLE_MATCH_ELSE,
-            MATCH_OVERLAPPING_ARM,
-            MATCH_WILD_ERR_ARM,
-            MATCH_AS_REF,
-            WILDCARD_ENUM_MATCH_ARM
-        )
-    }
-
-    fn name(&self) -> &'static str {
-        "Matches"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Matches {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_external_macro(cx.sess(), expr.span) {
             return;

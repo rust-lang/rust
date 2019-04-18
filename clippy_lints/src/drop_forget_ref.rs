@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for calls to `std::mem::drop` with a reference
@@ -106,19 +106,9 @@ const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that imp
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements Copy. \
                                    Forgetting a copy leaves the original intact.";
 
-pub struct Pass;
+declare_lint_pass!(DropForgetRef => [DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DROP_REF, FORGET_REF, DROP_COPY, FORGET_COPY)
-    }
-
-    fn name(&self) -> &'static str {
-        "DropForgetRef"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropForgetRef {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             if let ExprKind::Call(ref path, ref args) = expr.node;

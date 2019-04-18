@@ -1,5 +1,7 @@
 use crate::utils;
-use rustc::{declare_tool_lint, hir, lint, lint_array};
+use rustc::hir::{Expr, ExprKind};
+use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::fmt;
 
@@ -39,21 +41,10 @@ declare_clippy_lint! {
     "unneeded pointer offset cast"
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct Pass;
+declare_lint_pass!(PtrOffsetWithCast => [PTR_OFFSET_WITH_CAST]);
 
-impl lint::LintPass for Pass {
-    fn get_lints(&self) -> lint::LintArray {
-        lint_array!(PTR_OFFSET_WITH_CAST)
-    }
-
-    fn name(&self) -> &'static str {
-        "PtrOffsetWithCast"
-    }
-}
-
-impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
-    fn check_expr(&mut self, cx: &lint::LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PtrOffsetWithCast {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Check if the expressions is a ptr.offset or ptr.wrapping_offset method call
         let (receiver_expr, arg_expr, method) = match expr_as_ptr_offset_call(cx, expr) {
             Some(call_arg) => call_arg,
@@ -84,11 +75,8 @@ impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
 }
 
 // If the given expression is a cast from a usize, return the lhs of the cast
-fn expr_as_cast_from_usize<'a, 'tcx>(
-    cx: &lint::LateContext<'a, 'tcx>,
-    expr: &'tcx hir::Expr,
-) -> Option<&'tcx hir::Expr> {
-    if let hir::ExprKind::Cast(ref cast_lhs_expr, _) = expr.node {
+fn expr_as_cast_from_usize<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<&'tcx Expr> {
+    if let ExprKind::Cast(ref cast_lhs_expr, _) = expr.node {
         if is_expr_ty_usize(cx, &cast_lhs_expr) {
             return Some(cast_lhs_expr);
         }
@@ -99,10 +87,10 @@ fn expr_as_cast_from_usize<'a, 'tcx>(
 // If the given expression is a ptr::offset  or ptr::wrapping_offset method call, return the
 // receiver, the arg of the method call, and the method.
 fn expr_as_ptr_offset_call<'a, 'tcx>(
-    cx: &lint::LateContext<'a, 'tcx>,
-    expr: &'tcx hir::Expr,
-) -> Option<(&'tcx hir::Expr, &'tcx hir::Expr, Method)> {
-    if let hir::ExprKind::MethodCall(ref path_segment, _, ref args) = expr.node {
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx Expr,
+) -> Option<(&'tcx Expr, &'tcx Expr, Method)> {
+    if let ExprKind::MethodCall(ref path_segment, _, ref args) = expr.node {
         if is_expr_ty_raw_ptr(cx, &args[0]) {
             if path_segment.ident.name == "offset" {
                 return Some((&args[0], &args[1], Method::Offset));
@@ -116,20 +104,20 @@ fn expr_as_ptr_offset_call<'a, 'tcx>(
 }
 
 // Is the type of the expression a usize?
-fn is_expr_ty_usize<'a, 'tcx>(cx: &lint::LateContext<'a, 'tcx>, expr: &hir::Expr) -> bool {
+fn is_expr_ty_usize<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr) -> bool {
     cx.tables.expr_ty(expr) == cx.tcx.types.usize
 }
 
 // Is the type of the expression a raw pointer?
-fn is_expr_ty_raw_ptr<'a, 'tcx>(cx: &lint::LateContext<'a, 'tcx>, expr: &hir::Expr) -> bool {
+fn is_expr_ty_raw_ptr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr) -> bool {
     cx.tables.expr_ty(expr).is_unsafe_ptr()
 }
 
 fn build_suggestion<'a, 'tcx>(
-    cx: &lint::LateContext<'a, 'tcx>,
+    cx: &LateContext<'a, 'tcx>,
     method: Method,
-    receiver_expr: &hir::Expr,
-    cast_lhs_expr: &hir::Expr,
+    receiver_expr: &Expr,
+    cast_lhs_expr: &Expr,
 ) -> Option<String> {
     let receiver = utils::snippet_opt(cx, receiver_expr.span)?;
     let cast_lhs = utils::snippet_opt(cx, cast_lhs_expr.span)?;

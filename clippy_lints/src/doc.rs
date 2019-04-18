@@ -2,7 +2,7 @@ use crate::utils::span_lint;
 use itertools::Itertools;
 use pulldown_cmark;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashSet;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
@@ -33,28 +33,21 @@ declare_clippy_lint! {
     "presence of `_`, `::` or camel-case outside backticks in documentation"
 }
 
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
-pub struct Doc {
+pub struct DocMarkdown {
     valid_idents: FxHashSet<String>,
 }
 
-impl Doc {
+impl DocMarkdown {
     pub fn new(valid_idents: FxHashSet<String>) -> Self {
         Self { valid_idents }
     }
 }
 
-impl LintPass for Doc {
-    fn get_lints(&self) -> LintArray {
-        lint_array![DOC_MARKDOWN]
-    }
+impl_lint_pass!(DocMarkdown => [DOC_MARKDOWN]);
 
-    fn name(&self) -> &'static str {
-        "DocMarkdown"
-    }
-}
-
-impl EarlyLintPass for Doc {
+impl EarlyLintPass for DocMarkdown {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &ast::Crate) {
         check_attrs(cx, &self.valid_idents, &krate.attrs);
     }

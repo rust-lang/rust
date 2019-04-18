@@ -6,7 +6,7 @@ use crate::utils::{in_macro, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 declare_clippy_lint! {
@@ -51,18 +51,7 @@ declare_clippy_lint! {
     "taking a needless borrowed reference"
 }
 
-#[derive(Copy, Clone)]
-pub struct NeedlessBorrowedRef;
-
-impl LintPass for NeedlessBorrowedRef {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(NEEDLESS_BORROWED_REFERENCE)
-    }
-
-    fn name(&self) -> &'static str {
-        "NeedlessBorrowedRef"
-    }
-}
+declare_lint_pass!(NeedlessBorrowedRef => [NEEDLESS_BORROWED_REFERENCE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {

@@ -2,7 +2,7 @@
 
 use crate::utils::span_lint;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::{ast::*, source_map::DUMMY_SP};
 
 use cargo_metadata;
@@ -56,19 +56,9 @@ fn is_empty_vec(value: &[String]) -> bool {
     value.iter().all(std::string::String::is_empty)
 }
 
-pub struct Pass;
+declare_lint_pass!(CargoCommonMetadata => [CARGO_COMMON_METADATA]);
 
-impl LintPass for Pass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(CARGO_COMMON_METADATA)
-    }
-
-    fn name(&self) -> &'static str {
-        "CargoCommonMetadata"
-    }
-}
-
-impl EarlyLintPass for Pass {
+impl EarlyLintPass for CargoCommonMetadata {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
         let metadata = if let Ok(metadata) = cargo_metadata::MetadataCommand::new().no_deps().exec() {
             metadata

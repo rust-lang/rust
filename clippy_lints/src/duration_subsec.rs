@@ -1,7 +1,7 @@
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::source_map::Spanned;
 
@@ -29,18 +29,7 @@ declare_clippy_lint! {
     "checks for calculation of subsecond microseconds or milliseconds"
 }
 
-#[derive(Copy, Clone)]
-pub struct DurationSubsec;
-
-impl LintPass for DurationSubsec {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(DURATION_SUBSEC)
-    }
-
-    fn name(&self) -> &'static str {
-        "DurationSubsec"
-    }
-}
+declare_lint_pass!(DurationSubsec => [DURATION_SUBSEC]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {

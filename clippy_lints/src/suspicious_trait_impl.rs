@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Lints for suspicious operations in impls of arithmetic operators, e.g.
@@ -49,18 +49,7 @@ declare_clippy_lint! {
     "suspicious use of operators in impl of OpAssign trait"
 }
 
-#[derive(Copy, Clone)]
-pub struct SuspiciousImpl;
-
-impl LintPass for SuspiciousImpl {
-    fn get_lints(&self) -> LintArray {
-        lint_array![SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_ASSIGN_IMPL]
-    }
-
-    fn name(&self) -> &'static str {
-        "SuspiciousImpl"
-    }
-}
+declare_lint_pass!(SuspiciousImpl => [SUSPICIOUS_ARITHMETIC_IMPL, SUSPICIOUS_OP_ASSIGN_IMPL]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {

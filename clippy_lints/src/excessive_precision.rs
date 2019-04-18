@@ -3,7 +3,7 @@ use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use std::f32;
 use std::f64;
@@ -35,17 +35,7 @@ declare_clippy_lint! {
     "excessive precision for float literal"
 }
 
-pub struct ExcessivePrecision;
-
-impl LintPass for ExcessivePrecision {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(EXCESSIVE_PRECISION)
-    }
-
-    fn name(&self) -> &'static str {
-        "ExcessivePrecision"
-    }
-}
+declare_lint_pass!(ExcessivePrecision => [EXCESSIVE_PRECISION]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
@@ -72,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
 
 impl ExcessivePrecision {
     // None if nothing to lint, Some(suggestion) if lint necessary
-    fn check(&self, sym: Symbol, fty: FloatTy) -> Option<String> {
+    fn check(self, sym: Symbol, fty: FloatTy) -> Option<String> {
         let max = max_digits(fty);
         let sym_str = sym.as_str();
         if dot_zero_exclusion(&sym_str) {

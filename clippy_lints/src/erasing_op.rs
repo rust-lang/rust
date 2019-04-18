@@ -1,6 +1,6 @@
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::source_map::Span;
 
 use crate::consts::{constant_simple, Constant};
@@ -27,18 +27,7 @@ declare_clippy_lint! {
     "using erasing operations, e.g., `x * 0` or `y & 0`"
 }
 
-#[derive(Copy, Clone)]
-pub struct ErasingOp;
-
-impl LintPass for ErasingOp {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(ERASING_OP)
-    }
-
-    fn name(&self) -> &'static str {
-        "ErasingOp"
-    }
-}
+declare_lint_pass!(ErasingOp => [ERASING_OP]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ErasingOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {

@@ -1,7 +1,7 @@
 use crate::utils::span_lint;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashSet;
 
 declare_clippy_lint! {
@@ -23,26 +23,19 @@ declare_clippy_lint! {
 }
 
 #[derive(Clone, Debug)]
-pub struct BlackListedName {
+pub struct BlacklistedName {
     blacklist: FxHashSet<String>,
 }
 
-impl BlackListedName {
+impl BlacklistedName {
     pub fn new(blacklist: FxHashSet<String>) -> Self {
         Self { blacklist }
     }
 }
 
-impl LintPass for BlackListedName {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(BLACKLISTED_NAME)
-    }
-    fn name(&self) -> &'static str {
-        "BlacklistedName"
-    }
-}
+impl_lint_pass!(BlacklistedName => [BLACKLISTED_NAME]);
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlackListedName {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlacklistedName {
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
         if let PatKind::Binding(.., ident, _) = pat.node {
             if self.blacklist.contains(&ident.name.to_string()) {

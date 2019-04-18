@@ -2,12 +2,10 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then, type_is_unsafe_function};
-
-pub struct EtaPass;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for closures which just call another function where
@@ -33,17 +31,9 @@ declare_clippy_lint! {
     "redundant closures, i.e., `|a| foo(a)` (which can be written as just `foo`)"
 }
 
-impl LintPass for EtaPass {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(REDUNDANT_CLOSURE)
-    }
+declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE]);
 
-    fn name(&self) -> &'static str {
-        "EtaReduction"
-    }
-}
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if in_external_macro(cx.sess(), expr.span) {
             return;

@@ -5,7 +5,7 @@ use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, lint_array};
+use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::ast::Attribute;
 use syntax::source_map::Span;
 
@@ -38,15 +38,7 @@ impl CognitiveComplexity {
     }
 }
 
-impl LintPass for CognitiveComplexity {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(COGNITIVE_COMPLEXITY)
-    }
-
-    fn name(&self) -> &'static str {
-        "CognitiveComplexity"
-    }
-}
+impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
     fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
