@@ -1050,7 +1050,7 @@ mod tests {
     use super::{ErrorCodes, LangString, Markdown, MarkdownHtml, IdMap};
     use super::plain_summary_line;
     use std::cell::RefCell;
-    use syntax::edition::Edition;
+    use syntax::edition::{Edition, DEFAULT_EDITION};
 
     #[test]
     fn test_lang_string_parse() {
@@ -1102,7 +1102,8 @@ mod tests {
     fn test_header() {
         fn t(input: &str, expect: &str) {
             let mut map = IdMap::new();
-            let output = Markdown(input, &[], RefCell::new(&mut map), ErrorCodes::Yes).to_string();
+            let output = Markdown(input, &[], RefCell::new(&mut map),
+                                  ErrorCodes::Yes, DEFAULT_EDITION).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 
@@ -1124,7 +1125,8 @@ mod tests {
     fn test_header_ids_multiple_blocks() {
         let mut map = IdMap::new();
         fn t(map: &mut IdMap, input: &str, expect: &str) {
-            let output = Markdown(input, &[], RefCell::new(map), ErrorCodes::Yes).to_string();
+            let output = Markdown(input, &[], RefCell::new(map),
+                                  ErrorCodes::Yes, DEFAULT_EDITION).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 
@@ -1161,7 +1163,8 @@ mod tests {
     fn test_markdown_html_escape() {
         fn t(input: &str, expect: &str) {
             let mut idmap = IdMap::new();
-            let output = MarkdownHtml(input, RefCell::new(&mut idmap), ErrorCodes::Yes).to_string();
+            let output = MarkdownHtml(input, RefCell::new(&mut idmap),
+                                      ErrorCodes::Yes, DEFAULT_EDITION).to_string();
             assert_eq!(output, expect, "original: {}", input);
         }
 
