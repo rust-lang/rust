@@ -7,39 +7,39 @@ pub trait EvalContextExt<'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, Borrow>,
-        right: ImmTy<'tcx, Borrow>,
-    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)>;
+        left: ImmTy<'tcx, Tag>,
+        right: ImmTy<'tcx, Tag>,
+    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)>;
 
     fn ptr_int_arithmetic(
         &self,
         bin_op: mir::BinOp,
-        left: Pointer<Borrow>,
+        left: Pointer<Tag>,
         right: u128,
         signed: bool,
-    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)>;
+    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)>;
 
     fn ptr_eq(
         &self,
-        left: Scalar<Borrow>,
-        right: Scalar<Borrow>,
+        left: Scalar<Tag>,
+        right: Scalar<Tag>,
     ) -> EvalResult<'tcx, bool>;
 
     fn pointer_offset_inbounds(
         &self,
-        ptr: Scalar<Borrow>,
+        ptr: Scalar<Tag>,
         pointee_ty: Ty<'tcx>,
         offset: i64,
-    ) -> EvalResult<'tcx, Scalar<Borrow>>;
+    ) -> EvalResult<'tcx, Scalar<Tag>>;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn ptr_op(
         &self,
         bin_op: mir::BinOp,
-        left: ImmTy<'tcx, Borrow>,
-        right: ImmTy<'tcx, Borrow>,
-    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
+        left: ImmTy<'tcx, Tag>,
+        right: ImmTy<'tcx, Tag>,
+    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)> {
         use rustc::mir::BinOp::*;
 
         trace!("ptr_op: {:?} {:?} {:?}", *left, bin_op, *right);
@@ -136,8 +136,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
 
     fn ptr_eq(
         &self,
-        left: Scalar<Borrow>,
-        right: Scalar<Borrow>,
+        left: Scalar<Tag>,
+        right: Scalar<Tag>,
     ) -> EvalResult<'tcx, bool> {
         let size = self.pointer_size();
         Ok(match (left, right) {
@@ -233,13 +233,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     fn ptr_int_arithmetic(
         &self,
         bin_op: mir::BinOp,
-        left: Pointer<Borrow>,
+        left: Pointer<Tag>,
         right: u128,
         signed: bool,
-    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<Tag>, bool)> {
         use rustc::mir::BinOp::*;
 
-        fn map_to_primval((res, over): (Pointer<Borrow>, bool)) -> (Scalar<Borrow>, bool) {
+        fn map_to_primval((res, over): (Pointer<Tag>, bool)) -> (Scalar<Tag>, bool) {
             (Scalar::Ptr(res), over)
         }
 
@@ -327,10 +327,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     /// allocation, and all the remaining integers pointers their own allocation.
     fn pointer_offset_inbounds(
         &self,
-        ptr: Scalar<Borrow>,
+        ptr: Scalar<Tag>,
         pointee_ty: Ty<'tcx>,
         offset: i64,
-    ) -> EvalResult<'tcx, Scalar<Borrow>> {
+    ) -> EvalResult<'tcx, Scalar<Tag>> {
         // FIXME: assuming here that type size is less than `i64::max_value()`.
         let pointee_size = self.layout_of(pointee_ty)?.size.bytes() as i64;
         let offset = offset

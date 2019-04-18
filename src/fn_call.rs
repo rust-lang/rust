@@ -13,8 +13,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
     fn find_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx, Borrow>],
-        dest: Option<PlaceTy<'tcx, Borrow>>,
+        args: &[OpTy<'tcx, Tag>],
+        dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
         let this = self.eval_context_mut();
@@ -55,8 +55,8 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
     fn emulate_foreign_item(
         &mut self,
         def_id: DefId,
-        args: &[OpTy<'tcx, Borrow>],
-        dest: Option<PlaceTy<'tcx, Borrow>>,
+        args: &[OpTy<'tcx, Tag>],
+        dest: Option<PlaceTy<'tcx, Tag>>,
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
@@ -92,7 +92,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 } else {
                     let align = this.tcx.data_layout.pointer_align.abi;
                     let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
-                    this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
+                    this.write_scalar(Scalar::Ptr(ptr), dest)?;
                 }
             }
             "calloc" => {
@@ -105,7 +105,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 } else {
                     let size = Size::from_bytes(bytes);
                     let align = this.tcx.data_layout.pointer_align.abi;
-                    let ptr = this.memory_mut().allocate(size, align, MiriMemoryKind::C.into()).with_default_tag();
+                    let ptr = this.memory_mut().allocate(size, align, MiriMemoryKind::C.into());
                     this.memory_mut().get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, size)?;
                     this.write_scalar(Scalar::Ptr(ptr), dest)?;
                 }
@@ -132,7 +132,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::C.into()
                     );
-                    this.write_scalar(Scalar::Ptr(ptr.with_default_tag()), ret.into())?;
+                    this.write_scalar(Scalar::Ptr(ptr), ret.into())?;
                 }
                 this.write_null(dest)?;
             }
@@ -179,8 +179,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into()
-                    )
-                    .with_default_tag();
+                    );
                 this.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_alloc_zeroed" => {
@@ -197,8 +196,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into()
-                    )
-                    .with_default_tag();
+                    );
                 this.memory_mut()
                     .get_mut(ptr.alloc_id)?
                     .write_repeat(tcx, ptr, 0, Size::from_bytes(size))?;
@@ -239,7 +237,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Rust.into(),
                 )?;
-                this.write_scalar(Scalar::Ptr(new_ptr.with_default_tag()), dest)?;
+                this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
             }
 
             "syscall" => {
@@ -445,7 +443,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                         Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1).unwrap(),
                         MiriMemoryKind::Env.into(),
-                    ).with_default_tag();
+                    );
                     {
                         let alloc = this.memory_mut().get_mut(value_copy.alloc_id)?;
                         alloc.write_bytes(tcx, value_copy, &value)?;
@@ -815,13 +813,13 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         Ok(())
     }
 
-    fn write_null(&mut self, dest: PlaceTy<'tcx, Borrow>) -> EvalResult<'tcx> {
+    fn write_null(&mut self, dest: PlaceTy<'tcx, Tag>) -> EvalResult<'tcx> {
         self.eval_context_mut().write_scalar(Scalar::from_int(0, dest.layout.size), dest)
     }
 
     /// Evaluates the scalar at the specified path. Returns Some(val)
     /// if the path could be resolved, and None otherwise
-    fn eval_path_scalar(&mut self, path: &[&str]) -> EvalResult<'tcx, Option<ScalarMaybeUndef<stacked_borrows::Borrow>>> {
+    fn eval_path_scalar(&mut self, path: &[&str]) -> EvalResult<'tcx, Option<ScalarMaybeUndef<Tag>>> {
         let this = self.eval_context_mut();
         if let Ok(instance) = this.resolve_path(path) {
             let cid = GlobalId {

@@ -1,3 +1,5 @@
+#![allow(mutable_borrow_reservation_conflict)]
+
 trait S: Sized {
     fn tpb(&mut self, _s: Self) {}
 }
@@ -26,7 +28,21 @@ fn two_phase3(b: bool) {
     ));
 }
 
-/*
+#[allow(unreachable_code)]
+fn two_phase_raw() {
+    let x: &mut Vec<i32> = &mut vec![];
+    x.push(
+        {
+            // Unfortunately this does not trigger the problem of creating a
+            // raw ponter from a pointer that had a two-phase borrow derived from
+            // it because of the implicit &mut reborrow.
+            let raw = x as *mut _;
+            unsafe { *raw = vec![1]; }
+            return
+        }
+    );
+}
+
 fn two_phase_overlapping1() {
     let mut x = vec![];
     let p = &x;
@@ -39,7 +55,6 @@ fn two_phase_overlapping2() {
     let l = &x;
     x.add_assign(x + *l);
 }
-*/
 
 fn with_interior_mutability() {
     use std::cell::Cell;
@@ -53,7 +68,6 @@ fn with_interior_mutability() {
     let mut x = Cell::new(1);
     let l = &x;
 
-    #[allow(unknown_lints, mutable_borrow_reservation_conflict)]
     x
         .do_the_thing({
             x.set(3);
@@ -68,8 +82,8 @@ fn main() {
     two_phase2();
     two_phase3(false);
     two_phase3(true);
+    two_phase_raw();
     with_interior_mutability();
-    //FIXME: enable these, or remove them, depending on how https://github.com/rust-lang/rust/issues/56254 gets resolved
-    //two_phase_overlapping1();
-    //two_phase_overlapping2();
+    two_phase_overlapping1();
+    two_phase_overlapping2();
 }

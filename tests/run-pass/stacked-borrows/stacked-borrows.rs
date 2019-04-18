@@ -10,6 +10,8 @@ fn main() {
     partially_invalidate_mut();
     drop_after_sharing();
     direct_mut_to_const_raw();
+    two_raw();
+    shr_and_raw();
 }
 
 // Deref a raw ptr to access a field of a large struct, where the field
@@ -123,3 +125,27 @@ fn direct_mut_to_const_raw() {
     assert_eq!(*x, 1);
     */
 }
+
+// Make sure that we can create two raw pointers from a mutable reference and use them both.
+fn two_raw() { unsafe {
+    let x = &mut 0;
+    // Given the implicit reborrows, the only reason this currently works is that we
+    // do not track raw pointers: The creation of `y2` reborrows `x` and thus pops
+    // `y1` off the stack.
+    let y1 = x as *mut _;
+    let y2 = x as *mut _;
+    *y1 += 2;
+    *y2 += 1;
+} }
+
+// Make sure that creating a *mut does not invalidate existing shared references.
+fn shr_and_raw() { /* unsafe {
+    use std::mem;
+    // FIXME: This is currently disabled because "as *mut _" incurs a reborrow.
+    let x = &mut 0;
+    let y1: &i32 = mem::transmute(&*x); // launder lifetimes
+    let y2 = x as *mut _;
+    let _val = *y1;
+    *y2 += 1;
+    // TODO: Once this works, add compile-fail test that tries to read from y1 again.
+} */ }

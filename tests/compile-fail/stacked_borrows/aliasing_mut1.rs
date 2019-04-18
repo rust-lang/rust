@@ -1,6 +1,6 @@
 use std::mem;
 
-pub fn safe(_x: &mut i32, _y: &mut i32) {} //~ ERROR barrier
+pub fn safe(_x: &mut i32, _y: &mut i32) {} //~ ERROR protect
 
 fn main() {
     let mut x = 0;

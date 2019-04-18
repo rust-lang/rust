@@ -4,5 +4,5 @@ fn main() {
     let mut x = 42;
     let raw = &mut x as *mut i32 as usize as *mut i32;
     let _ptr = &mut x;
-    unsafe { *raw = 13; } //~ ERROR does not exist on the borrow stack
+    unsafe { *raw = 13; } //~ ERROR borrow stack
 }

@@ -15,7 +15,7 @@ fn main() {
     callee(xref1_sneaky);
     // ... though any use of it will invalidate our ref.
     let _val = *xref2;
-    //~^ ERROR: does not exist on the borrow stack
+    //~^ ERROR: borrow stack
 }
 
 fn callee(xref1: usize) {

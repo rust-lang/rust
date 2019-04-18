@@ -3,6 +3,6 @@ fn main() {
     // Make sure raw ptr with raw tag cannot mutate frozen location without breaking the shared ref.
     let r#ref = &target; // freeze
     let ptr = r#ref as *const _ as *mut _; // raw ptr, with raw tag
-    unsafe { *ptr = 42; } //~ ERROR does not exist on the borrow stack
+    unsafe { *ptr = 42; } //~ ERROR borrow stack
     let _val = *r#ref;
 }

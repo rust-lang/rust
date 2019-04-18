@@ -8,7 +8,7 @@ fn demo_mut_advanced_unique(mut our: Box<i32>) -> i32 {
   unknown_code_2();
 
   // We know this will return 5
-  *our //~ ERROR does not exist on the borrow stack
+  *our //~ ERROR borrow stack
 }
 
 // Now comes the evil context
