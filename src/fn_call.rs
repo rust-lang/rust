@@ -162,7 +162,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     align,
                     MiriMemoryKind::C.into(),
                 )?;
-                this.write_scalar(Scalar::Ptr(new_ptr.with_default_tag()), dest)?;
+                this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
             }
 
             "__rust_alloc" => {
