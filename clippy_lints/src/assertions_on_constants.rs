@@ -33,10 +33,15 @@ declare_lint_pass!(AssertionsOnConstants => [ASSERTIONS_ON_CONSTANTS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+        let mut is_debug_assert = false;
         if_chain! {
             if let Some(assert_span) = is_direct_expn_of(e.span, "assert");
             if !in_macro(assert_span)
-                || is_direct_expn_of(assert_span, "debug_assert").map_or(false, |span| !in_macro(span));
+                || is_direct_expn_of(assert_span, "debug_assert").map_or(false, |span| {
+                    is_debug_assert = true;
+                    // Check that `debug_assert!` itself is not inside a macro
+                    !in_macro(span)
+                });
             if let ExprKind::Unary(_, ref lit) = e.node;
             then {
                 if let ExprKind::Lit(ref inner) = lit.node {
@@ -46,7 +51,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                                 "assert!(true) will be optimized out by the compiler",
                                 "remove it");
                         },
-                        LitKind::Bool(false) => {
+                        LitKind::Bool(false) if !is_debug_assert => {
                             span_help_and_lint(
                                 cx, ASSERTIONS_ON_CONSTANTS, e.span,
                                 "assert!(false) should probably be replaced",
@@ -61,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssertionsOnConstants {
                                 "assert!(const: true) will be optimized out by the compiler",
                                 "remove it");
                         },
-                        Constant::Bool(false) => {
+                        Constant::Bool(false) if !is_debug_assert => {
                             span_help_and_lint(cx, ASSERTIONS_ON_CONSTANTS, e.span,
                                 "assert!(const: false) should probably be replaced",
                                 "use panic!() or unreachable!()");
