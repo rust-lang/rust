@@ -15,7 +15,6 @@ Open a pull request that closes the tracking issue. The tracking issue is listed
 
 - Update the `Config` enum marking the option as stable.
 - Update the the `Configuration.md` file marking the option as stable.
-- Update the unstable options wiki page: https://github.com/rust-lang/rustfmt/wiki/Stability-of-Config-Options .
 
 ## After the stabilisation
 
