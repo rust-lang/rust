@@ -1007,6 +1007,16 @@ impl<'tcx> FnSig<'tcx> {
     pub fn output(&self) -> Ty<'tcx> {
         self.inputs_and_output[self.inputs_and_output.len() - 1]
     }
+
+    // Create a minimal `FnSig` to be used when encountering a `TyKind::Error` in a fallible method
+    fn fake() -> FnSig<'tcx> {
+        FnSig {
+            inputs_and_output: List::empty(),
+            c_variadic: false,
+            unsafety: hir::Unsafety::Normal,
+            abi: abi::Abi::Rust,
+        }
+    }
 }
 
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
@@ -1955,6 +1965,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 tcx.fn_sig(def_id).subst(tcx, substs)
             }
             FnPtr(f) => f,
+            Error => {  // ignore errors (#54954)
+                ty::Binder::dummy(FnSig::fake())
+            }
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
