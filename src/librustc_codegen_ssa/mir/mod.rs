@@ -649,14 +649,15 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                     .iter()
                     .zip(upvar_tys)
                     .enumerate()
-                    .map(|(i, (upvar, ty))| (None, i, upvar.debug_name, upvar.by_ref, ty));
+                    .map(|(i, (upvar, ty))| {
+                        (None, i, upvar.debug_name, upvar.by_ref, ty, scope, DUMMY_SP)
+                    });
 
                 let generator_fields = mir.generator_layout.as_ref().map(|generator_layout| {
                     let (def_id, gen_substs) = match closure_layout.ty.sty {
                         ty::Generator(def_id, substs, _) => (def_id, substs),
                         _ => bug!("generator layout without generator substs"),
                     };
-                    // TODO handle variant scopes here
                     let state_tys = gen_substs.state_tys(def_id, tcx);
 
                     generator_layout.variant_fields.iter()
@@ -668,10 +669,17 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                                 .zip(tys)
                                 .enumerate()
                                 .filter_map(move |(i, (decl, ty))| {
-                                    let ty = fx.monomorphize(&ty);
-                                    decl.name.map(|name| {
-                                        (variant_idx, i, name, false, ty)
-                                })
+                                    if let Some(name) = decl.name {
+                                        let ty = fx.monomorphize(&ty);
+                                        let (var_scope, var_span) = fx.debug_loc(mir::SourceInfo {
+                                            span: decl.source_info.span,
+                                            scope: decl.visibility_scope,
+                                        });
+                                        let var_scope = var_scope.unwrap_or(scope);
+                                        Some((variant_idx, i, name, false, ty, var_scope, var_span))
+                                    } else {
+                                        None
+                                    }
                             })
                         })
                 }).into_iter().flatten();
@@ -679,7 +687,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 upvars.chain(generator_fields)
             };
 
-            for (variant_idx, field, name, by_ref, ty) in extra_locals {
+            for (variant_idx, field, name, by_ref, ty, var_scope, var_span) in extra_locals {
                 let fields = match variant_idx {
                     Some(variant_idx) => {
                         match &closure_layout.variants {
@@ -713,10 +721,10 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                     &fx.debug_context,
                     name,
                     ty,
-                    scope,
+                    var_scope,
                     variable_access,
                     VariableKind::LocalVariable,
-                    DUMMY_SP
+                    var_span
                 );
             }
         });
