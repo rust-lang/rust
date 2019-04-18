@@ -255,6 +255,13 @@ macro_rules! diagnostic_method {
 }
 
 impl Span {
+    /// A span that resolves at a unique site. Each call to this method will return a new unique
+    /// span that is inaccessible from other sites.
+    #[unstable(feature = "proc_macro_unique_site", issue = "54725")]
+    pub fn unique_site() -> Span {
+        Span(bridge::client::Span::unique_site())
+    }
+
     /// A span that resolves at the macro definition site.
     #[unstable(feature = "proc_macro_def_site", issue = "54724")]
     pub fn def_site() -> Span {

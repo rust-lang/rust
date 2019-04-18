@@ -2306,7 +2306,7 @@ impl<'a> Resolver<'a> {
             let mut result = None;
             // Find the last modern mark from the end if it exists.
             while let Some(&(mark, transparency)) = iter.peek() {
-                if transparency == Transparency::Opaque {
+                if transparency >= Transparency::Opaque {
                     result = Some(mark);
                     iter.next();
                 } else {

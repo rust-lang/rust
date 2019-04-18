@@ -8,12 +8,13 @@ use proc_macro::{Delimiter, Level, LineColumn, Spacing};
 use rustc_data_structures::sync::Lrc;
 use std::ascii;
 use std::ops::Bound;
+use std::sync::atomic;
 use syntax::ast;
 use syntax::ext::base::ExtCtxt;
 use syntax::parse::lexer::comments;
 use syntax::parse::{self, token, ParseSess};
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
-use syntax_pos::hygiene::{SyntaxContext, Transparency};
+use syntax_pos::hygiene::{Mark, SyntaxContext, Transparency};
 use syntax_pos::symbol::{keywords, Symbol};
 use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
 
@@ -363,6 +364,7 @@ pub(crate) struct Rustc<'a> {
     sess: &'a ParseSess,
     def_site: Span,
     call_site: Span,
+    mark: Mark,
 }
 
 impl<'a> Rustc<'a> {
@@ -379,6 +381,7 @@ impl<'a> Rustc<'a> {
             sess: cx.parse_sess,
             def_site: to_span(Transparency::Opaque),
             call_site: to_span(Transparency::Transparent),
+            mark: cx.current_expansion.mark,
         }
     }
 }
@@ -697,6 +700,13 @@ impl server::Diagnostic for Rustc<'_> {
 impl server::Span for Rustc<'_> {
     fn debug(&mut self, span: Self::Span) -> String {
         format!("{:?} bytes({}..{})", span.ctxt(), span.lo().0, span.hi().0)
+    }
+    fn unique_site(&mut self) -> Self::Span {
+        static UNIQUE: atomic::AtomicU64 = atomic::AtomicU64::new(0);
+        let transparency = Transparency::Unique(UNIQUE.fetch_add(1, atomic::Ordering::Relaxed));
+        self.mark.expn_info().unwrap().call_site.with_ctxt(
+            SyntaxContext::empty().apply_mark_with_transparency(self.mark, transparency),
+        )
     }
     fn def_site(&mut self) -> Self::Span {
         self.def_site

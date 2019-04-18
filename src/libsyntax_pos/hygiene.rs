@@ -60,6 +60,7 @@ pub enum Transparency {
     /// Identifier produced by an opaque expansion is always resolved at definition-site.
     /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
     Opaque,
+    Unique(u64),
 }
 
 impl Mark {
@@ -273,7 +274,7 @@ impl SyntaxContext {
     pub fn apply_mark_with_transparency(self, mark: Mark, transparency: Transparency)
                                         -> SyntaxContext {
         assert_ne!(mark, Mark::root());
-        if transparency == Transparency::Opaque {
+        if transparency >= Transparency::Opaque {
             return self.apply_mark_internal(mark, transparency);
         }
 
