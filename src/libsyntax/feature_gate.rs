@@ -2068,6 +2068,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if block.is_none() {
                     self.check_abi(sig.header.abi, ti.span);
                 }
+                if sig.header.asyncness.node.is_async() {
+                    gate_feature_post!(&self, async_await, ti.span, "async fn is unstable");
+                }
                 if sig.decl.c_variadic {
                     gate_feature_post!(&self, c_variadic, ti.span,
                                        "C-variadic functions are unstable");

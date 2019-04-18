@@ -1,3 +1,9 @@
+error[E0706]: trait fns cannot be declared `async`
+  --> $DIR/feature-gate-async-await.rs:12:5
+   |
+LL |     async fn foo();
+   |     ^^^^^^^^^^^^^^^
+
 error[E0658]: async fn is unstable
   --> $DIR/feature-gate-async-await.rs:8:5
    |
@@ -8,7 +14,16 @@ LL |     async fn foo() {}
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error[E0658]: async fn is unstable
-  --> $DIR/feature-gate-async-await.rs:11:1
+  --> $DIR/feature-gate-async-await.rs:12:5
+   |
+LL |     async fn foo();
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
+   = help: add #![feature(async_await)] to the crate attributes to enable
+
+error[E0658]: async fn is unstable
+  --> $DIR/feature-gate-async-await.rs:16:1
    |
 LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
@@ -17,7 +32,7 @@ LL | async fn foo() {}
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error[E0658]: async blocks are unstable
-  --> $DIR/feature-gate-async-await.rs:14:13
+  --> $DIR/feature-gate-async-await.rs:19:13
    |
 LL |     let _ = async {};
    |             ^^^^^^^^
@@ -26,7 +41,7 @@ LL |     let _ = async {};
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error[E0658]: async closures are unstable
-  --> $DIR/feature-gate-async-await.rs:15:13
+  --> $DIR/feature-gate-async-await.rs:20:13
    |
 LL |     let _ = async || {};
    |             ^^^^^^^^^^^
@@ -34,6 +49,7 @@ LL |     let _ = async || {};
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(async_await)] to the crate attributes to enable
 
-error: aborting due to 4 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0658`.
+Some errors occurred: E0658, E0706.
+For more information about an error, try `rustc --explain E0658`.
