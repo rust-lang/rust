@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ra_syntax::{SyntaxNode, TreeArc, SourceFile, ast};
+use ra_syntax::{SyntaxNode, TreeArc, SourceFile, SmolStr, ast};
 use ra_db::{SourceDatabase, salsa};
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     generics::{GenericParams, GenericDef},
     type_ref::TypeRef,
     traits::TraitData, Trait, ty::TraitRef,
-    lang_item::LangItems,
+    lang_item::{LangItems, LangItemTarget},
     ids
 };
 
@@ -104,6 +104,9 @@ pub trait DefDatabase: SourceDatabase {
 
     #[salsa::invoke(crate::lang_item::LangItems::lang_items_query)]
     fn lang_items(&self, krate: Crate) -> Arc<LangItems>;
+
+    #[salsa::invoke(crate::lang_item::LangItems::lang_item_query)]
+    fn lang_item(&self, start_crate: Crate, item: SmolStr) -> Option<LangItemTarget>;
 }
 
 #[salsa::query_group(HirDatabaseStorage)]

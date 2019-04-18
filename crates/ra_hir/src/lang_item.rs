@@ -40,7 +40,7 @@ impl LangItems {
         self.items.get(item)
     }
 
-    /// Salsa query. This will query a specific crate for lang items.
+    /// Salsa query. This will look for lang items in a specific crate.
     pub(crate) fn lang_items_query(db: &impl DefDatabase, krate: Crate) -> Arc<LangItems> {
         let mut lang_items = LangItems { items: FxHashMap::default() };
 
@@ -49,6 +49,29 @@ impl LangItems {
         }
 
         Arc::new(lang_items)
+    }
+
+    /// Salsa query. Look for a lang item, starting from the specified crate and recursively
+    /// traversing its dependencies.
+    pub(crate) fn lang_item_query(
+        db: &impl DefDatabase,
+        start_crate: Crate,
+        item: SmolStr,
+    ) -> Option<LangItemTarget> {
+        let lang_items = db.lang_items(start_crate);
+        let start_crate_target = lang_items.items.get(&item);
+        if let Some(target) = start_crate_target {
+            Some(*target)
+        } else {
+            for dep in start_crate.dependencies(db) {
+                let dep_crate = dep.krate;
+                let dep_target = db.lang_item(dep_crate, item.clone());
+                if dep_target.is_some() {
+                    return dep_target;
+                }
+            }
+            None
+        }
     }
 
     fn collect_lang_items_recursive(&mut self, db: &impl DefDatabase, module: &Module) {
@@ -75,28 +98,5 @@ impl LangItems {
         for child in module.children(db) {
             self.collect_lang_items_recursive(db, &child);
         }
-    }
-}
-
-/// Look for a lang item, starting from the specified crate and recursively traversing its
-/// dependencies.
-pub(crate) fn lang_item_lookup(
-    db: &impl DefDatabase,
-    start_krate: Crate,
-    item: &str,
-) -> Option<LangItemTarget> {
-    let lang_items = db.lang_items(start_krate);
-    let start_krate_target = lang_items.items.get(item);
-    if start_krate_target.is_some() {
-        start_krate_target.map(|t| *t)
-    } else {
-        for dep in start_krate.dependencies(db) {
-            let dep_krate = dep.krate;
-            let dep_target = lang_item_lookup(db, dep_krate, item);
-            if dep_target.is_some() {
-                return dep_target;
-            }
-        }
-        None
     }
 }

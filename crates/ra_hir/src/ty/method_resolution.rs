@@ -14,7 +14,6 @@ use crate::{
     resolve::Resolver,
     traits::TraitItem,
     generics::HasGenericParams,
-    lang_item::lang_item_lookup,
     ty::primitive::{UncertainIntTy, UncertainFloatTy}
 };
 use super::{TraitRef, Substs};
@@ -116,15 +115,15 @@ fn def_crate(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<Crate> 
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
             TypeCtor::Adt(def_id) => def_id.krate(db),
-            TypeCtor::Bool => lang_item_lookup(db, cur_crate, "bool")?.krate(db),
-            TypeCtor::Char => lang_item_lookup(db, cur_crate, "char")?.krate(db),
+            TypeCtor::Bool => db.lang_item(cur_crate, "bool".into())?.krate(db),
+            TypeCtor::Char => db.lang_item(cur_crate, "char".into())?.krate(db),
             TypeCtor::Float(UncertainFloatTy::Known(f)) => {
-                lang_item_lookup(db, cur_crate, f.ty_to_string())?.krate(db)
+                db.lang_item(cur_crate, f.ty_to_string().into())?.krate(db)
             }
             TypeCtor::Int(UncertainIntTy::Known(i)) => {
-                lang_item_lookup(db, cur_crate, i.ty_to_string())?.krate(db)
+                db.lang_item(cur_crate, i.ty_to_string().into())?.krate(db)
             }
-            TypeCtor::Str => lang_item_lookup(db, cur_crate, "str")?.krate(db),
+            TypeCtor::Str => db.lang_item(cur_crate, "str".into())?.krate(db),
             _ => None,
         },
         _ => None,
