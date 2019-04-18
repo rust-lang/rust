@@ -8,32 +8,18 @@ help: surround the struct literal with parenthesis
 LL |     if x == (E::I { field1: true, field2: 42 }) {}
    |             ^                                 ^
 
-error: expected identifier, found keyword `false`
-  --> $DIR/struct-literal-variant-in-if.rs:15:27
+error: struct literals are not allowed here
+  --> $DIR/struct-literal-variant-in-if.rs:15:13
    |
 LL |     if x == E::V { field: false } {}
-   |                           ^^^^^ expected identifier, found keyword
-help: you can escape reserved keywords to use them as identifiers
+   |             ^^^^^^^^^^^^^^^^^^^^^
+help: surround the struct literal with parenthesis
    |
-LL |     if x == E::V { field: r#false } {}
-   |                           ^^^^^^^
-
-error: expected type, found keyword `false`
-  --> $DIR/struct-literal-variant-in-if.rs:15:27
-   |
-LL |     if x == E::V { field: false } {}
-   |                           ^^^^^ expecting a type here because of type ascription
-   |
-   = note: type ascription is a nightly-only feature that lets you annotate an expression with a type: `<expr>: <type>`
-note: this expression expects an ascribed type after the colon
-  --> $DIR/struct-literal-variant-in-if.rs:15:20
-   |
-LL |     if x == E::V { field: false } {}
-   |                    ^^^^^
-   = help: this might be indicative of a syntax error elsewhere
+LL |     if x == (E::V { field: false }) {}
+   |             ^                     ^
 
 error: struct literals are not allowed here
-  --> $DIR/struct-literal-variant-in-if.rs:19:13
+  --> $DIR/struct-literal-variant-in-if.rs:17:13
    |
 LL |     if x == E::J { field: -42 } {}
    |             ^^^^^^^^^^^^^^^^^^^
@@ -43,7 +29,7 @@ LL |     if x == (E::J { field: -42 }) {}
    |             ^                   ^
 
 error: struct literals are not allowed here
-  --> $DIR/struct-literal-variant-in-if.rs:21:13
+  --> $DIR/struct-literal-variant-in-if.rs:19:13
    |
 LL |     if x == E::K { field: "" } {}
    |             ^^^^^^^^^^^^^^^^^^
@@ -60,14 +46,6 @@ LL |     if x == E::V { field } {}
    |             |
    |             help: surround the struct literal with parenthesis: `(E::V { field })`
 
-error[E0423]: expected value, found struct variant `E::V`
-  --> $DIR/struct-literal-variant-in-if.rs:15:13
-   |
-LL |     if x == E::V { field: false } {}
-   |             ^^^^-----------------
-   |             |
-   |             help: surround the struct literal with parenthesis: `(E::V { field: false })`
-
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:10:20
    |
@@ -81,7 +59,7 @@ LL |     if x == E::V { field } {}
               found type `bool`
 
 error[E0308]: mismatched types
-  --> $DIR/struct-literal-variant-in-if.rs:23:20
+  --> $DIR/struct-literal-variant-in-if.rs:21:20
    |
 LL |     let y: usize = ();
    |                    ^^ expected usize, found ()
@@ -89,7 +67,7 @@ LL |     let y: usize = ();
    = note: expected type `usize`
               found type `()`
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
-Some errors occurred: E0308, E0423.
+Some errors have detailed explanations: E0308, E0423.
 For more information about an error, try `rustc --explain E0308`.
