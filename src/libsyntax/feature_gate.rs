@@ -2048,7 +2048,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         if fn_decl.c_variadic {
-            gate_feature_post!(&self, c_variadic, span, "C-varaidic functions are unstable");
+            gate_feature_post!(&self, c_variadic, span, "C-variadic functions are unstable");
         }
 
         visit::walk_fn(self, fn_kind, fn_decl, span);
