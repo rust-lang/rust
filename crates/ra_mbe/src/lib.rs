@@ -44,7 +44,11 @@ pub use crate::syntax_bridge::{
     ast_to_token_tree,
     token_tree_to_ast_item_list,
     syntax_node_to_token_tree,
+    token_tree_to_expr,
+    token_tree_to_pat,
+    token_tree_to_ty,
     token_tree_to_macro_items,
+    token_tree_to_macro_stmts,
 };
 
 /// This struct contains AST for a single `macro_rules` definition. What might
@@ -448,6 +452,59 @@ MACRO_ITEMS@[0; 40)
 "#,
         );
         assert_expansion(&rules, "foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
+    }
+
+    #[test]
+    fn test_tt_to_stmts() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            () => {
+                 let a = 0;
+                 a = 10 + 1;
+                 a
+            }
+        }
+"#,
+        );
+
+        let expanded = expand(&rules, "foo!{}");
+        let stmts = token_tree_to_macro_stmts(&expanded);
+
+        assert_eq!(
+            stmts.syntax().debug_dump().trim(),
+            r#"MACRO_STMTS@[0; 15)
+  LET_STMT@[0; 7)
+    LET_KW@[0; 3) "let"
+    BIND_PAT@[3; 4)
+      NAME@[3; 4)
+        IDENT@[3; 4) "a"
+    EQ@[4; 5) "="
+    LITERAL@[5; 6)
+      INT_NUMBER@[5; 6) "0"
+    SEMI@[6; 7) ";"
+  EXPR_STMT@[7; 14)
+    BIN_EXPR@[7; 13)
+      PATH_EXPR@[7; 8)
+        PATH@[7; 8)
+          PATH_SEGMENT@[7; 8)
+            NAME_REF@[7; 8)
+              IDENT@[7; 8) "a"
+      EQ@[8; 9) "="
+      BIN_EXPR@[9; 13)
+        LITERAL@[9; 11)
+          INT_NUMBER@[9; 11) "10"
+        PLUS@[11; 12) "+"
+        LITERAL@[12; 13)
+          INT_NUMBER@[12; 13) "1"
+    SEMI@[13; 14) ";"
+  EXPR_STMT@[14; 15)
+    PATH_EXPR@[14; 15)
+      PATH@[14; 15)
+        PATH_SEGMENT@[14; 15)
+          NAME_REF@[14; 15)
+            IDENT@[14; 15) "a""#,
+        );
     }
 
     // The following tests are port from intellij-rust directly

@@ -55,6 +55,21 @@ pub(crate) fn macro_items(p: &mut Parser) {
     m.complete(p, MACRO_ITEMS);
 }
 
+pub(crate) fn macro_stmts(p: &mut Parser) {
+    let m = p.start();
+
+    while !p.at(EOF) {
+        if p.current() == SEMI {
+            p.bump();
+            continue;
+        }
+
+        expressions::stmt(p, expressions::StmtWithSemi::Optional);
+    }
+
+    m.complete(p, MACRO_STMTS);
+}
+
 pub(crate) fn path(p: &mut Parser) {
     paths::type_path(p);
 }
@@ -72,6 +87,11 @@ pub(crate) fn pattern(p: &mut Parser) {
 }
 
 pub(crate) fn stmt(p: &mut Parser, with_semi: bool) {
+    let with_semi = match with_semi {
+        true => expressions::StmtWithSemi::Yes,
+        false => expressions::StmtWithSemi::No,
+    };
+
     expressions::stmt(p, with_semi)
 }
 
