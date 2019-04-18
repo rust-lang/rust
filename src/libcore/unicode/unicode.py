@@ -460,7 +460,8 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     f.write("\n        ],\n")
 
     # 0x10000..0x110000 trie
-    (mid, r6) = compute_trie(chunks[0x10000 // chunk_size : 0x110000 // chunk_size], 64 // chunk_size)
+    (mid, r6) = compute_trie(chunks[0x10000 // chunk_size : 0x110000 // chunk_size],
+                             64 // chunk_size)
     (r4, r5) = compute_trie(mid, 64)
     f.write("        r4: [\n")
     data = ",".join(str(node) for node in r4)
@@ -626,7 +627,7 @@ def main():
                         "Cased", "Case_Ignorable", "Grapheme_Extend"]
         derived = load_properties(get_path(UnicodeFiles.DERIVED_CORE_PROPERTIES), want_derived)
 
-        # TODO scripts not used?
+        # FIXME scripts not used?
         scripts = load_properties(get_path(UnicodeFiles.SCRIPTS), [])
         props = load_properties(get_path(UnicodeFiles.PROPS),
                                 ["White_Space", "Join_Control", "Noncharacter_Code_Point",
