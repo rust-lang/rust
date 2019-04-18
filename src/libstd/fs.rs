@@ -901,8 +901,7 @@ impl OpenOptions {
     }
 
     fn _open(&self, path: &Path) -> io::Result<File> {
-        let inner = fs_imp::File::open(path, &self.0)?;
-        Ok(File { inner })
+        fs_imp::File::open(path, &self.0).map(|inner| File { inner })
     }
 }
 
