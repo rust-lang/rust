@@ -1138,7 +1138,7 @@ fn build_session_(
 ) -> Session {
     let self_profiler =
         if sopts.debugging_opts.self_profile {
-            let profiler = SelfProfiler::new();
+            let profiler = SelfProfiler::new(&sopts.debugging_opts.self_profile_events);
             match profiler {
                 Ok(profiler) => {
                     crate::ty::query::QueryName::register_with_profiler(&profiler);
