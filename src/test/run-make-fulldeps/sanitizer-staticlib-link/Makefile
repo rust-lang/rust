@@ -1,11 +1,11 @@
 -include ../tools.mk
 
 # This test builds a staticlib, then an executable that links to it.
-# The staticlib and executable both  are compiled with address sanitizer, 
+# The staticlib and executable both  are compiled with address sanitizer,
 # and we assert that a fault in the staticlib is correctly detected.
 
 ifeq ($(TARGET),x86_64-unknown-linux-gnu)
-ASAN_SUPPORT=$(SANITIZER_SUPPORT)
+ASAN_SUPPORT=$(RUSTC_SANITIZER_SUPPORT)
 EXTRA_RUSTFLAG=
 endif
 

@@ -8,7 +8,7 @@ LOG := $(TMPDIR)/log.txt
 # is correctly detected.
 
 ifeq ($(TARGET),x86_64-unknown-linux-gnu)
-ASAN_SUPPORT=$(SANITIZER_SUPPORT)
+ASAN_SUPPORT=$(RUSTC_SANITIZER_SUPPORT)
 
 # See comment in sanitizer-address/Makefile for why this is here
 EXTRA_RUSTFLAG=-C relocation-model=dynamic-no-pic
