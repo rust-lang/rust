@@ -1,7 +1,3 @@
-extern crate byteorder;
-#[cfg(test)]
-extern crate rand;
-
 use byteorder::{BigEndian, ByteOrder};
 
 fn main() {
