@@ -60,5 +60,11 @@ error: casting u32 to f64 may become silently lossy if types change
 LL |     x5 as f64;
    |     ^^^^^^^^^ help: try: `f64::from(x5)`
 
-error: aborting due to 10 previous errors
+error: casting f32 to f64 may become silently lossy if types change
+  --> $DIR/cast_lossless_float.rs:26:5
+   |
+LL |     1.0f32 as f64;
+   |     ^^^^^^^^^^^^^ help: try: `f64::from(1.0f32)`
+
+error: aborting due to 11 previous errors
 

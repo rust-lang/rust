@@ -21,6 +21,9 @@ fn main() {
     x4 as f64;
     let x5 = 1u32;
     x5 as f64;
+
+    // Test with casts from floating-point types
+    1.0f32 as f64;
 }
 
 // The lint would suggest using `f64::from(input)` here but the `XX::from` function is not const,

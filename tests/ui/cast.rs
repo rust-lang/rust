@@ -2,8 +2,7 @@
     clippy::cast_precision_loss,
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
-    clippy::cast_possible_wrap,
-    clippy::cast_lossless
+    clippy::cast_possible_wrap
 )]
 #[allow(clippy::no_effect, clippy::unnecessary_operation)]
 fn main() {
@@ -32,10 +31,6 @@ fn main() {
     1u32 as i32;
     1u64 as i64;
     1usize as isize;
-    // Test clippy::cast_lossless with casts from floating-point types
-    1.0f32 as f64;
-    // Test clippy::cast_lossless with an expression wrapped in parens
-    (1u8 + 1u8) as u16;
     // Test clippy::cast_sign_loss
     1i32 as u32;
     -1i32 as u32;
