@@ -204,7 +204,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
         invocation: &str,
     ) -> ra_syntax::TreeArc<ast::MacroItems> {
         let expanded = expand(rules, invocation);
-        token_tree_to_macro_items(&expanded)
+        token_tree_to_macro_items(&expanded).unwrap()
     }
 
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
@@ -218,7 +218,10 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let expansion = syntax_node_to_token_tree(expansion.syntax()).unwrap().0;
         let file = token_tree_to_macro_items(&expansion);
 
-        assert_eq!(tree.syntax().debug_dump().trim(), file.syntax().debug_dump().trim());
+        assert_eq!(
+            tree.unwrap().syntax().debug_dump().trim(),
+            file.unwrap().syntax().debug_dump().trim()
+        );
     }
 
     #[test]
@@ -358,7 +361,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let expansion = expand(&rules, "structs!(Foo, Bar)");
         let tree = token_tree_to_macro_items(&expansion);
         assert_eq!(
-            tree.syntax().debug_dump().trim(),
+            tree.unwrap().syntax().debug_dump().trim(),
             r#"
 MACRO_ITEMS@[0; 40)
   STRUCT_DEF@[0; 20)
@@ -472,7 +475,7 @@ MACRO_ITEMS@[0; 40)
         let stmts = token_tree_to_macro_stmts(&expanded);
 
         assert_eq!(
-            stmts.syntax().debug_dump().trim(),
+            stmts.unwrap().syntax().debug_dump().trim(),
             r#"MACRO_STMTS@[0; 15)
   LET_STMT@[0; 7)
     LET_KW@[0; 3) "let"
