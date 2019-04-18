@@ -598,6 +598,7 @@ pub enum CompilerDesugaringKind {
     /// `impl Trait` with `Foo`.
     ExistentialReturnType,
     Async,
+    Await,
     ForLoop,
 }
 
@@ -605,6 +606,7 @@ impl CompilerDesugaringKind {
     pub fn name(self) -> Symbol {
         Symbol::intern(match self {
             CompilerDesugaringKind::Async => "async",
+            CompilerDesugaringKind::Await => "await",
             CompilerDesugaringKind::QuestionMark => "?",
             CompilerDesugaringKind::TryBlock => "try block",
             CompilerDesugaringKind::ExistentialReturnType => "existential type",

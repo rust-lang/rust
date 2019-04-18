@@ -6,5 +6,5 @@ macro_rules! r#await {
 
 fn main() {
     await!()
-    //~^ ERROR `await` is a keyword
+    //~^ ERROR expected expression, found `)`
 }

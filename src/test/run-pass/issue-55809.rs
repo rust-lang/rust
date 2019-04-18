@@ -1,7 +1,7 @@
 // edition:2018
 // run-pass
 
-#![feature(async_await, await_macro)]
+#![feature(async_await)]
 
 trait Foo { }
 
@@ -14,15 +14,15 @@ async fn foo_async<T>(_v: T) -> u8 where T: Foo {
 }
 
 async fn bad<T>(v: T) -> u8 where T: Foo {
-    await!(foo_async(v))
+    foo_async(v).await
 }
 
 async fn async_main() {
     let mut v = ();
 
-    let _ = await!(bad(&mut v));
-    let _ = await!(foo_async(&mut v));
-    let _ = await!(bad(v));
+    let _ = bad(&mut v).await;
+    let _ = foo_async(&mut v).await;
+    let _ = bad(v).await;
 }
 
 fn main() {

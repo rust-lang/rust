@@ -2,14 +2,13 @@
 #![allow(non_camel_case_types)]
 
 mod outer_mod {
-    pub mod await { //~ ERROR `await` is a keyword
-        pub struct await; //~ ERROR `await` is a keyword
+    pub mod await { //~ ERROR expected identifier
+        pub struct await; //~ ERROR expected identifier
     }
 }
-use self::outer_mod::await::await; //~ ERROR `await` is a keyword
-    //~^ ERROR `await` is a keyword
+use self::outer_mod::await::await; //~ ERROR expected identifier
+    //~^ ERROR expected identifier, found reserved keyword `await`
 
 fn main() {
-    match await { await => () } //~ ERROR `await` is a keyword
-    //~^ ERROR `await` is a keyword
+    match await { await => () } //~ ERROR expected `!`, found `{`
 }

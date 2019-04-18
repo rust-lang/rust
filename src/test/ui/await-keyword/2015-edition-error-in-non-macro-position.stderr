@@ -1,0 +1,88 @@
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:6:13
+   |
+LL |     pub mod await {
+   |             ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+note: lint level defined here
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:3:9
+   |
+LL | #![deny(keyword_idents)]
+   |         ^^^^^^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:8:20
+   |
+LL |         pub struct await;
+   |                    ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:12:16
+   |
+LL | use outer_mod::await::await;
+   |                ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:12:23
+   |
+LL | use outer_mod::await::await;
+   |                       ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:17:14
+   |
+LL | struct Foo { await: () }
+   |              ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:21:15
+   |
+LL | impl Foo { fn await() {} }
+   |               ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:25:14
+   |
+LL | macro_rules! await {
+   |              ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:32:11
+   |
+LL |     match await { await => {} }
+   |           ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: `await` is a keyword in the 2018 edition
+  --> $DIR/2015-edition-error-in-non-macro-position.rs:32:19
+   |
+LL |     match await { await => {} }
+   |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
+   = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
+
+error: aborting due to 9 previous errors
+

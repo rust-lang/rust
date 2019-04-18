@@ -1065,6 +1065,7 @@ impl Expr {
             ExprKind::Block(..) => ExprPrecedence::Block,
             ExprKind::TryBlock(..) => ExprPrecedence::TryBlock,
             ExprKind::Async(..) => ExprPrecedence::Async,
+            ExprKind::Await(..) => ExprPrecedence::Await,
             ExprKind::Assign(..) => ExprPrecedence::Assign,
             ExprKind::AssignOp(..) => ExprPrecedence::AssignOp,
             ExprKind::Field(..) => ExprPrecedence::Field,
@@ -1186,6 +1187,9 @@ pub enum ExprKind {
     /// created during lowering cannot be made the parent of any other
     /// preexisting defs.
     Async(CaptureBy, NodeId, P<Block>),
+    /// An await expression (`my_future.await`).
+    Await(AwaitOrigin, P<Expr>),
+
     /// A try block (`try { ... }`).
     TryBlock(P<Block>),
 
@@ -1285,6 +1289,15 @@ pub enum CaptureBy {
 pub enum Movability {
     Static,
     Movable,
+}
+
+/// Whether an `await` comes from `await!` or `.await` syntax.
+/// FIXME: this should be removed when support for legacy `await!` is removed.
+/// https://github.com/rust-lang/rust/issues/60610
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+pub enum AwaitOrigin {
+    FieldLike,
+    MacroLike,
 }
 
 pub type Mac = Spanned<Mac_>;
