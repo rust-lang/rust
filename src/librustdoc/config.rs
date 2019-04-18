@@ -386,18 +386,6 @@ impl Options {
             }
         }
 
-        let mut id_map = html::markdown::IdMap::new();
-        id_map.populate(html::render::initial_ids());
-        let external_html = match ExternalHtml::load(
-                &matches.opt_strs("html-in-header"),
-                &matches.opt_strs("html-before-content"),
-                &matches.opt_strs("html-after-content"),
-                &matches.opt_strs("markdown-before-content"),
-                &matches.opt_strs("markdown-after-content"), &diag, &mut id_map) {
-            Some(eh) => eh,
-            None => return Err(3),
-        };
-
         let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
         let edition = match edition.parse() {
             Ok(e) => e,
@@ -405,6 +393,19 @@ impl Options {
                 diag.struct_err("could not parse edition").emit();
                 return Err(1);
             }
+        };
+
+        let mut id_map = html::markdown::IdMap::new();
+        id_map.populate(html::render::initial_ids());
+        let external_html = match ExternalHtml::load(
+                &matches.opt_strs("html-in-header"),
+                &matches.opt_strs("html-before-content"),
+                &matches.opt_strs("html-after-content"),
+                &matches.opt_strs("markdown-before-content"),
+                &matches.opt_strs("markdown-after-content"),
+                &diag, &mut id_map, edition) {
+            Some(eh) => eh,
+            None => return Err(3),
         };
 
         match matches.opt_str("r").as_ref().map(|s| &**s) {

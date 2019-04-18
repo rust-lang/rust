@@ -167,7 +167,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
             persist_doctests: Option<PathBuf>) {
     let (test, line_offset) = match panic::catch_unwind(|| {
-        make_test(test, Some(cratename), as_test_harness, opts)
+        make_test(test, Some(cratename), as_test_harness, opts, edition)
     }) {
         Ok((test, line_offset)) => (test, line_offset),
         Err(cause) if cause.is::<errors::FatalErrorMarker>() => {
@@ -356,7 +356,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
 pub fn make_test(s: &str,
                  cratename: Option<&str>,
                  dont_insert_main: bool,
-                 opts: &TestOptions)
+                 opts: &TestOptions,
+                 edition: Edition)
                  -> (String, usize) {
     let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
@@ -390,6 +391,8 @@ pub fn make_test(s: &str,
         use errors::emitter::EmitterWriter;
         use errors::Handler;
 
+        syntax::ext::hygiene::set_default_edition(edition);
+
         let filename = FileName::anon_source_code(s);
         let source = crates + &everything_else;
 
@@ -397,6 +400,7 @@ pub fn make_test(s: &str,
         // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
         let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = EmitterWriter::new(box io::sink(), None, false, false, false);
+        // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
         let handler = Handler::with_emitter(false, None, box emitter);
         let sess = ParseSess::with_span_handler(handler, cm);
 
