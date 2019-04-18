@@ -39,5 +39,5 @@ LL |     let 0 ..= <<A>::B>::C;
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0029, E0412.
+Some errors have detailed explanations: E0029, E0412.
 For more information about an error, try `rustc --explain E0029`.

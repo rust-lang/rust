@@ -83,5 +83,5 @@ LL |             b = &true;
 
 error: aborting due to 9 previous errors
 
-Some errors occurred: E0506, E0510.
+Some errors have detailed explanations: E0506, E0510.
 For more information about an error, try `rustc --explain E0506`.

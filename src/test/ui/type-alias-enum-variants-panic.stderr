@@ -18,5 +18,4 @@ LL |     let Alias::Variant(..) = panic!();
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0164, E0533.
-For more information about an error, try `rustc --explain E0164`.
+For more information about this error, try `rustc --explain E0164`.

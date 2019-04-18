@@ -43,5 +43,5 @@ LL |     let sr2: Vec<(u32, _, _)> = sr.iter().map(|(faction, th_sender, th_rece
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0070, E0308, E0423, E0599.
+Some errors have detailed explanations: E0070, E0308, E0423, E0599.
 For more information about an error, try `rustc --explain E0070`.

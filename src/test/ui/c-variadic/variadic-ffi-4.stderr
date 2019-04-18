@@ -194,5 +194,5 @@ LL |     ap0 = &mut ap1;
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0308, E0490, E0495, E0621.
+Some errors have detailed explanations: E0308, E0621.
 For more information about an error, try `rustc --explain E0308`.

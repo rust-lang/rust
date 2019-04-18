@@ -120,5 +120,4 @@ LL |         println!("{:?} {:?}", v.x, v.y);
 
 error: aborting due to 12 previous errors
 
-Some errors occurred: E0382, E0594.
-For more information about an error, try `rustc --explain E0382`.
+For more information about this error, try `rustc --explain E0382`.

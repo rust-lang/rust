@@ -108,5 +108,5 @@ LL |     self += 1;
 
 error: aborting due to 17 previous errors
 
-Some errors occurred: E0424, E0425.
+Some errors have detailed explanations: E0424, E0425.
 For more information about an error, try `rustc --explain E0424`.

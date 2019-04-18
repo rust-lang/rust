@@ -57,5 +57,3 @@ LL | fn nested<'x>(x: &'x isize) {
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0312, E0495.
-For more information about an error, try `rustc --explain E0312`.

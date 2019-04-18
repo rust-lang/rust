@@ -30,5 +30,4 @@ LL | #![feature = "foo"]
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0556, E0557.
-For more information about an error, try `rustc --explain E0556`.
+For more information about this error, try `rustc --explain E0557`.

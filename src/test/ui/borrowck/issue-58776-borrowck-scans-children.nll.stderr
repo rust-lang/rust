@@ -28,5 +28,5 @@ LL |     println!("thread result: {:?}", res);
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0505, E0506.
+Some errors have detailed explanations: E0505, E0506.
 For more information about an error, try `rustc --explain E0505`.

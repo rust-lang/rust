@@ -242,5 +242,4 @@ LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
 
 error: aborting due to 39 previous errors
 
-Some errors occurred: E0562, E0666.
-For more information about an error, try `rustc --explain E0562`.
+For more information about this error, try `rustc --explain E0562`.

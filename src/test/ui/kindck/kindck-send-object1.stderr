@@ -37,5 +37,4 @@ LL | fn assert_send<T:Send+'static>() { }
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0277, E0477.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

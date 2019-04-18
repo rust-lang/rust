@@ -20,5 +20,5 @@ LL |         for j in &a {
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0382, E0505.
+Some errors have detailed explanations: E0382, E0505.
 For more information about an error, try `rustc --explain E0382`.

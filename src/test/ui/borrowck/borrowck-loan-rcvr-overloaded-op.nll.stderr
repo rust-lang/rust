@@ -24,5 +24,5 @@ LL |     *q + 3; // OK to use the new alias `q`
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0502, E0503.
+Some errors have detailed explanations: E0502, E0503.
 For more information about an error, try `rustc --explain E0502`.

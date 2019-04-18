@@ -16,6 +16,7 @@ pub use emitter::ColorConfig;
 use Level::*;
 
 use emitter::{Emitter, EmitterWriter};
+use registry::Registry;
 
 use rustc_data_structures::sync::{self, Lrc, Lock, AtomicUsize, AtomicBool, SeqCst};
 use rustc_data_structures::fx::FxHashSet;
@@ -651,7 +652,7 @@ impl Handler {
         self.err_count() > 0
     }
 
-    pub fn print_error_count(&self) {
+    pub fn print_error_count(&self, registry: &Registry) {
         let s = match self.err_count() {
             0 => return,
             1 => "aborting due to previous error".to_string(),
@@ -666,19 +667,22 @@ impl Handler {
         let can_show_explain = self.emitter.borrow().should_show_explain();
         let are_there_diagnostics = !self.emitted_diagnostic_codes.borrow().is_empty();
         if can_show_explain && are_there_diagnostics {
-            let mut error_codes =
-                self.emitted_diagnostic_codes.borrow()
-                                             .iter()
-                                             .filter_map(|x| match *x {
-                                                 DiagnosticId::Error(ref s) => Some(s.clone()),
-                                                 _ => None,
-                                             })
-                                             .collect::<Vec<_>>();
+            let mut error_codes = self
+                .emitted_diagnostic_codes
+                .borrow()
+                .iter()
+                .filter_map(|x| match &x {
+                    DiagnosticId::Error(s) if registry.find_description(s).is_some() => {
+                        Some(s.clone())
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
             if !error_codes.is_empty() {
                 error_codes.sort();
                 if error_codes.len() > 1 {
                     let limit = if error_codes.len() > 9 { 9 } else { error_codes.len() };
-                    self.failure(&format!("Some errors occurred: {}{}",
+                    self.failure(&format!("Some errors have detailed explanations: {}{}",
                                           error_codes[..limit].join(", "),
                                           if error_codes.len() > 9 { "..." } else { "." }));
                     self.failure(&format!("For more information about an error, try \

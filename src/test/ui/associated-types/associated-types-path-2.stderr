@@ -48,5 +48,5 @@ LL |     let _: i32 = f2(2i32);
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0277, E0308.
+Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

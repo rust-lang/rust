@@ -15,5 +15,5 @@ LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0015, E0277.
+Some errors have detailed explanations: E0015, E0277.
 For more information about an error, try `rustc --explain E0015`.

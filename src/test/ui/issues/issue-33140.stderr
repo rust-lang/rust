@@ -31,5 +31,4 @@ LL | |     }
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0119, E0592.
-For more information about an error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0119`.

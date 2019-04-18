@@ -23,4 +23,3 @@ LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

@@ -596,5 +596,5 @@ LL | fn check<T: Impossible>(_: T) {}
 
 error: aborting due to 48 previous errors
 
-Some errors occurred: E0277, E0423.
+Some errors have detailed explanations: E0277, E0423.
 For more information about an error, try `rustc --explain E0277`.

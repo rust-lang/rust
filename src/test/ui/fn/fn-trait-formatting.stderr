@@ -40,5 +40,5 @@ LL | fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0277, E0308.
+Some errors have detailed explanations: E0277, E0308.
 For more information about an error, try `rustc --explain E0277`.

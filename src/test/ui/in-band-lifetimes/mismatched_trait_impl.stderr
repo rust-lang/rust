@@ -22,4 +22,3 @@ LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 {
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

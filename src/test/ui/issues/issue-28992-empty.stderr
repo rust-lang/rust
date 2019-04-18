@@ -12,5 +12,5 @@ LL |     if let S::C2(..) = 0 {}
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0164, E0532.
+Some errors have detailed explanations: E0164, E0532.
 For more information about an error, try `rustc --explain E0164`.

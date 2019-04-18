@@ -51,5 +51,4 @@ LL | #[optimize(banana)]
 
 error: aborting due to 6 previous errors
 
-Some errors occurred: E0658, E0722.
-For more information about an error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0658`.

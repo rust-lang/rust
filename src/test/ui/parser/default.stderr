@@ -21,5 +21,5 @@ LL | impl Foo for u32 {
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0046, E0449.
+Some errors have detailed explanations: E0046, E0449.
 For more information about an error, try `rustc --explain E0046`.
