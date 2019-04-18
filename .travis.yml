@@ -12,6 +12,12 @@ os:
 - osx
 dist: xenial
 
+env:
+  global:
+  - RUST_TEST_NOCAPTURE=1
+  - RUST_BACKTRACE=1
+  - RUSTFLAGS="-C debug-assertions"
+
 before_script:
 # Linux: install extra stuff for cross-compilation
 - if [[ "$TRAVIS_OS_NAME" == linux ]]; then sudo apt update && sudo apt install gcc-multilib; fi
@@ -48,7 +54,3 @@ notifications:
 branches:
   only:
   - master
-env:
-  global:
-  - RUST_TEST_NOCAPTURE=1
-  - RUST_BACKTRACE=1
