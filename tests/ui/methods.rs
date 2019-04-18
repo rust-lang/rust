@@ -148,7 +148,6 @@ impl Mul<T> for T {
 /// Checks implementation of the following lints:
 /// * `OPTION_MAP_UNWRAP_OR`
 /// * `OPTION_MAP_UNWRAP_OR_ELSE`
-/// * `OPTION_MAP_OR_NONE`
 #[rustfmt::skip]
 fn option_methods() {
     let opt = Some(1);
@@ -204,15 +203,6 @@ fn option_methods() {
     // Macro case.
     // Should not lint.
     let _ = opt_map!(opt, |x| x + 1).unwrap_or_else(|| 0);
-
-    // Check `OPTION_MAP_OR_NONE`.
-    // Single line case.
-    let _ = opt.map_or(None, |x| Some(x + 1));
-    // Multi-line case.
-    let _ = opt.map_or(None, |x| {
-                        Some(x + 1)
-                       }
-                );
 }
 
 /// Checks implementation of `FILTER_NEXT` lint.
