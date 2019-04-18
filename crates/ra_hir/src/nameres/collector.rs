@@ -524,7 +524,7 @@ where
         {
             let macro_call_id = MacroCallLoc { def: *macro_id, ast_id }.id(self.def_collector.db);
 
-            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_id);
+            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, *macro_id);
             return;
         }
 
@@ -616,6 +616,7 @@ mod tests {
                 modules,
                 public_macros: FxHashMap::default(),
                 poison_macros: FxHashSet::default(),
+                local_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };

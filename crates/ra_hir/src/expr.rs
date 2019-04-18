@@ -5,14 +5,14 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
-    SyntaxNodePtr, AstPtr, AstNode,
+    SyntaxNodePtr, AstPtr, AstNode,TreeArc,
     ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner}
 };
 
 use crate::{
     Path, Name, HirDatabase, Resolver,DefWithBody, Either,
     name::AsName,
-    ids::{MacroCallLoc,HirFileId},
+    ids::{MacroCallId},
     type_ref::{Mutability, TypeRef},
 };
 use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
@@ -488,23 +488,45 @@ pub(crate) struct ExprCollector<DB> {
     params: Vec<PatId>,
     body_expr: Option<ExprId>,
     resolver: Resolver,
+    // FIXEME: Its a quick hack,see issue #1196
+    is_in_macro: bool,
 }
 
 impl<'a, DB> ExprCollector<&'a DB>
 where
     DB: HirDatabase,
 {
+    fn new(owner: DefWithBody, resolver: Resolver, db: &'a DB) -> Self {
+        ExprCollector {
+            owner,
+            resolver,
+            db,
+            exprs: Arena::default(),
+            pats: Arena::default(),
+            source_map: BodySourceMap::default(),
+            params: Vec::new(),
+            body_expr: None,
+            is_in_macro: false,
+        }
+    }
     fn alloc_expr(&mut self, expr: Expr, syntax_ptr: SyntaxNodePtr) -> ExprId {
         let id = self.exprs.alloc(expr);
-        self.source_map.expr_map.insert(syntax_ptr, id);
-        self.source_map.expr_map_back.insert(id, syntax_ptr);
+        if !self.is_in_macro {
+            self.source_map.expr_map.insert(syntax_ptr, id);
+            self.source_map.expr_map_back.insert(id, syntax_ptr);
+        }
+
         id
     }
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.pats.alloc(pat);
-        self.source_map.pat_map.insert(ptr, id);
-        self.source_map.pat_map_back.insert(id, ptr);
+
+        if !self.is_in_macro {
+            self.source_map.pat_map.insert(ptr, id);
+            self.source_map.pat_map_back.insert(id, ptr);
+        }
+
         id
     }
 
@@ -790,40 +812,19 @@ where
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::MacroCall(e) => {
-                // very hacky.TODO change to use the macro resolution
-                let name = e
-                    .path()
-                    .and_then(Path::from_ast)
-                    .and_then(|path| path.expand_macro_expr())
-                    .unwrap_or_else(Name::missing);
+                // very hacky.FIXME change to use the macro resolution
+                let path = e.path().and_then(Path::from_ast);
 
-                if let Some(macro_id) = self.resolver.resolve_macro_call(&name) {
-                    if let Some((module, _)) = self.resolver.module() {
-                        // we do this to get the ast_id for the macro call
-                        // if we used the ast_id from the macro_id variable
-                        // it gives us the ast_id of the defenition site
-                        let module = module.mk_module(module.root());
-                        let hir_file_id = module.definition_source(self.db).0;
-                        let ast_id =
-                            self.db.ast_id_map(hir_file_id).ast_id(e).with_file_id(hir_file_id);
-
-                        let call_loc = MacroCallLoc { def: *macro_id, ast_id };
-                        let call_id = call_loc.id(self.db);
-                        let file_id: HirFileId = call_id.into();
-
-                        log::debug!(
-                            "expanded macro ast {}",
-                            self.db.hir_parse(file_id).syntax().debug_dump()
-                        );
-
-                        self.db
-                            .hir_parse(file_id)
-                            .syntax()
-                            .descendants()
-                            .find_map(ast::Expr::cast)
-                            .map(|expr| self.collect_expr(expr))
-                            .unwrap_or(self.alloc_expr(Expr::Missing, syntax_ptr))
+                if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, e) {
+                    if let Some(expr) = expand_macro_to_expr(self.db, call_id, e.token_tree()) {
+                        log::debug!("macro expansion {}", expr.syntax().debug_dump());
+                        let old = std::mem::replace(&mut self.is_in_macro, true);
+                        let id = self.collect_expr(&expr);
+                        self.is_in_macro = old;
+                        id
                     } else {
+                        // FIXME: Instead of just dropping the error from expansion
+                        // report it
                         self.alloc_expr(Expr::Missing, syntax_ptr)
                     }
                 } else {
@@ -987,20 +988,25 @@ where
     }
 }
 
+fn expand_macro_to_expr(
+    db: &impl HirDatabase,
+    macro_call: MacroCallId,
+    args: Option<&ast::TokenTree>,
+) -> Option<TreeArc<ast::Expr>> {
+    let rules = db.macro_def(macro_call.loc(db).def)?;
+
+    let args = mbe::ast_to_token_tree(args?)?.0;
+
+    let expanded = rules.expand(&args).ok()?;
+
+    mbe::token_tree_to_expr(&expanded).ok()
+}
+
 pub(crate) fn body_with_source_map_query(
     db: &impl HirDatabase,
     def: DefWithBody,
 ) -> (Arc<Body>, Arc<BodySourceMap>) {
-    let mut collector = ExprCollector {
-        db,
-        owner: def,
-        resolver: def.resolver(db),
-        exprs: Arena::default(),
-        pats: Arena::default(),
-        source_map: BodySourceMap::default(),
-        params: Vec::new(),
-        body_expr: None,
-    };
+    let mut collector = ExprCollector::new(def, def.resolver(db), db);
 
     match def {
         DefWithBody::Const(ref c) => collector.collect_const_body(&c.source(db).1),
