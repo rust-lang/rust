@@ -332,8 +332,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 op.node.as_str(),
                                 lhs_ty);
 
+                            let mut involves_fn = false;
                             if !lhs_expr.span.eq(&rhs_expr.span) {
-                                self.add_type_neq_err_label(
+                                involves_fn |= self.add_type_neq_err_label(
                                     &mut err,
                                     lhs_expr.span,
                                     lhs_ty,
@@ -341,7 +342,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     op,
                                     is_assign
                                 );
-                                self.add_type_neq_err_label(
+                                involves_fn |= self.add_type_neq_err_label(
                                     &mut err,
                                     rhs_expr.span,
                                     rhs_ty,
@@ -410,7 +411,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         "`{}` might need a bound for `{}`",
                                         lhs_ty, missing_trait
                                     ));
-                                } else if !suggested_deref {
+                                } else if !suggested_deref && !involves_fn {
                                     err.note(&format!(
                                         "an implementation of `{}` might \
                                          be missing for `{}`",
@@ -429,6 +430,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         (lhs_ty, rhs_ty, return_ty)
     }
 
+    /// If one of the types is an uncalled function and calling it would yield the other type,
+    /// suggest calling the function. Returns wether a suggestion was given.
     fn add_type_neq_err_label(
         &self,
         err: &mut errors::DiagnosticBuilder<'_>,
@@ -437,7 +440,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         other_ty: Ty<'tcx>,
         op: hir::BinOp,
         is_assign: IsAssign,
-    ) {
+    ) -> bool /* did we suggest to call a function because of missing parenthesis? */ {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.sty {
             let source_map = self.tcx.sess.source_map();
@@ -481,8 +484,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     variable_snippet,
                     applicability,
                 );
+                return true;
             }
         }
+        false
     }
 
     fn check_str_addition(
