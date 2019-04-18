@@ -28,14 +28,14 @@ from collections import namedtuple
 # we don't use enum.Enum because of Python 2.7 compatibility
 class UnicodeFiles(object):
     # ReadMe does not contain any unicode data, we
-    # use it to extract versions.
+    # only use it to extract versions.
     README = "ReadMe.txt"
 
     DERIVED_CORE_PROPERTIES = "DerivedCoreProperties.txt"
     DERIVED_NORMALIZATION_PROPS = "DerivedNormalizationProps.txt"
-    SPECIAL_CASING = "SpecialCasing.txt"
-    SCRIPTS = "Scripts.txt"
     PROPS = "PropList.txt"
+    SCRIPTS = "Scripts.txt"
+    SPECIAL_CASING = "SpecialCasing.txt"
     UNICODE_DATA = "UnicodeData.txt"
 
 
@@ -66,15 +66,15 @@ use unicode::bool_trie::{{BoolTrie, SmallBoolTrie}};
 # Mapping taken from Table 12 from:
 # http://www.unicode.org/reports/tr44/#General_Category_Values
 EXPANDED_CATEGORIES = {
-    'Lu': ['LC', 'L'], 'Ll': ['LC', 'L'], 'Lt': ['LC', 'L'],
-    'Lm': ['L'], 'Lo': ['L'],
-    'Mn': ['M'], 'Mc': ['M'], 'Me': ['M'],
-    'Nd': ['N'], 'Nl': ['N'], 'No': ['N'],
-    'Pc': ['P'], 'Pd': ['P'], 'Ps': ['P'], 'Pe': ['P'],
-    'Pi': ['P'], 'Pf': ['P'], 'Po': ['P'],
-    'Sm': ['S'], 'Sc': ['S'], 'Sk': ['S'], 'So': ['S'],
-    'Zs': ['Z'], 'Zl': ['Z'], 'Zp': ['Z'],
-    'Cc': ['C'], 'Cf': ['C'], 'Cs': ['C'], 'Co': ['C'], 'Cn': ['C'],
+    "Lu": ["LC", "L"], "Ll": ["LC", "L"], "Lt": ["LC", "L"],
+    "Lm": ["L"], "Lo": ["L"],
+    "Mn": ["M"], "Mc": ["M"], "Me": ["M"],
+    "Nd": ["N"], "Nl": ["N"], "No": ["N"],
+    "Pc": ["P"], "Pd": ["P"], "Ps": ["P"], "Pe": ["P"],
+    "Pi": ["P"], "Pf": ["P"], "Po": ["P"],
+    "Sm": ["S"], "Sc": ["S"], "Sk": ["S"], "So": ["S"],
+    "Zs": ["Z"], "Zl": ["Z"], "Zp": ["Z"],
+    "Cc": ["C"], "Cf": ["C"], "Cs": ["C"], "Co": ["C"], "Cn": ["C"],
 }
 
 # these are the surrogate codepoints, which are not valid rust characters
@@ -115,7 +115,7 @@ def fetch_files(version=None):
     readme_content = subprocess.check_output(("curl", readme_url))
 
     unicode_version = parse_unicode_version(
-        str(readme_content, "utf8")
+        readme_content.decode("utf8")
     )
 
     download_dir = os.path.join(FETCH_DIR, unicode_version.as_str)
@@ -415,7 +415,7 @@ def compute_trie(rawdata, chunksize):
     child_data = []
     for i in range(len(rawdata) // chunksize):
         data = rawdata[i * chunksize: (i + 1) * chunksize]
-        child = '|'.join(map(str, data))
+        child = "|".join(map(str, data))
         if child not in childmap:
             childmap[child] = len(childmap)
             child_data.extend(data)
@@ -444,18 +444,18 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
         pub_string = "pub "
     f.write("    %sconst %s: &super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name))
     f.write("        r1: [\n")
-    data = ','.join('0x%016x' % chunk for chunk in chunks[0:0x800 // chunk_size])
+    data = ",".join("0x%016x" % chunk for chunk in chunks[0:0x800 // chunk_size])
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     # 0x800..0x10000 trie
     (r2, r3) = compute_trie(chunks[0x800 // chunk_size : 0x10000 // chunk_size], 64 // chunk_size)
     f.write("        r2: [\n")
-    data = ','.join(str(node) for node in r2)
+    data = ",".join(str(node) for node in r2)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r3: &[\n")
-    data = ','.join('0x%016x' % chunk for chunk in r3)
+    data = ",".join("0x%016x" % chunk for chunk in r3)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
@@ -463,15 +463,15 @@ def emit_bool_trie(f, name, t_data, is_pub=True):
     (mid, r6) = compute_trie(chunks[0x10000 // chunk_size : 0x110000 // chunk_size], 64 // chunk_size)
     (r4, r5) = compute_trie(mid, 64)
     f.write("        r4: [\n")
-    data = ','.join(str(node) for node in r4)
+    data = ",".join(str(node) for node in r4)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r5: &[\n")
-    data = ','.join(str(node) for node in r5)
+    data = ",".join(str(node) for node in r5)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
     f.write("        r6: &[\n")
-    data = ','.join('0x%016x' % chunk for chunk in r6)
+    data = ",".join("0x%016x" % chunk for chunk in r6)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
@@ -497,12 +497,12 @@ def emit_small_bool_trie(f, name, t_data, is_pub=True):
     (r1, r2) = compute_trie(chunks, 1)
 
     f.write("        r1: &[\n")
-    data = ','.join(str(node) for node in r1)
+    data = ",".join(str(node) for node in r1)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
     f.write("        r2: &[\n")
-    data = ','.join('0x%016x' % node for node in r2)
+    data = ",".join("0x%016x" % node for node in r2)
     format_table_content(f, data, 12)
     f.write("\n        ],\n")
 
@@ -599,11 +599,9 @@ def main():
     print("Using Unicode version: {}".format(unicode_version.as_str))
 
     tables_rs_path = os.path.join(THIS_DIR, "tables.rs")
-    if os.path.exists(tables_rs_path):
-        os.remove(tables_rs_path)
 
+    # will overwrite the file if it exists
     with open(tables_rs_path, "w") as rf:
-        # write the file's preamble
         rf.write(PREAMBLE)
 
         unicode_version_notice = textwrap.dedent("""
