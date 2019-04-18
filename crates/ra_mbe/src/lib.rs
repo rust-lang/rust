@@ -554,6 +554,30 @@ SOURCE_FILE@[0; 40)
     }
 
     #[test]
+    fn test_last_expr() {
+        let rules = create_rules(
+            r#"
+        macro_rules! vec {
+            ($($item:expr),*) => {
+                {
+                    let mut v = Vec::new();
+                    $(
+                        v.push($item);
+                    )*
+                    v
+                }
+            };
+        }
+"#,
+        );
+        assert_expansion(
+            &rules,
+            "vec!(1,2,3)",
+            "{let mut v = Vec :: new () ; v . push (1) ; v . push (2) ; v . push (3) ; v}",
+        );
+    }
+
+    #[test]
     fn test_ty() {
         let rules = create_rules(
             r#"

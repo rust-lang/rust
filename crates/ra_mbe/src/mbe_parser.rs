@@ -91,7 +91,6 @@ fn parse_repeat(p: &mut TtCursor) -> Result<crate::Repeat, ParseError> {
         '?' => crate::RepeatKind::ZeroOrOne,
         _ => return Err(ParseError::Expected(String::from("repeat"))),
     };
-    p.bump();
     Ok(crate::Repeat { subtree, kind, separator })
 }
 
