@@ -480,6 +480,8 @@ fn check_type_length_limit<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let type_length_limit = *tcx.sess.type_length_limit.get();
     // We include the const length in the type length, as it's better
     // to be overly conservative.
+    // FIXME(const_generics): we should instead uniformly walk through `substs`,
+    // ignoring lifetimes.
     if type_length + const_length > type_length_limit {
         // The instance name is already known to be too long for rustc.
         // Show only the first and last 32 characters to avoid blasting
@@ -1135,8 +1137,7 @@ fn create_mono_items_for_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         continue;
                     }
 
-                    let counts = tcx.generics_of(method.def_id).own_counts();
-                    if counts.types + counts.consts != 0 {
+                    if tcx.generics_of(method.def_id).own_requires_monomorphization() {
                         continue;
                     }
 

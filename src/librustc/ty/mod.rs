@@ -934,18 +934,26 @@ impl<'a, 'gcx, 'tcx> Generics {
     }
 
     pub fn requires_monomorphization(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        for param in &self.params {
-            match param.kind {
-                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => return true,
-                GenericParamDefKind::Lifetime => {}
-            }
+        if self.own_requires_monomorphization() {
+            return true;
         }
+
         if let Some(parent_def_id) = self.parent {
             let parent = tcx.generics_of(parent_def_id);
             parent.requires_monomorphization(tcx)
         } else {
             false
         }
+    }
+
+    pub fn own_requires_monomorphization(&self) -> bool {
+        for param in &self.params {
+            match param.kind {
+                GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => return true,
+                GenericParamDefKind::Lifetime => {}
+            }
+        }
+        false
     }
 
     pub fn region_param(&'tcx self,
