@@ -75,7 +75,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                         } else {
                             &filter_args[0]
                         };
-                        let mut applicability = Applicability::MachineApplicable;
+                        let mut applicability = Applicability::MaybeIncorrect;
                         span_lint_and_sugg(
                             cx,
                             NAIVE_BYTECOUNT,
