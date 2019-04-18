@@ -175,27 +175,15 @@ impl<'a> FnLikeNode<'a> {
     }
 
     pub fn constness(self) -> ast::Constness {
-        match self.kind() {
-            FnKind::ItemFn(_, _, header, ..) => header.constness,
-            FnKind::Method(_, m, ..) => m.header.constness,
-            _ => ast::Constness::NotConst
-        }
+        self.kind().header().map_or(ast::Constness::NotConst, |header| header.constness)
     }
 
     pub fn asyncness(self) -> ast::IsAsync {
-        match self.kind() {
-            FnKind::ItemFn(_, _, header, ..) => header.asyncness,
-            FnKind::Method(_, m, ..) => m.header.asyncness,
-            _ => ast::IsAsync::NotAsync
-        }
+        self.kind().header().map_or(ast::IsAsync::NotAsync, |header| header.asyncness)
     }
 
     pub fn unsafety(self) -> ast::Unsafety {
-        match self.kind() {
-            FnKind::ItemFn(_, _, header, ..) => header.unsafety,
-            FnKind::Method(_, m, ..) => m.header.unsafety,
-            _ => ast::Unsafety::Normal
-        }
+        self.kind().header().map_or(ast::Unsafety::Normal, |header| header.unsafety)
     }
 
     pub fn kind(self) -> FnKind<'a> {
