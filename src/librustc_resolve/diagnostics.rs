@@ -328,7 +328,38 @@ impl<'a> Resolver<'a> {
             _ => false,
         };
 
-        let (followed_by_brace, closing_brace) = self.followed_by_brace(span);
+        let mut bad_struct_syntax_suggestion = || {
+            let (followed_by_brace, closing_brace) = self.followed_by_brace(span);
+            let mut suggested = false;
+            match source {
+                PathSource::Expr(Some(parent)) => {
+                    suggested = path_sep(err, &parent);
+                }
+                PathSource::Expr(None) if followed_by_brace == true => {
+                    if let Some((sp, snippet)) = closing_brace {
+                        err.span_suggestion(
+                            sp,
+                            "surround the struct literal with parenthesis",
+                            format!("({})", snippet),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.span_label(
+                            span,  // Note the parenthesis surrounding the suggestion below
+                            format!("did you mean `({} {{ /* fields */ }})`?", path_str),
+                        );
+                    }
+                    suggested = true;
+                },
+                _ => {}
+            }
+            if !suggested {
+                err.span_label(
+                    span,
+                    format!("did you mean `{} {{ /* fields */ }}`?", path_str),
+                );
+            }
+        };
 
         match (def, source) {
             (Def::Macro(..), _) => {
@@ -383,69 +414,13 @@ impl<'a> Resolver<'a> {
                         );
                     }
                 } else {
-                    match source {
-                        PathSource::Expr(Some(parent)) => if !path_sep(err, &parent) {
-                            err.span_label(
-                                span,
-                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
-                            );
-                        }
-                        PathSource::Expr(None) if followed_by_brace == true => {
-                            if let Some((sp, snippet)) = closing_brace {
-                                err.span_suggestion(
-                                    sp,
-                                    "surround the struct literal with parenthesis",
-                                    format!("({})", snippet),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                err.span_label(
-                                    span,
-                                    format!("did you mean `({} {{ /* fields */ }})`?", path_str),
-                                );
-                            }
-                        },
-                        _ => {
-                            err.span_label(
-                                span,
-                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
-                            );
-                        },
-                    }
+                    bad_struct_syntax_suggestion();
                 }
             }
             (Def::Union(..), _) |
             (Def::Variant(..), _) |
             (Def::Ctor(_, _, CtorKind::Fictive), _) if ns == ValueNS => {
-                    match source {
-                        PathSource::Expr(Some(parent)) => if !path_sep(err, &parent) {
-                            err.span_label(
-                                span,
-                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
-                            );
-                        }
-                        PathSource::Expr(None) if followed_by_brace == true => {
-                            if let Some((sp, snippet)) = closing_brace {
-                                err.span_suggestion(
-                                    sp,
-                                    "surround the struct literal with parenthesis",
-                                    format!("({})", snippet),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                err.span_label(
-                                    span,
-                                    format!("did you mean `({} {{ /* fields */ }})`?", path_str),
-                                );
-                            }
-                        },
-                        _ => {
-                            err.span_label(
-                                span,
-                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
-                            );
-                        },
-                    }
+                bad_struct_syntax_suggestion();
             }
             (Def::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);
