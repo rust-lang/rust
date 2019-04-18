@@ -1015,6 +1015,7 @@ All notable changes to this project will be documented in this file.
 [`panic_params`]: https://rust-lang.github.io/rust-clippy/master/index.html#panic_params
 [`panicking_unwrap`]: https://rust-lang.github.io/rust-clippy/master/index.html#panicking_unwrap
 [`partialeq_ne_impl`]: https://rust-lang.github.io/rust-clippy/master/index.html#partialeq_ne_impl
+[`path_buf_push_overwrite`]: https://rust-lang.github.io/rust-clippy/master/index.html#path_buf_push_overwrite
 [`possible_missing_comma`]: https://rust-lang.github.io/rust-clippy/master/index.html#possible_missing_comma
 [`precedence`]: https://rust-lang.github.io/rust-clippy/master/index.html#precedence
 [`print_literal`]: https://rust-lang.github.io/rust-clippy/master/index.html#print_literal

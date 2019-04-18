@@ -236,6 +236,7 @@ pub mod open_options;
 pub mod overflow_check_conditional;
 pub mod panic_unimplemented;
 pub mod partialeq_ne_impl;
+pub mod path_buf_push_overwrite;
 pub mod precedence;
 pub mod ptr;
 pub mod ptr_offset_with_cast;
@@ -572,6 +573,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box assertions_on_constants::AssertionsOnConstants);
     reg.register_late_lint_pass(box missing_const_for_fn::MissingConstForFn);
     reg.register_late_lint_pass(box transmuting_null::TransmutingNull);
+    reg.register_late_lint_pass(box path_buf_push_overwrite::PathBufPushOverwrite);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -805,6 +807,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         overflow_check_conditional::OVERFLOW_CHECK_CONDITIONAL,
         panic_unimplemented::PANIC_PARAMS,
         partialeq_ne_impl::PARTIALEQ_NE_IMPL,
+        path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE,
         precedence::PRECEDENCE,
         ptr::CMP_NULL,
         ptr::MUT_FROM_REF,
@@ -1072,6 +1075,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         non_copy_const::BORROW_INTERIOR_MUTABLE_CONST,
         non_copy_const::DECLARE_INTERIOR_MUTABLE_CONST,
         open_options::NONSENSICAL_OPEN_OPTIONS,
+        path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE,
         ptr::MUT_FROM_REF,
         ranges::ITERATOR_STEP_BY_ZERO,
         regex::INVALID_REGEX,
