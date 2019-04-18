@@ -2,10 +2,10 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use marker::Unpin;
-use ops;
-use pin::Pin;
-use task::{Context, Poll};
+use crate::marker::Unpin;
+use crate::ops;
+use crate::pin::Pin;
+use crate::task::{Context, Poll};
 
 /// A future represents an asynchronous computation.
 ///

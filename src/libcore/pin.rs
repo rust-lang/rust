@@ -263,10 +263,10 @@
 
 #![stable(feature = "pin", since = "1.33.0")]
 
-use fmt;
-use marker::{Sized, Unpin};
-use cmp::{self, PartialEq, PartialOrd};
-use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
+use crate::fmt;
+use crate::marker::{Sized, Unpin};
+use crate::cmp::{self, PartialEq, PartialOrd};
+use crate::ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 
 /// A pinned pointer.
 ///

@@ -152,7 +152,7 @@ mod function;
 mod generator;
 mod index;
 mod range;
-mod try;
+mod r#try;
 mod unsize;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -187,7 +187,7 @@ pub use self::range::{Range, RangeFrom, RangeFull, RangeTo};
 pub use self::range::{RangeInclusive, RangeToInclusive, RangeBounds, Bound};
 
 #[unstable(feature = "try_trait", issue = "42327")]
-pub use self::try::Try;
+pub use self::r#try::Try;
 
 #[unstable(feature = "generator_trait", issue = "43122")]
 pub use self::generator::{Generator, GeneratorState};

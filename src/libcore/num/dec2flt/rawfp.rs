@@ -17,15 +17,15 @@
 //! Many functions in this module only handle normal numbers. The dec2flt routines conservatively
 //! take the universally-correct slow path (Algorithm M) for very small and very large numbers.
 //! That algorithm needs only next_float() which does handle subnormals and zeros.
-use cmp::Ordering::{Less, Equal, Greater};
-use convert::{TryFrom, TryInto};
-use ops::{Add, Mul, Div, Neg};
-use fmt::{Debug, LowerExp};
-use num::diy_float::Fp;
-use num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
-use num::FpCategory;
-use num::dec2flt::num::{self, Big};
-use num::dec2flt::table;
+use crate::cmp::Ordering::{Less, Equal, Greater};
+use crate::convert::{TryFrom, TryInto};
+use crate::ops::{Add, Mul, Div, Neg};
+use crate::fmt::{Debug, LowerExp};
+use crate::num::diy_float::Fp;
+use crate::num::FpCategory::{Infinite, Zero, Subnormal, Normal, Nan};
+use crate::num::FpCategory;
+use crate::num::dec2flt::num::{self, Big};
+use crate::num::dec2flt::table;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Unpacked {

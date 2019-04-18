@@ -4,8 +4,8 @@
             reason = "newly available in libcore",
             issue = "44489")]
 
-use any::Any;
-use fmt;
+use crate::any::Any;
+use crate::fmt;
 
 /// A struct providing information about a panic.
 ///

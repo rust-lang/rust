@@ -1,6 +1,6 @@
-use cmp;
-use mem::{self, MaybeUninit};
-use ptr;
+use crate::cmp;
+use crate::mem::{self, MaybeUninit};
+use crate::ptr;
 
 /// Rotation is much faster if it has access to a little bit of memory. This
 /// union provides a RawVec-like interface, but to a fixed-size stack buffer.

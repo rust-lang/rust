@@ -2,9 +2,9 @@
 
 // FIXME This module's name is a bit unfortunate, since other modules also import `core::num`.
 
-use cmp::Ordering::{self, Less, Equal, Greater};
+use crate::cmp::Ordering::{self, Less, Equal, Greater};
 
-pub use num::bignum::Big32x40 as Big;
+pub use crate::num::bignum::Big32x40 as Big;
 
 /// Test whether truncating all bits less significant than `ones_place` introduces
 /// a relative error less, equal, or greater than 0.5 ULP.

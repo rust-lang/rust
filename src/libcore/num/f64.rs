@@ -7,8 +7,8 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use mem;
-use num::FpCategory;
+use crate::mem;
+use crate::num::FpCategory;
 
 /// The radix or base of the internal representation of `f64`.
 #[stable(feature = "rust1", since = "1.0.0")]

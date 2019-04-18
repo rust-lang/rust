@@ -26,8 +26,8 @@
                       and related macros",
             issue = "0")]
 
-use fmt;
-use panic::{Location, PanicInfo};
+use crate::fmt;
+use crate::panic::{Location, PanicInfo};
 
 #[cold]
 // never inline unless panic_immediate_abort to avoid code

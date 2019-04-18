@@ -6,7 +6,7 @@ mod tests {
     use core::ops::{Shl, Shr, Not, BitXor, BitAnd, BitOr};
     use core::mem;
 
-    use num;
+    use crate::num;
 
     #[test]
     fn test_overflows() {

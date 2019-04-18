@@ -1,6 +1,6 @@
-use fmt::{Formatter, Result, LowerExp, UpperExp, Display, Debug};
-use mem::MaybeUninit;
-use num::flt2dec;
+use crate::fmt::{Formatter, Result, LowerExp, UpperExp, Display, Debug};
+use crate::mem::MaybeUninit;
+use crate::num::flt2dec;
 
 // Don't inline this so callers don't use the stack space this function
 // requires unless they have to.

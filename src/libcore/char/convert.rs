@@ -1,9 +1,10 @@
 //! Character conversions.
 
-use convert::TryFrom;
-use fmt;
-use mem::transmute;
-use str::FromStr;
+use crate::convert::TryFrom;
+use crate::fmt;
+use crate::mem::transmute;
+use crate::str::FromStr;
+
 use super::MAX;
 
 /// Converts a `u32` to a `char`.

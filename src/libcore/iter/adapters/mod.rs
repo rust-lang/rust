@@ -1,8 +1,9 @@
-use cmp;
-use fmt;
-use ops::Try;
-use usize;
-use intrinsics;
+use crate::cmp;
+use crate::fmt;
+use crate::ops::Try;
+use crate::usize;
+use crate::intrinsics;
+
 use super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};
 use super::LoopState;
 

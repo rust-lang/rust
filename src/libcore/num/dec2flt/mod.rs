@@ -82,8 +82,8 @@
             reason = "internal routines only exposed for testing",
             issue = "0")]
 
-use fmt;
-use str::FromStr;
+use crate::fmt;
+use crate::str::FromStr;
 
 use self::parse::{parse_decimal, Decimal, Sign, ParseResult};
 use self::num::digits_to_big;

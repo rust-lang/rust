@@ -1,4 +1,4 @@
-use fmt;
+use crate::fmt;
 
 struct PadAdapter<'a> {
     buf: &'a mut (dyn fmt::Write + 'a),

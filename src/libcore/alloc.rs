@@ -2,12 +2,12 @@
 
 #![stable(feature = "alloc_module", since = "1.28.0")]
 
-use cmp;
-use fmt;
-use mem;
-use usize;
-use ptr::{self, NonNull};
-use num::NonZeroUsize;
+use crate::cmp;
+use crate::fmt;
+use crate::mem;
+use crate::usize;
+use crate::ptr::{self, NonNull};
+use crate::num::NonZeroUsize;
 
 /// Represents the combination of a starting address and
 /// a total capacity of the returned block.

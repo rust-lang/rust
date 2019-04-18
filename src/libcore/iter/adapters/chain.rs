@@ -1,5 +1,6 @@
-use ops::Try;
-use usize;
+use crate::ops::Try;
+use crate::usize;
+
 use super::super::{Iterator, DoubleEndedIterator, FusedIterator, TrustedLen};
 
 /// An iterator that strings two iterators together.

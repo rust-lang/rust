@@ -2,8 +2,8 @@
             reason = "futures in libcore are unstable",
             issue = "50547")]
 
-use fmt;
-use marker::{PhantomData, Unpin};
+use crate::fmt;
+use crate::marker::{PhantomData, Unpin};
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
 /// which provides customized wakeup behavior.

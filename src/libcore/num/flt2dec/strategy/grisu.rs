@@ -5,8 +5,8 @@
 //! [^1]: Florian Loitsch. 2010. Printing floating-point numbers quickly and
 //!   accurately with integers. SIGPLAN Not. 45, 6 (June 2010), 233-243.
 
-use num::diy_float::Fp;
-use num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
+use crate::num::diy_float::Fp;
+use crate::num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
 
 
 // see the comments in `format_shortest_opt` for the rationale.
@@ -418,7 +418,7 @@ pub fn format_shortest_opt(d: &Decoded,
 ///
 /// This should be used for most cases.
 pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp*/ i16) {
-    use num::flt2dec::strategy::dragon::format_shortest as fallback;
+    use crate::num::flt2dec::strategy::dragon::format_shortest as fallback;
     match format_shortest_opt(d, buf) {
         Some(ret) => ret,
         None => fallback(d, buf),
@@ -675,7 +675,7 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
 ///
 /// This should be used for most cases.
 pub fn format_exact(d: &Decoded, buf: &mut [u8], limit: i16) -> (/*#digits*/ usize, /*exp*/ i16) {
-    use num::flt2dec::strategy::dragon::format_exact as fallback;
+    use crate::num::flt2dec::strategy::dragon::format_exact as fallback;
     match format_exact_opt(d, buf, limit) {
         Some(ret) => ret,
         None => fallback(d, buf, limit),

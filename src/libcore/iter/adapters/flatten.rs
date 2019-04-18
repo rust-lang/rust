@@ -1,5 +1,6 @@
-use fmt;
-use ops::Try;
+use crate::fmt;
+use crate::ops::Try;
+
 use super::super::{Iterator, DoubleEndedIterator, FusedIterator};
 use super::Map;
 

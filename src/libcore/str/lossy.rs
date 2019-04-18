@@ -1,8 +1,7 @@
-use char;
-use str as core_str;
-use fmt;
-use fmt::Write;
-use mem;
+use crate::char;
+use crate::str as core_str;
+use crate::fmt::{self, Write};
+use crate::mem;
 
 /// Lossy UTF-8 string.
 #[unstable(feature = "str_internals", issue = "0")]

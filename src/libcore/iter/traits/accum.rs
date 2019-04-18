@@ -1,5 +1,5 @@
-use ops::{Mul, Add};
-use num::Wrapping;
+use crate::ops::{Mul, Add};
+use crate::num::Wrapping;
 
 /// Trait to represent types that can be created by summing up an iterator.
 ///

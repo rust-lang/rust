@@ -230,9 +230,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use fmt;
-use iter::{FromIterator, FusedIterator, TrustedLen};
-use ops::{self, Deref};
+use crate::fmt;
+use crate::iter::{FromIterator, FusedIterator, TrustedLen};
+use crate::ops::{self, Deref};
 
 /// `Result` is a type that represents either success ([`Ok`]) or failure ([`Err`]).
 ///

@@ -1,7 +1,7 @@
-use convert::TryFrom;
-use mem;
-use ops::{self, Add, Sub, Try};
-use usize;
+use crate::convert::TryFrom;
+use crate::mem;
+use crate::ops::{self, Add, Sub, Try};
+use crate::usize;
 
 use super::{FusedIterator, TrustedLen};
 
@@ -321,7 +321,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         }
 
         if let Some(plus_n) = self.start.add_usize(n) {
-            use cmp::Ordering::*;
+            use crate::cmp::Ordering::*;
 
             match plus_n.partial_cmp(&self.end) {
                 Some(Less) => {

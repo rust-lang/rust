@@ -306,7 +306,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use ops::Try;
+use crate::ops::Try;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::Iterator;

@@ -4,6 +4,7 @@ name = "core"
 version = "0.0.0"
 autotests = false
 autobenches = false
+edition = "2018"
 
 [lib]
 name = "core"

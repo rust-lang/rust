@@ -1,5 +1,5 @@
-use cmp::Ordering;
-use ops::Try;
+use crate::cmp::Ordering;
+use crate::ops::Try;
 
 use super::super::LoopState;
 use super::super::{Chain, Cycle, Copied, Cloned, Enumerate, Filter, FilterMap, Fuse};
