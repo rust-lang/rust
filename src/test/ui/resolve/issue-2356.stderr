@@ -20,7 +20,7 @@ error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:39:5
    |
 LL |     whiskers -= other;
-   |     ^^^^^^^^ a field by this name exists in `Self::whiskers`
+   |     ^^^^^^^^ a field by this name exists in `Self`
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:41:5
@@ -86,7 +86,7 @@ error[E0425]: cannot find value `whiskers` in this scope
   --> $DIR/issue-2356.rs:84:5
    |
 LL |     whiskers = 4;
-   |     ^^^^^^^^ a field by this name exists in `Self::whiskers`
+   |     ^^^^^^^^ a field by this name exists in `Self`
 
 error[E0425]: cannot find function `purr_louder` in this scope
   --> $DIR/issue-2356.rs:86:5

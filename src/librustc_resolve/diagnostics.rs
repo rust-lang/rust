@@ -176,7 +176,7 @@ impl<'a> Resolver<'a> {
                         } else {
                             err.span_label(
                                 span,
-                                format!("a field by this name exists in `Self::{}`", path_str),
+                                "a field by this name exists in `Self`",
                             );
                         }
                     }
