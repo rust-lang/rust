@@ -20,6 +20,7 @@ use crate::rustc_serialize::{self as serialize};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
+use std::iter::FusedIterator;
 use std::ops::{Index, IndexMut};
 use std::slice;
 use std::vec::IntoIter;
@@ -2058,7 +2059,100 @@ impl<'tcx> Place<'tcx> {
             Place::Base(PlaceBase::Static(..)) => None,
         }
     }
+
+    /// Recursively "iterates" over place components, generating a `PlaceBase` and
+    /// `PlaceProjections` list and invoking `op` with a `PlaceProjectionsIter`.
+    pub fn iterate<R>(
+        &self,
+        op: impl FnOnce(&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>) -> R,
+    ) -> R {
+        self.iterate2(&PlaceProjections::Empty, op)
+    }
+
+    fn iterate2<R>(
+        &self,
+        next: &PlaceProjections<'_, 'tcx>,
+        op: impl FnOnce(&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>) -> R,
+    ) -> R {
+        match self {
+            Place::Projection(interior) => interior.base.iterate2(
+                &PlaceProjections::List {
+                    projection: interior,
+                    next,
+                },
+                op,
+            ),
+
+            Place::Base(base) => op(base, next.iter()),
+        }
+    }
 }
+
+/// A linked list of projections running up the stack; begins with the
+/// innermost projection and extends to the outermost (e.g., `a.b.c`
+/// would have the place `b` with a "next" pointer to `b.c`).
+/// Created by `Place::iterate`.
+///
+/// N.B., this particular impl strategy is not the most obvious. It was
+/// chosen because it makes a measurable difference to NLL
+/// performance, as this code (`borrow_conflicts_with_place`) is somewhat hot.
+pub enum PlaceProjections<'p, 'tcx: 'p> {
+    Empty,
+
+    List {
+        projection: &'p PlaceProjection<'tcx>,
+        next: &'p PlaceProjections<'p, 'tcx>,
+    }
+}
+
+impl<'p, 'tcx> PlaceProjections<'p, 'tcx> {
+    fn iter(&self) -> PlaceProjectionsIter<'_, 'tcx> {
+        PlaceProjectionsIter { value: self }
+    }
+}
+
+impl<'p, 'tcx> IntoIterator for &'p PlaceProjections<'p, 'tcx> {
+    type Item = &'p PlaceProjection<'tcx>;
+    type IntoIter = PlaceProjectionsIter<'p, 'tcx>;
+
+    /// Converts a list of `PlaceProjection` components into an iterator;
+    /// this iterator yields up a never-ending stream of `Option<&Place>`.
+    /// These begin with the "innermost" projection and then with each
+    /// projection therefrom. So given a place like `a.b.c` it would
+    /// yield up:
+    ///
+    /// ```notrust
+    /// Some(`a`), Some(`a.b`), Some(`a.b.c`), None, None, ...
+    /// ```
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
+    }
+}
+
+/// Iterator over components; see `PlaceProjections::iter` for more
+/// information.
+///
+/// N.B., this is not a *true* Rust iterator -- the code above just
+/// manually invokes `next`. This is because we (sometimes) want to
+/// keep executing even after `None` has been returned.
+pub struct PlaceProjectionsIter<'p, 'tcx: 'p> {
+    pub value: &'p PlaceProjections<'p, 'tcx>,
+}
+
+impl<'p, 'tcx> Iterator for PlaceProjectionsIter<'p, 'tcx> {
+    type Item = &'p PlaceProjection<'tcx>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let &PlaceProjections::List { projection, next } = self.value {
+            self.value = next;
+            Some(projection)
+        } else {
+            None
+        }
+    }
+}
+
+impl<'p, 'tcx> FusedIterator for PlaceProjectionsIter<'p, 'tcx> {}
 
 impl<'tcx> Debug for Place<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
