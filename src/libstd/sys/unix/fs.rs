@@ -526,8 +526,15 @@ impl File {
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        cvt_r(|| unsafe { libc::fsync(self.0.raw()) })?;
-        Ok(())
+        cvt_r(|| unsafe { os_fsync(self.0.raw()) })?;
+        return Ok(());
+
+        #[cfg(any(target_os = "macos", target_os = "ios"))]
+        unsafe fn os_fsync(fd: c_int) -> c_int {
+            libc::fcntl(fd, libc::F_FULLFSYNC)
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+        unsafe fn os_fsync(fd: c_int) -> c_int { libc::fsync(fd) }
     }
 
     pub fn datasync(&self) -> io::Result<()> {
