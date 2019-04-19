@@ -1933,6 +1933,7 @@ mod tests {
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             buffered_lints: Lock::new(vec![]),
+            missing_ident_could_be_struct_literal: Lock::new(Default::default()),
         }
     }
 
