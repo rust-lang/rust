@@ -3222,11 +3222,30 @@ impl<'a> Resolver<'a> {
         let is_expected = &|def| source.is_expected(def);
 
         let report_errors = |this: &mut Self, def: Option<Def>| {
-            let (err, candidates) = this.smart_resolve_report_errors(path, span, source, def);
-            let def_id = this.current_module.normal_ancestor_id;
-            let node_id = this.definitions.as_local_node_id(def_id).unwrap();
-            let better = def.is_some();
-            this.use_injections.push(UseError { err, candidates, node_id, better });
+            let mut report = true;
+
+            if let &[segment] = path {
+                if this.session.parse_sess.missing_ident_could_be_struct_literal
+                    .borrow().contains(&segment.ident.span)
+                {
+                    for sp in this.session.possible_struct_literal.borrow().iter() {
+                        if sp.overlaps(segment.ident.span) {
+                            // Ignore errors caused by likely struct literals. An error has
+                            // already been emitted suggesting surrounding struct literal with
+                            // `()` in a case like `if x == E::V { field: field } {}`
+                            report = false;
+                            break;
+                        }
+                    }
+                }
+            }
+            if report {
+                let (err, candidates) = this.smart_resolve_report_errors(path, span, source, def);
+                let def_id = this.current_module.normal_ancestor_id;
+                let node_id = this.definitions.as_local_node_id(def_id).unwrap();
+                let better = def.is_some();
+                this.use_injections.push(UseError { err, candidates, node_id, better });
+            }
             err_path_resolution()
         };
 
