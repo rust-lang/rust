@@ -394,6 +394,13 @@ impl Iterator for ToLowercase {
     }
 }
 
+#[stable(feature = "double_ended_case_mapping_iter", since = "1.36.0")]
+impl DoubleEndedIterator for ToLowercase {
+    fn next_back(&mut self) -> Option<char> {
+        self.0.next_back()
+    }
+}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl FusedIterator for ToLowercase {}
 
@@ -419,6 +426,13 @@ impl Iterator for ToUppercase {
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.0.size_hint()
+    }
+}
+
+#[stable(feature = "double_ended_case_mapping_iter", since = "1.36.0")]
+impl DoubleEndedIterator for ToUppercase {
+    fn next_back(&mut self) -> Option<char> {
+        self.0.next_back()
     }
 }
 
@@ -478,6 +492,26 @@ impl Iterator for CaseMappingIter {
             CaseMappingIter::Zero => 0,
         };
         (size, Some(size))
+    }
+}
+
+impl DoubleEndedIterator for CaseMappingIter {
+    fn next_back(&mut self) -> Option<char> {
+        match *self {
+            CaseMappingIter::Three(a, b, c) => {
+                *self = CaseMappingIter::Two(a, b);
+                Some(c)
+            }
+            CaseMappingIter::Two(a, b) => {
+                *self = CaseMappingIter::One(a);
+                Some(b)
+            }
+            CaseMappingIter::One(a) => {
+                *self = CaseMappingIter::Zero;
+                Some(a)
+            }
+            CaseMappingIter::Zero => None,
+        }
     }
 }
 

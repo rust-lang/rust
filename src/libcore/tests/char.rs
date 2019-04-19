@@ -81,6 +81,7 @@ fn test_to_lowercase() {
         let iter: String = c.to_lowercase().collect();
         let disp: String = c.to_lowercase().to_string();
         assert_eq!(iter, disp);
+        assert!(iter.chars().rev().eq(c.to_lowercase().rev()));
         iter
     }
     assert_eq!(lower('A'), "a");
@@ -108,6 +109,7 @@ fn test_to_uppercase() {
         let iter: String = c.to_uppercase().collect();
         let disp: String = c.to_uppercase().to_string();
         assert_eq!(iter, disp);
+        assert!(iter.chars().rev().eq(c.to_uppercase().rev()));
         iter
     }
     assert_eq!(upper('a'), "A");
