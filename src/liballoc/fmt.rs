@@ -343,9 +343,10 @@
 //! * `^` - the argument is center-aligned in `width` columns
 //! * `>` - the argument is right-aligned in `width` columns
 //!
-//! Note that alignment may not be implemented by some types. A good way
-//! to ensure padding is applied is to format your input, then use this
-//! resulting string to pad your output.
+//! Note that alignment may not be implemented by some types. In particular, it
+//! is not generally implemented for the `Debug` trait.  A good way to ensure
+//! padding is applied is to format your input, then use this resulting string
+//! to pad your output.
 //!
 //! ## Sign/`#`/`0`
 //!
