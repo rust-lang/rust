@@ -592,8 +592,8 @@ fn write_mir_sig(
     match (descr, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
         (Some(Def::Const(_)), _) | (Some(Def::AssociatedConst(_)), _) => write!(w, "const ")?,
-        (Some(Def::Static(_, /*is_mutbl*/false)), _) => write!(w, "static ")?,
-        (Some(Def::Static(_, /*is_mutbl*/true)), _) => write!(w, "static mut ")?,
+        (Some(Def::Static(def_id)), _) =>
+            write!(w, "static {}", if tcx.is_mutable_static(def_id) { "mut " } else { "" })?,
         (_, _) if is_function => write!(w, "fn ")?,
         (None, _) => {}, // things like anon const, not an item
         _ => bug!("Unexpected def description {:?}", descr),
