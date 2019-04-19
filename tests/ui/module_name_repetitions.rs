@@ -1,3 +1,5 @@
+// compile-flags: --test
+
 #![warn(clippy::module_name_repetitions)]
 #![allow(dead_code)]
 
@@ -11,6 +13,14 @@ mod foo {
 
     // Should not warn
     pub struct Foobar;
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
 }
 
 fn main() {}
