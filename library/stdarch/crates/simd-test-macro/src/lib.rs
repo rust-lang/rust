@@ -55,7 +55,9 @@ pub fn simd_test(
         .parse()
         .unwrap_or_else(|_| panic!("failed to parse name: {}", name.to_string()));
 
-    let target = env::var("TARGET").expect("TARGET environment variable should be set for rustc");
+    let target = env::var("TARGET").expect(
+        "TARGET environment variable should be set for rustc (e.g. TARGET=x86_64-apple-darwin cargo test)"
+    );
     let mut force_test = false;
     let macro_test = match target
         .split('-')
