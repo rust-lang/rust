@@ -171,10 +171,14 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                                 input.eat_meta().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(meta.into()));
                         }
-                        "tt" => {
-                            let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(token.into()));
-                        }
+                        // FIXME:
+                        // Enable followiing code when everything is fixed
+                        // At least we can dogfood itself to not stackoverflow
+                        //
+                        // "tt" => {
+                        //     let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
+                        //     res.inner.insert(text.clone(), Binding::Simple(token.into()));
+                        // }
                         "item" => {
                             let item =
                                 input.eat_item().ok_or(ExpandError::UnexpectedToken)?.clone();
