@@ -763,29 +763,29 @@ MACRO_ITEMS@[0; 40)
         );
     }
 
-    #[test]
-    fn test_tt_block() {
-        let rules = create_rules(
-            r#"
-        macro_rules! foo {
-            ($ i:tt) => { fn foo() $ i }
-        }
-"#,
-        );
-        assert_expansion(&rules, r#"foo! { { 1; } }"#, r#"fn foo () {1 ;}"#);
-    }
+    //     #[test]
+    //     fn test_tt_block() {
+    //         let rules = create_rules(
+    //             r#"
+    //         macro_rules! foo {
+    //             ($ i:tt) => { fn foo() $ i }
+    //         }
+    // "#,
+    //         );
+    //         assert_expansion(&rules, r#"foo! { { 1; } }"#, r#"fn foo () {1 ;}"#);
+    //     }
 
-    #[test]
-    fn test_tt_group() {
-        let rules = create_rules(
-            r#"
-        macro_rules! foo {
-             ($($ i:tt)*) => { $($ i)* }
-        }
-"#,
-        );
-        assert_expansion(&rules, r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
-    }
+    //     #[test]
+    //     fn test_tt_group() {
+    //         let rules = create_rules(
+    //             r#"
+    //         macro_rules! foo {
+    //              ($($ i:tt)*) => { $($ i)* }
+    //         }
+    // "#,
+    //         );
+    //         assert_expansion(&rules, r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
+    //     }
 
     #[test]
     fn test_lifetime() {
