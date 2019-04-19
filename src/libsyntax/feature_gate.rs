@@ -402,6 +402,7 @@ declare_features! (
     (active, adx_target_feature, "1.32.0", Some(44839), None),
     (active, cmpxchg16b_target_feature, "1.32.0", Some(44839), None),
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
+    (active, rtm_target_feature, "1.35.0", Some(44839), None),
 
     // Allows macro invocations on modules expressions and statements and
     // procedural macros to expand to non-items.
