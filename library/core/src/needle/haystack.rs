@@ -1,5 +1,5 @@
-use fmt::Debug;
-use ops::{Deref, Range};
+use crate::fmt::Debug;
+use crate::ops::{Deref, Range};
 
 /// Borrowed `Haystack`.
 ///
@@ -271,7 +271,7 @@ where H::Target: Hay // FIXME: RFC 2089 or 2289
 {
     #[inline]
     default fn take(&mut self) -> Self {
-        ::mem::replace(self, Self::empty())
+        crate::mem::replace(self, Self::empty())
     }
 
     #[inline]

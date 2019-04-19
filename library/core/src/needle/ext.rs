@@ -5,9 +5,9 @@ use super::needle::{
     Needle, Searcher, ReverseSearcher, DoubleEndedSearcher,
     Consumer, ReverseConsumer, DoubleEndedConsumer,
 };
-use iter::FusedIterator;
-use ops::Range;
-use fmt;
+use crate::iter::FusedIterator;
+use crate::ops::Range;
+use crate::fmt;
 
 macro_rules! generate_clone_and_debug {
     ($name:ident, $field:tt) => {
@@ -31,7 +31,7 @@ macro_rules! generate_clone_and_debug {
             S: fmt::Debug,
             H::Target: Hay, // FIXME: RFC 2089 or 2289
         {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_tuple(stringify!($name))
                     .field(&self.$field)
                     .finish()
