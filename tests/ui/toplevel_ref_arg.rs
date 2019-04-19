@@ -22,4 +22,8 @@ fn main() {
 
     let (ref x, _) = (1, 2); // ok, not top level
     println!("The answer is {}.", x);
+
+    // Make sure that allowing the lint works
+    #[allow(clippy::toplevel_ref_arg)]
+    let ref mut x = 1_234_543;
 }

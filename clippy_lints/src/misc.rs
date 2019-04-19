@@ -13,8 +13,8 @@ use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
     get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal, iter_input_pats,
-    last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then, walk_ptrs_ty,
-    SpanlessEq,
+    last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then,
+    span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -282,19 +282,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
             if let Some(ref init) = l.init;
             then {
                 if an == BindingAnnotation::Ref || an == BindingAnnotation::RefMut {
-                    let init = Sugg::hir(cx, init, "..");
+                    let sugg_init = Sugg::hir(cx, init, "..");
                     let (mutopt,initref) = if an == BindingAnnotation::RefMut {
-                        ("mut ", init.mut_addr())
+                        ("mut ", sugg_init.mut_addr())
                     } else {
-                        ("", init.addr())
+                        ("", sugg_init.addr())
                     };
                     let tyopt = if let Some(ref ty) = l.ty {
                         format!(": &{mutopt}{ty}", mutopt=mutopt, ty=snippet(cx, ty.span, "_"))
                     } else {
                         String::new()
                     };
-                    span_lint_and_then(cx,
+                    span_lint_hir_and_then(cx,
                         TOPLEVEL_REF_ARG,
+                        init.hir_id,
                         l.pat.span,
                         "`ref` on an entire `let` pattern is discouraged, take a reference with `&` instead",
                         |db| {
