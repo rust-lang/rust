@@ -169,6 +169,9 @@ pub struct Session {
     /// Mapping from ident span to path span for paths that don't exist as written, but that
     /// exist under `std`. For example, wrote `str::from_utf8` instead of `std::str::from_utf8`.
     pub confused_type_with_std_module: Lock<FxHashMap<Span, Span>>,
+
+    /// This is a possible struct literal block.
+    pub possible_struct_literal: Lock<FxHashSet<Span>>,
 }
 
 pub struct PerfStats {
@@ -1253,6 +1256,7 @@ fn build_session_(
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),
+        possible_struct_literal: Lock::new(Default::default()),
     };
 
     validate_commandline_args_with_session_available(&sess);

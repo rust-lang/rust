@@ -1110,6 +1110,21 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder<'_>)>,
                         label_expression_as_expected: bool)
     {
+        if let Some(expr) = &expression {
+            if fcx.tcx.sess.parse_sess.missing_ident_could_be_struct_literal
+                .borrow().contains(&expr.span)
+            {
+                for sp in fcx.tcx.sess.possible_struct_literal.borrow().iter() {
+                    if sp.overlaps(expr.span) {
+                        // Ignore type errors caused by likely struct literals. An error has
+                        // already been emitted suggesting surrounding struct literal with `()` in
+                        // a case like `if x == E::V { field } {}`
+                        return;
+                    }
+                }
+            }
+        }
+
         // Incorporate whatever type inference information we have
         // until now; in principle we might also want to process
         // pending obligations, but doing so should only improve

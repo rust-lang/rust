@@ -2921,6 +2921,19 @@ impl<'a> Parser<'a> {
                 self.look_ahead(3, |t| !t.can_begin_type())
             )
         );
+        // could be a block but we won't know until type-checking
+        if self.look_ahead(1, |t| t.is_ident()) && (
+            // foo { bar }
+            self.look_ahead(2, |t| t == &token::CloseDelim(token::Brace)) ||
+            // foo { bar: baz }
+            self.look_ahead(2, |t| t == &token::Colon)
+        ) {
+            self.look_ahead(1, |t| {
+                if let token::Ident(ident, _) = t {
+                    self.sess.missing_ident_could_be_struct_literal.borrow_mut().insert(ident.span);
+                }
+            });
+        }
 
         if struct_allowed || certainly_not_a_block() {
             // This is a struct literal, but we don't can't accept them here

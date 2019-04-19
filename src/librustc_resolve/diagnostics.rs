@@ -343,6 +343,7 @@ impl<'a> Resolver<'a> {
                             format!("({})", snippet),
                             Applicability::MaybeIncorrect,
                         );
+                        self.session.possible_struct_literal.borrow_mut().insert(sp);
                     } else {
                         err.span_label(
                             span,  // Note the parenthesis surrounding the suggestion below

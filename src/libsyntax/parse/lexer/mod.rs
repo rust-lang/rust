@@ -1241,7 +1241,8 @@ impl<'a> StringReader<'a> {
 
                 return Ok(self.with_str_from(start, |string| {
                     // FIXME: perform NFKC normalization here. (Issue #2253)
-                    let ident = self.mk_ident(string);
+                    let mut ident = self.mk_ident(string);
+                    ident.span = self.mk_sp(start, self.pos);
 
                     if is_raw_ident {
                         let span = self.mk_sp(raw_start, self.pos);

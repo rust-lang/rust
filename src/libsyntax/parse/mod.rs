@@ -47,6 +47,9 @@ pub struct ParseSess {
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
+    /// This ident comes from an abiguous parse that could belong to a struct literal in an invalid
+    /// context. We use it during type-checking to silence those errors.
+    pub missing_ident_could_be_struct_literal: Lock<FxHashSet<Span>>,
 }
 
 impl ParseSess {
@@ -70,6 +73,7 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
+            missing_ident_could_be_struct_literal: Lock::new(Default::default()),
         }
     }
 
