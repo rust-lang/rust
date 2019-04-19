@@ -292,7 +292,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         return;
                     } else {
                         span = item_name.span;
-                        struct_span_err!(
+                        let mut err = struct_span_err!(
                             tcx.sess,
                             span,
                             E0599,
@@ -300,7 +300,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             item_kind,
                             item_name,
                             ty_str
-                        )
+                        );
+                        if let Some(span) = tcx.sess.confused_type_with_std_module.borrow()
+                            .get(&span)
+                        {
+                            if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(*span) {
+                                err.span_suggestion(
+                                    *span,
+                                    "you are looking for the module in `std`, \
+                                     not the primitive type",
+                                    format!("std::{}", snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        }
+                        err
                     }
                 } else {
                     tcx.sess.diagnostic().struct_dummy()

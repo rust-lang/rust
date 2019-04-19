@@ -3273,6 +3273,25 @@ impl<'a> Resolver<'a> {
                     let traits = self.get_traits_containing_item(item_name, ns);
                     self.trait_map.insert(id, traits);
                 }
+
+                let mut std_path = vec![Segment::from_ident(Ident::from_str("std"))];
+                std_path.extend(path);
+                if self.primitive_type_table.primitive_types.contains_key(&path[0].ident.name) {
+                    let cl = CrateLint::No;
+                    let ns = Some(ns);
+                    if let PathResult::Module(_) | PathResult::NonModule(_) =
+                        self.resolve_path_without_parent_scope(&std_path, ns, false, span, cl)
+                    {
+                        // check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
+                        let item_span = path.iter().last().map(|segment| segment.ident.span)
+                            .unwrap_or(span);
+                        debug!("accessed item from `std` submodule as a bare type {:?}", std_path);
+                        let mut hm = self.session.confused_type_with_std_module.borrow_mut();
+                        hm.insert(item_span, span);
+                        // In some places (E0223) we only have access to the full path
+                        hm.insert(span, span);
+                    }
+                }
                 resolution
             }
             _ => report_errors(self, None)
@@ -3387,16 +3406,17 @@ impl<'a> Resolver<'a> {
     }
 
     // Resolve in alternative namespaces if resolution in the primary namespace fails.
-    fn resolve_qpath_anywhere(&mut self,
-                              id: NodeId,
-                              qself: Option<&QSelf>,
-                              path: &[Segment],
-                              primary_ns: Namespace,
-                              span: Span,
-                              defer_to_typeck: bool,
-                              global_by_default: bool,
-                              crate_lint: CrateLint)
-                              -> Option<PathResolution> {
+    fn resolve_qpath_anywhere(
+        &mut self,
+        id: NodeId,
+        qself: Option<&QSelf>,
+        path: &[Segment],
+        primary_ns: Namespace,
+        span: Span,
+        defer_to_typeck: bool,
+        global_by_default: bool,
+        crate_lint: CrateLint,
+    ) -> Option<PathResolution> {
         let mut fin_res = None;
         // FIXME: can't resolve paths in macro namespace yet, macros are
         // processed by the little special hack below.
@@ -3426,15 +3446,16 @@ impl<'a> Resolver<'a> {
     }
 
     /// Handles paths that may refer to associated items.
-    fn resolve_qpath(&mut self,
-                     id: NodeId,
-                     qself: Option<&QSelf>,
-                     path: &[Segment],
-                     ns: Namespace,
-                     span: Span,
-                     global_by_default: bool,
-                     crate_lint: CrateLint)
-                     -> Option<PathResolution> {
+    fn resolve_qpath(
+        &mut self,
+        id: NodeId,
+        qself: Option<&QSelf>,
+        path: &[Segment],
+        ns: Namespace,
+        span: Span,
+        global_by_default: bool,
+        crate_lint: CrateLint,
+    ) -> Option<PathResolution> {
         debug!(
             "resolve_qpath(id={:?}, qself={:?}, path={:?}, \
              ns={:?}, span={:?}, global_by_default={:?})",
