@@ -99,6 +99,33 @@ pub(crate) fn block(p: &mut Parser) {
     expressions::block(p);
 }
 
+// Parse a meta item , which excluded [], e.g : #[ MetaItem ]
+pub(crate) fn meta_item(p: &mut Parser) {
+    fn is_delimiter(p: &mut Parser) -> bool {
+        match p.current() {
+            L_CURLY | L_PAREN | L_BRACK => true,
+            _ => false,
+        }
+    }
+
+    if is_delimiter(p) {
+        items::token_tree(p);
+        return;
+    }
+
+    let m = p.start();
+    while !p.at(EOF) {
+        if is_delimiter(p) {
+            items::token_tree(p);
+            break;
+        } else {
+            p.bump();
+        }
+    }
+
+    m.complete(p, TOKEN_TREE);
+}
+
 pub(crate) fn item(p: &mut Parser) {
     items::item_or_macro(p, true, items::ItemFlavor::Mod)
 }

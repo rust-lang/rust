@@ -166,6 +166,11 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                                 input.eat_block().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(block.into()));
                         }
+                        "meta" => {
+                            let meta =
+                                input.eat_meta().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(meta.into()));
+                        }
                         "item" => {
                             let item =
                                 input.eat_item().ok_or(ExpandError::UnexpectedToken)?.clone();

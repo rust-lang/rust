@@ -743,4 +743,23 @@ MACRO_ITEMS@[0; 40)
         );
         assert_expansion(&rules, "foo! { { 1; } }", "fn foo () {1 ;}");
     }
+
+    #[test]
+    fn test_meta() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:meta) => (
+                #[$ i]
+                fn bar() {}
+            )
+        }
+"#,
+        );
+        assert_expansion(
+            &rules,
+            r#"foo! { cfg(target_os = "windows") }"#,
+            r#"# [cfg (target_os = "windows")] fn bar () {}"#,
+        );
+    }
 }

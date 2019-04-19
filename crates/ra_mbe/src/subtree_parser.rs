@@ -50,6 +50,10 @@ impl<'a> Parser<'a> {
         self.parse(ra_parser::parse_block)
     }
 
+    pub fn parse_meta(self) -> Option<tt::TokenTree> {
+        self.parse(ra_parser::parse_meta)
+    }
+
     pub fn parse_item(self) -> Option<tt::TokenTree> {
         self.parse(ra_parser::parse_item)
     }
