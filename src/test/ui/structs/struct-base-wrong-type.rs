@@ -18,10 +18,7 @@ static foo_i: Foo = Foo { a: 2, ..4 }; //~  ERROR mismatched types
 
 fn main() {
     let b = Bar { x: 5 };
-    // errors below are no longer caught since error above causes
-    // compilation to abort before we bother checking function bodies.
-    // See also struct-base-wrong-type-2.rs, which checks that we
-    // would catch these errors eventually.
-    let f = Foo { a: 2, ..b };
-    let f__isize = Foo { a: 2, ..4 };
+    // See also struct-base-wrong-type-2.rs, which checks these errors on isolation.
+    let f = Foo { a: 2, ..b };        //~ ERROR mismatched types
+    let f__isize = Foo { a: 2, ..4 }; //~ ERROR mismatched types
 }

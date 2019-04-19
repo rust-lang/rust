@@ -9,6 +9,16 @@ LL | | }
    = help: the trait `std::process::Termination` is not implemented for `std::result::Result<f32, std::num::ParseIntError>`
    = note: required by `test::assert_test_result`
 
-error: aborting due to previous error
+error[E0271]: type mismatch resolving `<f32 as std::str::FromStr>::Err == std::num::ParseIntError`
+  --> $DIR/termination-trait-test-wrong-type.rs:7:9
+   |
+LL |     "0".parse()
+   |         ^^^^^ expected struct `std::num::ParseFloatError`, found struct `std::num::ParseIntError`
+   |
+   = note: expected type `std::num::ParseFloatError`
+              found type `std::num::ParseIntError`
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0271, E0277.
+For more information about an error, try `rustc --explain E0271`.

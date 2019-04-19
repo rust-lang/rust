@@ -357,12 +357,10 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     time(tcx.sess, "wf checking", || check::check_wf_new(tcx))?;
 
     time(tcx.sess, "item-types checking", || {
-        tcx.sess.track_errors(|| {
-            for &module in tcx.hir().krate().modules.keys() {
-                tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
-            }
-        })
-    })?;
+        for &module in tcx.hir().krate().modules.keys() {
+            tcx.ensure().check_mod_item_types(tcx.hir().local_def_id(module));
+        }
+    });
 
     time(tcx.sess, "item-bodies checking", || tcx.typeck_item_bodies(LOCAL_CRATE));
 

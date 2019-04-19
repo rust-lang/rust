@@ -7,6 +7,15 @@ LL |     fn get<'p, T : Test<'p>>(&self) -> T;
 LL |     fn get<'p, T : Test<'a>>(&self) -> T {
    |           ^^^^^^^^^^^^^^^^^^ lifetimes do not match method in trait
 
-error: aborting due to previous error
+error[E0605]: non-primitive cast: `Foo<'a>` as `T`
+  --> $DIR/issue-16048.rs:24:16
+   |
+LL |         return *self as T;
+   |                ^^^^^^^^^^
+   |
+   = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
-For more information about this error, try `rustc --explain E0195`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0195, E0605.
+For more information about an error, try `rustc --explain E0195`.
