@@ -16,13 +16,31 @@ Regenerate Unicode tables (tables.rs).
 import argparse
 import datetime
 import fileinput
-import operator
+import itertools
 import os
 import re
 import textwrap
 import subprocess
 
-from collections import namedtuple
+from collections import defaultdict, namedtuple
+
+try:
+    # Python 3
+    from itertools import zip_longest
+    from io import StringIO
+except ImportError:
+    # Python 2 compatibility
+    zip_longest = itertools.izip_longest
+    from StringIO import StringIO
+
+try:
+    # completely optional type hinting
+    # (Python 2 compatible using comments,
+    #  see: https://mypy.readthedocs.io/en/latest/python2.html)
+    # This is very helpful in typing-aware IDE like PyCharm.
+    from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional, Set, Tuple
+except ImportError:
+    pass
 
 
 # we don't use enum.Enum because of Python 2.7 compatibility
@@ -77,12 +95,21 @@ EXPANDED_CATEGORIES = {
     "Cc": ["C"], "Cf": ["C"], "Cs": ["C"], "Co": ["C"], "Cn": ["C"],
 }
 
-# these are the surrogate codepoints, which are not valid rust characters
-SURROGATE_CODEPOINTS = (0xd800, 0xdfff)
+# this is the surrogate codepoints range (both ends inclusive)
+# - they are not valid Rust characters
+SURROGATE_CODEPOINTS_RANGE = (0xd800, 0xdfff)
 
 UnicodeData = namedtuple(
-    "UnicodeData", ("canon_decomp", "compat_decomp", "gencats", "combines",
-                    "to_upper", "to_lower", "to_title", )
+    "UnicodeData", (
+        # conversions:
+        "to_upper", "to_lower", "to_title",
+
+        # decompositions: canonical decompositions, compatibility decomp
+        "canon_decomp", "compat_decomp",
+
+        # grouped: general categories and combining characters
+        "general_categories", "combines",
+    )
 )
 
 UnicodeVersion = namedtuple(
@@ -91,14 +118,19 @@ UnicodeVersion = namedtuple(
 
 
 def fetch_files(version=None):
+    # type: (str) -> UnicodeVersion
     """
-    Fetch all the Unicode files from unicode.org
+    Fetch all the Unicode files from unicode.org.
+
+    This will use cached files (stored in FETCH_DIR) if they exist,
+    creating them if they don't.  In any case, the Unicode version
+    is always returned.
 
     :param version: The desired Unicode version, as string.
-        (If None, defaults to latest final release available).
-    :return: The version downloaded (UnicodeVersion object).
+        (If None, defaults to latest final release available,
+         querying the unicode.org service).
     """
-    have_version = should_skip_fetch(version)
+    have_version = check_stored_version(version)
     if have_version:
         return have_version
 
@@ -114,22 +146,26 @@ def fetch_files(version=None):
     print("Fetching: {}".format(readme_url))
     readme_content = subprocess.check_output(("curl", readme_url))
 
-    unicode_version = parse_unicode_version(
+    unicode_version = parse_readme_unicode_version(
         readme_content.decode("utf8")
     )
 
-    download_dir = os.path.join(FETCH_DIR, unicode_version.as_str)
+    download_dir = get_unicode_dir(unicode_version)
     if not os.path.exists(download_dir):
         # for 2.7 compat, we don't use exist_ok=True
         os.makedirs(download_dir)
 
     for filename in UnicodeFiles.ALL_FILES:
-        file_path = os.path.join(download_dir, filename)
+        file_path = get_unicode_file_path(unicode_version, filename)
+
+        if os.path.exists(file_path):
+            # assume file on the server didn't change if it's been saved before
+            continue
 
         if filename == UnicodeFiles.README:
             with open(file_path, "wb") as fd:
                 fd.write(readme_content)
-        elif not os.path.exists(file_path):
+        else:
             url = get_fetch_url(filename)
             print("Fetching: {}".format(url))
             subprocess.check_call(("curl", "-o", file_path, url))
@@ -137,10 +173,15 @@ def fetch_files(version=None):
     return unicode_version
 
 
-def should_skip_fetch(version):
+def check_stored_version(version):
+    # type: (Optional[str]) -> Optional[UnicodeVersion]
+    """
+    Given desired Unicode version, return the version
+    if stored files are all present, and None otherwise.
+    """
     if not version:
         # should always check latest version
-        return False
+        return None
 
     fetch_dir = os.path.join(FETCH_DIR, version)
 
@@ -148,13 +189,17 @@ def should_skip_fetch(version):
         file_path = os.path.join(fetch_dir, filename)
 
         if not os.path.exists(file_path):
-            return False
+            return None
 
     with open(os.path.join(fetch_dir, UnicodeFiles.README)) as fd:
-        return parse_unicode_version(fd.read())
+        return parse_readme_unicode_version(fd.read())
 
 
-def parse_unicode_version(readme_content):
+def parse_readme_unicode_version(readme_content):
+    # type: (str) -> UnicodeVersion
+    """
+    Parse the Unicode version contained in their ReadMe.txt file.
+    """
     # "raw string" is necessary for \d not being treated as escape char
     # (for the sake of compat with future Python versions)
     # see: https://docs.python.org/3.6/whatsnew/3.6.html#deprecated-python-behavior
@@ -164,45 +209,78 @@ def parse_unicode_version(readme_content):
     return UnicodeVersion(*map(int, groups), as_str=".".join(groups))
 
 
+def get_unicode_dir(unicode_version):
+    # type: (UnicodeVersion) -> str
+    """
+    Indicate where the unicode data files should be stored.
+
+    This returns a full, absolute path.
+    """
+    return os.path.join(FETCH_DIR, unicode_version.as_str)
+
+
 def get_unicode_file_path(unicode_version, filename):
-    return os.path.join(FETCH_DIR, unicode_version.as_str, filename)
+    # type: (UnicodeVersion, str) -> str
+    """
+    Indicate where the unicode data file should be stored.
+    """
+    return os.path.join(get_unicode_dir(unicode_version), filename)
 
 
 def is_surrogate(n):
-    return SURROGATE_CODEPOINTS[0] <= n <= SURROGATE_CODEPOINTS[1]
+    # type: (int) -> bool
+    """
+    Tell if given codepoint is a surrogate (not a valid Rust character).
+    """
+    return SURROGATE_CODEPOINTS_RANGE[0] <= n <= SURROGATE_CODEPOINTS_RANGE[1]
 
 
 def load_unicode_data(file_path):
-    gencats = {}
-    to_lower = {}
-    to_upper = {}
-    to_title = {}
-    combines = {}
-    canon_decomp = {}
-    compat_decomp = {}
+    # type: (str) -> UnicodeData
+    """
+    Load main unicode data.
+    """
+    # conversions
+    to_lower = {}   # type: Dict[int, Tuple[int, int, int]]
+    to_upper = {}   # type: Dict[int, Tuple[int, int, int]]
+    to_title = {}   # type: Dict[int, Tuple[int, int, int]]
 
-    udict = {}
+    # decompositions
+    compat_decomp = {}   # type: Dict[int, List[int]]
+    canon_decomp = {}    # type: Dict[int, List[int]]
+
+    # combining characters
+    # FIXME: combines are not used
+    combines = defaultdict(set)   # type: Dict[str, Set[int]]
+
+    # categories
+    general_categories = defaultdict(set)   # type: Dict[str, Set[int]]
+    category_assigned_codepoints = set()    # type: Set[int]
+
+    all_codepoints = {}
+
     range_start = -1
+
     for line in fileinput.input(file_path):
         data = line.split(";")
         if len(data) != 15:
             continue
-        cp = int(data[0], 16)
-        if is_surrogate(cp):
+        codepoint = int(data[0], 16)
+        if is_surrogate(codepoint):
             continue
         if range_start >= 0:
-            for i in range(range_start, cp):
-                udict[i] = data
+            for i in range(range_start, codepoint):
+                all_codepoints[i] = data
             range_start = -1
         if data[1].endswith(", First>"):
-            range_start = cp
+            range_start = codepoint
             continue
-        udict[cp] = data
+        all_codepoints[codepoint] = data
 
-    for code in udict:
+    for code, data in all_codepoints.items():
         (code_org, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcase, titlecase) = udict[code]
+         old, iso, upcase, lowcase, titlecase) = data
 
         # generate char to char direct common and simple conversions
         # uppercase to lowercase
@@ -218,46 +296,47 @@ def load_unicode_data(file_path):
             to_title[code] = (int(titlecase, 16), 0, 0)
 
         # store decomposition, if given
-        if decomp != "":
+        if decomp:
+            decompositions = decomp.split()[1:]
+            decomp_code_points = [int(i, 16) for i in decompositions]
+
             if decomp.startswith("<"):
-                seq = []
-                for i in decomp.split()[1:]:
-                    seq.append(int(i, 16))
-                compat_decomp[code] = seq
+                # compatibility decomposition
+                compat_decomp[code] = decomp_code_points
             else:
-                seq = []
-                for i in decomp.split():
-                    seq.append(int(i, 16))
-                canon_decomp[code] = seq
+                # canonical decomposition
+                canon_decomp[code] = decomp_code_points
 
         # place letter in categories as appropriate
-        for cat in [gencat, "Assigned"] + EXPANDED_CATEGORIES.get(gencat, []):
-            if cat not in gencats:
-                gencats[cat] = []
-            gencats[cat].append(code)
+        for cat in itertools.chain((gencat, ), EXPANDED_CATEGORIES.get(gencat, [])):
+            general_categories[cat].add(code)
+            category_assigned_codepoints.add(code)
 
         # record combining class, if any
         if combine != "0":
-            if combine not in combines:
-                combines[combine] = []
-            combines[combine].append(code)
+            combines[combine].add(code)
 
     # generate Not_Assigned from Assigned
-    gencats["Cn"] = gen_unassigned(gencats["Assigned"])
-    # Assigned is not a real category
-    del(gencats["Assigned"])
-    # Other contains Not_Assigned
-    gencats["C"].extend(gencats["Cn"])
-    gencats = group_cats(gencats)
-    combines = to_combines(group_cats(combines))
+    general_categories["Cn"] = get_unassigned_codepoints(category_assigned_codepoints)
 
+    # Other contains Not_Assigned
+    general_categories["C"].update(general_categories["Cn"])
+
+    grouped_categories = group_categories(general_categories)
+
+    # FIXME: combines are not used
     return UnicodeData(
-        canon_decomp, compat_decomp, gencats, combines, to_upper,
-        to_lower, to_title,
+        to_lower=to_lower, to_upper=to_upper, to_title=to_title,
+        compat_decomp=compat_decomp, canon_decomp=canon_decomp,
+        general_categories=grouped_categories, combines=combines,
     )
 
 
 def load_special_casing(file_path, unicode_data):
+    # type: (str, UnicodeData) -> None
+    """
+    Load special casing data and enrich given unicode data.
+    """
     for line in fileinput.input(file_path):
         data = line.split("#")[0].split(";")
         if len(data) == 5:
@@ -277,258 +356,395 @@ def load_special_casing(file_path, unicode_data):
                                (unicode_data.to_upper, upper),
                                (unicode_data.to_title, title)):
             if values != code:
-                values = [int(i, 16) for i in values.split()]
-                for _ in range(len(values), 3):
-                    values.append(0)
-                assert len(values) == 3
-                map_[key] = values
+                split = values.split()
+
+                codepoints = list(itertools.chain(
+                    (int(i, 16) for i in split),
+                    (0 for _ in range(len(split), 3))
+                ))
+
+                assert len(codepoints) == 3
+                map_[key] = codepoints
 
 
-def group_cats(cats):
-    cats_out = {}
-    for cat in cats:
-        cats_out[cat] = group_cat(cats[cat])
-    return cats_out
+def group_categories(mapping):
+    # type: (Dict[Any, Iterable[int]]) -> Dict[str, List[Tuple[int, int]]]
+    """
+    Group codepoints mapped in "categories".
+    """
+    return {category: group_codepoints(codepoints)
+            for category, codepoints in mapping.items()}
 
 
-def group_cat(cat):
-    cat_out = []
-    letters = sorted(set(cat))
-    cur_start = letters.pop(0)
-    cur_end = cur_start
-    for letter in letters:
-        assert letter > cur_end, \
-            "cur_end: %s, letter: %s" % (hex(cur_end), hex(letter))
-        if letter == cur_end + 1:
-            cur_end = letter
-        else:
-            cat_out.append((cur_start, cur_end))
-            cur_start = cur_end = letter
-    cat_out.append((cur_start, cur_end))
-    return cat_out
+def group_codepoints(codepoints):
+    # type: (Iterable[int]) -> List[Tuple[int, int]]
+    """
+    Group integral values into continuous, disjoint value ranges.
+
+    Performs value deduplication.
+
+    :return: sorted list of pairs denoting start and end of codepoint
+        group values, both ends inclusive.
+
+    >>> group_codepoints([1, 2, 10, 11, 12, 3, 4])
+    [(1, 4), (10, 12)]
+    >>> group_codepoints([1])
+    [(1, 1)]
+    >>> group_codepoints([1, 5, 6])
+    [(1, 1), (5, 6)]
+    >>> group_codepoints([])
+    []
+    """
+    sorted_codes = sorted(set(codepoints))
+    result = []     # type: List[Tuple[int, int]]
+
+    if not sorted_codes:
+        return result
+
+    next_codes = sorted_codes[1:]
+    start_code = sorted_codes[0]
+
+    for code, next_code in zip_longest(sorted_codes, next_codes, fillvalue=None):
+        if next_code is None or next_code - code != 1:
+            result.append((start_code, code))
+            start_code = next_code
+
+    return result
 
 
-def ungroup_cat(cat):
-    cat_out = []
-    for (lo, hi) in cat:
-        while lo <= hi:
-            cat_out.append(lo)
-            lo += 1
-    return cat_out
+def ungroup_codepoints(codepoint_pairs):
+    # type: (Iterable[Tuple[int, int]]) -> List[int]
+    """
+    The inverse of group_codepoints -- produce a flat list of values
+    from value range pairs.
+
+    >>> ungroup_codepoints([(1, 4), (10, 12)])
+    [1, 2, 3, 4, 10, 11, 12]
+    >>> ungroup_codepoints([(1, 1), (5, 6)])
+    [1, 5, 6]
+    >>> ungroup_codepoints(group_codepoints([1, 2, 7, 8]))
+    [1, 2, 7, 8]
+    >>> ungroup_codepoints([])
+    []
+    """
+    return list(itertools.chain.from_iterable(
+        range(lo, hi + 1) for lo, hi in codepoint_pairs
+    ))
 
 
-def gen_unassigned(assigned):
-    assigned = set(assigned)
-    return ([i for i in range(0, 0xd800) if i not in assigned] +
-            [i for i in range(0xe000, 0x110000) if i not in assigned])
+def get_unassigned_codepoints(assigned_codepoints):
+    # type: (Set[int]) -> Set[int]
+    """
+    Given a set of "assigned" codepoints, return a set
+    of these that are not in assigned and not surrogate.
+    """
+    return {i for i in range(0, 0x110000)
+            if i not in assigned_codepoints and not is_surrogate(i)}
 
 
-def to_combines(combs):
-    combs_out = []
-    for comb in combs:
-        for (lo, hi) in combs[comb]:
-            combs_out.append((lo, hi, comb))
-    combs_out.sort(key=lambda c: c[0])
-    return combs_out
+def generate_table_lines(items, indent, wrap=98):
+    # type: (Iterable[str], int, int) -> Iterator[str]
+    """
+    Given table items, generate wrapped lines of text with comma-separated items.
 
+    This is a generator function.
 
-def format_table_content(f, content, indent):
+    :param wrap: soft wrap limit (characters per line), integer.
+    """
     line = " " * indent
     first = True
-    for chunk in content.split(","):
-        if len(line) + len(chunk) < 98:
+    for item in items:
+        if len(line) + len(item) < wrap:
             if first:
-                line += chunk
+                line += item
             else:
-                line += ", " + chunk
+                line += ", " + item
             first = False
         else:
-            f.write(line + ",\n")
-            line = " " * indent + chunk
-    f.write(line)
+            yield line + ",\n"
+            line = " " * indent + item
+
+    yield line
 
 
-def load_properties(file_path, interestingprops):
-    props = {}
-    # "raw string" is necessary for \w not to be treated as escape char
+def load_properties(file_path, interesting_props):
+    # type: (str, Iterable[str]) -> Dict[str, List[Tuple[int, int]]]
+    """
+    Load properties data and return in grouped form.
+    """
+    props = defaultdict(list)   # type: Dict[str, List[Tuple[int, int]]]
+    # "raw string" is necessary for \. and \w not to be treated as escape chars
     # (for the sake of compat with future Python versions)
     # see: https://docs.python.org/3.6/whatsnew/3.6.html#deprecated-python-behavior
     re1 = re.compile(r"^ *([0-9A-F]+) *; *(\w+)")
     re2 = re.compile(r"^ *([0-9A-F]+)\.\.([0-9A-F]+) *; *(\w+)")
 
     for line in fileinput.input(file_path):
-        prop = None
-        d_lo = 0
-        d_hi = 0
-        m = re1.match(line)
-        if m:
-            d_lo = m.group(1)
-            d_hi = m.group(1)
-            prop = m.group(2)
-        else:
-            m = re2.match(line)
-            if m:
-                d_lo = m.group(1)
-                d_hi = m.group(2)
-                prop = m.group(3)
+        match = re1.match(line) or re2.match(line)
+        if match:
+            groups = match.groups()
+
+            if len(groups) == 2:
+                # re1 matched
+                d_lo, prop = groups
+                d_hi = d_lo
             else:
-                continue
-        if interestingprops and prop not in interestingprops:
+                d_lo, d_hi, prop = groups
+        else:
             continue
-        d_lo = int(d_lo, 16)
-        d_hi = int(d_hi, 16)
-        if prop not in props:
-            props[prop] = []
-        props[prop].append((d_lo, d_hi))
+
+        if interesting_props and prop not in interesting_props:
+            continue
+
+        lo_value = int(d_lo, 16)
+        hi_value = int(d_hi, 16)
+
+        props[prop].append((lo_value, hi_value))
 
     # optimize if possible
     for prop in props:
-        props[prop] = group_cat(ungroup_cat(props[prop]))
+        props[prop] = group_codepoints(ungroup_codepoints(props[prop]))
 
     return props
 
 
 def escape_char(c):
-    return "'\\u{%x}'" % c if c != 0 else "'\\0'"
+    # type: (int) -> str
+    r"""
+    Escape a codepoint for use as Rust char literal.
+
+    Outputs are OK to use as Rust source code as char literals
+    and they also include necessary quotes.
+
+    >>> escape_char(97)
+    "'\\u{61}'"
+    >>> escape_char(0)
+    "'\\0'"
+    """
+    return r"'\u{%x}'" % c if c != 0 else r"'\0'"
 
 
-def emit_table(f, name, t_data, t_type="&[(char, char)]", is_pub=True,
-        pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1]))):
+def format_char_pair(pair):
+    # type: (Tuple[int, int]) -> str
+    """
+    Format a pair of two Rust chars.
+    """
+    return "(%s,%s)" % (escape_char(pair[0]), escape_char(pair[1]))
+
+
+def generate_table(
+    name,   # type: str
+    items,  # type: List[Tuple[int, int]]
+    decl_type="&[(char, char)]",    # type: str
+    is_pub=True,                    # type: bool
+    format_item=format_char_pair,   # type: Callable[[Tuple[int, int]], str]
+):
+    # type: (...) -> Iterator[str]
+    """
+    Generate a nicely formatted Rust constant "table" array.
+
+    This generates actual Rust code.
+    """
     pub_string = ""
     if is_pub:
         pub_string = "pub "
-    f.write("    %sconst %s: %s = &[\n" % (pub_string, name, t_type))
-    data = ""
+
+    yield "    %sconst %s: %s = &[\n" % (pub_string, name, decl_type)
+
+    data = []
     first = True
-    for dat in t_data:
+    for item in items:
         if not first:
-            data += ","
+            data.append(",")
         first = False
-        data += pfun(dat)
-    format_table_content(f, data, 8)
-    f.write("\n    ];\n\n")
+        data.extend(format_item(item))
+
+    for table_line in generate_table_lines("".join(data).split(","), 8):
+        yield table_line
+
+    yield "\n    ];\n\n"
 
 
-def compute_trie(rawdata, chunksize):
+def compute_trie(raw_data, chunk_size):
+    # type: (List[int], int) -> Tuple[List[int], List[int]]
+    """
+    Compute postfix-compressed trie.
+
+    See: bool_trie.rs for more details.
+
+    >>> compute_trie([1, 2, 3, 1, 2, 3, 4, 5, 6], 3)
+    ([0, 0, 1], [1, 2, 3, 4, 5, 6])
+    >>> compute_trie([1, 2, 3, 1, 2, 4, 4, 5, 6], 3)
+    ([0, 1, 2], [1, 2, 3, 1, 2, 4, 4, 5, 6])
+    """
     root = []
-    childmap = {}
+    childmap = {}       # type: Dict[Tuple[int, ...], int]
     child_data = []
-    for i in range(len(rawdata) // chunksize):
-        data = rawdata[i * chunksize: (i + 1) * chunksize]
-        child = "|".join(map(str, data))
+
+    assert len(raw_data) % chunk_size == 0, "Chunks must be equally sized"
+
+    for i in range(len(raw_data) // chunk_size):
+        data = raw_data[i * chunk_size : (i + 1) * chunk_size]
+
+        # postfix compression of child nodes (data chunks)
+        # (identical child nodes are shared)
+
+        # make a tuple out of the list so it's hashable
+        child = tuple(data)
         if child not in childmap:
             childmap[child] = len(childmap)
             child_data.extend(data)
+
         root.append(childmap[child])
+
     return root, child_data
 
 
-def emit_bool_trie(f, name, t_data, is_pub=True):
+def generate_bool_trie(name, codepoint_ranges, is_pub=True):
+    # type: (str, List[Tuple[int, int]], bool) -> Iterator[str]
+    """
+    Generate Rust code for BoolTrie struct.
+
+    This yields string fragments that should be joined to produce
+    the final string.
+
+    See: bool_trie.rs
+    """
     chunk_size = 64
     rawdata = [False] * 0x110000
-    for (lo, hi) in t_data:
+    for (lo, hi) in codepoint_ranges:
         for cp in range(lo, hi + 1):
             rawdata[cp] = True
 
-    # convert to bitmap chunks of 64 bits each
+    # convert to bitmap chunks of chunk_size bits each
     chunks = []
     for i in range(0x110000 // chunk_size):
         chunk = 0
-        for j in range(64):
-            if rawdata[i * 64 + j]:
+        for j in range(chunk_size):
+            if rawdata[i * chunk_size + j]:
                 chunk |= 1 << j
         chunks.append(chunk)
 
     pub_string = ""
     if is_pub:
         pub_string = "pub "
-    f.write("    %sconst %s: &super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name))
-    f.write("        r1: [\n")
-    data = ",".join("0x%016x" % chunk for chunk in chunks[0:0x800 // chunk_size])
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
+    yield "    %sconst %s: &super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name)
+    yield "        r1: [\n"
+    data = ("0x%016x" % chunk for chunk in chunks[:0x800 // chunk_size])
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
 
     # 0x800..0x10000 trie
     (r2, r3) = compute_trie(chunks[0x800 // chunk_size : 0x10000 // chunk_size], 64 // chunk_size)
-    f.write("        r2: [\n")
-    data = ",".join(str(node) for node in r2)
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
-    f.write("        r3: &[\n")
-    data = ",".join("0x%016x" % chunk for chunk in r3)
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
+    yield "        r2: [\n"
+    data = map(str, r2)
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
+
+    yield "        r3: &[\n"
+    data = ("0x%016x" % node for node in r3)
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
 
     # 0x10000..0x110000 trie
     (mid, r6) = compute_trie(chunks[0x10000 // chunk_size : 0x110000 // chunk_size],
                              64 // chunk_size)
     (r4, r5) = compute_trie(mid, 64)
-    f.write("        r4: [\n")
-    data = ",".join(str(node) for node in r4)
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
-    f.write("        r5: &[\n")
-    data = ",".join(str(node) for node in r5)
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
-    f.write("        r6: &[\n")
-    data = ",".join("0x%016x" % chunk for chunk in r6)
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
 
-    f.write("    };\n\n")
+    yield "        r4: [\n"
+    data = map(str, r4)
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
+
+    yield "        r5: &[\n"
+    data = map(str, r5)
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
+
+    yield "        r6: &[\n"
+    data = ("0x%016x" % node for node in r6)
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
+
+    yield "    };\n\n"
 
 
-def emit_small_bool_trie(f, name, t_data, is_pub=True):
-    last_chunk = max(hi // 64 for (lo, hi) in t_data)
+def generate_small_bool_trie(name, codepoint_ranges, is_pub=True):
+    # type: (str, List[Tuple[int, int]], bool) -> Iterator[str]
+    """
+    Generate Rust code for SmallBoolTrie struct.
+
+    See: bool_trie.rs
+    """
+    last_chunk = max(hi // 64 for (lo, hi) in codepoint_ranges)
     n_chunks = last_chunk + 1
     chunks = [0] * n_chunks
-    for (lo, hi) in t_data:
+    for (lo, hi) in codepoint_ranges:
         for cp in range(lo, hi + 1):
-            if cp // 64 >= len(chunks):
-                print(cp, cp // 64, len(chunks), lo, hi)
+            assert cp // 64 < len(chunks)
             chunks[cp // 64] |= 1 << (cp & 63)
 
     pub_string = ""
     if is_pub:
         pub_string = "pub "
-    f.write("    %sconst %s: &super::SmallBoolTrie = &super::SmallBoolTrie {\n"
-            % (pub_string, name))
+
+    yield ("    %sconst %s: &super::SmallBoolTrie = &super::SmallBoolTrie {\n"
+           % (pub_string, name))
 
     (r1, r2) = compute_trie(chunks, 1)
 
-    f.write("        r1: &[\n")
-    data = ",".join(str(node) for node in r1)
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
+    yield "        r1: &[\n"
+    data = (str(node) for node in r1)
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
 
-    f.write("        r2: &[\n")
-    data = ",".join("0x%016x" % node for node in r2)
-    format_table_content(f, data, 12)
-    f.write("\n        ],\n")
+    yield "        r2: &[\n"
+    data = ("0x%016x" % node for node in r2)
+    for fragment in generate_table_lines(data, 12):
+        yield fragment
+    yield "\n        ],\n"
 
-    f.write("    };\n\n")
+    yield "    };\n\n"
 
 
-def emit_property_module(f, mod, tbl, emit):
-    f.write("pub mod %s {\n" % mod)
-    for cat in sorted(emit):
-        if cat in ["Cc", "White_Space", "Pattern_White_Space"]:
-            emit_small_bool_trie(f, "%s_table" % cat, tbl[cat])
-            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-            f.write("        %s_table.lookup(c)\n" % cat)
-            f.write("    }\n\n")
+def generate_property_module(mod, grouped_categories, category_subset):
+    # type: (str, Dict[str, List[Tuple[int, int]]], Iterable[str]) -> Iterator[str]
+    """
+    Generate Rust code for module defining properties.
+    """
+
+    yield "pub mod %s {\n" % mod
+    for cat in sorted(category_subset):
+        if cat in ("Cc", "White_Space", "Pattern_White_Space"):
+            generator = generate_small_bool_trie("%s_table" % cat, grouped_categories[cat])
         else:
-            emit_bool_trie(f, "%s_table" % cat, tbl[cat])
-            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-            f.write("        %s_table.lookup(c)\n" % cat)
-            f.write("    }\n\n")
-    f.write("}\n\n")
+            generator = generate_bool_trie("%s_table" % cat, grouped_categories[cat])
+
+        for fragment in generator:
+            yield fragment
+
+        yield "    pub fn %s(c: char) -> bool {\n" % cat
+        yield "        %s_table.lookup(c)\n" % cat
+        yield "    }\n\n"
+
+    yield "}\n\n"
 
 
-def emit_conversions_module(f, unicode_data):
-    f.write("pub mod conversions {")
-    f.write("""
+def generate_conversions_module(unicode_data):
+    # type: (UnicodeData) -> Iterator[str]
+    """
+    Generate Rust code for module defining conversions.
+    """
+
+    yield "pub mod conversions {"
+    yield """
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
             None        => [c, '\\0', '\\0'],
@@ -545,46 +761,39 @@ def emit_conversions_module(f, unicode_data):
 
     fn bsearch_case_table(c: char, table: &[(char, [char; 3])]) -> Option<usize> {
         table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
-    }
+    }\n\n"""
 
-""")
-    t_type = "&[(char, [char; 3])]"
-    pfun = lambda x: "(%s,[%s,%s,%s])" % (
-        escape_char(x[0]), escape_char(x[1][0]), escape_char(x[1][1]), escape_char(x[1][2]))
+    decl_type = "&[(char, [char; 3])]"
+    format_conversion = lambda x: "({},[{},{},{}])".format(*(
+        escape_char(c) for c in (x[0], x[1][0], x[1][1], x[1][2])
+    ))
 
-    emit_table(f,
-               name="to_lowercase_table",
-               t_data=sorted(unicode_data.to_lower.items(), key=operator.itemgetter(0)),
-               t_type=t_type,
-               is_pub=False,
-               pfun=pfun)
+    for fragment in generate_table(
+        name="to_lowercase_table",
+        items=sorted(unicode_data.to_lower.items(), key=lambda x: x[0]),
+        decl_type=decl_type,
+        is_pub=False,
+        format_item=format_conversion
+    ):
+        yield fragment
 
-    emit_table(f,
-               name="to_uppercase_table",
-               t_data=sorted(unicode_data.to_upper.items(), key=operator.itemgetter(0)),
-               t_type=t_type,
-               is_pub=False,
-               pfun=pfun)
+    for fragment in generate_table(
+        name="to_uppercase_table",
+        items=sorted(unicode_data.to_upper.items(), key=lambda x: x[0]),
+        decl_type=decl_type,
+        is_pub=False,
+        format_item=format_conversion
+    ):
+        yield fragment
 
-    f.write("}\n")
-
-
-def emit_norm_module(f, unicode_data, norm_props):
-    canon_keys = sorted(unicode_data.canon_decomp.keys())
-
-    canon_comp = {}
-    comp_exclusions = norm_props["Full_Composition_Exclusion"]
-    for char in canon_keys:
-        if any(lo <= char <= hi for lo, hi in comp_exclusions):
-            continue
-        decomp = unicode_data.canon_decomp[char]
-        if len(decomp) == 2:
-            if decomp[0] not in canon_comp:
-                canon_comp[decomp[0]] = []
-            canon_comp[decomp[0]].append((decomp[1], char))
+    yield "}\n"
 
 
 def parse_args():
+    # type: () -> argparse.Namespace
+    """
+    Parse command line arguments.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("-v", "--version", default=None, type=str,
                         help="Unicode version to use (if not specified,"
@@ -594,56 +803,63 @@ def parse_args():
 
 
 def main():
+    # type: () -> None
+    """
+    Script entry point.
+    """
     args = parse_args()
 
     unicode_version = fetch_files(args.version)
     print("Using Unicode version: {}".format(unicode_version.as_str))
 
+    # all the writing happens entirely in memory, we only write to file
+    # once we have generated the file content (it's not very large, <1 MB)
+    buf = StringIO()
+    buf.write(PREAMBLE)
+
+    unicode_version_notice = textwrap.dedent("""
+    /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
+    /// `char` and `str` methods are based on.
+    #[unstable(feature = "unicode_version", issue = "49726")]
+    pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {{
+        major: {version.major},
+        minor: {version.minor},
+        micro: {version.micro},
+        _priv: (),
+    }};
+    """).format(version=unicode_version)
+    buf.write(unicode_version_notice)
+
+    get_path = lambda f: get_unicode_file_path(unicode_version, f)
+
+    unicode_data = load_unicode_data(get_path(UnicodeFiles.UNICODE_DATA))
+    load_special_casing(get_path(UnicodeFiles.SPECIAL_CASING), unicode_data)
+
+    want_derived = {"XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
+                    "Cased", "Case_Ignorable", "Grapheme_Extend"}
+    derived = load_properties(get_path(UnicodeFiles.DERIVED_CORE_PROPERTIES), want_derived)
+
+    props = load_properties(get_path(UnicodeFiles.PROPS),
+                            {"White_Space", "Join_Control", "Noncharacter_Code_Point",
+                             "Pattern_White_Space"})
+
+    # category tables
+    for (name, categories, category_subset) in (
+            ("general_category", unicode_data.general_categories, ["N", "Cc"]),
+            ("derived_property", derived, want_derived),
+            ("property", props, ["White_Space", "Pattern_White_Space"])
+    ):
+        for fragment in generate_property_module(name, categories, category_subset):
+            buf.write(fragment)
+
+    for fragment in generate_conversions_module(unicode_data):
+        buf.write(fragment)
+
     tables_rs_path = os.path.join(THIS_DIR, "tables.rs")
 
     # will overwrite the file if it exists
-    with open(tables_rs_path, "w") as rf:
-        rf.write(PREAMBLE)
-
-        unicode_version_notice = textwrap.dedent("""
-        /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
-        /// `char` and `str` methods are based on.
-        #[unstable(feature = "unicode_version", issue = "49726")]
-        pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {{
-            major: {version.major},
-            minor: {version.minor},
-            micro: {version.micro},
-            _priv: (),
-        }};
-        """).format(version=unicode_version)
-        rf.write(unicode_version_notice)
-
-        get_path = lambda f: get_unicode_file_path(unicode_version, f)
-
-        unicode_data = load_unicode_data(get_path(UnicodeFiles.UNICODE_DATA))
-        load_special_casing(get_path(UnicodeFiles.SPECIAL_CASING), unicode_data)
-
-        want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase",
-                        "Cased", "Case_Ignorable", "Grapheme_Extend"]
-        derived = load_properties(get_path(UnicodeFiles.DERIVED_CORE_PROPERTIES), want_derived)
-
-        # FIXME scripts not used?
-        scripts = load_properties(get_path(UnicodeFiles.SCRIPTS), [])
-        props = load_properties(get_path(UnicodeFiles.PROPS),
-                                ["White_Space", "Join_Control", "Noncharacter_Code_Point",
-                                 "Pattern_White_Space"])
-        norm_props = load_properties(get_path(UnicodeFiles.DERIVED_NORMALIZATION_PROPS),
-                                     ["Full_Composition_Exclusion"])
-
-        # category tables
-        for (name, cat, pfuns) in (("general_category", unicode_data.gencats, ["N", "Cc"]),
-                                   ("derived_property", derived, want_derived),
-                                   ("property", props, ["White_Space", "Pattern_White_Space"])):
-            emit_property_module(rf, name, cat, pfuns)
-
-        # normalizations and conversions module
-        emit_norm_module(rf, unicode_data, norm_props)
-        emit_conversions_module(rf, unicode_data)
+    with open(tables_rs_path, "w") as fd:
+        fd.write(buf.getvalue())
 
     print("Regenerated tables.rs.")
 
