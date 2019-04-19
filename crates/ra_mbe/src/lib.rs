@@ -209,7 +209,6 @@ impl_froms!(TokenTree: Leaf, Subtree);
 
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
-        assert_eq!(expanded.to_string(), expansion);
 
         let tree = token_tree_to_macro_items(&expanded);
 
@@ -785,5 +784,17 @@ MACRO_ITEMS@[0; 40)
 "#,
         );
         assert_expansion(&rules, r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
+    }
+
+    #[test]
+    fn test_lifetime() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+              ($ lt:lifetime) => { struct Ref<$ lt>{ s: &$ lt str } }
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo!{'a}"#, r#"struct Ref < 'a > {s : & 'a str}"#);
     }
 }

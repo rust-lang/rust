@@ -157,7 +157,10 @@ fn convert_tt(
                         );
                     }
                 } else {
-                    let child = if token.kind().is_keyword() || token.kind() == IDENT {
+                    let child: tt::TokenTree = if token.kind().is_keyword()
+                        || token.kind() == IDENT
+                        || token.kind() == LIFETIME
+                    {
                         let relative_range = token.range() - global_offset;
                         let id = token_map.alloc(relative_range);
                         let text = token.text().clone();

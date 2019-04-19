@@ -119,6 +119,10 @@ impl<'a> TtCursor<'a> {
         parser.parse_item()
     }
 
+    pub(crate) fn eat_lifetime(&mut self) -> Option<tt::TokenTree> {
+        self.eat_ident().cloned().map(|ident| tt::Leaf::from(ident).into())
+    }
+
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {
         if self.at_char(char) {
             self.bump();
