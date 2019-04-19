@@ -65,7 +65,7 @@ fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
 #[cold]
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[cfg_attr(    feature="panic_immediate_abort" ,inline)]
-pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> ! {
+pub fn panic_fmt(fmt: fmt::Arguments<'_>, file_line_col: &(&'static str, u32, u32)) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }
     }
@@ -74,7 +74,7 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) 
     #[allow(improper_ctypes)] // PanicInfo contains a trait object which is not FFI safe
     extern "Rust" {
         #[lang = "panic_impl"]
-        fn panic_impl(pi: &PanicInfo) -> !;
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
     let (file, line, col) = *file_line_col;

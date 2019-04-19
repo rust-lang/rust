@@ -39,7 +39,7 @@ pub enum c_void {
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for c_void {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("c_void")
     }
 }
@@ -62,7 +62,7 @@ extern {
           all(target_arch = "aarch64", target_os = "ios"),
           windows))]
 impl fmt::Debug for VaListImpl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "va_list* {:p}", self)
     }
 }
@@ -212,7 +212,7 @@ impl<'a> VaList<'a> {
 extern "rust-intrinsic" {
     /// Destroy the arglist `ap` after initialization with `va_start` or
     /// `va_copy`.
-    fn va_end(ap: &mut VaList);
+    fn va_end(ap: &mut VaList<'_>);
 
     /// Copies the current location of arglist `src` to the arglist `dst`.
     #[cfg(any(all(not(target_arch = "aarch64"), not(target_arch = "powerpc"),
@@ -222,9 +222,9 @@ extern "rust-intrinsic" {
     fn va_copy<'a>(src: &VaList<'a>) -> VaList<'a>;
     #[cfg(all(any(target_arch = "aarch64", target_arch = "powerpc", target_arch = "x86_64"),
               not(windows), not(all(target_arch = "aarch64", target_os = "ios"))))]
-    fn va_copy(src: &VaList) -> VaListImpl;
+    fn va_copy(src: &VaList<'_>) -> VaListImpl;
 
     /// Loads an argument of type `T` from the `va_list` `ap` and increment the
     /// argument `ap` points to.
-    fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaList) -> T;
+    fn va_arg<T: sealed_trait::VaArgSafe>(ap: &mut VaList<'_>) -> T;
 }

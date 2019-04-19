@@ -553,7 +553,7 @@ impl<I, F> Map<I, F> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<I: fmt::Debug, F> fmt::Debug for Map<I, F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Map")
             .field("iter", &self.iter)
             .finish()
@@ -669,7 +669,7 @@ impl<I, P> Filter<I, P> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<I: fmt::Debug, P> fmt::Debug for Filter<I, P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Filter")
             .field("iter", &self.iter)
             .finish()
@@ -793,7 +793,7 @@ impl<I, F> FilterMap<I, F> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<I: fmt::Debug, F> fmt::Debug for FilterMap<I, F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FilterMap")
             .field("iter", &self.iter)
             .finish()
@@ -1232,7 +1232,7 @@ impl<I, P> SkipWhile<I, P> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<I: fmt::Debug, P> fmt::Debug for SkipWhile<I, P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SkipWhile")
             .field("iter", &self.iter)
             .field("flag", &self.flag)
@@ -1320,7 +1320,7 @@ impl<I, P> TakeWhile<I, P> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<I: fmt::Debug, P> fmt::Debug for TakeWhile<I, P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TakeWhile")
             .field("iter", &self.iter)
             .field("flag", &self.flag)
@@ -1644,7 +1644,7 @@ impl<I, St, F> Scan<I, St, F> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<I: fmt::Debug, St: fmt::Debug, F> fmt::Debug for Scan<I, St, F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Scan")
             .field("iter", &self.iter)
             .field("state", &self.state)
@@ -1954,7 +1954,7 @@ impl<I, F> Inspect<I, F> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<I: fmt::Debug, F> fmt::Debug for Inspect<I, F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Inspect")
             .field("iter", &self.iter)
             .finish()

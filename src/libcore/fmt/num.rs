@@ -46,7 +46,7 @@ trait GenericRadix {
     fn digit(x: u8) -> u8;
 
     /// Format an integer using the radix using a formatter.
-    fn fmt_int<T: Int>(&self, mut x: T, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt_int<T: Int>(&self, mut x: T, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // The radix can be as low as 2, so we need a buffer of at least 128
         // characters for a base 2 number.
         let zero = T::zero();
@@ -131,7 +131,7 @@ macro_rules! int_base {
     ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::$Trait for $T {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 $Radix.fmt_int(*self as $U, f)
             }
         }
@@ -143,7 +143,7 @@ macro_rules! debug {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
             #[inline]
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 if f.debug_lower_hex() {
                     fmt::LowerHex::fmt(self, f)
                 } else if f.debug_upper_hex() {
@@ -188,7 +188,7 @@ static DEC_DIGITS_LUT: &[u8; 200] =
 
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
-        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter) -> fmt::Result {
+        fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
             let mut buf = uninitialized_array![u8; 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
@@ -243,7 +243,7 @@ macro_rules! impl_Display {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl fmt::Display for $t {
                 #[allow(unused_comparisons)]
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     let is_nonnegative = *self >= 0;
                     let n = if is_nonnegative {
                         self.$conv_fn()

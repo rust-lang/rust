@@ -131,7 +131,7 @@ impl FusedIterator for EscapeDefault {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for EscapeDefault {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("EscapeDefault { .. }")
     }
 }

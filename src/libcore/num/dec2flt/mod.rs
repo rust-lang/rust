@@ -196,7 +196,7 @@ impl ParseFloatError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseFloatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.__description().fmt(f)
     }
 }
@@ -244,7 +244,7 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
 
 /// The main workhorse for the decimal-to-float conversion: Orchestrate all the preprocessing
 /// and figure out which algorithm should do the actual conversion.
-fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
+fn convert<T: RawFloat>(mut decimal: Decimal<'_>) -> Result<T, ParseFloatError> {
     simplify(&mut decimal);
     if let Some(x) = trivial_cases(&decimal) {
         return Ok(x);
@@ -281,7 +281,7 @@ fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
 
 /// Strip zeros where possible, even when this requires changing the exponent
 #[inline(always)]
-fn simplify(decimal: &mut Decimal) {
+fn simplify(decimal: &mut Decimal<'_>) {
     let is_zero = &|&&d: &&u8| -> bool { d == b'0' };
     // Trimming these zeros does not change anything but may enable the fast path (< 15 digits).
     let leading_zeros = decimal.integral.iter().take_while(is_zero).count();
@@ -306,7 +306,7 @@ fn simplify(decimal: &mut Decimal) {
 
 /// Returns a quick-an-dirty upper bound on the size (log10) of the largest value that Algorithm R
 /// and Algorithm M will compute while working on the given decimal.
-fn bound_intermediate_digits(decimal: &Decimal, e: i64) -> u64 {
+fn bound_intermediate_digits(decimal: &Decimal<'_>, e: i64) -> u64 {
     // We don't need to worry too much about overflow here thanks to trivial_cases() and the
     // parser, which filter out the most extreme inputs for us.
     let f_len: u64 = decimal.integral.len() as u64 + decimal.fractional.len() as u64;
@@ -325,7 +325,7 @@ fn bound_intermediate_digits(decimal: &Decimal, e: i64) -> u64 {
 }
 
 /// Detects obvious overflows and underflows without even looking at the decimal digits.
-fn trivial_cases<T: RawFloat>(decimal: &Decimal) -> Option<T> {
+fn trivial_cases<T: RawFloat>(decimal: &Decimal<'_>) -> Option<T> {
     // There were zeros but they were stripped by simplify()
     if decimal.integral.is_empty() && decimal.fractional.is_empty() {
         return Some(T::ZERO);

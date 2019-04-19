@@ -577,14 +577,14 @@ pub struct BorrowError {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowError").finish()
     }
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt("already mutably borrowed", f)
     }
 }
@@ -597,14 +597,14 @@ pub struct BorrowMutError {
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Debug for BorrowMutError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("BorrowMutError").finish()
     }
 }
 
 #[stable(feature = "try_borrow", since = "1.13.0")]
 impl Display for BorrowMutError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Display::fmt("already borrowed", f)
     }
 }
@@ -788,7 +788,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn borrow(&self) -> Ref<T> {
+    pub fn borrow(&self) -> Ref<'_, T> {
         self.try_borrow().expect("already mutably borrowed")
     }
 
@@ -819,7 +819,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
-    pub fn try_borrow(&self) -> Result<Ref<T>, BorrowError> {
+    pub fn try_borrow(&self) -> Result<Ref<'_, T>, BorrowError> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Ok(Ref {
                 value: unsafe { &*self.value.get() },
@@ -869,7 +869,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn borrow_mut(&self) -> RefMut<T> {
+    pub fn borrow_mut(&self) -> RefMut<'_, T> {
         self.try_borrow_mut().expect("already borrowed")
     }
 
@@ -897,7 +897,7 @@ impl<T: ?Sized> RefCell<T> {
     /// ```
     #[stable(feature = "try_borrow", since = "1.13.0")]
     #[inline]
-    pub fn try_borrow_mut(&self) -> Result<RefMut<T>, BorrowMutError> {
+    pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Ok(RefMut {
                 value: unsafe { &mut *self.value.get() },
@@ -1245,7 +1245,7 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Ref<'b, U>> for Ref<'b,
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for Ref<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.value.fmt(f)
     }
 }
@@ -1402,7 +1402,7 @@ impl<'b, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<RefMut<'b, U>> for RefM
 
 #[stable(feature = "std_guard_impls", since = "1.20.0")]
 impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.value.fmt(f)
     }
 }

@@ -180,7 +180,7 @@ impl<'a> Context<'a> {
 }
 
 impl fmt::Debug for Context<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Context")
             .field("waker", &self.waker)
             .finish()
@@ -283,7 +283,7 @@ impl Drop for Waker {
 }
 
 impl fmt::Debug for Waker {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let vtable_ptr = self.waker.vtable as *const RawWakerVTable;
         f.debug_struct("Waker")
             .field("data", &self.waker.data)
