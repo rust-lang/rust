@@ -46,8 +46,20 @@ impl<'a> Parser<'a> {
         self.parse(|src, sink| ra_parser::parse_stmt(src, sink, false))
     }
 
+    pub fn parse_block(self) -> Option<tt::TokenTree> {
+        self.parse(ra_parser::parse_block)
+    }
+
+    pub fn parse_meta(self) -> Option<tt::TokenTree> {
+        self.parse(ra_parser::parse_meta)
+    }
+
     pub fn parse_item(self) -> Option<tt::TokenTree> {
         self.parse(ra_parser::parse_item)
+    }
+
+    pub fn parse_vis(self) -> Option<tt::TokenTree> {
+        self.parse(ra_parser::parse_vis)
     }
 
     fn parse<F>(self, f: F) -> Option<tt::TokenTree>

@@ -161,11 +161,43 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             let pat = input.eat_stmt().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(pat.into()));
                         }
+                        "block" => {
+                            let block =
+                                input.eat_block().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(block.into()));
+                        }
+                        "meta" => {
+                            let meta =
+                                input.eat_meta().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(meta.into()));
+                        }
+                        "tt" => {
+                            let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(token.into()));
+                        }
                         "item" => {
                             let item =
                                 input.eat_item().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(item.into()));
                         }
+                        "lifetime" => {
+                            let lifetime =
+                                input.eat_lifetime().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(lifetime.into()));
+                        }
+                        "literal" => {
+                            let literal =
+                                input.eat_literal().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(
+                                text.clone(),
+                                Binding::Simple(tt::Leaf::from(literal).into()),
+                            );
+                        }
+                        "vis" => {
+                            let vis = input.eat_vis().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(vis.into()));
+                        }
+
                         _ => return Err(ExpandError::UnexpectedToken),
                     }
                 }

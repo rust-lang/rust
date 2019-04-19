@@ -731,4 +731,95 @@ MACRO_ITEMS@[0; 40)
         }
 "#, r#"extern crate a ; mod b ; mod c {} use d ; const E : i32 = 0 ; static F : i32 = 0 ; impl G {} struct H ; enum I {Foo} trait J {} fn h () {} extern {} type T = u8 ;"#);
     }
+
+    #[test]
+    fn test_block() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:block) => { fn foo() $ i }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { { 1; } }", "fn foo () {1 ;}");
+    }
+
+    #[test]
+    fn test_meta() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:meta) => (
+                #[$ i]
+                fn bar() {}
+            )
+        }
+"#,
+        );
+        assert_expansion(
+            &rules,
+            r#"foo! { cfg(target_os = "windows") }"#,
+            r#"# [cfg (target_os = "windows")] fn bar () {}"#,
+        );
+    }
+
+    #[test]
+    fn test_tt_block() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:tt) => { fn foo() $ i }
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo! { { 1; } }"#, r#"fn foo () {1 ;}"#);
+    }
+
+    #[test]
+    fn test_tt_group() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+             ($($ i:tt)*) => { $($ i)* }
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
+    }
+
+    #[test]
+    fn test_lifetime() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+              ($ lt:lifetime) => { struct Ref<$ lt>{ s: &$ lt str } }
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo!{'a}"#, r#"struct Ref < 'a > {s : & 'a str}"#);
+    }
+
+    #[test]
+    fn test_literal() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+              ($ type:ty $ lit:literal) => { const VALUE: $ type = $ lit;};
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo!(u8 0)"#, r#"const VALUE : u8 = 0 ;"#);
+    }
+
+    #[test]
+    fn test_vis() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+              ($ vis:vis $ name:ident) => { $ vis fn $ name() {}};
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo!(pub foo);"#, r#"pub fn foo () {}"#);
+    }
 }

@@ -41,6 +41,13 @@ impl<'a> TtCursor<'a> {
         }
     }
 
+    pub(crate) fn at_literal(&mut self) -> Option<&'a tt::Literal> {
+        match self.current() {
+            Some(tt::TokenTree::Leaf(tt::Leaf::Literal(i))) => Some(i),
+            _ => None,
+        }
+    }
+
     pub(crate) fn bump(&mut self) {
         self.pos += 1;
     }
@@ -79,6 +86,13 @@ impl<'a> TtCursor<'a> {
         })
     }
 
+    pub(crate) fn eat_literal(&mut self) -> Option<&'a tt::Literal> {
+        self.at_literal().map(|i| {
+            self.bump();
+            i
+        })
+    }
+
     pub(crate) fn eat_path(&mut self) -> Option<tt::TokenTree> {
         let parser = Parser::new(&mut self.pos, self.subtree);
         parser.parse_path()
@@ -104,9 +118,35 @@ impl<'a> TtCursor<'a> {
         parser.parse_stmt()
     }
 
+    pub(crate) fn eat_block(&mut self) -> Option<tt::TokenTree> {
+        let parser = Parser::new(&mut self.pos, self.subtree);
+        parser.parse_block()
+    }
+
+    pub(crate) fn eat_meta(&mut self) -> Option<tt::TokenTree> {
+        let parser = Parser::new(&mut self.pos, self.subtree);
+        parser.parse_meta()
+    }
+
     pub(crate) fn eat_item(&mut self) -> Option<tt::TokenTree> {
         let parser = Parser::new(&mut self.pos, self.subtree);
         parser.parse_item()
+    }
+
+    pub(crate) fn eat_lifetime(&mut self) -> Option<tt::TokenTree> {
+        // check if it start from "`"
+        if let Some(ident) = self.at_ident() {
+            if ident.text.chars().next()? != '\'' {
+                return None;
+            }
+        }
+
+        self.eat_ident().cloned().map(|ident| tt::Leaf::from(ident).into())
+    }
+
+    pub(crate) fn eat_vis(&mut self) -> Option<tt::TokenTree> {
+        let parser = Parser::new(&mut self.pos, self.subtree);
+        parser.parse_vis()
     }
 
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {

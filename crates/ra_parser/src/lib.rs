@@ -93,9 +93,25 @@ pub fn parse_stmt(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink, 
     parse_from_tokens(token_source, tree_sink, |p| grammar::stmt(p, with_semi));
 }
 
+/// Parse given tokens into the given sink as a block
+pub fn parse_block(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::block);
+}
+
+pub fn parse_meta(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::meta_item);
+}
+
 /// Parse given tokens into the given sink as an item
 pub fn parse_item(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::item);
+}
+
+/// Parse given tokens into the given sink as an visibility qualifier
+pub fn parse_vis(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, |p| {
+        grammar::opt_visibility(p);
+    });
 }
 
 pub fn parse_macro_items(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
