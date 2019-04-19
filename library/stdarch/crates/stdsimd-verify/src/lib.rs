@@ -7,9 +7,7 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
-use std::fs::File;
-use std::io::Read;
-use std::path::Path;
+use std::{fs::File, io::Read, path::Path};
 use syn::ext::IdentExt;
 
 #[proc_macro]

@@ -236,10 +236,11 @@ pub unsafe fn __smlawt(a: i32, b: int16x2_t, c: i32) -> i32 {
 
 #[cfg(test)]
 mod tests {
-    use crate::core_arch::arm::*;
-    use crate::core_arch::simd::{i16x2, i8x4, u8x4};
-    use std::i32;
-    use std::mem::transmute;
+    use crate::core_arch::{
+        arm::*,
+        simd::{i16x2, i8x4, u8x4},
+    };
+    use std::{i32, mem::transmute};
     use stdsimd_test::simd_test;
 
     #[test]

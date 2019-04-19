@@ -9230,11 +9230,11 @@ pub unsafe fn __msa_xori_b(a: v16u8, imm8: i32) -> v16u8 {
 
 #[cfg(test)]
 mod tests {
-    use crate::core_arch::mips::msa::*;
-    use crate::mem;
-    use crate::core_arch::simd::*;
-    use std::f32;
-    use std::f64;
+    use crate::{
+        core_arch::{mips::msa::*, simd::*},
+        mem,
+    };
+    use std::{f32, f64};
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "msa")]

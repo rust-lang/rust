@@ -2497,10 +2497,8 @@ pub unsafe fn _mm_cvtps_pi8(a: __m128) -> __m64 {
 
 #[cfg(test)]
 mod tests {
-    use crate::hint::black_box;
-    use crate::mem::transmute;
-    use std::boxed;
-    use std::f32::NAN;
+    use crate::{hint::black_box, mem::transmute};
+    use std::{boxed, f32::NAN};
     use stdsimd_test::simd_test;
 
     use crate::core_arch::{simd::*, x86::*};

@@ -162,8 +162,7 @@ pub unsafe fn _xrstors(mem_addr: *const u8, rs_mask: u64) {
 
 #[cfg(test)]
 mod tests {
-    use std::fmt;
-    use std::prelude::v1::*;
+    use std::{fmt, prelude::v1::*};
 
     use crate::core_arch::x86::*;
     use stdsimd_test::simd_test;

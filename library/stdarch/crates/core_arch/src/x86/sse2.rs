@@ -3183,13 +3183,16 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use crate::core_arch::{simd::*, x86::*};
-    use crate::hint::black_box;
-    use std::boxed;
-    use std::f32;
-    use std::f64::{self, NAN};
-    use std::i32;
-    use std::mem::{self, transmute};
+    use crate::{
+        core_arch::{simd::*, x86::*},
+        hint::black_box,
+    };
+    use std::{
+        boxed, f32,
+        f64::{self, NAN},
+        i32,
+        mem::{self, transmute},
+    };
     use stdsimd_test::simd_test;
 
     #[test]

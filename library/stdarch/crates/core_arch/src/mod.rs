@@ -56,8 +56,7 @@ pub mod arch {
     #[doc(cfg(target_arch = "aarch64"))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub mod aarch64 {
-        pub use crate::core_arch::aarch64::*;
-        pub use crate::core_arch::arm::*;
+        pub use crate::core_arch::{aarch64::*, arm::*};
     }
 
     /// Platform-specific intrinsics for the `wasm32` platform.

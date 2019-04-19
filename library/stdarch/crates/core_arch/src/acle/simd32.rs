@@ -65,8 +65,7 @@
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
-use crate::core_arch::acle::dsp::int16x2_t;
-use crate::mem::transmute;
+use crate::{core_arch::acle::dsp::int16x2_t, mem::transmute};
 
 types! {
     /// ARM-specific 32-bit wide vector of four packed `i8`.
@@ -465,9 +464,7 @@ pub unsafe fn __usada8(a: int8x4_t, b: int8x4_t, c: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use crate::core_arch::simd::{i16x2, i8x4, u8x4};
-    use std::i16;
-    use std::i8;
-    use std::mem::transmute;
+    use std::{i16, i8, mem::transmute};
     use stdsimd_test::simd_test;
 
     #[test]

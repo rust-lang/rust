@@ -49,8 +49,7 @@ pub unsafe fn cmpxchg16b(
     success: Ordering,
     failure: Ordering,
 ) -> u128 {
-    use crate::intrinsics;
-    use crate::sync::atomic::Ordering::*;
+    use crate::{intrinsics, sync::atomic::Ordering::*};
 
     debug_assert!(dst as usize % 16 == 0);
 

@@ -130,13 +130,17 @@ pub unsafe fn _mm_sha256rnds2_epu32(a: __m128i, b: __m128i, k: __m128i) -> __m12
 
 #[cfg(test)]
 mod tests {
-    use std::f32;
-    use std::f64::{self, NAN};
-    use std::i32;
-    use std::mem::{self, transmute};
+    use std::{
+        f32,
+        f64::{self, NAN},
+        i32,
+        mem::{self, transmute},
+    };
 
-    use crate::core_arch::{simd::*, x86::*};
-    use crate::hint::black_box;
+    use crate::{
+        core_arch::{simd::*, x86::*},
+        hint::black_box,
+    };
     use stdsimd_test::simd_test;
 
     #[simd_test(enable = "sha")]

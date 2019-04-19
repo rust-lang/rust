@@ -35,8 +35,10 @@ extern crate core_arch;
 #[macro_use]
 extern crate quickcheck;
 
-use std::io::{self, Read};
-use std::str;
+use std::{
+    io::{self, Read},
+    str,
+};
 
 #[cfg(target_arch = "x86")]
 use core_arch::x86::*;
