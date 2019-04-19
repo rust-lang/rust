@@ -1617,7 +1617,7 @@ pub trait Iterator {
     /// assert_eq!(find_max(c.iter()), None);
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold_self", issue = "0")]
+    #[unstable(feature = "iterator_fold_self", issue = "60103")]
     fn try_fold_self<F, R>(&mut self, mut f: F) -> Option<R>
         where Self: Sized,
               F: FnMut(Self::Item, Self::Item) -> R,
@@ -1764,7 +1764,7 @@ pub trait Iterator {
     /// assert_eq!(find_max(b.iter()), None));
     /// ```
     #[inline]
-    #[unstable(feature = "iterator_try_fold_self", issue = "0")]
+    #[unstable(feature = "iterator_fold_self", issue = "60103")]
     fn fold_self<F>(mut self, mut f: F) -> Option<Self::Item>
         where Self: Sized, F: FnMut(Self::Item, Self::Item) -> Self::Item
     {
