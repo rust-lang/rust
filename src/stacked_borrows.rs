@@ -625,6 +625,11 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         };
 
         // Reborrow.
+        // TODO: With `two_phase == true`, this performs a weak reborrow for a `Unique`. That
+        // can lead to some possibly surprising effects, if the parent permission is
+        // `SharedReadWrite` then we now have a `Unique` in the middle of them, which "splits"
+        // them in terms of what remains valid when the `Unique` gets used.  Is that really
+        // what we want?
         this.reborrow(place, size, kind, new_tag, /*force_weak:*/ two_phase, protect)?;
         let new_place = place.replace_tag(new_tag);
         // Handle two-phase borrows.
