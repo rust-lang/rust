@@ -796,6 +796,11 @@ impl DoubleEndedIterator for Bytes<'_> {
     }
 
     #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth_back(n)
+    }
+
+    #[inline]
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item> where
         P: FnMut(&Self::Item) -> bool
     {
