@@ -211,6 +211,7 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
         // the constant's pointee type
         crty: Ty<'tcx>,
     ) -> ConstValue<'tcx> {
+        debug!("fold_const_value_deref {:?} {:?} {:?}", val, rty, crty);
         match (val, &crty.sty, &rty.sty) {
             // the easy case, deref a reference
             (ConstValue::Scalar(Scalar::Ptr(p)), x, y) if x == y => ConstValue::ByRef(
@@ -238,6 +239,7 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
 
 impl<'a, 'tcx> PatternFolder<'tcx> for LiteralExpander<'a, 'tcx> {
     fn fold_pattern(&mut self, pat: &Pattern<'tcx>) -> Pattern<'tcx> {
+        debug!("fold_pattern {:?} {:?} {:?}", pat, pat.ty.sty, pat.kind);
         match (&pat.ty.sty, &*pat.kind) {
             (
                 &ty::Ref(_, rty, _),
