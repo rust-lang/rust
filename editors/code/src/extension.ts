@@ -3,7 +3,10 @@ import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
 import { CargoWatchProvider } from './commands/cargo_watch';
-import { interactivelyStartCargoWatch } from './commands/runnables';
+import {
+    interactivelyStartCargoWatch,
+    startCargoWatch
+} from './commands/runnables';
 import { SyntaxTreeContentProvider } from './commands/syntaxTree';
 import * as events from './events';
 import * as notifications from './notifications';
@@ -134,6 +137,10 @@ export function activate(context: vscode.ExtensionContext) {
     registerCommand('rust-analyzer.startCargoWatch', () => {
         if (provider) {
             provider.start();
+        } else {
+            startCargoWatch(context).then(p => {
+                provider = p;
+            });
         }
     });
     registerCommand('rust-analyzer.stopCargoWatch', () => {

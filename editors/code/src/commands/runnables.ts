@@ -153,6 +153,12 @@ export async function interactivelyStartCargoWatch(
         }
     }
 
+    return startCargoWatch(context);
+}
+
+export async function startCargoWatch(
+    context: vscode.ExtensionContext
+): Promise<CargoWatchProvider | undefined> {
     const execPromise = util.promisify(child_process.exec);
 
     const { stderr } = await execPromise('cargo watch --version').catch(e => e);
@@ -197,5 +203,9 @@ export async function interactivelyStartCargoWatch(
         }
     }
 
-    return registerCargoWatchProvider(context.subscriptions);
+    const provider = await registerCargoWatchProvider(context.subscriptions);
+    if (provider) {
+        provider.start();
+    }
+    return provider;
 }
