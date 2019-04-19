@@ -1,3 +1,14 @@
+//! Intel's Restricted Transactional Memory (RTM).
+//! 
+//! This CPU feature is available on Intel Broadwell or later CPUs (and some Haswell).
+//! 
+//! [Wikipedia][wikipedia_rtm] provides a quick overview of the assembly instructions, and
+//! Intel's [programming considerations][intel_consid] details what sorts of instructions within a
+//! transaction are likely to cause an abort.
+//! 
+//! [wikipedia_rtm]: https://en.wikipedia.org/wiki/Transactional_Synchronization_Extensions#Restricted_Transactional_Memory
+//! [intel_consid]: https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-intel-transactional-synchronization-extensions-intel-tsx-programming-considerations
+
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -81,70 +92,67 @@ pub unsafe fn _xtest() -> bool {
     x86_xtest() != 0
 }
 
-/// Retrieves the parameter passed to [`_xabort`] when [`_xbegin`]'s status has the `_XABORT_EXPLICIT` flag set.
+/// Retrieves the parameter passed to [`_xabort`] when [`_xbegin`]'s status has the 
+/// `_XABORT_EXPLICIT` flag set.
 #[inline]
-pub fn _xabort_code(status: u32) -> u32 {
+pub const fn _xabort_code(status: u32) -> u32 {
     (status >> 24) & 0xFF
 }
 
 #[cfg(test)]
 mod tests {
+    use stdsimd_test::simd_test;
+
     use crate::core_arch::x86::*;
 
-    #[test]
-    fn test_xbegin_xend() {
-        unsafe {
+    #[simd_test(enable = "rtm")]
+    unsafe fn test_xbegin_xend() {
+        let mut x = 0;
+        for _ in 0..10 {
+            let code = rtm::_xbegin();
+            if code == _XBEGIN_STARTED {
+                x += 1;
+                rtm::_xend();
+                assert_eq!(x, 1);
+                break
+            }
+            assert_eq!(x, 0);
+        }
+    }
+
+    #[simd_test(enable = "rtm")]
+    unsafe fn test_xabort() {
+        // aborting outside a transactional region does nothing
+        _xabort(0);
+
+        for abort_code in 0..10 {
             let mut x = 0;
-            for _ in 0..10 {
-                let code = rtm::_xbegin();
-                if code == _XBEGIN_STARTED {
-                    x += 1;
-                    rtm::_xend();
-                    assert_eq!(x, 1);
-                    break
-                }
-                assert_eq!(x, 0);
+            let code = rtm::_xbegin();
+            if code == _XBEGIN_STARTED {
+                x += 1;
+                rtm::_xabort(abort_code);
+            } else if code & _XABORT_EXPLICIT != 0 {
+                let test_abort_code = rtm::_xabort_code(code);
+                assert_eq!(test_abort_code, abort_code);
             }
+            assert_eq!(x, 0);
         }
     }
 
-    #[test]
-    fn test_xabort() {
-        unsafe {
-            // aborting with outside a transactional region does nothing
-            _xabort(0);
+    #[simd_test(enable = "rtm")]
+    unsafe fn test_xtest() {
+        assert_eq!(_xtest(), false);
 
-            for abort_code in 0..10 {
-                let mut x = 0;
-                let code = rtm::_xbegin();
-                if code == _XBEGIN_STARTED {
-                    x += 1;
-                    rtm::_xabort(abort_code);
-                } else if code & _XABORT_EXPLICIT != 0 {
-                    let test_abort_code = rtm::_xabort_code(code);
-                    assert_eq!(test_abort_code, abort_code);
-                }
-                assert_eq!(x, 0);
-            }
-        }
-    }
-
-    #[test]
-    fn test_xtest() {
-        unsafe {
-            assert_eq!(_xtest(), false);
-
-            for _ in 0..10 {
-                let code = rtm::_xbegin();
-                if code == _XBEGIN_STARTED {
-                    let in_tx = _xtest();
-                    rtm::_xend();
-                    
-                    // putting the assert inside the transaction would abort the transaction on fail
-                    // without any output/panic/etc
-                    assert_eq!(in_tx, true);
-                    break
-                }
+        for _ in 0..10 {
+            let code = rtm::_xbegin();
+            if code == _XBEGIN_STARTED {
+                let in_tx = _xtest();
+                rtm::_xend();
+                
+                // putting the assert inside the transaction would abort the transaction on fail
+                // without any output/panic/etc
+                assert_eq!(in_tx, true);
+                break
             }
         }
     }
