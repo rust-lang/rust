@@ -173,6 +173,8 @@ impl Iterator for ProbeSeq {
 ///
 /// Returns `None` if an overflow occurs.
 #[inline]
+// Workaround for emscripten bug emscripten-core/emscripten-fastcomp#258
+#[cfg_attr(target_os = "emscripten", inline(never))]
 fn capacity_to_buckets(cap: usize) -> Option<usize> {
     let adjusted_cap = if cap < 8 {
         // Need at least 1 free bucket on small tables
