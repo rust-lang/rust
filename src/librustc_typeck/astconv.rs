@@ -1187,18 +1187,33 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         ty
     }
 
-    fn report_ambiguous_associated_type(&self,
-                                        span: Span,
-                                        type_str: &str,
-                                        trait_str: &str,
-                                        name: &str) {
-        struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type")
-            .span_suggestion(
+    fn report_ambiguous_associated_type(
+        &self,
+        span: Span,
+        type_str: &str,
+        trait_str: &str,
+        name: &str,
+    ) {
+        let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
+        if let (Some(_), Ok(snippet)) = (
+            self.tcx().sess.confused_type_with_std_module.borrow().get(&span),
+            self.tcx().sess.source_map().span_to_snippet(span),
+         ) {
+            err.span_suggestion(
                 span,
-                "use fully-qualified syntax",
-                format!("<{} as {}>::{}", type_str, trait_str, name),
-                Applicability::HasPlaceholders
-            ).emit();
+                "you are looking for the module in `std`, not the primitive type",
+                format!("std::{}", snippet),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.span_suggestion(
+                    span,
+                    "use fully-qualified syntax",
+                    format!("<{} as {}>::{}", type_str, trait_str, name),
+                    Applicability::HasPlaceholders
+            );
+        }
+        err.emit();
     }
 
     // Search for a bound on a type parameter which includes the associated item
@@ -1391,10 +1406,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     err.emit();
                 } else if !qself_ty.references_error() {
                     // Don't print `TyErr` to the user.
-                    self.report_ambiguous_associated_type(span,
-                                                          &qself_ty.to_string(),
-                                                          "Trait",
-                                                          &assoc_ident.as_str());
+                    self.report_ambiguous_associated_type(
+                        span,
+                        &qself_ty.to_string(),
+                        "Trait",
+                        &assoc_ident.as_str(),
+                    );
                 }
                 return (tcx.types.err, Def::Err);
             }
@@ -1461,10 +1478,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             ty
         } else {
             let path_str = tcx.def_path_str(trait_def_id);
-            self.report_ambiguous_associated_type(span,
-                                                  "Type",
-                                                  &path_str,
-                                                  &item_segment.ident.as_str());
+            self.report_ambiguous_associated_type(
+                span,
+                "Type",
+                &path_str,
+                &item_segment.ident.as_str(),
+            );
             return tcx.types.err;
         };
 
