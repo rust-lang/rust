@@ -252,6 +252,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg(not(miri))] // Miri does not support benchmarks
     fn alloc_owned_small(b: &mut Bencher) {
         b.iter(|| {
             let _: Box<_> = box 10;

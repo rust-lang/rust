@@ -2799,6 +2799,7 @@ mod tests {
     use super::VecDeque;
 
     #[bench]
+    #[cfg(not(miri))] // Miri does not support benchmarks
     fn bench_push_back_100(b: &mut test::Bencher) {
         let mut deq = VecDeque::with_capacity(101);
         b.iter(|| {
@@ -2811,6 +2812,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg(not(miri))] // Miri does not support benchmarks
     fn bench_push_front_100(b: &mut test::Bencher) {
         let mut deq = VecDeque::with_capacity(101);
         b.iter(|| {
@@ -2823,6 +2825,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg(not(miri))] // Miri does not support benchmarks
     fn bench_pop_back_100(b: &mut test::Bencher) {
         let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -2836,6 +2839,7 @@ mod tests {
     }
 
     #[bench]
+    #[cfg(not(miri))] // Miri does not support benchmarks
     fn bench_pop_front_100(b: &mut test::Bencher) {
         let mut deq = VecDeque::<i32>::with_capacity(101);
 
@@ -3103,7 +3107,12 @@ mod tests {
             assert!(vec.into_iter().eq(vd));
         }
 
-        for cap_pwr in 0..7 {
+        #[cfg(not(miri))] // Miri is too slow
+        let max_pwr = 7;
+        #[cfg(miri)]
+        let max_pwr = 5;
+
+        for cap_pwr in 0..max_pwr {
             // Make capacity as a (2^x)-1, so that the ring size is 2^x
             let cap = (2i32.pow(cap_pwr) - 1) as usize;
 

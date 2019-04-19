@@ -1354,6 +1354,7 @@ mod tests {
 
     #[test]
     #[cfg_attr(target_os = "emscripten", ignore)]
+    #[cfg(not(miri))] // Miri does not support threads
     fn test_send() {
         let n = list_from(&[1, 2, 3]);
         thread::spawn(move || {
@@ -1371,6 +1372,7 @@ mod tests {
         for _ in 0..25 {
             fuzz_test(3);
             fuzz_test(16);
+            #[cfg(not(miri))] // Miri is too slow
             fuzz_test(189);
         }
     }
