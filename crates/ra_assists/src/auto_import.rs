@@ -168,7 +168,7 @@ fn walk_use_tree_for_best_action<'a>(
     current_path_segments: &mut Vec<&'a ast::PathSegment>, // buffer containing path segments
     current_parent_use_tree_list: Option<&'a ast::UseTreeList>, // will be Some value if we are in a nested import
     current_use_tree: &'a ast::UseTree, // the use tree we are currently examinating
-    target: &[SmolStr],    // the path we want to import
+    target: &[SmolStr],                 // the path we want to import
 ) -> ImportAction<'a> {
     // We save the number of segments in the buffer so we can restore the correct segments
     // before returning. Recursive call will add segments so we need to delete them.
@@ -341,11 +341,11 @@ fn best_action_for_target<'b, 'a: 'b>(
         None => {
             // We have no action and no UseItem was found in container so we find
             // another item and we use it as anchor.
-            // If there are no items, we choose the target path itself as anchor.
+            // If there are no items above, we choose the target path itself as anchor.
+            // todo: we should include even whitespace blocks as anchor candidates
             let anchor = container
                 .children()
-                .find_map(ast::ModuleItem::cast)
-                .map(AstNode::syntax)
+                .find(|n| n.range().start() < anchor.range().start())
                 .or(Some(anchor));
 
             return ImportAction::add_new_use(anchor, false);
@@ -498,9 +498,9 @@ pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
     match path.kind {
         hir::PathKind::Abs => ps.push("".into()),
         hir::PathKind::Crate => ps.push("crate".into()),
-        hir::PathKind::Plain => {},
+        hir::PathKind::Plain => {}
         hir::PathKind::Self_ => ps.push("self".into()),
-        hir::PathKind::Super => ps.push("super".into())
+        hir::PathKind::Super => ps.push("super".into()),
     }
     for s in path.segments.iter() {
         ps.push(s.name.to_smolstr());
@@ -513,7 +513,7 @@ pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
 // the cursor position
 #[allow(unused)]
 pub fn auto_import_text_edit(
-    // Ideally the position of the cursor, used to 
+    // Ideally the position of the cursor, used to
     position: &SyntaxNode,
     // The statement to use as anchor (last resort)
     anchor: &SyntaxNode,
@@ -589,6 +589,47 @@ std::fmt::Debug<|>
     ",
             "
 use std::fmt::Debug;
+
+Debug<|>
+    ",
+        );
+    }
+    #[test]
+    fn test_auto_import_add_use_no_anchor_with_item_below() {
+        check_assist(
+            auto_import,
+            "
+std::fmt::Debug<|>
+
+fn main() {
+}
+    ",
+            "
+use std::fmt::Debug;
+
+Debug<|>
+
+fn main() {
+}
+    ",
+        );
+    }
+
+    #[test]
+    fn test_auto_import_add_use_no_anchor_with_item_above() {
+        check_assist(
+            auto_import,
+            "
+fn main() {
+}
+
+std::fmt::Debug<|>
+    ",
+            "
+use std::fmt::Debug;
+
+fn main() {
+}
 
 Debug<|>
     ",
