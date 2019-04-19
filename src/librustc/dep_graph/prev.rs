@@ -2,9 +2,10 @@ use crate::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use super::dep_node::DepNode;
+use super::graph::DepNodeState;
 use super::serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
-#[derive(Debug, RustcEncodable, RustcDecodable, Default)]
+#[derive(Debug, /*RustcEncodable, RustcDecodable,*/ Default)]
 pub struct PreviousDepGraph {
     /// Maps from dep nodes to their previous index, if any.
     index: FxHashMap<DepNode, SerializedDepNodeIndex>,
@@ -20,13 +21,17 @@ pub struct PreviousDepGraph {
     /// A flattened list of all edge targets in the graph. Edge sources are
     /// implicit in edge_list_indices.
     edge_list_data: Vec<SerializedDepNodeIndex>,
+    /// A set of nodes which are no longer valid.
+    pub(super) state: IndexVec<SerializedDepNodeIndex, DepNodeState>,
 }
 
 impl PreviousDepGraph {
     pub fn new(graph: SerializedDepGraph) -> PreviousDepGraph {
         let index: FxHashMap<_, _> = graph.nodes
             .iter_enumerated()
-            .map(|(idx, dep_node)| (dep_node.node, idx))
+            .map(|(idx, dep_node)| {
+                (dep_node.node, SerializedDepNodeIndex::from_u32(idx.as_u32()))
+            })
             .collect();
 
         let fingerprints: IndexVec<SerializedDepNodeIndex, _> =
@@ -34,15 +39,17 @@ impl PreviousDepGraph {
         let nodes: IndexVec<SerializedDepNodeIndex, _> =
             graph.nodes.iter().map(|d| d.node).collect();
 
-        let total_edge_count: usize = graph.nodes.iter().map(|d| d.deps.len()).sum();
+        let total_edge_count: usize = graph.nodes.iter().map(|d| d.edges.len()).sum();
 
         let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
         let mut edge_list_data = Vec::with_capacity(total_edge_count);
 
         for (current_dep_node_index, edges) in graph.nodes.iter_enumerated()
-                                                                .map(|(i, d)| (i, &d.deps)) {
+                                                                .map(|(i, d)| (i, &d.edges)) {
             let start = edge_list_data.len() as u32;
-            edge_list_data.extend(edges.iter().cloned());
+            edge_list_data.extend(edges.iter().map(|i| {
+                SerializedDepNodeIndex::from_u32(i.as_u32())
+            }));
             let end = edge_list_data.len() as u32;
 
             debug_assert_eq!(current_dep_node_index.index(), edge_list_indices.len());
@@ -58,6 +65,7 @@ impl PreviousDepGraph {
             edge_list_indices,
             edge_list_data,
             index,
+            state: graph.state.convert_index_type(),
         }
     }
 

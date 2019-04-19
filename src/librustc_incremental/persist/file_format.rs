@@ -11,7 +11,7 @@
 
 use std::io::{self, Read};
 use std::path::Path;
-use std::fs;
+use std::fs::{OpenOptions, File};
 use std::env;
 
 use rustc::session::config::nightly_options;
@@ -49,13 +49,16 @@ pub fn write_file_header(stream: &mut Encoder) {
 /// - Returns `Err(..)` if some kind of IO error occurred while reading the
 ///   file.
 pub fn read_file(report_incremental_info: bool, path: &Path)
-    -> io::Result<Option<(Vec<u8>, usize)>>
+    -> io::Result<Option<(Vec<u8>, usize, File)>>
 {
     if !path.exists() {
         return Ok(None);
     }
 
-    let data = fs::read(path)?;
+    let mut real_file = OpenOptions::new().read(true).write(true).open(path)?;
+    let len = real_file.metadata().map(|m| m.len() as usize + 1).unwrap_or(0);
+    let mut data = Vec::with_capacity(len);
+    real_file.read_to_end(&mut data)?;
 
     let mut file = io::Cursor::new(data);
 
@@ -100,7 +103,7 @@ pub fn read_file(report_incremental_info: bool, path: &Path)
     }
 
     let post_header_start_pos = file.position() as usize;
-    Ok(Some((file.into_inner(), post_header_start_pos)))
+    Ok(Some((file.into_inner(), post_header_start_pos, real_file)))
 }
 
 fn report_format_mismatch(report_incremental_info: bool, file: &Path, message: &str) {
