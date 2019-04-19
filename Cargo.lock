@@ -383,7 +383,7 @@ dependencies = [
  "cargo_metadata 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "clippy-mini-macro-test 0.2.0",
  "clippy_lints 0.0.212",
- "compiletest_rs 0.3.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiletest_rs 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "derive-new 0.5.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -491,7 +491,7 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.3.21"
+version = "0.3.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "diff 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1618,7 +1618,7 @@ dependencies = [
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "cargo_metadata 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "compiletest_rs 0.3.21 (registry+https://github.com/rust-lang/crates.io-index)",
+ "compiletest_rs 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "directories 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "hex 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4033,7 +4033,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum commoncrypto 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d056a8586ba25a1e4d61cb090900e495952c7886786fc55f909ab2f819b69007"
 "checksum commoncrypto-sys 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1fed34f46747aa73dfaa578069fd8279d2818ade2b55f38f22a9401c7f4083e2"
 "checksum compiler_builtins 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4ada53ac629568219809178f988ca2aac9889e9a847379588c097d30ce185145"
-"checksum compiletest_rs 0.3.21 (registry+https://github.com/rust-lang/crates.io-index)" = "17a60483b7d4d1534db7b77458a03d5d8a93a707432a04978dfe87ea43bb61b1"
+"checksum compiletest_rs 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)" = "f40ecc9332b68270998995c00f8051ee856121764a0d3230e64c9efd059d27b6"
 "checksum constant_time_eq 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)" = "8ff012e225ce166d4422e0e78419d901719760f62ae2b7969ca6b564d1b54a9e"
 "checksum core-foundation 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4e2640d6d0bf22e82bed1b73c6aef8d5dd31e5abe6666c57e6d45e2649f4f887"
 "checksum core-foundation-sys 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
