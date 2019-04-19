@@ -256,7 +256,8 @@ macro_rules! diagnostic_method {
 
 impl Span {
     /// A span that resolves at a unique site. Each call to this method will return a new unique
-    /// span that is inaccessible from other sites.
+    /// span that is inaccessible from other sites. For those familiar with Lisp, this is similar to
+    /// [gensym](http://www.lispworks.com/documentation/lw50/CLHS/Body/f_gensym.htm).
     #[unstable(feature = "proc_macro_unique_site", issue = "54725")]
     pub fn unique_site() -> Span {
         Span(bridge::client::Span::unique_site())
