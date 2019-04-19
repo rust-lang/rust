@@ -809,4 +809,16 @@ MACRO_ITEMS@[0; 40)
         );
         assert_expansion(&rules, r#"foo!(u8 0)"#, r#"const VALUE: u8 = 0;"#);
     }
+
+    #[test]
+    fn test_vis() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+              ($ vis:vis $ name:ident) => { $ vis fn $ name() {}};
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo!(pub foo);"#, r#"pub fn foo() {}"#);
+    }
 }

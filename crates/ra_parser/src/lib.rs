@@ -107,6 +107,13 @@ pub fn parse_item(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) 
     parse_from_tokens(token_source, tree_sink, grammar::item);
 }
 
+/// Parse given tokens into the given sink as an visibility qualifier
+pub fn parse_vis(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, |p| {
+        grammar::opt_visibility(p);
+    });
+}
+
 pub fn parse_macro_items(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
     parse_from_tokens(token_source, tree_sink, grammar::macro_items);
 }

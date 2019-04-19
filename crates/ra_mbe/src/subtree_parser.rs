@@ -58,6 +58,10 @@ impl<'a> Parser<'a> {
         self.parse(ra_parser::parse_item)
     }
 
+    pub fn parse_vis(self) -> Option<tt::TokenTree> {
+        self.parse(ra_parser::parse_vis)
+    }
+
     fn parse<F>(self, f: F) -> Option<tt::TokenTree>
     where
         F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),

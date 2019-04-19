@@ -193,6 +193,10 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                                 Binding::Simple(tt::Leaf::from(literal).into()),
                             );
                         }
+                        "vis" => {
+                            let vis = input.eat_vis().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(vis.into()));
+                        }
 
                         _ => return Err(ExpandError::UnexpectedToken),
                     }

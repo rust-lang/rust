@@ -167,7 +167,7 @@ impl BlockLike {
     }
 }
 
-fn opt_visibility(p: &mut Parser) -> bool {
+pub(crate) fn opt_visibility(p: &mut Parser) -> bool {
     match p.current() {
         PUB_KW => {
             let m = p.start();
