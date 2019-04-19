@@ -134,6 +134,13 @@ impl<'a> TtCursor<'a> {
     }
 
     pub(crate) fn eat_lifetime(&mut self) -> Option<tt::TokenTree> {
+        // check if it start from "`"
+        if let Some(ident) = self.at_ident() {
+            if ident.text.chars().next()? != '\'' {
+                return None;
+            }
+        }
+
         self.eat_ident().cloned().map(|ident| tt::Leaf::from(ident).into())
     }
 
