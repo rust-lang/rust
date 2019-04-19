@@ -111,6 +111,9 @@ matrix:
         - shellcheck --version
         - shellcheck ci/*.sh
 
+  allow_failures:
+    - name: "powerpc-unknown-linux-gnu - no assert_instr"
+
 install: travis_retry rustup target add $TARGET
 script:
   - cargo generate-lockfile
