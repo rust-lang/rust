@@ -1,42 +1,17 @@
-error: expected one of `=>`, `@`, `if`, or `|`, found `:`
-  --> $DIR/struct-literal-in-match-discriminant.rs:7:10
-   |
-LL |         x: 3
-   |          ^ expected one of `=>`, `@`, `if`, or `|` here
-
-error: expected one of `.`, `;`, `?`, `}`, or an operator, found `=>`
-  --> $DIR/struct-literal-in-match-discriminant.rs:11:11
-   |
-LL |         } => {}
-   |           ^^ expected one of `.`, `;`, `?`, `}`, or an operator here
-
-error[E0423]: expected value, found struct `Foo`
+error: struct literals are not allowed here
   --> $DIR/struct-literal-in-match-discriminant.rs:6:11
    |
-LL |     match Foo {
-   |           ^^^ did you mean `(Foo { /* fields */ })`?
-
-error[E0425]: cannot find value `x` in this scope
-  --> $DIR/struct-literal-in-match-discriminant.rs:10:16
+LL |       match Foo {
+   |  ___________^
+LL | |         x: 3
+LL | |     } {
+   | |_____^
+help: surround the struct literal with parenthesis
    |
-LL |             x: x
-   |                ^ not found in this scope
-
-error[E0308]: mismatched types
-  --> $DIR/struct-literal-in-match-discriminant.rs:9:9
+LL |     match (Foo {
+LL |         x: 3
+LL |     }) {
    |
-LL |   fn main() {
-   |             - expected `()` because of default return type
-...
-LL | /         Foo {
-LL | |             x: x
-LL | |         } => {}
-   | |_________^ expected (), found struct `Foo`
-   |
-   = note: expected type `()`
-              found type `Foo`
 
-error: aborting due to 5 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0308, E0423, E0425.
-For more information about an error, try `rustc --explain E0308`.

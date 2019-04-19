@@ -240,6 +240,56 @@ impl<'a> Resolver<'a> {
         (err, candidates)
     }
 
+    fn followed_by_brace(&self, span: Span) -> (bool, Option<(Span, String)>) {
+        // HACK(estebank): find a better way to figure out that this was a
+        // parser issue where a struct literal is being used on an expression
+        // where a brace being opened means a block is being started. Look
+        // ahead for the next text to see if `span` is followed by a `{`.
+        let sm = self.session.source_map();
+        let mut sp = span;
+        loop {
+            sp = sm.next_point(sp);
+            match sm.span_to_snippet(sp) {
+                Ok(ref snippet) => {
+                    if snippet.chars().any(|c| { !c.is_whitespace() }) {
+                        break;
+                    }
+                }
+                _ => break,
+            }
+        }
+        let followed_by_brace = match sm.span_to_snippet(sp) {
+            Ok(ref snippet) if snippet == "{" => true,
+            _ => false,
+        };
+        // In case this could be a struct literal that needs to be surrounded
+        // by parenthesis, find the appropriate span.
+        let mut i = 0;
+        let mut closing_brace = None;
+        loop {
+            sp = sm.next_point(sp);
+            match sm.span_to_snippet(sp) {
+                Ok(ref snippet) => {
+                    if snippet == "}" {
+                        let sp = span.to(sp);
+                        if let Ok(snippet) = sm.span_to_snippet(sp) {
+                            closing_brace = Some((sp, snippet));
+                        }
+                        break;
+                    }
+                }
+                _ => break,
+            }
+            i += 1;
+            // The bigger the span, the more likely we're incorrect --
+            // bound it to 100 chars long.
+            if i > 100 {
+                break;
+            }
+        }
+        return (followed_by_brace, closing_brace)
+    }
+
     /// Provides context-dependent help for errors reported by the `smart_resolve_path_fragment`
     /// function.
     /// Returns `true` if able to provide context-dependent help.
@@ -276,6 +326,39 @@ impl<'a> Resolver<'a> {
                 true
             }
             _ => false,
+        };
+
+        let mut bad_struct_syntax_suggestion = || {
+            let (followed_by_brace, closing_brace) = self.followed_by_brace(span);
+            let mut suggested = false;
+            match source {
+                PathSource::Expr(Some(parent)) => {
+                    suggested = path_sep(err, &parent);
+                }
+                PathSource::Expr(None) if followed_by_brace == true => {
+                    if let Some((sp, snippet)) = closing_brace {
+                        err.span_suggestion(
+                            sp,
+                            "surround the struct literal with parenthesis",
+                            format!("({})", snippet),
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        err.span_label(
+                            span,  // Note the parenthesis surrounding the suggestion below
+                            format!("did you mean `({} {{ /* fields */ }})`?", path_str),
+                        );
+                    }
+                    suggested = true;
+                },
+                _ => {}
+            }
+            if !suggested {
+                err.span_label(
+                    span,
+                    format!("did you mean `{} {{ /* fields */ }}`?", path_str),
+                );
+            }
         };
 
         match (def, source) {
@@ -331,87 +414,13 @@ impl<'a> Resolver<'a> {
                         );
                     }
                 } else {
-                    // HACK(estebank): find a better way to figure out that this was a
-                    // parser issue where a struct literal is being used on an expression
-                    // where a brace being opened means a block is being started. Look
-                    // ahead for the next text to see if `span` is followed by a `{`.
-                    let sm = self.session.source_map();
-                    let mut sp = span;
-                    loop {
-                        sp = sm.next_point(sp);
-                        match sm.span_to_snippet(sp) {
-                            Ok(ref snippet) => {
-                                if snippet.chars().any(|c| { !c.is_whitespace() }) {
-                                    break;
-                                }
-                            }
-                            _ => break,
-                        }
-                    }
-                    let followed_by_brace = match sm.span_to_snippet(sp) {
-                        Ok(ref snippet) if snippet == "{" => true,
-                        _ => false,
-                    };
-                    // In case this could be a struct literal that needs to be surrounded
-                    // by parenthesis, find the appropriate span.
-                    let mut i = 0;
-                    let mut closing_brace = None;
-                    loop {
-                        sp = sm.next_point(sp);
-                        match sm.span_to_snippet(sp) {
-                            Ok(ref snippet) => {
-                                if snippet == "}" {
-                                    let sp = span.to(sp);
-                                    if let Ok(snippet) = sm.span_to_snippet(sp) {
-                                        closing_brace = Some((sp, snippet));
-                                    }
-                                    break;
-                                }
-                            }
-                            _ => break,
-                        }
-                        i += 1;
-                        // The bigger the span, the more likely we're incorrect --
-                        // bound it to 100 chars long.
-                        if i > 100 {
-                            break;
-                        }
-                    }
-                    match source {
-                        PathSource::Expr(Some(parent)) => if !path_sep(err, &parent) {
-                            err.span_label(
-                                span,
-                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
-                            );
-                        }
-                        PathSource::Expr(None) if followed_by_brace == true => {
-                            if let Some((sp, snippet)) = closing_brace {
-                                err.span_suggestion(
-                                    sp,
-                                    "surround the struct literal with parenthesis",
-                                    format!("({})", snippet),
-                                    Applicability::MaybeIncorrect,
-                                );
-                            } else {
-                                err.span_label(
-                                    span,
-                                    format!("did you mean `({} {{ /* fields */ }})`?", path_str),
-                                );
-                            }
-                        },
-                        _ => {
-                            err.span_label(
-                                span,
-                                format!("did you mean `{} {{ /* fields */ }}`?", path_str),
-                            );
-                        },
-                    }
+                    bad_struct_syntax_suggestion();
                 }
             }
             (Def::Union(..), _) |
             (Def::Variant(..), _) |
             (Def::Ctor(_, _, CtorKind::Fictive), _) if ns == ValueNS => {
-                err.span_label(span, format!("did you mean `{} {{ /* fields */ }}`?", path_str));
+                bad_struct_syntax_suggestion();
             }
             (Def::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);

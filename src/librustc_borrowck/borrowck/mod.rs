@@ -897,8 +897,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         self.cannot_borrow_path_as_mutable(error_span, &descr, Origin::Ast)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
-                        span_bug!(err.span,
-                            "err_mutbl with a closure invocation");
+                        span_bug!(err.span, "err_mutbl with a closure invocation");
                     }
                 };
 
@@ -1096,7 +1095,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             BorrowViolation(euv::MatchDiscriminant) => {
                 "cannot borrow data mutably"
             }
-
             BorrowViolation(euv::ClosureInvocation) => {
                 is_closure = true;
                 "closure invocation"
