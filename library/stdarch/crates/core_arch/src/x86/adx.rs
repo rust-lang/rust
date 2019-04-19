@@ -89,27 +89,27 @@ mod tests {
         let a = u32::max_value();
         let mut out = 0;
 
-        let r = _addcarry_u32(0, a, 1, &mut out);
+        let r = _addcarryx_u32(0, a, 1, &mut out);
         assert_eq!(r, 1);
         assert_eq!(out, 0);
 
-        let r = _addcarry_u32(0, a, 0, &mut out);
+        let r = _addcarryx_u32(0, a, 0, &mut out);
         assert_eq!(r, 0);
         assert_eq!(out, a);
 
-        let r = _addcarry_u32(1, a, 1, &mut out);
+        let r = _addcarryx_u32(1, a, 1, &mut out);
         assert_eq!(r, 1);
         assert_eq!(out, 1);
 
-        let r = _addcarry_u32(1, a, 0, &mut out);
+        let r = _addcarryx_u32(1, a, 0, &mut out);
         assert_eq!(r, 1);
         assert_eq!(out, 0);
 
-        let r = _addcarry_u32(0, 3, 4, &mut out);
+        let r = _addcarryx_u32(0, 3, 4, &mut out);
         assert_eq!(r, 0);
         assert_eq!(out, 7);
 
-        let r = _addcarry_u32(1, 3, 4, &mut out);
+        let r = _addcarryx_u32(1, 3, 4, &mut out);
         assert_eq!(r, 0);
         assert_eq!(out, 8);
     }
@@ -118,7 +118,7 @@ mod tests {
     unsafe fn test_addcarryx_u32_2() {
         unsafe fn add_1_2_3() -> u32 {
             let mut out = 0;
-            std::arch::x86_64::_addcarryx_u32(1, 2, 3, &mut out);
+            _addcarryx_u32(1, 2, 3, &mut out);
             out
         }
         assert_eq!(6, add_1_2_3());
