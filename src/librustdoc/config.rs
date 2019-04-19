@@ -13,7 +13,7 @@ use rustc::session::config::{nightly_options, build_codegen_options, build_debug
 use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
-use syntax::edition::Edition;
+use syntax::edition::{Edition, DEFAULT_EDITION};
 
 use crate::core::new_handler;
 use crate::externalfiles::ExternalHtml;
@@ -386,13 +386,16 @@ impl Options {
             }
         }
 
-        let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
-        let edition = match edition.parse() {
-            Ok(e) => e,
-            Err(_) => {
-                diag.struct_err("could not parse edition").emit();
-                return Err(1);
+        let edition = if let Some(e) = matches.opt_str("edition") {
+            match e.parse() {
+                Ok(e) => e,
+                Err(_) => {
+                    diag.struct_err("could not parse edition").emit();
+                    return Err(1);
+                }
             }
+        } else {
+            DEFAULT_EDITION
         };
 
         let mut id_map = html::markdown::IdMap::new();
