@@ -25,7 +25,7 @@ error[E0392]: parameter `'c` is never used
   --> $DIR/region-bounds-on-objects-and-type-parameters.rs:11:18
    |
 LL | struct Foo<'a,'b,'c> {
-   |                  ^^ unused type parameter
+   |                  ^^ unused parameter
    |
    = help: consider removing `'c` or using a marker such as `std::marker::PhantomData`
 

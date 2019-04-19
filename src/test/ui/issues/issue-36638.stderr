@@ -14,7 +14,7 @@ error[E0392]: parameter `Self` is never used
   --> $DIR/issue-36638.rs:3:12
    |
 LL | struct Foo<Self>(Self);
-   |            ^^^^ unused type parameter
+   |            ^^^^ unused parameter
    |
    = help: consider removing `Self` or using a marker such as `std::marker::PhantomData`
 
