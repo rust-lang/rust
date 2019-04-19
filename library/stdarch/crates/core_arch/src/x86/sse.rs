@@ -2501,7 +2501,7 @@ mod tests {
     use crate::mem::transmute;
     use std::boxed;
     use std::f32::NAN;
-    use stdsimd_test::simd_test; // Used to inhibit constant-folding.
+    use stdsimd_test::simd_test;
 
     use crate::core_arch::{simd::*, x86::*};
 

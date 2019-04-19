@@ -3309,7 +3309,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use crate::hint::black_box;
-    use stdsimd_test::simd_test; // Used to inhibit constant-folding.
+    use stdsimd_test::simd_test;
 
     use crate::core_arch::x86::*;
 

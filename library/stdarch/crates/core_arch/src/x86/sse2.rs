@@ -3190,7 +3190,7 @@ mod tests {
     use std::f64::{self, NAN};
     use std::i32;
     use std::mem::{self, transmute};
-    use stdsimd_test::simd_test; // Used to inhibit constant-folding.
+    use stdsimd_test::simd_test;
 
     #[test]
     fn test_mm_pause() {

@@ -137,7 +137,7 @@ mod tests {
 
     use crate::core_arch::{simd::*, x86::*};
     use crate::hint::black_box;
-    use stdsimd_test::simd_test; // Used to inhibit constant-folding.
+    use stdsimd_test::simd_test;
 
     #[simd_test(enable = "sha")]
     #[allow(overflowing_literals)]
