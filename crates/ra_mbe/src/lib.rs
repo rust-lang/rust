@@ -797,4 +797,16 @@ MACRO_ITEMS@[0; 40)
         );
         assert_expansion(&rules, r#"foo!{'a}"#, r#"struct Ref < 'a > {s : & 'a str}"#);
     }
+
+    #[test]
+    fn test_literal() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+              ($ type:ty $ lit:literal) => { const VALUE: $ type = $ lit;};
+        }
+"#,
+        );
+        assert_expansion(&rules, r#"foo!(u8 0)"#, r#"const VALUE: u8 = 0;"#);
+    }
 }

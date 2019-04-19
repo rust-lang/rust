@@ -41,6 +41,13 @@ impl<'a> TtCursor<'a> {
         }
     }
 
+    pub(crate) fn at_literal(&mut self) -> Option<&'a tt::Literal> {
+        match self.current() {
+            Some(tt::TokenTree::Leaf(tt::Leaf::Literal(i))) => Some(i),
+            _ => None,
+        }
+    }
+
     pub(crate) fn bump(&mut self) {
         self.pos += 1;
     }
@@ -74,6 +81,13 @@ impl<'a> TtCursor<'a> {
 
     pub(crate) fn eat_ident(&mut self) -> Option<&'a tt::Ident> {
         self.at_ident().map(|i| {
+            self.bump();
+            i
+        })
+    }
+
+    pub(crate) fn eat_literal(&mut self) -> Option<&'a tt::Literal> {
+        self.at_literal().map(|i| {
             self.bump();
             i
         })
