@@ -209,6 +209,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
 
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
+        assert_eq!(expanded.to_string(), expansion);
 
         let tree = token_tree_to_macro_items(&expanded);
 
@@ -807,7 +808,7 @@ MACRO_ITEMS@[0; 40)
         }
 "#,
         );
-        assert_expansion(&rules, r#"foo!(u8 0)"#, r#"const VALUE: u8 = 0;"#);
+        assert_expansion(&rules, r#"foo!(u8 0)"#, r#"const VALUE : u8 = 0 ;"#);
     }
 
     #[test]
@@ -819,6 +820,6 @@ MACRO_ITEMS@[0; 40)
         }
 "#,
         );
-        assert_expansion(&rules, r#"foo!(pub foo);"#, r#"pub fn foo() {}"#);
+        assert_expansion(&rules, r#"foo!(pub foo);"#, r#"pub fn foo () {}"#);
     }
 }
