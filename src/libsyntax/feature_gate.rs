@@ -268,10 +268,7 @@ declare_features! (
     (active, mips_target_feature, "1.27.0", Some(44839), None),
     (active, avx512_target_feature, "1.27.0", Some(44839), None),
     (active, mmx_target_feature, "1.27.0", Some(44839), None),
-    (active, sse4a_target_feature, "1.27.0", Some(44839), None),
-    (active, tbm_target_feature, "1.27.0", Some(44839), None),
     (active, wasm_target_feature, "1.30.0", Some(44839), None),
-    (active, adx_target_feature, "1.32.0", Some(44839), None),
     (active, cmpxchg16b_target_feature, "1.32.0", Some(44839), None),
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
     (active, rtm_target_feature, "1.35.0", Some(44839), None),
@@ -850,6 +847,12 @@ declare_features! (
     (accepted, repr_align_enum, "1.37.0", Some(57996), None),
     // Allows `const _: TYPE = VALUE`.
     (accepted, underscore_const_names, "1.37.0", Some(54912), None),
+    // Allows using SSE4A intrinsics from `core::arch::{x86, x86_64}`.
+    (accepted, sse4a_target_feature, "1.37.0", Some(44839), None),
+    // Allows using TBM intrinsics from `core::arch::{x86, x86_64}`.
+    (accepted, tbm_target_feature, "1.37.0", Some(44839), None),
+    // Allows using ADX intrinsics from `core::arch::{x86, x86_64}`.
+    (accepted, adx_target_feature, "1.37.0", Some(44839), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: accepted features
