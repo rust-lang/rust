@@ -1,4 +1,4 @@
-error[E0658]: C-varaidic functions are unstable
+error[E0658]: C-variadic functions are unstable
   --> $DIR/feature-gate-c_variadic.rs:3:1
    |
 LL | pub unsafe extern "C" fn test(_: i32, ap: ...) { }
