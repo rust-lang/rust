@@ -86,7 +86,7 @@ impl<'a> PanicInfo<'a> {
     ///
     /// [`fmt::write`]: ../fmt/fn.write.html
     #[unstable(feature = "panic_info_message", issue = "44489")]
-    pub fn message(&self) -> Option<&fmt::Arguments> {
+    pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
         self.message
     }
 
@@ -115,7 +115,7 @@ impl<'a> PanicInfo<'a> {
     /// panic!("Normal panic");
     /// ```
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn location(&self) -> Option<&Location> {
+    pub fn location(&self) -> Option<&Location<'_>> {
         // NOTE: If this is changed to sometimes return None,
         // deal with that case in std::panicking::default_hook and std::panicking::begin_panic_fmt.
         Some(&self.location)
@@ -124,7 +124,7 @@ impl<'a> PanicInfo<'a> {
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl fmt::Display for PanicInfo<'_> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
         if let Some(message) = self.message {
             write!(formatter, "'{}', ", message)?
@@ -249,7 +249,7 @@ impl<'a> Location<'a> {
 
 #[stable(feature = "panic_hook_display", since = "1.26.0")]
 impl fmt::Display for Location<'_> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(formatter, "{}:{}:{}", self.file, self.line, self.col)
     }
 }

@@ -200,7 +200,7 @@ pub struct Empty<T>(marker::PhantomData<T>);
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T> fmt::Debug for Empty<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Empty")
     }
 }
@@ -558,7 +558,7 @@ impl<T, F> Iterator for FromFn<F>
 
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 impl<F> fmt::Debug for FromFn<F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FromFn").finish()
     }
 }
@@ -631,7 +631,7 @@ impl<T, F> FusedIterator for Successors<T, F>
 
 #[stable(feature = "iter_successors", since = "1.34.0")]
 impl<T: fmt::Debug, F> fmt::Debug for Successors<T, F> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Successors")
             .field("next", &self.next)
             .finish()

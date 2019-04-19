@@ -15,7 +15,7 @@ macro_rules! impl_nonzero_fmt {
             #[$stability]
             impl fmt::$Trait for $Ty {
                 #[inline]
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                     self.get().fmt(f)
                 }
             }
@@ -164,42 +164,42 @@ pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")]
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Wrapping<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[stable(feature = "wrapping_display", since = "1.10.0")]
 impl<T: fmt::Display> fmt::Display for Wrapping<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[stable(feature = "wrapping_fmt", since = "1.11.0")]
 impl<T: fmt::Binary> fmt::Binary for Wrapping<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[stable(feature = "wrapping_fmt", since = "1.11.0")]
 impl<T: fmt::Octal> fmt::Octal for Wrapping<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[stable(feature = "wrapping_fmt", since = "1.11.0")]
 impl<T: fmt::LowerHex> fmt::LowerHex for Wrapping<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
 #[stable(feature = "wrapping_fmt", since = "1.11.0")]
 impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
@@ -4423,7 +4423,7 @@ impl TryFromIntError {
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl fmt::Display for TryFromIntError {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.__description().fmt(fmt)
     }
 }
@@ -4820,7 +4820,7 @@ impl ParseIntError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseIntError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.__description().fmt(f)
     }
 }

@@ -338,7 +338,7 @@ pub struct LayoutErr {
 // (we need this for downstream impl of trait Error)
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 impl fmt::Display for LayoutErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("invalid parameters to Layout::from_size_align")
     }
 }
@@ -354,7 +354,7 @@ pub struct AllocErr;
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for AllocErr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str("memory allocation failed")
     }
 }
@@ -376,7 +376,7 @@ impl CannotReallocInPlace {
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
 impl fmt::Display for CannotReallocInPlace {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.description())
     }
 }

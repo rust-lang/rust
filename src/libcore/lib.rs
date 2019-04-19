@@ -65,7 +65,6 @@
 
 #![deny(rust_2018_idioms)]
 #![allow(explicit_outlives_requirements)]
-#![allow(elided_lifetimes_in_paths)]
 
 #![feature(allow_internal_unstable)]
 #![feature(arbitrary_self_types)]

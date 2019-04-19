@@ -18,7 +18,7 @@ impl Utf8Lossy {
         unsafe { mem::transmute(bytes) }
     }
 
-    pub fn chunks(&self) -> Utf8LossyChunksIter {
+    pub fn chunks(&self) -> Utf8LossyChunksIter<'_> {
         Utf8LossyChunksIter { source: &self.bytes }
     }
 }
@@ -138,7 +138,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
 
 
 impl fmt::Display for Utf8Lossy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // If we're the empty string then our iterator won't actually yield
         // anything, so perform the formatting manually
         if self.bytes.len() == 0 {
@@ -164,7 +164,7 @@ impl fmt::Display for Utf8Lossy {
 }
 
 impl fmt::Debug for Utf8Lossy {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_char('"')?;
 
         for Utf8LossyChunk { valid, broken } in self.chunks() {
