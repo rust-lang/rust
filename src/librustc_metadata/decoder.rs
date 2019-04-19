@@ -1163,6 +1163,16 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    crate fn static_mutability(&self, id: DefIndex) -> Option<hir::Mutability> {
+        match self.entry(id).kind {
+            EntryKind::ImmStatic |
+            EntryKind::ForeignImmStatic => Some(hir::MutImmutable),
+            EntryKind::MutStatic |
+            EntryKind::ForeignMutStatic => Some(hir::MutMutable),
+            _ => None,
+        }
+    }
+
     pub fn fn_sig(&self,
                   id: DefIndex,
                   tcx: TyCtxt<'a, 'tcx, 'tcx>)

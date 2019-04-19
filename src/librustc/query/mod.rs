@@ -238,6 +238,9 @@ rustc_queries! {
         /// True if this is a foreign item (i.e., linked via `extern { ... }`).
         query is_foreign_item(_: DefId) -> bool {}
 
+        /// Returns `Some(mutability)` if the node pointed to by `def_id` is a static item.
+        query static_mutability(_: DefId) -> Option<hir::Mutability> {}
+
         /// Get a map with the variance of every item; use `item_variance`
         /// instead.
         query crate_variances(_: CrateNum) -> Lrc<ty::CrateVariancesMap> {
