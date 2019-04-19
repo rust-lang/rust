@@ -61,7 +61,7 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.opts.debugging_opts.disable_instrumentation_preinliner {
             add("-disable-preinline");
         }
-        if llvm::LLVMRustIsRustLLVM() {
+        if get_major_version() >= 8 {
             match sess.opts.debugging_opts.merge_functions
                   .unwrap_or(sess.target.target.options.merge_functions) {
                 MergeFunctions::Disabled |
@@ -154,6 +154,7 @@ const X86_WHITELIST: &[(&str, Option<&str>)] = &[
     ("popcnt", None),
     ("rdrand", None),
     ("rdseed", None),
+    ("rtm", Some("rtm_target_feature")),
     ("sha", None),
     ("sse", None),
     ("sse2", None),

@@ -166,16 +166,18 @@ impl<'a> Resolver<'a> {
                 let self_is_available = self.self_value_is_available(path[0].ident.span, span);
                 match candidate {
                     AssocSuggestion::Field => {
-                        err.span_suggestion(
-                            span,
-                            "try",
-                            format!("self.{}", path_str),
-                            Applicability::MachineApplicable,
-                        );
-                        if !self_is_available {
-                            err.span_label(span, format!("`self` value is a keyword \
-                                                         only available in \
-                                                         methods with `self` parameter"));
+                        if self_is_available {
+                            err.span_suggestion(
+                                span,
+                                "you might have meant to use the available field",
+                                format!("self.{}", path_str),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            err.span_label(
+                                span,
+                                "a field by this name exists in `Self`",
+                            );
                         }
                     }
                     AssocSuggestion::MethodWithSelf if self_is_available => {

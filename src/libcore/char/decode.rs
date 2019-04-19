@@ -128,7 +128,7 @@ impl DecodeUtf16Error {
 
 #[stable(feature = "decode_utf16", since = "1.9.0")]
 impl fmt::Display for DecodeUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "unpaired surrogate found: {:x}", self.code)
     }
 }

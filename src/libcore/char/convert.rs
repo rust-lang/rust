@@ -193,7 +193,7 @@ enum CharErrorKind {
 
 #[stable(feature = "char_from_str", since = "1.20.0")]
 impl fmt::Display for ParseCharError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.__description().fmt(f)
     }
 }
@@ -240,7 +240,7 @@ pub struct CharTryFromError(());
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl fmt::Display for CharTryFromError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "converted integer out of range for `char`".fmt(f)
     }
 }
@@ -316,4 +316,3 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
         None
     }
 }
-

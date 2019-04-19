@@ -1193,7 +1193,7 @@ macro_rules! atomic_int {
 
         #[$stable_debug]
         impl fmt::Debug for $atomic_type {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
             }
         }
@@ -2506,7 +2506,7 @@ pub fn compiler_fence(order: Ordering) {
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl fmt::Debug for AtomicBool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
     }
 }
@@ -2514,7 +2514,7 @@ impl fmt::Debug for AtomicBool {
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl<T> fmt::Debug for AtomicPtr<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(&self.load(Ordering::SeqCst), f)
     }
 }
@@ -2522,7 +2522,7 @@ impl<T> fmt::Debug for AtomicPtr<T> {
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "atomic_pointer", since = "1.24.0")]
 impl<T> fmt::Pointer for AtomicPtr<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Pointer::fmt(&self.load(Ordering::SeqCst), f)
     }
 }

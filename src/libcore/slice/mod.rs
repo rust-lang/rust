@@ -524,7 +524,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<'_, T> {
         unsafe {
             let ptr = self.as_ptr();
             assume(!ptr.is_null());
@@ -556,7 +556,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn iter_mut(&mut self) -> IterMut<T> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, T> {
         unsafe {
             let ptr = self.as_mut_ptr();
             assume(!ptr.is_null());
@@ -603,7 +603,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn windows(&self, size: usize) -> Windows<T> {
+    pub fn windows(&self, size: usize) -> Windows<'_, T> {
         assert!(size != 0);
         Windows { v: self, size }
     }
@@ -637,7 +637,7 @@ impl<T> [T] {
     /// [`rchunks`]: #method.rchunks
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn chunks(&self, chunk_size: usize) -> Chunks<T> {
+    pub fn chunks(&self, chunk_size: usize) -> Chunks<'_, T> {
         assert!(chunk_size != 0);
         Chunks { v: self, chunk_size }
     }
@@ -675,7 +675,7 @@ impl<T> [T] {
     /// [`rchunks_mut`]: #method.rchunks_mut
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
+    pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<'_, T> {
         assert!(chunk_size != 0);
         ChunksMut { v: self, chunk_size }
     }
@@ -712,7 +712,7 @@ impl<T> [T] {
     /// [`rchunks_exact`]: #method.rchunks_exact
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
-    pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<T> {
+    pub fn chunks_exact(&self, chunk_size: usize) -> ChunksExact<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
@@ -757,7 +757,7 @@ impl<T> [T] {
     /// [`rchunks_exact_mut`]: #method.rchunks_exact_mut
     #[stable(feature = "chunks_exact", since = "1.31.0")]
     #[inline]
-    pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<T> {
+    pub fn chunks_exact_mut(&mut self, chunk_size: usize) -> ChunksExactMut<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let len = self.len() - rem;
@@ -794,7 +794,7 @@ impl<T> [T] {
     /// [`chunks`]: #method.chunks
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks(&self, chunk_size: usize) -> RChunks<T> {
+    pub fn rchunks(&self, chunk_size: usize) -> RChunks<'_, T> {
         assert!(chunk_size != 0);
         RChunks { v: self, chunk_size }
     }
@@ -832,13 +832,13 @@ impl<T> [T] {
     /// [`chunks_mut`]: #method.chunks_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<T> {
+    pub fn rchunks_mut(&mut self, chunk_size: usize) -> RChunksMut<'_, T> {
         assert!(chunk_size != 0);
         RChunksMut { v: self, chunk_size }
     }
 
     /// Returns an iterator over `chunk_size` elements of the slice at a time, starting at the
-    /// beginning of the slice.
+    /// end of the slice.
     ///
     /// The chunks are slices and do not overlap. If `chunk_size` does not divide the length of the
     /// slice, then the last up to `chunk_size-1` elements will be omitted and can be retrieved
@@ -849,7 +849,7 @@ impl<T> [T] {
     ///
     /// See [`rchunks`] for a variant of this iterator that also returns the remainder as a smaller
     /// chunk, and [`chunks_exact`] for the same iterator but starting at the beginning of the
-    /// slice of the slice.
+    /// slice.
     ///
     /// # Panics
     ///
@@ -871,7 +871,7 @@ impl<T> [T] {
     /// [`chunks_exact`]: #method.chunks_exact
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<T> {
+    pub fn rchunks_exact(&self, chunk_size: usize) -> RChunksExact<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let (fst, snd) = self.split_at(rem);
@@ -890,7 +890,7 @@ impl<T> [T] {
     ///
     /// See [`rchunks_mut`] for a variant of this iterator that also returns the remainder as a
     /// smaller chunk, and [`chunks_exact_mut`] for the same iterator but starting at the beginning
-    /// of the slice of the slice.
+    /// of the slice.
     ///
     /// # Panics
     ///
@@ -916,7 +916,7 @@ impl<T> [T] {
     /// [`chunks_exact_mut`]: #method.chunks_exact_mut
     #[stable(feature = "rchunks", since = "1.31.0")]
     #[inline]
-    pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<T> {
+    pub fn rchunks_exact_mut(&mut self, chunk_size: usize) -> RChunksExactMut<'_, T> {
         assert!(chunk_size != 0);
         let rem = self.len() % chunk_size;
         let (fst, snd) = self.split_at_mut(rem);
@@ -1042,7 +1042,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split<F>(&self, pred: F) -> Split<T, F>
+    pub fn split<F>(&self, pred: F) -> Split<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         Split {
@@ -1067,7 +1067,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<T, F>
+    pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         SplitMut { v: self, pred, finished: false }
@@ -1102,7 +1102,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
-    pub fn rsplit<F>(&self, pred: F) -> RSplit<T, F>
+    pub fn rsplit<F>(&self, pred: F) -> RSplit<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplit { inner: self.split(pred) }
@@ -1127,7 +1127,7 @@ impl<T> [T] {
     ///
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
-    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<T, F>
+    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplitMut { inner: self.split_mut(pred) }
@@ -1154,7 +1154,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<T, F>
+    pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         SplitN {
@@ -1184,7 +1184,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<T, F>
+    pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         SplitNMut {
@@ -1217,7 +1217,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<T, F>
+    pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplitN {
@@ -1248,7 +1248,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn_mut<F>(&mut self, n: usize, pred: F) -> RSplitNMut<T, F>
+    pub fn rsplitn_mut<F>(&mut self, n: usize, pred: F) -> RSplitNMut<'_, T, F>
         where F: FnMut(&T) -> bool
     {
         RSplitNMut {
@@ -3284,7 +3284,7 @@ pub struct Iter<'a, T: 'a> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Iter")
             .field(&self.as_slice())
             .finish()
@@ -3386,7 +3386,7 @@ pub struct IterMut<'a, T: 'a> {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("IterMut")
             .field(&self.make_slice())
             .finish()
@@ -3493,7 +3493,7 @@ pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for Split<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Split")
             .field("v", &self.v)
             .field("finished", &self.finished)
@@ -3584,7 +3584,7 @@ pub struct SplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitMut")
             .field("v", &self.v)
             .field("finished", &self.finished)
@@ -3681,7 +3681,7 @@ pub struct RSplit<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplit<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplit")
             .field("v", &self.inner.v)
             .field("finished", &self.inner.finished)
@@ -3737,7 +3737,7 @@ pub struct RSplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplitMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplitMut")
             .field("v", &self.inner.v)
             .field("finished", &self.inner.finished)
@@ -3823,7 +3823,7 @@ pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitN<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitN")
             .field("inner", &self.inner)
             .finish()
@@ -3845,7 +3845,7 @@ pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplitN<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplitN")
             .field("inner", &self.inner)
             .finish()
@@ -3866,7 +3866,7 @@ pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for SplitNMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitNMut")
             .field("inner", &self.inner)
             .finish()
@@ -3888,7 +3888,7 @@ pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T: fmt::Debug, P> fmt::Debug for RSplitNMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RSplitNMut")
             .field("inner", &self.inner)
             .finish()

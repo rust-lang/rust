@@ -1,8 +1,8 @@
-error[E0277]: the trait bound `(): std::convert::From<{integer}>` is not satisfied
-  --> $DIR/issue-32709.rs:4:5
+error[E0277]: `?` couldn't convert the error to `()`
+  --> $DIR/issue-32709.rs:4:11
    |
 LL |     Err(5)?;
-   |     ^^^^^^^ the trait `std::convert::From<{integer}>` is not implemented for `()`
+   |           ^ the trait `std::convert::From<{integer}>` is not implemented for `()`
    |
    = note: required by `std::convert::From::from`
 

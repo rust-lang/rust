@@ -34,7 +34,7 @@ impl<I: Clone, U: Clone + IntoIterator, F: Clone> Clone for FlatMap<I, U, F>
 impl<I: fmt::Debug, U: IntoIterator, F> fmt::Debug for FlatMap<I, U, F>
     where U::IntoIter: fmt::Debug
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FlatMap").field("inner", &self.inner).finish()
     }
 }
@@ -120,7 +120,7 @@ impl<I, U> fmt::Debug for Flatten<I>
     where I: Iterator + fmt::Debug, U: Iterator + fmt::Debug,
           I::Item: IntoIterator<IntoIter = U, Item = U::Item>,
 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Flatten").field("inner", &self.inner).finish()
     }
 }
@@ -328,4 +328,3 @@ impl<I, U> DoubleEndedIterator for FlattenCompat<I, U>
             .rfold(init, |acc, iter| iter.rfold(acc, &mut fold))
     }
 }
-

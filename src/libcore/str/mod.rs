@@ -146,7 +146,7 @@ pub struct ParseBoolError { _priv: () }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for ParseBoolError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         "provided string was not `true` or `false`".fmt(f)
     }
 }
@@ -439,7 +439,7 @@ pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Utf8Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(error_len) = self.error_len {
             write!(f, "invalid utf-8 sequence of {} bytes from index {}",
                    error_len, self.valid_up_to)
@@ -796,6 +796,11 @@ impl DoubleEndedIterator for Bytes<'_> {
     }
 
     #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        self.0.nth_back(n)
+    }
+
+    #[inline]
     fn rfind<P>(&mut self, predicate: P) -> Option<Self::Item> where
         P: FnMut(&Self::Item) -> bool
     {
@@ -914,7 +919,7 @@ macro_rules! generate_pattern_iterators {
         impl<'a, P: Pattern<'a>> fmt::Debug for $forward_iterator<'a, P>
             where P::Searcher: fmt::Debug
         {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_tuple(stringify!($forward_iterator))
                     .field(&self.0)
                     .finish()
@@ -948,7 +953,7 @@ macro_rules! generate_pattern_iterators {
         impl<'a, P: Pattern<'a>> fmt::Debug for $reverse_iterator<'a, P>
             where P::Searcher: fmt::Debug
         {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 f.debug_tuple(stringify!($reverse_iterator))
                     .field(&self.0)
                     .finish()
@@ -1033,7 +1038,7 @@ struct SplitInternal<'a, P: Pattern<'a>> {
 }
 
 impl<'a, P: Pattern<'a>> fmt::Debug for SplitInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitInternal")
             .field("start", &self.start)
             .field("end", &self.end)
@@ -1150,7 +1155,7 @@ struct SplitNInternal<'a, P: Pattern<'a>> {
 }
 
 impl<'a, P: Pattern<'a>> fmt::Debug for SplitNInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("SplitNInternal")
             .field("iter", &self.iter)
             .field("count", &self.count)
@@ -1206,7 +1211,7 @@ derive_pattern_clone!{
 struct MatchIndicesInternal<'a, P: Pattern<'a>>(P::Searcher);
 
 impl<'a, P: Pattern<'a>> fmt::Debug for MatchIndicesInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("MatchIndicesInternal")
             .field(&self.0)
             .finish()
@@ -1257,7 +1262,7 @@ derive_pattern_clone!{
 struct MatchesInternal<'a, P: Pattern<'a>>(P::Searcher);
 
 impl<'a, P: Pattern<'a>> fmt::Debug for MatchesInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("MatchesInternal")
             .field(&self.0)
             .finish()
@@ -2559,7 +2564,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn chars(&self) -> Chars {
+    pub fn chars(&self) -> Chars<'_> {
         Chars{iter: self.as_bytes().iter()}
     }
 
@@ -2614,7 +2619,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn char_indices(&self) -> CharIndices {
+    pub fn char_indices(&self) -> CharIndices<'_> {
         CharIndices { front_offset: 0, iter: self.chars() }
     }
 
@@ -2639,7 +2644,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn bytes(&self) -> Bytes {
+    pub fn bytes(&self) -> Bytes<'_> {
         Bytes(self.as_bytes().iter().cloned())
     }
 
@@ -2682,7 +2687,7 @@ impl str {
     /// ```
     #[stable(feature = "split_whitespace", since = "1.1.0")]
     #[inline]
-    pub fn split_whitespace(&self) -> SplitWhitespace {
+    pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
         SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
     }
 
@@ -2723,7 +2728,7 @@ impl str {
     /// ```
     #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
     #[inline]
-    pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace {
+    pub fn split_ascii_whitespace(&self) -> SplitAsciiWhitespace<'_> {
         let inner = self
             .as_bytes()
             .split(IsAsciiWhitespace)
@@ -2770,7 +2775,7 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn lines(&self) -> Lines {
+    pub fn lines(&self) -> Lines<'_> {
         Lines(self.split_terminator('\n').map(LinesAnyMap))
     }
 
@@ -2779,7 +2784,7 @@ impl str {
     #[rustc_deprecated(since = "1.4.0", reason = "use lines() instead now")]
     #[inline]
     #[allow(deprecated)]
-    pub fn lines_any(&self) -> LinesAny {
+    pub fn lines_any(&self) -> LinesAny<'_> {
         LinesAny(self.lines())
     }
 
@@ -2798,7 +2803,7 @@ impl str {
     /// assert!(utf16_len <= utf8_len);
     /// ```
     #[stable(feature = "encode_utf16", since = "1.8.0")]
-    pub fn encode_utf16(&self) -> EncodeUtf16 {
+    pub fn encode_utf16(&self) -> EncodeUtf16<'_> {
         EncodeUtf16 { chars: self.chars(), extra: 0 }
     }
 
@@ -4018,7 +4023,7 @@ impl str {
     /// assert_eq!("❤\n!".escape_debug().to_string(), "❤\\n!");
     /// ```
     #[stable(feature = "str_escape", since = "1.34.0")]
-    pub fn escape_debug(&self) -> EscapeDebug {
+    pub fn escape_debug(&self) -> EscapeDebug<'_> {
         let mut chars = self.chars();
         EscapeDebug {
             inner: chars.next()
@@ -4063,7 +4068,7 @@ impl str {
     /// assert_eq!("❤\n!".escape_default().to_string(), "\\u{2764}\\n!");
     /// ```
     #[stable(feature = "str_escape", since = "1.34.0")]
-    pub fn escape_default(&self) -> EscapeDefault {
+    pub fn escape_default(&self) -> EscapeDefault<'_> {
         EscapeDefault { inner: self.chars().flat_map(CharEscapeDefault) }
     }
 
@@ -4101,7 +4106,7 @@ impl str {
     /// assert_eq!("❤\n!".escape_unicode().to_string(), "\\u{2764}\\u{a}\\u{21}");
     /// ```
     #[stable(feature = "str_escape", since = "1.34.0")]
-    pub fn escape_unicode(&self) -> EscapeUnicode {
+    pub fn escape_unicode(&self) -> EscapeUnicode<'_> {
         EscapeUnicode { inner: self.chars().flat_map(CharEscapeUnicode) }
     }
 }
@@ -4267,7 +4272,7 @@ pub struct EncodeUtf16<'a> {
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl fmt::Debug for EncodeUtf16<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("EncodeUtf16 { .. }")
     }
 }
@@ -4341,7 +4346,7 @@ macro_rules! escape_types_impls {
     ($( $Name: ident ),+) => {$(
         #[stable(feature = "str_escape", since = "1.34.0")]
         impl<'a> fmt::Display for $Name<'a> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 self.clone().try_for_each(|c| f.write_char(c))
             }
         }

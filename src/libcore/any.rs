@@ -107,7 +107,7 @@ impl<T: 'static + ?Sized > Any for T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for dyn Any {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Any")
     }
 }
@@ -117,14 +117,14 @@ impl fmt::Debug for dyn Any {
 // dispatch works with upcasting.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for dyn Any + Send {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Any")
     }
 }
 
 #[stable(feature = "any_send_sync_methods", since = "1.28.0")]
 impl fmt::Debug for dyn Any + Send + Sync {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.pad("Any")
     }
 }
