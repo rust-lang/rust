@@ -78,3 +78,30 @@ Installation:
 to load path and require it in `init.el`
 * run `lsp` in a rust buffer
 * (Optionally) bind commands like `rust-analyzer-join-lines` or `rust-analyzer-extend-selection` to keys
+
+
+## Sublime Text 3
+
+Prequisites:
+
+`LSP` package.
+
+Installation:
+
+* Invoke the command palette with <kbd>Ctrl+Shift+P</kbd>
+* Type `LSP Settings` to open the LSP preferences editor
+* Add the following LSP client definition to your settings:
+
+```json
+"rust-analyzer": {
+    "command": ["rustup", "run", "stable", "ra_lsp_server"],
+    "languageId": "rust",
+    "scopes": ["source.rust"],
+    "syntaxes": [
+        "Packages/Rust/Rust.sublime-syntax",
+        "Packages/Rust Enhanced/RustEnhanced.sublime-syntax"
+    ]
+}
+```
+
+* You can now invoke the command palette and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
