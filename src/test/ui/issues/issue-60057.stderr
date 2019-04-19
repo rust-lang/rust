@@ -1,0 +1,20 @@
+error[E0425]: cannot find value `banana` in this scope
+  --> $DIR/issue-60057.rs:8:21
+   |
+LL |             banana: banana
+   |                     ^^^^^^ a field by this name exists in `Self`
+
+error[E0425]: cannot find value `banana` in this scope
+  --> $DIR/issue-60057.rs:14:21
+   |
+LL |             banana: banana
+   |                     ^^^^^^ help: you might have meant to use the available field: `self.banana`
+
+error[E0601]: `main` function not found in crate `issue_60057`
+   |
+   = note: consider adding a `main` function to `$DIR/issue-60057.rs`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0601.
+For more information about an error, try `rustc --explain E0425`.
