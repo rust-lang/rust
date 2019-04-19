@@ -982,6 +982,16 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
     }
 
     #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<(usize, <I as Iterator>::Item)> {
+        self.iter.nth_back(n).map(|a| {
+            let len = self.iter.len();
+            // Can safely add, `ExactSizeIterator` promises that the number of
+            // elements fits into a `usize`.
+            (self.count + len, a)
+        })
+    }
+
+    #[inline]
     fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, mut fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
@@ -1791,6 +1801,17 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
     }
 
     #[inline]
+    default fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
+        if self.done {
+            None
+        } else {
+            let nth = self.iter.nth_back(n);
+            self.done = nth.is_none();
+            nth
+        }
+    }
+
+    #[inline]
     default fn try_rfold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R where
         Self: Sized, Fold: FnMut(Acc, Self::Item) -> R, R: Try<Ok=Acc>
     {
@@ -1876,6 +1897,11 @@ impl<I> DoubleEndedIterator for Fuse<I>
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
         self.iter.next_back()
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<<I as Iterator>::Item> {
+        self.iter.nth_back(n)
     }
 
     #[inline]
