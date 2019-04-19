@@ -1,5 +1,5 @@
 error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
-  --> $DIR/issue-59488.rs:12:9
+  --> $DIR/issue-59488.rs:16:9
    |
 LL |     foo > 12;
    |     --- ^ -- {integer}
@@ -8,7 +8,7 @@ LL |     foo > 12;
    |     help: you might have forgotten to call this function: `foo()`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-59488.rs:12:11
+  --> $DIR/issue-59488.rs:16:11
    |
 LL |     foo > 12;
    |           ^^ expected fn item, found integer
@@ -17,7 +17,7 @@ LL |     foo > 12;
               found type `i32`
 
 error[E0369]: binary operation `>` cannot be applied to type `fn(i64) -> i64 {bar}`
-  --> $DIR/issue-59488.rs:16:9
+  --> $DIR/issue-59488.rs:20:9
    |
 LL |     bar > 13;
    |     --- ^ -- {integer}
@@ -26,7 +26,7 @@ LL |     bar > 13;
    |     help: you might have forgotten to call this function: `bar( /* arguments */ )`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-59488.rs:16:11
+  --> $DIR/issue-59488.rs:20:11
    |
 LL |     bar > 13;
    |           ^^ expected fn item, found integer
@@ -35,7 +35,7 @@ LL |     bar > 13;
               found type `i64`
 
 error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
-  --> $DIR/issue-59488.rs:20:9
+  --> $DIR/issue-59488.rs:24:9
    |
 LL |     foo > foo;
    |     --- ^ --- fn() -> i32 {foo}
@@ -51,7 +51,7 @@ LL |     foo > foo();
    |           ^^^^^
 
 error[E0369]: binary operation `>` cannot be applied to type `fn() -> i32 {foo}`
-  --> $DIR/issue-59488.rs:23:9
+  --> $DIR/issue-59488.rs:27:9
    |
 LL |     foo > bar;
    |     --- ^ --- fn(i64) -> i64 {bar}
@@ -61,7 +61,7 @@ LL |     foo > bar;
    = note: an implementation of `std::cmp::PartialOrd` might be missing for `fn() -> i32 {foo}`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-59488.rs:23:11
+  --> $DIR/issue-59488.rs:27:11
    |
 LL |     foo > bar;
    |           ^^^ expected fn item, found a different fn item
@@ -69,7 +69,41 @@ LL |     foo > bar;
    = note: expected type `fn() -> i32 {foo}`
               found type `fn(i64) -> i64 {bar}`
 
-error: aborting due to 7 previous errors
+error[E0369]: binary operation `==` cannot be applied to type `fn(usize) -> Foo {Foo::Bar}`
+  --> $DIR/issue-59488.rs:32:5
+   |
+LL |     assert_eq!(Foo::Bar, i);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     fn(usize) -> Foo {Foo::Bar}
+   |     fn(usize) -> Foo {Foo::Bar}
+   |
+   = note: an implementation of `std::cmp::PartialEq` might be missing for `fn(usize) -> Foo {Foo::Bar}`
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
-Some errors have detailed explanations: E0308, E0369.
-For more information about an error, try `rustc --explain E0308`.
+error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug`
+  --> $DIR/issue-59488.rs:32:5
+   |
+LL |     assert_eq!(Foo::Bar, i);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
+   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&fn(usize) -> Foo {Foo::Bar}`
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error[E0277]: `fn(usize) -> Foo {Foo::Bar}` doesn't implement `std::fmt::Debug`
+  --> $DIR/issue-59488.rs:32:5
+   |
+LL |     assert_eq!(Foo::Bar, i);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ `fn(usize) -> Foo {Foo::Bar}` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
+   |
+   = help: the trait `std::fmt::Debug` is not implemented for `fn(usize) -> Foo {Foo::Bar}`
+   = note: required because of the requirements on the impl of `std::fmt::Debug` for `&fn(usize) -> Foo {Foo::Bar}`
+   = note: required by `std::fmt::Debug::fmt`
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0277, E0308, E0369.
+For more information about an error, try `rustc --explain E0277`.

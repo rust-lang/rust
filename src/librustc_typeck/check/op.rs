@@ -443,6 +443,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) -> bool /* did we suggest to call a function because of missing parenthesis? */ {
         err.span_label(span, ty.to_string());
         if let FnDef(def_id, _) = ty.sty {
+            if self.tcx.has_typeck_tables(def_id) == false {
+                return false;
+            }
             let source_map = self.tcx.sess.source_map();
             let hir_id = &self.tcx.hir().as_local_hir_id(def_id).unwrap();
             let fn_sig = {
@@ -455,6 +458,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             let other_ty = if let FnDef(def_id, _) = other_ty.sty {
+                if self.tcx.has_typeck_tables(def_id) == false {
+                    return false;
+                }
                 let hir_id = &self.tcx.hir().as_local_hir_id(def_id).unwrap();
                 match self.tcx.typeck_tables_of(def_id).liberated_fn_sigs().get(*hir_id) {
                     Some(f) => f.clone().output(),
