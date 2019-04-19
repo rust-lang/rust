@@ -166,7 +166,6 @@ nav.sub {
 	top: 0;
 	height: 100vh;
 	overflow: auto;
-	z-index: 1;
 }
 
 .sidebar .block > ul > li {
