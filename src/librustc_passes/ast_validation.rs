@@ -694,7 +694,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         .span_label(span, "pattern not allowed in foreign function").emit();
                 });
             }
-            ForeignItemKind::Static(..) | ForeignItemKind::Ty | ForeignItemKind::Macro(..) => {}
+            ForeignItemKind::Static(..)
+            | ForeignItemKind::StaticMut(..)
+            | ForeignItemKind::Ty
+            | ForeignItemKind::Macro(..) => {}
         }
 
         visit::walk_foreign_item(self, fi)

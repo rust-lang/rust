@@ -108,15 +108,18 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         hir::ItemKind::Fn(..) => {
             check_item_fn(tcx, item);
         }
-        hir::ItemKind::Static(ref ty, ..) => {
-            check_item_type(tcx, item.hir_id, ty.span, false);
-        }
-        hir::ItemKind::Const(ref ty, ..) => {
+        hir::ItemKind::Const(ref ty, _)
+        | hir::ItemKind::Static(ref ty, _)
+        | hir::ItemKind::StaticMut(ref ty, _) => {
             check_item_type(tcx, item.hir_id, ty.span, false);
         }
         hir::ItemKind::ForeignMod(ref module) => for it in module.items.iter() {
-            if let hir::ForeignItemKind::Static(ref ty, ..) = it.node {
-                check_item_type(tcx, it.hir_id, ty.span, true);
+            match it.node {
+                hir::ForeignItemKind::Static(ref ty)
+                | hir::ForeignItemKind::StaticMut(ref ty) => {
+                    check_item_type(tcx, it.hir_id, ty.span, true);
+                }
+                _ => {}
             }
         },
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {

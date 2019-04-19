@@ -91,7 +91,8 @@ impl<'hir> Entry<'hir> {
             Node::Item(item) => {
                 match item.node {
                     ItemKind::Const(_, body) |
-                    ItemKind::Static(.., body) |
+                    ItemKind::Static(_, body) |
+                    ItemKind::StaticMut(_, body) |
                     ItemKind::Fn(_, _, _, body) => Some(body),
                     _ => None,
                 }
@@ -322,7 +323,8 @@ impl<'hir> Map<'hir> {
                 let def_id = || self.local_def_id_from_hir_id(item.hir_id);
 
                 match item.node {
-                    ItemKind::Static(_, m, _) => Some(Def::Static(def_id(), m == MutMutable)),
+                    ItemKind::Static(..) => Some(Def::Static(def_id())),
+                    ItemKind::StaticMut(..) => Some(Def::StaticMut(def_id())),
                     ItemKind::Const(..) => Some(Def::Const(def_id())),
                     ItemKind::Fn(..) => Some(Def::Fn(def_id())),
                     ItemKind::Mod(..) => Some(Def::Mod(def_id())),
@@ -344,7 +346,8 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
-                    ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
+                    ForeignItemKind::Static(_) => Some(Def::Static(def_id)),
+                    ForeignItemKind::StaticMut(_) => Some(Def::StaticMut(def_id)),
                     ForeignItemKind::Type => Some(Def::ForeignTy(def_id)),
                 }
             }
@@ -527,8 +530,11 @@ impl<'hir> Map<'hir> {
             Node::ImplItem(&ImplItem { node: ImplItemKind::Method(..), .. }) => {
                 BodyOwnerKind::Fn
             }
-            Node::Item(&Item { node: ItemKind::Static(_, m, _), .. }) => {
-                BodyOwnerKind::Static(m)
+            Node::Item(&Item { node: ItemKind::Static(..), .. }) => {
+                BodyOwnerKind::Static
+            }
+            Node::Item(&Item { node: ItemKind::StaticMut(..), .. }) => {
+                BodyOwnerKind::StaticMut
             }
             Node::Expr(&Expr { node: ExprKind::Closure(..), .. }) => {
                 BodyOwnerKind::Closure
@@ -1368,6 +1374,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
                 ItemKind::ExternCrate(..) => "extern crate",
                 ItemKind::Use(..) => "use",
                 ItemKind::Static(..) => "static",
+                ItemKind::StaticMut(..) => "static mut",
                 ItemKind::Const(..) => "const",
                 ItemKind::Fn(..) => "fn",
                 ItemKind::Mod(..) => "mod",

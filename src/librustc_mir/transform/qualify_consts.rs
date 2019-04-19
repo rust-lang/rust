@@ -1485,8 +1485,8 @@ impl MirPass for QualifyAndPromoteConstants {
                 const_promoted_temps = Some(tcx.mir_const_qualif(def_id).1);
                 Mode::Const
             }
-            hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
-            hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
+            hir::BodyOwnerKind::Static => Mode::Static,
+            hir::BodyOwnerKind::StaticMut => Mode::StaticMut,
         };
 
         debug!("run_pass: mode={:?}", mode);

@@ -10,7 +10,7 @@ fn main() {
     // instead of spitting out a custom error about some identifier collisions
     // (we should allow shadowing)
     match 4 {
-        a => {} //~ ERROR match bindings cannot shadow statics
+        a => {} //~ ERROR match bindings cannot shadow mutable statics
         _ => {}
     }
 }
@@ -34,7 +34,7 @@ fn mutable_statics() {
     match (Foo { bar: Some(Direction::North), baz: NewBool(true) }) {
         Foo { bar: None, baz: NewBool(true) } => (),
         STATIC_MUT_FOO => (),
-        //~^ ERROR match bindings cannot shadow statics
+        //~^ ERROR match bindings cannot shadow mutable statics
         Foo { bar: Some(Direction::South), .. } => (),
         Foo { bar: Some(EAST), .. } => (),
         Foo { bar: Some(Direction::North), baz: NewBool(true) } => (),

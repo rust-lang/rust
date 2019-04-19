@@ -155,7 +155,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ForeignItemKind::Static(ref ty, _) => {
+            ast::ForeignItemKind::Static(ref ty)
+            | ast::ForeignItemKind::StaticMut(ref ty) => {
                 filter!(self.span_utils, item.ident.span);
 
                 let id = id_from_node_id(item.id, self);
@@ -203,7 +204,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     attributes: lower_attributes(item.attrs.clone(), self),
                 }))
             }
-            ast::ItemKind::Static(ref typ, ..) => {
+            ast::ItemKind::Static(ref typ, _)
+            | ast::ItemKind::StaticMut(ref typ, _) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id(item.id)));
 
@@ -754,6 +756,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 })
             }
             HirDef::Static(..) |
+            HirDef::StaticMut(..) |
             HirDef::Const(..) |
             HirDef::AssociatedConst(..) |
             HirDef::Ctor(..) => {

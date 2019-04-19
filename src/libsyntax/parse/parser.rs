@@ -7337,7 +7337,8 @@ impl<'a> Parser<'a> {
         let e = self.parse_expr()?;
         self.expect(&token::Semi)?;
         let item = match m {
-            Some(m) => ItemKind::Static(ty, m, e),
+            Some(Mutability::Immutable) => ItemKind::Static(ty, e),
+            Some(Mutability::Mutable) => ItemKind::StaticMut(ty, e),
             None => ItemKind::Const(ty, e),
         };
         Ok((id, item, None))
@@ -7644,7 +7645,11 @@ impl<'a> Parser<'a> {
         Ok(ForeignItem {
             ident,
             attrs,
-            node: ForeignItemKind::Static(ty, mutbl),
+            node: if mutbl {
+                ForeignItemKind::StaticMut(ty)
+            } else {
+                ForeignItemKind::Static(ty)
+            },
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,

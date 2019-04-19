@@ -1388,8 +1388,9 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
             Fn(ref decl, .., ref ty_params, ref body) => {
                 self.process_fn(item, &decl, ty_params, &body)
             }
-            Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
-            Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),
+            Const(ref typ, ref expr)
+            | Static(ref typ, ref expr)
+            | StaticMut(ref typ, ref expr) => self.process_static_or_const_item(item, typ, expr),
             Struct(ref def, ref ty_params) | Union(ref def, ref ty_params) => {
                 self.process_struct(item, def, ty_params)
             }
@@ -1664,7 +1665,8 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
                     self.visit_ty(&ret_ty);
                 }
             }
-            ast::ForeignItemKind::Static(ref ty, _) => {
+            ast::ForeignItemKind::Static(ref ty)
+            | ast::ForeignItemKind::StaticMut(ref ty) => {
                 if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
                     down_cast_data!(var_data, DefData, item.span);
                     self.dumper.dump_def(&access, var_data);

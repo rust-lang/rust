@@ -548,7 +548,8 @@ fn ambiguity_error(
                     _ => {
                         let type_ = match (def, ns) {
                             (Def::Const(..), _) => "const",
-                            (Def::Static(..), _) => "static",
+                            (Def::Static(..), _)
+                            | (Def::StaticMut(..), _) => "static",
                             (Def::Struct(..), _) => "struct",
                             (Def::Enum(..), _) => "enum",
                             (Def::Union(..), _) => "union",

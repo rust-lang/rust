@@ -521,7 +521,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             // Other `pub` items inherit levels from parents.
             hir::ItemKind::Const(..) | hir::ItemKind::Enum(..) | hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::GlobalAsm(..) | hir::ItemKind::Fn(..) | hir::ItemKind::Mod(..) |
-            hir::ItemKind::Static(..) | hir::ItemKind::Struct(..) |
+            hir::ItemKind::Static(..) | hir::ItemKind::StaticMut(..) |
+            hir::ItemKind::Struct(..) |
             hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..) |
             hir::ItemKind::Existential(..) |
             hir::ItemKind::Ty(..) | hir::ItemKind::Union(..) | hir::ItemKind::Use(..) => {
@@ -577,6 +578,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemKind::Existential(..) |
             hir::ItemKind::Use(..) |
             hir::ItemKind::Static(..) |
+            hir::ItemKind::StaticMut(..) |
             hir::ItemKind::Const(..) |
             hir::ItemKind::GlobalAsm(..) |
             hir::ItemKind::Ty(..) |
@@ -610,8 +612,11 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 self.reach(item.hir_id, exist_level).generics().predicates().ty();
             }
             // Visit everything.
-            hir::ItemKind::Const(..) | hir::ItemKind::Static(..) |
-            hir::ItemKind::Fn(..) | hir::ItemKind::Ty(..) => {
+            hir::ItemKind::Const(..)
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::StaticMut(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::Ty(..) => {
                 if item_level.is_some() {
                     self.reach(item.hir_id, item_level).generics().predicates().ty();
                 }
@@ -1099,7 +1104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
             hir::QPath::Resolved(_, ref path) => match path.def {
                 Def::Method(..) | Def::AssociatedConst(..) |
                 Def::AssociatedTy(..) | Def::AssociatedExistential(..) |
-                Def::Static(..) => Some(path.def),
+                Def::Static(..) | Def::StaticMut(..) => Some(path.def),
                 _ => None,
             }
             hir::QPath::TypeRelative(..) => {
@@ -1108,7 +1113,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         };
         if let Some(def) = def {
             let def_id = def.def_id();
-            let is_local_static = if let Def::Static(..) = def { def_id.is_local() } else { false };
+            let is_local_static = match def {
+                Def::Static(..)
+                | Def::StaticMut(..) => def_id.is_local(),
+                _ => false,
+            };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
                     hir::QPath::Resolved(_, ref path) => path.to_string(),
@@ -1717,8 +1726,11 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // No subitems.
             hir::ItemKind::GlobalAsm(..) => {}
             // Subitems of these items have inherited publicity.
-            hir::ItemKind::Const(..) | hir::ItemKind::Static(..) |
-            hir::ItemKind::Fn(..) | hir::ItemKind::Ty(..) => {
+            hir::ItemKind::Const(..)
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::StaticMut(..)
+            | hir::ItemKind::Fn(..)
+            | hir::ItemKind::Ty(..) => {
                 self.check(item.hir_id, item_visibility).generics().predicates().ty();
             }
             hir::ItemKind::Existential(..) => {

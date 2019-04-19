@@ -144,8 +144,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 )
             }
             ItemKind::Mod(..) => DefPathData::Module(i.ident.as_interned_str()),
-            ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
-                DefPathData::ValueNs(i.ident.as_interned_str()),
+            ItemKind::Const(..)
+            | ItemKind::Static(..)
+            | ItemKind::StaticMut(..)
+            | ItemKind::Fn(..) => DefPathData::ValueNs(i.ident.as_interned_str()),
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.as_interned_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,

@@ -464,11 +464,18 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
                 self.end() // end the outer fn box
             }
-            hir::ForeignItemKind::Static(ref t, m) => {
+            hir::ForeignItemKind::Static(ref t) => {
                 self.head(visibility_qualified(&item.vis, "static"))?;
-                if m {
-                    self.word_space("mut")?;
-                }
+                self.print_ident(item.ident)?;
+                self.word_space(":")?;
+                self.print_type(&t)?;
+                self.s.word(";")?;
+                self.end()?; // end the head-ibox
+                self.end() // end the outer cbox
+            }
+            hir::ForeignItemKind::StaticMut(ref t) => {
+                self.head(visibility_qualified(&item.vis, "static"))?;
+                self.word_space("mut")?;
                 self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(&t)?;
@@ -562,11 +569,22 @@ impl<'a> State<'a> {
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
             }
-            hir::ItemKind::Static(ref ty, m, expr) => {
+            hir::ItemKind::Static(ref ty, expr) => {
                 self.head(visibility_qualified(&item.vis, "static"))?;
-                if m == hir::MutMutable {
-                    self.word_space("mut")?;
-                }
+                self.print_ident(item.ident)?;
+                self.word_space(":")?;
+                self.print_type(&ty)?;
+                self.s.space()?;
+                self.end()?; // end the head-ibox
+
+                self.word_space("=")?;
+                self.ann.nested(self, Nested::Body(expr))?;
+                self.s.word(";")?;
+                self.end()?; // end the outer cbox
+            }
+            hir::ItemKind::StaticMut(ref ty, expr) => {
+                self.head(visibility_qualified(&item.vis, "static"))?;
+                self.word_space("mut")?;
                 self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;

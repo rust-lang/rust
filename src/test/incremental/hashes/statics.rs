@@ -26,16 +26,6 @@ static STATIC_VISIBILITY: u8 = 0;
 pub static STATIC_VISIBILITY: u8 = 0;
 
 
-// Change static mutability ---------------------------------------------------
-#[cfg(cfail1)]
-static STATIC_MUTABILITY: u8 = 0;
-
-#[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
-#[rustc_clean(cfg="cfail3")]
-static mut STATIC_MUTABILITY: u8 = 0;
-
-
 // Add linkage attribute ------------------------------------------------------
 #[cfg(cfail1)]
 static STATIC_LINKAGE: u8 = 0;

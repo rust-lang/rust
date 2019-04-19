@@ -1318,14 +1318,19 @@ pub enum BodyOwnerKind {
     Const,
 
     /// Initializer of a `static` item.
-    Static(Mutability),
+    Static,
+
+    /// Initializer of a `static mut` item.
+    StaticMut,
 }
 
 impl BodyOwnerKind {
     pub fn is_fn_or_closure(self) -> bool {
         match self {
             BodyOwnerKind::Fn | BodyOwnerKind::Closure => true,
-            BodyOwnerKind::Const | BodyOwnerKind::Static(_) => false,
+            BodyOwnerKind::Const
+            | BodyOwnerKind::Static
+            | BodyOwnerKind::StaticMut => false,
         }
     }
 }
@@ -1393,7 +1398,11 @@ impl Expr {
          match self.node {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.def {
-                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                    Def::Local(..)
+                    | Def::Upvar(..)
+                    | Def::Static(..)
+                    | Def::StaticMut(..)
+                    | Def::Err => true,
                     _ => false,
                 }
             }
@@ -2266,7 +2275,9 @@ pub enum ItemKind {
     Use(P<Path>, UseKind),
 
     /// A `static` item
-    Static(P<Ty>, Mutability, BodyId),
+    Static(P<Ty>, BodyId),
+    /// A `static mut` item
+    StaticMut(P<Ty>, BodyId),
     /// A `const` item
     Const(P<Ty>, BodyId),
     /// A function declaration
@@ -2308,6 +2319,7 @@ impl ItemKind {
             ItemKind::ExternCrate(..) => "extern crate",
             ItemKind::Use(..) => "use",
             ItemKind::Static(..) => "static item",
+            ItemKind::StaticMut(..) => "mutable static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
@@ -2405,9 +2417,10 @@ pub struct ForeignItem {
 pub enum ForeignItemKind {
     /// A foreign function.
     Fn(P<FnDecl>, HirVec<Ident>, Generics),
-    /// A foreign static item (`static ext: u8`), with optional mutability
-    /// (the boolean is true when mutable).
-    Static(P<Ty>, bool),
+    /// A foreign static item (`static ext: u8`).
+    Static(P<Ty>),
+    /// A foreign mutable static item (`static mut ext: u8`).
+    StaticMut(P<Ty>),
     /// A foreign type.
     Type,
 }
@@ -2417,6 +2430,7 @@ impl ForeignItemKind {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
             ForeignItemKind::Static(..) => "foreign static item",
+            ForeignItemKind::StaticMut(..) => "foreign mutable static item",
             ForeignItemKind::Type => "foreign type",
         }
     }

@@ -460,6 +460,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: hir::HirId) {
         hir::ItemKind::Existential(..)
         | hir::ItemKind::Ty(..)
         | hir::ItemKind::Static(..)
+        | hir::ItemKind::StaticMut(..)
         | hir::ItemKind::Const(..)
         | hir::ItemKind::Fn(..) => {
             tcx.generics_of(def_id);
@@ -957,9 +958,10 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
         }
 
         Node::ForeignItem(item) => match item.node {
-            ForeignItemKind::Static(..) => &no_generics,
+            ForeignItemKind::Static(..)
+            | ForeignItemKind::StaticMut(..)
+            | ForeignItemKind::Type => &no_generics,
             ForeignItemKind::Fn(_, _, ref generics) => generics,
-            ForeignItemKind::Type => &no_generics,
         },
 
         _ => &no_generics,
@@ -1205,8 +1207,9 @@ pub fn checked_type_of<'a, 'tcx>(
 
         Node::Item(item) => {
             match item.node {
-                ItemKind::Static(ref t, ..)
-                | ItemKind::Const(ref t, _)
+                ItemKind::Const(ref t, _)
+                | ItemKind::Static(ref t, _)
+                | ItemKind::StaticMut(ref t, _)
                 | ItemKind::Ty(ref t, _)
                 | ItemKind::Impl(.., ref t, _) => icx.to_ty(t),
                 ItemKind::Fn(..) => {
@@ -1269,7 +1272,8 @@ pub fn checked_type_of<'a, 'tcx>(
                 let substs = InternalSubsts::identity_for_item(tcx, def_id);
                 tcx.mk_fn_def(def_id, substs)
             }
-            ForeignItemKind::Static(ref t, _) => icx.to_ty(t),
+            ForeignItemKind::Static(ref t)
+            | ForeignItemKind::StaticMut(ref t) => icx.to_ty(t),
             ForeignItemKind::Type => tcx.mk_foreign(def_id),
         },
 
@@ -2014,9 +2018,10 @@ fn explicit_predicates_of<'a, 'tcx>(
         }
 
         Node::ForeignItem(item) => match item.node {
-            ForeignItemKind::Static(..) => &no_generics,
+            ForeignItemKind::Static(..)
+            | ForeignItemKind::StaticMut(..)
+            | ForeignItemKind::Type => &no_generics,
             ForeignItemKind::Fn(_, _, ref generics) => generics,
-            ForeignItemKind::Type => &no_generics,
         },
 
         _ => &no_generics,

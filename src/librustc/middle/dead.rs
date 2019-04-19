@@ -477,6 +477,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     fn should_warn_about_item(&mut self, item: &hir::Item) -> bool {
         let should_warn = match item.node {
             hir::ItemKind::Static(..)
+            | hir::ItemKind::StaticMut(..)
             | hir::ItemKind::Const(..)
             | hir::ItemKind::Fn(..)
             | hir::ItemKind::Ty(..)

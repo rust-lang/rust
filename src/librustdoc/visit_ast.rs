@@ -501,10 +501,15 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.existentials.push(t);
             },
-            hir::ItemKind::Static(ref ty, ref mut_, ref exp) => {
+            hir::ItemKind::Static(ref ty, ref exp)
+            | hir::ItemKind::StaticMut(ref ty, ref exp) => {
                 let s = Static {
                     type_: ty.clone(),
-                    mutability: mut_.clone(),
+                    mutability: if let hir::ItemKind::StaticMut(..) = item.node {
+                        hir::MutMutable
+                    } else {
+                        hir::MutImmutable
+                    },
                     expr: exp.clone(),
                     id: item.hir_id,
                     name: ident.name,

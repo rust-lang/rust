@@ -184,7 +184,8 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         match self.tcx.hir().body_owner_kind(item_id) {
             hir::BodyOwnerKind::Closure |
             hir::BodyOwnerKind::Fn => self.in_fn = true,
-            hir::BodyOwnerKind::Static(_) => self.in_static = true,
+            hir::BodyOwnerKind::Static
+            | hir::BodyOwnerKind::StaticMut => self.in_static = true,
             _ => {}
         };
 
@@ -329,8 +330,8 @@ fn check_expr_kind<'a, 'tcx>(
                 // are inherently promotable with the exception
                 //  of "#[thread_local]" statics, which may not
                 // outlive the current function
-                Def::Static(did, _) => {
-
+                Def::Static(did)
+                | Def::StaticMut(did) => {
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {
                             if attr.check_name("thread_local") {

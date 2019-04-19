@@ -501,7 +501,9 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            BodyOwnerKind::Const | BodyOwnerKind::Static(..) => {
+            BodyOwnerKind::Const
+            | BodyOwnerKind::Static
+            | BodyOwnerKind::StaticMut => {
                 assert_eq!(closure_base_def_id, self.mir_def_id);
                 let identity_substs = InternalSubsts::identity_for_item(tcx, closure_base_def_id);
                 let substs = self.infcx

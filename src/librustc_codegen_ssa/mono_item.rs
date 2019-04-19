@@ -21,7 +21,8 @@ pub trait MonoItemExt<'a, 'tcx: 'a>: fmt::Debug + BaseMonoItemExt<'a, 'tcx> {
             MonoItem::Static(def_id) => {
                 let tcx = cx.tcx();
                 let is_mutable = match tcx.describe_def(def_id) {
-                    Some(Def::Static(_, is_mutable)) => is_mutable,
+                    Some(Def::Static(_)) => false,
+                    Some(Def::StaticMut(_)) => true,
                     Some(other) => {
                         bug!("Expected Def::Static, found {:?}", other)
                     }

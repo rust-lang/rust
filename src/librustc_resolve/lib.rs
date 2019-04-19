@@ -579,7 +579,8 @@ impl<'a> PathSource<'a> {
             },
             PathSource::Expr(..) => match def {
                 Def::Ctor(_, _, CtorKind::Const) | Def::Ctor(_, _, CtorKind::Fn) |
-                Def::Const(..) | Def::Static(..) | Def::Local(..) | Def::Upvar(..) |
+                Def::Const(..) | Def::Static(..) | Def::StaticMut(..) |
+                Def::Local(..) | Def::Upvar(..) |
                 Def::Fn(..) | Def::Method(..) | Def::AssociatedConst(..) |
                 Def::SelfCtor(..) | Def::ConstParam(..) => true,
                 _ => false,
@@ -800,9 +801,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
             ForeignItemKind::Fn(_, ref generics) => {
                 HasGenericParams(generics, ItemRibKind)
             }
-            ForeignItemKind::Static(..) => NoGenericParams,
-            ForeignItemKind::Ty => NoGenericParams,
-            ForeignItemKind::Macro(..) => NoGenericParams,
+            ForeignItemKind::Static(..)
+            | ForeignItemKind::StaticMut(..)
+            | ForeignItemKind::Ty
+            | ForeignItemKind::Macro(..) => NoGenericParams,
         };
         self.with_generic_param_rib(generic_params, |this| {
             visit::walk_foreign_item(this, foreign_item);
@@ -2550,8 +2552,9 @@ impl<'a> Resolver<'a> {
                 });
             }
 
-            ItemKind::Static(ref ty, _, ref expr) |
-            ItemKind::Const(ref ty, ref expr) => {
+            ItemKind::Const(ref ty, ref expr)
+            | ItemKind::Static(ref ty, ref expr)
+            | ItemKind::StaticMut(ref ty, ref expr) => {
                 debug!("resolve_item ItemKind::Const");
                 self.with_item_rib(|this| {
                     this.visit_ty(ty);
@@ -3119,7 +3122,10 @@ impl<'a> Resolver<'a> {
                                 self.record_use(ident, ValueNS, binding.unwrap(), false);
                                 Some(PathResolution::new(def))
                             }
-                            Def::Ctor(..) | Def::Const(..) | Def::Static(..) => {
+                            Def::Ctor(..)
+                            | Def::Const(..)
+                            | Def::Static(..)
+                            | Def::StaticMut(..) => {
                                 // This is unambiguously a fresh binding, either syntactically
                                 // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
                                 // to something unusable as a pattern (e.g., constructor function),

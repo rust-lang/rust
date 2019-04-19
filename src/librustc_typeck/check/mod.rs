@@ -753,8 +753,9 @@ fn primary_body_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     match tcx.hir().get_by_hir_id(id) {
         Node::Item(item) => {
             match item.node {
-                hir::ItemKind::Const(_, body) |
-                hir::ItemKind::Static(_, _, body) =>
+                hir::ItemKind::Const(_, body)
+                | hir::ItemKind::Static(_, body)
+                | hir::ItemKind::StaticMut(_, body) =>
                     Some((body, None)),
                 hir::ItemKind::Fn(ref decl, .., body) =>
                     Some((body, Some(decl))),
@@ -1323,7 +1324,8 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
     let _indenter = indenter();
     match it.node {
         // Consts can play a role in type-checking, so they are included here.
-        hir::ItemKind::Static(..) => {
+        hir::ItemKind::Static(..)
+        | hir::ItemKind::StaticMut(..) => {
             let def_id = tcx.hir().local_def_id_from_hir_id(it.hir_id);
             tcx.typeck_tables_of(def_id);
             maybe_check_static_with_link_section(tcx, def_id, it.span);

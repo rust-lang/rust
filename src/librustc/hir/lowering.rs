@@ -3031,7 +3031,7 @@ impl<'a> LoweringContext<'a> {
 
                 self.lower_use_tree(use_tree, &prefix, id, vis, ident, attrs)
             }
-            ItemKind::Static(ref t, m, ref e) => {
+            ItemKind::Static(ref t, ref e) => {
                 let value = self.lower_body(None, |this| this.lower_expr(e));
                 hir::ItemKind::Static(
                     self.lower_ty(
@@ -3042,7 +3042,20 @@ impl<'a> LoweringContext<'a> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                         }
                     ),
-                    self.lower_mutability(m),
+                    value,
+                )
+            }
+            ItemKind::StaticMut(ref t, ref e) => {
+                let value = self.lower_body(None, |this| this.lower_expr(e));
+                hir::ItemKind::StaticMut(
+                    self.lower_ty(
+                        t,
+                        if self.sess.features_untracked().impl_trait_in_bindings {
+                            ImplTraitContext::Existential(None)
+                        } else {
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
+                        }
+                    ),
                     value,
                 )
             }
@@ -3634,15 +3647,9 @@ impl<'a> LoweringContext<'a> {
             ItemKind::MacroDef(..) => SmallVec::new(),
             ItemKind::Fn(..) |
             ItemKind::Impl(.., None, _, _) => smallvec![i.id],
-            ItemKind::Static(ref ty, ..) => {
-                let mut ids = smallvec![i.id];
-                if self.sess.features_untracked().impl_trait_in_bindings {
-                    let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
-                    visitor.visit_ty(ty);
-                }
-                ids
-            },
-            ItemKind::Const(ref ty, ..) => {
+            ItemKind::Const(ref ty, _)
+            | ItemKind::Static(ref ty, _)
+            | ItemKind::StaticMut(ref ty, _) => {
                 let mut ids = smallvec![i.id];
                 if self.sess.features_untracked().impl_trait_in_bindings {
                     let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
@@ -3740,9 +3747,13 @@ impl<'a> LoweringContext<'a> {
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
-                ForeignItemKind::Static(ref t, m) => {
+                ForeignItemKind::Static(ref t) => {
                     hir::ForeignItemKind::Static(
-                        self.lower_ty(t, ImplTraitContext::disallowed()), m)
+                        self.lower_ty(t, ImplTraitContext::disallowed()))
+                }
+                ForeignItemKind::StaticMut(ref t) => {
+                    hir::ForeignItemKind::StaticMut(
+                        self.lower_ty(t, ImplTraitContext::disallowed()))
                 }
                 ForeignItemKind::Ty => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("shouldn't exist here"),

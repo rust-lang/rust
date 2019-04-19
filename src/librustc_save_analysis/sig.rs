@@ -325,9 +325,10 @@ impl Sig for ast::Item {
         let id = Some(self.id);
 
         match self.node {
-            ast::ItemKind::Static(ref ty, m, ref expr) => {
+            ast::ItemKind::Static(ref ty, ref expr)
+            | ast::ItemKind::StaticMut(ref ty, ref expr) => {
                 let mut text = "static ".to_owned();
-                if m == ast::Mutability::Mutable {
+                if let ast::ItemKind::StaticMut(..) = self.node {
                     text.push_str("mut ");
                 }
                 let name = self.ident.to_string();
@@ -796,9 +797,10 @@ impl Sig for ast::ForeignItem {
 
                 Ok(sig)
             }
-            ast::ForeignItemKind::Static(ref ty, m) => {
+            ast::ForeignItemKind::Static(ref ty)
+            | ast::ForeignItemKind::StaticMut(ref ty) => {
                 let mut text = "static ".to_owned();
-                if m {
+                if let ast::ForeignItemKind::StaticMut(_) = self.node {
                     text.push_str("mut ");
                 }
                 let name = self.ident.to_string();

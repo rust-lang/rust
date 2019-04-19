@@ -618,26 +618,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if let Some(node) = self.hir().get_if_local(def_id) {
             match node {
                 Node::Item(&hir::Item {
-                    node: hir::ItemKind::Static(_, mutbl, _), ..
-                }) => Some(mutbl),
-                Node::ForeignItem(&hir::ForeignItem {
-                    node: hir::ForeignItemKind::Static(_, is_mutbl), ..
-                }) =>
-                    Some(if is_mutbl {
-                        hir::Mutability::MutMutable
-                    } else {
-                        hir::Mutability::MutImmutable
-                    }),
+                    node: hir::ItemKind::Static(..), ..
+                })
+                | Node::ForeignItem(&hir::ForeignItem {
+                    node: hir::ForeignItemKind::Static(_), ..
+                }) => Some(hir::Mutability::MutImmutable),
+                Node::Item(&hir::Item {
+                    node: hir::ItemKind::StaticMut(..), ..
+                })
+                | Node::ForeignItem(&hir::ForeignItem {
+                    node: hir::ForeignItemKind::StaticMut(_), ..
+                }) => Some(hir::Mutability::MutMutable),
                 _ => None
             }
         } else {
             match self.describe_def(def_id) {
-                Some(Def::Static(_, is_mutbl)) =>
-                    Some(if is_mutbl {
-                        hir::Mutability::MutMutable
-                    } else {
-                        hir::Mutability::MutImmutable
-                    }),
+                Some(Def::Static(_)) => Some(hir::Mutability::MutImmutable),
+                Some(Def::StaticMut(_)) => Some(hir::Mutability::MutMutable),
                 _ => None
             }
         }

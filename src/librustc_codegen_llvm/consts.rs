@@ -219,7 +219,10 @@ impl CodegenCx<'ll, 'tcx> {
             let (g, attrs) = match self.tcx.hir().get_by_hir_id(id) {
                 Node::Item(&hir::Item {
                     ref attrs, span, node: hir::ItemKind::Static(..), ..
-                }) => {
+                })
+                | Node::Item(&hir::Item {
+                    ref attrs, span, node: hir::ItemKind::StaticMut(..), ..
+                })=> {
                     if self.get_declared_value(&sym[..]).is_some() {
                         span_bug!(span, "Conflicting symbol names for static?");
                     }
@@ -237,6 +240,9 @@ impl CodegenCx<'ll, 'tcx> {
 
                 Node::ForeignItem(&hir::ForeignItem {
                     ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
+                })
+                | Node::ForeignItem(&hir::ForeignItem {
+                    ref attrs, span, node: hir::ForeignItemKind::StaticMut(..), ..
                 }) => {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
                     (check_and_apply_linkage(&self, &fn_attrs, ty, sym, Some(span)), attrs)

@@ -485,7 +485,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
-            hir::ItemKind::Static(..) | hir::ItemKind::Const(..) => {
+            hir::ItemKind::Const(..)
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::StaticMut(..) => {
                 // No lifetime parameters, but implied 'static.
                 let scope = Scope::Elision {
                     elide: Elide::Exact(Region::Static),
@@ -558,10 +560,9 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     intravisit::walk_foreign_item(this, item);
                 })
             }
-            hir::ForeignItemKind::Static(..) => {
-                intravisit::walk_foreign_item(self, item);
-            }
-            hir::ForeignItemKind::Type => {
+            hir::ForeignItemKind::Static(..)
+            | hir::ForeignItemKind::StaticMut(..)
+            | hir::ForeignItemKind::Type => {
                 intravisit::walk_foreign_item(self, item);
             }
         }

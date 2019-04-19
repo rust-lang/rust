@@ -265,6 +265,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemKind::Existential(..) |
                     hir::ItemKind::Ty(..) |
                     hir::ItemKind::Static(..) |
+                    hir::ItemKind::StaticMut(..) |
                     hir::ItemKind::Mod(..) |
                     hir::ItemKind::ForeignMod(..) |
                     hir::ItemKind::Impl(..) |

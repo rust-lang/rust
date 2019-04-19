@@ -52,8 +52,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
         ) => {
             (*body_id, decl.output.span())
         }
-        Node::Item(hir::Item { node: hir::ItemKind::Static(ty, _, body_id), .. })
-        | Node::Item(hir::Item { node: hir::ItemKind::Const(ty, body_id), .. })
+        Node::Item(hir::Item { node: hir::ItemKind::Const(ty, body_id), .. })
+        | Node::Item(hir::Item { node: hir::ItemKind::Static(ty, body_id), .. })
+        | Node::Item(hir::Item { node: hir::ItemKind::StaticMut(ty, body_id), .. })
         | Node::ImplItem(hir::ImplItem { node: hir::ImplItemKind::Const(ty, body_id), .. })
         | Node::TraitItem(
             hir::TraitItem { node: hir::TraitItemKind::Const(ty, Some(body_id)), .. }

@@ -10,7 +10,7 @@ note: lint level defined here
 LL | #![forbid(non_upper_case_globals)]
    |           ^^^^^^^^^^^^^^^^^^^^^^
 
-error: static variable `bar` should have an upper case name
+error: mutable static variable `bar` should have an upper case name
   --> $DIR/lint-non-uppercase-statics.rs:6:12
    |
 LL | static mut bar: isize = 1;

@@ -2234,7 +2234,11 @@ pub enum ItemKind {
     /// A static item (`static` or `pub static`).
     ///
     /// E.g., `static FOO: i32 = 42;` or `static FOO: &'static str = "bar";`.
-    Static(P<Ty>, Mutability, P<Expr>),
+    Static(P<Ty>, P<Expr>),
+    /// A mutable static item (`static mut` or `pub static mut`).
+    ///
+    /// E.g., `pub static mut FOO: i32 = 42;`.
+    StaticMut(P<Ty>, P<Expr>),
     /// A constant item (`const` or `pub const`).
     ///
     /// E.g., `const FOO: i32 = 42;`.
@@ -2308,6 +2312,7 @@ impl ItemKind {
             ItemKind::ExternCrate(..) => "extern crate",
             ItemKind::Use(..) => "use",
             ItemKind::Static(..) => "static item",
+            ItemKind::StaticMut(..) => "mutable static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
@@ -2340,9 +2345,10 @@ pub struct ForeignItem {
 pub enum ForeignItemKind {
     /// A foreign function.
     Fn(P<FnDecl>, Generics),
-    /// A foreign static item (`static ext: u8`), with optional mutability.
-    /// (The boolean is `true` for mutable items).
-    Static(P<Ty>, bool),
+    /// A foreign static item (`static ext: u8`).
+    Static(P<Ty>),
+    /// A foreign mutable static item (`static mut ext: u8`).
+    StaticMut(P<Ty>),
     /// A foreign type.
     Ty,
     /// A macro invocation.
@@ -2354,6 +2360,7 @@ impl ForeignItemKind {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
             ForeignItemKind::Static(..) => "foreign static item",
+            ForeignItemKind::StaticMut(..) => "foreign mutable static item",
             ForeignItemKind::Ty => "foreign type",
             ForeignItemKind::Macro(..) => "macro in foreign module",
         }

@@ -503,7 +503,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
-                Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
+                Some(Def::Const(..))
+                | Some(Def::AssociatedConst(..))
+                | Some(Def::Static(..))
+                | Some(Def::StaticMut(..)) => {},
                 _ => {
                     trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
                     for block in mir.basic_blocks() {

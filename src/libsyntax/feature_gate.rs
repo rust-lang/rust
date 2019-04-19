@@ -1918,7 +1918,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_foreign_item(&mut self, i: &'a ast::ForeignItem) {
         match i.node {
             ast::ForeignItemKind::Fn(..) |
-            ast::ForeignItemKind::Static(..) => {
+            ast::ForeignItemKind::Static(..) |
+            ast::ForeignItemKind::StaticMut(..) => {
                 let link_name = attr::first_attr_value_str_by_name(&i.attrs, "link_name");
                 let links_to_llvm = match link_name {
                     Some(val) => val.as_str().starts_with("llvm."),

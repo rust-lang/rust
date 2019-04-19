@@ -791,7 +791,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
                 hir::ForeignItemKind::Fn(ref decl, _, _) => {
                     vis.check_foreign_fn(it.hir_id, decl);
                 }
-                hir::ForeignItemKind::Static(ref ty, _) => {
+                hir::ForeignItemKind::Static(ref ty)
+                | hir::ForeignItemKind::StaticMut(ref ty) => {
                     vis.check_foreign_static(it.hir_id, ty.span);
                 }
                 hir::ForeignItemKind::Type => ()

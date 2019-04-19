@@ -64,7 +64,8 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
             return mut_visit::noop_flat_map_item(item, self);
         };
         match item.node {
-            ItemKind::Static(..) => {}
+            ItemKind::Static(..)
+            | ItemKind::StaticMut(..) => {}
             _ => {
                 self.handler
                     .span_err(item.span, "allocators must be statics");

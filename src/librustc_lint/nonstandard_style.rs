@@ -393,6 +393,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
             hir::ItemKind::Static(..) if !attr::contains_name(&it.attrs, "no_mangle") => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);
             }
+            hir::ItemKind::StaticMut(..) if !attr::contains_name(&it.attrs, "no_mangle") => {
+                NonUpperCaseGlobals::check_upper_case(cx, "mutable static variable", &it.ident);
+            }
             hir::ItemKind::Const(..) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant", &it.ident);
             }

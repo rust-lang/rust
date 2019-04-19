@@ -16,9 +16,11 @@ use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
 pub(crate) enum Target {
+    // FIXME(eddyb) replace most of this with `DefKind`.
     ExternCrate,
     Use,
     Static,
+    StaticMut,
     Const,
     Fn,
     Closure,
@@ -43,6 +45,7 @@ impl Display for Target {
             Target::ExternCrate => "extern crate",
             Target::Use => "use",
             Target::Static => "static item",
+            Target::StaticMut => "mutable static item",
             Target::Const => "constant item",
             Target::Fn => "function",
             Target::Closure => "closure",
@@ -69,6 +72,7 @@ impl Target {
             hir::ItemKind::ExternCrate(..) => Target::ExternCrate,
             hir::ItemKind::Use(..) => Target::Use,
             hir::ItemKind::Static(..) => Target::Static,
+            hir::ItemKind::StaticMut(..) => Target::StaticMut,
             hir::ItemKind::Const(..) => Target::Const,
             hir::ItemKind::Fn(..) => Target::Fn,
             hir::ItemKind::Mod(..) => Target::Mod,

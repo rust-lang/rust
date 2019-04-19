@@ -1122,7 +1122,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                    mutbl: ast::Mutability,
                    expr: P<ast::Expr>)
                    -> P<ast::Item> {
-        self.item(span, name, Vec::new(), ast::ItemKind::Static(ty, mutbl, expr))
+        self.item(span, name, Vec::new(), match mutbl {
+            ast::Mutability::Immutable => ast::ItemKind::Static(ty, expr),
+            ast::Mutability::Mutable => ast::ItemKind::StaticMut(ty, expr),
+        })
     }
 
     fn item_const(&self,

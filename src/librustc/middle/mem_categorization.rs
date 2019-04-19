@@ -709,7 +709,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 Ok(self.cat_rvalue_node(hir_id, span, expr_ty))
             }
 
-            Def::Static(def_id, mutbl) => {
+            Def::Static(def_id)
+            | Def::StaticMut(def_id) => {
                 // `#[thread_local]` statics may not outlive the current function, but
                 // they also cannot be moved out of.
                 let is_thread_local = self.tcx.get_attrs(def_id)[..]
@@ -727,7 +728,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     hir_id,
                     span,
                     cat,
-                    mutbl: if mutbl { McDeclared } else { McImmutable},
+                    mutbl: if let Def::StaticMut(_) = def { McDeclared } else { McImmutable},
                     ty:expr_ty,
                     note: NoteNone
                 })

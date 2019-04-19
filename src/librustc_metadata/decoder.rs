@@ -404,9 +404,9 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Const(..) => Def::Const(did),
             EntryKind::AssociatedConst(..) => Def::AssociatedConst(did),
             EntryKind::ImmStatic |
-            EntryKind::ForeignImmStatic => Def::Static(did, false),
+            EntryKind::ForeignImmStatic => Def::Static(did),
             EntryKind::MutStatic |
-            EntryKind::ForeignMutStatic => Def::Static(did, true),
+            EntryKind::ForeignMutStatic => Def::StaticMut(did),
             EntryKind::Struct(_, _) => Def::Struct(did),
             EntryKind::Union(_, _) => Def::Union(did),
             EntryKind::Fn(_) |

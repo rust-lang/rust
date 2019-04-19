@@ -1094,8 +1094,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         debug!("IsolatedEncoder::encode_info_for_item({:?})", def_id);
 
         let kind = match item.node {
-            hir::ItemKind::Static(_, hir::MutMutable, _) => EntryKind::MutStatic,
-            hir::ItemKind::Static(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
+            hir::ItemKind::Static(..) => EntryKind::ImmStatic,
+            hir::ItemKind::StaticMut(..) => EntryKind::MutStatic,
             hir::ItemKind::Const(_, body_id) => {
                 let mir = tcx.at(item.span).mir_const_qualif(def_id).0;
                 EntryKind::Const(
@@ -1248,6 +1248,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
 
             ty: match item.node {
                 hir::ItemKind::Static(..) |
+                hir::ItemKind::StaticMut(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
                 hir::ItemKind::Ty(..) |
@@ -1268,6 +1269,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             },
             generics: match item.node {
                 hir::ItemKind::Static(..) |
+                hir::ItemKind::StaticMut(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
                 hir::ItemKind::Ty(..) |
@@ -1282,6 +1284,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             },
             predicates: match item.node {
                 hir::ItemKind::Static(..) |
+                hir::ItemKind::StaticMut(..) |
                 hir::ItemKind::Const(..) |
                 hir::ItemKind::Fn(..) |
                 hir::ItemKind::Ty(..) |
@@ -1307,7 +1310,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             },
 
             mir: match item.node {
-                hir::ItemKind::Static(..) => {
+                hir::ItemKind::Static(..)
+                | hir::ItemKind::StaticMut(..) => {
                     self.encode_optimized_mir(def_id)
                 }
                 hir::ItemKind::Const(..) => self.encode_optimized_mir(def_id),
@@ -1647,8 +1651,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }
-            hir::ForeignItemKind::Static(_, true) => EntryKind::ForeignMutStatic,
-            hir::ForeignItemKind::Static(_, false) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::Static(_) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::StaticMut(_) => EntryKind::ForeignMutStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         };
 
@@ -1789,6 +1793,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
         let def_id = self.tcx.hir().local_def_id_from_hir_id(item.hir_id);
         match item.node {
             hir::ItemKind::Static(..) |
+            hir::ItemKind::StaticMut(..) |
             hir::ItemKind::Const(..) |
             hir::ItemKind::Fn(..) |
             hir::ItemKind::Mod(..) |

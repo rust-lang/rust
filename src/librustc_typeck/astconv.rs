@@ -1646,7 +1646,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             Def::Fn(def_id) |
             Def::Const(def_id) |
             Def::ConstParam(def_id) |
-            Def::Static(def_id, _) => {
+            Def::Static(def_id) |
+            Def::StaticMut(def_id) => {
                 path_segs.push(PathSeg(def_id, last));
             }
 

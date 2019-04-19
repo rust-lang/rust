@@ -539,8 +539,9 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     let (const_context, min_const_fn) = match tcx.hir().body_owner_kind_by_hir_id(id) {
         hir::BodyOwnerKind::Closure => (false, false),
         hir::BodyOwnerKind::Fn => (tcx.is_const_fn(def_id), tcx.is_min_const_fn(def_id)),
-        hir::BodyOwnerKind::Const |
-        hir::BodyOwnerKind::Static(_) => (true, false),
+        hir::BodyOwnerKind::Const
+        | hir::BodyOwnerKind::Static
+        | hir::BodyOwnerKind::StaticMut => (true, false),
     };
     let mut checker = UnsafetyChecker::new(
         const_context, min_const_fn,

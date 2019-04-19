@@ -28,7 +28,7 @@ use syntax::ast::{Name, Ident};
 use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{MetaItemKind, Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
+use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -442,9 +442,12 @@ impl<'a> Resolver<'a> {
             ItemKind::ForeignMod(..) => {}
 
             // These items live in the value namespace.
-            ItemKind::Static(_, m, _) => {
-                let mutbl = m == Mutability::Mutable;
-                let def = Def::Static(self.definitions.local_def_id(item.id), mutbl);
+            ItemKind::Static(..) => {
+                let def = Def::Static(self.definitions.local_def_id(item.id));
+                self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
+            }
+            ItemKind::StaticMut(..) => {
+                let def = Def::StaticMut(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
@@ -616,8 +619,11 @@ impl<'a> Resolver<'a> {
             ForeignItemKind::Fn(..) => {
                 (Def::Fn(self.definitions.local_def_id(item.id)), ValueNS)
             }
-            ForeignItemKind::Static(_, m) => {
-                (Def::Static(self.definitions.local_def_id(item.id), m), ValueNS)
+            ForeignItemKind::Static(_) => {
+                (Def::Static(self.definitions.local_def_id(item.id)), ValueNS)
+            }
+            ForeignItemKind::StaticMut(_) => {
+                (Def::StaticMut(self.definitions.local_def_id(item.id)), ValueNS)
             }
             ForeignItemKind::Ty => {
                 (Def::ForeignTy(self.definitions.local_def_id(item.id)), TypeNS)
@@ -667,8 +673,11 @@ impl<'a> Resolver<'a> {
             Def::TraitAlias(..) | Def::PrimTy(..) | Def::ToolMod => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
-            Def::Fn(..) | Def::Static(..) | Def::Const(..) |
-            Def::Ctor(_, CtorOf::Variant, ..) => {
+            Def::Fn(..)
+            | Def::Const(..)
+            | Def::Static(..)
+            | Def::StaticMut(..)
+            | Def::Ctor(_, CtorOf::Variant, ..) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
             }
             Def::Ctor(def_id, CtorOf::Struct, ..) => {

@@ -611,8 +611,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// intermediate values do not have to be dropped in that case.
     pub fn local_scope(&self) -> Option<region::Scope> {
         match self.hir.body_owner_kind {
-            hir::BodyOwnerKind::Const |
-            hir::BodyOwnerKind::Static(_) =>
+            hir::BodyOwnerKind::Const
+            | hir::BodyOwnerKind::Static
+            | hir::BodyOwnerKind::StaticMut =>
                 // No need to free storage in this context.
                 None,
             hir::BodyOwnerKind::Closure |

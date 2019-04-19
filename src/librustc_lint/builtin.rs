@@ -421,6 +421,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             }
             hir::ItemKind::Const(..) => "a constant",
             hir::ItemKind::Static(..) => "a static",
+            hir::ItemKind::StaticMut(..) => "a mutable static",
             _ => return,
         };
 
@@ -1190,13 +1191,12 @@ fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedBrokenConst {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
         match it.node {
-            hir::ItemKind::Const(_, body_id) => {
+            hir::ItemKind::Const(_, body_id)
+            | hir::ItemKind::Static(_, body_id)
+            | hir::ItemKind::StaticMut(_, body_id) => {
                 check_const(cx, body_id);
-            },
-            hir::ItemKind::Static(_, _, body_id) => {
-                check_const(cx, body_id);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 }

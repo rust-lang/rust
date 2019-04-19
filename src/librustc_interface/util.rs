@@ -740,7 +740,9 @@ impl<'a> ReplaceBodyWithLoop<'a> {
 impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
         let is_const = match i {
-            ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
+            ast::ItemKind::Const(..)
+            | ast::ItemKind::Static(..)
+            | ast::ItemKind::StaticMut(..) => true,
             ast::ItemKind::Fn(ref decl, ref header, _, _) =>
                 header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
             _ => false,
