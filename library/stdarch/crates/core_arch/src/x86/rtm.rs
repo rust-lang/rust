@@ -92,8 +92,8 @@ pub unsafe fn _xabort(imm8: u32) {
 #[inline]
 #[target_feature(enable = "rtm")]
 #[cfg_attr(test, assert_instr(xtest))]
-pub unsafe fn _xtest() -> bool {
-    x86_xtest() != 0
+pub unsafe fn _xtest() -> u8 {
+    x86_xtest() as _
 }
 
 /// Retrieves the parameter passed to [`_xabort`] when [`_xbegin`]'s status has the 
@@ -145,7 +145,7 @@ mod tests {
 
     #[simd_test(enable = "rtm")]
     unsafe fn test_xtest() {
-        assert_eq!(_xtest(), false);
+        assert_eq!(_xtest(), 0);
 
         for _ in 0..10 {
             let code = rtm::_xbegin();
@@ -155,7 +155,7 @@ mod tests {
                 
                 // putting the assert inside the transaction would abort the transaction on fail
                 // without any output/panic/etc
-                assert_eq!(in_tx, true);
+                assert_eq!(in_tx, 1);
                 break
             }
         }
