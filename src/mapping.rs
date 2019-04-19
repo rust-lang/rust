@@ -7,6 +7,7 @@ use rustc::{
     hir::{
         def::{Def, Export},
         def_id::{CrateNum, DefId},
+        HirId,
     },
     ty::{AssociatedKind, GenericParamDef, GenericParamDefKind},
 };
@@ -301,16 +302,16 @@ impl IdMapping {
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
 pub struct NameMapping {
     /// The exports in the type namespace.
-    type_map: HashMap<Name, (Option<Export>, Option<Export>)>,
+    type_map: HashMap<Name, (Option<Export<HirId>>, Option<Export<HirId>>)>,
     /// The exports in the value namespace.
-    value_map: HashMap<Name, (Option<Export>, Option<Export>)>,
+    value_map: HashMap<Name, (Option<Export<HirId>>, Option<Export<HirId>>)>,
     /// The exports in the macro namespace.
-    macro_map: HashMap<Name, (Option<Export>, Option<Export>)>,
+    macro_map: HashMap<Name, (Option<Export<HirId>>, Option<Export<HirId>>)>,
 }
 
 impl NameMapping {
     /// Insert a single export in the appropriate map, at the appropriate position.
-    fn insert(&mut self, item: Export, old: bool) {
+    fn insert(&mut self, item: Export<HirId>, old: bool) {
         use rustc::hir::def::Def::*;
 
         let map = match item.def {
@@ -356,7 +357,7 @@ impl NameMapping {
     }
 
     /// Add all items from two vectors of old/new exports.
-    pub fn add(&mut self, old_items: Vec<Export>, new_items: Vec<Export>) {
+    pub fn add(&mut self, old_items: Vec<Export<HirId>>, new_items: Vec<Export<HirId>>) {
         for item in old_items {
             self.insert(item, true);
         }
@@ -367,7 +368,7 @@ impl NameMapping {
     }
 
     /// Drain the item pairs being stored.
-    pub fn drain<'a>(&'a mut self) -> impl Iterator<Item = (Option<Export>, Option<Export>)> + 'a {
+    pub fn drain<'a>(&'a mut self) -> impl Iterator<Item = (Option<Export<HirId>>, Option<Export<HirId>>)> + 'a {
         self.type_map
             .drain()
             .chain(self.value_map.drain())

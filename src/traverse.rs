@@ -21,6 +21,7 @@ use rustc::{
     hir::{
         def::{CtorKind, CtorOf, Def, Export},
         def_id::DefId,
+        HirId,
     },
     ty::{
         subst::{InternalSubsts, Subst},
@@ -87,7 +88,7 @@ fn diff_structure<'a, 'tcx>(
     use rustc::hir::def::Def::*;
 
     // Get the visibility of the inner item, given the outer item's visibility.
-    fn get_vis(outer_vis: Visibility, def: Export) -> Visibility {
+    fn get_vis(outer_vis: Visibility, def: Export<HirId>) -> Visibility {
         if outer_vis == Public {
             def.vis
         } else {
