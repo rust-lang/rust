@@ -1268,11 +1268,11 @@ impl Step for Compiletest {
         builder.add_rust_test_threads(&mut cmd);
 
         if builder.config.sanitizers {
-            cmd.env("SANITIZER_SUPPORT", "1");
+            cmd.env("RUSTC_SANITIZER_SUPPORT", "1");
         }
 
         if builder.config.profiler {
-            cmd.env("PROFILER_SUPPORT", "1");
+            cmd.env("RUSTC_PROFILER_SUPPORT", "1");
         }
 
         cmd.env("RUST_TEST_TMPDIR", builder.out.join("tmp"));
