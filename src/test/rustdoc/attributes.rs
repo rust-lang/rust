@@ -8,8 +8,8 @@ pub extern "C" fn f() {}
 #[export_name = "bar"]
 pub extern "C" fn g() {}
 
-// @has foo/enum.Foo.html '//*[@class="docblock attributes"]' '#[repr(i64)]'
-// @has foo/enum.Foo.html '//*[@class="docblock attributes"]' '#[must_use]'
+// @has foo/enum.Foo.html '//*[@class="docblock attributes top-attr"]' '#[repr(i64)]'
+// @has foo/enum.Foo.html '//*[@class="docblock attributes top-attr"]' '#[must_use]'
 #[repr(i64)]
 #[must_use]
 pub enum Foo {
