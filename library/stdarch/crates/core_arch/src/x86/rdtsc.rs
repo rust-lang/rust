@@ -22,7 +22,7 @@ use stdsimd_test::assert_instr;
 #[inline]
 #[cfg_attr(test, assert_instr(rdtsc))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _rdtsc() -> i64 {
+pub unsafe fn _rdtsc() -> u64 {
     rdtsc()
 }
 
@@ -52,7 +52,7 @@ pub unsafe fn __rdtscp(aux: *mut u32) -> u64 {
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.x86.rdtsc"]
-    fn rdtsc() -> i64;
+    fn rdtsc() -> u64;
     #[link_name = "llvm.x86.rdtscp"]
     fn rdtscp(aux: *mut u8) -> u64;
 }
