@@ -100,6 +100,13 @@ cfg_if! {
         }
 
         impl<T: Copy + PartialEq> AtomicCell<T> {
+            pub fn compare_and_swap(&self, current: T, new: T) -> T {
+                match self.compare_exchange(current, new) {
+                    Ok(v) => v,
+                    Err(v) => v,
+                }
+            }
+
             pub fn compare_exchange(&self,
                                     current: T,
                                     new: T)
