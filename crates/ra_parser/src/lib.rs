@@ -98,6 +98,14 @@ pub fn parse_item(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) 
     parse_from_tokens(token_source, tree_sink, grammar::item);
 }
 
+pub fn parse_macro_items(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::macro_items);
+}
+
+pub fn parse_macro_stmts(token_source: &dyn TokenSource, tree_sink: &mut dyn TreeSink) {
+    parse_from_tokens(token_source, tree_sink, grammar::macro_stmts);
+}
+
 /// A parsing function for a specific braced-block.
 pub struct Reparser(fn(&mut parser::Parser));
 

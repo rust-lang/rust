@@ -247,6 +247,10 @@ Grammar(
         "ARG_LIST",
         "TYPE_BOUND",
         "TYPE_BOUND_LIST",
+
+        // macro related
+        "MACRO_ITEMS",
+        "MACRO_STMTS",
     ],
     ast: {
         "SourceFile": (
@@ -668,5 +672,16 @@ Grammar(
         "TypeArg": (options: ["TypeRef"]),
         "AssocTypeArg": (options: ["NameRef", "TypeRef"]),
         "LifetimeArg": (),
+
+        "MacroItems": (
+            traits: [ "ModuleItemOwner", "FnDefOwner" ],            
+        ),
+
+        "MacroStmts" : (
+            options: [ "Expr" ],
+            collections: [
+                ["statements", "Stmt"],
+            ],
+        )
     },
 )

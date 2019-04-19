@@ -4,6 +4,12 @@ pub(crate) use self::atom::match_arm_list;
 pub(super) use self::atom::{literal, LITERAL_FIRST};
 use super::*;
 
+pub(super) enum StmtWithSemi {
+    Yes,
+    No,
+    Optional,
+}
+
 const EXPR_FIRST: TokenSet = LHS_FIRST;
 
 pub(super) fn expr(p: &mut Parser) -> BlockLike {
@@ -48,7 +54,7 @@ fn is_expr_stmt_attr_allowed(kind: SyntaxKind) -> bool {
     }
 }
 
-pub(super) fn stmt(p: &mut Parser, with_semi: bool) {
+pub(super) fn stmt(p: &mut Parser, with_semi: StmtWithSemi) {
     // test block_items
     // fn a() { fn b() {} }
     let m = p.start();
@@ -111,13 +117,23 @@ pub(super) fn stmt(p: &mut Parser, with_semi: bool) {
         //     }
         //     test!{}
         // }
-        if with_semi {
-            if blocklike.is_block() {
-                p.eat(SEMI);
-            } else {
-                p.expect(SEMI);
+
+        match with_semi {
+            StmtWithSemi::Yes => {
+                if blocklike.is_block() {
+                    p.eat(SEMI);
+                } else {
+                    p.expect(SEMI);
+                }
+            }
+            StmtWithSemi::No => {}
+            StmtWithSemi::Optional => {
+                if p.at(SEMI) {
+                    p.eat(SEMI);
+                }
             }
         }
+
         m.complete(p, EXPR_STMT);
     }
 
@@ -128,7 +144,7 @@ pub(super) fn stmt(p: &mut Parser, with_semi: bool) {
     //     let c = 92;
     //     let d: i32 = 92;
     // }
-    fn let_stmt(p: &mut Parser, m: Marker, with_semi: bool) {
+    fn let_stmt(p: &mut Parser, m: Marker, with_semi: StmtWithSemi) {
         assert!(p.at(LET_KW));
         p.bump();
         patterns::pattern(p);
@@ -139,8 +155,16 @@ pub(super) fn stmt(p: &mut Parser, with_semi: bool) {
             expressions::expr(p);
         }
 
-        if with_semi {
-            p.expect(SEMI);
+        match with_semi {
+            StmtWithSemi::Yes => {
+                p.expect(SEMI);
+            }
+            StmtWithSemi::No => {}
+            StmtWithSemi::Optional => {
+                if p.at(SEMI) {
+                    p.eat(SEMI);
+                }
+            }
         }
         m.complete(p, LET_STMT);
     }
@@ -160,7 +184,7 @@ pub(crate) fn expr_block_contents(p: &mut Parser) {
             continue;
         }
 
-        stmt(p, true)
+        stmt(p, StmtWithSemi::Yes)
     }
 }
 

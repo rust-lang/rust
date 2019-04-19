@@ -233,6 +233,8 @@ pub enum SyntaxKind {
     ARG_LIST,
     TYPE_BOUND,
     TYPE_BOUND_LIST,
+    MACRO_ITEMS,
+    MACRO_STMTS,
     // Technical kind so that we can cast from u16 safely
     #[doc(hidden)]
     __LAST,
@@ -592,6 +594,8 @@ impl SyntaxKind {
             ARG_LIST => &SyntaxInfo { name: "ARG_LIST" },
             TYPE_BOUND => &SyntaxInfo { name: "TYPE_BOUND" },
             TYPE_BOUND_LIST => &SyntaxInfo { name: "TYPE_BOUND_LIST" },
+            MACRO_ITEMS => &SyntaxInfo { name: "MACRO_ITEMS" },
+            MACRO_STMTS => &SyntaxInfo { name: "MACRO_STMTS" },
             TOMBSTONE => &SyntaxInfo { name: "TOMBSTONE" },
             EOF => &SyntaxInfo { name: "EOF" },
             __LAST => &SyntaxInfo { name: "__LAST" },

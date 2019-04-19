@@ -37,9 +37,19 @@ pub enum ExpandError {
     NoMatchingRule,
     UnexpectedToken,
     BindingError(String),
+    ConversionError,
 }
 
-pub use crate::syntax_bridge::{ast_to_token_tree, token_tree_to_ast_item_list, syntax_node_to_token_tree};
+pub use crate::syntax_bridge::{
+    ast_to_token_tree,
+    token_tree_to_ast_item_list,
+    syntax_node_to_token_tree,
+    token_tree_to_expr,
+    token_tree_to_pat,
+    token_tree_to_ty,
+    token_tree_to_macro_items,
+    token_tree_to_macro_stmts,
+};
 
 /// This struct contains AST for a single `macro_rules` definition. What might
 /// be very confusing is that AST has almost exactly the same shape as
@@ -192,23 +202,26 @@ impl_froms!(TokenTree: Leaf, Subtree);
     pub(crate) fn expand_to_syntax(
         rules: &MacroRules,
         invocation: &str,
-    ) -> ra_syntax::TreeArc<ast::SourceFile> {
+    ) -> ra_syntax::TreeArc<ast::MacroItems> {
         let expanded = expand(rules, invocation);
-        token_tree_to_ast_item_list(&expanded)
+        token_tree_to_macro_items(&expanded).unwrap()
     }
 
     pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
         let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
 
-        let tree = token_tree_to_ast_item_list(&expanded);
+        let tree = token_tree_to_macro_items(&expanded);
 
         // Eat all white space by parse it back and forth
         let expansion = ast::SourceFile::parse(expansion);
         let expansion = syntax_node_to_token_tree(expansion.syntax()).unwrap().0;
-        let file = token_tree_to_ast_item_list(&expansion);
+        let file = token_tree_to_macro_items(&expansion);
 
-        assert_eq!(tree.syntax().debug_dump().trim(), file.syntax().debug_dump().trim());
+        assert_eq!(
+            tree.unwrap().syntax().debug_dump().trim(),
+            file.unwrap().syntax().debug_dump().trim()
+        );
     }
 
     #[test]
@@ -346,11 +359,11 @@ impl_froms!(TokenTree: Leaf, Subtree);
             ",
         );
         let expansion = expand(&rules, "structs!(Foo, Bar)");
-        let tree = token_tree_to_ast_item_list(&expansion);
+        let tree = token_tree_to_macro_items(&expansion);
         assert_eq!(
-            tree.syntax().debug_dump().trim(),
+            tree.unwrap().syntax().debug_dump().trim(),
             r#"
-SOURCE_FILE@[0; 40)
+MACRO_ITEMS@[0; 40)
   STRUCT_DEF@[0; 20)
     STRUCT_KW@[0; 6) "struct"
     NAME@[6; 9)
@@ -444,6 +457,59 @@ SOURCE_FILE@[0; 40)
         assert_expansion(&rules, "foo! { foo, bar }", "fn foo () {let a = foo ; let b = bar ;}");
     }
 
+    #[test]
+    fn test_tt_to_stmts() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            () => {
+                 let a = 0;
+                 a = 10 + 1;
+                 a
+            }
+        }
+"#,
+        );
+
+        let expanded = expand(&rules, "foo!{}");
+        let stmts = token_tree_to_macro_stmts(&expanded);
+
+        assert_eq!(
+            stmts.unwrap().syntax().debug_dump().trim(),
+            r#"MACRO_STMTS@[0; 15)
+  LET_STMT@[0; 7)
+    LET_KW@[0; 3) "let"
+    BIND_PAT@[3; 4)
+      NAME@[3; 4)
+        IDENT@[3; 4) "a"
+    EQ@[4; 5) "="
+    LITERAL@[5; 6)
+      INT_NUMBER@[5; 6) "0"
+    SEMI@[6; 7) ";"
+  EXPR_STMT@[7; 14)
+    BIN_EXPR@[7; 13)
+      PATH_EXPR@[7; 8)
+        PATH@[7; 8)
+          PATH_SEGMENT@[7; 8)
+            NAME_REF@[7; 8)
+              IDENT@[7; 8) "a"
+      EQ@[8; 9) "="
+      BIN_EXPR@[9; 13)
+        LITERAL@[9; 11)
+          INT_NUMBER@[9; 11) "10"
+        PLUS@[11; 12) "+"
+        LITERAL@[12; 13)
+          INT_NUMBER@[12; 13) "1"
+    SEMI@[13; 14) ";"
+  EXPR_STMT@[14; 15)
+    PATH_EXPR@[14; 15)
+      PATH@[14; 15)
+        PATH_SEGMENT@[14; 15)
+          NAME_REF@[14; 15)
+            IDENT@[14; 15) "a""#,
+        );
+    }
+
     // The following tests are port from intellij-rust directly
     // https://github.com/intellij-rust/intellij-rust/blob/c4e9feee4ad46e7953b1948c112533360b6087bb/src/test/kotlin/org/rust/lang/core/macros/RsMacroExpansionTest.kt
 
@@ -527,7 +593,7 @@ SOURCE_FILE@[0; 40)
 
         assert_eq!(
             expand_to_syntax(&rules, "foo! { 1 + 1  }").syntax().debug_dump().trim(),
-            r#"SOURCE_FILE@[0; 15)
+            r#"MACRO_ITEMS@[0; 15)
   FN_DEF@[0; 15)
     FN_KW@[0; 2) "fn"
     NAME@[2; 5)
