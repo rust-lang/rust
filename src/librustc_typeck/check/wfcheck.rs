@@ -938,10 +938,12 @@ fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         .map(|(index, _)| Parameter(index as u32))
                         .collect();
 
-    identify_constrained_generic_params(tcx,
-                                     &ty_predicates,
-                                     None,
-                                     &mut constrained_parameters);
+    identify_constrained_generic_params(
+        tcx,
+        &ty_predicates,
+        None,
+        &mut constrained_parameters,
+    );
 
     for (index, _) in variances.iter().enumerate() {
         if constrained_parameters.contains(&Parameter(index as u32)) {
@@ -949,6 +951,7 @@ fn check_variances_for_type_defn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         let param = &hir_generics.params[index];
+
         match param.name {
             hir::ParamName::Error => { }
             _ => report_bivariance(tcx, param.span, param.name.ident().name),
@@ -1123,7 +1126,7 @@ fn error_392<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span, param_name: ast:
                        -> DiagnosticBuilder<'tcx> {
     let mut err = struct_span_err!(tcx.sess, span, E0392,
                   "parameter `{}` is never used", param_name);
-    err.span_label(span, "unused type parameter");
+    err.span_label(span, "unused parameter");
     err
 }
 
