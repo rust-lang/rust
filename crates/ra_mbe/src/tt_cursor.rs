@@ -104,6 +104,11 @@ impl<'a> TtCursor<'a> {
         parser.parse_stmt()
     }
 
+    pub(crate) fn eat_block(&mut self) -> Option<tt::TokenTree> {
+        let parser = Parser::new(&mut self.pos, self.subtree);
+        parser.parse_block()
+    }
+
     pub(crate) fn eat_item(&mut self) -> Option<tt::TokenTree> {
         let parser = Parser::new(&mut self.pos, self.subtree);
         parser.parse_item()

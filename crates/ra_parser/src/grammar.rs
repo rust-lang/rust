@@ -95,6 +95,10 @@ pub(crate) fn stmt(p: &mut Parser, with_semi: bool) {
     expressions::stmt(p, with_semi)
 }
 
+pub(crate) fn block(p: &mut Parser) {
+    expressions::block(p);
+}
+
 pub(crate) fn item(p: &mut Parser) {
     items::item_or_macro(p, true, items::ItemFlavor::Mod)
 }

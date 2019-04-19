@@ -731,4 +731,16 @@ MACRO_ITEMS@[0; 40)
         }
 "#, r#"extern crate a ; mod b ; mod c {} use d ; const E : i32 = 0 ; static F : i32 = 0 ; impl G {} struct H ; enum I {Foo} trait J {} fn h () {} extern {} type T = u8 ;"#);
     }
+
+    #[test]
+    fn test_block() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:block) => { fn foo() $ i }
+        }
+"#,
+        );
+        assert_expansion(&rules, "foo! { { 1; } }", "fn foo () {1 ;}");
+    }
 }
