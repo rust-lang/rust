@@ -114,6 +114,16 @@ mod tests {
         assert_eq!(out, 8);
     }
 
+    #[simd_test(enable = "adx")]
+    unsafe fn test_addcarryx_u32_2() {
+        unsafe fn add_1_2_3() -> u32 {
+            let mut out = 0;
+            std::arch::x86_64::_addcarryx_u32(1, 2, 3, &mut out);
+            out
+        }
+        assert_eq!(6, add_1_2_3());
+    }
+
     #[test]
     fn test_subborrow_u32() {
         unsafe {
