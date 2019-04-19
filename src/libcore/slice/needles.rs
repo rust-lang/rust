@@ -1,8 +1,8 @@
-use needle::*;
-use ops::Range;
-use cmp::{Ordering, max, min};
-use usize;
-use fmt;
+use crate::needle::*;
+use crate::ops::Range;
+use crate::cmp::{Ordering, max, min};
+use crate::usize;
+use crate::fmt;
 
 //------------------------------------------------------------------------------
 // Element searcher

@@ -1,6 +1,6 @@
 use super::haystack::{Haystack, Hay, Span};
 
-use ops::Range;
+use crate::ops::Range;
 
 /// A searcher, for searching a [`Needle`](trait.Needle.html) from a
 /// [`Hay`](trait.Hay.html).

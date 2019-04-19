@@ -1,8 +1,8 @@
-use needle::*;
-use ops::Range;
-use slice::needles::{SliceSearcher, NaiveSearcher, TwoWaySearcher};
-use slice::memchr::{memchr, memrchr};
-use fmt;
+use crate::needle::*;
+use crate::ops::Range;
+use crate::slice::needles::{SliceSearcher, NaiveSearcher, TwoWaySearcher};
+use crate::slice::memchr::{memchr, memrchr};
+use crate::fmt;
 
 //------------------------------------------------------------------------------
 // Character function searcher
