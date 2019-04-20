@@ -173,7 +173,7 @@ variables have unbound inference variables in their type: `?T`
 represents the elements in the vector `t` and `?U` represents the
 value stored in the option `u`.  Next, we invoke `foo`; comparing the
 signature of `foo` to its arguments, we wind up with `A = Vec<?T>` and
-`B = ?U`.Therefore, the where clause on `foo` requires that `Vec<?T>:
+`B = ?U`. Therefore, the where clause on `foo` requires that `Vec<?T>:
 Borrow<?U>`. This is thus our first example trait query.
 
 There are many possible solutions to the query `Vec<?T>: Borrow<?U>`;

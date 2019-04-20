@@ -177,8 +177,8 @@ The result would be as follows:
 ```text
 Canonical(QR) = for<T, L> {
     certainty: Proven,
-    var_values: [Vec<?0>, '?1, ?2]
-    region_constraints: [?2: '?1],
+    var_values: [Vec<?0>, '?1, ?0]
+    region_constraints: [?0: '?1],
     value: (),
 }
 ```
@@ -213,8 +213,8 @@ and now we got back a canonical response:
 ```text
 for<T, L> {
     certainty: Proven,
-    var_values: [Vec<?0>, '?1, ?2]
-    region_constraints: [?2: '?1],
+    var_values: [Vec<?0>, '?1, ?0]
+    region_constraints: [?0: '?1],
     value: (),
 }
 ```
@@ -250,7 +250,7 @@ for later verification.
 than eagerly instantiating all of the canonical values in the result
 with variables, we instead walk the vector of values, looking for
 cases where the value is just a canonical variable. In our example,
-`values[2]` is `?C`, so that means we can deduce that `?C := ?B and
+`values[2]` is `?C`, so that means we can deduce that `?C := ?B` and
 `'?D := 'static`. This gives us a partial set of values. Anything for
 which we do not find a value, we create an inference variable.)
 
