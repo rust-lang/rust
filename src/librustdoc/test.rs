@@ -796,11 +796,7 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
-            let res = markdown::find_testable_code(&doc, self.collector, self.codes);
-            if let Err(err) = res {
-                self.sess.diagnostic().span_warn(attrs.span.unwrap_or(DUMMY_SP),
-                    &err.to_string());
-            }
+            markdown::find_testable_code(&doc, self.collector, self.codes);
         }
 
         nested(self);
