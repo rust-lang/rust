@@ -692,6 +692,39 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
+    /// Inserts a key-value pair into the map,
+    /// returning references to key and value.
+    pub fn insert_and_get_key_value(&mut self, key: K, value: V) -> (&K, &V) {
+        match self.entry(key) {
+            Occupied(mut entry) => {
+                entry.insert(value);
+                let (k, v) = entry.handle.into_kv_mut();
+                (&*k, &*v)
+            }
+            Vacant(entry) => {
+                let (k, v) = entry.insert_and_get_mut_key_value(value);
+                (&*k, &*v)
+            }
+        }
+    }
+
+    /// Inserts a key-value pair into the map,
+    /// returning an immutable reference to the key and
+    /// a mutable reference to value.
+    pub fn insert_and_get_mut_key_value(&mut self, key: K, value: V) -> (&K, &mut V) {
+        match self.entry(key) {
+            Occupied(mut entry) => {
+                entry.insert(value);
+                let (k, v) = entry.handle.into_kv_mut();
+                (&*k, v)
+            }
+            Vacant(entry) => {
+                let (k, v) = entry.insert_and_get_mut_key_value(value);
+                (&*k, v)
+            }
+        }
+    }
+
     /// Removes a key from the map, returning the value at the key if the key
     /// was previously in the map.
     ///
@@ -2272,6 +2305,16 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
+        self.insert_and_get_mut_key_value(value).1
+    }
+
+    /// A modification of `insert`,
+    /// which extends its result with a mutable reference to key.
+    ///
+    /// This function is intended for internal use and
+    /// is required for implementation of
+    /// `insert_and_get_key_value` and `insert_and_get_mut_key_value` on `BTreeMap`.
+    fn insert_and_get_mut_key_value(self, value: V) -> (&'a mut K, &'a mut V) {
         *self.length += 1;
 
         let out_ptr;
@@ -2281,7 +2324,7 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
         let mut ins_edge;
 
         let mut cur_parent = match self.handle.insert(self.key, value) {
-            (Fit(handle), _) => return handle.into_kv_mut().1,
+            (Fit(handle), _) => return handle.into_kv_mut(),
             (Split(left, k, v, right), ptr) => {
                 ins_k = k;
                 ins_v = v;
@@ -2295,7 +2338,11 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
             match cur_parent {
                 Ok(parent) => {
                     match parent.insert(ins_k, ins_v, ins_edge) {
-                        Fit(_) => return unsafe { &mut *out_ptr },
+                        Fit(handle) => {
+                            let k = handle.into_kv_mut().0;
+                            let v = unsafe { &mut *out_ptr };
+                            return (k, v)
+                        },
                         Split(left, k, v, right) => {
                             ins_k = k;
                             ins_v = v;
@@ -2305,8 +2352,11 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
                     }
                 }
                 Err(root) => {
-                    root.push_level().push(ins_k, ins_v, ins_edge);
-                    return unsafe { &mut *out_ptr };
+                    let mut node = root.push_level();
+                    node.push(ins_k, ins_v, ins_edge);
+                    let k = node.first_kv().into_kv_mut().0;
+                    let v = unsafe { &mut *out_ptr };
+                    return (k, v)
                 }
             }
         }
