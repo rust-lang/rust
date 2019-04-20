@@ -276,6 +276,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
+            | ExprKind::AddressOf { .. }
             | ExprKind::Match { .. }
             | ExprKind::Loop { .. }
             | ExprKind::Block { .. }
