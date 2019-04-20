@@ -47,8 +47,9 @@
 //! #![plugin(myplugin)]
 //! ```
 //!
-//! See the [`plugin` feature](../unstable-book/language-features/plugin.html) of
-//! the Unstable Book for more examples.
+//! See the [`plugin`
+//! feature](https://doc.rust-lang.org/nightly/unstable-book/language-features/plugin.html)
+//! of the Unstable Book for more examples.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
