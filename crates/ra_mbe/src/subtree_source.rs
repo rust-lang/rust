@@ -379,8 +379,6 @@ where
 {
     if let Some((m, is_joint_to_next)) = iter.current_punct3(p) {
         if let Some((kind, text)) = match m {
-            ('<', '<', '=') => Some((SHLEQ, "<<=")),
-            ('>', '>', '=') => Some((SHREQ, ">>=")),
             ('.', '.', '.') => Some((DOTDOTDOT, "...")),
             ('.', '.', '=') => Some((DOTDOTEQ, "..=")),
             _ => None,
@@ -391,23 +389,6 @@ where
 
     if let Some((m, is_joint_to_next)) = iter.current_punct2(p) {
         if let Some((kind, text)) = match m {
-            ('<', '<') => Some((SHL, "<<")),
-            ('>', '>') => Some((SHR, ">>")),
-
-            ('|', '|') => Some((PIPEPIPE, "||")),
-            ('&', '&') => Some((AMPAMP, "&&")),
-            ('%', '=') => Some((PERCENTEQ, "%=")),
-            ('*', '=') => Some((STAREQ, "*=")),
-            ('/', '=') => Some((SLASHEQ, "/=")),
-            ('^', '=') => Some((CARETEQ, "^=")),
-
-            ('&', '=') => Some((AMPEQ, "&=")),
-            ('|', '=') => Some((PIPEEQ, "|=")),
-            ('-', '=') => Some((MINUSEQ, "-=")),
-            ('+', '=') => Some((PLUSEQ, "+=")),
-            ('>', '=') => Some((GTEQ, ">=")),
-            ('<', '=') => Some((LTEQ, "<=")),
-
             ('-', '>') => Some((THIN_ARROW, "->")),
             ('!', '=') => Some((NEQ, "!=")),
             ('=', '>') => Some((FAT_ARROW, "=>")),

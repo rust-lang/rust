@@ -42,6 +42,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
         global_macro_scope: FxHashMap::default(),
+        marco_stack_count: 0,
     };
     collector.collect();
     collector.finish()
@@ -55,6 +56,10 @@ struct DefCollector<DB> {
     unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
     unexpanded_macros: Vec<(CrateModuleId, AstId<ast::MacroCall>, Path)>,
     global_macro_scope: FxHashMap<Name, MacroDefId>,
+
+    /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
+    /// To prevent stackoverflow, we add a deep counter here for prevent that.
+    marco_stack_count: u32,
 }
 
 impl<'a, DB> DefCollector<&'a DB>
@@ -324,10 +329,18 @@ where
     }
 
     fn collect_macro_expansion(&mut self, module_id: CrateModuleId, macro_call_id: MacroCallId) {
-        let file_id: HirFileId = macro_call_id.into();
-        let raw_items = self.db.raw_items(file_id);
-        ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
-            .collect(raw_items.items())
+        self.marco_stack_count += 1;
+
+        if self.marco_stack_count < 300 {
+            let file_id: HirFileId = macro_call_id.into();
+            let raw_items = self.db.raw_items(file_id);
+            ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
+                .collect(raw_items.items())
+        } else {
+            log::error!("Too deep macro expansion: {}", macro_call_id.debug_dump(self.db));
+        }
+
+        self.marco_stack_count -= 1;
     }
 
     fn finish(self) -> CrateDefMap {
