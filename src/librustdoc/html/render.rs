@@ -1340,10 +1340,15 @@ fn write_minify_replacer<W: Write>(
                         .into();
                     tokens.apply(|f| {
                         // We add a backline after the newly created variables.
-                        minifier::js::aggregate_strings_into_array_with_separation(
+                        minifier::js::aggregate_strings_into_array_with_separation_filter(
                             f,
                             "R",
                             Token::Char(ReservedChar::Backline),
+                            |tokens, pos| {
+                                pos < 2 ||
+                                !tokens[pos - 1].is_char(ReservedChar::OpenBracket) ||
+                                tokens[pos - 2].get_other() != Some("searchIndex")
+                            }
                         )
                     })
                     .to_string()
