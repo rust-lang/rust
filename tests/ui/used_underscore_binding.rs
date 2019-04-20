@@ -1,6 +1,16 @@
+// aux-build:proc_macro_derive.rs
+
 #![warn(clippy::all)]
 #![allow(clippy::blacklisted_name)]
 #![warn(clippy::used_underscore_binding)]
+
+#[macro_use]
+extern crate proc_macro_derive;
+
+// This should not trigger the lint. There's underscore binding inside the external derive that
+// would trigger the `used_underscore_binding` lint.
+#[derive(DeriveSomething)]
+struct Baz;
 
 macro_rules! test_macro {
     () => {{
@@ -51,7 +61,7 @@ fn unused_underscore_complex(mut _foo: u32) -> u32 {
     1
 }
 
-///Test that we do not lint for multiple underscores
+/// Test that we do not lint for multiple underscores
 fn multiple_underscores(__foo: u32) -> u32 {
     __foo + 1
 }
