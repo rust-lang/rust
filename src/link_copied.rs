@@ -1,13 +1,6 @@
 //! All functions here are copied from https://github.com/rust-lang/rust/blob/942864a000efd74b73e36bda5606b2cdb55ecf39/src/librustc_codegen_llvm/back/link.rs
 
-use std::fmt;
-use std::fs;
-use std::io;
-use std::iter;
 use std::path::{Path, PathBuf};
-use std::process::{Output, Stdio};
-
-use log::info;
 
 use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;
@@ -15,7 +8,7 @@ use rustc::session::config::{self, OutputType, RUST_CGU_EXT};
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
 use rustc::util::common::time;
-use rustc_codegen_ssa::back::command::Command;
+use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
 use rustc_codegen_ssa::back::linker::*;
 use rustc_codegen_ssa::back::link::*;
 use rustc_data_structures::fx::FxHashSet;
@@ -25,11 +18,6 @@ use syntax::attr;
 use crate::prelude::*;
 
 use crate::archive::{ArchiveBuilder, ArchiveConfig};
-use crate::metadata::METADATA_FILENAME;
-
-
-// cg_clif doesn't have bytecode, so this is just a dummy
-const RLIB_BYTECODE_EXTENSION: &str = ".cg_clif_bytecode_dummy";
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     sess.target_filesearch(PathKind::Native).search_path_dirs()
@@ -43,147 +31,6 @@ fn archive_config<'a>(sess: &'a Session,
         dst: output.to_path_buf(),
         src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),
-    }
-}
-
-pub fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &Path)
-    -> io::Result<Output>
-{
-    // When attempting to spawn the linker we run a risk of blowing out the
-    // size limits for spawning a new process with respect to the arguments
-    // we pass on the command line.
-    //
-    // Here we attempt to handle errors from the OS saying "your list of
-    // arguments is too big" by reinvoking the linker again with an `@`-file
-    // that contains all the arguments. The theory is that this is then
-    // accepted on all linkers and the linker will read all its options out of
-    // there instead of looking at the command line.
-    if !cmd.very_likely_to_exceed_some_spawn_limit() {
-        match cmd.command().stdout(Stdio::piped()).stderr(Stdio::piped()).spawn() {
-            Ok(child) => {
-                let output = child.wait_with_output();
-                flush_linked_file(&output, out_filename)?;
-                return output;
-            }
-            Err(ref e) if command_line_too_big(e) => {
-                info!("command line to linker was too big: {}", e);
-            }
-            Err(e) => return Err(e)
-        }
-    }
-
-    info!("falling back to passing arguments to linker via an @-file");
-    let mut cmd2 = cmd.clone();
-    let mut args = String::new();
-    for arg in cmd2.take_args() {
-        args.push_str(&Escape {
-            arg: arg.to_str().unwrap(),
-            is_like_msvc: sess.target.target.options.is_like_msvc,
-        }.to_string());
-        args.push_str("\n");
-    }
-    let file = tmpdir.join("linker-arguments");
-    let bytes = if sess.target.target.options.is_like_msvc {
-        let mut out = Vec::with_capacity((1 + args.len()) * 2);
-        // start the stream with a UTF-16 BOM
-        for c in iter::once(0xFEFF).chain(args.encode_utf16()) {
-            // encode in little endian
-            out.push(c as u8);
-            out.push((c >> 8) as u8);
-        }
-        out
-    } else {
-        args.into_bytes()
-    };
-    fs::write(&file, &bytes)?;
-    cmd2.arg(format!("@{}", file.display()));
-    info!("invoking linker {:?}", cmd2);
-    let output = cmd2.output();
-    flush_linked_file(&output, out_filename)?;
-    return output;
-
-    #[cfg(unix)]
-    fn flush_linked_file(_: &io::Result<Output>, _: &Path) -> io::Result<()> {
-        Ok(())
-    }
-
-    #[cfg(windows)]
-    fn flush_linked_file(command_output: &io::Result<Output>, out_filename: &Path)
-        -> io::Result<()>
-    {
-        // On Windows, under high I/O load, output buffers are sometimes not flushed,
-        // even long after process exit, causing nasty, non-reproducible output bugs.
-        //
-        // File::sync_all() calls FlushFileBuffers() down the line, which solves the problem.
-        //
-        // А full writeup of the original Chrome bug can be found at
-        // randomascii.wordpress.com/2018/02/25/compiler-bug-linker-bug-windows-kernel-bug/amp
-
-        if let &Ok(ref out) = command_output {
-            if out.status.success() {
-                if let Ok(of) = fs::OpenOptions::new().write(true).open(out_filename) {
-                    of.sync_all()?;
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[cfg(unix)]
-    fn command_line_too_big(err: &io::Error) -> bool {
-        err.raw_os_error() == Some(::libc::E2BIG)
-    }
-
-    #[cfg(windows)]
-    fn command_line_too_big(err: &io::Error) -> bool {
-        const ERROR_FILENAME_EXCED_RANGE: i32 = 206;
-        err.raw_os_error() == Some(ERROR_FILENAME_EXCED_RANGE)
-    }
-
-    struct Escape<'a> {
-        arg: &'a str,
-        is_like_msvc: bool,
-    }
-
-    impl<'a> fmt::Display for Escape<'a> {
-        fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-            if self.is_like_msvc {
-                // This is "documented" at
-                // https://msdn.microsoft.com/en-us/library/4xdcbak7.aspx
-                //
-                // Unfortunately there's not a great specification of the
-                // syntax I could find online (at least) but some local
-                // testing showed that this seemed sufficient-ish to catch
-                // at least a few edge cases.
-                write!(f, "\"")?;
-                for c in self.arg.chars() {
-                    match c {
-                        '"' => write!(f, "\\{}", c)?,
-                        c => write!(f, "{}", c)?,
-                    }
-                }
-                write!(f, "\"")?;
-            } else {
-                // This is documented at https://linux.die.net/man/1/ld, namely:
-                //
-                // > Options in file are separated by whitespace. A whitespace
-                // > character may be included in an option by surrounding the
-                // > entire option in either single or double quotes. Any
-                // > character (including a backslash) may be included by
-                // > prefixing the character to be included with a backslash.
-                //
-                // We put an argument on each line, so all we need to do is
-                // ensure the line is interpreted as one whole argument.
-                for c in self.arg.chars() {
-                    match c {
-                        '\\' | ' ' => write!(f, "\\{}", c)?,
-                        c => write!(f, "{}", c)?,
-                    }
-                }
-            }
-            Ok(())
-        }
     }
 }
 
@@ -503,132 +350,5 @@ pub fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(&unlib(&sess.target, filestem),
                             parent.unwrap_or(Path::new("")));
-    }
-}
-
-// # Native library linking
-//
-// User-supplied library search paths (-L on the command line). These are
-// the same paths used to find Rust crates, so some of them may have been
-// added already by the previous crate linking code. This only allows them
-// to be found at compile time so it is still entirely up to outside
-// forces to make sure that library can be found at runtime.
-//
-// Also note that the native libraries linked here are only the ones located
-// in the current crate. Upstream crates with native library dependencies
-// may have their native library pulled in above.
-pub fn add_local_native_libraries(cmd: &mut dyn Linker,
-                              sess: &Session,
-                              codegen_results: &CodegenResults) {
-    let filesearch = sess.target_filesearch(PathKind::All);
-    for search_path in filesearch.search_paths() {
-        match search_path.kind {
-            PathKind::Framework => { cmd.framework_path(&search_path.dir); }
-            _ => { cmd.include_path(&fix_windows_verbatim_for_gcc(&search_path.dir)); }
-        }
-    }
-
-    let relevant_libs = codegen_results.crate_info.used_libraries.iter().filter(|l| {
-        relevant_lib(sess, l)
-    });
-
-    let search_path = archive_search_paths(sess);
-    for lib in relevant_libs {
-        let name = match lib.name {
-            Some(ref l) => l,
-            None => continue,
-        };
-        match lib.kind {
-            NativeLibraryKind::NativeUnknown => cmd.link_dylib(&name.as_str()),
-            NativeLibraryKind::NativeFramework => cmd.link_framework(&name.as_str()),
-            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&name.as_str()),
-            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&name.as_str(),
-                                                                        &search_path)
-        }
-    }
-}
-
-// Link in all of our upstream crates' native dependencies. Remember that
-// all of these upstream native dependencies are all non-static
-// dependencies. We've got two cases then:
-//
-// 1. The upstream crate is an rlib. In this case we *must* link in the
-// native dependency because the rlib is just an archive.
-//
-// 2. The upstream crate is a dylib. In order to use the dylib, we have to
-// have the dependency present on the system somewhere. Thus, we don't
-// gain a whole lot from not linking in the dynamic dependency to this
-// crate as well.
-//
-// The use case for this is a little subtle. In theory the native
-// dependencies of a crate are purely an implementation detail of the crate
-// itself, but the problem arises with generic and inlined functions. If a
-// generic function calls a native function, then the generic function must
-// be instantiated in the target crate, meaning that the native symbol must
-// also be resolved in the target crate.
-pub fn add_upstream_native_libraries(cmd: &mut dyn Linker,
-                                 sess: &Session,
-                                 codegen_results: &CodegenResults,
-                                 crate_type: config::CrateType) {
-    // Be sure to use a topological sorting of crates because there may be
-    // interdependencies between native libraries. When passing -nodefaultlibs,
-    // for example, almost all native libraries depend on libc, so we have to
-    // make sure that's all the way at the right (liblibc is near the base of
-    // the dependency chain).
-    //
-    // This passes RequireStatic, but the actual requirement doesn't matter,
-    // we're just getting an ordering of crate numbers, we're not worried about
-    // the paths.
-    let formats = sess.dependency_formats.borrow();
-    let data = formats.get(&crate_type).unwrap();
-
-    let crates = &codegen_results.crate_info.used_crates_static;
-    for &(cnum, _) in crates {
-        for lib in codegen_results.crate_info.native_libraries[&cnum].iter() {
-            let name = match lib.name {
-                Some(ref l) => l,
-                None => continue,
-            };
-            if !relevant_lib(sess, &lib) {
-                continue
-            }
-            match lib.kind {
-                NativeLibraryKind::NativeUnknown => cmd.link_dylib(&name.as_str()),
-                NativeLibraryKind::NativeFramework => cmd.link_framework(&name.as_str()),
-                NativeLibraryKind::NativeStaticNobundle => {
-                    // Link "static-nobundle" native libs only if the crate they originate from
-                    // is being linked statically to the current crate.  If it's linked dynamically
-                    // or is an rlib already included via some other dylib crate, the symbols from
-                    // native libs will have already been included in that dylib.
-                    if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(&name.as_str())
-                    }
-                },
-                // ignore statically included native libraries here as we've
-                // already included them when we included the rust library
-                // previously
-                NativeLibraryKind::NativeStatic => {}
-            }
-        }
-    }
-}
-
-fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
-    match lib.cfg {
-        Some(ref cfg) => attr::cfg_matches(cfg, &sess.parse_sess, None),
-        None => true,
-    }
-}
-
-fn are_upstream_rust_objects_already_included(sess: &Session) -> bool {
-    match sess.lto() {
-        Lto::Fat => true,
-        Lto::Thin => {
-            // If we defer LTO to the linker, we haven't run LTO ourselves, so
-            // any upstream object files have not been copied yet.
-            !sess.opts.cg.linker_plugin_lto.enabled()
-        }
-        Lto::No |
-        Lto::ThinLocal => false,
     }
 }

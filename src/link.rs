@@ -11,6 +11,7 @@ use tempfile::Builder as TempFileBuilder;
 use rustc::session::config::{self, CrateType, DebugInfo, RUST_CGU_EXT};
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
+use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_codegen_ssa::back::command::Command;
 use rustc_codegen_ssa::back::link::*;
 use rustc_codegen_ssa::back::linker::*;
@@ -48,7 +49,7 @@ pub(crate) fn link_rlib(sess: &Session, res: &CodegenResults, output_name: PathB
     builder
         .append(
             &ar::Header::new(
-                crate::metadata::METADATA_FILENAME.as_bytes().to_vec(),
+                METADATA_FILENAME.as_bytes().to_vec(),
                 res.metadata.raw_data.len() as u64,
             ),
             ::std::io::Cursor::new(res.metadata.raw_data.clone()),

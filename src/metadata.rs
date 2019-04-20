@@ -1,10 +1,9 @@
 use rustc::middle::cstore::MetadataLoader;
+use rustc_codegen_ssa::METADATA_FILENAME;
 use rustc_data_structures::owning_ref::{self, OwningRef};
 use rustc_data_structures::rustc_erase_owner;
 use std::fs::File;
 use std::path::Path;
-
-pub const METADATA_FILENAME: &str = "rust.metadata.bin";
 
 pub struct CraneliftMetadataLoader;
 
