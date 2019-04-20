@@ -1,4 +1,4 @@
-use crate::dep_graph::SerializedDepNodeIndex;
+use crate::dep_graph::DepNodeIndex;
 use crate::dep_graph::DepNode;
 use crate::hir::def_id::{CrateNum, DefId};
 use crate::ty::TyCtxt;
@@ -54,7 +54,9 @@ pub(crate) trait QueryDescription<'tcx>: QueryAccessors<'tcx> {
         false
     }
 
-    fn try_load_from_disk(_: TyCtxt<'tcx>, _: SerializedDepNodeIndex) -> Option<Self::Value> {
+    fn try_load_from_disk(_: TyCtxt<'tcx>,
+                          _: DepNodeIndex)
+                          -> Option<Self::Value> {
         bug!("QueryDescription::load_from_disk() called for an unsupported query.")
     }
 }
@@ -86,7 +88,7 @@ macro_rules! impl_disk_cacheable_query(
 
             #[inline]
             fn try_load_from_disk(tcx: TyCtxt<'tcx>,
-                                      id: SerializedDepNodeIndex)
+                                      id: DepNodeIndex)
                                       -> Option<Self::Value> {
                 tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
             }

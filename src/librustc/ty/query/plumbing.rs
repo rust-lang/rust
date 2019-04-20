@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepNodeIndex, DepNode, DepKind, SerializedDepNodeIndex};
+use crate::dep_graph::{DepNodeIndex, DepNode, DepKind};
 use crate::ty::tls;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Query;
@@ -411,10 +411,9 @@ impl<'tcx> TyCtxt<'tcx> {
             // try_mark_green(), so we can ignore them here.
             let loaded = self.start_query(job.job.clone(), None, |tcx| {
                 let marked = tcx.dep_graph.try_mark_green_and_read(tcx, &dep_node);
-                marked.map(|(prev_dep_node_index, dep_node_index)| {
+                marked.map(|dep_node_index| {
                     (tcx.load_from_disk_and_cache_in_memory::<Q>(
                         key.clone(),
-                        prev_dep_node_index,
                         dep_node_index,
                         &dep_node
                     ), dep_node_index)
@@ -434,7 +433,6 @@ impl<'tcx> TyCtxt<'tcx> {
     fn load_from_disk_and_cache_in_memory<Q: QueryDescription<'tcx>>(
         self,
         key: Q::Key,
-        prev_dep_node_index: SerializedDepNodeIndex,
         dep_node_index: DepNodeIndex,
         dep_node: &DepNode,
     ) -> Q::Value {
@@ -447,7 +445,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let result = if Q::cache_on_disk(self.global_tcx(), key.clone()) &&
                         self.sess.opts.debugging_opts.incremental_queries {
             self.sess.profiler(|p| p.incremental_load_result_start(Q::NAME));
-            let result = Q::try_load_from_disk(self.global_tcx(), prev_dep_node_index);
+            let result = Q::try_load_from_disk(self.global_tcx(), dep_node_index);
             self.sess.profiler(|p| p.incremental_load_result_end(Q::NAME));
 
             // We always expect to find a cached result for things that

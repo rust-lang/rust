@@ -1,7 +1,7 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::dep_graph::{DepGraph, PreviousDepGraph, SerializedDepGraph, WorkProduct, WorkProductId};
+use rustc::dep_graph::{DepGraph, DepGraphArgs, PreviousDepGraph, SerializedDepGraph};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::OnDiskCache;
@@ -27,26 +27,28 @@ pub fn dep_graph_tcx_init<'tcx>(tcx: TyCtxt<'tcx>) {
 }
 
 pub fn dep_graph_from_future(sess: &Session, future: DepGraphFuture) -> DepGraph {
-    let (prev_graph, prev_work_products, file) =
-        time(sess, "blocked while dep-graph loading finishes", || {
-            future.open().unwrap_or_else(|e| LoadResult::Error {
-                message: format!("could not decode incremental cache: {:?}", e),
-            }).open(sess).unwrap_or_else(|| {
-                let temp_path = temp_dep_graph_path_from(&sess.incr_comp_session_dir());
-                // Write the file header to the temp file
-                let file = save_in(sess, temp_path, |encoder| {
-                    // Encode the commandline arguments hash
-                    sess.opts.dep_tracking_hash().encode(encoder).unwrap();
-                }).unwrap();
+    let args = time(sess, "blocked while dep-graph loading finishes", || {
+        future.open().unwrap_or_else(|e| LoadResult::Error {
+            message: format!("could not decode incremental cache: {:?}", e),
+        }).open(sess).unwrap_or_else(|| {
+            let path = dep_graph_path_from(&sess.incr_comp_session_dir());
+            // Write the file header to the temp file
+            let file = save_in(sess, &path, |encoder| {
+                // Encode the commandline arguments hash
+                sess.opts.dep_tracking_hash().encode(encoder).unwrap();
+            }).unwrap();
 
-                (Default::default(), Default::default(), file)
-            })
-        });
+            DepGraphArgs {
+                prev_graph: Default::default(),
+                prev_work_products: Default::default(),
+                file,
+                state: Default::default(),
+            }
+        })
+    });
 
-    DepGraph::new(prev_graph, prev_work_products, file)
+    DepGraph::new(args)
 }
-
-type WorkProductMap = FxHashMap<WorkProductId, WorkProduct>;
 
 pub enum LoadResult<T> {
     Ok { data: T },
@@ -54,8 +56,8 @@ pub enum LoadResult<T> {
     Error { message: String },
 }
 
-impl LoadResult<(PreviousDepGraph, WorkProductMap, File)> {
-    pub fn open(self, sess: &Session) -> Option<(PreviousDepGraph, WorkProductMap, File)> {
+impl LoadResult<DepGraphArgs> {
+    pub fn open(self, sess: &Session) -> Option<DepGraphArgs> {
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
@@ -116,7 +118,39 @@ impl<T> MaybeAsync<T> {
     }
 }
 
-pub type DepGraphFuture = MaybeAsync<LoadResult<(PreviousDepGraph, WorkProductMap, File)>>;
+pub type DepGraphFuture = MaybeAsync<LoadResult<DepGraphArgs>>;
+
+fn load_graph_file(
+    report_incremental_info: bool,
+    path: &Path,
+    expected_hash: u64,
+) -> LoadResult<(Vec<u8>, usize, File)> {
+    match load_data(report_incremental_info, &path) {
+        LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
+        LoadResult::Error { message } => LoadResult::Error { message },
+        LoadResult::Ok { data: (bytes, start_pos, file) } => {
+            let mut decoder = Decoder::new(&bytes, start_pos);
+            let prev_commandline_args_hash = u64::decode(&mut decoder)
+                .expect("Error reading commandline arg hash from cached dep-graph");
+
+            if prev_commandline_args_hash != expected_hash {
+                if report_incremental_info {
+                    println!("[incremental] completely ignoring cache because of \
+                            differing commandline arguments");
+                }
+                // We can't reuse the cache, purge it.
+                debug!("load_dep_graph_new: differing commandline arg hashes");
+
+                // No need to do any further work
+                return LoadResult::DataOutOfDate;
+            }
+            let pos = decoder.position();
+            LoadResult::Ok {
+                data: (bytes, pos, file)
+            }
+        }
+    }
+}
 
 /// Launch a thread and load the dependency graph in the background.
 pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
@@ -127,11 +161,19 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
-    let path = dep_graph_path_from(&sess.incr_comp_session_dir());
-    let temp_path = temp_dep_graph_path_from(&sess.incr_comp_session_dir());
-    if path.exists() {
-        fs::copy(&path, &temp_path).unwrap();
+    let dir = &sess.incr_comp_session_dir();
+
+    let path = dep_graph_path_from(dir);
+    {
+        let temp_path = path.with_extension("tmp");
+        if path.exists() {
+            fs::copy(&path, &temp_path).unwrap();
+            fs::remove_file(&path).unwrap();
+            fs::rename(&temp_path, &path).unwrap();
+        }
     }
+
+    let results_path = dir.join(DEP_GRAPH_RESULTS_FILENAME);
 
     let report_incremental_info = sess.opts.debugging_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash();
@@ -182,33 +224,39 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     MaybeAsync::Async(std::thread::spawn(move || {
         time_ext(time_passes, None, "background load prev dep-graph", move || {
-            match load_data(report_incremental_info, &temp_path) {
-                LoadResult::DataOutOfDate => LoadResult::DataOutOfDate,
-                LoadResult::Error { message } => LoadResult::Error { message },
-                LoadResult::Ok { data: (bytes, start_pos, file) } => {
+            let (bytes, pos, file) = match load_graph_file(
+                report_incremental_info,
+                &path,
+                expected_hash
+            ) {
+                LoadResult::DataOutOfDate => return LoadResult::DataOutOfDate,
+                LoadResult::Error { message } => return LoadResult::Error { message },
+                LoadResult::Ok { data } => data,
+            };
 
-                    let mut decoder = Decoder::new(&bytes, start_pos);
-                    let prev_commandline_args_hash = u64::decode(&mut decoder)
-                        .expect("Error reading commandline arg hash from cached dep-graph");
+            let (results_bytes, results_pos, _) = match load_graph_file(
+                report_incremental_info,
+                &results_path,
+                expected_hash,
+            ) {
+                LoadResult::DataOutOfDate => return LoadResult::DataOutOfDate,
+                LoadResult::Error { message } => return LoadResult::Error { message },
+                LoadResult::Ok { data } => data,
+            };
 
-                    if prev_commandline_args_hash != expected_hash {
-                        if report_incremental_info {
-                            println!("[incremental] completely ignoring cache because of \
-                                    differing commandline arguments");
-                        }
-                        // We can't reuse the cache, purge it.
-                        debug!("load_dep_graph_new: differing commandline arg hashes");
+            let mut decoder = Decoder::new(&bytes, pos);
+            let mut results_decoder = Decoder::new(&results_bytes, results_pos);
+            let (dep_graph, state) = SerializedDepGraph::decode(
+                &mut decoder,
+                &mut results_decoder,
+            ).expect("Error reading cached dep-graph");
 
-                        // No need to do any further work
-                        return LoadResult::DataOutOfDate;
-                    }
-
-                    let dep_graph = SerializedDepGraph::decode(&mut decoder)
-                        .expect("Error reading cached dep-graph");
-
-                    LoadResult::Ok {
-                        data: (PreviousDepGraph::new(dep_graph), prev_work_products, file)
-                    }
+            LoadResult::Ok {
+                data: DepGraphArgs {
+                    prev_graph: PreviousDepGraph::new(dep_graph),
+                    prev_work_products,
+                    file,
+                    state,
                 }
             }
         })

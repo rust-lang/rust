@@ -8,7 +8,7 @@ use rustc_serialize::Encodable as RustcEncodable;
 use rustc_serialize::opaque::Encoder;
 use std::fs::{self, File};
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::Path;
 
 use super::data::*;
 use super::fs::*;
@@ -24,21 +24,21 @@ pub fn save_dep_graph<'tcx>(tcx: TyCtxt<'tcx>) {
             return;
         }
 
+        let dir = &sess.incr_comp_session_dir();
         let query_cache_path = query_cache_path(sess);
-        let temp_dep_graph_path = temp_dep_graph_path_from(&sess.incr_comp_session_dir());
-        let dep_graph_path = dep_graph_path(sess);
+        let results_path = dir.join(DEP_GRAPH_RESULTS_FILENAME);
 
         join(move || {
             if tcx.sess.opts.debugging_opts.incremental_queries {
                 time(sess, "persist query result cache", || {
                     save_in(sess,
-                            query_cache_path,
+                            &query_cache_path,
                             |e| encode_query_cache(tcx, e)).unwrap();
                 });
             }
         }, || {
-            time(sess, "swap dep-graph", || {
-                swap_dep_graph(tcx, temp_dep_graph_path, dep_graph_path)
+            time(sess, "save dep-graph", || {
+                finish_dep_graph(tcx, &results_path)
             });
         });
 
@@ -56,7 +56,7 @@ pub fn save_work_product_index(sess: &Session,
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    save_in(sess, path, |e| encode_work_product_index(&new_work_products, e)).unwrap();
+    save_in(sess, &path, |e| encode_work_product_index(&new_work_products, e)).unwrap();
 
     // We also need to clean out old work-products, as not all of them are
     // deleted during invalidation. Some object files don't change their
@@ -82,24 +82,24 @@ pub fn save_work_product_index(sess: &Session,
     });
 }
 
-pub(super) fn save_in<F>(sess: &Session, path_buf: PathBuf, encode: F) -> io::Result<File>
+pub(super) fn save_in<F>(sess: &Session, path: &Path, encode: F) -> io::Result<File>
 where
     F: FnOnce(&mut Encoder)
 {
-    debug!("save: storing data in {}", path_buf.display());
+    debug!("save: storing data in {}", path.display());
 
     // delete the old dep-graph, if any
     // Note: It's important that we actually delete the old file and not just
     // truncate and overwrite it, since it might be a shared hard-link, the
     // underlying data of which we don't want to modify
-    if path_buf.exists() {
-        match fs::remove_file(&path_buf) {
+    if path.exists() {
+        match fs::remove_file(path) {
             Ok(()) => {
                 debug!("save: remove old file");
             }
             Err(err) => {
                 sess.err(&format!("unable to delete old dep-graph at `{}`: {}",
-                                  path_buf.display(),
+                                  path.display(),
                                   err));
                 return Err(err);
             }
@@ -113,7 +113,7 @@ where
 
     // write the data out
     let data = encoder.into_inner();
-    let mut file = File::create(&path_buf)?;
+    let mut file = File::create(path)?;
 
     match file.write_all(&data) {
         Ok(_) => {
@@ -121,7 +121,7 @@ where
         }
         Err(err) => {
             sess.err(&format!("failed to write dep-graph to `{}`: {}",
-                              path_buf.display(),
+                              path.display(),
                               err));
             return Err(err);
         }
@@ -130,33 +130,23 @@ where
     Ok(file)
 }
 
-fn swap_dep_graph(tcx: TyCtxt<'_, '_>, temp: PathBuf, old: PathBuf) {
+fn finish_dep_graph(tcx: TyCtxt<'_>, results_path: &Path) {
     let sess = tcx.sess;
     // Encode the graph data.
-    time(tcx.sess, "finish graph serialization", || {
-        tcx.dep_graph.serialize();
+    let results = time(tcx.sess, "finish graph serialization", || {
+        tcx.dep_graph.serialize()
     });
 
-    // delete the old dep-graph, if any
-    // Note: It's important that we actually delete the old file and not just
-    // truncate and overwrite it, since it might be a shared hard-link, the
-    // underlying data of which we don't want to modify
-    if old.exists() {
-        match fs::remove_file(&old) {
-            Ok(()) => {
-                debug!("save: remove old file");
-            }
-            Err(err) => {
-                sess.err(&format!("unable to delete old dep-graph at `{}`: {}",
-                                  old.display(),
-                                  err));
-                return;
-            }
-        }
-    }
-
-    fs::rename(temp, old).expect("unable to rename temp dep graph");
-
+    time(sess, "save dep-graph results", || {
+        save_in(sess, results_path, |e| {
+            // First encode the commandline arguments hash
+            sess.opts.dep_tracking_hash().encode(e).unwrap();
+            time(sess, "encode dep-graph results", || {
+                // Save the result vector
+                results.encode(e).unwrap();
+            });
+        }).unwrap();
+    });
 
 /*
     if tcx.sess.opts.debugging_opts.incremental_info {

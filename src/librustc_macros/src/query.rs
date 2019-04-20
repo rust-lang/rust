@@ -328,7 +328,7 @@ fn add_query_description_impl(
                 #[inline]
                 fn try_load_from_disk(
                     #tcx: TyCtxt<'tcx>,
-                    #id: SerializedDepNodeIndex
+                    #id: DepNodeIndex
                 ) -> Option<Self::Value> {
                     #block
                 }
@@ -339,7 +339,7 @@ fn add_query_description_impl(
                 #[inline]
                 fn try_load_from_disk(
                     tcx: TyCtxt<'tcx>,
-                    id: SerializedDepNodeIndex
+                    id: DepNodeIndex
                 ) -> Option<Self::Value> {
                     tcx.queries.on_disk_cache.try_load_query_result(tcx, id)
                 }
