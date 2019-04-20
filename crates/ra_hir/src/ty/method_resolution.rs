@@ -14,6 +14,7 @@ use crate::{
     resolve::Resolver,
     traits::TraitItem,
     generics::HasGenericParams,
+    ty::primitive::{UncertainIntTy, UncertainFloatTy}
 };
 use super::{TraitRef, Substs};
 
@@ -110,10 +111,19 @@ impl CrateImplBlocks {
     }
 }
 
-fn def_crate(db: &impl HirDatabase, ty: &Ty) -> Option<Crate> {
+fn def_crate(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<Crate> {
     match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
             TypeCtor::Adt(def_id) => def_id.krate(db),
+            TypeCtor::Bool => db.lang_item(cur_crate, "bool".into())?.krate(db),
+            TypeCtor::Char => db.lang_item(cur_crate, "char".into())?.krate(db),
+            TypeCtor::Float(UncertainFloatTy::Known(f)) => {
+                db.lang_item(cur_crate, f.ty_to_string().into())?.krate(db)
+            }
+            TypeCtor::Int(UncertainIntTy::Known(i)) => {
+                db.lang_item(cur_crate, i.ty_to_string().into())?.krate(db)
+            }
+            TypeCtor::Str => db.lang_item(cur_crate, "str".into())?.krate(db),
             _ => None,
         },
         _ => None,
@@ -150,8 +160,11 @@ impl Ty {
         // find in the end takes &self, we still do the autoderef step (just as
         // rustc does an autoderef and then autoref again).
 
+        let krate = resolver.krate()?;
         for derefed_ty in self.autoderef(db) {
-            if let Some(result) = derefed_ty.iterate_inherent_methods(db, name, &mut callback) {
+            if let Some(result) =
+                derefed_ty.iterate_inherent_methods(db, name, krate, &mut callback)
+            {
                 return Some(result);
             }
             if let Some(result) =
@@ -208,9 +221,10 @@ impl Ty {
         &self,
         db: &impl HirDatabase,
         name: Option<&Name>,
+        krate: Crate,
         mut callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
-        let krate = match def_crate(db, self) {
+        let krate = match def_crate(db, krate, self) {
             Some(krate) => krate,
             None => return None,
         };
@@ -239,9 +253,10 @@ impl Ty {
     pub fn iterate_impl_items<T>(
         self,
         db: &impl HirDatabase,
+        krate: Crate,
         mut callback: impl FnMut(ImplItem) -> Option<T>,
     ) -> Option<T> {
-        let krate = def_crate(db, &self)?;
+        let krate = def_crate(db, krate, &self)?;
         let impls = db.impls_in_crate(krate);
 
         for impl_block in impls.lookup_impl_blocks(&self) {

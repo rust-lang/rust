@@ -38,19 +38,22 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
         }
         hir::ModuleDef::Struct(s) => {
             let ty = s.ty(ctx.db);
-            ty.iterate_impl_items(ctx.db, |item| {
-                match item {
-                    hir::ImplItem::Method(func) => {
-                        let sig = func.signature(ctx.db);
-                        if !sig.has_self_param() {
-                            acc.add_function(ctx, func);
+            let krate = ctx.module.and_then(|m| m.krate(ctx.db));
+            if let Some(krate) = krate {
+                ty.iterate_impl_items(ctx.db, krate, |item| {
+                    match item {
+                        hir::ImplItem::Method(func) => {
+                            let sig = func.signature(ctx.db);
+                            if !sig.has_self_param() {
+                                acc.add_function(ctx, func);
+                            }
                         }
+                        hir::ImplItem::Const(ct) => acc.add_const(ctx, ct),
+                        hir::ImplItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
                     }
-                    hir::ImplItem::Const(ct) => acc.add_const(ctx, ct),
-                    hir::ImplItem::TypeAlias(ty) => acc.add_type_alias(ctx, ty),
-                }
-                None::<()>
-            });
+                    None::<()>
+                });
+            }
         }
         _ => return,
     };

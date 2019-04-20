@@ -462,6 +462,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let remaining_index = remaining_index.unwrap_or(path.segments.len());
         let mut actual_def_ty: Option<Ty> = None;
 
+        let krate = resolver.krate()?;
         // resolve intermediate segments
         for (i, segment) in path.segments[remaining_index..].iter().enumerate() {
             let ty = match resolved {
@@ -500,9 +501,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // Attempt to find an impl_item for the type which has a name matching
             // the current segment
             log::debug!("looking for path segment: {:?}", segment);
+
             actual_def_ty = Some(ty.clone());
 
-            let item: crate::ModuleDef = ty.iterate_impl_items(self.db, |item| {
+            let item: crate::ModuleDef = ty.iterate_impl_items(self.db, krate, |item| {
                 let matching_def: Option<crate::ModuleDef> = match item {
                     crate::ImplItem::Method(func) => {
                         let sig = func.signature(self.db);

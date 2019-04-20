@@ -345,7 +345,7 @@ Grammar(
             ],
             options: ["TypeRef"]
         ),
-        "ImplBlock": (options: ["ItemList"], traits: ["TypeParamsOwner"]),
+        "ImplBlock": (options: ["ItemList"], traits: ["TypeParamsOwner", "AttrsOwner"]),
 
         "ParenType": (options: ["TypeRef"]),
         "TupleType": ( collections: [["fields", "TypeRef"]] ),
