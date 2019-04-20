@@ -76,6 +76,14 @@ Shows internal statistic about memory usage of rust-analyzer
 
 Manually triggers GC
 
+#### Start Cargo Watch
+
+Start `cargo watch` for live error highlighting. Will prompt to install if it's not already installed.
+
+#### Stop Cargo Watch
+
+Stop `cargo watch`
+
 ### Code Actions (Assists)
 
 These are triggered in a particular context via light bulb. We use custom code on

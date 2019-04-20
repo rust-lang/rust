@@ -7,44 +7,55 @@ import { terminate } from '../utils/processes';
 import { LineBuffer } from './line_buffer';
 import { StatusDisplay } from './watch_status';
 
-export class CargoWatchProvider {
-    private diagnosticCollection?: vscode.DiagnosticCollection;
-    private cargoProcess?: child_process.ChildProcess;
-    private outBuffer: string = '';
-    private statusDisplay?: StatusDisplay;
-    private outputChannel?: vscode.OutputChannel;
+export function registerCargoWatchProvider(
+    subscriptions: vscode.Disposable[]
+): CargoWatchProvider | undefined {
+    let cargoExists = false;
+    const cargoTomlFile = path.join(vscode.workspace.rootPath!, 'Cargo.toml');
+    // Check if the working directory is valid cargo root path
+    try {
+        if (fs.existsSync(cargoTomlFile)) {
+            cargoExists = true;
+        }
+    } catch (err) {
+        cargoExists = false;
+    }
 
-    public activate(subscriptions: vscode.Disposable[]) {
-        let cargoExists = false;
-        const cargoTomlFile = path.join(
-            vscode.workspace.rootPath!,
-            'Cargo.toml'
+    if (!cargoExists) {
+        vscode.window.showErrorMessage(
+            `Couldn\'t find \'Cargo.toml\' in ${cargoTomlFile}`
         );
-        // Check if the working directory is valid cargo root path
-        try {
-            if (fs.existsSync(cargoTomlFile)) {
-                cargoExists = true;
-            }
-        } catch (err) {
-            cargoExists = false;
-        }
+        return;
+    }
 
-        if (!cargoExists) {
-            vscode.window.showErrorMessage(
-                `Couldn\'t find \'Cargo.toml\' in ${cargoTomlFile}`
-            );
-            return;
-        }
+    const provider = new CargoWatchProvider();
+    subscriptions.push(provider);
+    return provider;
+}
 
-        subscriptions.push(this);
+export class CargoWatchProvider implements vscode.Disposable {
+    private readonly diagnosticCollection: vscode.DiagnosticCollection;
+    private readonly statusDisplay: StatusDisplay;
+    private readonly outputChannel: vscode.OutputChannel;
+    private cargoProcess?: child_process.ChildProcess;
+
+    constructor() {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection(
             'rustc'
         );
-
-        this.statusDisplay = new StatusDisplay(subscriptions);
+        this.statusDisplay = new StatusDisplay();
         this.outputChannel = vscode.window.createOutputChannel(
             'Cargo Watch Trace'
         );
+    }
+
+    public start() {
+        if (this.cargoProcess) {
+            vscode.window.showInformationMessage(
+                'Cargo Watch is already running'
+            );
+            return;
+        }
 
         let args = 'check --message-format json';
         if (Server.config.cargoWatchOptions.checkArguments.length > 0) {
@@ -95,25 +106,28 @@ export class CargoWatchProvider {
         this.logInfo('cargo-watch started.');
     }
 
-    public dispose(): void {
-        if (this.diagnosticCollection) {
-            this.diagnosticCollection.clear();
-            this.diagnosticCollection.dispose();
-        }
-
+    public stop() {
         if (this.cargoProcess) {
             this.cargoProcess.kill();
             terminate(this.cargoProcess);
+            this.cargoProcess = undefined;
+        } else {
+            vscode.window.showInformationMessage('Cargo Watch is not running');
         }
+    }
 
-        if (this.outputChannel) {
-            this.outputChannel.dispose();
-        }
+    public dispose(): void {
+        this.stop();
+
+        this.diagnosticCollection.clear();
+        this.diagnosticCollection.dispose();
+        this.outputChannel.dispose();
+        this.statusDisplay.dispose();
     }
 
     private logInfo(line: string) {
         if (Server.config.cargoWatchOptions.trace === 'verbose') {
-            this.outputChannel!.append(line);
+            this.outputChannel.append(line);
         }
     }
 
@@ -122,18 +136,18 @@ export class CargoWatchProvider {
             Server.config.cargoWatchOptions.trace === 'error' ||
             Server.config.cargoWatchOptions.trace === 'verbose'
         ) {
-            this.outputChannel!.append(line);
+            this.outputChannel.append(line);
         }
     }
 
     private parseLine(line: string) {
         if (line.startsWith('[Running')) {
-            this.diagnosticCollection!.clear();
-            this.statusDisplay!.show();
+            this.diagnosticCollection.clear();
+            this.statusDisplay.show();
         }
 
         if (line.startsWith('[Finished running')) {
-            this.statusDisplay!.hide();
+            this.statusDisplay.hide();
         }
 
         function getLevel(s: string): vscode.DiagnosticSeverity {
@@ -193,7 +207,7 @@ export class CargoWatchProvider {
 
             // The format of the package_id is "{name} {version} ({source_id})",
             // https://github.com/rust-lang/cargo/blob/37ad03f86e895bb80b474c1c088322634f4725f5/src/cargo/core/package_id.rs#L53
-            this.statusDisplay!.packageName = msg.package_id.split(' ')[0];
+            this.statusDisplay.packageName = msg.package_id.split(' ')[0];
         } else if (data.reason === 'compiler-message') {
             const msg = data.message as RustDiagnostic;
 

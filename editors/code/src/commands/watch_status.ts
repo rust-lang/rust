@@ -2,19 +2,18 @@ import * as vscode from 'vscode';
 
 const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
 
-export class StatusDisplay {
+export class StatusDisplay implements vscode.Disposable {
     public packageName?: string;
 
     private i = 0;
     private statusBarItem: vscode.StatusBarItem;
     private timer?: NodeJS.Timeout;
 
-    constructor(subscriptions: vscode.Disposable[]) {
+    constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Left,
             10
         );
-        subscriptions.push(this.statusBarItem);
         this.statusBarItem.hide();
     }
 
@@ -33,7 +32,7 @@ export class StatusDisplay {
                 }
             }, 300);
 
-        this.statusBarItem!.show();
+        this.statusBarItem.show();
     }
 
     public hide() {
@@ -42,7 +41,16 @@ export class StatusDisplay {
             this.timer = undefined;
         }
 
-        this.statusBarItem!.hide();
+        this.statusBarItem.hide();
+    }
+
+    public dispose() {
+        if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = undefined;
+        }
+
+        this.statusBarItem.dispose();
     }
 
     private frame() {
