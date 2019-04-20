@@ -17,7 +17,7 @@ use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
 use crate::hir::*;
-use crate::hir::{Def, DefKind};
+use crate::hir::DefKind;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir::print::Nested;
 use crate::util::nodemap::FxHashMap;
@@ -310,14 +310,14 @@ impl<'hir> Map<'hir> {
         self.definitions.as_local_node_id(def_id.to_def_id()).unwrap()
     }
 
-    pub fn describe_def(&self, node_id: NodeId) -> Option<Def> {
+    fn def_kind(&self, node_id: NodeId) -> Option<DefKind> {
         let node = if let Some(node) = self.find(node_id) {
             node
         } else {
             return None
         };
 
-        let kind = match node {
+        Some(match node {
             Node::Item(item) => {
                 match item.node {
                     ItemKind::Static(..) => DefKind::Static,
@@ -382,15 +382,11 @@ impl<'hir> Map<'hir> {
             Node::TraitRef(_) |
             Node::Pat(_) |
             Node::Binding(_) |
+            Node::Local(_) |
             Node::Lifetime(_) |
             Node::Visibility(_) |
             Node::Block(_) |
             Node::Crate => return None,
-            // FIXME(eddyb) this is the only non-`DefKind` case here,
-            // investigate whether it's actually used, and ideally remove it.
-            Node::Local(local) => {
-                return Some(Def::Local(local.hir_id));
-            }
             Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             Node::GenericParam(param) => {
                 match param.kind {
@@ -399,14 +395,7 @@ impl<'hir> Map<'hir> {
                     GenericParamKind::Const { .. } => DefKind::ConstParam,
                 }
             }
-        };
-        Some(Def::Def(kind, self.local_def_id(node_id)))
-    }
-
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn describe_def_by_hir_id(&self, hir_id: HirId) -> Option<Def> {
-        let node_id = self.hir_to_node_id(hir_id);
-        self.describe_def(node_id)
+        })
     }
 
     fn entry_count(&self) -> usize {
@@ -1464,11 +1453,11 @@ fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
     node_id_to_string(map, node_id, include_id)
 }
 
-pub fn describe_def(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<Def> {
+pub fn def_kind(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefKind> {
     if let Some(node_id) = tcx.hir().as_local_node_id(def_id) {
-        tcx.hir().describe_def(node_id)
+        tcx.hir().def_kind(node_id)
     } else {
-        bug!("Calling local describe_def query provider for upstream DefId: {:?}",
+        bug!("Calling local def_kind query provider for upstream DefId: {:?}",
              def_id)
     }
 }

@@ -191,12 +191,12 @@ pub enum AssociatedKind {
 }
 
 impl AssociatedItem {
-    pub fn def(&self) -> Def {
+    pub fn def_kind(&self) -> DefKind {
         match self.kind {
-            AssociatedKind::Const => Def::Def(DefKind::AssociatedConst, self.def_id),
-            AssociatedKind::Method => Def::Def(DefKind::Method, self.def_id),
-            AssociatedKind::Type => Def::Def(DefKind::AssociatedTy, self.def_id),
-            AssociatedKind::Existential => Def::Def(DefKind::AssociatedExistential, self.def_id),
+            AssociatedKind::Const => DefKind::AssociatedConst,
+            AssociatedKind::Method => DefKind::Method,
+            AssociatedKind::Type => DefKind::AssociatedTy,
+            AssociatedKind::Existential => DefKind::AssociatedExistential,
         }
     }
 
@@ -2805,10 +2805,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 _ => false,
             }
         } else {
-            match self.describe_def(def_id).expect("no def for def-id") {
-                Def::Def(DefKind::AssociatedConst, _)
-                | Def::Def(DefKind::Method, _)
-                | Def::Def(DefKind::AssociatedTy, _) => true,
+            match self.def_kind(def_id).expect("no def for def-id") {
+                DefKind::AssociatedConst
+                | DefKind::Method
+                | DefKind::AssociatedTy => true,
                 _ => false,
             }
         };
@@ -3046,7 +3046,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         let item = if def_id.krate != LOCAL_CRATE {
-            if let Some(Def::Def(DefKind::Method, _)) = self.describe_def(def_id) {
+            if let Some(DefKind::Method) = self.def_kind(def_id) {
                 Some(self.associated_item(def_id))
             } else {
                 None

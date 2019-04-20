@@ -2521,7 +2521,7 @@ pub type GlobMap = NodeMap<FxHashSet<Name>>;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_attr::provide(providers);
-    providers.describe_def = map::describe_def;
+    providers.def_kind = map::def_kind;
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]

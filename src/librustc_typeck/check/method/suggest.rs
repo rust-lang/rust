@@ -483,13 +483,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(lev_candidate) = lev_candidate {
-                    let def = lev_candidate.def();
+                    let def_kind = lev_candidate.def_kind();
                     err.span_suggestion(
                         span,
                         &format!(
                             "there is {} {} with a similar name",
-                            def.article(),
-                            def.kind_name(),
+                            def_kind.article(),
+                            def_kind.descr(),
                         ),
                         lev_candidate.ident.to_string(),
                         Applicability::MaybeIncorrect,
@@ -510,9 +510,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.emit();
             }
 
-            MethodError::PrivateMatch(def, out_of_scope_traits) => {
+            MethodError::PrivateMatch(kind, _, out_of_scope_traits) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0624,
-                                               "{} `{}` is private", def.kind_name(), item_name);
+                                               "{} `{}` is private", kind.descr(), item_name);
                 self.suggest_valid_traits(&mut err, out_of_scope_traits);
                 err.emit();
             }

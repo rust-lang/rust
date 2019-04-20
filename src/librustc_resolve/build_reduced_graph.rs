@@ -193,7 +193,7 @@ impl<'a> Resolver<'a> {
                     if source.ident.name == keywords::DollarCrate.name() && module_path.is_empty() {
                         let crate_root = self.resolve_crate_root(source.ident);
                         let crate_name = match crate_root.kind {
-                            ModuleKind::Def(_, name) => name,
+                            ModuleKind::Def(.., name) => name,
                             ModuleKind::Block(..) => unreachable!(),
                         };
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
@@ -424,7 +424,7 @@ impl<'a> Resolver<'a> {
 
             ItemKind::Mod(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
-                let module_kind = ModuleKind::Def(Def::Def(DefKind::Mod, def_id), ident.name);
+                let module_kind = ModuleKind::Def(DefKind::Mod, def_id, ident.name);
                 let module = self.arenas.alloc_module(ModuleData {
                     no_implicit_prelude: parent.no_implicit_prelude || {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
@@ -487,8 +487,11 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::Enum(ref enum_definition, _) => {
-                let def = Def::Def(DefKind::Enum, self.definitions.local_def_id(item.id));
-                let module_kind = ModuleKind::Def(def, ident.name);
+                let module_kind = ModuleKind::Def(
+                    DefKind::Enum,
+                    self.definitions.local_def_id(item.id),
+                    ident.name,
+                );
                 let module = self.new_module(parent,
                                              module_kind,
                                              parent.normal_ancestor_id,
@@ -565,7 +568,7 @@ impl<'a> Resolver<'a> {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.
-                let module_kind = ModuleKind::Def(Def::Def(DefKind::Trait, def_id), ident.name);
+                let module_kind = ModuleKind::Def(DefKind::Trait, def_id, ident.name);
                 let module = self.new_module(parent,
                                              module_kind,
                                              parent.normal_ancestor_id,
@@ -658,9 +661,10 @@ impl<'a> Resolver<'a> {
         let ident = ident.gensym_if_underscore();
         let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
         match def {
-            Def::Def(DefKind::Mod, def_id) | Def::Def(DefKind::Enum, def_id) => {
+            Def::Def(kind @ DefKind::Mod, def_id)
+            | Def::Def(kind @ DefKind::Enum, def_id) => {
                 let module = self.new_module(parent,
-                                             ModuleKind::Def(def, ident.name),
+                                             ModuleKind::Def(kind, def_id, ident.name),
                                              def_id,
                                              expansion,
                                              span);
@@ -691,7 +695,7 @@ impl<'a> Resolver<'a> {
                 }
             }
             Def::Def(DefKind::Trait, def_id) => {
-                let module_kind = ModuleKind::Def(def, ident.name);
+                let module_kind = ModuleKind::Def(DefKind::Trait, def_id, ident.name);
                 let module = self.new_module(parent,
                                              module_kind,
                                              parent.normal_ancestor_id,
@@ -746,7 +750,7 @@ impl<'a> Resolver<'a> {
              Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
         };
 
-        let kind = ModuleKind::Def(Def::Def(DefKind::Mod, def_id), name.as_symbol());
+        let kind = ModuleKind::Def(DefKind::Mod, def_id, name.as_symbol());
         let module =
             self.arenas.alloc_module(ModuleData::new(parent, kind, def_id, Mark::root(), DUMMY_SP));
         self.extern_module_map.insert((def_id, macros_only), module);

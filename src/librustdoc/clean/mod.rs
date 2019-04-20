@@ -2787,11 +2787,10 @@ impl Clean<Type> for hir::Ty {
                 }
             }
             TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
-                if let Some(new_ty) = cx.ty_substs.borrow().get(&path.def).cloned() {
-                    return new_ty;
-                }
-
                 if let Def::Def(DefKind::TyParam, did) = path.def {
+                    if let Some(new_ty) = cx.ty_substs.borrow().get(&did).cloned() {
+                        return new_ty;
+                    }
                     if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did) {
                         return ImplTrait(bounds);
                     }
@@ -2811,7 +2810,7 @@ impl Clean<Type> for hir::Ty {
                     let provided_params = &path.segments.last().expect("segments were empty");
                     let mut ty_substs = FxHashMap::default();
                     let mut lt_substs = FxHashMap::default();
-                    let mut const_substs = FxHashMap::default();
+                    let mut ct_substs = FxHashMap::default();
                     provided_params.with_generic_args(|generic_args| {
                         let mut indices: GenericParamCount = Default::default();
                         for param in generics.params.iter() {
@@ -2840,11 +2839,8 @@ impl Clean<Type> for hir::Ty {
                                     indices.lifetimes += 1;
                                 }
                                 hir::GenericParamKind::Type { ref default, .. } => {
-                                    let ty_param_def =
-                                        Def::Def(
-                                            DefKind::TyParam,
-                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id),
-                                        );
+                                    let ty_param_def_id =
+                                        cx.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                                     let mut j = 0;
                                     let type_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2859,19 +2855,16 @@ impl Clean<Type> for hir::Ty {
                                         }
                                     });
                                     if let Some(ty) = type_.cloned() {
-                                        ty_substs.insert(ty_param_def, ty.clean(cx));
+                                        ty_substs.insert(ty_param_def_id, ty.clean(cx));
                                     } else if let Some(default) = default.clone() {
-                                        ty_substs.insert(ty_param_def,
+                                        ty_substs.insert(ty_param_def_id,
                                                          default.into_inner().clean(cx));
                                     }
                                     indices.types += 1;
                                 }
                                 hir::GenericParamKind::Const { .. } => {
-                                    let const_param_def =
-                                        Def::Def(
-                                            DefKind::ConstParam,
-                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id),
-                                        );
+                                    let const_param_def_id =
+                                        cx.tcx.hir().local_def_id_from_hir_id(param.hir_id);
                                     let mut j = 0;
                                     let const_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2886,7 +2879,7 @@ impl Clean<Type> for hir::Ty {
                                         }
                                     });
                                     if let Some(ct) = const_.cloned() {
-                                        const_substs.insert(const_param_def, ct.clean(cx));
+                                        ct_substs.insert(const_param_def_id, ct.clean(cx));
                                     }
                                     // FIXME(const_generics:defaults)
                                     indices.consts += 1;
@@ -2894,7 +2887,7 @@ impl Clean<Type> for hir::Ty {
                             }
                         }
                     });
-                    return cx.enter_alias(ty_substs, lt_substs, const_substs, || ty.clean(cx));
+                    return cx.enter_alias(ty_substs, lt_substs, ct_substs, || ty.clean(cx));
                 }
                 resolve_type(cx, path.clean(cx), self.hir_id)
             }

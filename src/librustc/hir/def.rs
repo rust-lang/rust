@@ -80,6 +80,53 @@ pub enum DefKind {
     Macro(MacroKind),
 }
 
+impl DefKind {
+    pub fn descr(self) -> &'static str {
+        match self {
+            DefKind::Fn => "function",
+            DefKind::Mod => "module",
+            DefKind::Static => "static",
+            DefKind::Enum => "enum",
+            DefKind::Variant => "variant",
+            DefKind::Ctor(CtorOf::Variant, CtorKind::Fn) => "tuple variant",
+            DefKind::Ctor(CtorOf::Variant, CtorKind::Const) => "unit variant",
+            DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive) => "struct variant",
+            DefKind::Struct => "struct",
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Fn) => "tuple struct",
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Const) => "unit struct",
+            DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive) =>
+                bug!("impossible struct constructor"),
+            DefKind::Existential => "existential type",
+            DefKind::TyAlias => "type alias",
+            DefKind::TraitAlias => "trait alias",
+            DefKind::AssociatedTy => "associated type",
+            DefKind::AssociatedExistential => "associated existential type",
+            DefKind::Union => "union",
+            DefKind::Trait => "trait",
+            DefKind::ForeignTy => "foreign type",
+            DefKind::Method => "method",
+            DefKind::Const => "constant",
+            DefKind::AssociatedConst => "associated constant",
+            DefKind::TyParam => "type parameter",
+            DefKind::ConstParam => "const parameter",
+            DefKind::Macro(macro_kind) => macro_kind.descr(),
+        }
+    }
+
+    /// An English article for the def.
+    pub fn article(&self) -> &'static str {
+        match *self {
+            DefKind::AssociatedTy
+            | DefKind::AssociatedConst
+            | DefKind::AssociatedExistential
+            | DefKind::Enum
+            | DefKind::Existential => "an",
+            DefKind::Macro(macro_kind) => macro_kind.article(),
+            _ => "a",
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
 pub enum Def<Id = hir::HirId> {
     Def(DefKind, DefId),
@@ -328,39 +375,13 @@ impl<Id> Def<Id> {
     /// A human readable name for the def kind ("function", "module", etc.).
     pub fn kind_name(&self) -> &'static str {
         match *self {
-            Def::Def(DefKind::Fn, _) => "function",
-            Def::Def(DefKind::Mod, _) => "module",
-            Def::Def(DefKind::Static, _) => "static",
-            Def::Def(DefKind::Enum, _) => "enum",
-            Def::Def(DefKind::Variant, _) => "variant",
-            Def::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), _) => "tuple variant",
-            Def::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), _) => "unit variant",
-            Def::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive), _) => "struct variant",
-            Def::Def(DefKind::Struct, _) => "struct",
-            Def::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _) => "tuple struct",
-            Def::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Const), _) => "unit struct",
-            Def::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive), _) =>
-                bug!("impossible struct constructor"),
-            Def::Def(DefKind::Existential, _) => "existential type",
-            Def::Def(DefKind::TyAlias, _) => "type alias",
-            Def::Def(DefKind::TraitAlias, _) => "trait alias",
-            Def::Def(DefKind::AssociatedTy, _) => "associated type",
-            Def::Def(DefKind::AssociatedExistential, _) => "associated existential type",
+            Def::Def(kind, _) => kind.descr(),
             Def::SelfCtor(..) => "self constructor",
-            Def::Def(DefKind::Union, _) => "union",
-            Def::Def(DefKind::Trait, _) => "trait",
-            Def::Def(DefKind::ForeignTy, _) => "foreign type",
-            Def::Def(DefKind::Method, _) => "method",
-            Def::Def(DefKind::Const, _) => "constant",
-            Def::Def(DefKind::AssociatedConst, _) => "associated constant",
-            Def::Def(DefKind::TyParam, _) => "type parameter",
-            Def::Def(DefKind::ConstParam, _) => "const parameter",
             Def::PrimTy(..) => "builtin type",
             Def::Local(..) => "local variable",
             Def::Upvar(..) => "closure capture",
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
-            Def::Def(DefKind::Macro(macro_kind), _) => macro_kind.descr(),
             Def::ToolMod => "tool module",
             Def::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Def::Err => "unresolved item",
@@ -370,13 +391,8 @@ impl<Id> Def<Id> {
     /// An English article for the def.
     pub fn article(&self) -> &'static str {
         match *self {
-            Def::Def(DefKind::AssociatedTy, _)
-            | Def::Def(DefKind::AssociatedConst, _)
-            | Def::Def(DefKind::AssociatedExistential, _)
-            | Def::Def(DefKind::Enum, _)
-            | Def::Def(DefKind::Existential, _)
-            | Def::Err => "an",
-            Def::Def(DefKind::Macro(macro_kind), _) => macro_kind.article(),
+            Def::Def(kind, _) => kind.article(),
+            Def::Err => "an",
             _ => "a",
         }
     }

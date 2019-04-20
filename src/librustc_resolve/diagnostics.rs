@@ -56,9 +56,9 @@ impl<'a> Resolver<'a> {
                     mod_path, Some(TypeNS), false, span, CrateLint::No
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
-                        module.def(),
+                        module.def_kind(),
                     _ => None,
-                }.map_or(String::new(), |def| format!("{} ", def.kind_name()));
+                }.map_or(String::new(), |kind| format!("{} ", kind.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
             };
             (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
@@ -387,9 +387,9 @@ impl<'a> Resolver<'a> {
                     return false;
                 }
             }
-            (Def::Def(DefKind::Enum, _), PathSource::TupleStruct)
-                | (Def::Def(DefKind::Enum, _), PathSource::Expr(..))  => {
-                if let Some(variants) = self.collect_enum_variants(def) {
+            (Def::Def(DefKind::Enum, def_id), PathSource::TupleStruct)
+                | (Def::Def(DefKind::Enum, def_id), PathSource::Expr(..))  => {
+                if let Some(variants) = self.collect_enum_variants(def_id) {
                     if !variants.is_empty() {
                         let msg = if variants.len() == 1 {
                             "try using the enum's variant"

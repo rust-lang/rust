@@ -2149,7 +2149,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tables
             .borrow_mut()
             .type_dependent_defs_mut()
-            .insert(hir_id, Def::Def(DefKind::Method, method.def_id));
+            .insert(hir_id, Ok((DefKind::Method, method.def_id)));
 
         self.write_substs(hir_id, method.substs);
 
@@ -4797,13 +4797,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } else {
                     Def::Err
                 };
-                let (ty, def) = AstConv::associated_path_to_ty(self, hir_id, path_span,
-                                                               ty, def, segment, true);
+                let result = AstConv::associated_path_to_ty(
+                    self,
+                    hir_id,
+                    path_span,
+                    ty,
+                    def,
+                    segment,
+                    true,
+                );
+                let ty = result.map(|(ty, _, _)| ty).unwrap_or(self.tcx().types.err);
+                let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
-                self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
+                self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, result);
 
-                (def, ty)
+                (result.map(|(kind, def_id)| Def::Def(kind, def_id)).unwrap_or(Def::Err), ty)
             }
         }
     }
@@ -4827,34 +4836,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (self.to_ty(qself), qself, segment)
             }
         };
-        if let Some(cached_def) = self.tables.borrow().type_dependent_def(hir_id) {
+        if let Some(&cached_result) = self.tables.borrow().type_dependent_defs().get(hir_id) {
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
-            return (cached_def, Some(ty), slice::from_ref(&**item_segment))
+            let def = cached_result.map(|(kind, def_id)| Def::Def(kind, def_id))
+                .unwrap_or(Def::Err);
+            return (def, Some(ty), slice::from_ref(&**item_segment));
         }
         let item_name = item_segment.ident;
-        let def = match self.resolve_ufcs(span, item_name, ty, hir_id) {
-            Ok(def) => def,
-            Err(error) => {
-                let def = match error {
-                    method::MethodError::PrivateMatch(def, _) => def,
-                    _ => Def::Err,
-                };
-                if item_name.name != keywords::Invalid.name() {
-                    self.report_method_error(span,
-                                             ty,
-                                             item_name,
-                                             SelfSource::QPath(qself),
-                                             error,
-                                             None);
-                }
-                def
+        let result = self.resolve_ufcs(span, item_name, ty, hir_id).or_else(|error| {
+            let result = match error {
+                method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
+                _ => Err(ErrorReported),
+            };
+            if item_name.name != keywords::Invalid.name() {
+                self.report_method_error(
+                    span,
+                    ty,
+                    item_name,
+                    SelfSource::QPath(qself),
+                    error,
+                    None,
+                );
             }
-        };
+            result
+        });
 
         // Write back the new resolution.
-        self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
-        (def, Some(ty), slice::from_ref(&**item_segment))
+        self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, result);
+        (
+            result.map(|(kind, def_id)| Def::Def(kind, def_id)).unwrap_or(Def::Err),
+            Some(ty),
+            slice::from_ref(&**item_segment),
+        )
     }
 
     pub fn check_decl_initializer(&self,
@@ -5355,7 +5369,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Rewrite `SelfCtor` to `Ctor`
-    pub fn rewrite_self_ctor(&self, def: Def, span: Span) -> (Def, DefId, Ty<'tcx>) {
+    pub fn rewrite_self_ctor(
+        &self,
+        def: Def,
+        span: Span,
+    ) -> Result<(DefKind, DefId, Ty<'tcx>), ErrorReported> {
         let tcx = self.tcx;
         if let Def::SelfCtor(impl_def_id) = def {
             let ty = self.impl_self_ty(span, impl_def_id).ty;
@@ -5365,11 +5383,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();
-                    let def = Def::Def(
+                    Ok((
                         DefKind::Ctor(CtorOf::Struct, variant.ctor_kind),
                         ctor_def_id,
-                    );
-                    (def, ctor_def_id, tcx.type_of(ctor_def_id))
+                        tcx.type_of(ctor_def_id),
+                    ))
                 }
                 _ => {
                     let mut err = tcx.sess.struct_span_err(span,
@@ -5392,16 +5410,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     err.emit();
 
-                    (def, impl_def_id, tcx.types.err)
+                    Err(ErrorReported)
                 }
             }
         } else {
-            let def_id = def.def_id();
-
-            // The things we are substituting into the type should not contain
-            // escaping late-bound regions, and nor should the base type scheme.
-            let ty = tcx.type_of(def_id);
-            (def, def_id, ty)
+            match def {
+                Def::Def(kind, def_id) => {
+                    // The things we are substituting into the type should not contain
+                    // escaping late-bound regions, and nor should the base type scheme.
+                    let ty = tcx.type_of(def_id);
+                    Ok((kind, def_id, ty))
+                }
+                _ => span_bug!(span, "unexpected def in rewrite_self_ctor: {:?}", def),
+            }
         }
     }
 
@@ -5434,13 +5455,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
-        let (def, def_id, ty) = self.rewrite_self_ctor(def, span);
-        let path_segs = AstConv::def_ids_for_path_segments(self, segments, self_ty, def);
+        let (kind, def_id, ty) = match self.rewrite_self_ctor(def, span) {
+            Ok(result) => result,
+            Err(ErrorReported) => return (tcx.types.err, def),
+        };
+        let path_segs =
+            AstConv::def_ids_for_value_path_segments(self, segments, self_ty, kind, def_id);
 
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
-        match def {
-            Def::Def(DefKind::Ctor(CtorOf::Variant, _), _) => {
+        match kind {
+            DefKind::Ctor(CtorOf::Variant, _) => {
                 if let Some(self_ty) = self_ty {
                     let adt_def = self_ty.ty_adt_def().unwrap();
                     user_self_ty = Some(UserSelfTy {
@@ -5450,10 +5475,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     is_alias_variant_ctor = true;
                 }
             }
-            Def::Def(DefKind::Method, def_id) |
-            Def::Def(DefKind::AssociatedConst, def_id) => {
+            DefKind::Method
+            | DefKind::AssociatedConst => {
                 let container = tcx.associated_item(def_id).container;
-                debug!("instantiate_value_path: def={:?} container={:?}", def, container);
+                debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(tcx, span, trait_did)
@@ -5643,7 +5668,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                ty_substituted);
         self.write_substs(hir_id, substs);
 
-        (ty_substituted, def)
+        (ty_substituted, Def::Def(kind, def_id))
     }
 
     fn check_rustc_args_require_const(&self,

@@ -1133,7 +1133,7 @@ impl ModuleOrUniformRoot<'_> {
     fn same_def(lhs: Self, rhs: Self) -> bool {
         match (lhs, rhs) {
             (ModuleOrUniformRoot::Module(lhs),
-             ModuleOrUniformRoot::Module(rhs)) => lhs.def() == rhs.def(),
+             ModuleOrUniformRoot::Module(rhs)) => lhs.def_id() == rhs.def_id(),
             (ModuleOrUniformRoot::CrateRootAndExternPrelude,
              ModuleOrUniformRoot::CrateRootAndExternPrelude) |
             (ModuleOrUniformRoot::ExternPrelude, ModuleOrUniformRoot::ExternPrelude) |
@@ -1177,7 +1177,7 @@ enum ModuleKind {
     /// * A normal module ‒ either `mod from_file;` or `mod from_block { }`.
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
-    Def(Def, Name),
+    Def(DefKind, DefId, Name),
 }
 
 impl ModuleKind {
@@ -1185,7 +1185,7 @@ impl ModuleKind {
     pub fn name(&self) -> Option<Name> {
         match self {
             ModuleKind::Block(..) => None,
-            ModuleKind::Def(_, name) => Some(*name),
+            ModuleKind::Def(.., name) => Some(*name),
         }
     }
 }
@@ -1271,26 +1271,36 @@ impl<'a> ModuleData<'a> {
 
     fn def(&self) -> Option<Def> {
         match self.kind {
-            ModuleKind::Def(def, _) => Some(def),
+            ModuleKind::Def(kind, def_id, _) => Some(Def::Def(kind, def_id)),
+            _ => None,
+        }
+    }
+
+    fn def_kind(&self) -> Option<DefKind> {
+        match self.kind {
+            ModuleKind::Def(kind, ..) => Some(kind),
             _ => None,
         }
     }
 
     fn def_id(&self) -> Option<DefId> {
-        self.def().as_ref().map(Def::def_id)
+        match self.kind {
+            ModuleKind::Def(_, def_id, _) => Some(def_id),
+            _ => None,
+        }
     }
 
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(&self) -> bool {
         match self.kind {
-            ModuleKind::Def(Def::Def(DefKind::Mod, _), _) => true,
+            ModuleKind::Def(DefKind::Mod, _, _) => true,
             _ => false,
         }
     }
 
     fn is_trait(&self) -> bool {
         match self.kind {
-            ModuleKind::Def(Def::Def(DefKind::Trait, _), _) => true,
+            ModuleKind::Def(DefKind::Trait, _, _) => true,
             _ => false,
         }
     }
@@ -1477,7 +1487,7 @@ impl<'a> NameBinding<'a> {
                 }, ..
             } => true,
             NameBindingKind::Module(
-                &ModuleData { kind: ModuleKind::Def(Def::Def(DefKind::Mod, def_id), _), .. }
+                &ModuleData { kind: ModuleKind::Def(DefKind::Mod, def_id, _), .. }
             ) => def_id.index == CRATE_DEF_INDEX,
             _ => false,
         }
@@ -1938,7 +1948,8 @@ impl<'a> Resolver<'a> {
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
         let root_module_kind = ModuleKind::Def(
-            Def::Def(DefKind::Mod, root_def_id),
+            DefKind::Mod,
+            root_def_id,
             keywords::Invalid.name(),
         );
         let graph_root = arenas.alloc_module(ModuleData {
@@ -4788,10 +4799,7 @@ impl<'a> Resolver<'a> {
         suggestions
     }
 
-    fn find_module(&mut self,
-                   module_def: Def)
-                   -> Option<(Module<'a>, ImportSuggestion)>
-    {
+    fn find_module(&mut self, def_id: DefId) -> Option<(Module<'a>, ImportSuggestion)> {
         let mut result = None;
         let mut seen_modules = FxHashSet::default();
         let mut worklist = vec![(self.graph_root, Vec::new())];
@@ -4811,16 +4819,16 @@ impl<'a> Resolver<'a> {
                     // form the path
                     let mut path_segments = path_segments.clone();
                     path_segments.push(ast::PathSegment::from_ident(ident));
-                    if module.def() == Some(module_def) {
+                    let module_def_id = module.def_id().unwrap();
+                    if module_def_id == def_id {
                         let path = Path {
                             span: name_binding.span,
                             segments: path_segments,
                         };
-                        let did = module.def().and_then(|def| def.opt_def_id());
-                        result = Some((module, ImportSuggestion { did, path }));
+                        result = Some((module, ImportSuggestion { did: Some(def_id), path }));
                     } else {
                         // add the module to the lookup
-                        if seen_modules.insert(module.def_id().unwrap()) {
+                        if seen_modules.insert(module_def_id) {
                             worklist.push((module, path_segments));
                         }
                     }
@@ -4831,12 +4839,8 @@ impl<'a> Resolver<'a> {
         result
     }
 
-    fn collect_enum_variants(&mut self, enum_def: Def) -> Option<Vec<Path>> {
-        if let Def::Def(DefKind::Enum, _) = enum_def {} else {
-            panic!("Non-enum def passed to collect_enum_variants: {:?}", enum_def)
-        }
-
-        self.find_module(enum_def).map(|(enum_module, enum_import_suggestion)| {
+    fn collect_enum_variants(&mut self, def_id: DefId) -> Option<Vec<Path>> {
+        self.find_module(def_id).map(|(enum_module, enum_import_suggestion)| {
             self.populate_module_if_necessary(enum_module);
 
             let mut variants = Vec::new();
@@ -5089,8 +5093,8 @@ impl<'a> Resolver<'a> {
         }
 
         let container = match parent.kind {
-            ModuleKind::Def(Def::Def(DefKind::Mod, _), _) => "module",
-            ModuleKind::Def(Def::Def(DefKind::Trait, _), _) => "trait",
+            ModuleKind::Def(DefKind::Mod, _, _) => "module",
+            ModuleKind::Def(DefKind::Trait, _, _) => "trait",
             ModuleKind::Block(..) => "block",
             _ => "enum",
         };
@@ -5458,7 +5462,7 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
     let mut names = Vec::new();
 
     fn collect_mod(names: &mut Vec<Ident>, module: Module<'_>) {
-        if let ModuleKind::Def(_, name) = module.kind {
+        if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
                 names.push(Ident::with_empty_ctxt(name));
                 collect_mod(names, parent);

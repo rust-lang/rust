@@ -87,13 +87,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
 
         let mut fn_warned = false;
         let mut op_warned = false;
-        let maybe_def = match expr.node {
+        let maybe_def_id = match expr.node {
             hir::ExprKind::Call(ref callee, _) => {
                 match callee.node {
                     hir::ExprKind::Path(ref qpath) => {
                         let def = cx.tables.qpath_def(qpath, callee.hir_id);
                         match def {
-                            Def::Def(DefKind::Fn, _) | Def::Def(DefKind::Method, _) => Some(def),
+                            Def::Def(DefKind::Fn, def_id)
+                            | Def::Def(DefKind::Method, def_id) => Some(def_id),
                             // `Def::Local` if it was a closure, for which we
                             // do not currently support must-use linting
                             _ => None
@@ -103,12 +104,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 }
             },
             hir::ExprKind::MethodCall(..) => {
-                cx.tables.type_dependent_def(expr.hir_id)
+                cx.tables.type_dependent_def_id(expr.hir_id)
             },
             _ => None
         };
-        if let Some(def) = maybe_def {
-            let def_id = def.def_id();
+        if let Some(def_id) = maybe_def_id {
             fn_warned = check_must_use(cx, def_id, s.span, "return value of ", "");
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.

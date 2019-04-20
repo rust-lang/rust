@@ -525,10 +525,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // See issue #38412.
     fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
         // Check if `def_id` is a trait method.
-        match self.describe_def(def_id) {
-            Some(Def::Def(DefKind::Method, _)) |
-            Some(Def::Def(DefKind::AssociatedTy, _)) |
-            Some(Def::Def(DefKind::AssociatedConst, _)) => {
+        match self.def_kind(def_id) {
+            Some(DefKind::Method) |
+            Some(DefKind::AssociatedTy) |
+            Some(DefKind::AssociatedConst) => {
                 if let ty::TraitContainer(trait_def_id) = self.associated_item(def_id).container {
                     // Trait methods do not declare visibility (even
                     // for visibility info in cstore). Use containing

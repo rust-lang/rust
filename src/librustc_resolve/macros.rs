@@ -140,7 +140,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             fn visit_ident(&mut self, ident: Ident) {
                 if ident.name == keywords::DollarCrate.name() {
                     let name = match self.resolver.resolve_crate_root(ident).kind {
-                        ModuleKind::Def(_, name) if name != keywords::Invalid.name() => name,
+                        ModuleKind::Def(.., name) if name != keywords::Invalid.name() => name,
                         _ => keywords::Crate.name(),
                     };
                     ident.span.ctxt().set_dollar_crate_name(name);

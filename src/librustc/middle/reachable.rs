@@ -98,6 +98,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
             }
             hir::ExprKind::MethodCall(..) => {
                 self.tables.type_dependent_def(expr.hir_id)
+                    .map(|(kind, def_id)| Def::Def(kind, def_id))
             }
             _ => None
         };

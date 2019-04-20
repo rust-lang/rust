@@ -1,7 +1,6 @@
 use rustc_lint;
 use rustc::session::{self, config};
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
-use rustc::hir::def::Def;
 use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
@@ -59,12 +58,12 @@ pub struct DocContext<'tcx> {
     // The current set of type and lifetime substitutions,
     // for expanding type aliases at the HIR level:
 
-    /// Table type parameter definition -> substituted type
-    pub ty_substs: RefCell<FxHashMap<Def, clean::Type>>,
-    /// Table `NodeId` of lifetime parameter definition -> substituted lifetime
+    /// Table `DefId` of type parameter -> substituted type
+    pub ty_substs: RefCell<FxHashMap<DefId, clean::Type>>,
+    /// Table `DefId` of lifetime parameter -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<DefId, clean::Lifetime>>,
-    /// Table node id of const parameter definition -> substituted const
-    pub ct_substs: RefCell<FxHashMap<Def, clean::Constant>>,
+    /// Table `DefId` of const parameter -> substituted const
+    pub ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
     pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
     pub send_trait: Option<DefId>,
@@ -91,9 +90,9 @@ impl<'tcx> DocContext<'tcx> {
     /// Call the closure with the given parameters set as
     /// the substitutions for a type alias' RHS.
     pub fn enter_alias<F, R>(&self,
-                             ty_substs: FxHashMap<Def, clean::Type>,
+                             ty_substs: FxHashMap<DefId, clean::Type>,
                              lt_substs: FxHashMap<DefId, clean::Lifetime>,
-                             ct_substs: FxHashMap<Def, clean::Constant>,
+                             ct_substs: FxHashMap<DefId, clean::Constant>,
                              f: F) -> R
     where F: FnOnce() -> R {
         let (old_tys, old_lts, old_cts) = (

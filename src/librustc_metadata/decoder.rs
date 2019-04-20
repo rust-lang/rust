@@ -399,32 +399,32 @@ impl<'a, 'tcx> MetadataBlob {
 }
 
 impl<'tcx> EntryKind<'tcx> {
-    fn to_def(&self, did: DefId) -> Option<Def> {
+    fn def_kind(&self) -> Option<DefKind> {
         Some(match *self {
-            EntryKind::Const(..) => Def::Def(DefKind::Const, did),
-            EntryKind::AssociatedConst(..) => Def::Def(DefKind::AssociatedConst, did),
+            EntryKind::Const(..) => DefKind::Const,
+            EntryKind::AssociatedConst(..) => DefKind::AssociatedConst,
             EntryKind::ImmStatic |
             EntryKind::MutStatic |
             EntryKind::ForeignImmStatic |
-            EntryKind::ForeignMutStatic => Def::Def(DefKind::Static, did),
-            EntryKind::Struct(_, _) => Def::Def(DefKind::Struct, did),
-            EntryKind::Union(_, _) => Def::Def(DefKind::Union, did),
+            EntryKind::ForeignMutStatic => DefKind::Static,
+            EntryKind::Struct(_, _) => DefKind::Struct,
+            EntryKind::Union(_, _) => DefKind::Union,
             EntryKind::Fn(_) |
-            EntryKind::ForeignFn(_) => Def::Def(DefKind::Fn, did),
-            EntryKind::Method(_) => Def::Def(DefKind::Method, did),
-            EntryKind::Type => Def::Def(DefKind::TyAlias, did),
-            EntryKind::TypeParam => Def::Def(DefKind::TyParam, did),
-            EntryKind::ConstParam => Def::Def(DefKind::ConstParam, did),
-            EntryKind::Existential => Def::Def(DefKind::Existential, did),
-            EntryKind::AssociatedType(_) => Def::Def(DefKind::AssociatedTy, did),
-            EntryKind::AssociatedExistential(_) => Def::Def(DefKind::AssociatedExistential, did),
-            EntryKind::Mod(_) => Def::Def(DefKind::Mod, did),
-            EntryKind::Variant(_) => Def::Def(DefKind::Variant, did),
-            EntryKind::Trait(_) => Def::Def(DefKind::Trait, did),
-            EntryKind::TraitAlias(_) => Def::Def(DefKind::TraitAlias, did),
-            EntryKind::Enum(..) => Def::Def(DefKind::Enum, did),
-            EntryKind::MacroDef(_) => Def::Def(DefKind::Macro(MacroKind::Bang), did),
-            EntryKind::ForeignType => Def::Def(DefKind::ForeignTy, did),
+            EntryKind::ForeignFn(_) => DefKind::Fn,
+            EntryKind::Method(_) => DefKind::Method,
+            EntryKind::Type => DefKind::TyAlias,
+            EntryKind::TypeParam => DefKind::TyParam,
+            EntryKind::ConstParam => DefKind::ConstParam,
+            EntryKind::Existential => DefKind::Existential,
+            EntryKind::AssociatedType(_) => DefKind::AssociatedTy,
+            EntryKind::AssociatedExistential(_) => DefKind::AssociatedExistential,
+            EntryKind::Mod(_) => DefKind::Mod,
+            EntryKind::Variant(_) => DefKind::Variant,
+            EntryKind::Trait(_) => DefKind::Trait,
+            EntryKind::TraitAlias(_) => DefKind::TraitAlias,
+            EntryKind::Enum(..) => DefKind::Enum,
+            EntryKind::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
+            EntryKind::ForeignType => DefKind::ForeignTy,
 
             EntryKind::ForeignMod |
             EntryKind::GlobalAsm |
@@ -507,12 +507,12 @@ impl<'a, 'tcx> CrateMetadata {
             .expect("no name in item_name")
     }
 
-    pub fn get_def(&self, index: DefIndex) -> Option<Def> {
+    pub fn def_kind(&self, index: DefIndex) -> Option<DefKind> {
         if !self.is_proc_macro(index) {
-            self.entry(index).kind.to_def(self.local_def_id(index))
+            self.entry(index).kind.def_kind()
         } else {
             let kind = self.proc_macros.as_ref().unwrap()[index.to_proc_macro_index()].1.kind();
-            Some(Def::Def(DefKind::Macro(kind), self.local_def_id(index)))
+            Some(DefKind::Macro(kind))
         }
     }
 
@@ -745,10 +745,7 @@ impl<'a, 'tcx> CrateMetadata {
                 for (id, &(name, ref ext)) in proc_macros.iter().enumerate() {
                     let def = Def::Def(
                         DefKind::Macro(ext.kind()),
-                        DefId {
-                            krate: self.cnum,
-                            index: DefIndex::from_proc_macro_index(id),
-                        },
+                        self.local_def_id(DefIndex::from_proc_macro_index(id)),
                     );
                     let ident = Ident::with_empty_ctxt(name);
                     callback(def::Export {
@@ -789,9 +786,9 @@ impl<'a, 'tcx> CrateMetadata {
                     // FIXME(eddyb) Don't encode these in children.
                     EntryKind::ForeignMod => {
                         for child_index in child.children.decode((self, sess)) {
-                            if let Some(def) = self.get_def(child_index) {
+                            if let Some(kind) = self.def_kind(child_index) {
                                 callback(def::Export {
-                                    def,
+                                    def: Def::Def(kind, self.local_def_id(child_index)),
                                     ident: Ident::from_interned_str(self.item_name(child_index)),
                                     vis: self.get_visibility(child_index),
                                     span: self.entry(child_index).span.decode((self, sess)),
@@ -807,15 +804,17 @@ impl<'a, 'tcx> CrateMetadata {
 
                 let def_key = self.def_key(child_index);
                 let span = child.span.decode((self, sess));
-                if let (Some(def), Some(name)) =
-                    (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
+                if let (Some(kind), Some(name)) =
+                    (self.def_kind(child_index), def_key.disambiguated_data.data.get_opt_name()) {
                     let ident = Ident::from_interned_str(name);
                     let vis = self.get_visibility(child_index);
+                    let def_id = self.local_def_id(child_index);
+                    let def = Def::Def(kind, def_id);
                     callback(def::Export { def, ident, vis, span });
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
-                    match def {
-                        Def::Def(DefKind::Struct, _) => {
+                    match kind {
+                        DefKind::Struct => {
                             if let Some(ctor_def_id) = self.get_ctor_def_id(child_index) {
                                 let ctor_kind = self.get_ctor_kind(child_index);
                                 let ctor_def = Def::Def(
@@ -826,7 +825,7 @@ impl<'a, 'tcx> CrateMetadata {
                                 callback(def::Export { def: ctor_def, vis, ident, span });
                             }
                         }
-                        Def::Def(DefKind::Variant, def_id) => {
+                        DefKind::Variant => {
                             // Braced variants, unlike structs, generate unusable names in
                             // value namespace, they are reserved for possible future use.
                             // It's ok to use the variant's id as a ctor id since an
@@ -845,7 +844,7 @@ impl<'a, 'tcx> CrateMetadata {
                                 // were already encoded in metadata.
                                 let attrs = self.get_item_attrs(def_id.index, sess);
                                 if attr::contains_name(&attrs, "non_exhaustive") {
-                                    let crate_def_id = DefId { index: CRATE_DEF_INDEX, ..def_id };
+                                    let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }

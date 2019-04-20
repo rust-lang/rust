@@ -1264,7 +1264,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         // Skip if we are inside a named module (in contrast to an anonymous
         // module defined by a block).
-        if let ModuleKind::Def(_, _) = directive.parent_scope.module.kind {
+        if let ModuleKind::Def(..) = directive.parent_scope.module.kind {
             return;
         }
 

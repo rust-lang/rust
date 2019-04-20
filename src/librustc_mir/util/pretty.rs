@@ -575,25 +575,25 @@ fn write_mir_sig(
     mir: &Mir<'_>,
     w: &mut dyn Write,
 ) -> io::Result<()> {
-    use rustc::hir::def::{Def, DefKind};
+    use rustc::hir::def::DefKind;
 
     trace!("write_mir_sig: {:?}", src.instance);
-    let descr = tcx.describe_def(src.def_id());
-    let is_function = match descr {
-        Some(Def::Def(DefKind::Fn, _))
-        | Some(Def::Def(DefKind::Method, _))
-        | Some(Def::Def(DefKind::Ctor(..), _)) => true,
+    let kind = tcx.def_kind(src.def_id());
+    let is_function = match kind {
+        Some(DefKind::Fn)
+        | Some(DefKind::Method)
+        | Some(DefKind::Ctor(..)) => true,
         _ => tcx.is_closure(src.def_id()),
     };
-    match (descr, src.promoted) {
+    match (kind, src.promoted) {
         (_, Some(i)) => write!(w, "{:?} in ", i)?,
-        (Some(Def::Def(DefKind::Const, _)), _)
-        | (Some(Def::Def(DefKind::AssociatedConst, _)), _) => write!(w, "const ")?,
-        (Some(Def::Def(DefKind::Static, _)), _) =>
+        (Some(DefKind::Const), _)
+        | (Some(DefKind::AssociatedConst), _) => write!(w, "const ")?,
+        (Some(DefKind::Static), _) =>
             write!(w, "static {}", if tcx.is_mutable_static(src.def_id()) { "mut " } else { "" })?,
         (_, _) if is_function => write!(w, "fn ")?,
         (None, _) => {}, // things like anon const, not an item
-        _ => bug!("Unexpected def description {:?}", descr),
+        _ => bug!("Unexpected def kind {:?}", kind),
     }
 
     ty::print::with_forced_impl_filename_line(|| {

@@ -1105,20 +1105,22 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // more code internal visibility at link time. (Access to private functions
     // is already prohibited by type privacy for function types.)
     fn visit_qpath(&mut self, qpath: &'tcx hir::QPath, id: hir::HirId, span: Span) {
-        let def = match *qpath {
-            hir::QPath::Resolved(_, ref path) => match path.def {
-                Def::Def(DefKind::Method, _) | Def::Def(DefKind::AssociatedConst, _) |
-                Def::Def(DefKind::AssociatedTy, _) | Def::Def(DefKind::AssociatedExistential, _) |
-                Def::Def(DefKind::Static, _) => Some(path.def),
-                _ => None,
-            }
-            hir::QPath::TypeRelative(..) => {
-                self.tables.type_dependent_def(id)
-            }
+        let def = match self.tables.qpath_def(qpath, id) {
+            Def::Def(kind, def_id) => Some((kind, def_id)),
+            _ => None,
         };
-        if let Some(def) = def {
-            let def_id = def.def_id();
-            let is_local_static = if let Def::Def(DefKind::Static, _) = def {
+        let def = def.filter(|(kind, _)| {
+            match kind {
+                DefKind::Method
+                | DefKind::AssociatedConst
+                | DefKind::AssociatedTy
+                | DefKind::AssociatedExistential
+                | DefKind::Static => true,
+                _ => false,
+            }
+        });
+        if let Some((kind, def_id)) = def {
+            let is_local_static = if let DefKind::Static = kind {
                 def_id.is_local()
             } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
@@ -1126,7 +1128,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                     hir::QPath::Resolved(_, ref path) => path.to_string(),
                     hir::QPath::TypeRelative(_, ref segment) => segment.ident.to_string(),
                 };
-                let msg = format!("{} `{}` is private", def.kind_name(), name);
+                let msg = format!("{} `{}` is private", kind.descr(), name);
                 self.tcx.sess.span_err(span, &msg);
                 return;
             }
