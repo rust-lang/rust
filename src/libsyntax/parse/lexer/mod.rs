@@ -630,26 +630,14 @@ impl<'a> StringReader<'a> {
                         self.bump();
                     }
 
-                    if doc_comment {
+                    let tok = if doc_comment {
                         self.with_str_from(start_bpos, |string| {
-                            // comments with only more "/"s are not doc comments
-                            let tok = if is_doc_comment(string) {
-                                token::DocComment(Symbol::intern(string))
-                            } else {
-                                token::Comment
-                            };
-
-                            Some(TokenAndSpan {
-                                tok,
-                                sp: self.mk_sp(start_bpos, self.pos),
-                            })
+                            token::DocComment(Symbol::intern(string))
                         })
                     } else {
-                        Some(TokenAndSpan {
-                            tok: token::Comment,
-                            sp: self.mk_sp(start_bpos, self.pos),
-                        })
-                    }
+                        token::Comment
+                    };
+                    Some(TokenAndSpan { tok, sp: self.mk_sp(start_bpos, self.pos) })
                 }
                 Some('*') => {
                     self.bump();
