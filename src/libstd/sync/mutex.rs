@@ -450,8 +450,15 @@ pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Fla
 }
 
 
-/// A parking_lot low level mutex without data in it.
+/// Just a thin wrapper on top of `parking_lot::RawMutex`, but with guards.
+/// So it's easier to use and harder to forget unlocking compared to
+/// `parking_lot::RawMutex`.
+///
 /// This type is not exposed from the standard library, only used inside it.
+///
+/// This type exist because `parking_lot::Mutex` can't have a `const fn`
+/// constructor, since it has trait bounds. When that becomes possible this type
+/// can be removed and `Mutex<()>` can be used instead.
 pub struct RawMutex(parking_lot::RawMutex);
 
 unsafe impl Sync for RawMutex {}
@@ -460,8 +467,7 @@ impl RawMutex {
     /// Creates a new mutex for use.
     pub const fn new() -> Self { Self(parking_lot::RawMutex::INIT) }
 
-    /// Locks the mutex and then returns an RAII guard to guarantee the mutex
-    /// will be unlocked.
+    /// Locks the mutex and returns a RAII guard that will unlock it again on drop.
     #[inline]
     pub fn lock(&self) -> RawMutexGuard<'_> {
         self.0.lock();
