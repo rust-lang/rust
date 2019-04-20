@@ -2008,8 +2008,8 @@ mod tests {
         let doc: u8 = 1 << 4;
 
         check!("0.0.0.0", unspec);
-        check!("0.0.0.1", global);
-        check!("0.1.0.0", global);
+        check!("0.0.0.1");
+        check!("0.1.0.0");
         check!("10.9.8.7");
         check!("127.1.2.3", loopback);
         check!("172.31.254.253");
@@ -2127,8 +2127,8 @@ mod tests {
         let documentation: u8 = 1 << 7;
 
         check!("0.0.0.0", unspec);
-        check!("0.0.0.1", global);
-        check!("0.1.0.0", global);
+        check!("0.0.0.1");
+        check!("0.1.0.0");
         check!("10.9.8.7", private);
         check!("127.1.2.3", loopback);
         check!("172.31.254.253", private);
