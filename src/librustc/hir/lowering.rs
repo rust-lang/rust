@@ -809,12 +809,10 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn record_body(&mut self, value: hir::Expr, decl: Option<&FnDecl>) -> hir::BodyId {
+    fn record_body(&mut self, value: hir::Expr, arguments: HirVec<hir::Arg>) -> hir::BodyId {
         let body = hir::Body {
-            arguments: decl.map_or(hir_vec![], |decl| {
-                decl.inputs.iter().map(|x| self.lower_arg(x)).collect()
-            }),
             is_generator: self.is_generator,
+            arguments,
             value,
         };
         let id = body.id();
@@ -1137,11 +1135,10 @@ impl<'a> LoweringContext<'a> {
         capture_clause: CaptureBy,
         closure_node_id: NodeId,
         ret_ty: Option<&Ty>,
+        span: Span,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
         let prev_is_generator = mem::replace(&mut self.is_generator, true);
-        let body_expr = body(self);
-        let span = body_expr.span;
         let output = match ret_ty {
             Some(ty) => FunctionRetTy::Ty(P(ty.clone())),
             None => FunctionRetTy::Default(span),
@@ -1151,7 +1148,11 @@ impl<'a> LoweringContext<'a> {
             output,
             c_variadic: false
         };
-        let body_id = self.record_body(body_expr, Some(&decl));
+        // Lower the arguments before the body otherwise the body will call `lower_def` expecting
+        // the argument to have been assigned an id already.
+        let arguments = self.lower_args(Some(&decl));
+        let body_expr = body(self);
+        let body_id = self.record_body(body_expr, arguments);
         self.is_generator = prev_is_generator;
 
         let capture_clause = self.lower_capture_clause(capture_clause);
@@ -1182,8 +1183,9 @@ impl<'a> LoweringContext<'a> {
         F: FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     {
         let prev = mem::replace(&mut self.is_generator, false);
+        let arguments = self.lower_args(decl);
         let result = f(self);
-        let r = self.record_body(result, decl);
+        let r = self.record_body(result, arguments);
         self.is_generator = prev;
         return r;
     }
@@ -2267,6 +2269,10 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
+    fn lower_args(&mut self, decl: Option<&FnDecl>) -> HirVec<hir::Arg> {
+        decl.map_or(hir_vec![], |decl| decl.inputs.iter().map(|x| self.lower_arg(x)).collect())
+    }
+
     fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
         let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(arg.id);
         hir::Arg {
@@ -3045,7 +3051,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 let async_expr = this.make_async_expr(
-                    CaptureBy::Value, *closure_id, None,
+                    CaptureBy::Value, *closure_id, None, body.span,
                     |this| {
                         let body = this.lower_block(&body, false);
                         this.expr_block(body, ThinVec::new())
@@ -4190,7 +4196,7 @@ impl<'a> LoweringContext<'a> {
                 hir::MatchSource::Normal,
             ),
             ExprKind::Async(capture_clause, closure_node_id, ref block) => {
-                self.make_async_expr(capture_clause, closure_node_id, None, |this| {
+                self.make_async_expr(capture_clause, closure_node_id, None, block.span, |this| {
                     this.with_new_scopes(|this| {
                         let block = this.lower_block(block, false);
                         this.expr_block(block, ThinVec::new())
@@ -4236,7 +4242,7 @@ impl<'a> LoweringContext<'a> {
                                 Some(&**ty)
                             } else { None };
                             let async_body = this.make_async_expr(
-                                capture_clause, *closure_id, async_ret_ty,
+                                capture_clause, *closure_id, async_ret_ty, body.span,
                                 |this| {
                                     this.with_new_scopes(|this| this.lower_expr(body))
                                 });
