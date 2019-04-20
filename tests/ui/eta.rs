@@ -138,3 +138,14 @@ fn passes_fn_mut(mut x: Box<dyn FnMut()>) {
     requires_fn_once(|| x());
 }
 fn requires_fn_once<T: FnOnce()>(_: T) {}
+
+fn test_redundant_closure_with_function_pointer() {
+    type FnPtrType = fn(u8);
+    let foo_ptr: FnPtrType = foo;
+    let a = Some(1u8).map(|a| foo_ptr(a));
+}
+
+fn test_redundant_closure_with_another_closure() {
+    let closure = |a| println!("{}", a);
+    let a = Some(1u8).map(|a| closure(a));
+}
