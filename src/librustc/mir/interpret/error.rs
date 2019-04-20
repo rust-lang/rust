@@ -229,8 +229,8 @@ pub enum InterpError<'tcx, O> {
     /// match an existing variant.
     MachineError(String),
 
-    /// Not actually an interprer error -- used to signal that execution has exited
-    /// with the given status code.
+    /// Not actually an interpreter error -- used to signal that execution has exited
+    /// with the given status code.  Used by Miri, but not by CTFE.
     Exit(i32),
 
     FunctionAbiMismatch(Abi, Abi),
