@@ -60,6 +60,8 @@ pub unsafe fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
 }
 
 /// Non-temporal store of `a.0` into `p`.
+///
+/// Writes 64-bit data to a memory location without polluting the caches.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntsd))]
@@ -69,6 +71,8 @@ pub unsafe fn _mm_stream_sd(p: *mut f64, a: __m128d) {
 }
 
 /// Non-temporal store of `a.0` into `p`.
+///
+/// Writes 32-bit data to a memory location without polluting the caches.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(movntss))]
