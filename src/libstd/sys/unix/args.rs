@@ -35,6 +35,8 @@ impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    #[inline]
+    fn last(mut self) -> Option<OsString> { self.next_back() }
 }
 
 impl ExactSizeIterator for Args {

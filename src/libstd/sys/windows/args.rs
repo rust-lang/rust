@@ -181,6 +181,8 @@ impl Iterator for Args {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.parsed_args_list.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.parsed_args_list.size_hint() }
+    #[inline]
+    fn last(mut self) -> Option<OsString> { self.next_back() }
 }
 
 impl DoubleEndedIterator for Args {
