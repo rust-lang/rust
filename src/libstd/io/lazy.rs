@@ -51,8 +51,7 @@ impl<T: Send + Sync + 'static> Lazy<T> {
             drop(Box::from_raw(ptr))
         });
         // This could reentrantly call `init` again, which is a problem
-        // because our `lock` allows reentrancy!
-        // That's why `get` is unsafe and requires the caller to ensure no reentrancy happens.
+        // because our `lock` will then deadlock!
         let ret = init();
         if registered.is_ok() {
             self.ptr.set(Box::into_raw(Box::new(ret.clone())));
