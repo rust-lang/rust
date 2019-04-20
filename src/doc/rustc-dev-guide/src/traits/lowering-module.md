@@ -31,7 +31,7 @@ this writing, it looked like this:
 
 trait Foo { }
 
-#[rustc_dump_program_clauses] //~ ERROR Implemented(T: Foo) :-
+#[rustc_dump_program_clauses] //~ ERROR program clause dump
 impl<T: 'static> Foo for T where T: Iterator<Item = i32> { }
 
 fn main() {
@@ -45,19 +45,18 @@ compiler will then invoke the `program_clauses_for` query on that
 item, and emit compiler errors that dump the clauses produced. These
 errors just exist for unit-testing, as we can then leverage the
 standard [ui test] mechanisms to check them. In this case, there is a
-`//~ ERROR Implemented` annotation which is intentionally minimal (it
-need only be a prefix of the error), but [the stderr file] contains
+`//~ ERROR program clause dump` annotation which is always the same for
+`#[rustc_dump_program_clauses]`, but [the stderr file] contains
 the full details:
 
 ```text
-error: Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T \
-: 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized).
-  --> $DIR/lower_impl.rs:15:1
+error: program clause dump
+  --> $DIR/lower_impl.rs:5:1
    |
-LL | #[rustc_dump_program_clauses] //~ ERROR Implemented(T: Foo) :-
+LL | #[rustc_dump_program_clauses]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
+   |
+   = note: forall<T> { Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T: 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized). }
 ```
 
 [chalkify]: https://github.com/rust-lang/rust/tree/master/src/test/ui/chalkify
