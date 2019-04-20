@@ -128,7 +128,7 @@ impl DefKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
-pub enum Def<Id = hir::HirId> {
+pub enum Res<Id = hir::HirId> {
     Def(DefKind, DefId),
 
     // Type namespace
@@ -152,38 +152,38 @@ pub enum Def<Id = hir::HirId> {
 }
 
 /// The result of resolving a path before lowering to HIR.
-/// `base_def` is definition of resolved part of the
+/// `base_res` is the resolution of the resolved part of the
 /// path, `unresolved_segments` is the number of unresolved
 /// segments.
 ///
 /// ```text
 /// module::Type::AssocX::AssocY::MethodOrAssocType
 /// ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-/// base_def      unresolved_segments = 3
+/// base_res      unresolved_segments = 3
 ///
 /// <T as Trait>::AssocX::AssocY::MethodOrAssocType
 ///       ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
-///       base_def        unresolved_segments = 2
+///       base_res        unresolved_segments = 2
 /// ```
 #[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
-    base_def: Def<NodeId>,
+    base_res: Res<NodeId>,
     unresolved_segments: usize,
 }
 
 impl PathResolution {
-    pub fn new(def: Def<NodeId>) -> Self {
-        PathResolution { base_def: def, unresolved_segments: 0 }
+    pub fn new(res: Res<NodeId>) -> Self {
+        PathResolution { base_res: res, unresolved_segments: 0 }
     }
 
-    pub fn with_unresolved_segments(def: Def<NodeId>, mut unresolved_segments: usize) -> Self {
-        if def == Def::Err { unresolved_segments = 0 }
-        PathResolution { base_def: def, unresolved_segments: unresolved_segments }
+    pub fn with_unresolved_segments(res: Res<NodeId>, mut unresolved_segments: usize) -> Self {
+        if res == Res::Err { unresolved_segments = 0 }
+        PathResolution { base_res: res, unresolved_segments: unresolved_segments }
     }
 
     #[inline]
-    pub fn base_def(&self) -> Def<NodeId> {
-        self.base_def
+    pub fn base_res(&self) -> Res<NodeId> {
+        self.base_res
     }
 
     #[inline]
@@ -270,7 +270,7 @@ impl<T> PerNS<Option<T>> {
 }
 
 /// Definition mapping
-pub type DefMap = NodeMap<PathResolution>;
+pub type ResMap = NodeMap<PathResolution>;
 
 /// This is the replacement export map. It maps a module to all of the exports
 /// within.
@@ -284,9 +284,9 @@ pub type ImportMap = NodeMap<PerNS<Option<PathResolution>>>;
 pub struct Export<Id> {
     /// The name of the target.
     pub ident: ast::Ident,
-    /// The definition of the target.
-    pub def: Def<Id>,
-    /// The span of the target definition.
+    /// The resolution of the target.
+    pub res: Res<Id>,
+    /// The span of the target.
     pub span: Span,
     /// The visibility of the export.
     /// We include non-`pub` exports for hygienic macros that get used from extern crates.
@@ -297,7 +297,7 @@ impl<Id> Export<Id> {
     pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Export<R> {
         Export {
             ident: self.ident,
-            def: self.def.map_id(map),
+            res: self.res.map_id(map),
             span: self.span,
             vis: self.vis,
         }
@@ -334,85 +334,85 @@ impl NonMacroAttrKind {
     }
 }
 
-impl<Id> Def<Id> {
+impl<Id> Res<Id> {
     /// Return the `DefId` of this `Def` if it has an id, else panic.
     pub fn def_id(&self) -> DefId
     where
         Id: Debug,
     {
         self.opt_def_id().unwrap_or_else(|| {
-            bug!("attempted .def_id() on invalid def: {:?}", self)
+            bug!("attempted .def_id() on invalid res: {:?}", self)
         })
     }
 
-    /// Return `Some(..)` with the `DefId` of this `Def` if it has a id, else `None`.
+    /// Return `Some(..)` with the `DefId` of this `Res` if it has a id, else `None`.
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Def(_, id) => Some(id),
+            Res::Def(_, id) => Some(id),
 
-            Def::Local(..) |
-            Def::Upvar(..) |
-            Def::Label(..)  |
-            Def::PrimTy(..) |
-            Def::SelfTy(..) |
-            Def::SelfCtor(..) |
-            Def::ToolMod |
-            Def::NonMacroAttr(..) |
-            Def::Err => {
+            Res::Local(..) |
+            Res::Upvar(..) |
+            Res::Label(..)  |
+            Res::PrimTy(..) |
+            Res::SelfTy(..) |
+            Res::SelfCtor(..) |
+            Res::ToolMod |
+            Res::NonMacroAttr(..) |
+            Res::Err => {
                 None
             }
         }
     }
 
-    /// Return the `DefId` of this `Def` if it represents a module.
+    /// Return the `DefId` of this `Res` if it represents a module.
     pub fn mod_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Def(DefKind::Mod, id) => Some(id),
+            Res::Def(DefKind::Mod, id) => Some(id),
             _ => None,
         }
     }
 
-    /// A human readable name for the def kind ("function", "module", etc.).
+    /// A human readable name for the res kind ("function", "module", etc.).
     pub fn kind_name(&self) -> &'static str {
         match *self {
-            Def::Def(kind, _) => kind.descr(),
-            Def::SelfCtor(..) => "self constructor",
-            Def::PrimTy(..) => "builtin type",
-            Def::Local(..) => "local variable",
-            Def::Upvar(..) => "closure capture",
-            Def::Label(..) => "label",
-            Def::SelfTy(..) => "self type",
-            Def::ToolMod => "tool module",
-            Def::NonMacroAttr(attr_kind) => attr_kind.descr(),
-            Def::Err => "unresolved item",
+            Res::Def(kind, _) => kind.descr(),
+            Res::SelfCtor(..) => "self constructor",
+            Res::PrimTy(..) => "builtin type",
+            Res::Local(..) => "local variable",
+            Res::Upvar(..) => "closure capture",
+            Res::Label(..) => "label",
+            Res::SelfTy(..) => "self type",
+            Res::ToolMod => "tool module",
+            Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
+            Res::Err => "unresolved item",
         }
     }
 
-    /// An English article for the def.
+    /// An English article for the res.
     pub fn article(&self) -> &'static str {
         match *self {
-            Def::Def(kind, _) => kind.article(),
-            Def::Err => "an",
+            Res::Def(kind, _) => kind.article(),
+            Res::Err => "an",
             _ => "a",
         }
     }
 
-    pub fn map_id<R>(self, mut map: impl FnMut(Id) -> R) -> Def<R> {
+    pub fn map_id<R>(self, mut map: impl FnMut(Id) -> R) -> Res<R> {
         match self {
-            Def::Def(kind, id) => Def::Def(kind, id),
-            Def::SelfCtor(id) => Def::SelfCtor(id),
-            Def::PrimTy(id) => Def::PrimTy(id),
-            Def::Local(id) => Def::Local(map(id)),
-            Def::Upvar(id, index, closure) => Def::Upvar(
+            Res::Def(kind, id) => Res::Def(kind, id),
+            Res::SelfCtor(id) => Res::SelfCtor(id),
+            Res::PrimTy(id) => Res::PrimTy(id),
+            Res::Local(id) => Res::Local(map(id)),
+            Res::Upvar(id, index, closure) => Res::Upvar(
                 map(id),
                 index,
                 closure
             ),
-            Def::Label(id) => Def::Label(id),
-            Def::SelfTy(a, b) => Def::SelfTy(a, b),
-            Def::ToolMod => Def::ToolMod,
-            Def::NonMacroAttr(attr_kind) => Def::NonMacroAttr(attr_kind),
-            Def::Err => Def::Err,
+            Res::Label(id) => Res::Label(id),
+            Res::SelfTy(a, b) => Res::SelfTy(a, b),
+            Res::ToolMod => Res::ToolMod,
+            Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),
+            Res::Err => Res::Err,
         }
     }
 }

@@ -7,7 +7,7 @@ use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax_pos::Span;
 
 use rustc::hir;
-use rustc::hir::def::{Def, DefKind, CtorKind};
+use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc_metadata::cstore::LoadedMacro;
 use rustc::ty;
@@ -37,72 +37,71 @@ use super::Clean;
 /// and `Some` of a vector of items if it was successfully expanded.
 pub fn try_inline(
     cx: &DocContext<'_>,
-    def: Def,
+    res: Res,
     name: ast::Name,
     visited: &mut FxHashSet<DefId>
-)
-                  -> Option<Vec<clean::Item>> {
-    let did = if let Some(did) = def.opt_def_id() {
+) -> Option<Vec<clean::Item>> {
+    let did = if let Some(did) = res.opt_def_id() {
         did
     } else {
         return None;
     };
     if did.is_local() { return None }
     let mut ret = Vec::new();
-    let inner = match def {
-        Def::Def(DefKind::Trait, did) => {
+    let inner = match res {
+        Res::Def(DefKind::Trait, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Trait);
             ret.extend(build_impls(cx, did));
             clean::TraitItem(build_external_trait(cx, did))
         }
-        Def::Def(DefKind::Fn, did) => {
+        Res::Def(DefKind::Fn, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Function);
             clean::FunctionItem(build_external_function(cx, did))
         }
-        Def::Def(DefKind::Struct, did) => {
+        Res::Def(DefKind::Struct, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Struct);
             ret.extend(build_impls(cx, did));
             clean::StructItem(build_struct(cx, did))
         }
-        Def::Def(DefKind::Union, did) => {
+        Res::Def(DefKind::Union, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Union);
             ret.extend(build_impls(cx, did));
             clean::UnionItem(build_union(cx, did))
         }
-        Def::Def(DefKind::TyAlias, did) => {
+        Res::Def(DefKind::TyAlias, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Typedef);
             ret.extend(build_impls(cx, did));
             clean::TypedefItem(build_type_alias(cx, did), false)
         }
-        Def::Def(DefKind::Enum, did) => {
+        Res::Def(DefKind::Enum, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Enum);
             ret.extend(build_impls(cx, did));
             clean::EnumItem(build_enum(cx, did))
         }
-        Def::Def(DefKind::ForeignTy, did) => {
+        Res::Def(DefKind::ForeignTy, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Foreign);
             ret.extend(build_impls(cx, did));
             clean::ForeignTypeItem
         }
         // Never inline enum variants but leave them shown as re-exports.
-        Def::Def(DefKind::Variant, _) => return None,
+        Res::Def(DefKind::Variant, _) => return None,
         // Assume that enum variants and struct types are re-exported next to
         // their constructors.
-        Def::Def(DefKind::Ctor(..), _) | Def::SelfCtor(..) => return Some(Vec::new()),
-        Def::Def(DefKind::Mod, did) => {
+        Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => return Some(Vec::new()),
+        Res::Def(DefKind::Mod, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Module);
             clean::ModuleItem(build_module(cx, did, visited))
         }
-        Def::Def(DefKind::Static, did) => {
+        Res::Def(DefKind::Static, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Static);
             clean::StaticItem(build_static(cx, did, cx.tcx.is_mutable_static(did)))
         }
-        Def::Def(DefKind::Const, did) => {
+        Res::Def(DefKind::Const, did) => {
             record_extern_fqn(cx, did, clean::TypeKind::Const);
             clean::ConstantItem(build_const(cx, did))
         }
         // FIXME: proc-macros don't propagate attributes or spans across crates, so they look empty
-        Def::Def(DefKind::Macro(MacroKind::Bang), did) => {
+        Res::Def(DefKind::Macro(MacroKind::Bang), did) => {
             let mac = build_macro(cx, did, name);
             if let clean::MacroItem(..) = mac {
                 record_extern_fqn(cx, did, clean::TypeKind::Macro);
@@ -127,15 +126,15 @@ pub fn try_inline(
     Some(ret)
 }
 
-pub fn try_inline_glob(cx: &DocContext<'_>, def: Def, visited: &mut FxHashSet<DefId>)
+pub fn try_inline_glob(cx: &DocContext<'_>, res: Res, visited: &mut FxHashSet<DefId>)
     -> Option<Vec<clean::Item>>
 {
-    if def == Def::Err { return None }
-    let did = def.def_id();
+    if res == Res::Err { return None }
+    let did = res.def_id();
     if did.is_local() { return None }
 
-    match def {
-        Def::Def(DefKind::Mod, did) => {
+    match res {
+        Res::Def(DefKind::Mod, did) => {
             let m = build_module(cx, did, visited);
             Some(m.items)
         }
@@ -413,10 +412,10 @@ fn build_module(
         // two namespaces, so the target may be listed twice. Make sure we only
         // visit each node at most once.
         for &item in cx.tcx.item_children(did).iter() {
-            let def_id = item.def.def_id();
+            let def_id = item.res.def_id();
             if item.vis == ty::Visibility::Public {
                 if did == def_id || !visited.insert(def_id) { continue }
-                if let Some(i) = try_inline(cx, item.def, item.ident.name, visited) {
+                if let Some(i) = try_inline(cx, item.res, item.ident.name, visited) {
                     items.extend(i)
                 }
             }

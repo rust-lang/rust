@@ -467,8 +467,8 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-        debug!("expr {}: path that leads to {:?}", expr.hir_id, path.def);
-        if let Def::Local(..) = path.def {
+        debug!("expr {}: path that leads to {:?}", expr.hir_id, path.res);
+        if let Res::Local(..) = path.res {
             ir.add_live_node_for_node(expr.hir_id, ExprNode(expr.span));
         }
         intravisit::walk_expr(ir, expr);
@@ -485,7 +485,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         let mut call_caps = Vec::new();
         ir.tcx.with_freevars(expr.hir_id, |freevars| {
             call_caps.extend(freevars.iter().filter_map(|fv| {
-                if let Def::Local(rv) = fv.def {
+                if let Res::Local(rv) = fv.res {
                     let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
                     Some(CaptureInfo { ln: fv_ln, var_hid: rv })
                 } else {
@@ -1347,8 +1347,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn access_path(&mut self, hir_id: HirId, path: &hir::Path, succ: LiveNode, acc: u32)
                    -> LiveNode {
-        match path.def {
-            Def::Local(hid) => {
+        match path.res {
+            Res::Local(hid) => {
               let nid = self.ir.tcx.hir().hir_to_node_id(hid);
               self.access_var(hir_id, nid, succ, acc, path.span)
             }
@@ -1541,7 +1541,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_place(&mut self, expr: &'tcx Expr) {
         match expr.node {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
-                if let Def::Local(var_hid) = path.def {
+                if let Res::Local(var_hid) = path.res {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability

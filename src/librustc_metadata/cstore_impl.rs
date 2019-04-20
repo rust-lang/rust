@@ -110,7 +110,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     associated_item_def_ids => {
         let mut result = vec![];
         cdata.each_child_of_item(def_id.index,
-          |child| result.push(child.def.def_id()), tcx.sess);
+          |child| result.push(child.res.def_id()), tcx.sess);
         Lrc::new(result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
@@ -355,7 +355,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                         return;
                     }
 
-                    let child = child.def.def_id();
+                    let child = child.res.def_id();
 
                     match visible_parent_map.entry(child) {
                         Entry::Occupied(mut entry) => {

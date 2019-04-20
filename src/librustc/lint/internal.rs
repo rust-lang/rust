@@ -170,8 +170,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
 
 fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
     if segment.ident.as_str() == "TyKind" {
-        if let Some(def) = segment.def {
-            if let Some(did) = def.opt_def_id() {
+        if let Some(res) = segment.res {
+            if let Some(did) = res.opt_def_id() {
                 return cx.match_def_path(did, &["rustc", "ty", "sty", "TyKind"]);
             }
         }
@@ -184,7 +184,7 @@ fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty) -> Option<String> {
     match &ty.node {
         TyKind::Path(qpath) => {
             if let QPath::Resolved(_, path) = qpath {
-                let did = path.def.opt_def_id()?;
+                let did = path.res.opt_def_id()?;
                 if cx.match_def_path(did, &["rustc", "ty", "Ty"]) {
                     return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
                 } else if cx.match_def_path(did, &["rustc", "ty", "context", "TyCtxt"]) {

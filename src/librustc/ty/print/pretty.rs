@@ -359,7 +359,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
                 let reexport = self.tcx().item_children(visible_parent)
                     .iter()
-                    .find(|child| child.def.def_id() == def_id)
+                    .find(|child| child.res.def_id() == def_id)
                     .map(|child| child.ident.as_interned_str());
                 if let Some(reexport) = reexport {
                     *name = reexport;

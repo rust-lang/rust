@@ -234,7 +234,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         expr: &hir::Expr,
     ) -> Option<(Span, &'static str, String)> {
         if let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.node {
-            if let hir::def::Def::Local(id) = path.def {
+            if let hir::def::Res::Local(id) = path.res {
                 let parent = self.tcx.hir().get_parent_node_by_hir_id(id);
                 if let Some(Node::Expr(hir::Expr {
                     hir_id,

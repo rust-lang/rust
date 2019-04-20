@@ -8,7 +8,7 @@ use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
 use rustc::hir;
 use rustc::middle::cstore::LinkagePreference;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc::hir::def::{self, Def, DefKind, CtorOf, CtorKind};
+use rustc::hir::def::{self, Res, DefKind, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, DefIndexAddressSpace,
                          CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
 use rustc::hir::map::definitions::DefPathTable;
@@ -743,14 +743,14 @@ impl<'a, 'tcx> CrateMetadata {
              */
             if id == CRATE_DEF_INDEX {
                 for (id, &(name, ref ext)) in proc_macros.iter().enumerate() {
-                    let def = Def::Def(
+                    let res = Res::Def(
                         DefKind::Macro(ext.kind()),
                         self.local_def_id(DefIndex::from_proc_macro_index(id)),
                     );
                     let ident = Ident::with_empty_ctxt(name);
                     callback(def::Export {
                         ident: ident,
-                        def: def,
+                        res: res,
                         vis: ty::Visibility::Public,
                         span: DUMMY_SP,
                     });
@@ -788,7 +788,7 @@ impl<'a, 'tcx> CrateMetadata {
                         for child_index in child.children.decode((self, sess)) {
                             if let Some(kind) = self.def_kind(child_index) {
                                 callback(def::Export {
-                                    def: Def::Def(kind, self.local_def_id(child_index)),
+                                    res: Res::Def(kind, self.local_def_id(child_index)),
                                     ident: Ident::from_interned_str(self.item_name(child_index)),
                                     vis: self.get_visibility(child_index),
                                     span: self.entry(child_index).span.decode((self, sess)),
@@ -809,20 +809,20 @@ impl<'a, 'tcx> CrateMetadata {
                     let ident = Ident::from_interned_str(name);
                     let vis = self.get_visibility(child_index);
                     let def_id = self.local_def_id(child_index);
-                    let def = Def::Def(kind, def_id);
-                    callback(def::Export { def, ident, vis, span });
+                    let res = Res::Def(kind, def_id);
+                    callback(def::Export { res, ident, vis, span });
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
                     match kind {
                         DefKind::Struct => {
                             if let Some(ctor_def_id) = self.get_ctor_def_id(child_index) {
                                 let ctor_kind = self.get_ctor_kind(child_index);
-                                let ctor_def = Def::Def(
+                                let ctor_res = Res::Def(
                                     DefKind::Ctor(CtorOf::Struct, ctor_kind),
                                     ctor_def_id,
                                 );
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(def::Export { def: ctor_def, vis, ident, span });
+                                callback(def::Export { res: ctor_res, vis, ident, span });
                             }
                         }
                         DefKind::Variant => {
@@ -832,7 +832,7 @@ impl<'a, 'tcx> CrateMetadata {
                             // error will be reported on any use of such resolution anyway.
                             let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
                             let ctor_kind = self.get_ctor_kind(child_index);
-                            let ctor_def = Def::Def(
+                            let ctor_res = Res::Def(
                                 DefKind::Ctor(CtorOf::Variant, ctor_kind),
                                 ctor_def_id,
                             );
@@ -848,7 +848,7 @@ impl<'a, 'tcx> CrateMetadata {
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(def::Export { def: ctor_def, ident, vis, span });
+                            callback(def::Export { res: ctor_res, ident, vis, span });
                         }
                         _ => {}
                     }
@@ -858,8 +858,8 @@ impl<'a, 'tcx> CrateMetadata {
 
         if let EntryKind::Mod(data) = item.kind {
             for exp in data.decode((self, sess)).reexports.decode((self, sess)) {
-                match exp.def {
-                    Def::Def(DefKind::Macro(..), _) => {}
+                match exp.res {
+                    Res::Def(DefKind::Macro(..), _) => {}
                     _ if macros_only => continue,
                     _ => {}
                 }
