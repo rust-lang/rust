@@ -212,6 +212,11 @@ pub enum ExprKind<'tcx> {
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
     },
+    /// A `&raw [const|mut] $place_expr` raw borrow resulting in type `*[const|mut] T`.
+    AddressOf {
+        mutability: hir::Mutability,
+        arg: ExprRef<'tcx>,
+    },
     Break {
         label: region::Scope,
         value: Option<ExprRef<'tcx>>,

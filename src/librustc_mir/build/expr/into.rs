@@ -3,6 +3,7 @@
 use crate::build::expr::category::{Category, RvalueFunc};
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::hair::*;
+use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation};
 use rustc_data_structures::fx::FxHashMap;
@@ -293,6 +294,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     arg_place,
                 );
                 this.cfg.push_assign(block, source_info, destination, borrow);
+                block.unit()
+            }
+            ExprKind::AddressOf {
+                mutability,
+                arg,
+            } => {
+                let address_of = match mutability {
+                    hir::Mutability::Immutable => Rvalue::AddressOf(
+                        Mutability::Not,
+                        unpack!(block = this.as_read_only_place(block, arg)),
+                    ),
+                    hir::Mutability::Mutable => Rvalue::AddressOf(
+                        Mutability::Mut,
+                        unpack!(block = this.as_place(block, arg)),
+                    ),
+                };
+                this.cfg.push_assign(block, source_info, destination, address_of);
                 block.unit()
             }
             ExprKind::Adt {
