@@ -88,7 +88,7 @@ mod op;
 use crate::astconv::{AstConv, PathSeg};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
-use rustc::hir::def::{CtorOf, CtorKind, Def};
+use rustc::hir::def::{CtorOf, CtorKind, Def, DefKind};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -2149,7 +2149,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tables
             .borrow_mut()
             .type_dependent_defs_mut()
-            .insert(hir_id, Def::Method(method.def_id));
+            .insert(hir_id, Def::Def(DefKind::Method, method.def_id));
 
         self.write_substs(hir_id, method.substs);
 
@@ -3926,7 +3926,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(..) => {
+            Def::Def(DefKind::Variant, _) => {
                 match ty.sty {
                     ty::Adt(adt, substs) => {
                         Some((adt.variant_of_def(def), adt.did, substs))
@@ -3934,8 +3934,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => bug!("unexpected type: {:?}", ty)
                 }
             }
-            Def::Struct(..) | Def::Union(..) | Def::TyAlias(..) |
-            Def::AssociatedTy(..) | Def::SelfTy(..) => {
+            Def::Def(DefKind::Struct, _)
+            | Def::Def(DefKind::Union, _)
+            | Def::Def(DefKind::TyAlias, _)
+            | Def::Def(DefKind::AssociatedTy, _)
+            | Def::SelfTy(..) => {
                 match ty.sty {
                     ty::Adt(adt, substs) if !adt.is_enum() => {
                         Some((adt.non_enum_variant(), adt.did, substs))
@@ -4237,7 +4240,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.set_tainted_by_errors();
                         tcx.types.err
                     }
-                    Def::Ctor(_, _, CtorKind::Fictive) => {
+                    Def::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
                         report_unexpected_variant_def(tcx, &def, expr.span, qpath);
                         tcx.types.err
                     }
@@ -5362,7 +5365,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();
-                    let def = Def::Ctor(ctor_def_id, CtorOf::Struct, variant.ctor_kind);
+                    let def = Def::Def(
+                        DefKind::Ctor(CtorOf::Struct, variant.ctor_kind),
+                        ctor_def_id,
+                    );
                     (def, ctor_def_id, tcx.type_of(ctor_def_id))
                 }
                 _ => {
@@ -5434,7 +5440,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
         match def {
-            Def::Ctor(_, CtorOf::Variant, _) => {
+            Def::Def(DefKind::Ctor(CtorOf::Variant, _), _) => {
                 if let Some(self_ty) = self_ty {
                     let adt_def = self_ty.ty_adt_def().unwrap();
                     user_self_ty = Some(UserSelfTy {
@@ -5444,8 +5450,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     is_alias_variant_ctor = true;
                 }
             }
-            Def::Method(def_id) |
-            Def::AssociatedConst(def_id) => {
+            Def::Def(DefKind::Method, def_id) |
+            Def::Def(DefKind::AssociatedConst, def_id) => {
                 let container = tcx.associated_item(def_id).container;
                 debug!("instantiate_value_path: def={:?} container={:?}", def, container);
                 match container {

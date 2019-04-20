@@ -21,7 +21,7 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::{self, Ty};
 use rustc::{lint, util};
@@ -916,7 +916,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
             } else {
                 return None;
             };
-            if let Def::Fn(did) = def {
+            if let Def::Def(DefKind::Fn, did) = def {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
@@ -1072,7 +1072,7 @@ impl TypeAliasBounds {
                 match ty.node {
                     hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
                         match path.def {
-                            Def::TyParam(_) => true,
+                            Def::Def(DefKind::TyParam, _) => true,
                             _ => false
                         }
                     }

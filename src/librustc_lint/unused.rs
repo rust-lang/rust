@@ -1,4 +1,4 @@
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
 use rustc::ty;
@@ -93,7 +93,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                     hir::ExprKind::Path(ref qpath) => {
                         let def = cx.tables.qpath_def(qpath, callee.hir_id);
                         match def {
-                            Def::Fn(_) | Def::Method(_) => Some(def),
+                            Def::Def(DefKind::Fn, _) | Def::Def(DefKind::Method, _) => Some(def),
                             // `Def::Local` if it was a closure, for which we
                             // do not currently support must-use linting
                             _ => None

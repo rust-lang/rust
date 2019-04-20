@@ -15,7 +15,7 @@ mod span_utils;
 mod sig;
 
 use rustc::hir;
-use rustc::hir::def::{CtorOf, Def as HirDef};
+use rustc::hir::def::{CtorOf, Def as HirDef, DefKind as HirDefKind};
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevels;
@@ -710,39 +710,39 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: id_from_node_id(self.tcx.hir().hir_to_node_id(id), self),
                 })
             }
-            HirDef::Trait(def_id) if fn_type(path_seg) => {
+            HirDef::Def(HirDefKind::Trait, def_id) if fn_type(path_seg) => {
                 Some(Ref {
                     kind: RefKind::Type,
                     span,
                     ref_id: id_from_def_id(def_id),
                 })
             }
-            HirDef::Struct(def_id) |
-            HirDef::Variant(def_id, ..) |
-            HirDef::Union(def_id) |
-            HirDef::Enum(def_id) |
-            HirDef::TyAlias(def_id) |
-            HirDef::ForeignTy(def_id) |
-            HirDef::TraitAlias(def_id) |
-            HirDef::AssociatedExistential(def_id) |
-            HirDef::AssociatedTy(def_id) |
-            HirDef::Trait(def_id) |
-            HirDef::Existential(def_id) |
-            HirDef::TyParam(def_id) => {
+            HirDef::Def(HirDefKind::Struct, def_id) |
+            HirDef::Def(HirDefKind::Variant, def_id) |
+            HirDef::Def(HirDefKind::Union, def_id) |
+            HirDef::Def(HirDefKind::Enum, def_id) |
+            HirDef::Def(HirDefKind::TyAlias, def_id) |
+            HirDef::Def(HirDefKind::ForeignTy, def_id) |
+            HirDef::Def(HirDefKind::TraitAlias, def_id) |
+            HirDef::Def(HirDefKind::AssociatedExistential, def_id) |
+            HirDef::Def(HirDefKind::AssociatedTy, def_id) |
+            HirDef::Def(HirDefKind::Trait, def_id) |
+            HirDef::Def(HirDefKind::Existential, def_id) |
+            HirDef::Def(HirDefKind::TyParam, def_id) => {
                 Some(Ref {
                     kind: RefKind::Type,
                     span,
                     ref_id: id_from_def_id(def_id),
                 })
             }
-            HirDef::ConstParam(def_id) => {
+            HirDef::Def(HirDefKind::ConstParam, def_id) => {
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
                     ref_id: id_from_def_id(def_id),
                 })
             }
-            HirDef::Ctor(def_id, CtorOf::Struct, ..) => {
+            HirDef::Def(HirDefKind::Ctor(CtorOf::Struct, ..), def_id) => {
                 // This is a reference to a tuple struct where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct itself.
@@ -753,17 +753,17 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: id_from_def_id(parent_def_id),
                 })
             }
-            HirDef::Static(..) |
-            HirDef::Const(..) |
-            HirDef::AssociatedConst(..) |
-            HirDef::Ctor(..) => {
+            HirDef::Def(HirDefKind::Static, _) |
+            HirDef::Def(HirDefKind::Const, _) |
+            HirDef::Def(HirDefKind::AssociatedConst, _) |
+            HirDef::Def(HirDefKind::Ctor(..), _) => {
                 Some(Ref {
                     kind: RefKind::Variable,
                     span,
                     ref_id: id_from_def_id(def.def_id()),
                 })
             }
-            HirDef::Method(decl_id) => {
+            HirDef::Def(HirDefKind::Method, decl_id) => {
                 let def_id = if decl_id.is_local() {
                     let ti = self.tcx.associated_item(decl_id);
                     self.tcx
@@ -780,14 +780,14 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: id_from_def_id(def_id.unwrap_or(decl_id)),
                 })
             }
-            HirDef::Fn(def_id) => {
+            HirDef::Def(HirDefKind::Fn, def_id) => {
                 Some(Ref {
                     kind: RefKind::Function,
                     span,
                     ref_id: id_from_def_id(def_id),
                 })
             }
-            HirDef::Mod(def_id) => {
+            HirDef::Def(HirDefKind::Mod, def_id) => {
                 Some(Ref {
                     kind: RefKind::Mod,
                     span,
@@ -797,7 +797,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             HirDef::PrimTy(..) |
             HirDef::SelfTy(..) |
             HirDef::Label(..) |
-            HirDef::Macro(..) |
+            HirDef::Def(HirDefKind::Macro(..), _) |
             HirDef::ToolMod |
             HirDef::NonMacroAttr(..) |
             HirDef::SelfCtor(..) |

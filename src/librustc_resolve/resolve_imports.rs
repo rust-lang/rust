@@ -21,7 +21,7 @@ use rustc::lint::builtin::{
     UNUSED_IMPORTS,
 };
 use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::def::{self, PathResolution, Export};
+use rustc::hir::def::{self, DefKind, PathResolution, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
@@ -1224,7 +1224,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| if let Some(binding) = source_bindings[ns].get().ok() {
             let mut def = binding.def();
-            if let Def::Macro(def_id, _) = def {
+            if let Def::Def(DefKind::Macro(_), def_id) = def {
                 // `DefId`s from the "built-in macro crate" should not leak from resolve because
                 // later stages are not ready to deal with them and produce lots of ICEs. Replace
                 // them with `Def::Err` until some saner scheme is implemented for built-in macros.

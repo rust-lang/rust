@@ -10,7 +10,7 @@ pub use self::fold::TypeFoldable;
 
 use crate::hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
 use crate::hir::{HirId, Node};
-use crate::hir::def::{Def, CtorOf, CtorKind, ExportMap};
+use crate::hir::def::{Def, DefKind, CtorOf, CtorKind, ExportMap};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::svh::Svh;
 use rustc_macros::HashStable;
@@ -193,10 +193,10 @@ pub enum AssociatedKind {
 impl AssociatedItem {
     pub fn def(&self) -> Def {
         match self.kind {
-            AssociatedKind::Const => Def::AssociatedConst(self.def_id),
-            AssociatedKind::Method => Def::Method(self.def_id),
-            AssociatedKind::Type => Def::AssociatedTy(self.def_id),
-            AssociatedKind::Existential => Def::AssociatedExistential(self.def_id),
+            AssociatedKind::Const => Def::Def(DefKind::AssociatedConst, self.def_id),
+            AssociatedKind::Method => Def::Def(DefKind::Method, self.def_id),
+            AssociatedKind::Type => Def::Def(DefKind::AssociatedTy, self.def_id),
+            AssociatedKind::Existential => Def::Def(DefKind::AssociatedExistential, self.def_id),
         }
     }
 
@@ -2339,10 +2339,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDef {
         match def {
-            Def::Variant(vid) => self.variant_with_id(vid),
-            Def::Ctor(cid, ..) => self.variant_with_ctor_id(cid),
-            Def::Struct(..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) |
+            Def::Def(DefKind::Variant, vid) => self.variant_with_id(vid),
+            Def::Def(DefKind::Ctor(..), cid) => self.variant_with_ctor_id(cid),
+            Def::Def(DefKind::Struct, _) | Def::Def(DefKind::Union, _) |
+            Def::Def(DefKind::TyAlias, _) | Def::Def(DefKind::AssociatedTy, _) | Def::SelfTy(..) |
             Def::SelfCtor(..) => self.non_enum_variant(),
             _ => bug!("unexpected def {:?} in variant_of_def", def)
         }
@@ -2806,7 +2806,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
         } else {
             match self.describe_def(def_id).expect("no def for def-id") {
-                Def::AssociatedConst(_) | Def::Method(_) | Def::AssociatedTy(_) => true,
+                Def::Def(DefKind::AssociatedConst, _)
+                | Def::Def(DefKind::Method, _)
+                | Def::Def(DefKind::AssociatedTy, _) => true,
                 _ => false,
             }
         };
@@ -2952,19 +2954,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
         match def {
-            Def::Variant(did) => {
+            Def::Def(DefKind::Variant, did) => {
                 let enum_did = self.parent(did).unwrap();
                 self.adt_def(enum_did).variant_with_id(did)
             }
-            Def::Struct(did) | Def::Union(did) => {
+            Def::Def(DefKind::Struct, did) | Def::Def(DefKind::Union, did) => {
                 self.adt_def(did).non_enum_variant()
             }
-            Def::Ctor(variant_ctor_did, CtorOf::Variant, ..) => {
+            Def::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_did) => {
                 let variant_did = self.parent(variant_ctor_did).unwrap();
                 let enum_did = self.parent(variant_did).unwrap();
                 self.adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
             }
-            Def::Ctor(ctor_did, CtorOf::Struct, ..) => {
+            Def::Def(DefKind::Ctor(CtorOf::Struct, ..), ctor_did) => {
                 let struct_did = self.parent(ctor_did).expect("struct ctor has no parent");
                 self.adt_def(struct_did).non_enum_variant()
             }
@@ -3044,7 +3046,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         let item = if def_id.krate != LOCAL_CRATE {
-            if let Some(Def::Method(_)) = self.describe_def(def_id) {
+            if let Some(Def::Def(DefKind::Method, _)) = self.describe_def(def_id) {
                 Some(self.associated_item(def_id))
             } else {
                 None

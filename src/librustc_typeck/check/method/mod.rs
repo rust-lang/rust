@@ -15,7 +15,7 @@ use crate::namespace::Namespace;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;
-use rustc::hir::def::{CtorOf, Def};
+use rustc::hir::def::{CtorOf, Def, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -422,7 +422,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // them as well. It's ok to use the variant's id as a ctor id since an
                     // error will be reported on any use of such resolution anyway.
                     let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
-                    let def = Def::Ctor(ctor_def_id, CtorOf::Variant, variant_def.ctor_kind);
+                    let def = Def::Def(
+                        DefKind::Ctor(CtorOf::Variant, variant_def.ctor_kind),
+                        ctor_def_id,
+                    );
                     tcx.check_stability(def.def_id(), Some(expr_id), span);
                     return Ok(def);
                 }

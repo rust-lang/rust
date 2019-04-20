@@ -5,7 +5,7 @@ pub use self::StabilityLevel::*;
 
 use crate::lint::{self, Lint, in_derive_expansion};
 use crate::hir::{self, Item, Generics, StructField, Variant, HirId};
-use crate::hir::def::Def;
+use crate::hir::def::{Def, DefKind};
 use crate::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::ty::query::Providers;
@@ -526,9 +526,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
         // Check if `def_id` is a trait method.
         match self.describe_def(def_id) {
-            Some(Def::Method(_)) |
-            Some(Def::AssociatedTy(_)) |
-            Some(Def::AssociatedConst(_)) => {
+            Some(Def::Def(DefKind::Method, _)) |
+            Some(Def::Def(DefKind::AssociatedTy, _)) |
+            Some(Def::Def(DefKind::AssociatedConst, _)) => {
                 if let ty::TraitContainer(trait_def_id) = self.associated_item(def_id).container {
                     // Trait methods do not declare visibility (even
                     // for visibility info in cstore). Use containing
@@ -779,7 +779,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             // individually as it's possible to have a stable trait with unstable
             // items.
             hir::ItemKind::Impl(.., Some(ref t), _, ref impl_item_refs) => {
-                if let Def::Trait(trait_did) = t.path.def {
+                if let Def::Def(DefKind::Trait, trait_did) = t.path.def {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         let trait_item_def_id = self.tcx.associated_items(trait_did)

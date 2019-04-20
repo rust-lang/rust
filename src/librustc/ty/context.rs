@@ -10,7 +10,7 @@ use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
 use crate::middle;
 use crate::hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
-use crate::hir::def::{Def, Export};
+use crate::hir::def::{Def, DefKind, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
@@ -658,7 +658,7 @@ impl<'tcx> TypeckTables<'tcx> {
         }
 
         match self.type_dependent_defs().get(expr.hir_id) {
-            Some(&Def::Method(_)) => true,
+            Some(&Def::Def(DefKind::Method, _)) => true,
             _ => false
         }
     }

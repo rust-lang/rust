@@ -24,7 +24,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{
-    self, PathResolution, CtorKind, CtorOf, NonMacroAttrKind, DefMap, ImportMap, ExportMap
+    self, DefKind, PathResolution, CtorKind, CtorOf, NonMacroAttrKind, DefMap, ImportMap, ExportMap
 };
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
@@ -236,19 +236,19 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                     }
                     return err;
                 },
-                Def::TyParam(def_id) => {
+                Def::Def(DefKind::TyParam, def_id) => {
                     if let Some(span) = resolver.definitions.opt_span(def_id) {
                         err.span_label(span, "type parameter from outer function");
                     }
                 }
-                Def::ConstParam(def_id) => {
+                Def::Def(DefKind::ConstParam, def_id) => {
                     if let Some(span) = resolver.definitions.opt_span(def_id) {
                         err.span_label(span, "const parameter from outer function");
                     }
                 }
                 _ => {
                     bug!("GenericParamsFromOuterFunction should only be used with Def::SelfTy, \
-                         Def::TyParam");
+                         DefKind::TyParam");
                 }
             }
 
@@ -570,7 +570,7 @@ impl<'a> PathSource<'a> {
                 MacroNS => bug!("associated macro"),
             },
             PathSource::Expr(parent) => match parent.map(|p| &p.node) {
-                // "function" here means "anything callable" rather than `Def::Fn`,
+                // "function" here means "anything callable" rather than `DefKind::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(&ExprKind::Call(..)) => "function",
                 _ => "value",
@@ -581,50 +581,70 @@ impl<'a> PathSource<'a> {
     fn is_expected(self, def: Def) -> bool {
         match self {
             PathSource::Type => match def {
-                Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
-                Def::Trait(..) | Def::TraitAlias(..) | Def::TyAlias(..) |
-                Def::AssociatedTy(..) | Def::PrimTy(..) | Def::TyParam(..) |
-                Def::SelfTy(..) | Def::Existential(..) | Def::ForeignTy(..) => true,
+                Def::Def(DefKind::Struct, _)
+                | Def::Def(DefKind::Union, _)
+                | Def::Def(DefKind::Enum, _)
+                | Def::Def(DefKind::Trait, _)
+                | Def::Def(DefKind::TraitAlias, _)
+                | Def::Def(DefKind::TyAlias, _)
+                | Def::Def(DefKind::AssociatedTy, _)
+                | Def::PrimTy(..)
+                | Def::Def(DefKind::TyParam, _)
+                | Def::SelfTy(..)
+                | Def::Def(DefKind::Existential, _)
+                | Def::Def(DefKind::ForeignTy, _) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::No) => match def {
-                Def::Trait(..) => true,
+                Def::Def(DefKind::Trait, _) => true,
                 _ => false,
             },
             PathSource::Trait(AliasPossibility::Maybe) => match def {
-                Def::Trait(..) => true,
-                Def::TraitAlias(..) => true,
+                Def::Def(DefKind::Trait, _) => true,
+                Def::Def(DefKind::TraitAlias, _) => true,
                 _ => false,
             },
             PathSource::Expr(..) => match def {
-                Def::Ctor(_, _, CtorKind::Const) | Def::Ctor(_, _, CtorKind::Fn) |
-                Def::Const(..) | Def::Static(..) | Def::Local(..) | Def::Upvar(..) |
-                Def::Fn(..) | Def::Method(..) | Def::AssociatedConst(..) |
-                Def::SelfCtor(..) | Def::ConstParam(..) => true,
+                Def::Def(DefKind::Ctor(_, CtorKind::Const), _)
+                | Def::Def(DefKind::Ctor(_, CtorKind::Fn), _)
+                | Def::Def(DefKind::Const, _)
+                | Def::Def(DefKind::Static, _)
+                | Def::Local(..)
+                | Def::Upvar(..)
+                | Def::Def(DefKind::Fn, _)
+                | Def::Def(DefKind::Method, _)
+                | Def::Def(DefKind::AssociatedConst, _)
+                | Def::SelfCtor(..)
+                | Def::Def(DefKind::ConstParam, _) => true,
                 _ => false,
             },
             PathSource::Pat => match def {
-                Def::Ctor(_, _, CtorKind::Const) |
-                Def::Const(..) | Def::AssociatedConst(..) |
+                Def::Def(DefKind::Ctor(_, CtorKind::Const), _) |
+                Def::Def(DefKind::Const, _) | Def::Def(DefKind::AssociatedConst, _) |
                 Def::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::TupleStruct => match def {
-                Def::Ctor(_, _, CtorKind::Fn) | Def::SelfCtor(..) => true,
+                Def::Def(DefKind::Ctor(_, CtorKind::Fn), _) | Def::SelfCtor(..) => true,
                 _ => false,
             },
             PathSource::Struct => match def {
-                Def::Struct(..) | Def::Union(..) | Def::Variant(..) |
-                Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => true,
+                Def::Def(DefKind::Struct, _)
+                | Def::Def(DefKind::Union, _)
+                | Def::Def(DefKind::Variant, _)
+                | Def::Def(DefKind::TyAlias, _)
+                | Def::Def(DefKind::AssociatedTy, _)
+                | Def::SelfTy(..) => true,
                 _ => false,
             },
             PathSource::TraitItem(ns) => match def {
-                Def::AssociatedConst(..) | Def::Method(..) if ns == ValueNS => true,
-                Def::AssociatedTy(..) if ns == TypeNS => true,
+                Def::Def(DefKind::AssociatedConst, _)
+                | Def::Def(DefKind::Method, _) if ns == ValueNS => true,
+                Def::Def(DefKind::AssociatedTy, _) if ns == TypeNS => true,
                 _ => false,
             },
             PathSource::Visibility => match def {
-                Def::Mod(..) => true,
+                Def::Def(DefKind::Mod, _) => true,
                 _ => false,
             },
         }
@@ -1263,14 +1283,14 @@ impl<'a> ModuleData<'a> {
     // `self` resolves to the first module ancestor that `is_normal`.
     fn is_normal(&self) -> bool {
         match self.kind {
-            ModuleKind::Def(Def::Mod(_), _) => true,
+            ModuleKind::Def(Def::Def(DefKind::Mod, _), _) => true,
             _ => false,
         }
     }
 
     fn is_trait(&self) -> bool {
         match self.kind {
-            ModuleKind::Def(Def::Trait(_), _) => true,
+            ModuleKind::Def(Def::Def(DefKind::Trait, _), _) => true,
             _ => false,
         }
     }
@@ -1443,8 +1463,8 @@ impl<'a> NameBinding<'a> {
 
     fn is_variant(&self) -> bool {
         match self.kind {
-            NameBindingKind::Def(Def::Variant(..), _) |
-            NameBindingKind::Def(Def::Ctor(_, CtorOf::Variant, ..), _) => true,
+            NameBindingKind::Def(Def::Def(DefKind::Variant, _), _) |
+            NameBindingKind::Def(Def::Def(DefKind::Ctor(CtorOf::Variant, ..), _), _) => true,
             _ => false,
         }
     }
@@ -1457,7 +1477,7 @@ impl<'a> NameBinding<'a> {
                 }, ..
             } => true,
             NameBindingKind::Module(
-                &ModuleData { kind: ModuleKind::Def(Def::Mod(def_id), _), .. }
+                &ModuleData { kind: ModuleKind::Def(Def::Def(DefKind::Mod, def_id), _), .. }
             ) => def_id.index == CRATE_DEF_INDEX,
             _ => false,
         }
@@ -1479,21 +1499,23 @@ impl<'a> NameBinding<'a> {
 
     fn is_importable(&self) -> bool {
         match self.def() {
-            Def::AssociatedConst(..) | Def::Method(..) | Def::AssociatedTy(..) => false,
+            Def::Def(DefKind::AssociatedConst, _)
+            | Def::Def(DefKind::Method, _)
+            | Def::Def(DefKind::AssociatedTy, _) => false,
             _ => true,
         }
     }
 
     fn is_macro_def(&self) -> bool {
         match self.kind {
-            NameBindingKind::Def(Def::Macro(..), _) => true,
+            NameBindingKind::Def(Def::Def(DefKind::Macro(..), _), _) => true,
             _ => false,
         }
     }
 
     fn macro_kind(&self) -> Option<MacroKind> {
         match self.def() {
-            Def::Macro(_, kind) => Some(kind),
+            Def::Def(DefKind::Macro(kind), _) => Some(kind),
             Def::NonMacroAttr(..) => Some(MacroKind::Attr),
             _ => None,
         }
@@ -1915,7 +1937,10 @@ impl<'a> Resolver<'a> {
                arenas: &'a ResolverArenas<'a>)
                -> Resolver<'a> {
         let root_def_id = DefId::local(CRATE_DEF_INDEX);
-        let root_module_kind = ModuleKind::Def(Def::Mod(root_def_id), keywords::Invalid.name());
+        let root_module_kind = ModuleKind::Def(
+            Def::Def(DefKind::Mod, root_def_id),
+            keywords::Invalid.name(),
+        );
         let graph_root = arenas.alloc_module(ModuleData {
             no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
             ..ModuleData::new(None, root_module_kind, root_def_id, Mark::root(), krate.span)
@@ -2663,8 +2688,11 @@ impl<'a> Resolver<'a> {
                             }
                             seen_bindings.entry(ident).or_insert(param.ident.span);
 
-                        // Plain insert (no renaming).
-                        let def = Def::TyParam(self.definitions.local_def_id(param.id));
+                            // Plain insert (no renaming).
+                            let def = Def::Def(
+                                DefKind::TyParam,
+                                self.definitions.local_def_id(param.id),
+                            );
                             function_type_rib.bindings.insert(ident, def);
                             self.record_def(param.id, PathResolution::new(def));
                         }
@@ -2682,7 +2710,10 @@ impl<'a> Resolver<'a> {
                             }
                             seen_bindings.entry(ident).or_insert(param.ident.span);
 
-                            let def = Def::ConstParam(self.definitions.local_def_id(param.id));
+                            let def = Def::Def(
+                                DefKind::ConstParam,
+                                self.definitions.local_def_id(param.id),
+                            );
                             function_value_rib.bindings.insert(ident, def);
                             self.record_def(param.id, PathResolution::new(def));
                         }
@@ -3175,14 +3206,16 @@ impl<'a> Resolver<'a> {
                         let is_syntactic_ambiguity = opt_pat.is_none() &&
                             bmode == BindingMode::ByValue(Mutability::Immutable);
                         match def {
-                            Def::Ctor(_, _, CtorKind::Const) |
-                            Def::Const(..) if is_syntactic_ambiguity => {
+                            Def::Def(DefKind::Ctor(_, CtorKind::Const), _) |
+                            Def::Def(DefKind::Const, _) if is_syntactic_ambiguity => {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
                                 self.record_use(ident, ValueNS, binding.unwrap(), false);
                                 Some(PathResolution::new(def))
                             }
-                            Def::Ctor(..) | Def::Const(..) | Def::Static(..) => {
+                            Def::Def(DefKind::Ctor(..), _)
+                            | Def::Def(DefKind::Const, _)
+                            | Def::Def(DefKind::Static, _) => {
                                 // This is unambiguously a fresh binding, either syntactically
                                 // (e.g., `IDENT @ PAT` or `ref IDENT`) or because `IDENT` resolves
                                 // to something unusable as a pattern (e.g., constructor function),
@@ -3196,7 +3229,7 @@ impl<'a> Resolver<'a> {
                                 );
                                 None
                             }
-                            Def::Fn(..) | Def::Err => {
+                            Def::Def(DefKind::Fn, _) | Def::Err => {
                                 // These entities are explicitly allowed
                                 // to be shadowed by fresh bindings.
                                 None
@@ -3310,7 +3343,7 @@ impl<'a> Resolver<'a> {
                     // Add a temporary hack to smooth the transition to new struct ctor
                     // visibility rules. See #38932 for more details.
                     let mut res = None;
-                    if let Def::Struct(def_id) = resolution.base_def() {
+                    if let Def::Def(DefKind::Struct, def_id) = resolution.base_def() {
                         if let Some((ctor_def, ctor_vis))
                                 = self.struct_constructors.get(&def_id).cloned() {
                             if is_expected(ctor_def) && self.is_accessible(ctor_vis) {
@@ -3501,9 +3534,10 @@ impl<'a> Resolver<'a> {
             self.macro_use_prelude.get(&path[0].ident.name).cloned()
                                   .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang)) {
             // Return some dummy definition, it's enough for error reporting.
-            return Some(
-                PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
-            );
+            return Some(PathResolution::new(Def::Def(
+                DefKind::Macro(MacroKind::Bang),
+                DefId::local(CRATE_DEF_INDEX),
+            )));
         }
         fin_res
     }
@@ -3536,7 +3570,7 @@ impl<'a> Resolver<'a> {
                 // trait to resolve.  In that case, we leave the `B`
                 // segment to be resolved by type-check.
                 return Some(PathResolution::with_unresolved_segments(
-                    Def::Mod(DefId::local(CRATE_DEF_INDEX)), path.len()
+                    Def::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX)), path.len()
                 ));
             }
 
@@ -3862,7 +3896,9 @@ impl<'a> Resolver<'a> {
                         _ => None,
                     };
                     let (label, suggestion) = if module_def == self.graph_root.def() {
-                        let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
+                        let is_mod = |def| {
+                            match def { Def::Def(DefKind::Mod, _) => true, _ => false }
+                        };
                         let mut candidates =
                             self.lookup_import_candidates(ident, TypeNS, is_mod);
                         candidates.sort_by_cached_key(|c| {
@@ -4059,7 +4095,7 @@ impl<'a> Resolver<'a> {
                      return Def::Err;
                 }
             }
-            Def::TyParam(..) | Def::SelfTy(..) => {
+            Def::Def(DefKind::TyParam, _) | Def::SelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | TraitOrImplItemRibKind | ClosureRibKind(..) |
@@ -4081,7 +4117,7 @@ impl<'a> Resolver<'a> {
                     }
                 }
             }
-            Def::ConstParam(..) => {
+            Def::Def(DefKind::ConstParam, _) => {
                 let mut ribs = ribs.iter().peekable();
                 if let Some(Rib { kind: FnItemRibKind, .. }) = ribs.peek() {
                     // When declaring const parameters inside function signatures, the first rib
@@ -4132,7 +4168,7 @@ impl<'a> Resolver<'a> {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.def_map.get(&node_id) {
                     match resolution.base_def() {
-                        Def::Struct(did) | Def::Union(did)
+                        Def::Def(DefKind::Struct, did) | Def::Def(DefKind::Union, did)
                                 if resolution.unresolved_segments() == 0 => {
                             if let Some(field_names) = self.field_names.get(&did) {
                                 if field_names.iter().any(|&field_name| ident.name == field_name) {
@@ -4223,10 +4259,13 @@ impl<'a> Resolver<'a> {
                                 self.crate_loader
                                     .maybe_process_path_extern(ident.name, ident.span)
                                     .and_then(|crate_id| {
-                                        let crate_mod = Def::Mod(DefId {
-                                            krate: crate_id,
-                                            index: CRATE_DEF_INDEX,
-                                        });
+                                        let crate_mod = Def::Def(
+                                            DefKind::Mod,
+                                            DefId {
+                                                krate: crate_id,
+                                                index: CRATE_DEF_INDEX,
+                                            },
+                                        );
 
                                         if !ident.name.is_gensymed() && filter_fn(crate_mod) {
                                             Some(TypoSuggestion {
@@ -4566,8 +4605,8 @@ impl<'a> Resolver<'a> {
             module.for_each_child(|name, ns, binding| {
                 if ns != TypeNS { return }
                 match binding.def() {
-                    Def::Trait(_) |
-                    Def::TraitAlias(_) => collected_traits.push((name, binding)),
+                    Def::Def(DefKind::Trait, _) |
+                    Def::Def(DefKind::TraitAlias, _) => collected_traits.push((name, binding)),
                     _ => (),
                 }
             });
@@ -4602,7 +4641,7 @@ impl<'a> Resolver<'a> {
                     let trait_def_id = module.def_id().unwrap();
                     found_traits.push(TraitCandidate { def_id: trait_def_id, import_id });
                 }
-            } else if let Def::TraitAlias(_) = binding.def() {
+            } else if let Def::Def(DefKind::TraitAlias, _) = binding.def() {
                 // For now, just treat all trait aliases as possible candidates, since we don't
                 // know if the ident is somewhere in the transitive bounds.
 
@@ -4677,7 +4716,7 @@ impl<'a> Resolver<'a> {
                         // outside crate private modules => no need to check this)
                         if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                             let did = match def {
-                                Def::Ctor(did, ..) => self.parent(did),
+                                Def::Def(DefKind::Ctor(..), did) => self.parent(did),
                                 _ => def.opt_def_id(),
                             };
                             candidates.push(ImportSuggestion { did, path });
@@ -4793,7 +4832,7 @@ impl<'a> Resolver<'a> {
     }
 
     fn collect_enum_variants(&mut self, enum_def: Def) -> Option<Vec<Path>> {
-        if let Def::Enum(..) = enum_def {} else {
+        if let Def::Def(DefKind::Enum, _) = enum_def {} else {
             panic!("Non-enum def passed to collect_enum_variants: {:?}", enum_def)
         }
 
@@ -4802,7 +4841,7 @@ impl<'a> Resolver<'a> {
 
             let mut variants = Vec::new();
             enum_module.for_each_child_stable(|ident, _, name_binding| {
-                if let Def::Variant(..) = name_binding.def() {
+                if let Def::Def(DefKind::Variant, _) = name_binding.def() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident));
                     variants.push(Path {
@@ -5050,8 +5089,8 @@ impl<'a> Resolver<'a> {
         }
 
         let container = match parent.kind {
-            ModuleKind::Def(Def::Mod(_), _) => "module",
-            ModuleKind::Def(Def::Trait(_), _) => "trait",
+            ModuleKind::Def(Def::Def(DefKind::Mod, _), _) => "module",
+            ModuleKind::Def(Def::Def(DefKind::Trait, _), _) => "trait",
             ModuleKind::Block(..) => "block",
             _ => "enum",
         };

@@ -8,7 +8,7 @@ use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
                          CrateNum, DefIndexAddressSpace};
-use rustc::hir::def::{self, NonMacroAttrKind};
+use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use rustc::{bug, span_bug};
@@ -179,7 +179,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let kind = ext.kind();
         self.macro_map.insert(def_id, ext);
         let binding = self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
+            kind: NameBindingKind::Def(Def::Def(DefKind::Macro(kind), def_id), false),
             ambiguity: None,
             span: DUMMY_SP,
             vis: ty::Visibility::Public,
@@ -218,7 +218,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             Err(determinacy) => return Err(determinacy),
         };
 
-        if let Def::Macro(def_id, _) = def {
+        if let Def::Def(DefKind::Macro(_), def_id) = def {
             if after_derive {
                 self.session.span_err(invoc.span(),
                                       "macro attributes must be placed before `#[derive]`");
@@ -297,7 +297,7 @@ impl<'a> Resolver<'a> {
         let def = def?;
 
         match def {
-            Def::Macro(def_id, macro_kind) => {
+            Def::Def(DefKind::Macro(macro_kind), def_id) => {
                 self.unused_macros.remove(&def_id);
                 if macro_kind == MacroKind::ProcMacroStub {
                     let msg = "can't use a procedural macro from the same crate that defines it";
@@ -341,7 +341,7 @@ impl<'a> Resolver<'a> {
             Def::Err => {
                 return Err(Determinacy::Determined);
             }
-            _ => panic!("expected `Def::Macro` or `Def::NonMacroAttr`"),
+            _ => panic!("expected `DefKind::Macro` or `Def::NonMacroAttr`"),
         }
 
         Ok((def, self.get_macro(def)))
@@ -1028,7 +1028,7 @@ impl<'a> Resolver<'a> {
         // Then check modules.
         }).or_else(|| {
             let is_macro = |def| {
-                if let Def::Macro(_, def_kind) = def {
+                if let Def::Def(DefKind::Macro(def_kind), _) = def {
                     def_kind == kind
                 } else {
                     false
@@ -1107,7 +1107,7 @@ impl<'a> Resolver<'a> {
         if def.legacy {
             let ident = ident.modern();
             self.macro_names.insert(ident);
-            let def = Def::Macro(def_id, MacroKind::Bang);
+            let def = Def::Def(DefKind::Macro(MacroKind::Bang), def_id);
             let is_macro_export = attr::contains_name(&item.attrs, "macro_export");
             let vis = if is_macro_export {
                 ty::Visibility::Public
@@ -1133,7 +1133,7 @@ impl<'a> Resolver<'a> {
             }
         } else {
             let module = self.current_module;
-            let def = Def::Macro(def_id, MacroKind::Bang);
+            let def = Def::Def(DefKind::Macro(MacroKind::Bang), def_id);
             let vis = self.resolve_visibility(&item.vis);
             if vis != ty::Visibility::Public {
                 self.unused_macros.insert(def_id);

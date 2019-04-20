@@ -7,7 +7,7 @@
 
 use crate::hir::{CodegenFnAttrs, CodegenFnAttrFlags};
 use crate::hir::Node;
-use crate::hir::def::Def;
+use crate::hir::def::{Def, DefKind};
 use crate::hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
 use crate::ty::{self, TyCtxt};
@@ -117,7 +117,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
                             // If this path leads to a constant, then we need to
                             // recurse into the constant to continue finding
                             // items that are reachable.
-                            Def::Const(..) | Def::AssociatedConst(..) => {
+                            Def::Def(DefKind::Const, _) | Def::Def(DefKind::AssociatedConst, _) => {
                                 self.worklist.push(hir_id);
                             }
 
@@ -357,7 +357,7 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
                 self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
 
                 let trait_def_id = match trait_ref.path.def {
-                    Def::Trait(def_id) => def_id,
+                    Def::Def(DefKind::Trait, def_id) => def_id,
                     _ => unreachable!()
                 };
 

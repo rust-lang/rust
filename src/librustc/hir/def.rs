@@ -11,12 +11,12 @@ use std::fmt::Debug;
 
 use self::Namespace::*;
 
-/// Encodes if a `Def::Ctor` is the constructor of an enum variant or a struct.
+/// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
 pub enum CtorOf {
-    /// This `Def::Ctor` is a synthesized constructor of a tuple or unit struct.
+    /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit struct.
     Struct,
-    /// This `Def::Ctor` is a synthesized constructor of a tuple or unit variant.
+    /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit variant.
     Variant,
 }
 
@@ -45,41 +45,52 @@ pub enum NonMacroAttrKind {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
-pub enum Def<Id = hir::HirId> {
+pub enum DefKind {
     // Type namespace
-    Mod(DefId),
-    /// `DefId` refers to the struct itself, `Def::Ctor` refers to its constructor if it exists.
-    Struct(DefId),
-    Union(DefId),
-    Enum(DefId),
-    /// `DefId` refers to the variant itself, `Def::Ctor` refers to its constructor if it exists.
-    Variant(DefId),
-    Trait(DefId),
+    Mod,
+    /// Refers to the struct itself, `DefKind::Ctor` refers to its constructor if it exists.
+    Struct,
+    Union,
+    Enum,
+    /// Refers to the variant itself, `DefKind::Ctor` refers to its constructor if it exists.
+    Variant,
+    Trait,
     /// `existential type Foo: Bar;`
-    Existential(DefId),
+    Existential,
     /// `type Foo = Bar;`
-    TyAlias(DefId),
-    ForeignTy(DefId),
-    TraitAlias(DefId),
-    AssociatedTy(DefId),
+    TyAlias,
+    ForeignTy,
+    TraitAlias,
+    AssociatedTy,
     /// `existential type Foo: Bar;`
-    AssociatedExistential(DefId),
+    AssociatedExistential,
+    TyParam,
+
+    // Value namespace
+    Fn,
+    Const,
+    ConstParam,
+    Static,
+    /// Refers to the struct or enum variant's constructor.
+    Ctor(CtorOf, CtorKind),
+    Method,
+    AssociatedConst,
+
+    // Macro namespace
+    Macro(MacroKind),
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
+pub enum Def<Id = hir::HirId> {
+    Def(DefKind, DefId),
+
+    // Type namespace
     PrimTy(hir::PrimTy),
-    TyParam(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
     ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
-    Fn(DefId),
-    Const(DefId),
-    ConstParam(DefId),
-    Static(DefId),
-    /// `DefId` refers to the struct or enum variant's constructor.
-    Ctor(DefId, CtorOf, CtorKind),
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
-    Method(DefId),
-    AssociatedConst(DefId),
-
     Local(Id),
     Upvar(Id,           // `HirId` of closed over local
           usize,        // index in the `freevars` list of the closure
@@ -87,10 +98,9 @@ pub enum Def<Id = hir::HirId> {
     Label(ast::NodeId),
 
     // Macro namespace
-    Macro(DefId, MacroKind),
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
 
-    // Both namespaces
+    // All namespaces
     Err,
 }
 
@@ -291,15 +301,7 @@ impl<Id> Def<Id> {
     /// Return `Some(..)` with the `DefId` of this `Def` if it has a id, else `None`.
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Fn(id) | Def::Mod(id) | Def::Static(id) |
-            Def::Variant(id) | Def::Ctor(id, ..) | Def::Enum(id) |
-            Def::TyAlias(id) | Def::TraitAlias(id) |
-            Def::AssociatedTy(id) | Def::TyParam(id) | Def::ConstParam(id) | Def::Struct(id) |
-            Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) => {
-                Some(id)
-            }
+            Def::Def(_, id) => Some(id),
 
             Def::Local(..) |
             Def::Upvar(..) |
@@ -318,7 +320,7 @@ impl<Id> Def<Id> {
     /// Return the `DefId` of this `Def` if it represents a module.
     pub fn mod_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Mod(id) => Some(id),
+            Def::Def(DefKind::Mod, id) => Some(id),
             _ => None,
         }
     }
@@ -326,39 +328,39 @@ impl<Id> Def<Id> {
     /// A human readable name for the def kind ("function", "module", etc.).
     pub fn kind_name(&self) -> &'static str {
         match *self {
-            Def::Fn(..) => "function",
-            Def::Mod(..) => "module",
-            Def::Static(..) => "static",
-            Def::Enum(..) => "enum",
-            Def::Variant(..) => "variant",
-            Def::Ctor(_, CtorOf::Variant, CtorKind::Fn) => "tuple variant",
-            Def::Ctor(_, CtorOf::Variant, CtorKind::Const) => "unit variant",
-            Def::Ctor(_, CtorOf::Variant, CtorKind::Fictive) => "struct variant",
-            Def::Struct(..) => "struct",
-            Def::Ctor(_, CtorOf::Struct, CtorKind::Fn) => "tuple struct",
-            Def::Ctor(_, CtorOf::Struct, CtorKind::Const) => "unit struct",
-            Def::Ctor(_, CtorOf::Struct, CtorKind::Fictive) =>
+            Def::Def(DefKind::Fn, _) => "function",
+            Def::Def(DefKind::Mod, _) => "module",
+            Def::Def(DefKind::Static, _) => "static",
+            Def::Def(DefKind::Enum, _) => "enum",
+            Def::Def(DefKind::Variant, _) => "variant",
+            Def::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), _) => "tuple variant",
+            Def::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Const), _) => "unit variant",
+            Def::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fictive), _) => "struct variant",
+            Def::Def(DefKind::Struct, _) => "struct",
+            Def::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _) => "tuple struct",
+            Def::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Const), _) => "unit struct",
+            Def::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fictive), _) =>
                 bug!("impossible struct constructor"),
-            Def::Existential(..) => "existential type",
-            Def::TyAlias(..) => "type alias",
-            Def::TraitAlias(..) => "trait alias",
-            Def::AssociatedTy(..) => "associated type",
-            Def::AssociatedExistential(..) => "associated existential type",
+            Def::Def(DefKind::Existential, _) => "existential type",
+            Def::Def(DefKind::TyAlias, _) => "type alias",
+            Def::Def(DefKind::TraitAlias, _) => "trait alias",
+            Def::Def(DefKind::AssociatedTy, _) => "associated type",
+            Def::Def(DefKind::AssociatedExistential, _) => "associated existential type",
             Def::SelfCtor(..) => "self constructor",
-            Def::Union(..) => "union",
-            Def::Trait(..) => "trait",
-            Def::ForeignTy(..) => "foreign type",
-            Def::Method(..) => "method",
-            Def::Const(..) => "constant",
-            Def::AssociatedConst(..) => "associated constant",
-            Def::TyParam(..) => "type parameter",
-            Def::ConstParam(..) => "const parameter",
+            Def::Def(DefKind::Union, _) => "union",
+            Def::Def(DefKind::Trait, _) => "trait",
+            Def::Def(DefKind::ForeignTy, _) => "foreign type",
+            Def::Def(DefKind::Method, _) => "method",
+            Def::Def(DefKind::Const, _) => "constant",
+            Def::Def(DefKind::AssociatedConst, _) => "associated constant",
+            Def::Def(DefKind::TyParam, _) => "type parameter",
+            Def::Def(DefKind::ConstParam, _) => "const parameter",
             Def::PrimTy(..) => "builtin type",
             Def::Local(..) => "local variable",
             Def::Upvar(..) => "closure capture",
             Def::Label(..) => "label",
             Def::SelfTy(..) => "self type",
-            Def::Macro(.., macro_kind) => macro_kind.descr(),
+            Def::Def(DefKind::Macro(macro_kind), _) => macro_kind.descr(),
             Def::ToolMod => "tool module",
             Def::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Def::Err => "unresolved item",
@@ -368,36 +370,21 @@ impl<Id> Def<Id> {
     /// An English article for the def.
     pub fn article(&self) -> &'static str {
         match *self {
-            Def::AssociatedTy(..) | Def::AssociatedConst(..) | Def::AssociatedExistential(..) |
-            Def::Enum(..) | Def::Existential(..) | Def::Err => "an",
-            Def::Macro(.., macro_kind) => macro_kind.article(),
+            Def::Def(DefKind::AssociatedTy, _)
+            | Def::Def(DefKind::AssociatedConst, _)
+            | Def::Def(DefKind::AssociatedExistential, _)
+            | Def::Def(DefKind::Enum, _)
+            | Def::Def(DefKind::Existential, _)
+            | Def::Err => "an",
+            Def::Def(DefKind::Macro(macro_kind), _) => macro_kind.article(),
             _ => "a",
         }
     }
 
     pub fn map_id<R>(self, mut map: impl FnMut(Id) -> R) -> Def<R> {
         match self {
-            Def::Fn(id) => Def::Fn(id),
-            Def::Mod(id) => Def::Mod(id),
-            Def::Static(id) => Def::Static(id),
-            Def::Enum(id) => Def::Enum(id),
-            Def::Variant(id) => Def::Variant(id),
-            Def::Ctor(a, b, c) => Def::Ctor(a, b, c),
-            Def::Struct(id) => Def::Struct(id),
-            Def::Existential(id) => Def::Existential(id),
-            Def::TyAlias(id) => Def::TyAlias(id),
-            Def::TraitAlias(id) => Def::TraitAlias(id),
-            Def::AssociatedTy(id) => Def::AssociatedTy(id),
-            Def::AssociatedExistential(id) => Def::AssociatedExistential(id),
+            Def::Def(kind, id) => Def::Def(kind, id),
             Def::SelfCtor(id) => Def::SelfCtor(id),
-            Def::Union(id) => Def::Union(id),
-            Def::Trait(id) => Def::Trait(id),
-            Def::ForeignTy(id) => Def::ForeignTy(id),
-            Def::Method(id) => Def::Method(id),
-            Def::Const(id) => Def::Const(id),
-            Def::AssociatedConst(id) => Def::AssociatedConst(id),
-            Def::TyParam(id) => Def::TyParam(id),
-            Def::ConstParam(id) => Def::ConstParam(id),
             Def::PrimTy(id) => Def::PrimTy(id),
             Def::Local(id) => Def::Local(map(id)),
             Def::Upvar(id, index, closure) => Def::Upvar(
@@ -407,7 +394,6 @@ impl<Id> Def<Id> {
             ),
             Def::Label(id) => Def::Label(id),
             Def::SelfTy(a, b) => Def::SelfTy(a, b),
-            Def::Macro(id, macro_kind) => Def::Macro(id, macro_kind),
             Def::ToolMod => Def::ToolMod,
             Def::NonMacroAttr(attr_kind) => Def::NonMacroAttr(attr_kind),
             Def::Err => Def::Err,

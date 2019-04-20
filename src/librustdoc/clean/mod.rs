@@ -19,7 +19,7 @@ use rustc::middle::lang_items;
 use rustc::middle::stability;
 use rustc::mir::interpret::{GlobalId, ConstValue};
 use rustc::hir::{self, HirVec};
-use rustc::hir::def::{self, Def, CtorKind};
+use rustc::hir::def::{self, Def, DefKind, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::ty::subst::{InternalSubsts, SubstsRef, UnpackedKind};
 use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
@@ -258,7 +258,7 @@ impl Clean<ExternalCrate> for CrateNum {
         // duplicately for the same primitive. This is handled later on when
         // rendering by delegating everything to a hash map.
         let as_primitive = |def: Def| {
-            if let Def::Mod(def_id) = def {
+            if let Def::Def(DefKind::Mod, def_id) = def {
                 let attrs = cx.tcx.get_attrs(def_id).clean(cx);
                 let mut prim = None;
                 for attr in attrs.lists("doc") {
@@ -281,7 +281,10 @@ impl Clean<ExternalCrate> for CrateNum {
                 let item = cx.tcx.hir().expect_item_by_hir_id(id.id);
                 match item.node {
                     hir::ItemKind::Mod(_) => {
-                        as_primitive(Def::Mod(cx.tcx.hir().local_def_id_from_hir_id(id.id)))
+                        as_primitive(Def::Def(
+                            DefKind::Mod,
+                            cx.tcx.hir().local_def_id_from_hir_id(id.id),
+                        ))
                     }
                     hir::ItemKind::Use(ref path, hir::UseKind::Single)
                     if item.vis.node.is_pub() => {
@@ -299,7 +302,7 @@ impl Clean<ExternalCrate> for CrateNum {
         };
 
         let as_keyword = |def: Def| {
-            if let Def::Mod(def_id) = def {
+            if let Def::Def(DefKind::Mod, def_id) = def {
                 let attrs = cx.tcx.get_attrs(def_id).clean(cx);
                 let mut keyword = None;
                 for attr in attrs.lists("doc") {
@@ -323,7 +326,10 @@ impl Clean<ExternalCrate> for CrateNum {
                 let item = cx.tcx.hir().expect_item_by_hir_id(id.id);
                 match item.node {
                     hir::ItemKind::Mod(_) => {
-                        as_keyword(Def::Mod(cx.tcx.hir().local_def_id_from_hir_id(id.id)))
+                        as_keyword(Def::Def(
+                            DefKind::Mod,
+                            cx.tcx.hir().local_def_id_from_hir_id(id.id),
+                        ))
                     }
                     hir::ItemKind::Use(ref path, hir::UseKind::Single)
                     if item.vis.node.is_pub() => {
@@ -2785,14 +2791,14 @@ impl Clean<Type> for hir::Ty {
                     return new_ty;
                 }
 
-                if let Def::TyParam(did) = path.def {
+                if let Def::Def(DefKind::TyParam, did) = path.def {
                     if let Some(bounds) = cx.impl_trait_bounds.borrow_mut().remove(&did) {
                         return ImplTrait(bounds);
                     }
                 }
 
                 let mut alias = None;
-                if let Def::TyAlias(def_id) = path.def {
+                if let Def::Def(DefKind::TyAlias, def_id) = path.def {
                     // Substitute private type aliases
                     if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
                         if !cx.renderinfo.borrow().access_levels.is_exported(def_id) {
@@ -2835,8 +2841,10 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Type { ref default, .. } => {
                                     let ty_param_def =
-                                        Def::TyParam(
-                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id));
+                                        Def::Def(
+                                            DefKind::TyParam,
+                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id),
+                                        );
                                     let mut j = 0;
                                     let type_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2860,8 +2868,10 @@ impl Clean<Type> for hir::Ty {
                                 }
                                 hir::GenericParamKind::Const { .. } => {
                                     let const_param_def =
-                                        Def::ConstParam(
-                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id));
+                                        Def::Def(
+                                            DefKind::ConstParam,
+                                            cx.tcx.hir().local_def_id_from_hir_id(param.hir_id),
+                                        );
                                     let mut j = 0;
                                     let const_ = generic_args.args.iter().find_map(|arg| {
                                         match arg {
@@ -2893,7 +2903,10 @@ impl Clean<Type> for hir::Ty {
                 segments.pop();
                 let trait_path = hir::Path {
                     span: p.span,
-                    def: Def::Trait(cx.tcx.associated_item(p.def.def_id()).container.id()),
+                    def: Def::Def(
+                        DefKind::Trait,
+                        cx.tcx.associated_item(p.def.def_id()).container.id(),
+                    ),
                     segments: segments.into(),
                 };
                 Type::QPath {
@@ -2906,7 +2919,7 @@ impl Clean<Type> for hir::Ty {
                 let mut def = Def::Err;
                 let ty = hir_ty_to_ty(cx.tcx, self);
                 if let ty::Projection(proj) = ty.sty {
-                    def = Def::Trait(proj.trait_ref(cx.tcx).def_id);
+                    def = Def::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
                 }
                 let trait_path = hir::Path {
                     span: self.span,
@@ -3898,10 +3911,13 @@ impl Clean<Vec<Item>> for doctree::ExternCrate {
         if please_inline {
             let mut visited = FxHashSet::default();
 
-            let def = Def::Mod(DefId {
-                krate: self.cnum,
-                index: CRATE_DEF_INDEX,
-            });
+            let def = Def::Def(
+                DefKind::Mod,
+                DefId {
+                    krate: self.cnum,
+                    index: CRATE_DEF_INDEX,
+                },
+            );
 
             if let Some(items) = inline::try_inline(cx, def, self.name, &mut visited) {
                 return items;
@@ -3951,10 +3967,12 @@ impl Clean<Vec<Item>> for doctree::Import {
             let name = self.name;
             if !please_inline {
                 match path.def {
-                    Def::Mod(did) => if !did.is_local() && did.index == CRATE_DEF_INDEX {
-                        // if we're `pub use`ing an extern crate root, don't inline it unless we
-                        // were specifically asked for it
-                        denied = true;
+                    Def::Def(DefKind::Mod, did) => {
+                        if !did.is_local() && did.index == CRATE_DEF_INDEX {
+                            // if we're `pub use`ing an extern crate root, don't inline it unless we
+                            // were specifically asked for it
+                            denied = true;
+                        }
                     }
                     _ => {}
                 }
@@ -4157,10 +4175,12 @@ fn resolve_type(cx: &DocContext<'_>,
         Def::SelfTy(..) if path.segments.len() == 1 => {
             return Generic(keywords::SelfUpper.name().to_string());
         }
-        Def::TyParam(..) if path.segments.len() == 1 => {
+        Def::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
             return Generic(format!("{:#}", path));
         }
-        Def::SelfTy(..) | Def::TyParam(..) | Def::AssociatedTy(..) => true,
+        Def::SelfTy(..)
+        | Def::Def(DefKind::TyParam, _)
+        | Def::Def(DefKind::AssociatedTy, _) => true,
         _ => false,
     };
     let did = register_def(&*cx, path.def);
@@ -4171,25 +4191,25 @@ pub fn register_def(cx: &DocContext<'_>, def: Def) -> DefId {
     debug!("register_def({:?})", def);
 
     let (did, kind) = match def {
-        Def::Fn(i) => (i, TypeKind::Function),
-        Def::TyAlias(i) => (i, TypeKind::Typedef),
-        Def::Enum(i) => (i, TypeKind::Enum),
-        Def::Trait(i) => (i, TypeKind::Trait),
-        Def::Struct(i) => (i, TypeKind::Struct),
-        Def::Union(i) => (i, TypeKind::Union),
-        Def::Mod(i) => (i, TypeKind::Module),
-        Def::ForeignTy(i) => (i, TypeKind::Foreign),
-        Def::Const(i) => (i, TypeKind::Const),
-        Def::Static(i) => (i, TypeKind::Static),
-        Def::Variant(i) => (cx.tcx.parent(i).expect("cannot get parent def id"),
+        Def::Def(DefKind::Fn, i) => (i, TypeKind::Function),
+        Def::Def(DefKind::TyAlias, i) => (i, TypeKind::Typedef),
+        Def::Def(DefKind::Enum, i) => (i, TypeKind::Enum),
+        Def::Def(DefKind::Trait, i) => (i, TypeKind::Trait),
+        Def::Def(DefKind::Struct, i) => (i, TypeKind::Struct),
+        Def::Def(DefKind::Union, i) => (i, TypeKind::Union),
+        Def::Def(DefKind::Mod, i) => (i, TypeKind::Module),
+        Def::Def(DefKind::ForeignTy, i) => (i, TypeKind::Foreign),
+        Def::Def(DefKind::Const, i) => (i, TypeKind::Const),
+        Def::Def(DefKind::Static, i) => (i, TypeKind::Static),
+        Def::Def(DefKind::Variant, i) => (cx.tcx.parent(i).expect("cannot get parent def id"),
                             TypeKind::Enum),
-        Def::Macro(i, mac_kind) => match mac_kind {
+        Def::Def(DefKind::Macro(mac_kind), i) => match mac_kind {
             MacroKind::Bang => (i, TypeKind::Macro),
             MacroKind::Attr => (i, TypeKind::Attr),
             MacroKind::Derive => (i, TypeKind::Derive),
             MacroKind::ProcMacroStub => unreachable!(),
         },
-        Def::TraitAlias(i) => (i, TypeKind::TraitAlias),
+        Def::Def(DefKind::TraitAlias, i) => (i, TypeKind::TraitAlias),
         Def::SelfTy(Some(def_id), _) => (def_id, TypeKind::Trait),
         Def::SelfTy(_, Some(impl_def_id)) => return impl_def_id,
         _ => return def.def_id()
@@ -4418,7 +4438,7 @@ pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
                 if item.ident.name == *segment {
                     if path_it.peek().is_none() {
                         return match item.def {
-                            def::Def::Trait(did) => Some(did),
+                            def::Def::Def(DefKind::Trait, did) => Some(did),
                             _ => None,
                         }
                     }

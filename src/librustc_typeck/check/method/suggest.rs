@@ -8,7 +8,7 @@ use crate::util::nodemap::FxHashSet;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use rustc::hir::{self, ExprKind, Node, QPath};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::map as hir_map;
 use rustc::hir::print;
@@ -804,11 +804,11 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
                            external_mods: &mut FxHashSet<DefId>,
                            def: Def) {
         match def {
-            Def::Trait(def_id) |
-            Def::TraitAlias(def_id) => {
+            Def::Def(DefKind::Trait, def_id) |
+            Def::Def(DefKind::TraitAlias, def_id) => {
                 traits.push(def_id);
             }
-            Def::Mod(def_id) => {
+            Def::Def(DefKind::Mod, def_id) => {
                 if !external_mods.insert(def_id) {
                     return;
                 }
@@ -824,7 +824,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
             krate: cnum,
             index: CRATE_DEF_INDEX,
         };
-        handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));
+        handle_external_def(tcx, &mut traits, &mut external_mods, Def::Def(DefKind::Mod, def_id));
     }
 
     traits

@@ -15,7 +15,7 @@
 // by borrowck::gather_loans
 
 use rustc::ty::cast::CastTy;
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::{Def, DefKind, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
@@ -321,14 +321,17 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Path(ref qpath) => {
             let def = v.tables.qpath_def(qpath, e.hir_id);
             match def {
-                Def::Ctor(..) | Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) =>
+                Def::Def(DefKind::Ctor(..), _)
+                | Def::Def(DefKind::Fn, _)
+                | Def::Def(DefKind::Method, _)
+                | Def::SelfCtor(..) =>
                     Promotable,
 
                 // References to a static that are themselves within a static
                 // are inherently promotable with the exception
                 //  of "#[thread_local]" statics, which may not
                 // outlive the current function
-                Def::Static(did) => {
+                Def::Def(DefKind::Static, did) => {
 
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {
@@ -346,8 +349,8 @@ fn check_expr_kind<'a, 'tcx>(
                     }
                 }
 
-                Def::Const(did) |
-                Def::AssociatedConst(did) => {
+                Def::Def(DefKind::Const, did) |
+                Def::Def(DefKind::AssociatedConst, did) => {
                     let promotable = if v.tcx.trait_of_item(did).is_some() {
                         // Don't peek inside trait associated constants.
                         NotPromotable
@@ -386,10 +389,10 @@ fn check_expr_kind<'a, 'tcx>(
                 Def::Err
             };
             let def_result = match def {
-                Def::Ctor(_, _, CtorKind::Fn) |
+                Def::Def(DefKind::Ctor(_, CtorKind::Fn), _) |
                 Def::SelfCtor(..) => Promotable,
-                Def::Fn(did) => v.handle_const_fn_call(did),
-                Def::Method(did) => {
+                Def::Def(DefKind::Fn, did) => v.handle_const_fn_call(did),
+                Def::Def(DefKind::Method, did) => {
                     match v.tcx.associated_item(did).container {
                         ty::ImplContainer(_) => v.handle_const_fn_call(did),
                         ty::TraitContainer(_) => NotPromotable,

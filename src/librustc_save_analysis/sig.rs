@@ -29,7 +29,7 @@ use crate::{id_from_def_id, id_from_node_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
 
@@ -586,7 +586,9 @@ impl Sig for ast::Path {
                     refs: vec![],
                 })
             }
-            Def::AssociatedConst(..) | Def::Variant(..) | Def::Ctor(..) => {
+            Def::Def(DefKind::AssociatedConst, _)
+            | Def::Def(DefKind::Variant, _)
+            | Def::Def(DefKind::Ctor(..), _) => {
                 let len = self.segments.len();
                 if len < 2 {
                     return Err("Bad path");

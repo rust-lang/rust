@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::def::{self, CtorKind, Namespace::*};
+use rustc::hir::def::{self, DefKind, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::{Session, config::nightly_options};
 use syntax::ast::{self, Expr, ExprKind, Ident};
@@ -31,7 +31,9 @@ impl<'a> Resolver<'a> {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
-        let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
+        let is_enum_variant = &|def| {
+            if let Def::Def(DefKind::Variant, _) = def { true } else { false }
+        };
 
         // Make the base error.
         let expected = source.descr_expected();
@@ -117,7 +119,8 @@ impl<'a> Resolver<'a> {
                 }
             })
             .collect::<Vec<_>>();
-        if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
+        let crate_def_id = DefId::local(CRATE_DEF_INDEX);
+        if candidates.is_empty() && is_expected(Def::Def(DefKind::Enum, crate_def_id)) {
             let enum_candidates =
                 self.lookup_import_candidates(ident, ns, is_enum_variant);
             let mut enum_candidates = enum_candidates.iter()
@@ -362,7 +365,7 @@ impl<'a> Resolver<'a> {
         };
 
         match (def, source) {
-            (Def::Macro(..), _) => {
+            (Def::Def(DefKind::Macro(..), _), _) => {
                 err.span_suggestion(
                     span,
                     "use `!` to invoke the macro",
@@ -373,17 +376,19 @@ impl<'a> Resolver<'a> {
                     err.note("if you want the `try` keyword, you need to be in the 2018 edition");
                 }
             }
-            (Def::TyAlias(..), PathSource::Trait(_)) => {
+            (Def::Def(DefKind::TyAlias, _), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
                 if nightly_options::is_nightly_build() {
                     err.note("did you mean to use a trait alias?");
                 }
             }
-            (Def::Mod(..), PathSource::Expr(Some(parent))) => if !path_sep(err, &parent) {
-                return false;
-            },
-            (Def::Enum(..), PathSource::TupleStruct)
-                | (Def::Enum(..), PathSource::Expr(..))  => {
+            (Def::Def(DefKind::Mod, _), PathSource::Expr(Some(parent))) => {
+                if !path_sep(err, &parent) {
+                    return false;
+                }
+            }
+            (Def::Def(DefKind::Enum, _), PathSource::TupleStruct)
+                | (Def::Def(DefKind::Enum, _), PathSource::Expr(..))  => {
                 if let Some(variants) = self.collect_enum_variants(def) {
                     if !variants.is_empty() {
                         let msg = if variants.len() == 1 {
@@ -403,7 +408,7 @@ impl<'a> Resolver<'a> {
                     err.note("did you mean to use one of the enum's variants?");
                 }
             },
-            (Def::Struct(def_id), _) if ns == ValueNS => {
+            (Def::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis))
                         = self.struct_constructors.get(&def_id).cloned() {
                     let accessible_ctor = self.is_accessible(ctor_vis);
@@ -417,16 +422,17 @@ impl<'a> Resolver<'a> {
                     bad_struct_syntax_suggestion();
                 }
             }
-            (Def::Union(..), _) |
-            (Def::Variant(..), _) |
-            (Def::Ctor(_, _, CtorKind::Fictive), _) if ns == ValueNS => {
+            (Def::Def(DefKind::Union, _), _) |
+            (Def::Def(DefKind::Variant, _), _) |
+            (Def::Def(DefKind::Ctor(_, CtorKind::Fictive), _), _) if ns == ValueNS => {
                 bad_struct_syntax_suggestion();
             }
             (Def::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
-            (Def::TyAlias(_), _) | (Def::AssociatedTy(..), _) if ns == ValueNS => {
+            (Def::Def(DefKind::TyAlias, _), _)
+            | (Def::Def(DefKind::AssociatedTy, _), _) if ns == ValueNS => {
                 err.note("can't use a type alias as a constructor");
             }
             _ => return false,
@@ -622,7 +628,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let resolutions = crate_module.resolutions.borrow();
         let resolution = resolutions.get(&(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
-        if let Def::Macro(_, MacroKind::Bang) = binding.def() {
+        if let Def::Def(DefKind::Macro(MacroKind::Bang), _) = binding.def() {
             let module_name = crate_module.kind.name().unwrap();
             let import = match directive.subclass {
                 ImportDirectiveSubclass::SingleImport { source, target, .. } if source != target =>

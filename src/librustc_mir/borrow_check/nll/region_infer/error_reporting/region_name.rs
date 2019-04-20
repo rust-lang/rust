@@ -4,6 +4,7 @@ use crate::borrow_check::nll::universal_regions::DefiningTy;
 use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::Upvar;
 use rustc::hir;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::Mir;
@@ -496,7 +497,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         // be the same as those of the ADT.
                         // FIXME: We should be able to do something similar to
                         // match_adt_and_segment in this case.
-                        hir::def::Def::TyAlias(_) => (),
+                        Def::Def(DefKind::TyAlias, _) => (),
                         _ => if let Some(last_segment) = path.segments.last() {
                             if let Some(name) = self.match_adt_and_segment(
                                 substs,

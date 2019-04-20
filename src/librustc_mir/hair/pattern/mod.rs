@@ -18,7 +18,7 @@ use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTyp
 use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
-use rustc::hir::def::{CtorOf, Def, CtorKind};
+use rustc::hir::def::{CtorOf, Def, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -733,15 +733,15 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         subpatterns: Vec<FieldPattern<'tcx>>,
     ) -> PatternKind<'tcx> {
         let def = match def {
-            Def::Ctor(variant_ctor_id, CtorOf::Variant, ..) => {
+            Def::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
                 let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
-                Def::Variant(variant_id)
+                Def::Def(DefKind::Variant, variant_id)
             },
             def => def,
         };
 
         let mut kind = match def {
-            Def::Variant(variant_id) => {
+            Def::Def(DefKind::Variant, variant_id) => {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
@@ -764,8 +764,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::Ctor(_, CtorOf::Struct, ..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) => {
+            Def::Def(DefKind::Struct, _)
+            | Def::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
+            | Def::Def(DefKind::Union, _)
+            | Def::Def(DefKind::TyAlias, _)
+            | Def::Def(DefKind::AssociatedTy, _)
+            | Def::SelfTy(..)
+            | Def::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns }
             }
 
@@ -805,11 +810,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         let ty = self.tables.node_type(id);
         let def = self.tables.qpath_def(qpath, id);
         let is_associated_const = match def {
-            Def::AssociatedConst(_) => true,
+            Def::Def(DefKind::AssociatedConst, _) => true,
             _ => false,
         };
         let kind = match def {
-            Def::Const(def_id) | Def::AssociatedConst(def_id) => {
+            Def::Def(DefKind::Const, def_id) | Def::Def(DefKind::AssociatedConst, def_id) => {
                 let substs = self.tables.node_substs(id);
                 match ty::Instance::resolve(
                     self.tcx,

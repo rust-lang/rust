@@ -1,4 +1,4 @@
-use crate::hir::def::Def;
+use crate::hir::def::{Def, DefKind};
 use crate::hir::def_id::DefId;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
@@ -157,7 +157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
         } else {
             Def::Err
         };
-        if let Def::Fn(did) = def {
+        if let Def::Def(DefKind::Fn, did) = def {
             if self.def_id_is_transmute(did) {
                 let typ = self.tables.node_type(expr.hir_id);
                 let sig = typ.fn_sig(self.tcx);

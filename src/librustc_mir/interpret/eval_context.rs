@@ -4,7 +4,7 @@ use std::mem;
 
 use syntax::source_map::{self, Span, DUMMY_SP};
 use rustc::hir::def_id::DefId;
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
@@ -503,7 +503,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
             // Now mark those locals as dead that we do not want to initialize
             match self.tcx.describe_def(instance.def_id()) {
                 // statics and constants don't have `Storage*` statements, no need to look for them
-                Some(Def::Static(..)) | Some(Def::Const(..)) | Some(Def::AssociatedConst(..)) => {},
+                Some(Def::Def(DefKind::Static, _))
+                | Some(Def::Def(DefKind::Const, _))
+                | Some(Def::Def(DefKind::AssociatedConst, _)) => {},
                 _ => {
                     trace!("push_stack_frame: {:?}: num_bbs: {}", span, mir.basic_blocks().len());
                     for block in mir.basic_blocks() {

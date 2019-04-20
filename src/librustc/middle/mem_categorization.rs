@@ -62,7 +62,7 @@ use crate::middle::region;
 use crate::hir::def_id::{DefId, LocalDefId};
 use crate::hir::Node;
 use crate::infer::InferCtxt;
-use crate::hir::def::{CtorOf, Def, CtorKind};
+use crate::hir::def::{CtorOf, Def, DefKind, CtorKind};
 use crate::ty::adjustment;
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
@@ -699,12 +699,17 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                hir_id, expr_ty, def);
 
         match def {
-            Def::Ctor(..) | Def::Const(..) | Def::ConstParam(..) |
-            Def::AssociatedConst(..) | Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) => {
+            Def::Def(DefKind::Ctor(..), _)
+            | Def::Def(DefKind::Const, _)
+            | Def::Def(DefKind::ConstParam, _)
+            | Def::Def(DefKind::AssociatedConst, _)
+            | Def::Def(DefKind::Fn, _)
+            | Def::Def(DefKind::Method, _)
+            | Def::SelfCtor(..) => {
                 Ok(self.cat_rvalue_node(hir_id, span, expr_ty))
             }
 
-            Def::Static(def_id) => {
+            Def::Def(DefKind::Static, def_id) => {
                 // `#[thread_local]` statics may not outlive the current function, but
                 // they also cannot be moved out of.
                 let is_thread_local = self.tcx.get_attrs(def_id)[..]
@@ -1274,14 +1279,15 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("access to unresolvable pattern {:?}", pat);
                         return Err(())
                     }
-                    Def::Ctor(variant_ctor_did, CtorOf::Variant, CtorKind::Fn) => {
+                    Def::Def(DefKind::Ctor(CtorOf::Variant, CtorKind::Fn), variant_ctor_did) => {
                         let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
                         let enum_did = self.tcx.parent(variant_did).unwrap();
                         (self.cat_downcast_if_needed(pat, cmt, variant_did),
                          self.tcx.adt_def(enum_did)
                              .variant_with_ctor_id(variant_ctor_did).fields.len())
                     }
-                    Def::Ctor(_, CtorOf::Struct, CtorKind::Fn) | Def::SelfCtor(..) => {
+                    Def::Def(DefKind::Ctor(CtorOf::Struct, CtorKind::Fn), _)
+                    | Def::SelfCtor(..) => {
                         let ty = self.pat_ty_unadjusted(&pat)?;
                         match ty.sty {
                             ty::Adt(adt_def, _) => {
@@ -1316,11 +1322,11 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         debug!("access to unresolvable pattern {:?}", pat);
                         return Err(())
                     }
-                    Def::Ctor(variant_ctor_did, CtorOf::Variant, _) => {
+                    Def::Def(DefKind::Ctor(CtorOf::Variant, _), variant_ctor_did) => {
                         let variant_did = self.tcx.parent(variant_ctor_did).unwrap();
                         self.cat_downcast_if_needed(pat, cmt, variant_did)
                     }
-                    Def::Variant(variant_did) => {
+                    Def::Def(DefKind::Variant, variant_did) => {
                         self.cat_downcast_if_needed(pat, cmt, variant_did)
                     }
                     _ => cmt,

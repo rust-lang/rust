@@ -1,5 +1,5 @@
 use rustc::middle::privacy::{AccessLevels, AccessLevel};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty::Visibility;
 use rustc::util::nodemap::FxHashSet;
@@ -80,7 +80,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
 
         let item_level = self.update(def_id, inherited_item_level);
 
-        if let Def::Mod(..) = def {
+        if let Def::Def(DefKind::Mod, _) = def {
             let orig_level = self.prev_level;
 
             self.prev_level = item_level;

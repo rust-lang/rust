@@ -1,5 +1,5 @@
 use errors::Applicability;
-use rustc::hir::def::{Def, Namespace::{self, *}, PerNS};
+use rustc::hir::def::{Def, DefKind, Namespace::{self, *}, PerNS};
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::lint as lint;
@@ -75,9 +75,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // In case this is a trait item, skip the
                 // early return and try looking for the trait.
                 let value = match result.def {
-                    Def::Method(_) | Def::AssociatedConst(_) => true,
-                    Def::AssociatedTy(_) => false,
-                    Def::Variant(_) => return handle_variant(cx, result.def),
+                    Def::Def(DefKind::Method, _) | Def::Def(DefKind::AssociatedConst, _) => true,
+                    Def::Def(DefKind::AssociatedTy, _) => false,
+                    Def::Def(DefKind::Variant, _) => return handle_variant(cx, result.def),
                     // Not a trait item; just return what we found.
                     _ => return Ok((result.def, None))
                 };
@@ -133,7 +133,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
             }))?;
             match ty.def {
-                Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
+                Def::Def(DefKind::Struct, did)
+                | Def::Def(DefKind::Union, did)
+                | Def::Def(DefKind::Enum, did)
+                | Def::Def(DefKind::TyAlias, did) => {
                     let item = cx.tcx.inherent_impls(did)
                                      .iter()
                                      .flat_map(|imp| cx.tcx.associated_items(*imp))
@@ -172,7 +175,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         }
                     }
                 }
-                Def::Trait(did) => {
+                Def::Def(DefKind::Trait, did) => {
                     let item = cx.tcx.associated_item_def_ids(did).iter()
                                  .map(|item| cx.tcx.associated_item(*item))
                                  .find(|item| item.ident.name == item_name);
@@ -347,7 +350,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 .and_then(|(def, fragment)| {
                                     // Constructors are picked up in the type namespace.
                                     match def {
-                                        Def::Ctor(..) | Def::SelfCtor(..) => None,
+                                        Def::Def(DefKind::Ctor(..), _) | Def::SelfCtor(..) => None,
                                         _ => Some((def, fragment))
                                     }
                                 }),
@@ -427,7 +430,7 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Def> {
         let parent_scope = resolver.dummy_parent_scope();
         if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
                                                             &parent_scope, false, false) {
-            if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
+            if let Def::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) = def {
                 // skip proc-macro stubs, they'll cause `get_macro` to crash
             } else {
                 if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
@@ -541,21 +544,21 @@ fn ambiguity_error(
 
             for (def, ns) in candidates {
                 let (action, mut suggestion) = match def {
-                    Def::Method(..) | Def::Fn(..) => {
+                    Def::Def(DefKind::Method, _) | Def::Def(DefKind::Fn, _) => {
                         ("add parentheses", format!("{}()", path_str))
                     }
-                    Def::Macro(..) => {
+                    Def::Def(DefKind::Macro(..), _) => {
                         ("add an exclamation mark", format!("{}!", path_str))
                     }
                     _ => {
                         let type_ = match (def, ns) {
-                            (Def::Const(..), _) => "const",
-                            (Def::Static(..), _) => "static",
-                            (Def::Struct(..), _) => "struct",
-                            (Def::Enum(..), _) => "enum",
-                            (Def::Union(..), _) => "union",
-                            (Def::Trait(..), _) => "trait",
-                            (Def::Mod(..), _) => "module",
+                            (Def::Def(DefKind::Const, _), _) => "const",
+                            (Def::Def(DefKind::Static, _), _) => "static",
+                            (Def::Def(DefKind::Struct, _), _) => "struct",
+                            (Def::Def(DefKind::Enum, _), _) => "enum",
+                            (Def::Def(DefKind::Union, _), _) => "union",
+                            (Def::Def(DefKind::Trait, _), _) => "trait",
+                            (Def::Def(DefKind::Mod, _), _) => "module",
                             (_, TypeNS) => "type",
                             (_, ValueNS) => "value",
                             (_, MacroNS) => "macro",
@@ -609,7 +612,7 @@ fn handle_variant(cx: &DocContext<'_>, def: Def) -> Result<(Def, Option<String>)
     } else {
         return Err(())
     };
-    let parent_def = Def::Enum(parent);
+    let parent_def = Def::Def(DefKind::Enum, parent);
     let variant = cx.tcx.expect_variant_def(def);
     Ok((parent_def, Some(format!("{}.v", variant.ident.name))))
 }

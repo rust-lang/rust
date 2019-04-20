@@ -17,6 +17,7 @@ use syntax::ext::base::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
 use crate::hir::*;
+use crate::hir::{Def, DefKind};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir::print::Nested;
 use crate::util::nodemap::FxHashMap;
@@ -316,67 +317,61 @@ impl<'hir> Map<'hir> {
             return None
         };
 
-        match node {
+        let kind = match node {
             Node::Item(item) => {
-                let def_id = || self.local_def_id_from_hir_id(item.hir_id);
-
                 match item.node {
-                    ItemKind::Static(..) => Some(Def::Static(def_id())),
-                    ItemKind::Const(..) => Some(Def::Const(def_id())),
-                    ItemKind::Fn(..) => Some(Def::Fn(def_id())),
-                    ItemKind::Mod(..) => Some(Def::Mod(def_id())),
-                    ItemKind::Existential(..) => Some(Def::Existential(def_id())),
-                    ItemKind::Ty(..) => Some(Def::TyAlias(def_id())),
-                    ItemKind::Enum(..) => Some(Def::Enum(def_id())),
-                    ItemKind::Struct(..) => Some(Def::Struct(def_id())),
-                    ItemKind::Union(..) => Some(Def::Union(def_id())),
-                    ItemKind::Trait(..) => Some(Def::Trait(def_id())),
-                    ItemKind::TraitAlias(..) => Some(Def::TraitAlias(def_id())),
+                    ItemKind::Static(..) => DefKind::Static,
+                    ItemKind::Const(..) => DefKind::Const,
+                    ItemKind::Fn(..) => DefKind::Fn,
+                    ItemKind::Mod(..) => DefKind::Mod,
+                    ItemKind::Existential(..) => DefKind::Existential,
+                    ItemKind::Ty(..) => DefKind::TyAlias,
+                    ItemKind::Enum(..) => DefKind::Enum,
+                    ItemKind::Struct(..) => DefKind::Struct,
+                    ItemKind::Union(..) => DefKind::Union,
+                    ItemKind::Trait(..) => DefKind::Trait,
+                    ItemKind::TraitAlias(..) => DefKind::TraitAlias,
                     ItemKind::ExternCrate(_) |
                     ItemKind::Use(..) |
                     ItemKind::ForeignMod(..) |
                     ItemKind::GlobalAsm(..) |
-                    ItemKind::Impl(..) => None,
+                    ItemKind::Impl(..) => return None,
                 }
             }
             Node::ForeignItem(item) => {
-                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
-                    ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
-                    ForeignItemKind::Static(..) => Some(Def::Static(def_id)),
-                    ForeignItemKind::Type => Some(Def::ForeignTy(def_id)),
+                    ForeignItemKind::Fn(..) => DefKind::Fn,
+                    ForeignItemKind::Static(..) => DefKind::Static,
+                    ForeignItemKind::Type => DefKind::ForeignTy,
                 }
             }
             Node::TraitItem(item) => {
-                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
-                    TraitItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
-                    TraitItemKind::Method(..) => Some(Def::Method(def_id)),
-                    TraitItemKind::Type(..) => Some(Def::AssociatedTy(def_id)),
+                    TraitItemKind::Const(..) => DefKind::AssociatedConst,
+                    TraitItemKind::Method(..) => DefKind::Method,
+                    TraitItemKind::Type(..) => DefKind::AssociatedTy,
                 }
             }
             Node::ImplItem(item) => {
-                let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
-                    ImplItemKind::Const(..) => Some(Def::AssociatedConst(def_id)),
-                    ImplItemKind::Method(..) => Some(Def::Method(def_id)),
-                    ImplItemKind::Type(..) => Some(Def::AssociatedTy(def_id)),
-                    ImplItemKind::Existential(..) => Some(Def::AssociatedExistential(def_id)),
+                    ImplItemKind::Const(..) => DefKind::AssociatedConst,
+                    ImplItemKind::Method(..) => DefKind::Method,
+                    ImplItemKind::Type(..) => DefKind::AssociatedTy,
+                    ImplItemKind::Existential(..) => DefKind::AssociatedExistential,
                 }
             }
-            Node::Variant(variant) => {
-                let def_id = self.local_def_id_from_hir_id(variant.node.id);
-                Some(Def::Variant(def_id))
-            }
+            Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
+                // FIXME(eddyb) is this even possible, if we have a `Node::Ctor`?
+                if variant_data.ctor_hir_id().is_none() {
+                    return None;
+                }
                 let ctor_of = match self.find(self.get_parent_node(node_id)) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
                 };
-                variant_data.ctor_hir_id()
-                    .map(|hir_id| self.local_def_id_from_hir_id(hir_id))
-                    .map(|def_id| Def::Ctor(def_id, ctor_of, def::CtorKind::from_hir(variant_data)))
+                DefKind::Ctor(ctor_of, def::CtorKind::from_hir(variant_data))
             }
             Node::AnonConst(_) |
             Node::Field(_) |
@@ -390,26 +385,22 @@ impl<'hir> Map<'hir> {
             Node::Lifetime(_) |
             Node::Visibility(_) |
             Node::Block(_) |
-            Node::Crate => None,
+            Node::Crate => return None,
+            // FIXME(eddyb) this is the only non-`DefKind` case here,
+            // investigate whether it's actually used, and ideally remove it.
             Node::Local(local) => {
-                Some(Def::Local(local.hir_id))
+                return Some(Def::Local(local.hir_id));
             }
-            Node::MacroDef(macro_def) => {
-                Some(Def::Macro(self.local_def_id_from_hir_id(macro_def.hir_id),
-                                MacroKind::Bang))
-            }
+            Node::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
             Node::GenericParam(param) => {
-                Some(match param.kind {
-                    GenericParamKind::Lifetime { .. } => {
-                        Def::Local(param.hir_id)
-                    },
-                    GenericParamKind::Type { .. } => Def::TyParam(
-                        self.local_def_id_from_hir_id(param.hir_id)),
-                    GenericParamKind::Const { .. } => Def::ConstParam(
-                        self.local_def_id_from_hir_id(param.hir_id)),
-                })
+                match param.kind {
+                    GenericParamKind::Lifetime { .. } => return None,
+                    GenericParamKind::Type { .. } => DefKind::TyParam,
+                    GenericParamKind::Const { .. } => DefKind::ConstParam,
+                }
             }
-        }
+        };
+        Some(Def::Def(kind, self.local_def_id(node_id)))
     }
 
     // FIXME(@ljedrz): replace the NodeId variant

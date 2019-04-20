@@ -6,7 +6,7 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 use std::collections::hash_map::Entry;
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
@@ -641,7 +641,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // note that validation may still cause a hard error on this very same constant,
                 // because any code that existed before validation could not have failed validation
                 // thus preventing such a hard error from being a backwards compatibility hazard
-                Some(Def::Const(_)) | Some(Def::AssociatedConst(_)) => {
+                Some(Def::Def(DefKind::Const, _)) | Some(Def::Def(DefKind::AssociatedConst, _)) => {
                     let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
                     err.report_as_lint(
                         tcx.at(tcx.def_span(def_id)),

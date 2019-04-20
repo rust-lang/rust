@@ -2,7 +2,7 @@
 //! usable for `clean`.
 
 use rustc::hir::{self, Node};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
@@ -306,18 +306,18 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             let attrs = clean::inline::load_attrs(self.cx, def_did);
             let self_is_hidden = attrs.lists("doc").has_word("hidden");
             match def {
-                Def::Trait(did) |
-                Def::Struct(did) |
-                Def::Union(did) |
-                Def::Enum(did) |
-                Def::ForeignTy(did) |
-                Def::TyAlias(did) if !self_is_hidden => {
+                Def::Def(DefKind::Trait, did) |
+                Def::Def(DefKind::Struct, did) |
+                Def::Def(DefKind::Union, did) |
+                Def::Def(DefKind::Enum, did) |
+                Def::Def(DefKind::ForeignTy, did) |
+                Def::Def(DefKind::TyAlias, did) if !self_is_hidden => {
                     self.cx.renderinfo
                         .borrow_mut()
                         .access_levels.map
                         .insert(did, AccessLevel::Public);
                 },
-                Def::Mod(did) => if !self_is_hidden {
+                Def::Def(DefKind::Mod, did) => if !self_is_hidden {
                     crate::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
                 },
                 _ => {},
@@ -421,8 +421,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 // Struct and variant constructors and proc macro stubs always show up alongside
                 // their definitions, we've already processed them so just discard these.
                 match path.def {
-                    Def::Ctor(..) | Def::SelfCtor(..) | Def::Macro(_, MacroKind::ProcMacroStub) =>
-                        return,
+                    Def::Def(DefKind::Ctor(..), _)
+                    | Def::SelfCtor(..)
+                    | Def::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) => return,
                     _ => {}
                 }
 

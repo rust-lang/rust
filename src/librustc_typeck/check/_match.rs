@@ -3,7 +3,7 @@ use crate::check::coercion::CoerceMany;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::{self, PatKind, Pat};
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::{Def, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             PatKind::Path(ref qpath) => {
                 let (def, _, _) = self.resolve_ty_and_def_ufcs(qpath, pat.hir_id, pat.span);
                 match def {
-                    Def::Const(..) | Def::AssociatedConst(..) => false,
+                    Def::Def(DefKind::Const, _) | Def::Def(DefKind::AssociatedConst, _) => false,
                     _ => true,
                 }
             }
@@ -846,17 +846,17 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 self.set_tainted_by_errors();
                 return tcx.types.err;
             }
-            Def::Method(..) => {
+            Def::Def(DefKind::Method, _) => {
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::Ctor(_, _, CtorKind::Fictive) |
-            Def::Ctor(_, _, CtorKind::Fn) => {
+            Def::Def(DefKind::Ctor(_, CtorKind::Fictive), _) |
+            Def::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
                 report_unexpected_variant_def(tcx, &def, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::Ctor(_, _, CtorKind::Const) | Def::SelfCtor(..) |
-            Def::Const(..) | Def::AssociatedConst(..) => {} // OK
+            Def::Def(DefKind::Ctor(_, CtorKind::Const), _) | Def::SelfCtor(..) |
+            Def::Def(DefKind::Const, _) | Def::Def(DefKind::AssociatedConst, _) => {} // OK
             _ => bug!("unexpected pattern definition: {:?}", def)
         }
 
@@ -913,11 +913,11 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 on_error();
                 return tcx.types.err;
             }
-            Def::AssociatedConst(..) | Def::Method(..) => {
+            Def::Def(DefKind::AssociatedConst, _) | Def::Def(DefKind::Method, _) => {
                 report_unexpected_def(def);
                 return tcx.types.err;
             }
-            Def::Ctor(_, _, CtorKind::Fn) => {
+            Def::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
                 tcx.expect_variant_def(def)
             }
             _ => bug!("unexpected pattern definition: {:?}", def)

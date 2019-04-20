@@ -424,7 +424,7 @@ impl<'a> Resolver<'a> {
 
             ItemKind::Mod(..) => {
                 let def_id = self.definitions.local_def_id(item.id);
-                let module_kind = ModuleKind::Def(Def::Mod(def_id), ident.name);
+                let module_kind = ModuleKind::Def(Def::Def(DefKind::Mod, def_id), ident.name);
                 let module = self.arenas.alloc_module(ModuleData {
                     no_implicit_prelude: parent.no_implicit_prelude || {
                         attr::contains_name(&item.attrs, "no_implicit_prelude")
@@ -443,29 +443,32 @@ impl<'a> Resolver<'a> {
 
             // These items live in the value namespace.
             ItemKind::Static(..) => {
-                let def = Def::Static(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::Static, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
-                let def = Def::Const(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::Const, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
             }
             ItemKind::Fn(..) => {
-                let def = Def::Fn(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::Fn, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
 
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
                 if attr::contains_name(&item.attrs, "proc_macro") ||
                    attr::contains_name(&item.attrs, "proc_macro_attribute") {
-                    let def = Def::Macro(def.def_id(), MacroKind::ProcMacroStub);
+                    let def = Def::Def(DefKind::Macro(MacroKind::ProcMacroStub), def.def_id());
                     self.define(parent, ident, MacroNS, (def, vis, sp, expansion));
                 }
                 if let Some(attr) = attr::find_by_name(&item.attrs, "proc_macro_derive") {
                     if let Some(trait_attr) =
                             attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
                         if let Some(ident) = trait_attr.ident() {
-                            let def = Def::Macro(def.def_id(), MacroKind::ProcMacroStub);
+                            let def = Def::Def(
+                                DefKind::Macro(MacroKind::ProcMacroStub),
+                                def.def_id(),
+                            );
                             self.define(parent, ident, MacroNS, (def, vis, ident.span, expansion));
                         }
                     }
@@ -474,17 +477,17 @@ impl<'a> Resolver<'a> {
 
             // These items live in the type namespace.
             ItemKind::Ty(..) => {
-                let def = Def::TyAlias(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::TyAlias, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }
 
             ItemKind::Existential(_, _) => {
-                let def = Def::Existential(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::Existential, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }
 
             ItemKind::Enum(ref enum_definition, _) => {
-                let def = Def::Enum(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::Enum, self.definitions.local_def_id(item.id));
                 let module_kind = ModuleKind::Def(def, ident.name);
                 let module = self.new_module(parent,
                                              module_kind,
@@ -499,7 +502,7 @@ impl<'a> Resolver<'a> {
             }
 
             ItemKind::TraitAlias(..) => {
-                let def = Def::TraitAlias(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::TraitAlias, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
             }
 
@@ -507,7 +510,7 @@ impl<'a> Resolver<'a> {
             ItemKind::Struct(ref struct_def, _) => {
                 // Define a name in the type namespace.
                 let def_id = self.definitions.local_def_id(item.id);
-                let def = Def::Struct(def_id);
+                let def = Def::Def(DefKind::Struct, def_id);
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
                 let mut ctor_vis = vis;
@@ -534,16 +537,17 @@ impl<'a> Resolver<'a> {
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
                 if let Some(ctor_node_id) = struct_def.ctor_id() {
-                    let ctor_def = Def::Ctor(self.definitions.local_def_id(ctor_node_id),
-                                             CtorOf::Struct,
-                                             CtorKind::from_ast(struct_def));
+                    let ctor_def = Def::Def(
+                        DefKind::Ctor(CtorOf::Struct, CtorKind::from_ast(struct_def)),
+                        self.definitions.local_def_id(ctor_node_id),
+                    );
                     self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, sp, expansion));
                     self.struct_constructors.insert(def.def_id(), (ctor_def, ctor_vis));
                 }
             }
 
             ItemKind::Union(ref vdata, _) => {
-                let def = Def::Union(self.definitions.local_def_id(item.id));
+                let def = Def::Def(DefKind::Union, self.definitions.local_def_id(item.id));
                 self.define(parent, ident, TypeNS, (def, vis, sp, expansion));
 
                 // Record field names for error reporting.
@@ -561,7 +565,7 @@ impl<'a> Resolver<'a> {
                 let def_id = self.definitions.local_def_id(item.id);
 
                 // Add all the items within to a new module.
-                let module_kind = ModuleKind::Def(Def::Trait(def_id), ident.name);
+                let module_kind = ModuleKind::Def(Def::Def(DefKind::Trait, def_id), ident.name);
                 let module = self.new_module(parent,
                                              module_kind,
                                              parent.normal_ancestor_id,
@@ -586,7 +590,7 @@ impl<'a> Resolver<'a> {
 
         // Define a name in the type namespace.
         let def_id = self.definitions.local_def_id(variant.node.id);
-        let def = Def::Variant(def_id);
+        let def = Def::Def(DefKind::Variant, def_id);
         self.define(parent, ident, TypeNS, (def, vis, variant.span, expansion));
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the
@@ -605,7 +609,7 @@ impl<'a> Resolver<'a> {
         let ctor_node_id = variant.node.data.ctor_id().unwrap_or(variant.node.id);
         let ctor_def_id = self.definitions.local_def_id(ctor_node_id);
         let ctor_kind = CtorKind::from_ast(&variant.node.data);
-        let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
+        let ctor_def = Def::Def(DefKind::Ctor(CtorOf::Variant, ctor_kind), ctor_def_id);
         self.define(parent, ident, ValueNS, (ctor_def, ctor_vis, variant.span, expansion));
     }
 
@@ -613,13 +617,13 @@ impl<'a> Resolver<'a> {
     fn build_reduced_graph_for_foreign_item(&mut self, item: &ForeignItem, expansion: Mark) {
         let (def, ns) = match item.node {
             ForeignItemKind::Fn(..) => {
-                (Def::Fn(self.definitions.local_def_id(item.id)), ValueNS)
+                (Def::Def(DefKind::Fn, self.definitions.local_def_id(item.id)), ValueNS)
             }
             ForeignItemKind::Static(..) => {
-                (Def::Static(self.definitions.local_def_id(item.id)), ValueNS)
+                (Def::Def(DefKind::Static, self.definitions.local_def_id(item.id)), ValueNS)
             }
             ForeignItemKind::Ty => {
-                (Def::ForeignTy(self.definitions.local_def_id(item.id)), TypeNS)
+                (Def::Def(DefKind::ForeignTy, self.definitions.local_def_id(item.id)), TypeNS)
             }
             ForeignItemKind::Macro(_) => unreachable!(),
         };
@@ -654,7 +658,7 @@ impl<'a> Resolver<'a> {
         let ident = ident.gensym_if_underscore();
         let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
         match def {
-            Def::Mod(def_id) | Def::Enum(def_id) => {
+            Def::Def(DefKind::Mod, def_id) | Def::Def(DefKind::Enum, def_id) => {
                 let module = self.new_module(parent,
                                              ModuleKind::Def(def, ident.name),
                                              def_id,
@@ -662,15 +666,22 @@ impl<'a> Resolver<'a> {
                                              span);
                 self.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
             }
-            Def::Variant(..) | Def::TyAlias(..) | Def::ForeignTy(..) | Def::Existential(..) |
-            Def::TraitAlias(..) | Def::PrimTy(..) | Def::ToolMod => {
+            Def::Def(DefKind::Variant, _)
+            | Def::Def(DefKind::TyAlias, _)
+            | Def::Def(DefKind::ForeignTy, _)
+            | Def::Def(DefKind::Existential, _)
+            | Def::Def(DefKind::TraitAlias, _)
+            | Def::PrimTy(..)
+            | Def::ToolMod => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
             }
-            Def::Fn(..) | Def::Static(..) | Def::Const(..) |
-            Def::Ctor(_, CtorOf::Variant, ..) => {
+            Def::Def(DefKind::Fn, _)
+            | Def::Def(DefKind::Static, _)
+            | Def::Def(DefKind::Const, _)
+            | Def::Def(DefKind::Ctor(CtorOf::Variant, ..), _) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
             }
-            Def::Ctor(def_id, CtorOf::Struct, ..) => {
+            Def::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
                 self.define(parent, ident, ValueNS, (def, vis, DUMMY_SP, expansion));
 
                 if let Some(struct_def_id) =
@@ -679,7 +690,7 @@ impl<'a> Resolver<'a> {
                     self.struct_constructors.insert(struct_def_id, (def, vis));
                 }
             }
-            Def::Trait(def_id) => {
+            Def::Def(DefKind::Trait, def_id) => {
                 let module_kind = ModuleKind::Def(def, ident.name);
                 let module = self.new_module(parent,
                                              module_kind,
@@ -690,7 +701,9 @@ impl<'a> Resolver<'a> {
 
                 for child in self.cstore.item_children_untracked(def_id, self.session) {
                     let def = child.def.map_id(|_| panic!("unexpected id"));
-                    let ns = if let Def::AssociatedTy(..) = def { TypeNS } else { ValueNS };
+                    let ns = if let Def::Def(DefKind::AssociatedTy, _) = def {
+                        TypeNS
+                    } else { ValueNS };
                     self.define(module, child.ident, ns,
                                 (def, ty::Visibility::Public, DUMMY_SP, expansion));
 
@@ -701,14 +714,14 @@ impl<'a> Resolver<'a> {
                 }
                 module.populated.set(true);
             }
-            Def::Struct(def_id) | Def::Union(def_id) => {
+            Def::Def(DefKind::Struct, def_id) | Def::Def(DefKind::Union, def_id) => {
                 self.define(parent, ident, TypeNS, (def, vis, DUMMY_SP, expansion));
 
                 // Record field names for error reporting.
                 let field_names = self.cstore.struct_field_names_untracked(def_id);
                 self.insert_field_names(def_id, field_names);
             }
-            Def::Macro(..) | Def::NonMacroAttr(..) => {
+            Def::Def(DefKind::Macro(..), _) | Def::NonMacroAttr(..) => {
                 self.define(parent, ident, MacroNS, (def, vis, DUMMY_SP, expansion));
             }
             _ => bug!("unexpected definition: {:?}", def)
@@ -733,7 +746,7 @@ impl<'a> Resolver<'a> {
              Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
         };
 
-        let kind = ModuleKind::Def(Def::Mod(def_id), name.as_symbol());
+        let kind = ModuleKind::Def(Def::Def(DefKind::Mod, def_id), name.as_symbol());
         let module =
             self.arenas.alloc_module(ModuleData::new(parent, kind, def_id, Mark::root(), DUMMY_SP));
         self.extern_module_map.insert((def_id, macros_only), module);
@@ -754,11 +767,11 @@ impl<'a> Resolver<'a> {
 
     pub fn get_macro(&mut self, def: Def) -> Lrc<SyntaxExtension> {
         let def_id = match def {
-            Def::Macro(def_id, ..) => def_id,
+            Def::Def(DefKind::Macro(..), def_id) => def_id,
             Def::NonMacroAttr(attr_kind) => return Lrc::new(SyntaxExtension::NonMacroAttr {
                 mark_used: attr_kind == NonMacroAttrKind::Tool,
             }),
-            _ => panic!("expected `Def::Macro` or `Def::NonMacroAttr`"),
+            _ => panic!("expected `DefKind::Macro` or `Def::NonMacroAttr`"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
             return ext.clone();
@@ -1016,14 +1029,14 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
         // Add the item to the trait info.
         let item_def_id = self.resolver.definitions.local_def_id(item.id);
         let (def, ns) = match item.node {
-            TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
+            TraitItemKind::Const(..) => (Def::Def(DefKind::AssociatedConst, item_def_id), ValueNS),
             TraitItemKind::Method(ref sig, _) => {
                 if sig.decl.has_self() {
                     self.resolver.has_self.insert(item_def_id);
                 }
-                (Def::Method(item_def_id), ValueNS)
+                (Def::Def(DefKind::Method, item_def_id), ValueNS)
             }
-            TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
+            TraitItemKind::Type(..) => (Def::Def(DefKind::AssociatedTy, item_def_id), TypeNS),
             TraitItemKind::Macro(_) => bug!(),  // handled above
         };
 

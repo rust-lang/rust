@@ -13,7 +13,7 @@
 //! DumpVisitor walks the AST and processes it, and JsonDumper is used for
 //! recording the output.
 
-use rustc::hir::def::Def as HirDef;
+use rustc::hir::def::{Def as HirDef, DefKind as HirDefKind};
 use rustc::hir::def_id::DefId;
 use rustc::session::config::Input;
 use rustc::span_bug;
@@ -957,13 +957,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         );
                     }
                 }
-                HirDef::Ctor(_, _, _) |
-                HirDef::Const(..) |
-                HirDef::AssociatedConst(..) |
-                HirDef::Struct(..) |
-                HirDef::Variant(..) |
-                HirDef::TyAlias(..) |
-                HirDef::AssociatedTy(..) |
+                HirDef::Def(HirDefKind::Ctor(..), _) |
+                HirDef::Def(HirDefKind::Const, _) |
+                HirDef::Def(HirDefKind::AssociatedConst, _) |
+                HirDef::Def(HirDefKind::Struct, _) |
+                HirDef::Def(HirDefKind::Variant, _) |
+                HirDef::Def(HirDefKind::TyAlias, _) |
+                HirDef::Def(HirDefKind::AssociatedTy, _) |
                 HirDef::SelfTy(..) => {
                     self.dump_path_ref(id, &ast::Path::from_ident(ident));
                 }

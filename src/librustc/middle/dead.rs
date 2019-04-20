@@ -7,7 +7,7 @@ use crate::hir::{self, PatKind, TyKind};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 
-use crate::hir::def::{CtorOf, Def};
+use crate::hir::def::{CtorOf, Def, DefKind};
 use crate::hir::CodegenFnAttrFlags;
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::lint;
@@ -70,13 +70,15 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_definition(&mut self, def: Def) {
         match def {
-            Def::Const(_) | Def::AssociatedConst(..) | Def::TyAlias(_) => {
+            Def::Def(DefKind::Const, _)
+            | Def::Def(DefKind::AssociatedConst, _)
+            | Def::Def(DefKind::TyAlias, _) => {
                 self.check_def_id(def.def_id());
             }
             _ if self.in_pat => {},
             Def::PrimTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) |
             Def::Local(..) | Def::Upvar(..) => {}
-            Def::Ctor(ctor_def_id, CtorOf::Variant, ..) => {
+            Def::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 let variant_id = self.tcx.parent(ctor_def_id).unwrap();
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 self.check_def_id(enum_id);
@@ -84,7 +86,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     self.check_def_id(variant_id);
                 }
             }
-            Def::Variant(variant_id) => {
+            Def::Def(DefKind::Variant, variant_id) => {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&variant_id) {

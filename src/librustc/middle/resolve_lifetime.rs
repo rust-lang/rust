@@ -5,7 +5,7 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use crate::hir::def::Def;
+use crate::hir::def::{Def, DefKind};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::Map;
 use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
@@ -1365,7 +1365,7 @@ fn object_lifetime_defaults_for_item(
                         _ => continue,
                     };
 
-                    if def == Def::TyParam(param_def_id) {
+                    if def == Def::Def(DefKind::TyParam, param_def_id) {
                         add_bounds(&mut set, &data.bounds);
                     }
                 }
@@ -1929,13 +1929,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             }
         };
         let type_def_id = match def {
-            Def::AssociatedTy(def_id) if depth == 1 => Some(parent_def_id(self, def_id)),
-            Def::Variant(def_id) if depth == 0 => Some(parent_def_id(self, def_id)),
-            Def::Struct(def_id)
-            | Def::Union(def_id)
-            | Def::Enum(def_id)
-            | Def::TyAlias(def_id)
-            | Def::Trait(def_id) if depth == 0 =>
+            Def::Def(DefKind::AssociatedTy, def_id)
+                if depth == 1 => Some(parent_def_id(self, def_id)),
+            Def::Def(DefKind::Variant, def_id)
+                if depth == 0 => Some(parent_def_id(self, def_id)),
+            Def::Def(DefKind::Struct, def_id)
+            | Def::Def(DefKind::Union, def_id)
+            | Def::Def(DefKind::Enum, def_id)
+            | Def::Def(DefKind::TyAlias, def_id)
+            | Def::Def(DefKind::Trait, def_id) if depth == 0 =>
             {
                 Some(def_id)
             }
@@ -2139,7 +2141,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         // Whitelist the types that unambiguously always
                         // result in the same type constructor being used
                         // (it can't differ between `Self` and `self`).
-                        Def::Struct(_) | Def::Union(_) | Def::Enum(_) | Def::PrimTy(_) => {
+                        Def::Def(DefKind::Struct, _)
+                        | Def::Def(DefKind::Union, _)
+                        | Def::Def(DefKind::Enum, _)
+                        | Def::PrimTy(_) => {
                             return def == path.def
                         }
                         _ => {}

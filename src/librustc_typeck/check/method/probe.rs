@@ -6,7 +6,7 @@ use super::suggest;
 use crate::check::autoderef::{self, Autoderef};
 use crate::check::FnCtxt;
 use crate::hir::def_id::DefId;
-use crate::hir::def::Def;
+use crate::hir::def::{Def, DefKind};
 use crate::namespace::Namespace;
 
 use rustc_data_structures::sync::Lrc;
@@ -862,7 +862,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                self_ty: Option<Ty<'tcx>>,
                                expected: Ty<'tcx>) -> bool {
         match method.def() {
-            Def::Method(def_id) => {
+            Def::Def(DefKind::Method, def_id) => {
                 let fty = self.tcx.fn_sig(def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);

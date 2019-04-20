@@ -37,7 +37,7 @@ use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
 use crate::hir::map::{DefKey, DefPathData, Definitions};
 use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
-use crate::hir::def::{Def, PathResolution, PerNS};
+use crate::hir::def::{Def, DefKind, PathResolution, PerNS};
 use crate::hir::{GenericArg, ConstArg};
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
@@ -1500,7 +1500,7 @@ impl<'a> LoweringContext<'a> {
                             None,
                             P(hir::Path {
                                 span,
-                                def: Def::TyParam(DefId::local(def_index)),
+                                def: Def::Def(DefKind::TyParam, DefId::local(def_index)),
                                 segments: hir_vec![hir::PathSegment::from_ident(ident)],
                             }),
                         ))
@@ -1870,17 +1870,17 @@ impl<'a> LoweringContext<'a> {
                         index: this.def_key(def_id).parent.expect("missing parent"),
                     };
                     let type_def_id = match resolution.base_def() {
-                        Def::AssociatedTy(def_id) if i + 2 == proj_start => {
+                        Def::Def(DefKind::AssociatedTy, def_id) if i + 2 == proj_start => {
                             Some(parent_def_id(self, def_id))
                         }
-                        Def::Variant(def_id) if i + 1 == proj_start => {
+                        Def::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
                             Some(parent_def_id(self, def_id))
                         }
-                        Def::Struct(def_id)
-                        | Def::Union(def_id)
-                        | Def::Enum(def_id)
-                        | Def::TyAlias(def_id)
-                        | Def::Trait(def_id) if i + 1 == proj_start =>
+                        Def::Def(DefKind::Struct, def_id)
+                        | Def::Def(DefKind::Union, def_id)
+                        | Def::Def(DefKind::Enum, def_id)
+                        | Def::Def(DefKind::TyAlias, def_id)
+                        | Def::Def(DefKind::Trait, def_id) if i + 1 == proj_start =>
                         {
                             Some(def_id)
                         }
@@ -1888,9 +1888,12 @@ impl<'a> LoweringContext<'a> {
                     };
                     let parenthesized_generic_args = match resolution.base_def() {
                         // `a::b::Trait(Args)`
-                        Def::Trait(..) if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
+                        Def::Def(DefKind::Trait, _)
+                            if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
                         // `a::b::Trait(Args)::TraitItem`
-                        Def::Method(..) | Def::AssociatedConst(..) | Def::AssociatedTy(..)
+                        Def::Def(DefKind::Method, _)
+                        | Def::Def(DefKind::AssociatedConst, _)
+                        | Def::Def(DefKind::AssociatedTy, _)
                             if i + 2 == proj_start =>
                         {
                             ParenthesizedGenericArgs::Ok
@@ -1898,11 +1901,11 @@ impl<'a> LoweringContext<'a> {
                         // Avoid duplicated errors.
                         Def::Err => ParenthesizedGenericArgs::Ok,
                         // An error
-                        Def::Struct(..)
-                        | Def::Enum(..)
-                        | Def::Union(..)
-                        | Def::TyAlias(..)
-                        | Def::Variant(..) if i + 1 == proj_start =>
+                        Def::Def(DefKind::Struct, _)
+                        | Def::Def(DefKind::Enum, _)
+                        | Def::Def(DefKind::Union, _)
+                        | Def::Def(DefKind::TyAlias, _)
+                        | Def::Def(DefKind::Variant, _) if i + 1 == proj_start =>
                         {
                             ParenthesizedGenericArgs::Err
                         }
@@ -2788,7 +2791,7 @@ impl<'a> LoweringContext<'a> {
                                 if path.segments.len() == 1
                                     && bound_pred.bound_generic_params.is_empty() =>
                             {
-                                if let Some(Def::TyParam(def_id)) = self.resolver
+                                if let Some(Def::Def(DefKind::TyParam, def_id)) = self.resolver
                                     .get_resolution(bound_pred.bounded_ty.id)
                                     .map(|d| d.base_def())
                                 {
@@ -3242,7 +3245,7 @@ impl<'a> LoweringContext<'a> {
                         });
 
                         if let Some(ref trait_ref) = trait_ref {
-                            if let Def::Trait(def_id) = trait_ref.path.def {
+                            if let Def::Def(DefKind::Trait, def_id) = trait_ref.path.def {
                                 this.trait_impls.entry(def_id).or_default().push(
                                     lowered_trait_impl_id);
                             }
@@ -5277,7 +5280,7 @@ impl<'a> LoweringContext<'a> {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
                 match path.def {
-                    Def::Trait(_) | Def::TraitAlias(_) => {
+                    Def::Def(DefKind::Trait, _) | Def::Def(DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: hir::HirVec::new(),
                             trait_ref: hir::TraitRef {

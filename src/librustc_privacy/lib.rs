@@ -12,7 +12,7 @@
 
 use rustc::bug;
 use rustc::hir::{self, Node, PatKind, AssociatedItemKind};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
@@ -1107,9 +1107,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     fn visit_qpath(&mut self, qpath: &'tcx hir::QPath, id: hir::HirId, span: Span) {
         let def = match *qpath {
             hir::QPath::Resolved(_, ref path) => match path.def {
-                Def::Method(..) | Def::AssociatedConst(..) |
-                Def::AssociatedTy(..) | Def::AssociatedExistential(..) |
-                Def::Static(..) => Some(path.def),
+                Def::Def(DefKind::Method, _) | Def::Def(DefKind::AssociatedConst, _) |
+                Def::Def(DefKind::AssociatedTy, _) | Def::Def(DefKind::AssociatedExistential, _) |
+                Def::Def(DefKind::Static, _) => Some(path.def),
                 _ => None,
             }
             hir::QPath::TypeRelative(..) => {
@@ -1118,7 +1118,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         };
         if let Some(def) = def {
             let def_id = def.def_id();
-            let is_local_static = if let Def::Static(..) = def { def_id.is_local() } else { false };
+            let is_local_static = if let Def::Def(DefKind::Static, _) = def {
+                def_id.is_local()
+            } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
                     hir::QPath::Resolved(_, ref path) => path.to_string(),

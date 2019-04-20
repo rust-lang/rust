@@ -10,7 +10,7 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
-use crate::hir::def::Def;
+use crate::hir::def::{Def, DefKind};
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::util::nodemap::{NodeMap, FxHashSet};
 use crate::mir::mono::Linkage;
@@ -1394,7 +1394,10 @@ impl Expr {
          match self.node {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.def {
-                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                    Def::Local(..)
+                    | Def::Upvar(..)
+                    | Def::Def(DefKind::Static, _)
+                    | Def::Err => true,
                     _ => false,
                 }
             }
@@ -2152,8 +2155,8 @@ impl TraitRef {
     /// Gets the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
     pub fn trait_def_id(&self) -> DefId {
         match self.path.def {
-            Def::Trait(did) => did,
-            Def::TraitAlias(did) => did,
+            Def::Def(DefKind::Trait, did) => did,
+            Def::Def(DefKind::TraitAlias, did) => did,
             Def::Err => {
                 FatalError.raise();
             }
