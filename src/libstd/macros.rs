@@ -314,6 +314,22 @@ macro_rules! eprintln {
 /// You can also use `dbg!()` without a value to just print the
 /// file and line whenever it's reached.
 ///
+/// Finally, if you want to `dbg!(..)` multiple values, it will treat them as
+/// a tuple (and return it, too):
+///
+/// ```
+/// assert_eq!(dbg!(1usize, 2u32), (1, 2));
+/// ```
+///
+/// However, a single argument with a trailing comma will still not be treated
+/// as a tuple, following the convention of ignoring trailing commas in macro
+/// invocations. You can use a 1-tuple directly if you need one:
+///
+/// ```
+/// assert_eq!(1, dbg!(1u32,)); // trailing comma ignored
+/// assert_eq!((1,), dbg!((1u32,))); // 1-tuple
+/// ```
+///
 /// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
 /// [`debug!`]: https://docs.rs/log/*/log/macro.debug.html
 /// [`log`]: https://crates.io/crates/log
@@ -333,7 +349,12 @@ macro_rules! dbg {
                 tmp
             }
         }
-    }
+    };
+    // Trailing comma with single argument is ignored
+    ($val:expr,) => { dbg!($val) };
+    ($($val:expr),+ $(,)?) => {
+        ($(dbg!($val)),+,)
+    };
 }
 
 /// Awaits the completion of an async call.

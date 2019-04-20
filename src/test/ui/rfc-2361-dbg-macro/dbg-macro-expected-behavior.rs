@@ -54,6 +54,17 @@ fn test() {
         7331
     }));
     assert_eq!(foo, 42);
+
+    // Test trailing comma:
+    assert_eq!(("Yeah",), dbg!(("Yeah",)));
+
+    // Test multiple arguments:
+    assert_eq!((1u8, 2u32), dbg!(1,
+                                 2));
+
+    // Test multiple arguments + trailing comma:
+    assert_eq!((1u8, 2u32, "Yeah"), dbg!(1u8, 2u32,
+                                         "Yeah",));
 }
 
 fn validate_stderr(stderr: Vec<String>) {
@@ -85,6 +96,17 @@ fn validate_stderr(stderr: Vec<String>) {
 
         "before",
         ":51] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
+
+        ":59] (\"Yeah\",) = (",
+        "    \"Yeah\",",
+        ")",
+
+        ":62] 1 = 1",
+        ":62] 2 = 2",
+
+        ":66] 1u8 = 1",
+        ":66] 2u32 = 2",
+        ":66] \"Yeah\" = \"Yeah\"",
     ]);
 }
 
