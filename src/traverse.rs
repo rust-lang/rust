@@ -77,7 +77,7 @@ pub fn run_analysis<'a, 'tcx>(
 /// Traverse the two root modules in an interleaved manner, matching up pairs of modules
 /// from the two crate versions and compare for changes. Matching children get processed
 /// in the same fashion.
-#[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cognitive_complexity))]
 fn diff_structure<'a, 'tcx>(
     changes: &mut ChangeSet,
     id_mapping: &mut IdMapping,

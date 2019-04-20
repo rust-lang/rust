@@ -295,6 +295,9 @@ impl IdMapping {
     }
 }
 
+/// An export that could be missing from one of the crate versions.
+type OptionalExport = Option<Export<HirId>>;
+
 /// A mapping from names to pairs of old and new exports.
 ///
 /// Both old and new exports can be missing. Allows for reuse of the `HashMap`s used for storage.
@@ -302,11 +305,11 @@ impl IdMapping {
 #[cfg_attr(feature = "cargo-clippy", allow(clippy::module_name_repetitions))]
 pub struct NameMapping {
     /// The exports in the type namespace.
-    type_map: HashMap<Name, (Option<Export<HirId>>, Option<Export<HirId>>)>,
+    type_map: HashMap<Name, (OptionalExport, OptionalExport)>,
     /// The exports in the value namespace.
-    value_map: HashMap<Name, (Option<Export<HirId>>, Option<Export<HirId>>)>,
+    value_map: HashMap<Name, (OptionalExport, OptionalExport)>,
     /// The exports in the macro namespace.
-    macro_map: HashMap<Name, (Option<Export<HirId>>, Option<Export<HirId>>)>,
+    macro_map: HashMap<Name, (OptionalExport, OptionalExport)>,
 }
 
 impl NameMapping {
