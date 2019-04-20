@@ -2,8 +2,8 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, last_line_of_span, paths, snippet_opt, span_lint, span_lint_and_sugg, span_lint_and_then,
-    without_block_comments,
+    in_macro, is_present_in_source, last_line_of_span, paths, snippet_opt, span_lint, span_lint_and_sugg,
+    span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -479,20 +479,6 @@ fn is_word(nmi: &NestedMetaItem, expected: &str) -> bool {
     } else {
         false
     }
-}
-
-// If the snippet is empty, it's an attribute that was inserted during macro
-// expansion and we want to ignore those, because they could come from external
-// sources that the user has no control over.
-// For some reason these attributes don't have any expansion info on them, so
-// we have to check it this way until there is a better way.
-fn is_present_in_source(cx: &LateContext<'_, '_>, span: Span) -> bool {
-    if let Some(snippet) = snippet_opt(cx, span) {
-        if snippet.is_empty() {
-            return false;
-        }
-    }
-    true
 }
 
 declare_lint_pass!(DeprecatedCfgAttribute => [DEPRECATED_CFG_ATTR]);

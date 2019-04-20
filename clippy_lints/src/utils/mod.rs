@@ -93,6 +93,20 @@ pub fn in_macro(span: Span) -> bool {
     span.ctxt().outer().expn_info().is_some()
 }
 
+// If the snippet is empty, it's an attribute that was inserted during macro
+// expansion and we want to ignore those, because they could come from external
+// sources that the user has no control over.
+// For some reason these attributes don't have any expansion info on them, so
+// we have to check it this way until there is a better way.
+pub fn is_present_in_source<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
+    if let Some(snippet) = snippet_opt(cx, span) {
+        if snippet.is_empty() {
+            return false;
+        }
+    }
+    true
+}
+
 /// Checks if type is struct, enum or union type with the given def path.
 pub fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
     match ty.sty {
