@@ -7,7 +7,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def::{CtorOf, Def, CtorKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
 use rustc::ty::{self, AdtKind, Ty};
-use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
@@ -74,45 +74,44 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                     adjustment: &Adjustment<'tcx>)
                                     -> Expr<'tcx> {
     let Expr { temp_lifetime, mut span, .. } = expr;
+
+    // Adjust the span from the block, to the last expression of the
+    // block. This is a better span when returning a mutable reference
+    // with too short a lifetime. The error message will use the span
+    // from the assignment to the return place, which should only point
+    // at the returned value, not the entire function body.
+    //
+    // fn return_short_lived<'a>(x: &'a mut i32) -> &'static mut i32 {
+    //      x
+    //   // ^ error message points at this expression.
+    // }
+    let mut adjust_span = |expr: &mut Expr<'tcx>| {
+        if let ExprKind::Block { body } = expr.kind {
+            if let Some(ref last_expr) = body.expr {
+                span = last_expr.span;
+                expr.span = span;
+            }
+        }
+    };
+
     let kind = match adjustment.kind {
-        Adjust::ReifyFnPointer => {
-            ExprKind::ReifyFnPointer { source: expr.to_ref() }
+        Adjust::Pointer(PointerCast::Unsize) => {
+            adjust_span(&mut expr);
+            ExprKind::Pointer { cast: PointerCast::Unsize, source: expr.to_ref() }
         }
-        Adjust::UnsafeFnPointer => {
-            ExprKind::UnsafeFnPointer { source: expr.to_ref() }
-        }
-        Adjust::ClosureFnPointer(unsafety) => {
-            ExprKind::ClosureFnPointer { source: expr.to_ref(), unsafety }
+        Adjust::Pointer(cast) => {
+            ExprKind::Pointer { cast, source: expr.to_ref() }
         }
         Adjust::NeverToAny => {
             ExprKind::NeverToAny { source: expr.to_ref() }
         }
-        Adjust::MutToConstPointer => {
-            ExprKind::MutToConstPointer { source: expr.to_ref() }
-        }
         Adjust::Deref(None) => {
-            // Adjust the span from the block, to the last expression of the
-            // block. This is a better span when returning a mutable reference
-            // with too short a lifetime. The error message will use the span
-            // from the assignment to the return place, which should only point
-            // at the returned value, not the entire function body.
-            //
-            // fn return_short_lived<'a>(x: &'a mut i32) -> &'static mut i32 {
-            //      x
-            //   // ^ error message points at this expression.
-            // }
-            //
-            // We don't need to do this adjustment in the next match arm since
-            // deref coercions always start with a built-in deref.
-            if let ExprKind::Block { body } = expr.kind {
-                if let Some(ref last_expr) = body.expr {
-                    span = last_expr.span;
-                    expr.span = span;
-                }
-            }
+            adjust_span(&mut expr);
             ExprKind::Deref { arg: expr.to_ref() }
         }
         Adjust::Deref(Some(deref)) => {
+            // We don't need to do call adjust_span here since
+            // deref coercions always start with a built-in deref.
             let call = deref.method_call(cx.tcx(), expr.ty);
 
             expr = Expr {
@@ -186,16 +185,6 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // We only need to worry about this kind of thing for coercions from refs to ptrs,
             // since they get rid of a borrow implicitly.
             ExprKind::Use { source: cast_expr.to_ref() }
-        }
-        Adjust::Unsize => {
-            // See the above comment for Adjust::Deref
-            if let ExprKind::Block { body } = expr.kind {
-                if let Some(ref last_expr) = body.expr {
-                    span = last_expr.span;
-                    expr.span = span;
-                }
-            }
-            ExprKind::Unsize { source: expr.to_ref() }
         }
     };
 

@@ -1,4 +1,4 @@
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, adjustment::{PointerCast}};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir;
@@ -37,7 +37,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                bx
            }
 
-            mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, _) => {
+            mir::Rvalue::Cast(mir::CastKind::Pointer(PointerCast::Unsize), ref source, _) => {
                 // The destination necessarily contains a fat pointer, so if
                 // it's a scalar pair, it's a fat pointer or newtype thereof.
                 if bx.cx().is_backend_scalar_pair(dest.layout) {
@@ -178,7 +178,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cast = bx.cx().layout_of(self.monomorphize(&mir_cast_ty));
 
                 let val = match *kind {
-                    mir::CastKind::ReifyFnPointer => {
+                    mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         match operand.layout.ty.sty {
                             ty::FnDef(def_id, substs) => {
                                 if bx.cx().tcx().has_attr(def_id, "rustc_args_required_const") {
@@ -193,7 +193,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::ClosureFnPointer(_) => {
+                    mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)) => {
                         match operand.layout.ty.sty {
                             ty::Closure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(
@@ -205,11 +205,11 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::UnsafeFnPointer => {
+                    mir::CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
                         // this is a no-op at the LLVM level
                         operand.val
                     }
-                    mir::CastKind::Unsize => {
+                    mir::CastKind::Pointer(PointerCast::Unsize) => {
                         assert!(bx.cx().is_backend_scalar_pair(cast));
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
@@ -236,7 +236,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::MutToConstPointer
+                    mir::CastKind::Pointer(PointerCast::MutToConstPointer)
                     | mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
                             if bx.cx().is_backend_scalar_pair(cast) {
@@ -254,7 +254,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Unexpected non-Pair operand")
                         }
                     }
-                    mir::CastKind::MutToConstPointer
+                    mir::CastKind::Pointer(PointerCast::MutToConstPointer)
                     | mir::CastKind::Misc => {
                         assert!(bx.cx().is_backend_immediate(cast));
                         let ll_t_out = bx.cx().immediate_backend_type(cast);

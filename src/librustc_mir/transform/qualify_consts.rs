@@ -1108,11 +1108,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             Rvalue::UnaryOp(UnOp::Not, _) |
             Rvalue::NullaryOp(NullOp::SizeOf, _) |
             Rvalue::CheckedBinaryOp(..) |
-            Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
-            Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
-            Rvalue::Cast(CastKind::ClosureFnPointer(_), ..) |
-            Rvalue::Cast(CastKind::Unsize, ..) |
-            Rvalue::Cast(CastKind::MutToConstPointer, ..) |
+            Rvalue::Cast(CastKind::Pointer(_), ..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) |
             Rvalue::Ref(..) |

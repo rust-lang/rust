@@ -106,7 +106,9 @@ use rustc::ty::{
     self, AdtKind, CanonicalUserType, Ty, TyCtxt, GenericParamDefKind, Visibility,
     ToPolyTraitRef, ToPredicate, RegionKind, UserType
 };
-use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
+use rustc::ty::adjustment::{
+    Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
+};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{UnpackedKind, Subst, InternalSubsts, SubstsRef, UserSelfTy, UserSubsts};
@@ -2664,7 +2666,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 if unsize {
                     adjustments.push(Adjustment {
-                        kind: Adjust::Unsize,
+                        kind: Adjust::Pointer(PointerCast::Unsize),
                         target: method.sig.inputs()[0]
                     });
                 }

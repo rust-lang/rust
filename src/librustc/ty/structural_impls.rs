@@ -326,6 +326,7 @@ CloneTypeFoldableAndLiftImpls! {
     crate::ty::IntVarValue,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
+    crate::ty::adjustment::PointerCast,
     crate::ty::RegionVid,
     crate::ty::UniverseIndex,
     crate::ty::Variance,
@@ -626,16 +627,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjust<'a> {
         match *self {
             ty::adjustment::Adjust::NeverToAny =>
                 Some(ty::adjustment::Adjust::NeverToAny),
-            ty::adjustment::Adjust::ReifyFnPointer =>
-                Some(ty::adjustment::Adjust::ReifyFnPointer),
-            ty::adjustment::Adjust::UnsafeFnPointer =>
-                Some(ty::adjustment::Adjust::UnsafeFnPointer),
-            ty::adjustment::Adjust::ClosureFnPointer(unsafety) =>
-                Some(ty::adjustment::Adjust::ClosureFnPointer(unsafety)),
-            ty::adjustment::Adjust::MutToConstPointer =>
-                Some(ty::adjustment::Adjust::MutToConstPointer),
-            ty::adjustment::Adjust::Unsize =>
-                Some(ty::adjustment::Adjust::Unsize),
+            ty::adjustment::Adjust::Pointer(ptr) =>
+                Some(ty::adjustment::Adjust::Pointer(ptr)),
             ty::adjustment::Adjust::Deref(ref overloaded) => {
                 tcx.lift(overloaded).map(ty::adjustment::Adjust::Deref)
             }
@@ -1185,11 +1178,7 @@ BraceStructTypeFoldableImpl! {
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for ty::adjustment::Adjust<'tcx> {
         (ty::adjustment::Adjust::NeverToAny),
-        (ty::adjustment::Adjust::ReifyFnPointer),
-        (ty::adjustment::Adjust::UnsafeFnPointer),
-        (ty::adjustment::Adjust::ClosureFnPointer)(a),
-        (ty::adjustment::Adjust::MutToConstPointer),
-        (ty::adjustment::Adjust::Unsize),
+        (ty::adjustment::Adjust::Pointer)(a),
         (ty::adjustment::Adjust::Deref)(a),
         (ty::adjustment::Adjust::Borrow)(a),
     }

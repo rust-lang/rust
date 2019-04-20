@@ -182,7 +182,7 @@ use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::ty::{self, TypeFoldable, Ty, TyCtxt, GenericParamDefKind};
-use rustc::ty::adjustment::CustomCoerceUnsized;
+use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::session::config::EntryFnType;
 use rustc::mir::{self, Location, Place, PlaceBase, Promoted, Static, StaticKind};
 use rustc::mir::visit::Visitor as MirVisitor;
@@ -531,7 +531,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             // When doing an cast from a regular pointer to a fat pointer, we
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
-            mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, target_ty) => {
+            mir::Rvalue::Cast(
+                mir::CastKind::Pointer(PointerCast::Unsize), ref operand, target_ty
+            ) => {
                 let target_ty = self.tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
                     ty::ParamEnv::reveal_all(),
@@ -556,7 +558,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                          self.output);
                 }
             }
-            mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
+            mir::Rvalue::Cast(
+                mir::CastKind::Pointer(PointerCast::ReifyFnPointer), ref operand, _
+            ) => {
                 let fn_ty = operand.ty(self.mir, self.tcx);
                 let fn_ty = self.tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
@@ -565,7 +569,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 );
                 visit_fn_use(self.tcx, fn_ty, false, &mut self.output);
             }
-            mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer(_), ref operand, _) => {
+            mir::Rvalue::Cast(
+                mir::CastKind::Pointer(PointerCast::ClosureFnPointer(_)), ref operand, _
+            ) => {
                 let source_ty = operand.ty(self.mir, self.tcx);
                 let source_ty = self.tcx.subst_and_normalize_erasing_regions(
                     self.param_substs,
