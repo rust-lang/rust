@@ -49,7 +49,7 @@ pub trait Future {
     /// For example, a future waiting for a socket to become
     /// readable would call `.clone()` on the [`Waker`] and store it.
     /// When a signal arrives elsewhere indicating that the socket is readable,
-    /// `[Waker::wake]` is called and the socket future's task is awoken.
+    /// [`Waker::wake`] is called and the socket future's task is awoken.
     /// Once a task has been woken up, it should attempt to `poll` the future
     /// again, which may or may not produce a final value.
     ///
