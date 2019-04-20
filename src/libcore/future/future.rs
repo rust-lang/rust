@@ -18,9 +18,9 @@ use crate::task::{Context, Poll};
 /// The core method of future, `poll`, *attempts* to resolve the future into a
 /// final value. This method does not block if the value is not ready. Instead,
 /// the current task is scheduled to be woken up when it's possible to make
-/// further progress by `poll`ing again. The wake up is performed using
-/// the `waker` argument of the `poll()` method, which is a handle for waking
-/// up the current task.
+/// further progress by `poll`ing again. The `context` passed to the `poll`
+/// method can provide a `Waker`, which is a handle for waking up the current
+/// task.
 ///
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `await!` the value.
@@ -49,13 +49,13 @@ pub trait Future {
     /// For example, a future waiting for a socket to become
     /// readable would call `.clone()` on the [`Waker`] and store it.
     /// When a signal arrives elsewhere indicating that the socket is readable,
-    /// `[Waker::wake]` is called and the socket future's task is awoken.
+    /// [`Waker::wake`] is called and the socket future's task is awoken.
     /// Once a task has been woken up, it should attempt to `poll` the future
     /// again, which may or may not produce a final value.
     ///
-    /// Note that on multiple calls to `poll`, only the most recent
-    /// [`Waker`] passed to `poll` should be scheduled to receive a
-    /// wakeup.
+    /// Note that on multiple calls to `poll`, only the [`Waker`] from the
+    /// [`Context`] passed to the most recent call should be scheduled to
+    /// receive a wakeup.
     ///
     /// # Runtime characteristics
     ///
@@ -77,15 +77,15 @@ pub trait Future {
     /// thread pool (or something similar) to ensure that `poll` can return
     /// quickly.
     ///
-    /// An implementation of `poll` may also never cause memory unsafety.
-    ///
     /// # Panics
     ///
-    /// Once a future has completed (returned `Ready` from `poll`),
-    /// then any future calls to `poll` may panic, block forever, or otherwise
-    /// cause any kind of bad behavior except causing memory unsafety.
-    /// The `Future` trait itself provides no guarantees about the behavior
-    /// of `poll` after a future has completed.
+    /// Once a future has completed (returned `Ready` from `poll`), calling its
+    /// `poll` method again may panic, block forever, or cause other kinds of
+    /// problems; the `Future` trait places no requirements on the effects of
+    /// such a call. However, as the `poll` method is not marked `unsafe`,
+    /// Rust's usual rules apply: calls must never cause undefined behavior
+    /// (memory corruption, incorrect use of `unsafe` functions, or the like),
+    /// regardless of the future's state.
     ///
     /// [`Poll::Pending`]: ../task/enum.Poll.html#variant.Pending
     /// [`Poll::Ready(val)`]: ../task/enum.Poll.html#variant.Ready
