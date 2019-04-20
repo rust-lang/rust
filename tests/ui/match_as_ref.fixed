@@ -1,0 +1,14 @@
+// run-rustfix
+
+#![allow(unused)]
+#![warn(clippy::match_as_ref)]
+
+fn match_as_ref() {
+    let owned: Option<()> = None;
+    let borrowed: Option<&()> = owned.as_ref();
+
+    let mut mut_owned: Option<()> = None;
+    let borrow_mut: Option<&mut ()> = mut_owned.as_mut();
+}
+
+fn main() {}
