@@ -2,7 +2,6 @@
 #![feature(rustc_private)]
 
 #[deny(warnings)]
-
 extern crate rustc;
 extern crate syntax;
 extern crate syntax_pos;

@@ -368,7 +368,9 @@ impl NameMapping {
     }
 
     /// Drain the item pairs being stored.
-    pub fn drain<'a>(&'a mut self) -> impl Iterator<Item = (Option<Export<HirId>>, Option<Export<HirId>>)> + 'a {
+    pub fn drain<'a>(
+        &'a mut self,
+    ) -> impl Iterator<Item = (Option<Export<HirId>>, Option<Export<HirId>>)> + 'a {
         self.type_map
             .drain()
             .chain(self.value_map.drain())
