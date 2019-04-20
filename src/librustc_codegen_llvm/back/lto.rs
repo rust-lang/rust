@@ -1,4 +1,4 @@
-use crate::back::bytecode::{DecodedBytecode, RLIB_BYTECODE_EXTENSION};
+use crate::back::bytecode::DecodedBytecode;
 use crate::back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitcode,
     to_llvm_opt_settings};
 use crate::llvm::archive_ro::ArchiveRO;
@@ -16,7 +16,7 @@ use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_codegen_ssa::{ModuleCodegen, ModuleKind};
+use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, ModuleKind};
 
 use std::ffi::{CStr, CString};
 use std::ptr;

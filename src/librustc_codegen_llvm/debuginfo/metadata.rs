@@ -376,7 +376,7 @@ fn vec_slice_metadata(
 
     return_if_metadata_created_in_meantime!(cx, unique_type_id);
 
-    let slice_type_name = compute_debuginfo_type_name(cx, slice_ptr_type, true);
+    let slice_type_name = compute_debuginfo_type_name(cx.tcx, slice_ptr_type, true);
 
     let (pointer_size, pointer_align) = cx.size_and_align_of(data_ptr_type);
     let (usize_size, usize_align) = cx.size_and_align_of(cx.tcx.types.usize);
@@ -479,7 +479,7 @@ fn trait_pointer_metadata(
 
     let trait_object_type = trait_object_type.unwrap_or(trait_type);
     let trait_type_name =
-        compute_debuginfo_type_name(cx, trait_object_type, false);
+        compute_debuginfo_type_name(cx.tcx, trait_object_type, false);
 
     let file_metadata = unknown_file_metadata(cx);
 
@@ -866,7 +866,7 @@ fn foreign_type_metadata(
 ) -> &'ll DIType {
     debug!("foreign_type_metadata: {:?}", t);
 
-    let name = compute_debuginfo_type_name(cx, t, false);
+    let name = compute_debuginfo_type_name(cx.tcx, t, false);
     create_struct_stub(cx, t, &name, unique_type_id, NO_SCOPE_METADATA)
 }
 
@@ -876,7 +876,7 @@ fn pointer_type_metadata(
     pointee_type_metadata: &'ll DIType,
 ) -> &'ll DIType {
     let (pointer_size, pointer_align) = cx.size_and_align_of(pointer_type);
-    let name = compute_debuginfo_type_name(cx, pointer_type, false);
+    let name = compute_debuginfo_type_name(cx.tcx, pointer_type, false);
     let name = SmallCStr::new(&name);
     unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
@@ -1072,7 +1072,7 @@ fn prepare_struct_metadata(
     unique_type_id: UniqueTypeId,
     span: Span,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
+    let struct_name = compute_debuginfo_type_name(cx.tcx, struct_type, false);
 
     let (struct_def_id, variant) = match struct_type.sty {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
@@ -1138,7 +1138,7 @@ fn prepare_tuple_metadata(
     unique_type_id: UniqueTypeId,
     span: Span,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let tuple_name = compute_debuginfo_type_name(cx, tuple_type, false);
+    let tuple_name = compute_debuginfo_type_name(cx.tcx, tuple_type, false);
 
     let struct_stub = create_struct_stub(cx,
                                          tuple_type,
@@ -1194,7 +1194,7 @@ fn prepare_union_metadata(
     unique_type_id: UniqueTypeId,
     span: Span,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let union_name = compute_debuginfo_type_name(cx, union_type, false);
+    let union_name = compute_debuginfo_type_name(cx.tcx, union_type, false);
 
     let (union_def_id, variant) = match union_type.sty {
         ty::Adt(def, _) => (def.did, def.non_enum_variant()),
@@ -1607,7 +1607,7 @@ fn prepare_enum_metadata(
     unique_type_id: UniqueTypeId,
     span: Span,
 ) -> RecursiveTypeDescription<'ll, 'tcx> {
-    let enum_name = compute_debuginfo_type_name(cx, enum_type, false);
+    let enum_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
 
     let containing_scope = get_namespace_for_item(cx, enum_def_id);
     // FIXME: This should emit actual file metadata for the enum, but we

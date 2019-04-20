@@ -44,8 +44,6 @@ extern crate rustc_fs_util;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
-extern crate serialize;
-extern crate tempfile;
 
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
@@ -73,13 +71,10 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 mod error_codes;
 
 mod back {
-    mod archive;
+    pub mod archive;
     pub mod bytecode;
-    pub mod link;
     pub mod lto;
     pub mod write;
-    mod rpath;
-    pub mod wasm;
 }
 
 mod abi;
@@ -331,8 +326,17 @@ impl CodegenBackend for LlvmCodegenBackend {
         // This should produce either a finished executable or library.
         sess.profiler(|p| p.start_activity("link_crate"));
         time(sess, "linking", || {
-            back::link::link_binary(sess, &codegen_results,
-                                    outputs, &codegen_results.crate_name.as_str());
+            use rustc_codegen_ssa::back::link::link_binary;
+            use crate::back::archive::LlvmArchiveBuilder;
+
+            let target_cpu = crate::llvm_util::target_cpu(sess);
+            link_binary::<LlvmArchiveBuilder<'_>>(
+                sess,
+                &codegen_results,
+                outputs,
+                &codegen_results.crate_name.as_str(),
+                target_cpu,
+            );
         });
         sess.profiler(|p| p.end_activity("link_crate"));
 

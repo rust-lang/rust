@@ -1,31 +1,26 @@
 // Type Names for Debug Info.
 
-use crate::common::CodegenCx;
-use rustc::hir::def_id::DefId;
-use rustc::ty::subst::SubstsRef;
-use rustc::ty::{self, Ty};
-use rustc_codegen_ssa::traits::*;
+use rustc::hir::{self, def_id::DefId};
+use rustc::ty::{self, Ty, TyCtxt, subst::SubstsRef};
 use rustc_data_structures::fx::FxHashSet;
-
-use rustc::hir;
 
 // Compute the name of the type as it should be stored in debuginfo. Does not do
 // any caching, i.e., calling the function twice with the same type will also do
 // the work twice. The `qualified` parameter only affects the first level of the
 // type name, further levels (i.e., type parameters) are always fully qualified.
-pub fn compute_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn compute_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              t: Ty<'tcx>,
                                              qualified: bool)
                                              -> String {
     let mut result = String::with_capacity(64);
     let mut visited = FxHashSet::default();
-    push_debuginfo_type_name(cx, t, qualified, &mut result, &mut visited);
+    push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
     result
 }
 
 // Pushes the name of the type as it should be stored in debuginfo on the
 // `output` String. See also compute_debuginfo_type_name().
-pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+pub fn push_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           t: Ty<'tcx>,
                                           qualified: bool,
                                           output: &mut String,
@@ -33,7 +28,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
     // When targeting MSVC, emit C++ style type names for compatibility with
     // .natvis visualizers (and perhaps other existing native debuggers?)
-    let cpp_like_names = cx.sess().target.target.options.is_like_msvc;
+    let cpp_like_names = tcx.sess.target.target.options.is_like_msvc;
 
     match t.sty {
         ty::Bool => output.push_str("bool"),
@@ -43,15 +38,15 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::Int(int_ty) => output.push_str(int_ty.ty_to_string()),
         ty::Uint(uint_ty) => output.push_str(uint_ty.ty_to_string()),
         ty::Float(float_ty) => output.push_str(float_ty.ty_to_string()),
-        ty::Foreign(def_id) => push_item_name(cx, def_id, qualified, output),
+        ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
         ty::Adt(def, substs) => {
-            push_item_name(cx, def.did, qualified, output);
-            push_type_params(cx, substs, output, visited);
+            push_item_name(tcx, def.did, qualified, output);
+            push_type_params(tcx, substs, output, visited);
         },
         ty::Tuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
-                push_debuginfo_type_name(cx, component_type, true, output, visited);
+                push_debuginfo_type_name(tcx, component_type, true, output, visited);
                 output.push_str(", ");
             }
             if !component_types.is_empty() {
@@ -69,7 +64,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 hir::MutMutable => output.push_str("mut "),
             }
 
-            push_debuginfo_type_name(cx, inner_type, true, output, visited);
+            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('*');
@@ -83,7 +78,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push_str("mut ");
             }
 
-            push_debuginfo_type_name(cx, inner_type, true, output, visited);
+            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('*');
@@ -91,8 +86,8 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         },
         ty::Array(inner_type, len) => {
             output.push('[');
-            push_debuginfo_type_name(cx, inner_type, true, output, visited);
-            output.push_str(&format!("; {}", len.unwrap_usize(cx.tcx)));
+            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
+            output.push_str(&format!("; {}", len.unwrap_usize(tcx)));
             output.push(']');
         },
         ty::Slice(inner_type) => {
@@ -102,7 +97,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                 output.push('[');
             }
 
-            push_debuginfo_type_name(cx, inner_type, true, output, visited);
+            push_debuginfo_type_name(tcx, inner_type, true, output, visited);
 
             if cpp_like_names {
                 output.push('>');
@@ -112,12 +107,12 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         },
         ty::Dynamic(ref trait_data, ..) => {
             if let Some(principal) = trait_data.principal() {
-                let principal = cx.tcx.normalize_erasing_late_bound_regions(
+                let principal = tcx.normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
                     &principal,
                 );
-                push_item_name(cx, principal.def_id, false, output);
-                push_type_params(cx, principal.substs, output, visited);
+                push_item_name(tcx, principal.def_id, false, output);
+                push_type_params(tcx, principal.substs, output, visited);
             } else {
                 output.push_str("dyn '_");
             }
@@ -142,13 +137,13 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
             }
 
 
-            let sig = t.fn_sig(cx.tcx);
+            let sig = t.fn_sig(tcx);
             if sig.unsafety() == hir::Unsafety::Unsafe {
                 output.push_str("unsafe ");
             }
 
             let abi = sig.abi();
-            if abi != crate::abi::Abi::Rust {
+            if abi != rustc_target::spec::abi::Abi::Rust {
                 output.push_str("extern \"");
                 output.push_str(abi.name());
                 output.push_str("\" ");
@@ -156,10 +151,10 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
             output.push_str("fn(");
 
-            let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+            let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
             if !sig.inputs().is_empty() {
                 for &parameter_type in sig.inputs() {
-                    push_debuginfo_type_name(cx, parameter_type, true, output, visited);
+                    push_debuginfo_type_name(tcx, parameter_type, true, output, visited);
                     output.push_str(", ");
                 }
                 output.pop();
@@ -178,7 +173,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
 
             if !sig.output().is_unit() {
                 output.push_str(" -> ");
-                push_debuginfo_type_name(cx, sig.output(), true, output, visited);
+                push_debuginfo_type_name(tcx, sig.output(), true, output, visited);
             }
 
 
@@ -213,18 +208,18 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         }
     }
 
-    fn push_item_name(cx: &CodegenCx<'_, '_>,
+    fn push_item_name(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                       def_id: DefId,
                       qualified: bool,
                       output: &mut String) {
         if qualified {
-            output.push_str(&cx.tcx.crate_name(def_id.krate).as_str());
-            for path_element in cx.tcx.def_path(def_id).data {
+            output.push_str(&tcx.crate_name(def_id.krate).as_str());
+            for path_element in tcx.def_path(def_id).data {
                 output.push_str("::");
                 output.push_str(&path_element.data.as_interned_str().as_str());
             }
         } else {
-            output.push_str(&cx.tcx.item_name(def_id).as_str());
+            output.push_str(&tcx.item_name(def_id).as_str());
         }
     }
 
@@ -233,7 +228,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
     // reconstructed for items from non-local crates. For local crates, this
     // would be possible but with inlining and LTO we have to use the least
     // common denominator - otherwise we would run into conflicts.
-    fn push_type_params<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
+    fn push_type_params<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   substs: SubstsRef<'tcx>,
                                   output: &mut String,
                                   visited: &mut FxHashSet<Ty<'tcx>>) {
@@ -244,7 +239,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         output.push('<');
 
         for type_parameter in substs.types() {
-            push_debuginfo_type_name(cx, type_parameter, true, output, visited);
+            push_debuginfo_type_name(tcx, type_parameter, true, output, visited);
             output.push_str(", ");
         }
 

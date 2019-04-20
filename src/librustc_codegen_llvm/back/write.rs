@@ -1,5 +1,5 @@
 use crate::attributes;
-use crate::back::bytecode::{self, RLIB_BYTECODE_EXTENSION};
+use crate::back::bytecode;
 use crate::back::lto::ThinBuffer;
 use crate::base;
 use crate::consts;
@@ -16,7 +16,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc::session::config::{self, OutputType, Passes, Lto, PgoGenerate};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
-use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
+use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, CompiledModule};
 use rustc::util::common::time_ext;
 use rustc_fs_util::{path_to_c_string, link_or_copy};
 use rustc_data_structures::small_c_str::SmallCStr;
