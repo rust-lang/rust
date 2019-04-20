@@ -44,8 +44,12 @@ use crate::{
 };
 use super::{
     Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
-    traits::{ Solution, Obligation, Guidance},
+    traits::{Solution, Obligation, Guidance},
 };
+
+mod unify;
+
+pub(super) use unify::Canonical;
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
@@ -321,30 +325,27 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_obligations_as_possible(&mut self) {
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
-            // FIXME resolve types in the obligation first
-            let (solution, var_mapping) = match &obligation {
+            let mut canonicalizer = self.canonicalizer();
+            let solution = match &obligation {
                 Obligation::Trait(tr) => {
-                    let (tr, var_mapping) = super::traits::canonicalize(tr.clone());
-                    (self.db.implements(tr), var_mapping)
+                    let canonical = canonicalizer.canonicalize_trait_ref(tr.clone());
+                    super::traits::implements(
+                        canonicalizer.ctx.db,
+                        canonicalizer.ctx.resolver.krate().unwrap(),
+                        canonical,
+                    )
                 }
             };
             match solution {
                 Some(Solution::Unique(substs)) => {
-                    for (i, subst) in substs.0.iter().enumerate() {
-                        let uncanonical = var_mapping[i];
-                        // FIXME the subst may contain type variables, which would need to be mapped back as well
-                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
-                    }
+                    canonicalizer.apply_solution(substs.0);
                 }
                 Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    for (i, subst) in substs.0.iter().enumerate() {
-                        let uncanonical = var_mapping[i];
-                        // FIXME the subst may contain type variables, which would need to be mapped back as well
-                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
-                    }
+                    canonicalizer.apply_solution(substs.0);
                     self.obligations.push(obligation);
                 }
                 Some(_) => {
+                    // FIXME use this when trying to resolve everything at the end
                     self.obligations.push(obligation);
                 }
                 None => {

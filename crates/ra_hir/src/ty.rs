@@ -15,7 +15,7 @@ pub(crate) mod display;
 use std::sync::Arc;
 use std::{fmt, mem};
 
-use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait};
+use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams};
 use display::{HirDisplay, HirFormatter};
 
 pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig};
@@ -118,6 +118,7 @@ pub enum Ty {
         /// surrounding impl, then the current function).
         idx: u32,
         /// The name of the parameter, for displaying.
+        // FIXME get rid of this
         name: Name,
     },
 
@@ -177,6 +178,30 @@ impl Substs {
         }
         &self.0[0]
     }
+
+    /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
+    pub fn identity(generic_params: &GenericParams) -> Substs {
+        Substs(
+            generic_params
+                .params_including_parent()
+                .into_iter()
+                .map(|p| Ty::Param { idx: p.idx, name: p.name.clone() })
+                .collect::<Vec<_>>()
+                .into(),
+        )
+    }
+
+    /// Return Substs that replace each parameter by a bound variable.
+    pub fn bound_vars(generic_params: &GenericParams) -> Substs {
+        Substs(
+            generic_params
+                .params_including_parent()
+                .into_iter()
+                .map(|p| Ty::Bound(p.idx))
+                .collect::<Vec<_>>()
+                .into(),
+        )
+    }
 }
 
 impl From<Vec<Ty>> for Substs {
@@ -197,6 +222,14 @@ pub struct TraitRef {
 impl TraitRef {
     pub fn self_ty(&self) -> &Ty {
         &self.substs.0[0]
+    }
+
+    pub fn subst(mut self, substs: &Substs) -> TraitRef {
+        self.substs.walk_mut(&mut |ty_mut| {
+            let ty = mem::replace(ty_mut, Ty::Unknown);
+            *ty_mut = ty.subst(substs);
+        });
+        self
     }
 }
 
@@ -370,6 +403,20 @@ impl Ty {
                     substs.0[idx as usize].clone()
                 } else {
                     Ty::Param { idx, name }
+                }
+            }
+            ty => ty,
+        })
+    }
+
+    /// Substitutes `Ty::Bound` vars (as opposed to type parameters).
+    pub fn subst_bound_vars(self, substs: &Substs) -> Ty {
+        self.fold(&mut |ty| match ty {
+            Ty::Bound(idx) => {
+                if (idx as usize) < substs.0.len() {
+                    substs.0[idx as usize].clone()
+                } else {
+                    Ty::Bound(idx)
                 }
             }
             ty => ty,

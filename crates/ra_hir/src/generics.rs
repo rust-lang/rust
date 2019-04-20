@@ -9,7 +9,7 @@ use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner};
 
 use crate::{
     db::DefDatabase,
-    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef
+    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef, AdtDef
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -153,6 +153,15 @@ impl From<Container> for GenericDef {
         match c {
             Container::Trait(trait_) => trait_.into(),
             Container::ImplBlock(impl_block) => impl_block.into(),
+        }
+    }
+}
+
+impl From<crate::adt::AdtDef> for GenericDef {
+    fn from(adt: crate::adt::AdtDef) -> Self {
+        match adt {
+            AdtDef::Struct(s) => s.into(),
+            AdtDef::Enum(e) => e.into(),
         }
     }
 }

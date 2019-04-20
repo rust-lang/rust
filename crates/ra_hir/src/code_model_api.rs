@@ -9,7 +9,7 @@ use crate::{
     type_ref::TypeRef,
     nameres::{ModuleScope, Namespace, ImportId, CrateModuleId},
     expr::{Body, BodySourceMap},
-    ty::InferenceResult,
+    ty::{ TraitRef, InferenceResult},
     adt::{EnumVariantId, StructFieldId, VariantDef},
     generics::HasGenericParams,
     docs::{Documentation, Docs, docs_from_ast},
@@ -694,6 +694,10 @@ impl Trait {
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
         db.trait_data(self)
+    }
+
+    pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
+        TraitRef::for_trait(db, self)
     }
 
     pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {

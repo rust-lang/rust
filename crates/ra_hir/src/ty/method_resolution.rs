@@ -16,7 +16,7 @@ use crate::{
     generics::HasGenericParams,
     ty::primitive::{UncertainIntTy, UncertainFloatTy}
 };
-use super::{TraitRef, Substs};
+use super::{TraitRef, infer::Canonical, Substs};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -183,6 +183,7 @@ impl Ty {
         name: Option<&Name>,
         mut callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
+        let krate = resolver.krate()?;
         'traits: for t in resolver.traits_in_scope() {
             let data = t.trait_data(db);
             // we'll be lazy about checking whether the type implements the
@@ -195,12 +196,19 @@ impl Ty {
                         let sig = m.signature(db);
                         if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
                             if !known_implemented {
+                                // TODO the self type may contain type
+                                // variables, so we need to do proper
+                                // canonicalization here
                                 let trait_ref = TraitRef {
                                     trait_: t,
                                     substs: fresh_substs_for_trait(db, t, self.clone()),
                                 };
-                                let (trait_ref, _) = super::traits::canonicalize(trait_ref);
-                                if db.implements(trait_ref).is_none() {
+                                let canonical = Canonical {
+                                    num_vars: trait_ref.substs.len(),
+                                    value: trait_ref,
+                                };
+                                // FIXME cache this implements check (without solution) in a query?
+                                if super::traits::implements(db, krate, canonical).is_none() {
                                     continue 'traits;
                                 }
                             }
@@ -271,15 +279,18 @@ impl Ty {
 }
 
 /// This creates Substs for a trait with the given Self type and type variables
-/// for all other parameters. This is kind of a hack since these aren't 'real'
-/// type variables; the resulting trait reference is just used for the
-/// preliminary method candidate check.
+/// for all other parameters, to query Chalk with it.
 fn fresh_substs_for_trait(db: &impl HirDatabase, tr: Trait, self_ty: Ty) -> Substs {
     let mut substs = Vec::new();
     let generics = tr.generic_params(db);
     substs.push(self_ty);
-    substs.extend(generics.params_including_parent().into_iter().skip(1).enumerate().map(
-        |(i, _p)| Ty::Infer(super::infer::InferTy::TypeVar(super::infer::TypeVarId(i as u32))),
-    ));
+    substs.extend(
+        generics
+            .params_including_parent()
+            .into_iter()
+            .skip(1)
+            .enumerate()
+            .map(|(i, _p)| Ty::Bound(i as u32)),
+    );
     substs.into()
 }

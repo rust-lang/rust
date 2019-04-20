@@ -238,6 +238,11 @@ impl TraitRef {
         let segment = path.segments.last().expect("path should have at least one segment");
         substs_from_path_segment(db, resolver, segment, &resolved.generic_params(db), true)
     }
+
+    pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {
+        let substs = Substs::identity(&trait_.generic_params(db));
+        TraitRef { trait_, substs }
+    }
 }
 
 /// Build the declared type of an item. This depends on the namespace; e.g. for
@@ -299,7 +304,7 @@ fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let generics = def.generic_params(db);
-    let substs = make_substs(&generics);
+    let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
@@ -341,7 +346,7 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
         return type_for_struct(db, def); // Unit struct
     }
     let generics = def.generic_params(db);
-    let substs = make_substs(&generics);
+    let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
@@ -357,7 +362,7 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) 
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
     let generics = def.parent_enum(db).generic_params(db);
-    let substs = make_substs(&generics);
+    let substs = Substs::identity(&generics);
     let ret = type_for_enum(db, def.parent_enum(db)).subst(&substs);
     FnSig::from_params_and_return(params, ret)
 }
@@ -369,36 +374,25 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
         return type_for_enum(db, def.parent_enum(db)); // Unit variant
     }
     let generics = def.parent_enum(db).generic_params(db);
-    let substs = make_substs(&generics);
+    let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
-}
-
-fn make_substs(generics: &GenericParams) -> Substs {
-    Substs(
-        generics
-            .params_including_parent()
-            .into_iter()
-            .map(|p| Ty::Param { idx: p.idx, name: p.name.clone() })
-            .collect::<Vec<_>>()
-            .into(),
-    )
 }
 
 fn type_for_struct(db: &impl HirDatabase, s: Struct) -> Ty {
     let generics = s.generic_params(db);
-    Ty::apply(TypeCtor::Adt(s.into()), make_substs(&generics))
+    Ty::apply(TypeCtor::Adt(s.into()), Substs::identity(&generics))
 }
 
 fn type_for_enum(db: &impl HirDatabase, s: Enum) -> Ty {
     let generics = s.generic_params(db);
-    Ty::apply(TypeCtor::Adt(s.into()), make_substs(&generics))
+    Ty::apply(TypeCtor::Adt(s.into()), Substs::identity(&generics))
 }
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
     let generics = t.generic_params(db);
     let resolver = t.resolver(db);
     let type_ref = t.type_ref(db);
-    let substs = make_substs(&generics);
+    let substs = Substs::identity(&generics);
     let inner = Ty::from_hir(db, &resolver, &type_ref);
     inner.subst(&substs)
 }
