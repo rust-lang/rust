@@ -105,6 +105,13 @@ You may be running `cargo miri` with a different compiler version than the one
 used to build the custom libstd that Miri uses, and Miri failed to detect that.
 Try deleting `~/.cache/miri`.
 
+#### "no mir for `std::rt::lang_start_internal`"
+
+This means the sysroot you are using was not compiled with Miri in mind.  This
+should never happen when you use `cargo miri` because that takes care of setting
+up the sysroot.  If you are using `miri` (the Miri driver) directly, see
+[below][testing-miri] for how to set up the sysroot.
+
 ## Development and Debugging
 
 If you want to hack on miri yourself, great!  Here are some resources you might
