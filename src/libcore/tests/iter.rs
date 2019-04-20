@@ -567,12 +567,12 @@ fn test_iterator_peekable_fold() {
 /// This is an iterator that follows the Iterator contract,
 /// but it is not fused. After having returned None once, it will start
 /// producing elements if .next() is called again.
-pub struct CycleIter<'a, T: 'a> {
+pub struct CycleIter<'a, T> {
     index: usize,
     data: &'a [T],
 }
 
-pub fn cycle<T>(data: &[T]) -> CycleIter<T> {
+pub fn cycle<T>(data: &[T]) -> CycleIter<'_, T> {
     CycleIter {
         index: 0,
         data,
