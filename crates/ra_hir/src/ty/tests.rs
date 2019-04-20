@@ -627,6 +627,28 @@ fn test(a: A) {
 }
 
 #[test]
+fn infer_inherent_method_str() {
+    assert_snapshot_matches!(
+        infer(r#"
+#[lang = "str"]
+impl str {
+    fn foo(&self) -> i32 {}
+}
+
+fn test() {
+    "foo".foo();
+}
+"#),
+        @r###"
+[40; 44) 'self': &str
+[53; 55) '{}': ()
+[69; 89) '{     ...o(); }': ()
+[75; 80) '"foo"': &str
+[75; 86) '"foo".foo()': i32"###
+    );
+}
+
+#[test]
 fn infer_tuple() {
     assert_snapshot_matches!(
         infer(r#"
