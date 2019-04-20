@@ -67,16 +67,14 @@ pub fn collect_trait_impls(krate: Crate, cx: &DocContext<'_>) -> Crate {
         if !def_id.is_local() {
             inline::build_impl(cx, def_id, &mut new_items);
 
-            let auto_impls = get_auto_traits_with_def_id(cx, def_id);
-            let blanket_impls = get_blanket_impls_with_def_id(cx, def_id);
-            let mut renderinfo = cx.renderinfo.borrow_mut();
+            // FIXME(eddyb) is this `doc(hidden)` check needed?
+            if !cx.tcx.get_attrs(def_id).lists("doc").has_word("hidden") {
+                let self_ty = cx.tcx.type_of(def_id);
+                let impls = get_auto_trait_and_blanket_impls(cx, self_ty, def_id);
+                let mut renderinfo = cx.renderinfo.borrow_mut();
 
-            let new_impls: Vec<Item> = auto_impls.into_iter()
-                .chain(blanket_impls.into_iter())
-                .filter(|i| renderinfo.inlined.insert(i.def_id))
-                .collect();
-
-            new_items.extend(new_impls);
+                new_items.extend(impls.filter(|i| renderinfo.inlined.insert(i.def_id)));
+            }
         }
     }
 
@@ -155,14 +153,13 @@ impl<'a, 'tcx> SyntheticImplCollector<'a, 'tcx> {
 impl<'a, 'tcx> DocFolder for SyntheticImplCollector<'a, 'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         if i.is_struct() || i.is_enum() || i.is_union() {
-            if let (Some(hir_id), Some(name)) =
-                (self.cx.tcx.hir().as_local_hir_id(i.def_id), i.name.clone())
-            {
-                self.impls.extend(get_auto_traits_with_hir_id(self.cx, hir_id, name.clone()));
-                self.impls.extend(get_blanket_impls_with_hir_id(self.cx, hir_id, name));
-            } else {
-                self.impls.extend(get_auto_traits_with_def_id(self.cx, i.def_id));
-                self.impls.extend(get_blanket_impls_with_def_id(self.cx, i.def_id));
+            // FIXME(eddyb) is this `doc(hidden)` check needed?
+            if !self.cx.tcx.get_attrs(i.def_id).lists("doc").has_word("hidden") {
+                self.impls.extend(get_auto_trait_and_blanket_impls(
+                    self.cx,
+                    self.cx.tcx.type_of(i.def_id),
+                    i.def_id,
+                ));
             }
         }
 

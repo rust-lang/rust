@@ -77,15 +77,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     /// in the future.
     pub fn find_auto_trait_generics<A>(
         &self,
-        did: DefId,
+        ty: Ty<'tcx>,
+        param_env_def_id: DefId,
         trait_did: DefId,
         generics: &ty::Generics,
         auto_trait_callback: impl for<'i> Fn(&InferCtxt<'_, 'tcx, 'i>, AutoTraitInfo<'i>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
-        let ty = self.tcx.type_of(did);
 
-        let orig_params = tcx.param_env(did);
+        let orig_params = tcx.param_env(param_env_def_id);
 
         let trait_ref = ty::TraitRef {
             def_id: trait_did,
@@ -105,9 +105,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             match result {
                 Ok(Some(Vtable::VtableImpl(_))) => {
                     debug!(
-                        "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): \
+                        "find_auto_trait_generics(ty={:?}, trait_did={:?}, generics={:?}): \
                          manual impl found, bailing out",
-                        did, trait_did, generics
+                        ty, trait_did, generics
                     );
                     true
                 }
@@ -158,7 +158,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
             let (new_env, user_env) = match self.evaluate_predicates(
                 &mut infcx,
-                did,
                 trait_did,
                 ty,
                 orig_params.clone(),
@@ -172,7 +171,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
             let (full_env, full_user_env) = self.evaluate_predicates(
                 &mut infcx,
-                did,
                 trait_did,
                 ty,
                 new_env.clone(),
@@ -187,9 +185,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             });
 
             debug!(
-                "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): fulfilling \
+                "find_auto_trait_generics(ty={:?}, trait_did={:?}, generics={:?}): fulfilling \
                  with {:?}",
-                did, trait_did, generics, full_env
+                ty, trait_did, generics, full_env
             );
             infcx.clear_caches();
 
@@ -289,7 +287,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     pub fn evaluate_predicates<'b, 'gcx, 'c>(
         &self,
         infcx: &InferCtxt<'b, 'tcx, 'c>,
-        ty_did: DefId,
         trait_did: DefId,
         ty: Ty<'c>,
         param_env: ty::ParamEnv<'c>,
@@ -401,9 +398,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             None
         );
         debug!(
-            "evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
+            "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \
              '{:?}'",
-            ty_did, trait_did, new_env, final_user_env
+            ty, trait_did, new_env, final_user_env
         );
 
         return Some((new_env, final_user_env));

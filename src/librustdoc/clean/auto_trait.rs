@@ -3,8 +3,6 @@ use rustc::traits::auto_trait as auto;
 use rustc::ty::{self, TypeFoldable};
 use std::fmt::Debug;
 
-use self::def_ctor::{get_def_from_def_id, get_def_from_hir_id};
-
 use super::*;
 
 pub struct AutoTraitFinder<'a, 'tcx> {
@@ -19,103 +17,71 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         AutoTraitFinder { cx, f }
     }
 
-    pub fn get_with_def_id(&self, def_id: DefId) -> Vec<Item> {
-        get_def_from_def_id(&self.cx, def_id, &|def_ctor| {
-            self.get_auto_trait_impls(def_id, &def_ctor, None)
-        })
-    }
-
-    pub fn get_with_hir_id(&self, id: hir::HirId, name: String) -> Vec<Item> {
-        get_def_from_hir_id(&self.cx, id, name, &|def_ctor, name| {
-            let did = self.cx.tcx.hir().local_def_id_from_hir_id(id);
-            self.get_auto_trait_impls(did, &def_ctor, Some(name))
-        })
-    }
-
-    pub fn get_auto_trait_impls<F>(
+    // FIXME(eddyb) figure out a better way to pass information about
+    // parametrization of `ty` than `param_env_def_id`.
+    pub fn get_auto_trait_impls(
         &self,
-        def_id: DefId,
-        def_ctor: &F,
-        name: Option<String>,
-    ) -> Vec<Item>
-    where F: Fn(DefId) -> Def {
-        if self.cx
-            .tcx
-            .get_attrs(def_id)
-            .lists("doc")
-            .has_word("hidden")
-        {
-            debug!(
-                "get_auto_trait_impls(def_id={:?}, def_ctor=...): item has doc('hidden'), \
-                 aborting",
-                def_id
-            );
-            return Vec::new();
-        }
-
-        let tcx = self.cx.tcx;
-        let generics = self.cx.tcx.generics_of(def_id);
+        ty: Ty<'tcx>,
+        param_env_def_id: DefId,
+    ) -> Vec<Item> {
+        let generics = self.cx.tcx.generics_of(param_env_def_id);
 
         debug!(
-            "get_auto_trait_impls(def_id={:?}, def_ctor=..., generics={:?}",
-            def_id, generics
+            "get_auto_trait_impls(param_env_def_id={:?}, generics={:?}",
+            param_env_def_id, generics
         );
         let auto_traits: Vec<_> = self.cx
             .send_trait
             .and_then(|send_trait| {
                 self.get_auto_trait_impl_for(
-                    def_id,
-                    name.clone(),
-                    generics.clone(),
-                    def_ctor,
+                    ty,
+                    param_env_def_id,
+                    generics,
                     send_trait,
                 )
             })
             .into_iter()
             .chain(self.get_auto_trait_impl_for(
-                def_id,
-                name,
-                generics.clone(),
-                def_ctor,
-                tcx.require_lang_item(lang_items::SyncTraitLangItem),
+                ty,
+                param_env_def_id,
+                generics,
+                self.cx.tcx.require_lang_item(lang_items::SyncTraitLangItem),
             ).into_iter())
             .collect();
 
         debug!(
             "get_auto_traits: type {:?} auto_traits {:?}",
-            def_id, auto_traits
+            param_env_def_id, auto_traits
         );
         auto_traits
     }
 
-    fn get_auto_trait_impl_for<F>(
+    fn get_auto_trait_impl_for(
         &self,
-        def_id: DefId,
-        name: Option<String>,
-        generics: ty::Generics,
-        def_ctor: &F,
+        ty: Ty<'tcx>,
+        param_env_def_id: DefId,
+        generics: &ty::Generics,
         trait_def_id: DefId,
-    ) -> Option<Item>
-    where F: Fn(DefId) -> Def {
+    ) -> Option<Item> {
         if !self.cx
             .generated_synthetics
             .borrow_mut()
-            .insert((def_id, trait_def_id))
+            .insert((param_env_def_id, trait_def_id))
         {
             debug!(
-                "get_auto_trait_impl_for(def_id={:?}, generics={:?}, def_ctor=..., \
+                "get_auto_trait_impl_for(param_env_def_id={:?}, generics={:?}, \
                  trait_def_id={:?}): already generated, aborting",
-                def_id, generics, trait_def_id
+                param_env_def_id, generics, trait_def_id
             );
             return None;
         }
 
-        let result = self.find_auto_trait_generics(def_id, trait_def_id, &generics);
+        let result = self.find_auto_trait_generics(ty, param_env_def_id, trait_def_id, &generics);
 
         if result.is_auto() {
-            let trait_ = hir::TraitRef {
-                path: get_path_for_type(self.cx.tcx, trait_def_id, hir::def::Def::Trait),
-                hir_ref_id: hir::DUMMY_HIR_ID,
+            let trait_ref = ty::TraitRef {
+                def_id: trait_def_id,
+                substs: self.cx.tcx.mk_substs_trait(ty, &[]),
             };
 
             let polarity;
@@ -140,7 +106,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // Instead, we generate `impl !Send for Foo<T>`, which better
                     // expresses the fact that `Foo<T>` never implements `Send`,
                     // regardless of the choice of `T`.
-                    let real_generics = (&generics, &Default::default());
+                    let real_generics = (generics, &Default::default());
 
                     // Clean the generics, but ignore the '?Sized' bounds generated
                     // by the `Clean` impl
@@ -153,22 +119,20 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 _ => unreachable!(),
             };
-            let real_name = name.map(|name| Ident::from_str(&name));
-            let ty = self.cx.get_real_ty(def_id, def_ctor, &real_name, &generics);
 
             return Some(Item {
                 source: Span::empty(),
                 name: None,
                 attrs: Default::default(),
                 visibility: None,
-                def_id: self.cx.next_def_id(def_id.krate),
+                def_id: self.cx.next_def_id(param_env_def_id.krate),
                 stability: None,
                 deprecation: None,
                 inner: ImplItem(Impl {
                     unsafety: hir::Unsafety::Normal,
                     generics: new_generics,
                     provided_trait_methods: Default::default(),
-                    trait_: Some(trait_.clean(self.cx)),
+                    trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
                     for_: ty.clean(self.cx),
                     items: Vec::new(),
                     polarity,
@@ -182,11 +146,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
     fn find_auto_trait_generics(
         &self,
-        did: DefId,
+        ty: Ty<'tcx>,
+        param_env_def_id: DefId,
         trait_did: DefId,
         generics: &ty::Generics,
     ) -> AutoTraitResult {
-        match self.f.find_auto_trait_generics(did, trait_did, generics,
+        match self.f.find_auto_trait_generics(ty, param_env_def_id, trait_did, generics,
                 |infcx, mut info| {
                     let region_data = info.region_data;
                     let names_map =
@@ -198,17 +163,17 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         self.handle_lifetimes(&region_data, &names_map);
                     let new_generics = self.param_env_to_generics(
                         infcx.tcx,
-                        did,
+                        param_env_def_id,
                         info.full_user_env,
-                        generics.clone(),
+                        generics,
                         lifetime_predicates,
                         info.vid_to_region,
                     );
 
                     debug!(
-                        "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): \
+                        "find_auto_trait_generics(ty={:?}, trait_did={:?}, generics={:?}): \
                          finished with {:?}",
-                        did, trait_did, generics, new_generics
+                        ty, trait_did, generics, new_generics
                     );
 
                     new_generics
@@ -530,16 +495,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     fn param_env_to_generics<'b, 'c, 'cx>(
         &self,
         tcx: TyCtxt<'b, 'c, 'cx>,
-        did: DefId,
+        param_env_def_id: DefId,
         param_env: ty::ParamEnv<'cx>,
-        type_generics: ty::Generics,
+        type_generics: &ty::Generics,
         mut existing_predicates: Vec<WherePredicate>,
         vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
     ) -> Generics {
         debug!(
-            "param_env_to_generics(did={:?}, param_env={:?}, type_generics={:?}, \
+            "param_env_to_generics(param_env_def_id={:?}, param_env={:?}, type_generics={:?}, \
              existing_predicates={:?})",
-            did, param_env, type_generics, existing_predicates
+            param_env_def_id, param_env, type_generics, existing_predicates
         );
 
         // The `Sized` trait must be handled specially, since we only display it when
@@ -553,7 +518,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             tcx,
         };
 
-        let orig_bounds: FxHashSet<_> = self.cx.tcx.param_env(did).caller_bounds.iter().collect();
+        let orig_bounds: FxHashSet<_> =
+            self.cx.tcx.param_env(param_env_def_id).caller_bounds.iter().collect();
         let clean_where_predicates = param_env
             .caller_bounds
             .iter()
@@ -568,7 +534,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 (replaced.clone(), replaced.clean(self.cx))
             });
 
-        let full_generics = (&type_generics, &tcx.explicit_predicates_of(did));
+        let full_generics = (type_generics, &tcx.explicit_predicates_of(param_env_def_id));
         let Generics {
             params: mut generic_params,
             ..
@@ -757,10 +723,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                         .or_default()
                                         .insert(*trait_.clone());
                                 }
-                                _ => panic!("Unexpected trait {:?} for {:?}", trait_, did),
+                                _ => panic!(
+                                    "Unexpected trait {:?} for {:?}",
+                                    trait_,
+                                    param_env_def_id,
+                                ),
                             }
                         }
-                        _ => panic!("Unexpected LHS {:?} for {:?}", lhs, did),
+                        _ => panic!("Unexpected LHS {:?} for {:?}", lhs, param_env_def_id),
                     }
                 }
             };
