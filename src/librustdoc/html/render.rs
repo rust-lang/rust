@@ -936,7 +936,7 @@ themePicker.onblur = handleThemeButtonsBlur;
           static_files::source_code_pro::REGULAR)?;
     write(cx.dst.join("SourceCodePro-Semibold.woff"),
           static_files::source_code_pro::SEMIBOLD)?;
-    write(cx.dst.join("SourceCodePro-LICENSE.txt"),
+    write(cx.dst.join("SourceCodePro-LICENSE.md"),
           static_files::source_code_pro::LICENSE)?;
     write(cx.dst.join("LICENSE-MIT.txt"),
           static_files::LICENSE_MIT)?;
