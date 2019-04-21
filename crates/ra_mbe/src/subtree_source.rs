@@ -429,7 +429,12 @@ fn convert_literal(l: &tt::Literal) -> TtToken {
 }
 
 fn convert_ident(ident: &tt::Ident) -> TtToken {
-    let kind = SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT);
+    let kind = if let Some('\'') = ident.text.chars().next() {
+        LIFETIME
+    } else {
+        SyntaxKind::from_keyword(ident.text.as_str()).unwrap_or(IDENT)
+    };
+
     TtToken { kind, is_joint_to_next: false, text: ident.text.clone(), n_tokens: 1 }
 }
 
