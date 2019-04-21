@@ -20,15 +20,15 @@ pub(crate) fn parse(tt: &tt::Subtree) -> Result<crate::MacroRules, ParseError> {
 }
 
 fn parse_rule(p: &mut TtCursor) -> Result<crate::Rule, ParseError> {
-    let lhs = parse_subtree(p.eat_subtree()?)?;
+    let lhs = parse_subtree(p.eat_subtree()?, false)?;
     p.expect_char('=')?;
     p.expect_char('>')?;
-    let mut rhs = parse_subtree(p.eat_subtree()?)?;
+    let mut rhs = parse_subtree(p.eat_subtree()?, true)?;
     rhs.delimiter = crate::Delimiter::None;
     Ok(crate::Rule { lhs, rhs })
 }
 
-fn parse_subtree(tt: &tt::Subtree) -> Result<crate::Subtree, ParseError> {
+fn parse_subtree(tt: &tt::Subtree, transcriber: bool) -> Result<crate::Subtree, ParseError> {
     let mut token_trees = Vec::new();
     let mut p = TtCursor::new(tt);
     while let Some(tt) = p.eat() {
@@ -36,9 +36,9 @@ fn parse_subtree(tt: &tt::Subtree) -> Result<crate::Subtree, ParseError> {
             tt::TokenTree::Leaf(leaf) => match leaf {
                 tt::Leaf::Punct(tt::Punct { char: '$', .. }) => {
                     if p.at_ident().is_some() {
-                        crate::Leaf::from(parse_var(&mut p)?).into()
+                        crate::Leaf::from(parse_var(&mut p, transcriber)?).into()
                     } else {
-                        parse_repeat(&mut p)?.into()
+                        parse_repeat(&mut p, transcriber)?.into()
                     }
                 }
                 tt::Leaf::Punct(punct) => crate::Leaf::from(*punct).into(),
@@ -49,17 +49,17 @@ fn parse_subtree(tt: &tt::Subtree) -> Result<crate::Subtree, ParseError> {
                     crate::Leaf::from(crate::Literal { text: text.clone() }).into()
                 }
             },
-            tt::TokenTree::Subtree(subtree) => parse_subtree(&subtree)?.into(),
+            tt::TokenTree::Subtree(subtree) => parse_subtree(&subtree, transcriber)?.into(),
         };
         token_trees.push(child);
     }
     Ok(crate::Subtree { token_trees, delimiter: tt.delimiter })
 }
 
-fn parse_var(p: &mut TtCursor) -> Result<crate::Var, ParseError> {
+fn parse_var(p: &mut TtCursor, transcriber: bool) -> Result<crate::Var, ParseError> {
     let ident = p.eat_ident().unwrap();
     let text = ident.text.clone();
-    let kind = if p.at_char(':') {
+    let kind = if !transcriber && p.at_char(':') {
         p.bump();
         if let Some(ident) = p.eat_ident() {
             Some(ident.text.clone())
@@ -70,12 +70,13 @@ fn parse_var(p: &mut TtCursor) -> Result<crate::Var, ParseError> {
     } else {
         None
     };
+
     Ok(crate::Var { text, kind })
 }
 
-fn parse_repeat(p: &mut TtCursor) -> Result<crate::Repeat, ParseError> {
+fn parse_repeat(p: &mut TtCursor, transcriber: bool) -> Result<crate::Repeat, ParseError> {
     let subtree = p.eat_subtree().unwrap();
-    let mut subtree = parse_subtree(subtree)?;
+    let mut subtree = parse_subtree(subtree, transcriber)?;
     subtree.delimiter = crate::Delimiter::None;
     let sep = p.eat_punct().ok_or(ParseError::Expected(String::from("separator")))?;
     let (separator, rep) = match sep.char {
