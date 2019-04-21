@@ -36,7 +36,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             dst: output.to_path_buf(),
             src: input.map(|p| p.to_path_buf()),
             lib_search_paths: archive_search_paths(sess),
-            is_like_osx: sess.target.target.options.is_like_osx,
+            is_like_osx: true, //sess.target.target.options.is_like_osx,
         };
 
         let (src_archives, entries) = if let Some(src) = &config.src {
@@ -146,8 +146,24 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 ArchiveEntry::FromArchive { archive_index, entry_index } => {
                     let entry = self.src_archives[archive_index].jump_to_entry(entry_index).unwrap();
                     let orig_header = entry.header();
+
+                    let orig_filename = orig_header.identifier().to_vec();
+
+                    use std::collections::hash_map::DefaultHasher;
+                    use std::hash::{Hash, Hasher};
+                    let mut hasher = DefaultHasher::new();
+                    orig_filename.hash(&mut hasher);
+                    let mut filename = hasher.finish().to_le_bytes()[0..6].to_vec();
+                    filename.extend(&orig_filename[orig_filename.len() - 9..]);
+
+                    assert!(
+                        filename.len() <= 16,
+                        "Filenames bigger than 16 bytes are not yet supported. Filename was: \"{}\"",
+                        String::from_utf8(filename).unwrap_or_else(|e| e.to_string()),
+                    );
+
                     let mut header =
-                        ar::Header::new(orig_header.identifier().to_vec(), orig_header.size());
+                        ar::Header::new(filename, orig_header.size());
                     header.set_mtime(orig_header.mtime());
                     header.set_uid(orig_header.uid());
                     header.set_gid(orig_header.gid());
