@@ -16,7 +16,7 @@ impl std::ops::Deref for Foo {
 
 fn main() {
     let x = Foo(42);
-    let y: i32 = x; //~ ERROR mismatched types
+    let y: i32 = *x; //~ ERROR mismatched types
     let a = &42;
-    let b: i32 = a; //~ ERROR mismatched types
+    let b: i32 = *a; //~ ERROR mismatched types
 }

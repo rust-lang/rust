@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use rustc::infer::InferOk;
-use rustc::traits::{ObligationCause, ObligationCauseCode};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 
 use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::Span;
@@ -463,7 +463,37 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            _ => {}
+            _ => {
+                // If neither type is a reference, then check for `Deref` implementations by
+                // constructing a predicate to prove: `<T as Deref>::Output == U`
+                let deref_trait = self.tcx.lang_items().deref_trait().unwrap();
+                let item_def_id = self.tcx.associated_items(deref_trait).next().unwrap().def_id;
+                let predicate = ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
+                    // `<T as Deref>::Output`
+                    projection_ty: ty::ProjectionTy {
+                        // `T`
+                        substs: self.tcx.mk_substs_trait(
+                            checked_ty,
+                            self.fresh_substs_for_item(sp, item_def_id),
+                        ),
+                        // `Deref::Output`
+                        item_def_id,
+                    },
+                    // `U`
+                    ty: expected,
+                }));
+                let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
+                if self.infcx.predicate_may_hold(&obligation) {
+                    if let (Ok(code), true) = (cm.span_to_snippet(sp), sp == expr.span) {
+                        let msg = if is_struct_pat_shorthand_field {
+                            format!("{}: *{}", code, code)
+                        } else {
+                            format!("*{}", code)
+                        };
+                        return Some((sp, "consider dereferencing the type", msg));
+                    }
+                }
+            }
         }
         None
     }
