@@ -161,6 +161,10 @@ impl AssistBuilder {
         self.target = Some(target)
     }
 
+    pub(crate) fn text_edit_builder(&mut self) -> &mut TextEditBuilder {
+        &mut self.edit
+    }
+
     fn build(self) -> AssistAction {
         AssistAction {
             edit: self.edit.finish(),
