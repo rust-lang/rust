@@ -2393,7 +2393,8 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
                     Def::Local(node_id) | Def::Upvar(node_id, ..) => {
                         self.ids.insert(node_id);
                     },
-                    Def::Static(def_id, mutable) => {
+                    Def::Static(def_id) => {
+                        let mutable = self.cx.tcx.is_mutable_static(def_id);
                         self.def_ids.insert(def_id, mutable);
                     },
                     _ => {},
