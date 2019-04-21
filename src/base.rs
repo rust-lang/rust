@@ -1,3 +1,5 @@
+use rustc::ty::adjustment::PointerCast;
+
 use crate::prelude::*;
 
 struct PrintOnPanic<F: Fn() -> String>(F);
@@ -530,7 +532,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     };
                     lval.write_cvalue(fx, CValue::ByVal(res, layout));
                 }
-                Rvalue::Cast(CastKind::ReifyFnPointer, operand, ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::ReifyFnPointer), operand, ty) => {
                     let layout = fx.layout_of(ty);
                     match fx
                         .monomorphize(&operand.ty(&fx.mir.local_decls, fx.tcx))
@@ -547,8 +549,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         _ => bug!("Trying to ReifyFnPointer on non FnDef {:?}", ty),
                     }
                 }
-                Rvalue::Cast(CastKind::UnsafeFnPointer, operand, ty)
-                | Rvalue::Cast(CastKind::MutToConstPointer, operand, ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::UnsafeFnPointer), operand, ty)
+                | Rvalue::Cast(CastKind::Pointer(PointerCast::MutToConstPointer), operand, ty) => {
                     let operand = trans_operand(fx, operand);
                     let layout = fx.layout_of(ty);
                     lval.write_cvalue(fx, operand.unchecked_cast_to(layout));
@@ -644,7 +646,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                     }
                 }
-                Rvalue::Cast(CastKind::ClosureFnPointer(_), operand, _ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::ClosureFnPointer(_)), operand, _ty) => {
                     let operand = trans_operand(fx, operand);
                     match operand.layout().ty.sty {
                         ty::Closure(def_id, substs) => {
@@ -663,7 +665,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         }
                     }
                 }
-                Rvalue::Cast(CastKind::Unsize, operand, _ty) => {
+                Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), operand, _ty) => {
                     let operand = trans_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
