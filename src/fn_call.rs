@@ -78,6 +78,10 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 let code = this.read_scalar(args[0])?.to_i32()?;
                 return err!(Exit(code));
             }
+            "ExitProcess" => {
+                let code = this.read_scalar(args[0])?.to_u32()?;
+                return err!(Exit(code as i32));
+            }
             _ => if dest.is_none() {
                 return err!(Unimplemented(
                     format!("can't call diverging foreign function: {}", link_name),
