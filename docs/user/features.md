@@ -34,14 +34,15 @@ Some features trigger on typing certain characters:
 - Enter inside comments automatically inserts `///`
 - typing `.` in a chain method call auto-indents
 
-### Commands <kbd>ctrl+shift+p</kbd>
-
-#### Extend Selection
+### Extend Selection
 
 Extends the current selection to the encompassing syntactic construct
-(expression, statement, item, module, etc). It works with multiple cursors. Do
-bind this command to a key, it's super-useful! Expected to be upstreamed to LSP
-soonish: https://github.com/Microsoft/language-server-protocol/issues/613
+(expression, statement, item, module, etc). It works with multiple cursors. This
+is a relatively new feature of LSP:
+https://github.com/Microsoft/language-server-protocol/issues/613, check your
+editor's LSP library to see if this feature is supported.
+
+### Commands <kbd>ctrl+shift+p</kbd>
 
 #### Run
 

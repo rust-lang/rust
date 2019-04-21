@@ -52,8 +52,8 @@ This list documents LSP features, supported by rust-analyzer.
 - [x] [textDocument/documentHighlight](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight)
 - [x] [textDocument/documentSymbol](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentSymbol)
 - [x] [textDocument/codeAction](https://microsoft.github.io/language-server-protocol/specification#textDocument_codeAction)
+- [x] [textDocument/selectionRange](https://github.com/Microsoft/language-server-protocol/issues/613)
  - rust-analyzer.syntaxTree
- - rust-analyzer.extendSelection
  - rust-analyzer.matchingBrace
  - rust-analyzer.parentModule
  - rust-analyzer.joinLines
