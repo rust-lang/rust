@@ -322,7 +322,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                         self.get_fn(fn_instance)
                     }
                     Some(AllocKind::Static(def_id)) => {
-                        assert!(self.tcx.is_static(def_id).is_some());
+                        assert!(self.tcx.is_static(def_id));
                         self.get_static(def_id)
                     }
                     None => bug!("missing allocation {:?}", ptr.alloc_id),

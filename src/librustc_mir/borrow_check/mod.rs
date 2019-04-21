@@ -2117,7 +2117,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     is_local_mutation_allowed,
                 }),
             Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
-                if self.infcx.tcx.is_static(def_id) != Some(hir::Mutability::MutMutable) {
+                if !self.infcx.tcx.is_mutable_static(def_id) {
                     Err(place)
                 } else {
                     Ok(RootPlace {

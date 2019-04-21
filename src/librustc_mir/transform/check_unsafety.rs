@@ -306,7 +306,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             &Place::Base(
                 PlaceBase::Static(box Static { kind: StaticKind::Static(def_id), .. })
             ) => {
-                if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
+                if self.tcx.is_mutable_static(def_id) {
                     self.require_unsafe("use of mutable static",
                         "mutable statics can be mutated by multiple threads: aliasing violations \
                          or data races will cause undefined behavior",

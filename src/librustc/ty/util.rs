@@ -612,9 +612,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Returns `true` if the node pointed to by `def_id` is a static item, and its mutability.
-    pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
-        self.static_mutability(def_id)
+    /// Returns `true` if the node pointed to by `def_id` is a `static` item.
+    pub fn is_static(&self, def_id: DefId) -> bool {
+        self.static_mutability(def_id).is_some()
+    }
+
+    /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
+    pub fn is_mutable_static(&self, def_id: DefId) -> bool {
+        self.static_mutability(def_id) == Some(hir::MutMutable)
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.

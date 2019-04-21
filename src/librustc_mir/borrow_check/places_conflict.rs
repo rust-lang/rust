@@ -321,7 +321,7 @@ fn place_base_conflict<'a, 'gcx: 'tcx, 'tcx>(
                     if def_id_1 != def_id_2 {
                         debug!("place_element_conflict: DISJOINT-STATIC");
                         Overlap::Disjoint
-                    } else if tcx.is_static(*def_id_1) == Some(hir::Mutability::MutMutable) {
+                    } else if tcx.is_mutable_static(*def_id_1) {
                         // We ignore mutable statics - they can only be unsafe code.
                         debug!("place_element_conflict: IGNORE-STATIC-MUT");
                         Overlap::Disjoint

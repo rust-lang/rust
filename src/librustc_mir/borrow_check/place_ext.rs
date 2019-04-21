@@ -52,7 +52,7 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
             Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) =>
                 false,
             Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
-                tcx.is_static(*def_id) == Some(hir::Mutability::MutMutable)
+                tcx.is_mutable_static(*def_id)
             }
             Place::Projection(proj) => match proj.elem {
                 ProjectionElem::Field(..)

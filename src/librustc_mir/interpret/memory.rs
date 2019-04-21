@@ -342,7 +342,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // full query anyway
         tcx.const_eval_raw(ty::ParamEnv::reveal_all().and(gid)).map_err(|err| {
             // no need to report anything, the const_eval call takes care of that for statics
-            assert!(tcx.is_static(def_id).is_some());
+            assert!(tcx.is_static(def_id));
             match err {
                 ErrorHandled::Reported => InterpError::ReferencedConstant.into(),
                 ErrorHandled::TooGeneric => InterpError::TooGeneric.into(),
