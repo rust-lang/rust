@@ -19,5 +19,5 @@ rustc_typeck = { path = "../librustc_typeck" }
 serde_json = "1"
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-rls-data = "0.18.1"
-rls-span = "0.4"
+rls-data = "0.19"
+rls-span = "0.5"
