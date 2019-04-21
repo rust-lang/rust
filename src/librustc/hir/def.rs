@@ -73,7 +73,7 @@ pub enum Def<Id = hir::HirId> {
     Fn(DefId),
     Const(DefId),
     ConstParam(DefId),
-    Static(DefId, bool /* is_mutbl */),
+    Static(DefId),
     /// `DefId` refers to the struct or enum variant's constructor.
     Ctor(DefId, CtorOf, CtorKind),
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
@@ -291,7 +291,7 @@ impl<Id> Def<Id> {
     /// Return `Some(..)` with the `DefId` of this `Def` if it has a id, else `None`.
     pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
-            Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
+            Def::Fn(id) | Def::Mod(id) | Def::Static(id) |
             Def::Variant(id) | Def::Ctor(id, ..) | Def::Enum(id) |
             Def::TyAlias(id) | Def::TraitAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::ConstParam(id) | Def::Struct(id) |
@@ -379,7 +379,7 @@ impl<Id> Def<Id> {
         match self {
             Def::Fn(id) => Def::Fn(id),
             Def::Mod(id) => Def::Mod(id),
-            Def::Static(id, is_mutbl) => Def::Static(id, is_mutbl),
+            Def::Static(id) => Def::Static(id),
             Def::Enum(id) => Def::Enum(id),
             Def::Variant(id) => Def::Variant(id),
             Def::Ctor(a, b, c) => Def::Ctor(a, b, c),

@@ -28,7 +28,7 @@ use syntax::ast::{Name, Ident};
 use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{MetaItemKind, Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
+use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -442,9 +442,8 @@ impl<'a> Resolver<'a> {
             ItemKind::ForeignMod(..) => {}
 
             // These items live in the value namespace.
-            ItemKind::Static(_, m, _) => {
-                let mutbl = m == Mutability::Mutable;
-                let def = Def::Static(self.definitions.local_def_id(item.id), mutbl);
+            ItemKind::Static(..) => {
+                let def = Def::Static(self.definitions.local_def_id(item.id));
                 self.define(parent, ident, ValueNS, (def, vis, sp, expansion));
             }
             ItemKind::Const(..) => {
@@ -616,8 +615,8 @@ impl<'a> Resolver<'a> {
             ForeignItemKind::Fn(..) => {
                 (Def::Fn(self.definitions.local_def_id(item.id)), ValueNS)
             }
-            ForeignItemKind::Static(_, m) => {
-                (Def::Static(self.definitions.local_def_id(item.id), m), ValueNS)
+            ForeignItemKind::Static(..) => {
+                (Def::Static(self.definitions.local_def_id(item.id)), ValueNS)
             }
             ForeignItemKind::Ty => {
                 (Def::ForeignTy(self.definitions.local_def_id(item.id)), TypeNS)

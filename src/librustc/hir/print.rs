@@ -466,7 +466,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"))?;
-                if m {
+                if m == hir::MutMutable {
                     self.word_space("mut")?;
                 }
                 self.print_ident(item.ident)?;

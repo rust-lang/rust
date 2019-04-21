@@ -4055,7 +4055,7 @@ impl Clean<Item> for hir::ForeignItem {
             hir::ForeignItemKind::Static(ref ty, mutbl) => {
                 ForeignStaticItem(Static {
                     type_: ty.clean(cx),
-                    mutability: if mutbl {Mutable} else {Immutable},
+                    mutability: mutbl.clean(cx),
                     expr: String::new(),
                 })
             }
@@ -4204,7 +4204,7 @@ pub fn register_def(cx: &DocContext<'_>, def: Def) -> DefId {
         Def::Mod(i) => (i, TypeKind::Module),
         Def::ForeignTy(i) => (i, TypeKind::Foreign),
         Def::Const(i) => (i, TypeKind::Const),
-        Def::Static(i, _) => (i, TypeKind::Static),
+        Def::Static(i) => (i, TypeKind::Static),
         Def::Variant(i) => (cx.tcx.parent(i).expect("cannot get parent def id"),
                             TypeKind::Enum),
         Def::Macro(i, mac_kind) => match mac_kind {

@@ -404,9 +404,9 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Const(..) => Def::Const(did),
             EntryKind::AssociatedConst(..) => Def::AssociatedConst(did),
             EntryKind::ImmStatic |
-            EntryKind::ForeignImmStatic => Def::Static(did, false),
             EntryKind::MutStatic |
-            EntryKind::ForeignMutStatic => Def::Static(did, true),
+            EntryKind::ForeignImmStatic |
+            EntryKind::ForeignMutStatic => Def::Static(did),
             EntryKind::Struct(_, _) => Def::Struct(did),
             EntryKind::Union(_, _) => Def::Union(did),
             EntryKind::Fn(_) |
@@ -1160,6 +1160,16 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::ForeignMutStatic |
             EntryKind::ForeignFn(_) => true,
             _ => false,
+        }
+    }
+
+    crate fn static_mutability(&self, id: DefIndex) -> Option<hir::Mutability> {
+        match self.entry(id).kind {
+            EntryKind::ImmStatic |
+            EntryKind::ForeignImmStatic => Some(hir::MutImmutable),
+            EntryKind::MutStatic |
+            EntryKind::ForeignMutStatic => Some(hir::MutMutable),
+            _ => None,
         }
     }
 

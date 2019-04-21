@@ -1171,8 +1171,7 @@ declare_lint_pass!(
 
 fn check_const(cx: &LateContext<'_, '_>, body_id: hir::BodyId) {
     let def_id = cx.tcx.hir().body_owner_def_id(body_id);
-    let is_static = cx.tcx.is_static(def_id).is_some();
-    let param_env = if is_static {
+    let param_env = if cx.tcx.is_static(def_id) {
         // Use the same param_env as `codegen_static_initializer`, to reuse the cache.
         ty::ParamEnv::reveal_all()
     } else {

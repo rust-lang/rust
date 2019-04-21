@@ -3742,7 +3742,7 @@ impl<'a> LoweringContext<'a> {
                 }
                 ForeignItemKind::Static(ref t, m) => {
                     hir::ForeignItemKind::Static(
-                        self.lower_ty(t, ImplTraitContext::disallowed()), m)
+                        self.lower_ty(t, ImplTraitContext::disallowed()), self.lower_mutability(m))
                 }
                 ForeignItemKind::Ty => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("shouldn't exist here"),

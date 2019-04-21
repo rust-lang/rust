@@ -329,7 +329,7 @@ fn check_expr_kind<'a, 'tcx>(
                 // are inherently promotable with the exception
                 //  of "#[thread_local]" statics, which may not
                 // outlive the current function
-                Def::Static(did, _) => {
+                Def::Static(did) => {
 
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {

@@ -6,8 +6,8 @@ use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 use std::collections::hash_map::Entry;
 
-use rustc::hir::{self, def_id::DefId};
 use rustc::hir::def::Def;
+use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
@@ -158,9 +158,8 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.run()?;
 
     // Intern the result
-    let internally_mutable = !layout.ty.is_freeze(tcx, param_env, mir.span);
-    let is_static = tcx.is_static(cid.instance.def_id());
-    let mutability = if is_static == Some(hir::Mutability::MutMutable) || internally_mutable {
+    let mutability = if tcx.is_mutable_static(cid.instance.def_id()) ||
+                     !layout.ty.is_freeze(tcx, param_env, mir.span) {
         Mutability::Mutable
     } else {
         Mutability::Immutable
@@ -533,7 +532,7 @@ fn validate_and_turn_into_const<'a, 'tcx>(
         }
         // Now that we validated, turn this into a proper constant.
         let def_id = cid.instance.def.def_id();
-        if tcx.is_static(def_id).is_some() || cid.promoted.is_some() {
+        if tcx.is_static(def_id) || cid.promoted.is_some() {
             Ok(mplace_to_const(&ecx, mplace))
         } else {
             Ok(op_to_const(&ecx, mplace.into()))
@@ -628,7 +627,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     }).map_err(|error| {
         let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors
-        if tcx.is_static(def_id).is_some() {
+        if tcx.is_static(def_id) {
             // Ensure that if the above error was either `TooGeneric` or `Reported`
             // an error must be reported.
             let reported_err = tcx.sess.track_errors(|| {

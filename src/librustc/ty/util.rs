@@ -1,9 +1,8 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
-use crate::hir::def::Def;
+use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::map::DefPathData;
-use crate::hir::{self, Node};
 use crate::mir::interpret::{sign_extend, truncate};
 use crate::ich::NodeIdHashingMode;
 use crate::traits::{self, ObligationCause};
@@ -613,34 +612,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    /// Returns `true` if the node pointed to by `def_id` is a static item, and its mutability.
-    pub fn is_static(&self, def_id: DefId) -> Option<hir::Mutability> {
-        if let Some(node) = self.hir().get_if_local(def_id) {
-            match node {
-                Node::Item(&hir::Item {
-                    node: hir::ItemKind::Static(_, mutbl, _), ..
-                }) => Some(mutbl),
-                Node::ForeignItem(&hir::ForeignItem {
-                    node: hir::ForeignItemKind::Static(_, is_mutbl), ..
-                }) =>
-                    Some(if is_mutbl {
-                        hir::Mutability::MutMutable
-                    } else {
-                        hir::Mutability::MutImmutable
-                    }),
-                _ => None
-            }
-        } else {
-            match self.describe_def(def_id) {
-                Some(Def::Static(_, is_mutbl)) =>
-                    Some(if is_mutbl {
-                        hir::Mutability::MutMutable
-                    } else {
-                        hir::Mutability::MutImmutable
-                    }),
-                _ => None
-            }
-        }
+    /// Returns `true` if the node pointed to by `def_id` is a `static` item.
+    pub fn is_static(&self, def_id: DefId) -> bool {
+        self.static_mutability(def_id).is_some()
+    }
+
+    /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
+    pub fn is_mutable_static(&self, def_id: DefId) -> bool {
+        self.static_mutability(def_id) == Some(hir::MutMutable)
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.

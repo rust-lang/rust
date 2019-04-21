@@ -7683,7 +7683,7 @@ impl<'a> Parser<'a> {
     /// Assumes that the `static` keyword is already parsed.
     fn parse_item_foreign_static(&mut self, vis: ast::Visibility, lo: Span, attrs: Vec<Attribute>)
                                  -> PResult<'a, ForeignItem> {
-        let mutbl = self.eat_keyword(keywords::Mut);
+        let mutbl = self.parse_mutability();
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;

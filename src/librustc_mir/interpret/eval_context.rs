@@ -634,7 +634,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tc
         &self,
         gid: GlobalId<'tcx>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let param_env = if self.tcx.is_static(gid.instance.def_id()).is_some() {
+        let param_env = if self.tcx.is_static(gid.instance.def_id()) {
             ty::ParamEnv::reveal_all()
         } else {
             self.param_env

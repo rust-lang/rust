@@ -960,7 +960,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        Def::Static(node_id, _) => ExprKind::StaticRef { id: node_id },
+        Def::Static(id) => ExprKind::StaticRef { id },
 
         Def::Local(..) | Def::Upvar(..) => convert_var(cx, expr, def),
 

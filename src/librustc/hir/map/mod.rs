@@ -322,7 +322,7 @@ impl<'hir> Map<'hir> {
                 let def_id = || self.local_def_id_from_hir_id(item.hir_id);
 
                 match item.node {
-                    ItemKind::Static(_, m, _) => Some(Def::Static(def_id(), m == MutMutable)),
+                    ItemKind::Static(..) => Some(Def::Static(def_id())),
                     ItemKind::Const(..) => Some(Def::Const(def_id())),
                     ItemKind::Fn(..) => Some(Def::Fn(def_id())),
                     ItemKind::Mod(..) => Some(Def::Mod(def_id())),
@@ -344,7 +344,7 @@ impl<'hir> Map<'hir> {
                 let def_id = self.local_def_id_from_hir_id(item.hir_id);
                 match item.node {
                     ForeignItemKind::Fn(..) => Some(Def::Fn(def_id)),
-                    ForeignItemKind::Static(_, m) => Some(Def::Static(def_id, m)),
+                    ForeignItemKind::Static(..) => Some(Def::Static(def_id)),
                     ForeignItemKind::Type => Some(Def::ForeignTy(def_id)),
                 }
             }

@@ -1321,7 +1321,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         ..
                     }) = self.borrowck_context
                     {
-                        if tcx.is_static(*def_id).is_some() {
+                        if tcx.is_static(*def_id) {
                             ConstraintCategory::UseAsStatic
                         } else {
                             ConstraintCategory::UseAsConst
@@ -1626,7 +1626,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                             ..
                         }) = self.borrowck_context
                         {
-                            if tcx.is_static(*def_id).is_some() {
+                            if tcx.is_static(*def_id) {
                                 ConstraintCategory::UseAsStatic
                             } else {
                                 ConstraintCategory::UseAsConst
