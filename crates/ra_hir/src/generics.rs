@@ -5,11 +5,11 @@
 
 use std::sync::Arc;
 
-use ra_syntax::ast::{self, NameOwner, TypeParamsOwner};
+use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner};
 
 use crate::{
     db::DefDatabase,
-    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container
+    Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -25,6 +25,15 @@ pub struct GenericParam {
 pub struct GenericParams {
     pub(crate) parent_params: Option<Arc<GenericParams>>,
     pub(crate) params: Vec<GenericParam>,
+    pub(crate) where_predicates: Vec<WherePredicate>,
+}
+
+/// A single predicate from a where clause, i.e. `where Type: Trait`. Combined
+/// where clauses like `where T: Foo + Bar` are turned into multiple of these.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct WherePredicate {
+    type_ref: TypeRef,
+    trait_ref: Path,
 }
 
 // FIXME: consts can have type parameters from their parents (i.e. associated consts of traits)
@@ -73,6 +82,9 @@ impl GenericParams {
         if let Some(params) = node.type_param_list() {
             self.fill_params(params, start)
         }
+        if let Some(where_clause) = node.where_clause() {
+            self.fill_where_predicates(where_clause);
+        }
     }
 
     fn fill_params(&mut self, params: &ast::TypeParamList, start: u32) {
@@ -80,6 +92,32 @@ impl GenericParams {
             let name = type_param.name().map(AsName::as_name).unwrap_or_else(Name::missing);
             let param = GenericParam { idx: idx as u32 + start, name };
             self.params.push(param);
+        }
+    }
+
+    fn fill_where_predicates(&mut self, where_clause: &ast::WhereClause) {
+        for pred in where_clause.predicates() {
+            let type_ref = match pred.type_ref() {
+                Some(type_ref) => type_ref,
+                None => continue,
+            };
+            for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
+                let path = bound
+                    .type_ref()
+                    .and_then(|tr| match tr.kind() {
+                        ast::TypeRefKind::PathType(path) => path.path(),
+                        _ => None,
+                    })
+                    .and_then(Path::from_ast);
+                let path = match path {
+                    Some(p) => p,
+                    None => continue,
+                };
+                self.where_predicates.push(WherePredicate {
+                    type_ref: TypeRef::from_ast(type_ref),
+                    trait_ref: path,
+                });
+            }
         }
     }
 
