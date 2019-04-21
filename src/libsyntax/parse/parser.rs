@@ -6618,7 +6618,12 @@ impl<'a> Parser<'a> {
             };
             (respan(self.prev_span, Constness::NotConst), unsafety, abi)
         };
-        self.expect_keyword(keywords::Fn)?;
+        if !self.eat_keyword(keywords::Fn) {
+            // It is possible for `expect_one_of` to recover given the contents of
+            // `self.expected_tokens`, therefore, do not use `self.unexpected()` which doesn't
+            // account for this.
+            if !self.expect_one_of(&[], &[])? { unreachable!() }
+        }
         Ok((constness, unsafety, asyncness, abi))
     }
 
