@@ -34,7 +34,7 @@ declare_clippy_lint! {
     /// assert_eq!(x, PathBuf::from("/foo/bar"));
     /// ```
     pub PATH_BUF_PUSH_OVERWRITE,
-    correctness,
+    nursery,
     "calling `push` with file system root on `PathBuf` can overwrite it"
 }
 
