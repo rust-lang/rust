@@ -13,7 +13,7 @@ use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, Va
 use rustc::ty::TypeFoldable;
 
 use super::{
-    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
+    GlobalId, AllocId, Allocation, Scalar, InterpResult, Pointer, PointerArithmetic,
     InterpretCx, Machine, AllocMap, AllocationExtra,
     RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
 };
@@ -560,7 +560,6 @@ where
         base: PlaceTy<'tcx, M::PointerTag>,
         proj_elem: &mir::ProjectionElem<'tcx, mir::Local, Ty<'tcx>>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
->>>>>>> parent of b62d9789da... rename EvalResult to InterpResult
         use rustc::mir::ProjectionElem::*;
         Ok(match *proj_elem {
             Field(field, _) =>  self.place_field(base, field.index() as u64)?,
