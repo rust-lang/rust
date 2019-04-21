@@ -221,11 +221,13 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                 }
                 _ => return Err(ExpandError::UnexpectedToken),
             },
-            crate::TokenTree::Repeat(crate::Repeat { subtree, kind: _, separator }) => {
+            crate::TokenTree::Repeat(crate::Repeat { subtree, kind, separator }) => {
                 // Dirty hack to make macro-expansion terminate.
                 // This should be replaced by a propper macro-by-example implementation
                 let mut limit = 128;
+                let mut counter = 0;
                 while let Ok(nested) = match_lhs(subtree, input) {
+                    counter += 1;
                     limit -= 1;
                     if limit == 0 {
                         break;
@@ -238,6 +240,17 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             }
                         }
                     }
+                }
+
+                match kind {
+                    crate::RepeatKind::OneOrMore if counter == 0 => {
+                        return Err(ExpandError::UnexpectedToken);
+                    }
+                    crate::RepeatKind::ZeroOrOne if counter > 1 => {
+                        return Err(ExpandError::UnexpectedToken);
+                    }
+
+                    _ => {}
                 }
             }
             crate::TokenTree::Subtree(subtree) => {
@@ -274,6 +287,20 @@ fn expand_subtree(
     Ok(tt::Subtree { token_trees, delimiter: template.delimiter })
 }
 
+/// Reduce single token subtree to single token
+/// In `tt` matcher case, all tt tokens will be braced by a Delimiter::None
+/// which makes all sort of problems.
+fn reduce_single_token(mut subtree: tt::Subtree) -> tt::TokenTree {
+    if subtree.delimiter != tt::Delimiter::None || subtree.token_trees.len() != 1 {
+        return subtree.into();
+    }
+
+    match subtree.token_trees.pop().unwrap() {
+        tt::TokenTree::Subtree(subtree) => reduce_single_token(subtree),
+        tt::TokenTree::Leaf(token) => token.into(),
+    }
+}
+
 fn expand_tt(
     template: &crate::TokenTree,
     bindings: &Bindings,
@@ -282,11 +309,13 @@ fn expand_tt(
     let res: tt::TokenTree = match template {
         crate::TokenTree::Subtree(subtree) => expand_subtree(subtree, bindings, nesting)?.into(),
         crate::TokenTree::Repeat(repeat) => {
-            let mut token_trees = Vec::new();
+            let mut token_trees: Vec<tt::TokenTree> = Vec::new();
             nesting.push(0);
             // Dirty hack to make macro-expansion terminate.
             // This should be replaced by a propper macro-by-example implementation
             let mut limit = 128;
+            let mut has_sep = false;
+
             while let Ok(t) = expand_subtree(&repeat.subtree, bindings, nesting) {
                 limit -= 1;
                 if limit == 0 {
@@ -294,10 +323,26 @@ fn expand_tt(
                 }
                 let idx = nesting.pop().unwrap();
                 nesting.push(idx + 1);
-                token_trees.push(t.into())
+                token_trees.push(reduce_single_token(t).into());
+
+                if let Some(sep) = repeat.separator {
+                    let punct =
+                        tt::Leaf::from(tt::Punct { char: sep, spacing: tt::Spacing::Alone });
+                    token_trees.push(punct.into());
+                    has_sep = true;
+                }
             }
             nesting.pop().unwrap();
-            tt::Subtree { token_trees, delimiter: tt::Delimiter::None }.into()
+
+            // Dirty hack for remove the last sep
+            // if it is a "," undo the push
+            if has_sep && repeat.separator.unwrap() == ',' {
+                token_trees.pop();
+            }
+
+            // Check if it is a singel token subtree without any delimiter
+            // e.g {Delimiter:None> ['>'] /Delimiter:None>}
+            reduce_single_token(tt::Subtree { token_trees, delimiter: tt::Delimiter::None })
         }
         crate::TokenTree::Leaf(leaf) => match leaf {
             crate::Leaf::Ident(ident) => {
@@ -311,7 +356,13 @@ fn expand_tt(
                     tt::Leaf::from(tt::Ident { text: "$crate".into(), id: TokenId::unspecified() })
                         .into()
                 } else {
-                    bindings.get(&v.text, nesting)?.clone()
+                    let tkn = bindings.get(&v.text, nesting)?.clone();
+
+                    if let tt::TokenTree::Subtree(subtree) = tkn {
+                        reduce_single_token(subtree)
+                    } else {
+                        tkn
+                    }
                 }
             }
             crate::Leaf::Literal(l) => tt::Leaf::from(tt::Literal { text: l.text.clone() }).into(),

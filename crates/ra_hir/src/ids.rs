@@ -63,11 +63,15 @@ impl HirFileId {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
             HirFileIdRepr::Macro(macro_call_id) => {
-                parse_macro(db, macro_call_id).unwrap_or_else(|| {
+                parse_macro(db, macro_call_id).unwrap_or_else(|err| {
                     // Note:
                     // The final goal we would like to make all parse_macro success,
                     // such that the following log will not call anyway.
-                    log::warn!("fail on macro_parse: {}", macro_call_id.debug_dump(db));
+                    log::warn!(
+                        "fail on macro_parse: (reason: {}) {}",
+                        err,
+                        macro_call_id.debug_dump(db)
+                    );
 
                     // returning an empty string looks fishy...
                     SourceFile::parse("")
@@ -77,14 +81,20 @@ impl HirFileId {
     }
 }
 
-fn parse_macro(db: &impl DefDatabase, macro_call_id: MacroCallId) -> Option<TreeArc<SourceFile>> {
+fn parse_macro(
+    db: &impl DefDatabase,
+    macro_call_id: MacroCallId,
+) -> Result<TreeArc<SourceFile>, String> {
     let loc = macro_call_id.loc(db);
     let macro_call = loc.ast_id.to_node(db);
-    let (macro_arg, _) = macro_call.token_tree().and_then(mbe::ast_to_token_tree)?;
+    let (macro_arg, _) = macro_call
+        .token_tree()
+        .and_then(mbe::ast_to_token_tree)
+        .ok_or("Fail to args in to tt::TokenTree")?;
 
-    let macro_rules = db.macro_def(loc.def)?;
-    let tt = macro_rules.expand(&macro_arg).ok()?;
-    Some(mbe::token_tree_to_ast_item_list(&tt))
+    let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
+    let tt = macro_rules.expand(&macro_arg).map_err(|err| format!("{:?}", err))?;
+    Ok(mbe::token_tree_to_ast_item_list(&tt))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -311,11 +321,18 @@ impl MacroCallId {
     pub fn debug_dump(&self, db: &impl DefDatabase) -> String {
         let loc = self.clone().loc(db);
         let node = loc.ast_id.to_node(db);
-        let syntax_str = node.syntax().to_string();
+        let syntax_str = node.syntax().text().chunks().collect::<Vec<_>>().join(" ");
 
         // dump the file name
         let file_id: HirFileId = self.clone().into();
         let original = file_id.original_file(db);
-        format!("macro call [file: {:#?}] : {}", db.file_relative_path(original), syntax_str)
+        let macro_rules = db.macro_def(loc.def);
+
+        format!(
+            "macro call [file: {:#?}] : {}\nhas rules: {}",
+            db.file_relative_path(original),
+            syntax_str,
+            macro_rules.is_some()
+        )
     }
 }
