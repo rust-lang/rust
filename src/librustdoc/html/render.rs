@@ -930,7 +930,7 @@ themePicker.onblur = handleThemeButtonsBlur;
           static_files::source_serif_pro::BOLD)?;
     write(cx.dst.join("SourceSerifPro-It.ttf.woff"),
           static_files::source_serif_pro::ITALIC)?;
-    write(cx.dst.join("SourceSerifPro-LICENSE.txt"),
+    write(cx.dst.join("SourceSerifPro-LICENSE.md"),
           static_files::source_serif_pro::LICENSE)?;
     write(cx.dst.join("SourceCodePro-Regular.woff"),
           static_files::source_code_pro::REGULAR)?;
