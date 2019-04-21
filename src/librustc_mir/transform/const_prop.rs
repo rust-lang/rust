@@ -148,6 +148,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 match diagnostic.error {
                     // don't report these, they make no sense in a const prop context
                     | MachineError(_)
+                    | Exit(_)
                     // at runtime these transformations might make sense
                     // FIXME: figure out the rules and start linting
                     | FunctionAbiMismatch(..)

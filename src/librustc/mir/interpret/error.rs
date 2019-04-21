@@ -229,6 +229,10 @@ pub enum InterpError<'tcx, O> {
     /// match an existing variant.
     MachineError(String),
 
+    /// Not actually an interpreter error -- used to signal that execution has exited
+    /// with the given status code.  Used by Miri, but not by CTFE.
+    Exit(i32),
+
     FunctionAbiMismatch(Abi, Abi),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
     FunctionRetMismatch(Ty<'tcx>, Ty<'tcx>),
@@ -317,6 +321,8 @@ impl<'tcx, O> InterpError<'tcx, O> {
         use self::InterpError::*;
         match *self {
             MachineError(ref inner) => inner,
+            Exit(..) =>
+                "exited",
             FunctionAbiMismatch(..) | FunctionArgMismatch(..) | FunctionRetMismatch(..)
             | FunctionArgCountMismatch =>
                 "tried to call a function through a function pointer of incompatible type",
@@ -515,6 +521,8 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
             InvalidDiscriminant(val) =>
                 write!(f, "encountered invalid enum discriminant {}", val),
+            Exit(code) =>
+                write!(f, "exited with status code {}", code),
             _ => write!(f, "{}", self.description()),
         }
     }
