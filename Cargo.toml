@@ -6,4 +6,3 @@ incremental = true
 debug = true
 
 [patch.'crates-io']
-lsp-types = { git = "https://github.com/matklad/lsp-types", branch = "selection-range" }
