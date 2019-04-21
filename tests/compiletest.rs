@@ -101,7 +101,7 @@ fn get_host() -> String {
 }
 
 fn get_target() -> String {
-    std::env::var("MIRI_COMPILETEST_TARGET").unwrap_or_else(|_| get_host())
+    std::env::var("MIRI_TEST_TARGET").unwrap_or_else(|_| get_host())
 }
 
 fn run_pass_miri(opt: bool) {
