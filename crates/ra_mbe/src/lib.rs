@@ -220,9 +220,10 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let expansion = syntax_node_to_token_tree(expansion.syntax()).unwrap().0;
         let file = token_tree_to_macro_items(&expansion);
         let file = file.unwrap().syntax().debug_dump().trim().to_string();
-        let file = file.replace("C_C__C", "$crate");
+        let tree = tree.unwrap().syntax().debug_dump().trim().to_string();
 
-        assert_eq!(tree.unwrap().syntax().debug_dump().trim(), file,);
+        let file = file.replace("C_C__C", "$crate");
+        assert_eq!(tree, file,);
     }
 
     #[test]
@@ -341,6 +342,21 @@ impl_froms!(TokenTree: Leaf, Subtree);
             ($ ($ i:ident),*) => ( fn baz { $ (
                 $ i ();
             )*} );            
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! { foo, bar }", "fn baz {foo () ; bar () ;}");
+    }
+
+    #[test]
+    fn test_match_group_pattern_with_multiple_statement_without_semi() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:ident),*) => ( fn baz { $ (
+                $i()
+            );*} );            
         }
 "#,
         );
@@ -692,6 +708,33 @@ MACRO_ITEMS@[0; 40)
     }
 
     #[test]
+    fn test_ty_with_complex_type() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ i:ty) => (
+                fn bar() -> $ i { unimplemented!() }
+            )
+        }
+"#,
+        );
+
+        // Reference lifetime struct with generic type
+        assert_expansion(
+            &rules,
+            "foo! { &'a Baz<u8> }",
+            "fn bar () -> & 'a Baz < u8 > {unimplemented ! ()}",
+        );
+
+        // extern "Rust" func type
+        assert_expansion(
+            &rules,
+            r#"foo! { extern "Rust" fn() -> Ret }"#,
+            r#"fn bar () -> extern "Rust" fn () -> Ret {unimplemented ! ()}"#,
+        );
+    }
+
+    #[test]
     fn test_pat_() {
         let rules = create_rules(
             r#"
@@ -854,6 +897,26 @@ MACRO_ITEMS@[0; 40)
 
     // The following tests are based on real world situations
     #[test]
+    fn test_vec() {
+        let rules = create_rules(
+            r#"
+         macro_rules! vec {
+            ($($item:expr),*) => {
+                {
+                    let mut v = Vec::new();
+                    $(
+                        v.push($item);
+                    )*
+                    v
+                }
+            };
+}
+"#,
+        );
+        assert_expansion(&rules, r#"vec!();"#, r#"{let mut v = Vec :: new () ;  v}"#);
+    }
+
+    #[test]
     fn test_winapi_struct() {
         // from https://github.com/retep998/winapi-rs/blob/a7ef2bca086aae76cf6c4ce4c2552988ed9798ad/src/macros.rs#L366
 
@@ -885,5 +948,27 @@ macro_rules! STRUCT {
         "# [repr (C)] # [derive (Copy)]  pub struct D3DVSHADERCAPS2_0 {pub Caps : u8 ,} impl Clone for D3DVSHADERCAPS2_0 {# [inline] fn clone (& self) -> D3DVSHADERCAPS2_0 {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DVSHADERCAPS2_0 {# [inline] fn default () -> D3DVSHADERCAPS2_0 {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
         assert_expansion(&rules, r#"STRUCT!{#[cfg_attr(target_arch = "x86", repr(packed))] struct D3DCONTENTPROTECTIONCAPS {Caps : u8 ,}}"#, 
         "# [repr (C)] # [derive (Copy)] # [cfg_attr (target_arch = \"x86\" , repr (packed))] pub struct D3DCONTENTPROTECTIONCAPS {pub Caps : u8 ,} impl Clone for D3DCONTENTPROTECTIONCAPS {# [inline] fn clone (& self) -> D3DCONTENTPROTECTIONCAPS {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DCONTENTPROTECTIONCAPS {# [inline] fn default () -> D3DCONTENTPROTECTIONCAPS {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
+    }
+
+    #[test]
+    fn test_int_base() {
+        let rules = create_rules(
+            r#"
+macro_rules! int_base {
+    ($Trait:ident for $T:ident as $U:ident -> $Radix:ident) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl fmt::$Trait for $T {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                $Radix.fmt_int(*self as $U, f)
+            }
+        }
+    }
+}            
+"#,
+        );
+
+        assert_expansion(&rules, r#" int_base!{Binary for isize as usize -> Binary}"#, 
+        "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt :: Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
+        );
     }
 }
