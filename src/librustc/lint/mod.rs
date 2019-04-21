@@ -371,7 +371,8 @@ macro_rules! early_lint_methods {
             fn check_block_post(a: &ast::Block);
             fn check_stmt(a: &ast::Stmt);
             fn check_arm(a: &ast::Arm);
-            fn check_pat(a: &ast::Pat, b: &mut bool); // FIXME: &mut bool looks just broken
+            fn check_pat(a: &ast::Pat);
+            fn check_pat_post(a: &ast::Pat);
             fn check_expr(a: &ast::Expr);
             fn check_expr_post(a: &ast::Expr);
             fn check_ty(a: &ast::Ty);

@@ -94,7 +94,7 @@ macro_rules! early_lint_passes {
             UnusedImportBraces: UnusedImportBraces,
             UnsafeCode: UnsafeCode,
             AnonymousParameters: AnonymousParameters,
-            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns,
+            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::new(),
             NonCamelCaseTypes: NonCamelCaseTypes,
             DeprecatedAttr: DeprecatedAttr::new(),
         ]);
