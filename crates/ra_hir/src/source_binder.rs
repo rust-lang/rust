@@ -19,11 +19,7 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
-<<<<<<< HEAD
-    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,
-=======
-    AsName, Module, HirFileId, Crate, Trait, Resolver, ImportResolver,
->>>>>>> complete_import: add new import resolver infrastructure with some hardcoded importable name.
+    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty, ImportResolver,
     expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
     ids::LocationCtx,
     expr, AstId,

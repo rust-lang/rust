@@ -23,13 +23,23 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
                 );
                 builder.finish()
             };
-            CompletionItem::new(
-                CompletionKind::Reference,
-                ctx.source_range(),
-                build_import_label(&name, &path),
-            )
-            .text_edit(edit)
-            .add_to(acc)
+
+            // Hack: copied this check form conv.rs beacause auto import can produce edits
+            // that invalidate assert in conv_with.
+            if edit
+                .as_atoms()
+                .iter()
+                .filter(|atom| !ctx.source_range().is_subrange(&atom.delete))
+                .all(|atom| ctx.source_range().intersection(&atom.delete).is_none())
+            {
+                CompletionItem::new(
+                    CompletionKind::Reference,
+                    ctx.source_range(),
+                    build_import_label(&name, &path),
+                )
+                .text_edit(edit)
+                .add_to(acc);
+            }
         });
     }
 }

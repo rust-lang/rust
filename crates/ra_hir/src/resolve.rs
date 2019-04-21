@@ -14,12 +14,8 @@ use crate::{
     generics::GenericParams,
     expr::{scope::{ExprScopes, ScopeId}, PatId},
     impl_block::ImplBlock,
-<<<<<<< HEAD
     path::Path,
     Trait
-=======
-    path::Path, Trait,
->>>>>>> complete_import: add new import resolver infrastructure with some hardcoded importable name.
 };
 
 #[derive(Debug, Clone, Default)]
