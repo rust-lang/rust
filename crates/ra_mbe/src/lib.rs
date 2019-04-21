@@ -214,14 +214,15 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let tree = token_tree_to_macro_items(&expanded);
 
         // Eat all white space by parse it back and forth
-        let expansion = ast::SourceFile::parse(expansion);
+        // Because $crate will seperate in two token , will do some special treatment here
+        let expansion = expansion.replace("$crate", "C_C__C");
+        let expansion = ast::SourceFile::parse(&expansion);
         let expansion = syntax_node_to_token_tree(expansion.syntax()).unwrap().0;
         let file = token_tree_to_macro_items(&expansion);
+        let file = file.unwrap().syntax().debug_dump().trim().to_string();
+        let file = file.replace("C_C__C", "$crate");
 
-        assert_eq!(
-            tree.unwrap().syntax().debug_dump().trim(),
-            file.unwrap().syntax().debug_dump().trim()
-        );
+        assert_eq!(tree.unwrap().syntax().debug_dump().trim(), file,);
     }
 
     #[test]
@@ -348,7 +349,36 @@ impl_froms!(TokenTree: Leaf, Subtree);
     }
 
     #[test]
-    fn expand_to_item_list() {
+    fn test_match_group_empty_fixed_token() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {
+            ($ ($ i:ident)* #abc) => ( fn baz { $ (
+                $ i ();
+            )*} );            
+        }
+"#,
+        );
+
+        assert_expansion(&rules, "foo! {#abc}", "fn baz {}");
+    }
+
+    #[test]
+    fn test_match_group_in_subtree() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {            
+            (fn $name:ident {$($i:ident)*} ) => ( fn $name() { $ (
+                $ i ();
+            )*} );            
+        }"#,
+        );
+
+        assert_expansion(&rules, "foo! {fn baz {a b} }", "fn baz () {a () ; b () ;}");
+    }
+
+    #[test]
+    fn test_expand_to_item_list() {
         let rules = create_rules(
             "
             macro_rules! structs {
@@ -401,7 +431,7 @@ MACRO_ITEMS@[0; 40)
     }
 
     #[test]
-    fn expand_literals_to_token_tree() {
+    fn test_expand_literals_to_token_tree() {
         fn to_subtree(tt: &tt::TokenTree) -> &tt::Subtree {
             if let tt::TokenTree::Subtree(subtree) = tt {
                 return &subtree;
@@ -763,30 +793,29 @@ MACRO_ITEMS@[0; 40)
         );
     }
 
-    //     #[test]
-    //     fn test_tt_block() {
-    //         let rules = create_rules(
-    //             r#"
+    #[test]
+    // fn test_tt_block() {
+    //     let rules = create_rules(
+    //         r#"
     //         macro_rules! foo {
     //             ($ i:tt) => { fn foo() $ i }
     //         }
     // "#,
-    //         );
-    //         assert_expansion(&rules, r#"foo! { { 1; } }"#, r#"fn foo () {1 ;}"#);
-    //     }
+    //     );
+    //     assert_expansion(&rules, r#"foo! { { 1; } }"#, r#"fn foo () {1 ;}"#);
+    // }
 
-    //     #[test]
-    //     fn test_tt_group() {
-    //         let rules = create_rules(
-    //             r#"
+    // #[test]
+    // fn test_tt_group() {
+    //     let rules = create_rules(
+    //         r#"
     //         macro_rules! foo {
     //              ($($ i:tt)*) => { $($ i)* }
     //         }
     // "#,
-    //         );
-    //         assert_expansion(&rules, r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
-    //     }
-
+    //     );
+    //     assert_expansion(&rules, r#"foo! { fn foo() {} }"#, r#"fn foo () {}"#);
+    // }
     #[test]
     fn test_lifetime() {
         let rules = create_rules(
@@ -821,5 +850,40 @@ MACRO_ITEMS@[0; 40)
 "#,
         );
         assert_expansion(&rules, r#"foo!(pub foo);"#, r#"pub fn foo () {}"#);
+    }
+
+    // The following tests are based on real world situations
+    #[test]
+    fn test_winapi_struct() {
+        // from https://github.com/retep998/winapi-rs/blob/a7ef2bca086aae76cf6c4ce4c2552988ed9798ad/src/macros.rs#L366
+
+        let rules = create_rules(
+            r#"
+macro_rules! STRUCT {
+    ($(#[$attrs:meta])* struct $name:ident {
+        $($field:ident: $ftype:ty,)+
+    }) => (
+        #[repr(C)] #[derive(Copy)] $(#[$attrs])*
+        pub struct $name {
+            $(pub $field: $ftype,)+
+        }
+        impl Clone for $name {
+            #[inline]
+            fn clone(&self) -> $name { *self }
+        }
+        #[cfg(feature = "impl-default")]
+        impl Default for $name {
+            #[inline]
+            fn default() -> $name { unsafe { $crate::_core::mem::zeroed() } }
+        }
+    );
+}
+"#,
+        );
+        // from https://github.com/retep998/winapi-rs/blob/a7ef2bca086aae76cf6c4ce4c2552988ed9798ad/src/shared/d3d9caps.rs
+        assert_expansion(&rules, r#"STRUCT!{struct D3DVSHADERCAPS2_0 {Caps: u8,}}"#,
+        "# [repr (C)] # [derive (Copy)]  pub struct D3DVSHADERCAPS2_0 {pub Caps : u8 ,} impl Clone for D3DVSHADERCAPS2_0 {# [inline] fn clone (& self) -> D3DVSHADERCAPS2_0 {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DVSHADERCAPS2_0 {# [inline] fn default () -> D3DVSHADERCAPS2_0 {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
+        assert_expansion(&rules, r#"STRUCT!{#[cfg_attr(target_arch = "x86", repr(packed))] struct D3DCONTENTPROTECTIONCAPS {Caps : u8 ,}}"#, 
+        "# [repr (C)] # [derive (Copy)] # [cfg_attr (target_arch = \"x86\" , repr (packed))] pub struct D3DCONTENTPROTECTIONCAPS {pub Caps : u8 ,} impl Clone for D3DCONTENTPROTECTIONCAPS {# [inline] fn clone (& self) -> D3DCONTENTPROTECTIONCAPS {* self}} # [cfg (feature = \"impl-default\")] impl Default for D3DCONTENTPROTECTIONCAPS {# [inline] fn default () -> D3DCONTENTPROTECTIONCAPS {unsafe {$crate :: _core :: mem :: zeroed ()}}}");
     }
 }

@@ -63,8 +63,15 @@ impl HirFileId {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
             HirFileIdRepr::Macro(macro_call_id) => {
-                // returning an empty string looks fishy...
-                parse_macro(db, macro_call_id).unwrap_or_else(|| SourceFile::parse(""))
+                parse_macro(db, macro_call_id).unwrap_or_else(|| {
+                    // Note:
+                    // The final goal we would like to make all parse_macro success,
+                    // such that the following log will not call anyway.
+                    log::warn!("fail on macro_parse: {}", macro_call_id.debug_dump(db));
+
+                    // returning an empty string looks fishy...
+                    SourceFile::parse("")
+                })
             }
         }
     }
@@ -297,5 +304,18 @@ impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
     }
     fn lookup_intern(self, db: &impl DefDatabase) -> ItemLoc<ast::TypeAliasDef> {
         db.lookup_intern_type_alias(self)
+    }
+}
+
+impl MacroCallId {
+    pub fn debug_dump(&self, db: &impl DefDatabase) -> String {
+        let loc = self.clone().loc(db);
+        let node = loc.ast_id.to_node(db);
+        let syntax_str = node.syntax().to_string();
+
+        // dump the file name
+        let file_id: HirFileId = self.clone().into();
+        let original = file_id.original_file(db);
+        format!("macro call [file: {:#?}] : {}", db.file_relative_path(original), syntax_str)
     }
 }

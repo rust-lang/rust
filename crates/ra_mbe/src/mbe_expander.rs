@@ -121,6 +121,10 @@ impl Bindings {
         }
         Ok(())
     }
+
+    fn merge(&mut self, nested: Bindings) {
+        self.inner.extend(nested.inner);
+    }
 }
 
 fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings, ExpandError> {
@@ -236,7 +240,21 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                     }
                 }
             }
-            _ => {}
+            crate::TokenTree::Subtree(subtree) => {
+                let input_subtree =
+                    input.eat_subtree().map_err(|_| ExpandError::UnexpectedToken)?;
+                if subtree.delimiter != input_subtree.delimiter {
+                    return Err(ExpandError::UnexpectedToken);
+                }
+
+                let mut input = TtCursor::new(input_subtree);
+                let bindings = match_lhs(&subtree, &mut input)?;
+                if !input.is_eof() {
+                    return Err(ExpandError::UnexpectedToken);
+                }
+
+                res.merge(bindings);
+            }
         }
     }
     Ok(res)
@@ -287,7 +305,15 @@ fn expand_tt(
                     .into()
             }
             crate::Leaf::Punct(punct) => tt::Leaf::from(punct.clone()).into(),
-            crate::Leaf::Var(v) => bindings.get(&v.text, nesting)?.clone(),
+            crate::Leaf::Var(v) => {
+                if v.text == "crate" {
+                    // FIXME: Properly handle $crate token
+                    tt::Leaf::from(tt::Ident { text: "$crate".into(), id: TokenId::unspecified() })
+                        .into()
+                } else {
+                    bindings.get(&v.text, nesting)?.clone()
+                }
+            }
             crate::Leaf::Literal(l) => tt::Leaf::from(tt::Literal { text: l.text.clone() }).into(),
         },
     };
