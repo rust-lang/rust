@@ -172,6 +172,9 @@ fn ask(question: &str) {
 /// done all this already.
 fn setup(ask_user: bool) {
     if std::env::var("MIRI_SYSROOT").is_ok() {
+        if !ask_user {
+            println!("WARNING: MIRI_SYSROOT already set, not doing anything.")
+        }
         return;
     }
 
