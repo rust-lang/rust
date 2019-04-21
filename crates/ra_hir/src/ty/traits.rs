@@ -1,8 +1,8 @@
 //! Stuff that will probably mostly replaced by Chalk.
 use std::collections::HashMap;
 
-use crate::db::HirDatabase;
-use super::{ TraitRef, Substs, infer::{ TypeVarId, InferTy}, Ty};
+use crate::{db::HirDatabase, generics::HasGenericParams};
+use super::{TraitRef, Substs, infer::{TypeVarId, InferTy}, Ty};
 
 // Copied (and simplified) from Chalk
 
@@ -59,7 +59,10 @@ pub(crate) fn implements(db: &impl HirDatabase, trait_ref: TraitRef) -> Option<S
         None => return None,
     };
     let crate_impl_blocks = db.impls_in_crate(krate);
-    let mut impl_blocks = crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_ref.trait_);
+    let mut impl_blocks = crate_impl_blocks
+        .lookup_impl_blocks_for_trait(&trait_ref.trait_)
+        // we don't handle where clauses at all, waiting for Chalk for that
+        .filter(|impl_block| impl_block.generic_params(db).where_predicates.is_empty());
     impl_blocks
         .find_map(|impl_block| unify_trait_refs(&trait_ref, &impl_block.target_trait_ref(db)?))
 }

@@ -2477,6 +2477,23 @@ fn test() { (&S).foo()<|>; }
     assert_eq!(t, "u128");
 }
 
+#[test]
+fn method_resolution_where_clause_not_met() {
+    // The blanket impl shouldn't apply because we can't prove S: Clone
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone {}
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl S { fn foo(self) -> i8 { 0 } }
+impl<T> Trait for T where T: Clone { fn foo(self) -> u128 { 0 } }
+fn test() { (&S).foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "i8");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id);
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
