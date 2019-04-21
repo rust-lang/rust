@@ -58,10 +58,6 @@ export function activate(context: vscode.ExtensionContext) {
         Server.client.sendRequest<null>('rust-analyzer/collectGarbage', null)
     );
     registerCommand(
-        'rust-analyzer.extendSelection',
-        commands.extendSelection.handle
-    );
-    registerCommand(
         'rust-analyzer.matchingBrace',
         commands.matchingBrace.handle
     );

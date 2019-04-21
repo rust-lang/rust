@@ -297,6 +297,7 @@ fn on_request(
         .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
         .on::<req::ExtendSelection>(handlers::handle_extend_selection)?
+        .on::<req::SelectionRangeRequest>(handlers::handle_selection_range)?
         .on::<req::FindMatchingBrace>(handlers::handle_find_matching_brace)?
         .on::<req::JoinLines>(handlers::handle_join_lines)?
         .on::<req::OnEnter>(handlers::handle_on_enter)?

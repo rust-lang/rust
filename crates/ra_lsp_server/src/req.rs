@@ -64,6 +64,28 @@ pub struct ExtendSelectionResult {
     pub selections: Vec<Range>,
 }
 
+pub enum SelectionRangeRequest {}
+
+impl Request for SelectionRangeRequest {
+    type Params = SelectionRangeParams;
+    type Result = Vec<SelectionRange>;
+    const METHOD: &'static str = "textDocument/selectionRange";
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectionRangeParams {
+    pub text_document: TextDocumentIdentifier,
+    pub positions: Vec<Position>,
+}
+
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct SelectionRange {
+    pub range: Range,
+    pub parent: Option<Box<SelectionRange>>,
+}
+
 pub enum FindMatchingBrace {}
 
 impl Request for FindMatchingBrace {
