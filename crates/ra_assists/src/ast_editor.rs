@@ -110,13 +110,20 @@ impl AstEditor<ast::NamedFieldList> {
 
         let position = match position {
             InsertPosition::First => after_l_curly!(),
-            InsertPosition::Last => match self.ast().fields().last() {
-                Some(it) => after_field!(it),
-                None => after_l_curly!(),
-            },
+            InsertPosition::Last => {
+                if !is_multiline {
+                    // don't insert comma before curly
+                    to_insert.pop();
+                }
+                match self.ast().fields().last() {
+                    Some(it) => after_field!(it),
+                    None => after_l_curly!(),
+                }
+            }
             InsertPosition::Before(anchor) => InsertPosition::Before(anchor.syntax().into()),
             InsertPosition::After(anchor) => after_field!(anchor),
         };
+
         self.ast = self.insert_children(position, to_insert.iter().cloned());
     }
 

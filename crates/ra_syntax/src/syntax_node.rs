@@ -24,6 +24,7 @@ use crate::{
 pub use rowan::WalkEvent;
 pub(crate) use rowan::{GreenNode, GreenToken};
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum InsertPosition<T> {
     First,
     Last,

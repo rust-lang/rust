@@ -194,4 +194,31 @@ mod tests {
             "#,
         );
     }
+
+    #[test]
+    fn fill_struct_short() {
+        check_assist(
+            fill_struct_fields,
+            r#"
+            struct S {
+                foo: u32,
+                bar: String,
+            }
+
+            fn main() {
+                let s = S {<|> };
+            }
+            "#,
+            r#"
+            struct S {
+                foo: u32,
+                bar: String,
+            }
+
+            fn main() {
+                let s = <|>S { foo: (), bar: () };
+            }
+            "#,
+        );
+    }
 }
