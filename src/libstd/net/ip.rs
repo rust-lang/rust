@@ -2032,7 +2032,7 @@ mod tests {
         check!("fdff:ffff::");
         check!("fe80:ffff::");
         check!("febf:ffff::");
-        check!("fec0::");
+        check!("fec0::", global);
         check!("ff01::", multicast);
         check!("ff02::", multicast);
         check!("ff03::", multicast);
@@ -2310,7 +2310,7 @@ mod tests {
 
         check!("fec0::",
                &[0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               unicast_site_local);
+               unicast_site_local|unicast_global|global);
 
         check!("ff01::",
                &[0xff, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
