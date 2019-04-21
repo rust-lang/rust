@@ -2369,10 +2369,10 @@ fn static_mutability<'a, 'tcx>(
     match tcx.hir().get_if_local(def_id) {
         Some(Node::Item(&hir::Item {
             node: hir::ItemKind::Static(_, mutbl, _), ..
-        })) => Some(mutbl),
+        })) |
         Some(Node::ForeignItem( &hir::ForeignItem {
             node: hir::ForeignItemKind::Static(_, mutbl), ..
-        })) => Some(if mutbl { hir::MutMutable } else { hir::MutImmutable }),
+        })) => Some(mutbl),
         Some(_) => None,
         _ => bug!("static_mutability applied to non-local def-id {:?}", def_id),
     }

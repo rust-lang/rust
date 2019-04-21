@@ -2405,9 +2405,8 @@ pub struct ForeignItem {
 pub enum ForeignItemKind {
     /// A foreign function.
     Fn(P<FnDecl>, HirVec<Ident>, Generics),
-    /// A foreign static item (`static ext: u8`), with optional mutability
-    /// (the boolean is true when mutable).
-    Static(P<Ty>, bool),
+    /// A foreign static item (`static ext: u8`).
+    Static(P<Ty>, Mutability),
     /// A foreign type.
     Type,
 }

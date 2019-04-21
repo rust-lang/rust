@@ -1142,7 +1142,7 @@ impl<'a> State<'a> {
             }
             ast::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"))?;
-                if m {
+                if m == ast::Mutability::Mutable {
                     self.word_space("mut")?;
                 }
                 self.print_ident(item.ident)?;

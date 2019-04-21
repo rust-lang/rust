@@ -4055,7 +4055,7 @@ impl Clean<Item> for hir::ForeignItem {
             hir::ForeignItemKind::Static(ref ty, mutbl) => {
                 ForeignStaticItem(Static {
                     type_: ty.clean(cx),
-                    mutability: if mutbl {Mutable} else {Immutable},
+                    mutability: mutbl.clean(cx),
                     expr: String::new(),
                 })
             }

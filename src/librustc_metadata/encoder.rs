@@ -1647,8 +1647,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 };
                 EntryKind::ForeignFn(self.lazy(&data))
             }
-            hir::ForeignItemKind::Static(_, true) => EntryKind::ForeignMutStatic,
-            hir::ForeignItemKind::Static(_, false) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::Static(_, hir::MutMutable) => EntryKind::ForeignMutStatic,
+            hir::ForeignItemKind::Static(_, hir::MutImmutable) => EntryKind::ForeignImmStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         };
 
