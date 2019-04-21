@@ -310,7 +310,7 @@ pub enum InterpError<'tcx, O> {
     InfiniteLoop,
 }
 
-pub type InterpResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
+pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
 
 impl<'tcx, O> InterpError<'tcx, O> {
     pub fn description(&self) -> &str {

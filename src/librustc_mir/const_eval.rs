@@ -23,7 +23,7 @@ use syntax::source_map::{Span, DUMMY_SP};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, MemPlace, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue,
-    InterpResult, EvalError, InterpError, GlobalId, InterpretCx, StackPopCleanup,
+    EvalResult, EvalError, InterpError, GlobalId, InterpretCx, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
 };
@@ -56,7 +56,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
+) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = mk_eval_cx(tcx, span, param_env);
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
@@ -112,7 +112,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (InterpResult<'tcx, MPlaceTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
+) -> (EvalResult<'tcx, MPlaceTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
     // we start out with the best span we have
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
@@ -128,7 +128,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
+) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
     let mut mir = match mir {
@@ -328,7 +328,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         args: &[OpTy<'tcx>],
         dest: Option<PlaceTy<'tcx>>,
         ret: Option<mir::BasicBlock>,
-    ) -> InterpResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
+    ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def_id) = instance.def {
@@ -367,7 +367,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         dest: PlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
+    ) -> EvalResult<'tcx> {
         if ecx.emulate_intrinsic(instance, args, dest)? {
             return Ok(());
         }
@@ -383,7 +383,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _bin_op: mir::BinOp,
         _left: ImmTy<'tcx>,
         _right: ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar, bool)> {
         Err(
             ConstEvalError::NeedsRfc("pointer arithmetic or comparison".to_string()).into(),
         )
@@ -393,7 +393,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _def_id: DefId,
         _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         _memory_extra: &(),
-    ) -> InterpResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
 
@@ -409,13 +409,13 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn box_alloc(
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
-    ) -> InterpResult<'tcx> {
+    ) -> EvalResult<'tcx> {
         Err(
             ConstEvalError::NeedsRfc("heap allocations via `box` keyword".to_string()).into(),
         )
     }
 
-    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> InterpResult<'tcx> {
+    fn before_terminator(ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx> {
         {
             let steps = &mut ecx.machine.steps_since_detector_enabled;
 
@@ -451,7 +451,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     #[inline(always)]
     fn stack_push(
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
-    ) -> InterpResult<'tcx> {
+    ) -> EvalResult<'tcx> {
         Ok(())
     }
 
@@ -460,7 +460,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     fn stack_pop(
         _ecx: &mut InterpretCx<'a, 'mir, 'tcx, Self>,
         _extra: (),
-    ) -> InterpResult<'tcx> {
+    ) -> EvalResult<'tcx> {
         Ok(())
     }
 }

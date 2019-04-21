@@ -11,7 +11,7 @@ mod allocation;
 mod pointer;
 
 pub use self::error::{
-    EvalError, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
+    EvalError, EvalResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
     FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
 };
 
