@@ -8414,11 +8414,11 @@ impl<'a> Parser<'a> {
                 } else {
                     ("fn` or `struct", "function or struct", true)
                 };
-                self.consume_block(token::Brace);
 
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
                 let mut err = self.diagnostic().struct_span_err(sp, &msg);
                 if !ambiguous {
+                    self.consume_block(token::Brace);
                     let suggestion = format!("add `{}` here to parse `{}` as a public {}",
                                              kw,
                                              ident,
