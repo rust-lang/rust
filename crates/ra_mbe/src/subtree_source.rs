@@ -21,6 +21,7 @@ impl<'a> From<&'a [tt::TokenTree]> for TokenSeq<'a> {
     }
 }
 
+#[derive(Debug)]
 enum DelimToken<'a> {
     Delim(&'a tt::Delimiter, bool),
     Token(&'a tt::TokenTree),
@@ -52,10 +53,10 @@ impl<'a> TokenSeq<'a> {
         }
     }
 
-    fn child_slice(&self) -> &[tt::TokenTree] {
+    fn child_slice(&self, pos: usize) -> &[tt::TokenTree] {
         match self {
-            TokenSeq::Subtree(subtree) => &subtree.token_trees,
-            TokenSeq::Seq(tokens) => &tokens,
+            TokenSeq::Subtree(subtree) => &subtree.token_trees[pos - 1..],
+            TokenSeq::Seq(tokens) => &tokens[pos..],
         }
     }
 }
@@ -114,7 +115,7 @@ impl<'a> SubTreeWalker<'a> {
                     WalkCursor::Token(0, convert_delim(subtree.delimiter, false))
                 }
                 tt::TokenTree::Leaf(leaf) => {
-                    let next_tokens = self.ts.child_slice();
+                    let next_tokens = self.ts.child_slice(0);
                     WalkCursor::Token(0, convert_leaf(&next_tokens, leaf))
                 }
             },
@@ -190,8 +191,8 @@ impl<'a> SubTreeWalker<'a> {
                     WalkCursor::Token(new_idx, convert_delim(subtree.delimiter, backward))
                 }
                 tt::TokenTree::Leaf(leaf) => {
-                    let next_tokens = top.child_slice();
-                    WalkCursor::Token(pos, convert_leaf(&next_tokens[pos..], leaf))
+                    let next_tokens = top.child_slice(pos);
+                    WalkCursor::Token(pos, convert_leaf(&next_tokens, leaf))
                 }
             },
             DelimToken::Delim(delim, is_end) => {
