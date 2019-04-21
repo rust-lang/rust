@@ -21,17 +21,13 @@ fn fixed_rng() {
 
 #[test]
 fn entropy_rng() {
-    #[cfg(not(target_os="macos"))] // FIXME entropy does not work on macOS
-    // (Not disabling the entire test as that would change the output.)
-    {
-        // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
-        let mut rng = SmallRng::from_entropy();
-        let _val = rng.gen::<i32>();
+    // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
+    let mut rng = SmallRng::from_entropy();
+    let _val = rng.gen::<i32>();
 
-        // Also try per-thread RNG.
-        let mut rng = rand::thread_rng();
-        let _val = rng.gen::<i32>();
-    }
+    // Also try per-thread RNG.
+    let mut rng = rand::thread_rng();
+    let _val = rng.gen::<i32>();
 }
 
 // A test that won't work on miri

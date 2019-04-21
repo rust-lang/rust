@@ -712,6 +712,18 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             "_NSGetArgv" => {
                 this.write_scalar(Scalar::Ptr(this.machine.argv.unwrap()), dest)?;
             },
+            "SecRandomCopyBytes" => {
+                let len = this.read_scalar(args[1])?.to_usize(this)?;
+                let ptr = this.read_scalar(args[2])?.to_ptr()?;
+
+                if len > 0 {
+                    let data = gen_random(this, len as usize)?;
+                    this.memory_mut().get_mut(ptr.alloc_id)?
+                        .write_bytes(tcx, ptr, &data)?;
+                }
+
+                this.write_null(dest)?;
+            }
 
             // Windows API stubs.
             // HANDLE = isize
