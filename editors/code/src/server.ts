@@ -74,6 +74,7 @@ export class Server {
                 }
             }
         };
+        Server.client.registerProposedFeatures();
         Server.client.onReady().then(() => {
             for (const [type, handler] of notificationHandlers) {
                 Server.client.onNotification(type, handler);

@@ -11,7 +11,7 @@ use ra_ide_api::{
     FileId, FilePosition, FileRange, FoldKind, Query, RangeInfo, RunnableKind, Severity, Cancelable,
     AssistId,
 };
-use ra_syntax::{AstNode, SyntaxKind, TextUnit};
+use ra_syntax::{AstNode, SyntaxKind, TextUnit, TextRange};
 use ra_prof::profile;
 use rustc_hash::FxHashMap;
 use serde::{Serialize, Deserialize};
@@ -39,10 +39,15 @@ pub fn handle_syntax_tree(world: ServerWorld, params: req::SyntaxTreeParams) -> 
     Ok(res)
 }
 
+// FIXME: drop this API
 pub fn handle_extend_selection(
     world: ServerWorld,
     params: req::ExtendSelectionParams,
 ) -> Result<req::ExtendSelectionResult> {
+    log::error!(
+        "extend selection is deprecated and will be removed soon,
+         use the new selection range API in LSP",
+    );
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let selections = params
@@ -53,6 +58,46 @@ pub fn handle_extend_selection(
         .map(|frange| world.analysis().extend_selection(frange).map(|it| it.conv_with(&line_index)))
         .collect::<Cancelable<Vec<_>>>()?;
     Ok(req::ExtendSelectionResult { selections })
+}
+
+pub fn handle_selection_range(
+    world: ServerWorld,
+    params: req::SelectionRangeParams,
+) -> Result<Vec<req::SelectionRange>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    params
+        .positions
+        .into_iter()
+        .map_conv_with(&line_index)
+        .map(|position| {
+            let mut ranges = Vec::new();
+            {
+                let mut range = TextRange::from_to(position, position);
+                loop {
+                    ranges.push(range);
+                    let frange = FileRange { file_id, range };
+                    let next = world.analysis().extend_selection(frange)?;
+                    if next == range {
+                        break;
+                    } else {
+                        range = next
+                    }
+                }
+            }
+            let mut range = req::SelectionRange {
+                range: ranges.last().unwrap().conv_with(&line_index),
+                parent: None,
+            };
+            for r in ranges.iter().rev().skip(1) {
+                range = req::SelectionRange {
+                    range: r.conv_with(&line_index),
+                    parent: Some(Box::new(range)),
+                }
+            }
+            Ok(range)
+        })
+        .collect()
 }
 
 pub fn handle_find_matching_brace(

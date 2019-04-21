@@ -81,11 +81,6 @@
                 "category": "Rust Analyzer"
             },
             {
-                "command": "rust-analyzer.extendSelection",
-                "title": "Extend selection",
-                "category": "Rust Analyzer"
-            },
-            {
                 "command": "rust-analyzer.matchingBrace",
                 "title": "Find matching brace",
                 "category": "Rust Analyzer"
