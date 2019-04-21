@@ -1,7 +1,7 @@
 #![feature(rustc_attrs, rustc_private, step_trait)]
 
 #[macro_use] extern crate rustc_data_structures;
-extern crate rustc_serialize;
+extern crate serialize as rustc_serialize;
 
 use rustc_data_structures::indexed_vec::Idx;
 
