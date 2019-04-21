@@ -10,7 +10,7 @@ use crate::{
 /// specific node across reparses of the same file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SyntaxNodePtr {
-    range: TextRange,
+    pub(crate) range: TextRange,
     kind: SyntaxKind,
 }
 

@@ -17,12 +17,19 @@ use ra_parser::ParseError;
 use rowan::{TransparentNewType, GreenNodeBuilder};
 
 use crate::{
-    SmolStr, SyntaxKind, TextUnit, TextRange, SyntaxText, SourceFile, AstNode,
+    SmolStr, SyntaxKind, TextUnit, TextRange, SyntaxText, SourceFile, AstNode, SyntaxNodePtr,
     syntax_error::{SyntaxError, SyntaxErrorKind},
 };
 
 pub use rowan::WalkEvent;
 pub(crate) use rowan::{GreenNode, GreenToken};
+
+pub enum InsertPosition<T> {
+    First,
+    Last,
+    Before(T),
+    After(T),
+}
 
 /// Marker trait for CST and AST nodes
 pub trait SyntaxNodeWrapper: TransparentNewType<Repr = rowan::SyntaxNode> {}
@@ -309,6 +316,71 @@ impl SyntaxNode {
     pub(crate) fn replace_with(&self, replacement: GreenNode) -> GreenNode {
         self.0.replace_with(replacement)
     }
+
+    /// Adds specified children (tokens or nodes) to the current node at the
+    /// specific position.
+    ///
+    /// This is a type-unsafe low-level editing API, if you need to use it,
+    /// prefer to create a type-safe abstraction on top of it instead.
+    ///
+    ///
+    pub fn insert_children<'a>(
+        &self,
+        position: InsertPosition<SyntaxElement<'_>>,
+        to_insert: impl Iterator<Item = SyntaxElement<'a>>,
+    ) -> TreeArc<SyntaxNode> {
+        let mut delta = TextUnit::default();
+        let to_insert = to_insert.map(|element| {
+            delta += element.text_len();
+            to_green_element(element)
+        });
+
+        let old_children = self.0.green().children();
+
+        let get_anchor_pos = |anchor: SyntaxElement| -> usize {
+            self.children_with_tokens()
+                .position(|it| it == anchor)
+                .expect("anchor is not a child of current element")
+        };
+
+        let new_children = match position {
+            InsertPosition::First => {
+                to_insert.chain(old_children.iter().cloned()).collect::<Box<[_]>>()
+            }
+            InsertPosition::Last => {
+                old_children.iter().cloned().chain(to_insert).collect::<Box<[_]>>()
+            }
+            InsertPosition::Before(anchor) | InsertPosition::After(anchor) => {
+                let take_anchor = if let InsertPosition::After(_) = position { 1 } else { 0 };
+                let (before, after) = old_children.split_at(get_anchor_pos(anchor) + take_anchor);
+                before
+                    .iter()
+                    .cloned()
+                    .chain(to_insert)
+                    .chain(after.iter().cloned())
+                    .collect::<Box<[_]>>()
+            }
+        };
+
+        let new_node = GreenNode::new(rowan::SyntaxKind(self.kind() as u16), new_children);
+        let new_file_node = self.replace_with(new_node);
+        let file = SourceFile::new(new_file_node, Vec::new());
+
+        // FIXME: use a more elegant way to re-fetch the node (#1185), make
+        // `range` private afterwards
+        let mut ptr = SyntaxNodePtr::new(self);
+        ptr.range = TextRange::from_to(ptr.range().start(), ptr.range().end() + delta);
+        return ptr.to_node(&file).to_owned();
+
+        fn to_green_element(element: SyntaxElement) -> rowan::GreenElement {
+            match element {
+                SyntaxElement::Node(node) => node.0.green().clone().into(),
+                SyntaxElement::Token(tok) => {
+                    GreenToken::new(rowan::SyntaxKind(tok.kind() as u16), tok.text().clone()).into()
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -450,6 +522,13 @@ impl<'a> SyntaxElement<'a> {
             SyntaxElement::Token(it) => it.parent(),
         }
         .ancestors()
+    }
+
+    fn text_len(&self) -> TextUnit {
+        match self {
+            SyntaxElement::Node(node) => node.0.green().text_len(),
+            SyntaxElement::Token(token) => TextUnit::of_str(token.0.text()),
+        }
     }
 }
 
