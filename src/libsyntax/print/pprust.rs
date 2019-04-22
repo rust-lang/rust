@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
 use crate::ast::{Attribute, MacDelimiter, GenericArg};

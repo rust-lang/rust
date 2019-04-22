@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use self::Entry::*;
 
 use hashbrown::hash_map as base;

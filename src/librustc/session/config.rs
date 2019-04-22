@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command line options.
 

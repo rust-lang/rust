@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Cross-platform path manipulation.
 //!
 //! This module provides two types, [`PathBuf`] and [`Path`][`Path`] (akin to [`String`]

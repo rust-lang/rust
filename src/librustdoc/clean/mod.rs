@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 

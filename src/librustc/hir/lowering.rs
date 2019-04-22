@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Lowers the AST to the HIR.
 //!
 //! Since the AST and HIR are fairly similar, this is mostly a simple procedure,

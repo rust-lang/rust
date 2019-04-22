@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use rustc_apfloat::{Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
 use rustc_apfloat::{Float, FloatConvert, ParseError, Round, Status};
 use rustc_apfloat::ieee::{Half, Single, Double, Quad, X87DoubleExtended};
