@@ -10,7 +10,7 @@
 //! * No unexplained ` ```ignore ` or ` ```rust,ignore ` doc tests.
 //!
 //! A number of these checks can be opted-out of with various directives like
-//! `// ignore-tidy-linelength`.
+//! `// ignore-tidy-copyright`.
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -119,13 +119,16 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_copyright = contains_ignore_directive(&contents, "copyright");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
+        let mut contained_long_line = false;
         for (i, line) in contents.split('\n').enumerate() {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
-            if !skip_length && line.chars().count() > COLS
-                && !long_line_is_ok(line) {
+            if line.chars().count() > COLS && !long_line_is_ok(line) {
+                contained_long_line = true;
+                if !skip_length {
                     err(&format!("line longer than {} chars", COLS));
+                }
             }
             if !skip_tab && line.contains('\t') {
                 err("tab character");
@@ -174,5 +177,8 @@ pub fn check(path: &Path, bad: &mut bool) {
             1 => {}
             n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
         };
+        if !contained_long_line && skip_length {
+            tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
+        }
     })
 }
