@@ -599,9 +599,7 @@ impl<T> RawTable<T> {
         };
 
         // If we have more buckets than we need, shrink the table.
-        if min_buckets != self.buckets() {
-            debug_assert!(min_buckets < self.buckets());
-
+        if min_buckets < self.buckets() {
             // Fast path if the table is empty
             if self.items == 0 {
                 *self = Self::with_capacity(min_size)

@@ -626,8 +626,8 @@ where
     /// down no lower than the supplied limit while maintaining the internal rules
     /// and possibly leaving some space in accordance with the resize policy.
     ///
-    /// Panics if the current capacity is smaller than the supplied
-    /// minimum capacity.
+    /// This function does nothing if the current capacity is smaller than the
+    /// supplied minimum capacity.
     ///
     /// # Examples
     ///
@@ -642,14 +642,11 @@ where
     /// assert!(map.capacity() >= 10);
     /// map.shrink_to(0);
     /// assert!(map.capacity() >= 2);
+    /// map.shrink_to(10);
+    /// assert!(map.capacity() >= 2);
     /// ```
     #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        assert!(
-            self.capacity() >= min_capacity,
-            "Tried to shrink to a larger capacity"
-        );
-
         let hash_builder = &self.hash_builder;
         self.table
             .shrink_to(min_capacity, |x| make_hash(hash_builder, &x.0));
