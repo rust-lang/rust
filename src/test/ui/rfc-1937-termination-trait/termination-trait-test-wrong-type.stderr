@@ -1,12 +1,12 @@
-error[E0277]: `main` has invalid return type `std::result::Result<f32, std::num::ParseIntError>`
+error[E0277]: `main` has invalid return type `std::result::Result<f32, std::num::ParseFloatError>`
   --> $DIR/termination-trait-test-wrong-type.rs:6:1
    |
-LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseIntError> {
+LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseFloatError> {
 LL | |     "0".parse()
 LL | | }
    | |_^ `main` can only return types that implement `std::process::Termination`
    |
-   = help: the trait `std::process::Termination` is not implemented for `std::result::Result<f32, std::num::ParseIntError>`
+   = help: the trait `std::process::Termination` is not implemented for `std::result::Result<f32, std::num::ParseFloatError>`
    = note: required by `test::assert_test_result`
 
 error: aborting due to previous error

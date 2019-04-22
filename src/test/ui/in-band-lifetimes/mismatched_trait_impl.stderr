@@ -20,5 +20,15 @@ LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 {
            expected fn(&i32, &'a u32, &u32) -> &'a u32
               found fn(&i32, &u32, &u32) -> &u32
 
-error: aborting due to previous error
+error[E0623]: lifetime mismatch
+  --> $DIR/mismatched_trait_impl.rs:10:9
+   |
+LL |     fn foo(&self, x: &u32, y: &'a u32) -> &'a u32 {
+   |                      ----                 -------
+   |                      |
+   |                      this parameter and the return type are declared with different lifetimes...
+LL |         x
+   |         ^ ...but data from `x` is returned here
+
+error: aborting due to 2 previous errors
 

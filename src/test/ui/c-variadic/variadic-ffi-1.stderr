@@ -4,6 +4,79 @@ error[E0045]: C-variadic function must have C or cdecl calling convention
 LL |     fn printf(_: *const u8, ...);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadics require C or cdecl calling convention
 
-error: aborting due to previous error
+error[E0060]: this function takes at least 2 parameters but 0 parameters were supplied
+  --> $DIR/variadic-ffi-1.rs:16:9
+   |
+LL |     fn foo(f: isize, x: u8, ...);
+   |     ----------------------------- defined here
+...
+LL |         foo();
+   |         ^^^^^ expected at least 2 parameters
 
-For more information about this error, try `rustc --explain E0045`.
+error[E0060]: this function takes at least 2 parameters but 1 parameter was supplied
+  --> $DIR/variadic-ffi-1.rs:17:9
+   |
+LL |     fn foo(f: isize, x: u8, ...);
+   |     ----------------------------- defined here
+...
+LL |         foo(1);
+   |         ^^^^^^ expected at least 2 parameters
+
+error[E0308]: mismatched types
+  --> $DIR/variadic-ffi-1.rs:19:56
+   |
+LL |         let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
+   |                                                        ^^^ expected non-variadic fn, found variadic function
+   |
+   = note: expected type `unsafe extern "C" fn(isize, u8)`
+              found type `for<'r> unsafe extern "C" fn(isize, u8, std::ffi::VaList<'r>, ...) {foo}`
+
+error[E0308]: mismatched types
+  --> $DIR/variadic-ffi-1.rs:20:54
+   |
+LL |         let y: extern "C" fn(f: isize, x: u8, ...) = bar;
+   |                                                      ^^^ expected variadic fn, found non-variadic function
+   |
+   = note: expected type `for<'r> extern "C" fn(isize, u8, std::ffi::VaList<'r>, ...)`
+              found type `extern "C" fn(isize, u8) {bar}`
+
+error[E0617]: can't pass `f32` to variadic function
+  --> $DIR/variadic-ffi-1.rs:22:19
+   |
+LL |         foo(1, 2, 3f32);
+   |                   ^^^^ help: cast the value to `c_double`: `3f32 as c_double`
+
+error[E0617]: can't pass `bool` to variadic function
+  --> $DIR/variadic-ffi-1.rs:23:19
+   |
+LL |         foo(1, 2, true);
+   |                   ^^^^ help: cast the value to `c_int`: `true as c_int`
+
+error[E0617]: can't pass `i8` to variadic function
+  --> $DIR/variadic-ffi-1.rs:24:19
+   |
+LL |         foo(1, 2, 1i8);
+   |                   ^^^ help: cast the value to `c_int`: `1i8 as c_int`
+
+error[E0617]: can't pass `u8` to variadic function
+  --> $DIR/variadic-ffi-1.rs:25:19
+   |
+LL |         foo(1, 2, 1u8);
+   |                   ^^^ help: cast the value to `c_uint`: `1u8 as c_uint`
+
+error[E0617]: can't pass `i16` to variadic function
+  --> $DIR/variadic-ffi-1.rs:26:19
+   |
+LL |         foo(1, 2, 1i16);
+   |                   ^^^^ help: cast the value to `c_int`: `1i16 as c_int`
+
+error[E0617]: can't pass `u16` to variadic function
+  --> $DIR/variadic-ffi-1.rs:27:19
+   |
+LL |         foo(1, 2, 1u16);
+   |                   ^^^^ help: cast the value to `c_uint`: `1u16 as c_uint`
+
+error: aborting due to 11 previous errors
+
+Some errors have detailed explanations: E0045, E0060, E0308, E0617.
+For more information about an error, try `rustc --explain E0045`.

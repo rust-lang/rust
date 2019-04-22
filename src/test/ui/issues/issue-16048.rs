@@ -22,6 +22,8 @@ impl<'a> NoLifetime for Foo<'a> {
     //~^ ERROR E0195
     //~| NOTE lifetimes do not match method in trait
         return *self as T;
+        //~^ ERROR non-primitive cast: `Foo<'a>` as `T`
+        //~| NOTE an `as` expression can only be used to convert between primitive types.
     }
 }
 

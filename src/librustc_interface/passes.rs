@@ -966,8 +966,7 @@ fn analysis<'tcx>(
     time(sess, "layout testing", || layout_test::test_layout(tcx));
 
     // Avoid overwhelming user with errors if borrow checking failed.
-    // I'm not sure how helpful this is, to be honest, but it avoids
-    // a
+    // I'm not sure how helpful this is, to be honest, but it avoids a
     // lot of annoying errors in the compile-fail tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
