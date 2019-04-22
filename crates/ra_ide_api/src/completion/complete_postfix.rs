@@ -40,7 +40,7 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
             ctx,
             "match",
             "match expr {}",
-            &format!("match {} {{\n${{1:_}} => {{$0\\}},\n}}", receiver_text),
+            &format!("match {} {{\n    ${{1:_}} => {{$0\\}},\n}}", receiver_text),
         )
         .add_to(acc);
         postfix_snippet(
