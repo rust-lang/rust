@@ -1,24 +1,14 @@
-error[E0277]: `main` has invalid return type `std::result::Result<f32, std::num::ParseIntError>`
+error[E0277]: `main` has invalid return type `std::result::Result<f32, std::num::ParseFloatError>`
   --> $DIR/termination-trait-test-wrong-type.rs:6:1
    |
-LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseIntError> {
+LL | / fn can_parse_zero_as_f32() -> Result<f32, ParseFloatError> {
 LL | |     "0".parse()
 LL | | }
    | |_^ `main` can only return types that implement `std::process::Termination`
    |
-   = help: the trait `std::process::Termination` is not implemented for `std::result::Result<f32, std::num::ParseIntError>`
+   = help: the trait `std::process::Termination` is not implemented for `std::result::Result<f32, std::num::ParseFloatError>`
    = note: required by `test::assert_test_result`
 
-error[E0271]: type mismatch resolving `<f32 as std::str::FromStr>::Err == std::num::ParseIntError`
-  --> $DIR/termination-trait-test-wrong-type.rs:7:9
-   |
-LL |     "0".parse()
-   |         ^^^^^ expected struct `std::num::ParseFloatError`, found struct `std::num::ParseIntError`
-   |
-   = note: expected type `std::num::ParseFloatError`
-              found type `std::num::ParseIntError`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0271, E0277.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0277`.
