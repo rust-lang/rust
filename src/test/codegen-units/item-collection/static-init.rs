@@ -1,5 +1,4 @@
 // compile-flags:-Zprint-mono-items=eager
-// ignore-tidy-linelength
 
 #![feature(start)]
 

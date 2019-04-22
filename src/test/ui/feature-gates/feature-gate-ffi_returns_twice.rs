@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![crate_type = "lib"]
 
 extern {
