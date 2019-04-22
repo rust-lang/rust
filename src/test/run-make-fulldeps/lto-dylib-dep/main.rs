@@ -1,4 +1,3 @@
-
 extern crate a_dylib;
 
 fn main() {
