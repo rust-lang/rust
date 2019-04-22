@@ -564,7 +564,7 @@ fn get_config(config_file: Option<&Path>) -> Config {
         .read_to_string(&mut def_config)
         .expect("Couldn't read config");
 
-    Config::from_toml(&def_config).expect("invalid TOML")
+    Config::from_toml(&def_config, Path::new("tests/config/")).expect("invalid TOML")
 }
 
 // Reads significant comments of the form: `// rustfmt-key: value` into a hash map.

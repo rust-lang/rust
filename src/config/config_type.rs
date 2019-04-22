@@ -141,7 +141,7 @@ macro_rules! create_config {
                 ConfigWasSet(self)
             }
 
-            fn fill_from_parsed_config(mut self, parsed: PartialConfig) -> Config {
+            fn fill_from_parsed_config(mut self, parsed: PartialConfig, dir: &Path) -> Config {
             $(
                 if let Some(val) = parsed.$i {
                     if self.$i.3 {
@@ -160,6 +160,7 @@ macro_rules! create_config {
             )+
                 self.set_heuristics();
                 self.set_license_template();
+                self.set_ignore(dir);
                 self
             }
 
@@ -286,6 +287,9 @@ macro_rules! create_config {
                 }
             }
 
+            fn set_ignore(&mut self, dir: &Path) {
+                self.ignore.2.add_prefix(dir);
+            }
 
             /// Returns `true` if the config key was explicitly set and is the default value.
             pub fn is_default(&self, key: &str) -> bool {
