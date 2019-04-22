@@ -242,30 +242,31 @@ impl UseTree {
                     format!("{}use {};", vis, s)
                 }
             })?;
-        if let Some(ref attrs) = self.attrs {
-            let attr_str = attrs.rewrite(context, shape)?;
-            let lo = attrs.last().as_ref()?.span().hi();
-            let hi = self.span.lo();
-            let span = mk_sp(lo, hi);
+        match self.attrs {
+            Some(ref attrs) if !attrs.is_empty() => {
+                let attr_str = attrs.rewrite(context, shape)?;
+                let lo = attrs.last().as_ref()?.span().hi();
+                let hi = self.span.lo();
+                let span = mk_sp(lo, hi);
 
-            let allow_extend = if attrs.len() == 1 {
-                let line_len = attr_str.len() + 1 + use_str.len();
-                !attrs.first().unwrap().is_sugared_doc
-                    && context.config.inline_attribute_width() >= line_len
-            } else {
-                false
-            };
+                let allow_extend = if attrs.len() == 1 {
+                    let line_len = attr_str.len() + 1 + use_str.len();
+                    !attrs.first().unwrap().is_sugared_doc
+                        && context.config.inline_attribute_width() >= line_len
+                } else {
+                    false
+                };
 
-            combine_strs_with_missing_comments(
-                context,
-                &attr_str,
-                &use_str,
-                span,
-                shape,
-                allow_extend,
-            )
-        } else {
-            Some(use_str)
+                combine_strs_with_missing_comments(
+                    context,
+                    &attr_str,
+                    &use_str,
+                    span,
+                    shape,
+                    allow_extend,
+                )
+            }
+            _ => Some(use_str),
         }
     }
 
