@@ -46,6 +46,19 @@ impl Name {
         Name::new(idx.to_string().into())
     }
 
+    // There's should be no way to extract a string out of `Name`: `Name` in the
+    // future, `Name` will include hygiene information, and you can't encode
+    // hygiene into a String.
+    //
+    // If you need to compare something with `Name`, compare `Name`s directly.
+    //
+    // If you need to render `Name` for the user, use the `Display` impl, but be
+    // aware that it strips hygiene info.
+    #[deprecated(note = "use to_string instead")]
+    pub fn as_smolstr(&self) -> &SmolStr {
+        &self.text
+    }
+
     pub(crate) fn as_known_name(&self) -> Option<KnownName> {
         let name = match self.text.as_str() {
             "isize" => KnownName::Isize,

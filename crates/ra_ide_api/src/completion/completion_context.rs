@@ -27,7 +27,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_pat_binding: bool,
     /// A single-indent path, like `foo`. `::foo` should not be considered a trivial path.
     pub(super) is_trivial_path: bool,
-    /// If not a trivial, path, the prefix (qualifier).
+    /// If not a trivial path, the prefix (qualifier).
     pub(super) path_prefix: Option<hir::Path>,
     pub(super) after_if: bool,
     /// `true` if we are a statement or a last expr in the block.
@@ -151,6 +151,7 @@ impl<'a> CompletionContext<'a> {
             Some(it) => it,
             None => return,
         };
+
         if let Some(segment) = ast::PathSegment::cast(parent) {
             let path = segment.parent_path();
             self.is_call = path
@@ -167,6 +168,7 @@ impl<'a> CompletionContext<'a> {
                     return;
                 }
             }
+
             if path.qualifier().is_none() {
                 self.is_trivial_path = true;
 

@@ -21,7 +21,7 @@ use crate::{
     AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,
     expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
     ids::LocationCtx,
-    expr, AstId
+    expr, AstId,
 };
 
 /// Locates the module by `FileId`. Picks topmost module in the file.
