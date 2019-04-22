@@ -2031,6 +2031,10 @@ mod tests {
         check!("192.0.0.0");
         check!("192.0.0.255");
         check!("192.0.0.100");
+        // make sure reserved addresses are not global
+        check!("240.0.0.0");
+        check!("251.54.1.76");
+        check!("254.255.255.255");
 
         check!("::", unspec);
         check!("::1", loopback);
@@ -2076,6 +2080,7 @@ mod tests {
                 let documentation: u16 = 1 << 7;
                 let benchmarking: u16 = 1 << 8;
                 let ietf_protocol_assignment: u16 = 1 << 9;
+                let reserved: u16 = 1 << 10;
 
                 if ($mask & unspec) == unspec {
                     assert!(ip!($s).is_unspecified());
@@ -2136,6 +2141,12 @@ mod tests {
                 } else {
                     assert!(!ip!($s).is_ietf_protocol_assignment());
                 }
+
+                if ($mask & reserved) == reserved {
+                    assert!(ip!($s).is_reserved());
+                } else {
+                    assert!(!ip!($s).is_reserved());
+                }
             }}
         }
 
@@ -2149,6 +2160,7 @@ mod tests {
         let documentation: u16 = 1 << 7;
         let benchmarking: u16 = 1 << 8;
         let ietf_protocol_assignment: u16 = 1 << 9;
+        let reserved: u16 = 1 << 10;
 
         check!("0.0.0.0", unspec);
         check!("0.0.0.1");
@@ -2172,6 +2184,9 @@ mod tests {
         check!("192.0.0.0", ietf_protocol_assignment);
         check!("192.0.0.255", ietf_protocol_assignment);
         check!("192.0.0.100", ietf_protocol_assignment);
+        check!("240.0.0.0", reserved);
+        check!("251.54.1.76", reserved);
+        check!("254.255.255.255", reserved);
     }
 
     #[test]
