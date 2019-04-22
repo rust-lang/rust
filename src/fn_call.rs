@@ -149,10 +149,15 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         let link_name = link_name.get().trim_end_matches("$UNIX2003");
         let tcx = &{this.tcx.tcx};
 
-        // First: functions that could diverge.
+        // First: functions that diverge.
         match link_name {
             "__rust_start_panic" | "panic_impl" => {
                 return err!(MachineError("the evaluated program panicked".to_string()));
+            }
+            "exit" | "ExitProcess" => {
+                // it's really u32 for ExitProcess, but we have to put it into the `Exit` error variant anyway
+                let code = this.read_scalar(args[0])?.to_i32()?;
+                return err!(Exit(code));
             }
             _ => if dest.is_none() {
                 return err!(Unimplemented(

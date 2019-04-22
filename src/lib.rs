@@ -242,6 +242,13 @@ pub fn eval_main<'a, 'tcx: 'a>(
             }
         }
         Err(mut e) => {
+            // Special treatment for some error kinds
+            let msg = match e.kind {
+                InterpError::Exit(code) => std::process::exit(code),
+                InterpError::NoMirFor(..) =>
+                    format!("{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.", e),
+                _ => e.to_string()
+            };
             e.print_backtrace();
             if let Some(frame) = ecx.stack().last() {
                 let block = &frame.mir.basic_blocks()[frame.block];
@@ -251,11 +258,10 @@ pub fn eval_main<'a, 'tcx: 'a>(
                     block.terminator().source_info.span
                 };
 
-                let e = e.to_string();
-                let msg = format!("constant evaluation error: {}", e);
+                let msg = format!("Miri evaluation error: {}", msg);
                 let mut err = struct_error(ecx.tcx.tcx.at(span), msg.as_str());
                 let frames = ecx.generate_stacktrace(None);
-                err.span_label(span, e);
+                err.span_label(span, msg);
                 // We iterate with indices because we need to look at the next frame (the caller).
                 for idx in 0..frames.len() {
                     let frame_info = &frames[idx];
@@ -269,7 +275,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 }
                 err.emit();
             } else {
-                ecx.tcx.sess.err(&e.to_string());
+                ecx.tcx.sess.err(&msg);
             }
 
             for (i, frame) in ecx.stack().iter().enumerate() {
