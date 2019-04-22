@@ -67,15 +67,16 @@
         </div>
         <script>
             const ConfigurationMdUrl = 'https://raw.githubusercontent.com/rust-lang/rustfmt/master/Configurations.md';
+            const UrlHash = window.location.hash.replace(/^#/, '');
             new Vue({
               el: '#app',
               data() {
                 const configurationDescriptions = [];
-                configurationDescriptions.links = {}
+                configurationDescriptions.links = {};
                 return {
                   aboutHtml: '',
                   configurationAboutHtml: '',
-                  searchCondition: '',
+                  searchCondition: UrlHash,
                   configurationDescriptions,
                   shouldStable: false
                 }
@@ -102,7 +103,7 @@
                   return marked.parser(ast);
                 }
               },
-              mounted: async function() {
+              created: async function() {
                 const res = await axios.get(ConfigurationMdUrl);
                 const { 
                   about,
@@ -112,6 +113,16 @@
                 this.aboutHtml = marked.parser(about);
                 this.configurationAboutHtml = marked.parser(configurationAbout);
                 this.configurationDescriptions = configurationDescriptions;
+              },
+              mounted() {
+                if (UrlHash === '') return;
+                const interval = setInterval(() => {
+                  const target = document.querySelector(`#${UrlHash}`);
+                  if (target != null) {
+                    target.scrollIntoView(true);
+                    clearInterval(interval);
+                  }
+                }, 100);
               }
             });
             const extractDepthOnes = (ast) => {
