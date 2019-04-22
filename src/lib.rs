@@ -1,6 +1,5 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-
 #![deny(warnings)]
 extern crate rustc;
 extern crate syntax;
