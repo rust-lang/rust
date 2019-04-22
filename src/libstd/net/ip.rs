@@ -2164,16 +2164,17 @@ mod tests {
                 let unique_local: u16 = 1 << 2;
                 let global: u16 = 1 << 3;
                 let unicast_link_local: u16 = 1 << 4;
-                let unicast_site_local: u16 = 1 << 5;
-                let unicast_global: u16 = 1 << 6;
-                let documentation: u16 = 1 << 7;
-                let multicast_interface_local: u16 = 1 << 8;
-                let multicast_link_local: u16 = 1 << 9;
-                let multicast_realm_local: u16 = 1 << 10;
-                let multicast_admin_local: u16 = 1 << 11;
-                let multicast_site_local: u16 = 1 << 12;
-                let multicast_organization_local: u16 = 1 << 13;
-                let multicast_global: u16 = 1 << 14;
+                let unicast_link_local_strict: u16 = 1 << 5;
+                let unicast_site_local: u16 = 1 << 6;
+                let unicast_global: u16 = 1 << 7;
+                let documentation: u16 = 1 << 8;
+                let multicast_interface_local: u16 = 1 << 9;
+                let multicast_link_local: u16 = 1 << 10;
+                let multicast_realm_local: u16 = 1 << 11;
+                let multicast_admin_local: u16 = 1 << 12;
+                let multicast_site_local: u16 = 1 << 13;
+                let multicast_organization_local: u16 = 1 << 14;
+                let multicast_global: u16 = 1 << 15;
                 let multicast: u16 = multicast_interface_local
                     | multicast_admin_local
                     | multicast_global
@@ -2206,6 +2207,11 @@ mod tests {
                     assert!(ip!($s).is_unicast_link_local());
                 } else {
                     assert!(!ip!($s).is_unicast_link_local());
+                }
+                if ($mask & unicast_link_local_strict) == unicast_link_local_strict {
+                    assert!(ip!($s).is_unicast_link_local_strict());
+                } else {
+                    assert!(!ip!($s).is_unicast_link_local_strict());
                 }
                 if ($mask & unicast_site_local) == unicast_site_local {
                     assert!(ip!($s).is_unicast_site_local());
@@ -2265,16 +2271,17 @@ mod tests {
         let unique_local: u16 = 1 << 2;
         let global: u16 = 1 << 3;
         let unicast_link_local: u16 = 1 << 4;
-        let unicast_site_local: u16 = 1 << 5;
-        let unicast_global: u16 = 1 << 6;
-        let documentation: u16 = 1 << 7;
-        let multicast_interface_local: u16 = 1 << 8;
-        let multicast_link_local: u16 = 1 << 9;
-        let multicast_realm_local: u16 = 1 << 10;
-        let multicast_admin_local: u16 = 1 << 11;
-        let multicast_site_local: u16 = 1 << 12;
-        let multicast_organization_local: u16 = 1 << 13;
-        let multicast_global: u16 = 1 << 14;
+        let unicast_link_local_strict: u16 = 1 << 5;
+        let unicast_site_local: u16 = 1 << 6;
+        let unicast_global: u16 = 1 << 7;
+        let documentation: u16 = 1 << 8;
+        let multicast_interface_local: u16 = 1 << 9;
+        let multicast_link_local: u16 = 1 << 10;
+        let multicast_realm_local: u16 = 1 << 11;
+        let multicast_admin_local: u16 = 1 << 12;
+        let multicast_site_local: u16 = 1 << 13;
+        let multicast_organization_local: u16 = 1 << 14;
+        let multicast_global: u16 = 1 << 15;
 
         check!("::",
                &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -2304,8 +2311,30 @@ mod tests {
                &[0xfe, 0x80, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                unicast_link_local);
 
+        check!("fe80::",
+               &[0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unicast_link_local|unicast_link_local_strict);
+
         check!("febf:ffff::",
                &[0xfe, 0xbf, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unicast_link_local);
+
+        check!("febf::",
+               &[0xfe, 0xbf, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unicast_link_local);
+
+        check!("febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+               &[0xfe, 0xbf, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+               unicast_link_local);
+
+        check!("fe80::ffff:ffff:ffff:ffff",
+               &[0xfe, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+               unicast_link_local|unicast_link_local_strict);
+
+        check!("fe80:0:0:1::",
+               &[0xfe, 0x80, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
                unicast_link_local);
 
         check!("fec0::",
