@@ -1418,8 +1418,8 @@ impl<'a> StringReader<'a> {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
-                    let ident = self.with_str_from(start, |lifetime_name| {
-                        self.mk_ident(&format!("'{}", lifetime_name))
+                    let ident = self.with_str_from(start_with_quote, |lifetime_name| {
+                        self.mk_ident(lifetime_name)
                     });
 
                     if c2.is_numeric() {
