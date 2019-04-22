@@ -90,6 +90,11 @@ fn long_line_is_ok(line: &str) -> bool {
     false
 }
 
+fn contains_ignore_directive(contents: &String, check: &str) -> bool {
+    contents.contains(&format!("// ignore-tidy-{}", check)) ||
+        contents.contains(&format!("# ignore-tidy-{}", check))
+}
+
 pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
     super::walk(path, &mut super::filter_dirs, &mut |file| {
@@ -107,11 +112,11 @@ pub fn check(path: &Path, bad: &mut bool) {
             tidy_error!(bad, "{}: empty file", file.display());
         }
 
-        let skip_cr = contents.contains("ignore-tidy-cr");
-        let skip_tab = contents.contains("ignore-tidy-tab");
-        let skip_length = contents.contains("ignore-tidy-linelength");
-        let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
-        let skip_copyright = contents.contains("ignore-tidy-copyright");
+        let skip_cr = contains_ignore_directive(&contents, "cr");
+        let skip_tab = contains_ignore_directive(&contents, "tab");
+        let skip_length = contains_ignore_directive(&contents, "linelength");
+        let skip_end_whitespace = contains_ignore_directive(&contents, "end-whitespace");
+        let skip_copyright = contains_ignore_directive(&contents, "copyright");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         for (i, line) in contents.split('\n').enumerate() {
