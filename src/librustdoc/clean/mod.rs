@@ -4452,21 +4452,6 @@ enum SimpleBound {
     Outlives(Lifetime),
 }
 
-enum AutoTraitResult {
-    ExplicitImpl,
-    PositiveImpl(Generics),
-    NegativeImpl,
-}
-
-impl AutoTraitResult {
-    fn is_auto(&self) -> bool {
-        match *self {
-            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
-            _ => false,
-        }
-    }
-}
-
 impl From<GenericBound> for SimpleBound {
     fn from(bound: GenericBound) -> Self {
         match bound.clone() {

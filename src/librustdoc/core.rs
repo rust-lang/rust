@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::TyCtxt;
+use rustc::ty::{Ty, TyCtxt};
 use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
@@ -70,8 +70,9 @@ pub struct DocContext<'tcx> {
     pub send_trait: Option<DefId>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
-    /// Maps (type_id, trait_id) -> auto trait impl
-    pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>,
+    /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
+    // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
+    pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
     pub all_traits: Vec<DefId>,
 }
 

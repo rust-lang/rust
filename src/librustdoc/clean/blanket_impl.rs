@@ -25,23 +25,23 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         ty: Ty<'tcx>,
         param_env_def_id: DefId,
     ) -> Vec<Item> {
-        debug!("get_blanket_impls(param_env_def_id={:?}, ...)", param_env_def_id);
-        let mut impls = Vec::new();
         let param_env = self.cx.tcx.param_env(param_env_def_id);
+
+        debug!("get_blanket_impls({:?})", ty);
+        let mut impls = Vec::new();
         for &trait_def_id in self.cx.all_traits.iter() {
             if !self.cx.renderinfo.borrow().access_levels.is_doc_reachable(trait_def_id) ||
                self.cx.generated_synthetics
                       .borrow_mut()
-                      .get(&(param_env_def_id, trait_def_id))
+                      .get(&(ty, trait_def_id))
                       .is_some() {
                 continue
             }
             self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
+                debug!("get_blanket_impls: Considering impl for trait '{:?}' {:?}",
+                        trait_def_id, impl_def_id);
                 let trait_ref = self.cx.tcx.impl_trait_ref(impl_def_id).unwrap();
                 let may_apply = self.cx.tcx.infer_ctxt().enter(|infcx| {
-                    debug!("get_blanket_impls: Considering impl for trait '{:?}' {:?}",
-                           trait_def_id, impl_def_id);
-
                     match trait_ref.self_ty().sty {
                         ty::Param(_) => {},
                         _ => return false,
@@ -84,12 +84,12 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 debug!("get_blanket_impls: found applicable impl: {}\
                         for trait_ref={:?}, ty={:?}",
                         may_apply, trait_ref, ty);
-
                 if !may_apply {
-                    return
+                    return;
                 }
+
                 self.cx.generated_synthetics.borrow_mut()
-                                            .insert((param_env_def_id, trait_def_id));
+                                            .insert((ty, trait_def_id));
                 let provided_trait_methods =
                     self.cx.tcx.provided_trait_methods(trait_def_id)
                                 .into_iter()
@@ -111,6 +111,8 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             &self.cx.tcx.explicit_predicates_of(impl_def_id),
                         ).clean(self.cx),
                         provided_trait_methods,
+                        // FIXME(eddyb) compute both `trait_` and `for_` from
+                        // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(trait_ref.clean(self.cx).get_trait_type().unwrap()),
                         for_: ty.clean(self.cx),
                         items: self.cx.tcx.associated_items(impl_def_id)
