@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //~^^ ERROR
 
 #![feature(optin_builtin_traits)]

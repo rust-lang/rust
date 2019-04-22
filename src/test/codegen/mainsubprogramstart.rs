@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // ignore-windows
 // ignore-macos
 
