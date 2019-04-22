@@ -1,6 +1,6 @@
 use rustc_hash::FxHashMap;
 use ra_text_edit::TextEditBuilder;
-use ra_syntax::SmolStr;
+use ra_syntax::{SmolStr, ast, AstNode};
 use ra_assists::auto_import;
 
 use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext};
@@ -9,41 +9,43 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     if ctx.is_trivial_path {
         let names = ctx.analyzer.all_names(ctx.db);
         names.into_iter().for_each(|(name, res)| acc.add_resolution(ctx, name.to_string(), &res));
-    }
 
-    if let Some(name) = ctx.path_ident.as_ref() {
-        let import_resolver = ImportResolver::new();
-        let import_names = import_resolver.all_names(&name.to_string());
-        import_names.into_iter().for_each(|(name, path)| {
-            let edit = {
-                let mut builder = TextEditBuilder::default();
-                builder.replace(ctx.source_range(), name.to_string());
-                auto_import::auto_import_text_edit(
-                    ctx.token.parent(),
-                    ctx.token.parent(),
-                    &path,
-                    &mut builder,
-                );
-                builder.finish()
-            };
+        // auto-import
+        // We fetch ident from the original file, because we need to pre-filter auto-imports
+        if ast::NameRef::cast(ctx.token.parent()).is_some() {
+            let import_resolver = ImportResolver::new();
+            let import_names = import_resolver.all_names(ctx.token.text());
+            import_names.into_iter().for_each(|(name, path)| {
+                let edit = {
+                    let mut builder = TextEditBuilder::default();
+                    builder.replace(ctx.source_range(), name.to_string());
+                    auto_import::auto_import_text_edit(
+                        ctx.token.parent(),
+                        ctx.token.parent(),
+                        &path,
+                        &mut builder,
+                    );
+                    builder.finish()
+                };
 
-            // Hack: copied this check form conv.rs beacause auto import can produce edits
-            // that invalidate assert in conv_with.
-            if edit
-                .as_atoms()
-                .iter()
-                .filter(|atom| !ctx.source_range().is_subrange(&atom.delete))
-                .all(|atom| ctx.source_range().intersection(&atom.delete).is_none())
-            {
-                CompletionItem::new(
-                    CompletionKind::Reference,
-                    ctx.source_range(),
-                    build_import_label(&name, &path),
-                )
-                .text_edit(edit)
-                .add_to(acc);
-            }
-        });
+                // Hack: copied this check form conv.rs beacause auto import can produce edits
+                // that invalidate assert in conv_with.
+                if edit
+                    .as_atoms()
+                    .iter()
+                    .filter(|atom| !ctx.source_range().is_subrange(&atom.delete))
+                    .all(|atom| ctx.source_range().intersection(&atom.delete).is_none())
+                {
+                    CompletionItem::new(
+                        CompletionKind::Reference,
+                        ctx.source_range(),
+                        build_import_label(&name, &path),
+                    )
+                    .text_edit(edit)
+                    .add_to(acc);
+                }
+            });
+        }
     }
 }
 

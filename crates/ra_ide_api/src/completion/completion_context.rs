@@ -5,10 +5,10 @@ use ra_syntax::{
     algo::{find_token_at_offset, find_covering_element, find_node_at_offset},
     SyntaxKind::*,
 };
-
-use hir::{ source_binder, Name };
+use hir::source_binder;
 
 use crate::{db, FilePosition};
+
 /// `CompletionContext` is created early during completion to figure out, where
 /// exactly is the cursor, syntax-wise.
 #[derive(Debug)]
@@ -29,8 +29,6 @@ pub(crate) struct CompletionContext<'a> {
     pub(super) is_trivial_path: bool,
     /// If not a trivial path, the prefix (qualifier).
     pub(super) path_prefix: Option<hir::Path>,
-    /// If a trivial path, the ident.
-    pub(super) path_ident: Option<Name>,
     pub(super) after_if: bool,
     /// `true` if we are a statement or a last expr in the block.
     pub(super) can_be_stmt: bool,
@@ -65,7 +63,6 @@ impl<'a> CompletionContext<'a> {
             is_pat_binding: false,
             is_trivial_path: false,
             path_prefix: None,
-            path_ident: None,
             after_if: false,
             can_be_stmt: false,
             is_new_item: false,
