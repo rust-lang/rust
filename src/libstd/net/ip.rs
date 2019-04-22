@@ -2023,9 +2023,14 @@ mod tests {
         check!("224.0.0.0", global|multicast);
         check!("239.255.255.255", global|multicast);
         check!("255.255.255.255");
+        // make sure benchmarking addresses are not global
         check!("198.18.0.0");
         check!("198.18.54.2");
         check!("198.19.255.255");
+        // make sure addresses reserved for protocol assignment are not global
+        check!("192.0.0.0");
+        check!("192.0.0.255");
+        check!("192.0.0.100");
 
         check!("::", unspec);
         check!("::1", loopback);
@@ -2070,6 +2075,7 @@ mod tests {
                 let broadcast: u16 = 1 << 6;
                 let documentation: u16 = 1 << 7;
                 let benchmarking: u16 = 1 << 8;
+                let ietf_protocol_assignment: u16 = 1 << 9;
 
                 if ($mask & unspec) == unspec {
                     assert!(ip!($s).is_unspecified());
@@ -2124,6 +2130,12 @@ mod tests {
                 } else {
                     assert!(!ip!($s).is_benchmarking());
                 }
+
+                if ($mask & ietf_protocol_assignment) == ietf_protocol_assignment {
+                    assert!(ip!($s).is_ietf_protocol_assignment());
+                } else {
+                    assert!(!ip!($s).is_ietf_protocol_assignment());
+                }
             }}
         }
 
@@ -2136,6 +2148,7 @@ mod tests {
         let broadcast: u16 = 1 << 6;
         let documentation: u16 = 1 << 7;
         let benchmarking: u16 = 1 << 8;
+        let ietf_protocol_assignment: u16 = 1 << 9;
 
         check!("0.0.0.0", unspec);
         check!("0.0.0.1");
@@ -2156,6 +2169,9 @@ mod tests {
         check!("198.18.0.0", benchmarking);
         check!("198.18.54.2", benchmarking);
         check!("198.19.255.255", benchmarking);
+        check!("192.0.0.0", ietf_protocol_assignment);
+        check!("192.0.0.255", ietf_protocol_assignment);
+        check!("192.0.0.100", ietf_protocol_assignment);
     }
 
     #[test]
