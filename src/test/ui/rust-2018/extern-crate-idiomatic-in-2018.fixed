@@ -23,4 +23,3 @@ fn main() {
     // But this should be a use of the (renamed) crate:
     crate::bar::foo();
 }
-
