@@ -331,31 +331,3 @@ mod tokens {
     }
 
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use ra_syntax::SourceFile;
-
-    #[test]
-    fn structure_editing() {
-        let file = SourceFile::parse(
-            "\
-fn foo() {
-    let s = S {
-        original: 92,
-    }
-}
-",
-        );
-        let field_list = file.syntax().descendants().find_map(ast::NamedFieldList::cast).unwrap();
-        let mut editor = AstEditor::new(field_list);
-
-        let field = AstBuilder::<ast::NamedField>::from_text("first_inserted: 1");
-        editor.append_field(&field);
-        let field = AstBuilder::<ast::NamedField>::from_text("second_inserted: 2");
-        editor.append_field(&field);
-        eprintln!("{}", editor.ast().syntax());
-    }
-}
