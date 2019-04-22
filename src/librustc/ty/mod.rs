@@ -438,12 +438,12 @@ bitflags! {
         // FIXME: Rename this to the actual property since it's used for generators too
         const HAS_TY_CLOSURE     = 1 << 9;
 
-        // `true` if there are "names" of types and regions and so forth
-        // that are local to a particular fn
+        /// `true` if there are "names" of types and regions and so forth
+        /// that are local to a particular fn
         const HAS_FREE_LOCAL_NAMES    = 1 << 10;
 
-        // Present if the type belongs in a local type context.
-        // Only set for Infer other than Fresh.
+        /// Present if the type belongs in a local type context.
+        /// Only set for Infer other than Fresh.
         const KEEP_IN_LOCAL_TCX  = 1 << 11;
 
         // Is there a projection that does not involve a bound region?
@@ -462,9 +462,9 @@ bitflags! {
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
 
-        // Flags representing the nominal content of a type,
-        // computed by FlagsComputation. If you add a new nominal
-        // flag, it should be added here too.
+        /// Flags representing the nominal content of a type,
+        /// computed by FlagsComputation. If you add a new nominal
+        /// flag, it should be added here too.
         const NOMINAL_FLAGS     = TypeFlags::HAS_PARAMS.bits |
                                   TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
