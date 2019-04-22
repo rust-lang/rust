@@ -118,4 +118,3 @@ impl<'a, 'gcx, 'tcx> DefIdForest {
         ret
     }
 }
-

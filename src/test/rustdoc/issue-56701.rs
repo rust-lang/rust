@@ -31,4 +31,3 @@ impl<Inner, UnrelatedT: DerefMut<Target = Vec<Inner>>> Deref for Unrelated<Inner
 
 
 pub fn main() { }
-

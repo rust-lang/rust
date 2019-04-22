@@ -25,4 +25,3 @@ fn main() {
     let x: Arc<FooX> = Arc::new(FooX { x: 22 });
     let y: Arc<FooX> = x;
 }
-

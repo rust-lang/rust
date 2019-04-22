@@ -47,4 +47,3 @@ fn main() {
     // flummoxes our attmpt to delay the activation point here.)
     delay.push(2);
 }
-

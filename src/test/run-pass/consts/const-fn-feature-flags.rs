@@ -11,4 +11,3 @@ fn main() {
 
     assert_eq!(CELL.get(), v);
 }
-

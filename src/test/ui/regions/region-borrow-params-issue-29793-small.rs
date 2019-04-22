@@ -210,4 +210,3 @@ fn move_of_trait_default_params() {
 }
 
 fn main() { }
-

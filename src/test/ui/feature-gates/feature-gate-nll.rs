@@ -17,4 +17,3 @@ fn main() { //~ ERROR compilation successful
     //~| WARNING this warning will become a hard error in the future
     m;
 }
-

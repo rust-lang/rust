@@ -71,4 +71,3 @@ impl SearchPath {
         SearchPath { kind, dir, files }
     }
 }
-

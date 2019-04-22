@@ -2,4 +2,3 @@
 enum Foo {}
 
 fn main() {}
-

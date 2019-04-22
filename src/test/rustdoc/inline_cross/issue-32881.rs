@@ -9,4 +9,3 @@ extern crate rustdoc_trait_object_impl;
 // @has - '//code' "impl<'a> Debug for dyn Bar"
 
 pub use rustdoc_trait_object_impl::Bar;
-

@@ -28,4 +28,3 @@ macro_rules! bar {
         ping!();
     }
 }
-

@@ -25,4 +25,3 @@ fn after() -> impl Fn(i32) {
     let p = Rc::new(Cell::new(0));
     move |x| p.set(x)
 }
-

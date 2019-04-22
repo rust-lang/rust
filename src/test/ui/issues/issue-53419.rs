@@ -6,4 +6,3 @@ struct Foo {
 
 fn main() {
 }
-

@@ -14,4 +14,3 @@ fn main() {
 //~| ERROR `no_debug::Bar` doesn't implement `std::fmt::Debug`
 //~^^^^ ERROR `Foo` doesn't implement `std::fmt::Display`
 //~| ERROR `no_debug::Bar` doesn't implement `std::fmt::Display`
-

@@ -25,4 +25,3 @@ pub fn some_proc_attr(_attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn some_derive(_item: TokenStream) -> TokenStream {
     TokenStream::new()
 }
-

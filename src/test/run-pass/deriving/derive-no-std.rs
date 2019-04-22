@@ -10,4 +10,3 @@ fn main() {
 
     assert!(Bar::Qux < Bar::Quux(42));
 }
-

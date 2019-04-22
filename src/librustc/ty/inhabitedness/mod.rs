@@ -203,4 +203,3 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 }
-

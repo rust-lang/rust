@@ -112,4 +112,3 @@ macro_rules! follow_path {
 // FOLLOW(ident) = any token
 
 fn main() {}
-

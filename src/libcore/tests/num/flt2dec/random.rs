@@ -152,4 +152,3 @@ fn exact_f64_random_equivalence_test() {
                                              |d, buf| fallback(d, buf, i16::MIN), k, 1_000);
     }
 }
-

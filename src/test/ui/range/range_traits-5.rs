@@ -7,4 +7,3 @@ struct R(RangeFull);
 
 
 fn main() {}
-

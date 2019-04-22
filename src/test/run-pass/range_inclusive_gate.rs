@@ -10,4 +10,3 @@ fn main() {
     }
     assert_eq!(count, 55);
 }
-

@@ -8,4 +8,3 @@ union Uninit {
 const UNINIT: Uninit = Uninit { uninit: () };
 
 fn main() {}
-

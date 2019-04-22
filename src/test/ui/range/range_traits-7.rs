@@ -7,4 +7,3 @@ struct R(RangeToInclusive<usize>);
 
 
 fn main() {}
-

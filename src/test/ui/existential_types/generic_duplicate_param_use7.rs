@@ -22,4 +22,3 @@ fn four<T: Debug, U, V>(t: T, t2: T, u: U, v: V) -> Two<T, U> {
 fn five<X, Y: Debug>(x: X, y: Y, y2: Y) -> Two<Y, X> {
     (y, y2)
 }
-

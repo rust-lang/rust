@@ -54,4 +54,3 @@ impl GitConnect {
         Ok(out)
     }
 }
-

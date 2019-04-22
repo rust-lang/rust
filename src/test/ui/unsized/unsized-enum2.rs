@@ -72,4 +72,3 @@ enum E<W: ?Sized, X: ?Sized, Y: ?Sized, Z: ?Sized> {
 
 
 fn main() { }
-

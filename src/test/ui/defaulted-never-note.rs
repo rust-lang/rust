@@ -32,4 +32,3 @@ fn smeg() {
 fn main() {
     smeg();
 }
-

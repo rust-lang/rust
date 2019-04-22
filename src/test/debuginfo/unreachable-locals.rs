@@ -156,4 +156,3 @@ fn diverge() -> ! {
 }
 
 fn some_predicate() -> bool { true || false }
-

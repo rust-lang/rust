@@ -28,4 +28,3 @@ fn main() {
     let base = find_base(chain);
     assert_eq!(&*base, &Foo::Base(44));
 }
-

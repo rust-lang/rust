@@ -14,4 +14,3 @@ impl Foo for Bar {
 
 fn main() {
 }
-

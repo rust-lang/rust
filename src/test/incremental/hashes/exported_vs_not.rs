@@ -61,4 +61,3 @@ pub fn body_exported_to_metadata_because_of_generic() -> u32 {
 pub fn body_exported_to_metadata_because_of_generic() -> u32 {
     2
 }
-
