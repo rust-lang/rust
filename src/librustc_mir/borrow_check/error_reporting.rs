@@ -826,18 +826,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let borrow_span = borrow_spans.var_or_use();
         if let BorrowExplanation::MustBeValidFor {
-            category: ConstraintCategory::Return,
+            category,
             span,
             ref opt_place_desc,
             from_closure: false,
             ..
         } = explanation {
-            return self.report_cannot_return_reference_to_local(
+            if let Some(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 borrow_span,
                 span,
+                category,
                 opt_place_desc.as_ref(),
-            );
+            ) {
+                return diag;
+            }
         }
 
         let mut err = self.infcx.tcx.path_does_not_live_long_enough(
@@ -1015,17 +1018,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         if let BorrowExplanation::MustBeValidFor {
-            category: ConstraintCategory::Return,
+            category,
             span,
             from_closure: false,
             ..
         } = explanation {
-            return self.report_cannot_return_reference_to_local(
+            if let Some(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 proper_span,
                 span,
+                category,
                 None,
-            );
+            ) {
+                return diag;
+            }
         }
 
         let tcx = self.infcx.tcx;
@@ -1064,14 +1070,21 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         err
     }
 
-    fn report_cannot_return_reference_to_local(
+    fn try_report_cannot_return_reference_to_local(
         &self,
         borrow: &BorrowData<'tcx>,
         borrow_span: Span,
         return_span: Span,
+        category: ConstraintCategory,
         opt_place_desc: Option<&String>,
-    ) -> DiagnosticBuilder<'cx> {
+    ) -> Option<DiagnosticBuilder<'cx>> {
         let tcx = self.infcx.tcx;
+
+        let return_kind = match category {
+            ConstraintCategory::Return => "return",
+            ConstraintCategory::Yield => "yield",
+            _ => return None,
+        };
 
         // FIXME use a better heuristic than Spans
         let reference_desc = if return_span == self.mir.source_info(borrow.reserve_location).span {
@@ -1110,7 +1123,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             let local = if let Place::Base(PlaceBase::Local(local)) = *root_place {
                 local
             } else {
-                bug!("report_cannot_return_reference_to_local: not a local")
+                bug!("try_report_cannot_return_reference_to_local: not a local")
             };
             match self.mir.local_kind(local) {
                 LocalKind::ReturnPointer | LocalKind::Temp => {
@@ -1131,6 +1144,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = tcx.cannot_return_reference_to_local(
             return_span,
+            return_kind,
             reference_desc,
             &place_desc,
             Origin::Mir,
@@ -1140,7 +1154,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             err.span_label(borrow_span, note);
         }
 
-        err
+        Some(err)
     }
 
     fn report_escaping_closure_capture(
