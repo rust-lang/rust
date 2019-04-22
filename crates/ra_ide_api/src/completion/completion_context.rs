@@ -86,18 +86,6 @@ impl<'a> CompletionContext<'a> {
     }
 
     fn fill(&mut self, original_file: &'a SourceFile, offset: TextUnit) {
-        // We heed the original NameRef before the "intellijRulezz" hack
-        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(original_file.syntax(), offset)
-        {
-            if let Some(path) = name_ref.syntax().ancestors().find_map(ast::Path::cast) {
-                if let Some(path) = hir::Path::from_ast(path) {
-                    if let Some(ident) = path.as_ident() {
-                        self.path_ident = Some(ident.clone());
-                    }
-                }
-            }
-        }
-
         // Insert a fake ident to get a valid parse tree. We will use this file
         // to determine context, though the original_file will be used for
         // actual completion.

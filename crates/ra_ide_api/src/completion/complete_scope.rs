@@ -1,6 +1,8 @@
+use rustc_hash::FxHashMap;
 use ra_text_edit::TextEditBuilder;
 use ra_syntax::SmolStr;
 use ra_assists::auto_import;
+
 use crate::completion::{CompletionItem, Completions, CompletionKind, CompletionContext};
 
 pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
@@ -10,7 +12,8 @@ pub(super) fn complete_scope(acc: &mut Completions, ctx: &CompletionContext) {
     }
 
     if let Some(name) = ctx.path_ident.as_ref() {
-        let import_names = ctx.analyzer.all_import_names(ctx.db, name);
+        let import_resolver = ImportResolver::new();
+        let import_names = import_resolver.all_names(&name.to_string());
         import_names.into_iter().for_each(|(name, path)| {
             let edit = {
                 let mut builder = TextEditBuilder::default();
@@ -61,6 +64,56 @@ fn fmt_import_path(path: &Vec<SmolStr>, buf: &mut String) {
     for s in segments {
         buf.push_str("::");
         buf.push_str(&s);
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub(crate) struct ImportResolver {
+    // todo: use fst crate or something like that
+    dummy_names: Vec<(SmolStr, Vec<SmolStr>)>,
+}
+
+impl ImportResolver {
+    pub(crate) fn new() -> Self {
+        let dummy_names = vec![
+            (SmolStr::new("fmt"), vec![SmolStr::new("std"), SmolStr::new("fmt")]),
+            (SmolStr::new("io"), vec![SmolStr::new("std"), SmolStr::new("io")]),
+            (SmolStr::new("iter"), vec![SmolStr::new("std"), SmolStr::new("iter")]),
+            (SmolStr::new("hash"), vec![SmolStr::new("std"), SmolStr::new("hash")]),
+            (
+                SmolStr::new("Debug"),
+                vec![SmolStr::new("std"), SmolStr::new("fmt"), SmolStr::new("Debug")],
+            ),
+            (
+                SmolStr::new("Display"),
+                vec![SmolStr::new("std"), SmolStr::new("fmt"), SmolStr::new("Display")],
+            ),
+            (
+                SmolStr::new("Hash"),
+                vec![SmolStr::new("std"), SmolStr::new("hash"), SmolStr::new("Hash")],
+            ),
+            (
+                SmolStr::new("Hasher"),
+                vec![SmolStr::new("std"), SmolStr::new("hash"), SmolStr::new("Hasher")],
+            ),
+            (
+                SmolStr::new("Iterator"),
+                vec![SmolStr::new("std"), SmolStr::new("iter"), SmolStr::new("Iterator")],
+            ),
+        ];
+
+        ImportResolver { dummy_names }
+    }
+
+    // Returns a map of importable items filtered by name.
+    // The map associates item name with its full path.
+    // todo: should return Resolutions
+    pub(crate) fn all_names(&self, name: &str) -> FxHashMap<SmolStr, Vec<SmolStr>> {
+        if name.len() > 1 {
+            self.dummy_names.iter().filter(|(n, _)| n.contains(name)).cloned().collect()
+        } else {
+            FxHashMap::default()
+        }
     }
 }
 

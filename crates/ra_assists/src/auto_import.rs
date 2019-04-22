@@ -492,7 +492,6 @@ fn apply_auto_import(
     }
 }
 
-#[allow(unused)]
 pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
     let mut ps = Vec::<SmolStr>::with_capacity(10);
     match path.kind {
@@ -503,7 +502,7 @@ pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
         hir::PathKind::Super => ps.push("super".into()),
     }
     for s in path.segments.iter() {
-        ps.push(s.name.to_smolstr());
+        ps.push(s.name.to_string().into());
     }
     ps
 }
@@ -511,7 +510,6 @@ pub fn collect_hir_path_segments(path: &hir::Path) -> Vec<SmolStr> {
 // This function produces sequence of text edits into edit
 // to import the target path in the most appropriate scope given
 // the cursor position
-#[allow(unused)]
 pub fn auto_import_text_edit(
     // Ideally the position of the cursor, used to
     position: &SyntaxNode,

@@ -23,12 +23,6 @@ pub(crate) struct Resolver {
     scopes: Vec<Scope>,
 }
 
-#[derive(Debug, Clone, Default)]
-pub(crate) struct ImportResolver {
-    // todo: use fst crate or something like that
-    dummy_names: Vec<(SmolStr, Vec<SmolStr>)>,
-}
-
 // FIXME how to store these best
 #[derive(Debug, Clone)]
 pub(crate) struct ModuleItemMap {
@@ -314,59 +308,6 @@ impl Scope {
                     f(e.name().clone(), PerNs::values(Resolution::LocalBinding(e.pat())));
                 });
             }
-        }
-    }
-}
-
-impl ImportResolver {
-    pub(crate) fn new() -> Self {
-        let dummy_names = vec![
-            (SmolStr::new("fmt"), vec![SmolStr::new("std"), SmolStr::new("fmt")]),
-            (SmolStr::new("io"), vec![SmolStr::new("std"), SmolStr::new("io")]),
-            (SmolStr::new("iter"), vec![SmolStr::new("std"), SmolStr::new("iter")]),
-            (SmolStr::new("hash"), vec![SmolStr::new("std"), SmolStr::new("hash")]),
-            (
-                SmolStr::new("Debug"),
-                vec![SmolStr::new("std"), SmolStr::new("fmt"), SmolStr::new("Debug")],
-            ),
-            (
-                SmolStr::new("Display"),
-                vec![SmolStr::new("std"), SmolStr::new("fmt"), SmolStr::new("Display")],
-            ),
-            (
-                SmolStr::new("Hash"),
-                vec![SmolStr::new("std"), SmolStr::new("hash"), SmolStr::new("Hash")],
-            ),
-            (
-                SmolStr::new("Hasher"),
-                vec![SmolStr::new("std"), SmolStr::new("hash"), SmolStr::new("Hasher")],
-            ),
-            (
-                SmolStr::new("Iterator"),
-                vec![SmolStr::new("std"), SmolStr::new("iter"), SmolStr::new("Iterator")],
-            ),
-        ];
-
-        ImportResolver { dummy_names }
-    }
-
-    // Returns a map of importable items filtered by name.
-    // The map associates item name with its full path.
-    // todo: should return Resolutions
-    pub(crate) fn all_names(
-        &self,
-        _db: &impl HirDatabase,
-        name: &Name,
-    ) -> FxHashMap<SmolStr, Vec<SmolStr>> {
-        let name = name.to_smolstr();
-        if name.len() > 1 {
-            self.dummy_names
-                .iter()
-                .filter(|(n, _)| n.as_str().contains(name.as_str()))
-                .cloned()
-                .collect()
-        } else {
-            FxHashMap::default()
         }
     }
 }
