@@ -199,7 +199,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
         rules.expand(&invocation_tt).unwrap()
     }
 
-    pub(crate) fn expand_to_syntax(
+    pub(crate) fn expand_to_items(
         rules: &MacroRules,
         invocation: &str,
     ) -> ra_syntax::TreeArc<ast::MacroItems> {
@@ -207,7 +207,28 @@ impl_froms!(TokenTree: Leaf, Subtree);
         token_tree_to_macro_items(&expanded).unwrap()
     }
 
-    pub(crate) fn assert_expansion(rules: &MacroRules, invocation: &str, expansion: &str) {
+    #[allow(unused)]
+    pub(crate) fn expand_to_stmts(
+        rules: &MacroRules,
+        invocation: &str,
+    ) -> ra_syntax::TreeArc<ast::MacroStmts> {
+        let expanded = expand(rules, invocation);
+        token_tree_to_macro_stmts(&expanded).unwrap()
+    }
+
+    pub(crate) fn expand_to_expr(
+        rules: &MacroRules,
+        invocation: &str,
+    ) -> ra_syntax::TreeArc<ast::Expr> {
+        let expanded = expand(rules, invocation);
+        token_tree_to_expr(&expanded).unwrap()
+    }
+
+    pub(crate) fn assert_expansion(
+        rules: &MacroRules,
+        invocation: &str,
+        expansion: &str,
+    ) -> tt::Subtree {
         let expanded = expand(rules, invocation);
         assert_eq!(expanded.to_string(), expansion);
 
@@ -224,6 +245,8 @@ impl_froms!(TokenTree: Leaf, Subtree);
 
         let file = file.replace("C_C__C", "$crate");
         assert_eq!(tree, file,);
+
+        expanded
     }
 
     #[test]
@@ -638,7 +661,7 @@ MACRO_ITEMS@[0; 40)
         );
 
         assert_eq!(
-            expand_to_syntax(&rules, "foo! { 1 + 1  }").syntax().debug_dump().trim(),
+            expand_to_items(&rules, "foo! { 1 + 1  }").syntax().debug_dump().trim(),
             r#"MACRO_ITEMS@[0; 15)
   FN_DEF@[0; 15)
     FN_KW@[0; 2) "fn"
@@ -914,6 +937,78 @@ MACRO_ITEMS@[0; 40)
 "#,
         );
         assert_expansion(&rules, r#"vec!();"#, r#"{let mut v = Vec :: new () ;  v}"#);
+        assert_expansion(
+            &rules,
+            r#"vec![1u32,2]"#,
+            r#"{let mut v = Vec :: new () ; v . push (1u32) ; v . push (2) ; v}"#,
+        );
+
+        assert_eq!(
+            expand_to_expr(&rules, r#"vec![1u32,2]"#).syntax().debug_dump().trim(),
+            r#"BLOCK_EXPR@[0; 45)
+  BLOCK@[0; 45)
+    L_CURLY@[0; 1) "{"
+    LET_STMT@[1; 20)
+      LET_KW@[1; 4) "let"
+      BIND_PAT@[4; 8)
+        MUT_KW@[4; 7) "mut"
+        NAME@[7; 8)
+          IDENT@[7; 8) "v"
+      EQ@[8; 9) "="
+      CALL_EXPR@[9; 19)
+        PATH_EXPR@[9; 17)
+          PATH@[9; 17)
+            PATH@[9; 12)
+              PATH_SEGMENT@[9; 12)
+                NAME_REF@[9; 12)
+                  IDENT@[9; 12) "Vec"
+            COLONCOLON@[12; 14) "::"
+            PATH_SEGMENT@[14; 17)
+              NAME_REF@[14; 17)
+                IDENT@[14; 17) "new"
+        ARG_LIST@[17; 19)
+          L_PAREN@[17; 18) "("
+          R_PAREN@[18; 19) ")"
+      SEMI@[19; 20) ";"
+    EXPR_STMT@[20; 33)
+      METHOD_CALL_EXPR@[20; 32)
+        PATH_EXPR@[20; 21)
+          PATH@[20; 21)
+            PATH_SEGMENT@[20; 21)
+              NAME_REF@[20; 21)
+                IDENT@[20; 21) "v"
+        DOT@[21; 22) "."
+        NAME_REF@[22; 26)
+          IDENT@[22; 26) "push"
+        ARG_LIST@[26; 32)
+          L_PAREN@[26; 27) "("
+          LITERAL@[27; 31)
+            INT_NUMBER@[27; 31) "1u32"
+          R_PAREN@[31; 32) ")"
+      SEMI@[32; 33) ";"
+    EXPR_STMT@[33; 43)
+      METHOD_CALL_EXPR@[33; 42)
+        PATH_EXPR@[33; 34)
+          PATH@[33; 34)
+            PATH_SEGMENT@[33; 34)
+              NAME_REF@[33; 34)
+                IDENT@[33; 34) "v"
+        DOT@[34; 35) "."
+        NAME_REF@[35; 39)
+          IDENT@[35; 39) "push"
+        ARG_LIST@[39; 42)
+          L_PAREN@[39; 40) "("
+          LITERAL@[40; 41)
+            INT_NUMBER@[40; 41) "2"
+          R_PAREN@[41; 42) ")"
+      SEMI@[42; 43) ";"
+    PATH_EXPR@[43; 44)
+      PATH@[43; 44)
+        PATH_SEGMENT@[43; 44)
+          NAME_REF@[43; 44)
+            IDENT@[43; 44) "v"
+    R_CURLY@[44; 45) "}""#
+        );
     }
 
     #[test]
