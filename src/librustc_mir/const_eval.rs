@@ -116,7 +116,9 @@ fn op_to_const<'tcx>(
                     ptr.offset.bytes(),
                 ),
                 Scalar::Raw { .. } => (
-                    ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(b"", ())),
+                    ecx.tcx.intern_const_alloc(Allocation::from_byte_aligned_bytes(
+                        b"" as &[u8], (),
+                    )),
                     0,
                 ),
             };
