@@ -42,25 +42,21 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
         global_macro_scope: FxHashMap::default(),
-        macro_stack_monitor: SimpleMacroStackMonitor::default(),
+        macro_stack_monitor: MacroStackMonitor::default(),
     };
     collector.collect();
     collector.finish()
 }
 
-trait MacroStackMonitor {
-    fn increase(&mut self, macro_def_id: MacroDefId);
-    fn decrease(&mut self, macro_def_id: MacroDefId);
-
-    fn is_poison(&self, macro_def_id: MacroDefId) -> bool;
-}
-
 #[derive(Default)]
-struct SimpleMacroStackMonitor {
+struct MacroStackMonitor {
     counts: FxHashMap<MacroDefId, u32>,
+
+    /// Mainly use for test
+    validator: Option<Box<dyn Fn(u32) -> bool>>,
 }
 
-impl MacroStackMonitor for SimpleMacroStackMonitor {
+impl MacroStackMonitor {
     fn increase(&mut self, macro_def_id: MacroDefId) {
         *self.counts.entry(macro_def_id).or_default() += 1;
     }
@@ -70,12 +66,18 @@ impl MacroStackMonitor for SimpleMacroStackMonitor {
     }
 
     fn is_poison(&self, macro_def_id: MacroDefId) -> bool {
-        *self.counts.get(&macro_def_id).unwrap_or(&0) > 100
+        let cur = *self.counts.get(&macro_def_id).unwrap_or(&0);
+
+        if let Some(validator) = &self.validator {
+            validator(cur)
+        } else {
+            cur > 100
+        }
     }
 }
 
 /// Walks the tree of module recursively
-struct DefCollector<DB, M> {
+struct DefCollector<DB> {
     db: DB,
     def_map: CrateDefMap,
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
@@ -85,13 +87,12 @@ struct DefCollector<DB, M> {
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
     /// To prevent stackoverflow, we add a deep counter here for prevent that.
-    macro_stack_monitor: M,
+    macro_stack_monitor: MacroStackMonitor,
 }
 
-impl<'a, DB, M> DefCollector<&'a DB, M>
+impl<'a, DB> DefCollector<&'a DB>
 where
     DB: DefDatabase,
-    M: MacroStackMonitor,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
@@ -393,10 +394,9 @@ struct ModCollector<'a, D> {
     raw_items: &'a raw::RawItems,
 }
 
-impl<DB, M> ModCollector<'_, &'_ mut DefCollector<&'_ DB, M>>
+impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
 where
     DB: DefDatabase,
-    M: MacroStackMonitor,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         for item in items {
@@ -578,31 +578,10 @@ mod tests {
     use super::*;
     use rustc_hash::FxHashSet;
 
-    struct LimitedMacroStackMonitor {
-        count: u32,
-        limit: u32,
-        poison_limit: u32,
-    }
-
-    impl MacroStackMonitor for LimitedMacroStackMonitor {
-        fn increase(&mut self, _: MacroDefId) {
-            self.count += 1;
-            assert!(self.count < self.limit);
-        }
-
-        fn decrease(&mut self, _: MacroDefId) {
-            self.count -= 1;
-        }
-
-        fn is_poison(&self, _: MacroDefId) -> bool {
-            self.count >= self.poison_limit
-        }
-    }
-
     fn do_collect_defs(
         db: &impl DefDatabase,
         def_map: CrateDefMap,
-        monitor: impl MacroStackMonitor,
+        monitor: MacroStackMonitor,
     ) -> CrateDefMap {
         let mut collector = DefCollector {
             db,
@@ -639,7 +618,13 @@ mod tests {
             }
         };
 
-        do_collect_defs(&db, def_map, LimitedMacroStackMonitor { count: 0, limit, poison_limit })
+        let mut monitor = MacroStackMonitor::default();
+        monitor.validator = Some(Box::new(move |count| {
+            assert!(count < limit);
+            count >= poison_limit
+        }));
+
+        do_collect_defs(&db, def_map, monitor)
     }
 
     #[test]
