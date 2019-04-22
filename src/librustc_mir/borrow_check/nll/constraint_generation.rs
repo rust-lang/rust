@@ -100,7 +100,6 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
 
     fn visit_statement(
         &mut self,
-        block: BasicBlock,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
@@ -117,12 +116,11 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
             ));
         }
 
-        self.super_statement(block, statement, location);
+        self.super_statement(statement, location);
     }
 
     fn visit_assign(
         &mut self,
-        block: BasicBlock,
         place: &Place<'tcx>,
         rvalue: &Rvalue<'tcx>,
         location: Location,
@@ -141,12 +139,11 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
             }
         }
 
-        self.super_assign(block, place, rvalue, location);
+        self.super_assign(place, rvalue, location);
     }
 
     fn visit_terminator(
         &mut self,
-        block: BasicBlock,
         terminator: &Terminator<'tcx>,
         location: Location,
     ) {
@@ -167,7 +164,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
             }
         }
 
-        self.super_terminator(block, terminator, location);
+        self.super_terminator(terminator, location);
     }
 
     fn visit_ascribe_user_ty(

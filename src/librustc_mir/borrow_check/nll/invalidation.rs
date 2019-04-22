@@ -58,7 +58,6 @@ struct InvalidationGenerator<'cx, 'tcx: 'cx, 'gcx: 'tcx> {
 impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
     fn visit_statement(
         &mut self,
-        block: BasicBlock,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
@@ -134,13 +133,12 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             }
         }
 
-        self.super_statement(block, statement, location);
+        self.super_statement(statement, location);
     }
 
     fn visit_terminator(
         &mut self,
-        block: BasicBlock,
-        terminator: &Terminator<'tcx>,
+        kind: &Terminator<'tcx>,
         location: Location
     ) {
         self.check_activations(location);
@@ -258,7 +256,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             }
         }
 
-        self.super_terminator(block, terminator, location);
+        self.super_terminator(terminator, location);
     }
 }
 

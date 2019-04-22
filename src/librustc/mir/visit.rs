@@ -88,32 +88,28 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_statement(&mut self,
-                               block: BasicBlock,
                                statement: & $($mutability)? Statement<'tcx>,
                                location: Location) {
-                self.super_statement(block, statement, location);
+                self.super_statement(statement, location);
             }
 
             fn visit_assign(&mut self,
-                            block: BasicBlock,
                             place: & $($mutability)? Place<'tcx>,
                             rvalue: & $($mutability)? Rvalue<'tcx>,
                             location: Location) {
-                self.super_assign(block, place, rvalue, location);
+                self.super_assign(place, rvalue, location);
             }
 
             fn visit_terminator(&mut self,
-                                block: BasicBlock,
                                 terminator: & $($mutability)? Terminator<'tcx>,
                                 location: Location) {
-                self.super_terminator(block, terminator, location);
+                self.super_terminator(terminator, location);
             }
 
             fn visit_terminator_kind(&mut self,
-                                     block: BasicBlock,
                                      kind: & $($mutability)? TerminatorKind<'tcx>,
                                      location: Location) {
-                self.super_terminator_kind(block, kind, location);
+                self.super_terminator_kind(kind, location);
             }
 
             fn visit_assert_message(&mut self,
@@ -327,13 +323,13 @@ macro_rules! make_mir_visitor {
                 let mut index = 0;
                 for statement in statements {
                     let location = Location { block: block, statement_index: index };
-                    self.visit_statement(block, statement, location);
+                    self.visit_statement(statement, location);
                     index += 1;
                 }
 
                 if let Some(terminator) = terminator {
                     let location = Location { block: block, statement_index: index };
-                    self.visit_terminator(block, terminator, location);
+                    self.visit_terminator(terminator, location);
                 }
             }
 
@@ -350,7 +346,6 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_statement(&mut self,
-                               block: BasicBlock,
                                statement: & $($mutability)? Statement<'tcx>,
                                location: Location) {
                 let Statement {
@@ -361,7 +356,7 @@ macro_rules! make_mir_visitor {
                 self.visit_source_info(source_info);
                 match kind {
                     StatementKind::Assign(place, rvalue) => {
-                        self.visit_assign(block, place, rvalue, location);
+                        self.visit_assign(place, rvalue, location);
                     }
                     StatementKind::FakeRead(_, place) => {
                         self.visit_place(
@@ -415,7 +410,6 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_assign(&mut self,
-                            _block: BasicBlock,
                             place: &$($mutability)? Place<'tcx>,
                             rvalue: &$($mutability)? Rvalue<'tcx>,
                             location: Location) {
@@ -428,19 +422,18 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_terminator(&mut self,
-                                block: BasicBlock,
                                 terminator: &$($mutability)? Terminator<'tcx>,
                                 location: Location) {
                 let Terminator { source_info, kind } = terminator;
 
                 self.visit_source_info(source_info);
-                self.visit_terminator_kind(block, kind, location);
+                self.visit_terminator_kind(kind, location);
             }
 
             fn super_terminator_kind(&mut self,
-                                     block: BasicBlock,
                                      kind: & $($mutability)? TerminatorKind<'tcx>,
                                      source_location: Location) {
+                let block = source_location.block;
                 match kind {
                     TerminatorKind::Goto { target } => {
                         self.visit_branch(block, *target);
@@ -890,12 +883,12 @@ macro_rules! make_mir_visitor {
                 let basic_block = & $($mutability)? mir[location.block];
                 if basic_block.statements.len() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
-                        self.visit_terminator(location.block, terminator, location)
+                        self.visit_terminator(terminator, location)
                     }
                 } else {
                     let statement = & $($mutability)?
                         basic_block.statements[location.statement_index];
-                    self.visit_statement(location.block, statement, location)
+                    self.visit_statement(statement, location)
                 }
             }
         }
@@ -912,21 +905,21 @@ pub trait MirVisitable<'tcx> {
 impl<'tcx> MirVisitable<'tcx> for Statement<'tcx> {
     fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
     {
-        visitor.visit_statement(location.block, self, location)
+        visitor.visit_statement(self, location)
     }
 }
 
 impl<'tcx> MirVisitable<'tcx> for Terminator<'tcx> {
     fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
     {
-        visitor.visit_terminator(location.block, self, location)
+        visitor.visit_terminator(self, location)
     }
 }
 
 impl<'tcx> MirVisitable<'tcx> for Option<Terminator<'tcx>> {
     fn apply(&self, location: Location, visitor: &mut dyn Visitor<'tcx>)
     {
-        visitor.visit_terminator(location.block, self.as_ref().unwrap(), location)
+        visitor.visit_terminator(self.as_ref().unwrap(), location)
     }
 }
 

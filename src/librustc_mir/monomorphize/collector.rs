@@ -615,7 +615,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self,
-                             block: mir::BasicBlock,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
         debug!("visiting terminator {:?} @ {:?}", kind, location);
@@ -654,7 +653,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::FalseUnwind { .. } => bug!(),
         }
 
-        self.super_terminator_kind(block, kind, location);
+        self.super_terminator_kind(kind, location);
     }
 
     fn visit_place(&mut self,

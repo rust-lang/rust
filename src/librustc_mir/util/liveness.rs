@@ -247,9 +247,9 @@ fn block<'tcx>(
 
     // Visit the various parts of the basic block in reverse. If we go
     // forward, the logic in `add_def` and `add_use` would be wrong.
-    visitor.visit_terminator(BasicBlock::new(0), b.terminator(), dummy_location);
+    visitor.visit_terminator(b.terminator(), dummy_location);
     for statement in b.statements.iter().rev() {
-        visitor.visit_statement(BasicBlock::new(0), statement, dummy_location);
+        visitor.visit_statement(statement, dummy_location);
     }
 
     visitor.defs_uses

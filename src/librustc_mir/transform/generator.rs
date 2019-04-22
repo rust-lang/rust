@@ -369,7 +369,6 @@ struct StorageIgnored(liveness::LiveVarSet);
 
 impl<'tcx> Visitor<'tcx> for StorageIgnored {
     fn visit_statement(&mut self,
-                       _block: BasicBlock,
                        statement: &Statement<'tcx>,
                        _location: Location) {
         match statement.kind {

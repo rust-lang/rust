@@ -184,7 +184,6 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
     fn visit_assign(
         &mut self,
-        block: mir::BasicBlock,
         assigned_place: &mir::Place<'tcx>,
         rvalue: &mir::Rvalue<'tcx>,
         location: mir::Location,
@@ -215,7 +214,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             }
         }
 
-        self.super_assign(block, assigned_place, rvalue, location)
+        self.super_assign(assigned_place, rvalue, location)
     }
 
     fn visit_local(
@@ -286,15 +285,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
         }
 
         return self.super_rvalue(rvalue, location);
-    }
-
-    fn visit_statement(
-        &mut self,
-        block: mir::BasicBlock,
-        statement: &mir::Statement<'tcx>,
-        location: Location,
-    ) {
-        return self.super_statement(block, statement, location);
     }
 }
 

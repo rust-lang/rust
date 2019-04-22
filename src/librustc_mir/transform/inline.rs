@@ -723,9 +723,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self, block: BasicBlock,
+    fn visit_terminator_kind(&mut self,
                              kind: &mut TerminatorKind<'tcx>, loc: Location) {
-        self.super_terminator_kind(block, kind, loc);
+        self.super_terminator_kind(kind, loc);
 
         match *kind {
             TerminatorKind::GeneratorDrop |
