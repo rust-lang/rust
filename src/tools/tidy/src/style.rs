@@ -112,6 +112,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_length = contents.contains("ignore-tidy-linelength");
         let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
         let skip_copyright = contents.contains("ignore-tidy-copyright");
+        let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         for (i, line) in contents.split('\n').enumerate() {
             let mut err = |msg: &str| {
@@ -152,10 +153,16 @@ pub fn check(path: &Path, bad: &mut bool) {
                 err(LLVM_UNREACHABLE_INFO);
             }
             if line.is_empty() {
+                if i == 0 {
+                    leading_new_lines = true;
+                }
                 trailing_new_lines += 1;
             } else {
                 trailing_new_lines = 0;
             }
+        }
+        if leading_new_lines {
+            tidy_error!(bad, "{}: leading newline", file.display());
         }
         match trailing_new_lines {
             0 => tidy_error!(bad, "{}: missing trailing newline", file.display()),
