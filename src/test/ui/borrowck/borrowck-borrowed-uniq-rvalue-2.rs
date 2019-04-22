@@ -17,6 +17,6 @@ fn defer<'r>(x: &'r [&'r str]) -> Defer<'r> {
 }
 
 fn main() {
-    let x = defer(&vec!["Goodbye", "world!"]); //~ ERROR borrowed value does not live long enough
+    let x = defer(&vec!["Goodbye", "world!"]); //~ ERROR temporary value dropped while borrowed
     x.x[0];
 }

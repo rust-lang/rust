@@ -1,11 +1,13 @@
 error[E0505]: cannot move out of `*a` because it is borrowed
-  --> $DIR/borrowck-move-from-subpath-of-borrowed-path.rs:12:9
+  --> $DIR/borrowck-move-from-subpath-of-borrowed-path.rs:12:13
    |
 LL |     let b = &a;
-   |              - borrow of `a` occurs here
+   |             -- borrow of `a` occurs here
 LL | 
 LL |     let z = *a;
-   |         ^ move out of `*a` occurs here
+   |             ^^ move out of `*a` occurs here
+LL |     b.use_ref();
+   |     - borrow later used here
 
 error: aborting due to previous error
 

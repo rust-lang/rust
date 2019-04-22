@@ -14,7 +14,7 @@ static mut X: ::std::sync::atomic::AtomicUsize = ::std::sync::atomic::AtomicUsiz
 
 fn main() {
     unsafe {
-        let mut x = X; //~ ERROR cannot move out of thread-local static item [E0507]
+        let mut x = X; //~ ERROR cannot move out of static item [E0507]
         let _y = x.get_mut();
     }
 }

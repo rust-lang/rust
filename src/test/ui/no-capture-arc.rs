@@ -1,4 +1,4 @@
-// error-pattern: use of moved value
+// error-pattern: borrow of moved value
 
 use std::sync::Arc;
 use std::thread;

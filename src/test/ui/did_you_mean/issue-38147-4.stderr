@@ -1,11 +1,11 @@
-error[E0389]: cannot borrow data mutably in a `&` reference
+error[E0596]: cannot borrow `*f.s` as mutable, as it is behind a `&` reference
   --> $DIR/issue-38147-4.rs:6:5
    |
 LL | fn f(x: usize, f: &Foo) {
-   |                   ---- use `&mut Foo` here to make mutable
+   |                   ---- help: consider changing this to be a mutable reference: `&mut Foo<'_>`
 LL |     f.s.push('x');
-   |     ^^^ assignment into an immutable reference
+   |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0389`.
+For more information about this error, try `rustc --explain E0596`.

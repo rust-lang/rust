@@ -5,7 +5,7 @@ pub struct History<'a> { pub _s: &'a str }
 impl<'a> History<'a> {
     pub fn get_page(&self) {
         for s in vec!["1|2".to_string()].into_iter().filter_map(|ref line| self.make_entry(line)) {
-            //~^ ERROR borrowed value does not live long enough
+            //~^ ERROR cannot return value referencing function parameter
             println!("{:?}", s);
         }
     }

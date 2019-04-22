@@ -1,68 +1,68 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:11:27
    |
 LL |     let x: &'static () = &foo1();
-   |                           ^^^^^^ temporary value does not live long enough
+   |            -----------    ^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:12:28
    |
 LL |     let y: &'static i32 = &foo2(42);
-   |                            ^^^^^^^^ temporary value does not live long enough
+   |            ------------    ^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:13:28
    |
 LL |     let z: &'static i32 = &foo3();
-   |                            ^^^^^^ temporary value does not live long enough
+   |            ------------    ^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:14:34
    |
 LL |     let a: &'static Cell<i32> = &foo4();
-   |                                  ^^^^^^ temporary value does not live long enough
+   |            ------------------    ^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:15:42
    |
 LL |     let a: &'static Option<Cell<i32>> = &foo5();
-   |                                          ^^^^^^ temporary value does not live long enough
+   |            --------------------------    ^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 LL |     let a: &'static Option<Cell<i32>> = &foo6();
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promotion.rs:16:42
    |
 LL |     let a: &'static Option<Cell<i32>> = &foo6();
-   |                                          ^^^^^^ temporary value does not live long enough
+   |            --------------------------    ^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

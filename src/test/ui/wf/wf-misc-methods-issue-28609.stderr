@@ -1,111 +1,55 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/wf-misc-methods-issue-28609.rs:22:31
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:22:5
    |
 LL |     s.transmute_inherent(&mut 42)
-   |                               ^^ temporary value does not live long enough
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 20:1...
-  --> $DIR/wf-misc-methods-issue-28609.rs:20:1
-   |
-LL | / fn return_dangling_pointer_inherent(s: S2) -> &u32 {
-LL | |     let s = s;
-LL | |     s.transmute_inherent(&mut 42)
-LL | | }
-   | |_^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^--^
+   |     |                         |
+   |     |                         temporary value created here
+   |     returns a value referencing data owned by the current function
 
-error[E0597]: `four` does not live long enough
-  --> $DIR/wf-misc-methods-issue-28609.rs:35:20
+error[E0515]: cannot return value referencing local variable `four`
+  --> $DIR/wf-misc-methods-issue-28609.rs:36:5
    |
 LL |     s.bomb = Some(&four);
-   |                    ^^^^ borrowed value does not live long enough
+   |                   ----- `four` is borrowed here
 LL |     &s
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 32:1...
-  --> $DIR/wf-misc-methods-issue-28609.rs:32:1
-   |
-LL | / fn return_dangling_pointer_coerce(s: S2) -> &u32 {
-LL | |     let four = 4;
-LL | |     let mut s = s;
-LL | |     s.bomb = Some(&four);
-LL | |     &s
-LL | | }
-   | |_^
+   |     ^^ returns a value referencing data owned by the current function
 
-error[E0597]: `four` does not live long enough
-  --> $DIR/wf-misc-methods-issue-28609.rs:42:20
+error[E0515]: cannot return value referencing local variable `four`
+  --> $DIR/wf-misc-methods-issue-28609.rs:43:5
    |
 LL |     s.bomb = Some(&four);
-   |                    ^^^^ borrowed value does not live long enough
+   |                   ----- `four` is borrowed here
 LL |     &*s
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 39:1...
-  --> $DIR/wf-misc-methods-issue-28609.rs:39:1
-   |
-LL | / fn return_dangling_pointer_unary_op(s: S2) -> &u32 {
-LL | |     let four = 4;
-LL | |     let mut s = s;
-LL | |     s.bomb = Some(&four);
-LL | |     &*s
-LL | | }
-   | |_^
+   |     ^^^ returns a value referencing data owned by the current function
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/wf-misc-methods-issue-28609.rs:53:15
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:53:5
    |
 LL |     s << &mut 3
-   |               ^ temporary value does not live long enough
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 51:1...
-  --> $DIR/wf-misc-methods-issue-28609.rs:51:1
-   |
-LL | / fn return_dangling_pointer_binary_op(s: S2) -> &u32 {
-LL | |     let s = s;
-LL | |     s << &mut 3
-LL | | }
-   | |_^
+   |     ^^^^^^^^^^-
+   |     |         |
+   |     |         temporary value created here
+   |     returns a value referencing data owned by the current function
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/wf-misc-methods-issue-28609.rs:58:16
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:58:5
    |
 LL |     s.shl(&mut 3)
-   |                ^ temporary value does not live long enough
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 56:1...
-  --> $DIR/wf-misc-methods-issue-28609.rs:56:1
-   |
-LL | / fn return_dangling_pointer_method(s: S2) -> &u32 {
-LL | |     let s = s;
-LL | |     s.shl(&mut 3)
-LL | | }
-   | |_^
+   |     ^^^^^^^^^^^-^
+   |     |          |
+   |     |          temporary value created here
+   |     returns a value referencing data owned by the current function
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/wf-misc-methods-issue-28609.rs:63:21
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/wf-misc-methods-issue-28609.rs:63:5
    |
 LL |     S2::shl(s, &mut 3)
-   |                     ^ temporary value does not live long enough
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 61:1...
-  --> $DIR/wf-misc-methods-issue-28609.rs:61:1
-   |
-LL | / fn return_dangling_pointer_ufcs(s: S2) -> &u32 {
-LL | |     let s = s;
-LL | |     S2::shl(s, &mut 3)
-LL | | }
-   | |_^
+   |     ^^^^^^^^^^^^^^^^-^
+   |     |               |
+   |     |               temporary value created here
+   |     returns a value referencing data owned by the current function
 
 error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

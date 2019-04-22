@@ -1,13 +1,12 @@
-error[E0597]: `*v` does not live long enough
-  --> $DIR/regions-close-object-into-object-1.rs:12:12
+error[E0515]: cannot return value referencing local data `*v`
+  --> $DIR/regions-close-object-into-object-1.rs:12:5
    |
 LL |     box B(&*v) as Box<X>
-   |            ^^ borrowed value does not live long enough
-LL | }
-   | - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     ^^^^^^---^^^^^^^^^^^
+   |     |     |
+   |     |     `*v` is borrowed here
+   |     returns a value referencing data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

@@ -1,16 +1,17 @@
-error[E0373]: closure may outlive the current function, but it borrows `y`, which is owned by the current function
-  --> $DIR/regions-nested-fns-2.rs:6:9
+error[E0597]: `y` does not live long enough
+  --> $DIR/regions-nested-fns-2.rs:7:25
    |
 LL |         |z| {
-   |         ^^^ may outlive borrowed value `y`
-LL |
+   |         --- value captured here
 LL |             if false { &y } else { z }
-   |                         - `y` is borrowed here
-help: to force the closure to take ownership of `y` (and any other referenced variables), use the `move` keyword
-   |
-LL |         move |z| {
-   |         ^^^^^^^^
+   |                        -^
+   |                        ||
+   |                        |borrowed value does not live long enough
+   |                        returning this value requires that `y` is borrowed for `'static`
+...
+LL | }
+   | - `y` dropped here while still borrowed
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0373`.
+For more information about this error, try `rustc --explain E0597`.

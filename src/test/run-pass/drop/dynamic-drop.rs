@@ -1,8 +1,6 @@
 // run-pass
 #![allow(unused_assignments)]
 #![allow(unused_variables)]
-// revisions:lexical nll
-#![cfg_attr(nll, feature(nll))]
 
 // ignore-wasm32-bare compiled with panic=abort by default
 

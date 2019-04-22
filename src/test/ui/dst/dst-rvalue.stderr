@@ -16,13 +16,13 @@ error[E0507]: cannot move out of borrowed content
 LL |     let _x: Box<str> = box *"hello world";
    |                            ^^^^^^^^^^^^^^ cannot move out of borrowed content
 
-error[E0507]: cannot move out of borrowed content
+error[E0508]: cannot move out of type `[isize]`, a non-copy slice
   --> $DIR/dst-rvalue.rs:11:32
    |
 LL |     let _x: Box<[isize]> = box *array;
-   |                                ^^^^^^ cannot move out of borrowed content
+   |                                ^^^^^^ cannot move out of here
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0161, E0507.
+Some errors have detailed explanations: E0161, E0507, E0508.
 For more information about an error, try `rustc --explain E0161`.

@@ -4,9 +4,6 @@
 // Also includes tests of the errors reported when the Box in question
 // is immutable (#14270).
 
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
 #![feature(box_syntax)]
 
 struct A { a: isize }
@@ -16,8 +13,7 @@ fn indirect_write_to_imm_box() {
     let mut x: isize = 1;
     let y: Box<_> = box &mut x;
     let p = &y;
-    ***p = 2; //[ast]~ ERROR cannot assign to data in a `&` reference
-              //[mir]~^ ERROR cannot assign to `***p`
+    ***p = 2; //~ ERROR cannot assign to `***p`
     drop(p);
 }
 
@@ -26,8 +22,7 @@ fn borrow_in_var_from_var() {
     let mut y: Box<_> = box &mut x;
     let p = &y;
     let q = &***p;
-    **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
-             //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+    **y = 2; //~ ERROR cannot assign to `**y` because it is borrowed
     drop(p);
     drop(q);
 }
@@ -37,8 +32,7 @@ fn borrow_in_var_from_var_via_imm_box() {
     let y: Box<_> = box &mut x;
     let p = &y;
     let q = &***p;
-    **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
-             //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+    **y = 2; //~ ERROR cannot assign to `**y` because it is borrowed
     drop(p);
     drop(q);
 }
@@ -48,8 +42,7 @@ fn borrow_in_var_from_field() {
     let mut y: Box<_> = box &mut x.a;
     let p = &y;
     let q = &***p;
-    **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
-             //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+    **y = 2; //~ ERROR cannot assign to `**y` because it is borrowed
     drop(p);
     drop(q);
 }
@@ -59,8 +52,7 @@ fn borrow_in_var_from_field_via_imm_box() {
     let y: Box<_> = box &mut x.a;
     let p = &y;
     let q = &***p;
-    **y = 2; //[ast]~ ERROR cannot assign to `**y` because it is borrowed
-             //[mir]~^ ERROR cannot assign to `**y` because it is borrowed
+    **y = 2; //~ ERROR cannot assign to `**y` because it is borrowed
     drop(p);
     drop(q);
 }
@@ -70,8 +62,7 @@ fn borrow_in_field_from_var() {
     let mut y = B { a: box &mut x };
     let p = &y.a;
     let q = &***p;
-    **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
-               //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+    **y.a = 2; //~ ERROR cannot assign to `**y.a` because it is borrowed
     drop(p);
     drop(q);
 }
@@ -81,8 +72,7 @@ fn borrow_in_field_from_var_via_imm_box() {
     let y = B { a: box &mut x };
     let p = &y.a;
     let q = &***p;
-    **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
-               //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+    **y.a = 2; //~ ERROR cannot assign to `**y.a` because it is borrowed
     drop(p);
     drop(q);
 }
@@ -92,8 +82,7 @@ fn borrow_in_field_from_field() {
     let mut y = B { a: box &mut x.a };
     let p = &y.a;
     let q = &***p;
-    **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
-               //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+    **y.a = 2; //~ ERROR cannot assign to `**y.a` because it is borrowed
     drop(p);
     drop(q);
 }
@@ -103,8 +92,7 @@ fn borrow_in_field_from_field_via_imm_box() {
     let y = B { a: box &mut x.a };
     let p = &y.a;
     let q = &***p;
-    **y.a = 2; //[ast]~ ERROR cannot assign to `**y.a` because it is borrowed
-               //[mir]~^ ERROR cannot assign to `**y.a` because it is borrowed
+    **y.a = 2; //~ ERROR cannot assign to `**y.a` because it is borrowed
     drop(p);
     drop(q);
 }

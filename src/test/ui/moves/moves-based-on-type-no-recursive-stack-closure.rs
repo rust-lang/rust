@@ -29,7 +29,7 @@ fn innocent_looking_victim() {
 
 fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
     let mut r = R {c: Box::new(f)};
-    f(&mut r, false) //~ ERROR use of moved value
+    f(&mut r, false) //~ ERROR borrow of moved value
 }
 
 fn main() { innocent_looking_victim() }

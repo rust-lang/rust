@@ -1,21 +1,21 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-27592.rs:16:27
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/issue-27592.rs:16:14
    |
 LL |     write(|| format_args!("{}", String::from("Hello world")));
-   |                           ^^^^                             -- temporary value needs to live until here
-   |                           |                                |
-   |                           |                                temporary value dropped here while still borrowed
-   |                           temporary value does not live long enough
+   |              ^^^^^^^^^^^^^^^^^^^---------------------------^
+   |              |                  |
+   |              |                  temporary value created here
+   |              returns a value referencing data owned by the current function
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/issue-27592.rs:16:33
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/issue-27592.rs:16:14
    |
 LL |     write(|| format_args!("{}", String::from("Hello world")));
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^-- temporary value needs to live until here
-   |                                 |                          |
-   |                                 |                          temporary value dropped here while still borrowed
-   |                                 temporary value does not live long enough
+   |              ^^^^^^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |              |            |
+   |              |            temporary value created here
+   |              returns a value referencing data owned by the current function
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

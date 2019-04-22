@@ -2,5 +2,5 @@
 // are nested within a pattern
 fn main() {
     let x = vec![(String::new(), String::new())];
-    let (a, b) = x[0]; //~ ERROR cannot move out of indexed content
+    let (a, b) = x[0]; //~ ERROR cannot move out of borrowed content
 }

@@ -2,7 +2,7 @@ error[E0507]: cannot move out of borrowed content
   --> $DIR/issue-2590.rs:11:9
    |
 LL |         self.tokens
-   |         ^^^^ cannot move out of borrowed content
+   |         ^^^^^^^^^^^ cannot move out of borrowed content
 
 error: aborting due to previous error
 

@@ -19,5 +19,5 @@ impl Add for Foo {
 fn main() {
     let x = Foo(box 3);
     let _y = {x} + x.clone(); // the `{x}` forces a move to occur
-    //~^ ERROR use of moved value: `x`
+    //~^ ERROR borrow of moved value: `x`
 }

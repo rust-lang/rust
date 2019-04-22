@@ -15,11 +15,11 @@ fn meh() -> u32 { 42 }
 const fn bar() -> u32 { foo() } //~ ERROR `foo` is not yet stable as a const fn
 
 fn a() {
-    let _: &'static u32 = &foo(); //~ ERROR does not live long enough
+    let _: &'static u32 = &foo(); //~ ERROR temporary value dropped while borrowed
 }
 
 fn main() {
-    let _: &'static u32 = &meh(); //~ ERROR does not live long enough
+    let _: &'static u32 = &meh(); //~ ERROR temporary value dropped while borrowed
     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
-    //~^ ERROR does not live long enough
+    //~^ ERROR temporary value dropped while borrowed
 }

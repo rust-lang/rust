@@ -1,13 +1,12 @@
-error[E0597]: `*x` does not live long enough
+error[E0515]: cannot return value referencing local data `*x`
   --> $DIR/region-object-lifetime-5.rs:11:5
    |
 LL |     x.borrowed()
-   |     ^ borrowed value does not live long enough
-LL | }
-   | - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     -^^^^^^^^^^^
+   |     |
+   |     returns a value referencing data owned by the current function
+   |     `*x` is borrowed here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

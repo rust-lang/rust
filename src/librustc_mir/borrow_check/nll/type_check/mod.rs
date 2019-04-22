@@ -2672,9 +2672,8 @@ impl MirPass for TypeckMir {
         let def_id = src.def_id();
         debug!("run_pass: {:?}", def_id);
 
-        // When NLL is enabled, the borrow checker runs the typeck
-        // itself, so we don't need this MIR pass anymore.
-        if tcx.use_mir_borrowck() {
+        // FIXME: We don't need this MIR pass anymore.
+        if true {
             return;
         }
 

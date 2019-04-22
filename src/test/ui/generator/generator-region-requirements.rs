@@ -1,4 +1,4 @@
-// revisions: ast nll
+// revisions: migrate nll
 // ignore-compare-mode-nll
 
 #![feature(generators, generator_trait)]
@@ -15,7 +15,7 @@ fn dangle(x: &mut i32) -> &'static mut i32 {
         match Pin::new(&mut g).resume() {
             GeneratorState::Complete(c) => return c,
 //[nll]~^ ERROR explicit lifetime required
-//[ast]~^^ ERROR explicit lifetime required
+//[migrate]~^^ ERROR explicit lifetime required
             GeneratorState::Yielded(_) => (),
         }
     }

@@ -1,20 +1,20 @@
-error[E0594]: cannot assign to immutable borrowed content `*x`
+error[E0594]: cannot assign to `*x` which is behind a `&` reference
   --> $DIR/enum.rs:9:5
    |
 LL |     *x += 1;
-   |     ^^^^^^^ cannot borrow as mutable
+   |     ^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
 
-error[E0594]: cannot assign to immutable borrowed content `*x`
+error[E0594]: cannot assign to `*x` which is behind a `&` reference
   --> $DIR/enum.rs:13:9
    |
 LL |         *x += 1;
-   |         ^^^^^^^ cannot borrow as mutable
+   |         ^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
 
-error[E0594]: cannot assign to immutable borrowed content `*x`
+error[E0594]: cannot assign to `*x` which is behind a `&` reference
   --> $DIR/enum.rs:19:9
    |
 LL |         *x += 1;
-   |         ^^^^^^^ cannot borrow as mutable
+   |         ^^^^^^^ `x` is a `&` reference, so the data it refers to cannot be written
 
 error: aborting due to 3 previous errors
 

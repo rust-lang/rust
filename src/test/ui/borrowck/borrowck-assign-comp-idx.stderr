@@ -6,19 +6,20 @@ LL |     let q: &isize = &p[0];
 LL | 
 LL |     p[0] = 5;
    |     ^ mutable borrow occurs here
-...
-LL | }
-   | - immutable borrow ends here
+LL | 
+LL |     println!("{}", *q);
+   |                    -- immutable borrow later used here
 
 error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immutable
   --> $DIR/borrowck-assign-comp-idx.rs:27:9
    |
+LL |     borrow(
+   |     ------ immutable borrow later used by call
 LL |         &p,
-   |          - immutable borrow occurs here
+   |         -- immutable borrow occurs here
 LL |         || p[0] = 5);
-   |         ^^ -       - immutable borrow ends here
-   |         |  |
-   |         |  borrow occurs due to use of `p` in closure
+   |         ^^ - second borrow occurs due to use of `p` in closure
+   |         |
    |         mutable borrow occurs here
 
 error: aborting due to 2 previous errors

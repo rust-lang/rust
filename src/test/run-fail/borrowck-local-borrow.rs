@@ -1,6 +1,6 @@
 // error-pattern:panic 1
 
-// revisions: ast mir
+// revisions: migrate mir
 //[mir]compile-flags: -Z borrowck=mir
 
 fn main() {

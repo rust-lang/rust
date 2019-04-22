@@ -1,37 +1,18 @@
-error[E0594]: cannot assign to field `x.0` of immutable binding
+error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
   --> $DIR/reassignment_immutable_fields_twice.rs:7:5
    |
 LL |     let x: (u32, u32);
-   |         - help: make this binding mutable: `mut x`
+   |         - help: consider changing this to be mutable: `mut x`
 LL |     x = (22, 44);
 LL |     x.0 = 1;
-   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to field `x.0` of immutable binding
+error[E0381]: assign to part of possibly uninitialized variable: `x`
   --> $DIR/reassignment_immutable_fields_twice.rs:12:5
    |
-LL |     let x: (u32, u32);
-   |         - help: make this binding mutable: `mut x`
 LL |     x.0 = 1;
-   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^ use of possibly uninitialized `x`
 
-error[E0594]: cannot assign to field `x.0` of immutable binding
-  --> $DIR/reassignment_immutable_fields_twice.rs:13:5
-   |
-LL |     let x: (u32, u32);
-   |         - help: make this binding mutable: `mut x`
-LL |     x.0 = 1;
-LL |     x.0 = 22;
-   |     ^^^^^^^^ cannot mutably borrow field of immutable binding
+error: aborting due to 2 previous errors
 
-error[E0594]: cannot assign to field `x.1` of immutable binding
-  --> $DIR/reassignment_immutable_fields_twice.rs:14:5
-   |
-LL |     let x: (u32, u32);
-   |         - help: make this binding mutable: `mut x`
-...
-LL |     x.1 = 44;
-   |     ^^^^^^^^ cannot mutably borrow field of immutable binding
-
-error: aborting due to 4 previous errors
-
+For more information about this error, try `rustc --explain E0381`.

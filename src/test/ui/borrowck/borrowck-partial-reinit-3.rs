@@ -9,5 +9,5 @@ fn main() {
     let mut x = (Test { f: 2 }, Test { f: 4 });
     mem::drop(x.0);
     x.0.f = 3;
-    //~^ ERROR partial reinitialization of uninitialized structure `x.0`
+    //~^ ERROR assign of moved value: `x.0`
 }

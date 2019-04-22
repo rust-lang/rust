@@ -2,30 +2,31 @@ error[E0502]: cannot borrow `f` as immutable because it is also borrowed as muta
   --> $DIR/borrowck-unboxed-closures.rs:3:5
    |
 LL |     let g = &mut f;
-   |                  - mutable borrow occurs here
+   |             ------ mutable borrow occurs here
 LL |     f(1, 2);
    |     ^ immutable borrow occurs here
 LL |     use_mut(g);
-LL | }
-   | - mutable borrow ends here
+   |             - mutable borrow later used here
 
-error[E0596]: cannot borrow immutable argument `f` as mutable
+error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-unboxed-closures.rs:7:5
    |
 LL | fn b<F:FnMut(isize, isize) -> isize>(f: F) {
-   |                                      - help: make this binding mutable: `mut f`
+   |                                      - help: consider changing this to be mutable: `mut f`
 LL |     f(1, 2);
-   |     ^ cannot borrow mutably
+   |     ^ cannot borrow as mutable
 
 error[E0382]: use of moved value: `f`
   --> $DIR/borrowck-unboxed-closures.rs:12:5
    |
+LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
+   |      -                                - move occurs because `f` has type `F`, which does not implement the `Copy` trait
+   |      |
+   |      consider adding a `Copy` constraint to this type argument
 LL |     f(1, 2);
    |     - value moved here
 LL |     f(1, 2);
    |     ^ value used here after move
-   |
-   = note: move occurs because `f` has type `F`, which does not implement the `Copy` trait
 
 error: aborting due to 3 previous errors
 

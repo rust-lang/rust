@@ -2,55 +2,82 @@ error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:5:15
    |
 LL |     let x = { *r };
-   |               ^^ cannot move out of borrowed content
+   |               ^^
+   |               |
+   |               cannot move out of borrowed content
+   |               help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:6:22
    |
 LL |     let y = unsafe { *r };
-   |                      ^^ cannot move out of borrowed content
+   |                      ^^
+   |                      |
+   |                      cannot move out of borrowed content
+   |                      help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:7:26
    |
 LL |     let z = loop { break *r; };
-   |                          ^^ cannot move out of borrowed content
+   |                          ^^
+   |                          |
+   |                          cannot move out of borrowed content
+   |                          help: consider removing the `*`: `r`
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:11:15
    |
 LL |     let x = { arr[0] };
-   |               ^^^^^^ cannot move out of here
+   |               ^^^^^^
+   |               |
+   |               cannot move out of here
+   |               help: consider borrowing here: `&arr[0]`
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:12:22
    |
 LL |     let y = unsafe { arr[0] };
-   |                      ^^^^^^ cannot move out of here
+   |                      ^^^^^^
+   |                      |
+   |                      cannot move out of here
+   |                      help: consider borrowing here: `&arr[0]`
 
 error[E0508]: cannot move out of type `[std::string::String; 2]`, a non-copy array
   --> $DIR/cannot-move-block-spans.rs:13:26
    |
 LL |     let z = loop { break arr[0]; };
-   |                          ^^^^^^ cannot move out of here
+   |                          ^^^^^^
+   |                          |
+   |                          cannot move out of here
+   |                          help: consider borrowing here: `&arr[0]`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:17:38
    |
 LL |     let x = { let mut u = 0; u += 1; *r };
-   |                                      ^^ cannot move out of borrowed content
+   |                                      ^^
+   |                                      |
+   |                                      cannot move out of borrowed content
+   |                                      help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:18:45
    |
 LL |     let y = unsafe { let mut u = 0; u += 1; *r };
-   |                                             ^^ cannot move out of borrowed content
+   |                                             ^^
+   |                                             |
+   |                                             cannot move out of borrowed content
+   |                                             help: consider removing the `*`: `r`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/cannot-move-block-spans.rs:19:49
    |
 LL |     let z = loop { let mut u = 0; u += 1; break *r; u += 2; };
-   |                                                 ^^ cannot move out of borrowed content
+   |                                                 ^^
+   |                                                 |
+   |                                                 cannot move out of borrowed content
+   |                                                 help: consider removing the `*`: `r`
 
 error: aborting due to 9 previous errors
 

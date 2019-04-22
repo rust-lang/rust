@@ -1,14 +1,13 @@
 error[E0597]: `*x` does not live long enough
-  --> $DIR/regions-infer-borrow-scope-within-loop.rs:13:21
+  --> $DIR/regions-infer-borrow-scope-within-loop.rs:13:20
    |
 LL |         y = borrow(&*x);
-   |                     ^^ borrowed value does not live long enough
+   |                    ^^^ borrowed value does not live long enough
 ...
 LL |     }
    |     - `*x` dropped here while still borrowed
 LL |     assert!(*y != 0);
-LL | }
-   | - borrowed value needs to live until here
+   |             -- borrow later used here
 
 error: aborting due to previous error
 

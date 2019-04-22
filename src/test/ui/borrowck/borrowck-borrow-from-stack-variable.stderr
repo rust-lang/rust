@@ -1,122 +1,114 @@
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:18:22
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:18:17
    |
 LL |     let bar1 = &mut foo.bar1;
-   |                     -------- first mutable borrow occurs here
+   |                ------------- first mutable borrow occurs here
 LL |     let _bar2 = &mut foo.bar1;
-   |                      ^^^^^^^^ second mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - first borrow ends here
+   |     ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:25:18
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:25:17
    |
 LL |     let bar1 = &mut foo.bar1;
-   |                     -------- mutable borrow occurs here
+   |                ------------- mutable borrow occurs here
 LL |     let _bar2 = &foo.bar1;
-   |                  ^^^^^^^^ immutable borrow occurs here
+   |                 ^^^^^^^^^ immutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - mutable borrow ends here
+   |     ----- mutable borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:32:22
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:32:17
    |
 LL |     let bar1 = &foo.bar1;
-   |                 -------- immutable borrow occurs here
+   |                --------- immutable borrow occurs here
 LL |     let _bar2 = &mut foo.bar1;
-   |                      ^^^^^^^^ mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - immutable borrow ends here
+   |     ----- immutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
   --> $DIR/borrowck-borrow-from-stack-variable.rs:61:21
    |
 LL |     let bar1 = &mut foo.bar1;
-   |                     -------- first mutable borrow occurs here
+   |                ------------- first mutable borrow occurs here
 LL |     match foo {
 LL |         Foo { bar1: ref mut _bar1, bar2: _ } => {} //
    |                     ^^^^^^^^^^^^^ second mutable borrow occurs here
 ...
-LL | }
-   | - first borrow ends here
+LL |     *bar1;
+   |     ----- first borrow later used here
 
-error[E0502]: cannot borrow `foo.bar1` as immutable because `foo.bar1.int1` is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:70:18
+error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:70:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- mutable borrow occurs here
+   |                ------------------ mutable borrow occurs here
 LL |     let _foo1 = &foo.bar1;
-   |                  ^^^^^^^^ immutable borrow occurs here
-...
-LL | }
-   | - mutable borrow ends here
+   |                 ^^^^^^^^^ immutable borrow occurs here
+LL |     let _foo2 = &foo;
+LL |     *bar1;
+   |     ----- mutable borrow later used here
 
-error[E0502]: cannot borrow `foo` as immutable because `foo.bar1.int1` is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:71:18
+error[E0502]: cannot borrow `foo` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:71:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- mutable borrow occurs here
+   |                ------------------ mutable borrow occurs here
 LL |     let _foo1 = &foo.bar1;
 LL |     let _foo2 = &foo;
-   |                  ^^^ immutable borrow occurs here
+   |                 ^^^^ immutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - mutable borrow ends here
+   |     ----- mutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:78:22
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:78:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- first mutable borrow occurs here
+   |                ------------------ first mutable borrow occurs here
 LL |     let _foo1 = &mut foo.bar1;
-   |                      ^^^^^^^^ second mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - first borrow ends here
+   |     ----- first borrow later used here
 
 error[E0499]: cannot borrow `foo` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:85:22
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:85:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- first mutable borrow occurs here
+   |                ------------------ first mutable borrow occurs here
 LL |     let _foo2 = &mut foo;
-   |                      ^^^ second mutable borrow occurs here
+   |                 ^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - first borrow ends here
+   |     ----- first borrow later used here
 
-error[E0502]: cannot borrow `foo.bar1` as mutable because `foo.bar1.int1` is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:92:22
+error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:92:17
    |
 LL |     let bar1 = &foo.bar1.int1;
-   |                 ------------- immutable borrow occurs here
+   |                -------------- immutable borrow occurs here
 LL |     let _foo1 = &mut foo.bar1;
-   |                      ^^^^^^^^ mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - immutable borrow ends here
+   |     ----- immutable borrow later used here
 
-error[E0502]: cannot borrow `foo` as mutable because `foo.bar1.int1` is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:99:22
+error[E0502]: cannot borrow `foo` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:99:17
    |
 LL |     let bar1 = &foo.bar1.int1;
-   |                 ------------- immutable borrow occurs here
+   |                -------------- immutable borrow occurs here
 LL |     let _foo2 = &mut foo;
-   |                      ^^^ mutable borrow occurs here
+   |                 ^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - immutable borrow ends here
+   |     ----- immutable borrow later used here
 
-error[E0596]: cannot borrow field `foo.bar1` of immutable binding as mutable
-  --> $DIR/borrowck-borrow-from-stack-variable.rs:120:21
+error[E0596]: cannot borrow `foo.bar1` as mutable, as `foo` is not declared as mutable
+  --> $DIR/borrowck-borrow-from-stack-variable.rs:120:16
    |
 LL |     let foo = make_foo();
-   |         --- help: make this binding mutable: `mut foo`
+   |         --- help: consider changing this to be mutable: `mut foo`
 LL |     let bar1 = &mut foo.bar1;
-   |                     ^^^^^^^^ cannot mutably borrow field of immutable binding
+   |                ^^^^^^^^^^^^^ cannot borrow as mutable
 
 error: aborting due to 11 previous errors
 

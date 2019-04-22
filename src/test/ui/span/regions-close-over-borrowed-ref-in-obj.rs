@@ -10,7 +10,7 @@ fn main() {
     let blah;
     {
         let ss: &isize = &id(1);
-        //~^ ERROR borrowed value does not live long enough
+        //~^ ERROR temporary value dropped while borrowed
         blah = box ss as Box<Foo>;
     }
 }

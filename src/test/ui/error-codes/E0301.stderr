@@ -3,6 +3,8 @@ error[E0301]: cannot mutably borrow in a pattern guard
    |
 LL |         option if option.take().is_none() => {},
    |                   ^^^^^^ borrowed mutably in pattern guard
+   |
+   = help: add #![feature(bind_by_move_pattern_guards)] to the crate attributes to enable
 
 error: aborting due to previous error
 

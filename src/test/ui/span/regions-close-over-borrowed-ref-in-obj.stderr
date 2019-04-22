@@ -1,14 +1,16 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/regions-close-over-borrowed-ref-in-obj.rs:12:27
    |
 LL |         let ss: &isize = &id(1);
-   |                           ^^^^^ temporary value does not live long enough
+   |                           ^^^^^ creates a temporary which is freed while still in use
 ...
 LL |     }
-   |     - temporary value dropped here while still borrowed
+   |     - temporary value is freed at the end of this statement
 LL | }
-   | - temporary value needs to live until here
+   | - borrow might be used here, when `blah` is dropped and runs the destructor for type `std::boxed::Box<dyn Foo>`
+   |
+   = note: consider using a `let` binding to create a longer lived value
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

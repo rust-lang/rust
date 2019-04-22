@@ -26,6 +26,7 @@ fn bug<'a>() -> impl Iterator<Item = &'a str> {
     GenIter(move || {
         let mut s = String::new();
         yield &s[..] //~ ERROR `s` does not live long enough [E0597]
+        //~| ERROR borrow may still be in use when generator yields
     })
 }
 

@@ -1,6 +1,3 @@
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
 fn main() {
     let mut x: Option<isize> = None;
     match x {
@@ -10,8 +7,7 @@ fn main() {
       }
       Some(ref i) => {
           // But on this branch, `i` is an outstanding borrow
-          x = Some(*i+1); //[ast]~ ERROR cannot assign to `x`
-          //[mir]~^ ERROR cannot assign to `x` because it is borrowed
+          x = Some(*i+1); //~ ERROR cannot assign to `x` because it is borrowed
           drop(i);
       }
     }

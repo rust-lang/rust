@@ -1,13 +1,13 @@
-error[E0382]: use of partially moved value: `node`
+error[E0382]: use of moved value: `node`
   --> $DIR/moves-based-on-type-cyclic-types-issue-4821.rs:13:13
    |
 LL |         Some(right) => consume(right),
    |              ----- value moved here
 ...
 LL |     consume(node) + r
-   |             ^^^^ value used here after move
+   |             ^^^^ value used here after partial move
    |
-   = note: move occurs because the value has type `std::boxed::Box<List>`, which does not implement the `Copy` trait
+   = note: move occurs because value has type `std::boxed::Box<List>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

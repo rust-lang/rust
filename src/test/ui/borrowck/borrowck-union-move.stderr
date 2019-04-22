@@ -1,62 +1,62 @@
-error[E0382]: use of moved value: `u.n1`
-  --> $DIR/borrowck-union-move.rs:26:17
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:26:21
    |
+LL |             let mut u = Unn { n1: NonCopy };
+   |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 LL |             let a = u.n1;
-   |                 - value moved here
+   |                     ---- value moved here
 LL |             let a = u.n1;
-   |                 ^ value used here after move
-   |
-   = note: move occurs because `u.n1` has type `NonCopy`, which does not implement the `Copy` trait
+   |                     ^^^^ value used here after move
 
-error[E0382]: use of partially moved value: `u`
-  --> $DIR/borrowck-union-move.rs:31:17
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:31:21
    |
+LL |             let mut u = Unn { n1: NonCopy };
+   |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 LL |             let a = u.n1;
-   |                 - value moved here
+   |                     ---- value moved here
 LL |             let a = u;
-   |                 ^ value used here after move
-   |
-   = note: move occurs because `u.n2` has type `[type error]`, which does not implement the `Copy` trait
+   |                     ^ value used here after move
 
-error[E0382]: use of moved value: `u.n2`
-  --> $DIR/borrowck-union-move.rs:36:17
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:36:21
    |
+LL |             let mut u = Unn { n1: NonCopy };
+   |                 ----- move occurs because `u` has type `Unn`, which does not implement the `Copy` trait
 LL |             let a = u.n1;
-   |                 - value moved here
+   |                     ---- value moved here
 LL |             let a = u.n2;
-   |                 ^ value used here after move
-   |
-   = note: move occurs because `u.n2` has type `[type error]`, which does not implement the `Copy` trait
+   |                     ^^^^ value used here after move
 
-error[E0382]: use of moved value: `u.n`
-  --> $DIR/borrowck-union-move.rs:63:17
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:63:21
    |
+LL |             let mut u = Ucn { c: Copy };
+   |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 LL |             let a = u.n;
-   |                 - value moved here
+   |                     --- value moved here
 LL |             let a = u.n;
-   |                 ^ value used here after move
-   |
-   = note: move occurs because `u.n` has type `NonCopy`, which does not implement the `Copy` trait
+   |                     ^^^ value used here after move
 
-error[E0382]: use of moved value: `u.c`
-  --> $DIR/borrowck-union-move.rs:68:17
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:68:21
    |
+LL |             let mut u = Ucn { c: Copy };
+   |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 LL |             let a = u.n;
-   |                 - value moved here
+   |                     --- value moved here
 LL |             let a = u.c;
-   |                 ^ value used here after move
-   |
-   = note: move occurs because `u.c` has type `[type error]`, which does not implement the `Copy` trait
+   |                     ^^^ value used here after move
 
-error[E0382]: use of partially moved value: `u`
-  --> $DIR/borrowck-union-move.rs:83:17
+error[E0382]: use of moved value: `u`
+  --> $DIR/borrowck-union-move.rs:83:21
    |
+LL |             let mut u = Ucn { c: Copy };
+   |                 ----- move occurs because `u` has type `Ucn`, which does not implement the `Copy` trait
 LL |             let a = u.n;
-   |                 - value moved here
+   |                     --- value moved here
 LL |             let a = u;
-   |                 ^ value used here after move
-   |
-   = note: move occurs because `u.c` has type `[type error]`, which does not implement the `Copy` trait
+   |                     ^ value used here after move
 
 error: aborting due to 6 previous errors
 

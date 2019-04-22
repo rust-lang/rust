@@ -1,11 +1,16 @@
 error[E0508]: cannot move out of type `[A]`, a non-copy slice
-  --> $DIR/move-out-of-slice-1.rs:8:13
+  --> $DIR/move-out-of-slice-1.rs:7:11
+   |
+LL |     match a {
+   |           ^ cannot move out of here
+LL |         box [a] => {},
+   |              - data moved here
+   |
+note: move occurs because `a` has type `A`, which does not implement the `Copy` trait
+  --> $DIR/move-out-of-slice-1.rs:8:14
    |
 LL |         box [a] => {},
-   |             ^-^
-   |             ||
-   |             |hint: to prevent move, use `ref a` or `ref mut a`
-   |             cannot move out of here
+   |              ^
 
 error: aborting due to previous error
 

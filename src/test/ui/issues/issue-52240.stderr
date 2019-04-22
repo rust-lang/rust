@@ -1,8 +1,8 @@
-error[E0596]: cannot borrow field of immutable binding as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/issue-52240.rs:9:27
    |
 LL |     if let (Some(Foo::Bar(ref mut val)), _) = (&arr.get(0), 0) {
-   |                           ^^^^^^^^^^^ cannot mutably borrow field of immutable binding
+   |                           ^^^^^^^^^^^ cannot borrow as mutable
 
 error: aborting due to previous error
 

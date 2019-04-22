@@ -1,0 +1,14 @@
+error[E0506]: cannot assign to `x` because it is borrowed
+  --> $DIR/hrtb-identity-fn-borrows.rs:14:5
+   |
+LL |     let y = f.call(&x);
+   |                    -- borrow of `x` occurs here
+LL |     x = 5;
+   |     ^^^^^ assignment to borrowed `x` occurs here
+...
+LL |     drop(y);
+   |          - borrow later used here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0506`.

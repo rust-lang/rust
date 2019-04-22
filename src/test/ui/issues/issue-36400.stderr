@@ -1,10 +1,10 @@
-error[E0596]: cannot borrow immutable `Box` content `*x` as mutable
-  --> $DIR/issue-36400.rs:5:12
+error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
+  --> $DIR/issue-36400.rs:5:7
    |
 LL |     let x = Box::new(3);
-   |         - help: make this binding mutable: `mut x`
+   |         - help: consider changing this to be mutable: `mut x`
 LL |     f(&mut *x);
-   |            ^^ cannot borrow as mutable
+   |       ^^^^^^^ cannot borrow as mutable
 
 error: aborting due to previous error
 

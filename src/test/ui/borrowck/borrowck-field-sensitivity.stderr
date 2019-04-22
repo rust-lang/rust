@@ -1,4 +1,4 @@
-error[E0382]: use of moved value: `*x.b`
+error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:8:10
    |
 LL |     drop(x.b);
@@ -8,33 +8,33 @@ LL |     drop(*x.b);
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `*x.b`
+error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:14:10
    |
 LL |     let y = A { a: 3, .. x };
-   |                          - value moved here
+   |             ---------------- value moved here
 LL |     drop(*x.b);
    |          ^^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `x.b`
-  --> $DIR/borrowck-field-sensitivity.rs:20:14
+error[E0382]: borrow of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:20:13
    |
 LL |     drop(x.b);
    |          --- value moved here
 LL |     let p = &x.b;
-   |              ^^^ value used here after move
+   |             ^^^^ value borrowed here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `x.b`
-  --> $DIR/borrowck-field-sensitivity.rs:27:14
+error[E0382]: borrow of moved value: `x.b`
+  --> $DIR/borrowck-field-sensitivity.rs:27:13
    |
 LL |     let _y = A { a: 3, .. x };
-   |                           - value moved here
+   |              ---------------- value moved here
 LL |     let p = &x.b;
-   |              ^^^ value used here after move
+   |             ^^^^ value borrowed here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
@@ -42,28 +42,31 @@ error[E0505]: cannot move out of `x.b` because it is borrowed
   --> $DIR/borrowck-field-sensitivity.rs:34:10
    |
 LL |     let p = &x.b;
-   |              --- borrow of `x.b` occurs here
+   |             ---- borrow of `x.b` occurs here
 LL |     drop(x.b);
    |          ^^^ move out of `x.b` occurs here
+LL |     drop(**p);
+   |          --- borrow later used here
 
 error[E0505]: cannot move out of `x.b` because it is borrowed
-  --> $DIR/borrowck-field-sensitivity.rs:41:27
+  --> $DIR/borrowck-field-sensitivity.rs:41:14
    |
 LL |     let p = &x.b;
-   |              --- borrow of `x.b` occurs here
+   |             ---- borrow of `x.b` occurs here
 LL |     let _y = A { a: 3, .. x };
-   |                           ^ move out of `x.b` occurs here
+   |              ^^^^^^^^^^^^^^^^ move out of `x.b` occurs here
+LL |     drop(**p);
+   |          --- borrow later used here
 
 error[E0499]: cannot borrow `x.a` as mutable more than once at a time
-  --> $DIR/borrowck-field-sensitivity.rs:48:18
+  --> $DIR/borrowck-field-sensitivity.rs:48:13
    |
 LL |     let p = &mut x.a;
-   |                  --- first mutable borrow occurs here
+   |             -------- first mutable borrow occurs here
 LL |     let q = &mut x.a;
-   |                  ^^^ second mutable borrow occurs here
-...
-LL | }
-   | - first borrow ends here
+   |             ^^^^^^^^ second mutable borrow occurs here
+LL |     drop(*p);
+   |          -- first borrow later used here
 
 error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:56:10
@@ -79,49 +82,49 @@ error[E0382]: use of moved value: `x.b`
   --> $DIR/borrowck-field-sensitivity.rs:62:10
    |
 LL |     let _y = A { a: 3, .. x };
-   |                           - value moved here
+   |              ---------------- value moved here
 LL |     drop(x.b);
    |          ^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x.b`
-  --> $DIR/borrowck-field-sensitivity.rs:68:27
+  --> $DIR/borrowck-field-sensitivity.rs:68:14
    |
 LL |     drop(x.b);
    |          --- value moved here
 LL |     let _z = A { a: 3, .. x };
-   |                           ^ value used here after move
+   |              ^^^^^^^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
 error[E0382]: use of moved value: `x.b`
-  --> $DIR/borrowck-field-sensitivity.rs:74:27
+  --> $DIR/borrowck-field-sensitivity.rs:74:14
    |
 LL |     let _y = A { a: 3, .. x };
-   |                           - value moved here
+   |              ---------------- value moved here
 LL |     let _z = A { a: 4, .. x };
-   |                           ^ value used here after move
+   |              ^^^^^^^^^^^^^^^^ value used here after move
    |
    = note: move occurs because `x.b` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error[E0381]: use of possibly uninitialized variable: `x.a`
-  --> $DIR/borrowck-field-sensitivity.rs:82:10
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-field-sensitivity.rs:81:5
    |
-LL |     drop(x.a);
-   |          ^^^ use of possibly uninitialized `x.a`
+LL |     x.a = 1;
+   |     ^^^^^^^ use of possibly uninitialized `x`
 
-error[E0381]: use of possibly uninitialized variable: `x.a`
-  --> $DIR/borrowck-field-sensitivity.rs:88:14
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-field-sensitivity.rs:87:5
    |
-LL |     let p = &x.a;
-   |              ^^^ use of possibly uninitialized `x.a`
+LL |     x.a = 1;
+   |     ^^^^^^^ use of possibly uninitialized `x`
 
-error[E0381]: use of possibly uninitialized variable: `x.b`
-  --> $DIR/borrowck-field-sensitivity.rs:95:10
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/borrowck-field-sensitivity.rs:94:5
    |
-LL |     drop(x.b);
-   |          ^^^ use of possibly uninitialized `x.b`
+LL |     x.b = box 1;
+   |     ^^^ use of possibly uninitialized `x`
 
 error: aborting due to 14 previous errors
 

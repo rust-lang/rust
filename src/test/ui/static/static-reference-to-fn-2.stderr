@@ -1,71 +1,47 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:18:22
    |
+LL | fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
+   |           ----- has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(state2 as StateMachineFunc);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
-   |                      |
-   |                      temporary value does not live long enough
-   |
-note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 17:1...
-  --> $DIR/static-reference-to-fn-2.rs:17:1
-   |
-LL | / fn state1(self_: &mut StateMachineIter) -> Option<&'static str> {
-LL | |     self_.statefn = &id(state2 as StateMachineFunc);
-LL | |
-LL | |     return Some("state1");
-LL | | }
-   | |_^
-   = note: consider using a `let` binding to increase its lifetime
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |     |                |
+   |     |                creates a temporary which is freed while still in use
+   |     assignment requires that borrow lasts for `'1`
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:24:22
    |
+LL | fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
+   |           ----- has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(state3 as StateMachineFunc);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
-   |                      |
-   |                      temporary value does not live long enough
-   |
-note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 23:1...
-  --> $DIR/static-reference-to-fn-2.rs:23:1
-   |
-LL | / fn state2(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-LL | |     self_.statefn = &id(state3 as StateMachineFunc);
-LL | |
-LL | |     return Some("state2");
-LL | | }
-   | |_^
-   = note: consider using a `let` binding to increase its lifetime
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |     |                |
+   |     |                creates a temporary which is freed while still in use
+   |     assignment requires that borrow lasts for `'1`
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-reference-to-fn-2.rs:30:22
    |
+LL | fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
+   |           ----- has type `&mut StateMachineIter<'1>`
 LL |     self_.statefn = &id(finished as StateMachineFunc);
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value only lives until here
-   |                      |
-   |                      temporary value does not live long enough
-   |
-note: borrowed value must be valid for the anonymous lifetime #2 defined on the function body at 29:1...
-  --> $DIR/static-reference-to-fn-2.rs:29:1
-   |
-LL | / fn state3(self_: &mut StateMachineIter) -> Option<(&'static str)> {
-LL | |     self_.statefn = &id(finished as StateMachineFunc);
-LL | |
-LL | |     return Some("state3");
-LL | | }
-   | |_^
-   = note: consider using a `let` binding to increase its lifetime
+   |     -----------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
+   |     |                |
+   |     |                creates a temporary which is freed while still in use
+   |     assignment requires that borrow lasts for `'1`
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/static-reference-to-fn-2.rs:41:19
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/static-reference-to-fn-2.rs:40:5
    |
-LL |         statefn: &id(state1 as StateMachineFunc)
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-...
-LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+LL | /     StateMachineIter {
+LL | |
+LL | |         statefn: &id(state1 as StateMachineFunc)
+   | |                   ------------------------------ temporary value created here
+LL | |     }
+   | |_____^ returns a value referencing data owned by the current function
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors have detailed explanations: E0515, E0716.
+For more information about an error, try `rustc --explain E0515`.

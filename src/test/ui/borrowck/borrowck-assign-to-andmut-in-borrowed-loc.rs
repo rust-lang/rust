@@ -15,7 +15,9 @@ fn main() {
     {
         let mut y = S { pointer: &mut x };
         let z = copy_borrowed_ptr(&mut y);
-        *y.pointer += 1; //~ ERROR cannot assign
+        *y.pointer += 1;
+        //~^ ERROR cannot use `*y.pointer`
+        //~| ERROR cannot assign to `*y.pointer`
         *z.pointer += 1;
     }
 }

@@ -1,21 +1,15 @@
-error[E0381]: use of possibly uninitialized variable: `x.0`
-  --> $DIR/assign_mutable_fields.rs:11:10
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/assign_mutable_fields.rs:9:5
    |
-LL |     drop(x.0);
-   |          ^^^ use of possibly uninitialized `x.0`
+LL |     x.0 = 1;
+   |     ^^^^^^^ use of possibly uninitialized `x`
 
-error[E0381]: use of possibly uninitialized variable: `x.1`
-  --> $DIR/assign_mutable_fields.rs:12:10
+error[E0381]: assign to part of possibly uninitialized variable: `x`
+  --> $DIR/assign_mutable_fields.rs:17:5
    |
-LL |     drop(x.1);
-   |          ^^^ use of possibly uninitialized `x.1`
+LL |     x.0 = 1;
+   |     ^^^^^^^ use of possibly uninitialized `x`
 
-error[E0381]: use of possibly uninitialized variable: `x`
-  --> $DIR/assign_mutable_fields.rs:19:10
-   |
-LL |     drop(x);
-   |          ^ use of possibly uninitialized `x`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0381`.

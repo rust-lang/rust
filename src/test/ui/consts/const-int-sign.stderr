@@ -1,24 +1,25 @@
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-sign.rs:2:29
    |
 LL |     let x: &'static bool = &(5_i32.is_negative());
-   |                             ^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
-LL |     let y: &'static bool = &(5_i32.is_positive());
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+...
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/const-int-sign.rs:3:29
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/const-int-sign.rs:4:29
    |
 LL |     let y: &'static bool = &(5_i32.is_positive());
-   |                             ^^^^^^^^^^^^^^^^^^^^^ temporary value does not live long enough
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |
 LL | }
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

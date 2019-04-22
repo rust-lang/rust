@@ -1,7 +1,4 @@
-//revisions: ast mir
-//[mir] compile-flags: -Z borrowck=mir
-
-#![feature(rustc_attrs)]
+#![feature(nll)]
 
 // Here is arielb1's basic example from rust-lang/rust#27282
 // that AST borrowck is flummoxed by:
@@ -11,7 +8,7 @@ fn should_reject_destructive_mutate_in_guard() {
         None => {},
         ref mut foo if {
             (|| { let bar = foo; bar.take() })();
-            //[mir]~^ ERROR cannot move out of borrowed content [E0507]
+            //~^ ERROR cannot move out of borrowed content [E0507]
             false } => { },
         Some(s) => std::process::exit(*s),
     }
@@ -39,12 +36,7 @@ fn allow_move_into_arm_body() {
     }
 }
 
-// Since this is a compile-fail test that is explicitly encoding the
-// different behavior of AST- vs MIR-borrowck where AST-borrowck does
-// not error, we need to use rustc_error to placate the test harness
-// that wants *some* error to occur.
-#[rustc_error]
-fn main() { //[ast]~ ERROR compilation successful
+fn main() {
     should_reject_destructive_mutate_in_guard();
     allow_mutate_in_arm_body();
     allow_move_into_arm_body();

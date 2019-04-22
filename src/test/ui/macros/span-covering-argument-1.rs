@@ -3,7 +3,7 @@ macro_rules! bad {
         {
             let $s = 0;
             *&mut $s = 0;
-            //~^ ERROR cannot borrow immutable local variable `foo` as mutable [E0596]
+            //~^ ERROR cannot borrow `foo` as mutable, as it is not declared as mutable [E0596]
         }
     }
 }

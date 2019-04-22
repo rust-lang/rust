@@ -5,5 +5,5 @@ fn main() {
     thread::spawn(move|| {
         println!("{}", x);
     });
-    println!("{}", x); //~ ERROR use of moved value
+    println!("{}", x); //~ ERROR borrow of moved value
 }

@@ -1,7 +1,7 @@
 // Test that we cannot return a stack allocated slice
 
 fn function(x: isize) -> &'static [isize] {
-    &[x] //~ ERROR borrowed value does not live long enough
+    &[x] //~ ERROR cannot return reference to temporary value
 }
 
 fn main() {

@@ -15,5 +15,5 @@ fn main() {
     let mut s_copy = s;
     s_copy.push_str("World!");
     "0wned!".to_owned();
-    println!("{}", s); //~ ERROR use of moved value
+    println!("{}", s); //~ ERROR borrow of moved value
 }

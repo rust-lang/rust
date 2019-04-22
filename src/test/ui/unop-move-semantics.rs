@@ -5,7 +5,7 @@ use std::ops::Not;
 fn move_then_borrow<T: Not<Output=T> + Clone>(x: T) {
     !x;
 
-    x.clone();  //~ ERROR: use of moved value
+    x.clone();  //~ ERROR: borrow of moved value
 }
 
 fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {

@@ -1,9 +1,10 @@
-error[E0389]: cannot assign to data in a `&` reference
+error[E0594]: cannot assign to `fancy_ref.num` which is behind a `&` reference
   --> $DIR/E0389.rs:8:5
    |
+LL |     let fancy_ref = &(&mut fancy);
+   |                     ------------- help: consider changing this to be a mutable reference: `&mut (&mut fancy)`
 LL |     fancy_ref.num = 6;
-   |     ^^^^^^^^^^^^^^^^^ assignment into an immutable reference
+   |     ^^^^^^^^^^^^^^^^^ `fancy_ref` is a `&` reference, so the data it refers to cannot be written
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0389`.

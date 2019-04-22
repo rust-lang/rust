@@ -1,6 +1,3 @@
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -50,16 +47,13 @@ fn main() {
     let mut s = "hello".to_string();
     let rs = &mut s;
     println!("{}", f[&s]);
-    //[ast]~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
-    //[mir]~^^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
+    //~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
     f[&s] = 10;
-    //[ast]~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
-    //[mir]~^^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
+    //~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
     let s = Bar {
         x: 1,
     };
     s[2] = 20;
-    //[ast]~^ ERROR cannot assign to immutable indexed content
-    //[mir]~^^ ERROR cannot assign to data in a `&` reference
+    //~^ ERROR cannot assign to data in a `&` reference
     drop(rs);
 }

@@ -1,13 +1,14 @@
 error[E0597]: `*m` does not live long enough
-  --> $DIR/dropck-object-cycle.rs:27:32
+  --> $DIR/dropck-object-cycle.rs:27:31
    |
 LL |     assert_eq!(object_invoke1(&*m), (4,5));
-   |                                ^^ borrowed value does not live long enough
+   |                               ^^^ borrowed value does not live long enough
 ...
 LL | }
-   | - `*m` dropped here while still borrowed
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+   | -
+   | |
+   | `*m` dropped here while still borrowed
+   | borrow might be used here, when `m` is dropped and runs the destructor for type `std::boxed::Box<dyn Trait<'_>>`
 
 error: aborting due to previous error
 

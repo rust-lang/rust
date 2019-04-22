@@ -1,11 +1,11 @@
-error[E0507]: cannot move out of indexed content
+error[E0507]: cannot move out of borrowed content
   --> $DIR/issue-40402-1.rs:9:13
    |
 LL |     let e = f.v[0];
    |             ^^^^^^
    |             |
-   |             cannot move out of indexed content
-   |             help: consider using a reference instead: `&f.v[0]`
+   |             cannot move out of borrowed content
+   |             help: consider borrowing here: `&f.v[0]`
 
 error: aborting due to previous error
 

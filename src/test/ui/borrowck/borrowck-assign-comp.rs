@@ -1,6 +1,3 @@
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
 struct Point { x: isize, y: isize }
 
 fn a() {
@@ -10,8 +7,7 @@ fn a() {
     // This assignment is illegal because the field x is not
     // inherently mutable; since `p` was made immutable, `p.x` is now
     // immutable.  Otherwise the type of &_q.x (&isize) would be wrong.
-    p.x = 5; //[ast]~ ERROR cannot assign to `p.x`
-             //[mir]~^ ERROR cannot assign to `p.x` because it is borrowed
+    p.x = 5; //~ ERROR cannot assign to `p.x` because it is borrowed
     q.x;
 }
 
@@ -21,8 +17,7 @@ fn c() {
 
     let mut p = Point {x: 3, y: 4};
     let q = &p.y;
-    p = Point {x: 5, y: 7};//[ast]~ ERROR cannot assign to `p`
-                           //[mir]~^ ERROR cannot assign to `p` because it is borrowed
+    p = Point {x: 5, y: 7};//~ ERROR cannot assign to `p` because it is borrowed
     p.x; // silence warning
     *q; // stretch loan
 }
@@ -33,8 +28,7 @@ fn d() {
 
     let mut p = Point {x: 3, y: 4};
     let q = &p.y;
-    p.y = 5; //[ast]~ ERROR cannot assign to `p.y`
-             //[mir]~^ ERROR cannot assign to `p.y` because it is borrowed
+    p.y = 5; //~ ERROR cannot assign to `p.y` because it is borrowed
     *q;
 }
 

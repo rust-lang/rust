@@ -1,18 +1,9 @@
-error[E0597]: `x` does not live long enough
-  --> $DIR/issue-30438-c.rs:9:6
+error[E0515]: cannot return reference to local variable `x`
+  --> $DIR/issue-30438-c.rs:9:5
    |
 LL |     &x
-   |      ^ borrowed value does not live long enough
-LL |
-LL | }
-   | - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'y as defined on the function body at 7:10...
-  --> $DIR/issue-30438-c.rs:7:10
-   |
-LL | fn silly<'y, 'z>(_s: &'y Test<'z>) -> &'y <Test<'z> as Trait>::Out where 'z: 'static {
-   |          ^^
+   |     ^^ returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

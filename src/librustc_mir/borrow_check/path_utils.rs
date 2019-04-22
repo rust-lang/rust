@@ -15,9 +15,8 @@ pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(
     tcx: &TyCtxt<'a, 'gcx, 'tcx>,
     kind: BorrowKind
 ) -> bool {
-    tcx.two_phase_borrows()
-        && (kind.allows_two_phase_borrow()
-            || tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
+    kind.allows_two_phase_borrow()
+        || tcx.sess.opts.debugging_opts.two_phase_beyond_autoref
 }
 
 /// Control for the path borrow checking code

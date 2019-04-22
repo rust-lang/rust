@@ -9,6 +9,8 @@ error[E0301]: cannot mutably borrow in a pattern guard
    |
 LL |         Enum::A(_) if { let y = &mut x; *y = Enum::B(false); false } => 1,
    |                                      ^ borrowed mutably in pattern guard
+   |
+   = help: add #![feature(bind_by_move_pattern_guards)] to the crate attributes to enable
 
 error[E0302]: cannot assign in a pattern guard
   --> $DIR/borrowck-mutate-in-guard.rs:12:41

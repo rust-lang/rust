@@ -1,17 +1,16 @@
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/borrowck-ref-into-rvalue.rs:4:14
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/borrowck-ref-into-rvalue.rs:3:11
    |
-LL |         Some(ref m) => {
-   |              ^^^^^ borrowed value does not live long enough
+LL |     match Some("Hello".to_string()) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
 ...
 LL |     }
-   |     - borrowed value dropped here while still borrowed
+   |     - temporary value is freed at the end of this statement
 LL |     println!("{}", *msg);
-LL | }
-   | - borrowed value needs to live until here
+   |                    ---- borrow later used here
    |
-   = note: consider using a `let` binding to increase its lifetime
+   = note: consider using a `let` binding to create a longer lived value
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

@@ -1,5 +1,5 @@
 warning[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:53:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:51:5
    |
 LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
    |              -- lifetime `'a` defined here
@@ -13,7 +13,7 @@ LL | }
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 warning[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:64:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:62:5
    |
 LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
    |                    -- lifetime `'a` defined here
@@ -27,7 +27,7 @@ LL | }
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 warning[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:75:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:73:5
    |
 LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
    |                          -- lifetime `'a` defined here
@@ -41,12 +41,12 @@ LL | }
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
 
 error: compilation successful
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:82:1
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:80:1
    |
 LL | / fn main() {
-LL | |
 LL | |     let mut x = 1;
 LL | |     {
+LL | |         let mut long_lived = Scribble(&mut x);
 ...  |
 LL | |     *boxed_boxed_scribbled(Box::new(Box::new(Scribble(&mut x)))) += 10;
 LL | | }

@@ -43,7 +43,7 @@ fn main() {
         }
         {
             let ra = &u.a;
-            let rmb = &mut u.b; //~ ERROR cannot borrow `u` (via `u.b`) as mutable because `u` is also borrowed as immutable (via `u.a`)
+            let rmb = &mut u.b; //~ ERROR cannot borrow `u` (via `u.b`) as mutable because it is also borrowed as immutable (via `u.a`)
             drop(ra);
         }
         {
@@ -75,7 +75,7 @@ fn main() {
         // Mut borrow, other field
         {
             let rma = &mut u.a;
-            let rb = &u.b; //~ ERROR cannot borrow `u` (via `u.b`) as immutable because `u` is also borrowed as mutable (via `u.a`)
+            let rb = &u.b; //~ ERROR cannot borrow `u` (via `u.b`) as immutable because it is also borrowed as mutable (via `u.a`)
             drop(rma);
         }
         {

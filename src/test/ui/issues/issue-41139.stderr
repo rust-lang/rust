@@ -1,4 +1,4 @@
-error[E0161]: cannot move a value of type (dyn Trait + 'static): the size of (dyn Trait + 'static) cannot be statically determined
+error[E0161]: cannot move a value of type dyn Trait: the size of dyn Trait cannot be statically determined
   --> $DIR/issue-41139.rs:6:23
    |
 LL |     let t : &Trait = &get_function()();

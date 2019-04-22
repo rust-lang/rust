@@ -4,7 +4,7 @@
 // Issue #19261.
 
 fn leak<'a, T>(x: T) -> &'a T {
-    (&x).clone() //~ ERROR `x` does not live long enough
+    (&x).clone() //~ ERROR cannot return value referencing function parameter `x`
 }
 
 fn main() { }

@@ -303,9 +303,8 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
     /// allowed to be split into separate Reservation and
     /// Activation phases.
     fn allow_two_phase_borrow(&self, kind: mir::BorrowKind) -> bool {
-        self.tcx.two_phase_borrows()
-            && (kind.allows_two_phase_borrow()
-                || self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
+        kind.allows_two_phase_borrow()
+            || self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref
     }
 
     /// If this is a two-phase borrow, then we will record it

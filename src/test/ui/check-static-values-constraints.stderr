@@ -89,7 +89,10 @@ error[E0507]: cannot move out of static item
   --> $DIR/check-static-values-constraints.rs:116:45
    |
 LL |     let y = { static x: Box<isize> = box 3; x };
-   |                                             ^ cannot move out of static item
+   |                                             ^
+   |                                             |
+   |                                             cannot move out of static item
+   |                                             help: consider borrowing here: `&x`
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:116:38

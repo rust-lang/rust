@@ -1,9 +1,9 @@
-error[E0507]: cannot move out of indexed content
+error[E0508]: cannot move out of type `[u8]`, a non-copy slice
   --> $DIR/unsized-exprs2.rs:22:19
    |
 LL |     udrop::<[u8]>(foo()[..]);
-   |                   ^^^^^^^^^ cannot move out of indexed content
+   |                   ^^^^^^^^^ cannot move out of here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0507`.
+For more information about this error, try `rustc --explain E0508`.

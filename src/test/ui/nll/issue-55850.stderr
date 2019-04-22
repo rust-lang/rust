@@ -3,15 +3,17 @@ error[E0597]: `s` does not live long enough
    |
 LL |         yield &s[..]
    |                ^ borrowed value does not live long enough
+LL |
 LL |     })
-   |     - borrowed value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 25:8...
-  --> $DIR/issue-55850.rs:25:8
-   |
-LL | fn bug<'a>() -> impl Iterator<Item = &'a str> {
-   |        ^^
+   |     - `s` dropped here while still borrowed
 
-error: aborting due to previous error
+error[E0626]: borrow may still be in use when generator yields
+  --> $DIR/issue-55850.rs:28:16
+   |
+LL |         yield &s[..]
+   |         -------^---- possible yield occurs here
 
-For more information about this error, try `rustc --explain E0597`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0597, E0626.
+For more information about an error, try `rustc --explain E0597`.

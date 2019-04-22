@@ -9,7 +9,7 @@ trait X { }
 impl<'a, T> X for B<'a, T> {}
 
 fn f<'a, T:'static, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
-    box B(&*v) as Box<X> //~ ERROR `*v` does not live long enough
+    box B(&*v) as Box<X> //~ ERROR cannot return value referencing local data `*v`
 }
 
 fn main() {}

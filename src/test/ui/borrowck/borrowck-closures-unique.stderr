@@ -2,68 +2,52 @@ error[E0500]: closure requires unique access to `x` but it is already borrowed
   --> $DIR/borrowck-closures-unique.rs:26:14
    |
 LL |     let c1 = || get(x);
-   |              --     - previous borrow occurs due to use of `x` in closure
+   |              --     - first borrow occurs due to use of `x` in closure
    |              |
    |              borrow occurs here
 LL |     let c2 = || set(x);
-   |              ^^     - borrow occurs due to use of `x` in closure
+   |              ^^     - second borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
 LL |     c1;
-LL | }
-   | - borrow ends here
+   |     -- first borrow later used here
 
 error[E0500]: closure requires unique access to `x` but it is already borrowed
   --> $DIR/borrowck-closures-unique.rs:32:14
    |
 LL |     let c1 = || get(x);
-   |              --     - previous borrow occurs due to use of `x` in closure
+   |              --     - first borrow occurs due to use of `x` in closure
    |              |
    |              borrow occurs here
 LL |     let c2 = || { get(x); set(x); };
-   |              ^^       - borrow occurs due to use of `x` in closure
+   |              ^^       - second borrow occurs due to use of `x` in closure
    |              |
    |              closure construction occurs here
 LL |     c1;
-LL | }
-   | - borrow ends here
+   |     -- first borrow later used here
 
 error[E0524]: two closures require unique access to `x` at the same time
   --> $DIR/borrowck-closures-unique.rs:38:14
    |
 LL |     let c1 = || set(x);
-   |              --     - previous borrow occurs due to use of `x` in closure
+   |              --     - first borrow occurs due to use of `x` in closure
    |              |
    |              first closure is constructed here
 LL |     let c2 = || set(x);
-   |              ^^     - borrow occurs due to use of `x` in closure
+   |              ^^     - second borrow occurs due to use of `x` in closure
    |              |
    |              second closure is constructed here
 LL |     c1;
-LL | }
-   | - borrow from first closure ends here
+   |     -- first borrow later used here
 
-error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/borrowck-closures-unique.rs:47:14
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
+  --> $DIR/borrowck-closures-unique.rs:43:38
    |
+LL | fn e(x: &'static mut isize) {
+   |      - help: consider changing this to be mutable: `mut x`
 LL |     let c1 = |y: &'static mut isize| x = y;
-   |              ^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow mutably
-help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
-   |
-LL |     x
-   |     ^
+   |                                      ^^^^^ cannot assign
 
-error[E0595]: closure cannot assign to immutable argument `x`
-  --> $DIR/borrowck-closures-unique.rs:52:14
-   |
-LL |     let c1 = || x = panic!();
-   |              ^^ cannot borrow mutably
-help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
-   |
-LL |     x
-   |     ^
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0500, E0595.
-For more information about an error, try `rustc --explain E0500`.
+For more information about this error, try `rustc --explain E0500`.

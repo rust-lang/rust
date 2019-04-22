@@ -10,16 +10,18 @@ impl AddAssign for Int {
 
 fn main() {
     let mut x = Int(1);
-    x   //~ error: use of moved value: `x`
-    //~^ value used here after move
+    x
+    //~^ NOTE borrow of `x` occurs here
     +=
-    x;  //~ value moved here
+    x;
+    //~^ ERROR cannot move out of `x` because it is borrowed
+    //~| move out of `x` occurs here
 
     let y = Int(2);
-    //~^ HELP make this binding mutable
+    //~^ HELP consider changing this to be mutable
     //~| SUGGESTION mut y
-    y   //~ error: cannot borrow immutable local variable `y` as mutable
-        //~| cannot borrow
+    y   //~ ERROR cannot borrow `y` as mutable, as it is not declared as mutable
+        //~| cannot borrow as mutable
     +=
     Int(1);
 }

@@ -1,0 +1,23 @@
+error[E0382]: use of moved value: `a[..]`
+  --> $DIR/borrowck-move-out-from-array.rs:7:14
+   |
+LL |     let [_, _x] = a;
+   |             -- value moved here
+LL |     let [.., _y] = a;
+   |              ^^ value used here after move
+   |
+   = note: move occurs because `a[..]` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error[E0382]: use of moved value: `a[..]`
+  --> $DIR/borrowck-move-out-from-array.rs:13:10
+   |
+LL |     let [_x, _] = a;
+   |          -- value moved here
+LL |     let [_y..] = a;
+   |          ^^ value used here after move
+   |
+   = note: move occurs because `a[..]` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0382`.

@@ -17,10 +17,8 @@ pub fn main() {
     match *x {
         [_, ref tail..] => {
             match tail {
+            //~^ ERROR cannot move out of type `[Foo]`
                 &[Foo { string: a },
-                //~^ ERROR cannot move out of type `[Foo]`
-                //~| cannot move out
-                //~| to prevent move
                   Foo { string: b }] => {
                 }
                 _ => {

@@ -1,19 +1,19 @@
-error[E0389]: cannot borrow data mutably in a `&` reference
+error[E0596]: cannot borrow `**t` as mutable, as it is behind a `&` reference
   --> $DIR/trivial-bounds-inconsistent-copy-reborrow.rs:6:5
    |
 LL | fn reborrow_mut<'a>(t: &'a &'a mut i32) -> &'a mut i32 where &'a mut i32: Copy {
-   |                        --------------- use `&'a mut &'a mut i32` here to make mutable
+   |                        --------------- help: consider changing this to be a mutable reference: `&'a mut &'a mut i32`
 LL |     *t
-   |     ^^ assignment into an immutable reference
+   |     ^^ `t` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0389]: cannot borrow data mutably in a `&` reference
+error[E0596]: cannot borrow `**t` as mutable, as it is behind a `&` reference
   --> $DIR/trivial-bounds-inconsistent-copy-reborrow.rs:10:6
    |
 LL | fn copy_reborrow_mut<'a>(t: &'a &'a mut i32) -> &'a mut i32 where &'a mut i32: Copy {
-   |                             --------------- use `&'a mut &'a mut i32` here to make mutable
+   |                             --------------- help: consider changing this to be a mutable reference: `&'a mut &'a mut i32`
 LL |     {*t}
-   |      ^^ assignment into an immutable reference
+   |      ^^ `t` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0389`.
+For more information about this error, try `rustc --explain E0596`.

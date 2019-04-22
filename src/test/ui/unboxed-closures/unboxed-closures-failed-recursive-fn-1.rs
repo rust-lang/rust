@@ -18,18 +18,20 @@ fn a() {
     };
 
     factorial = Some(Box::new(f));
+    //~^ ERROR cannot assign to `factorial` because it is borrowed
 }
 
 fn b() {
     let mut factorial: Option<Box<Fn(u32) -> u32 + 'static>> = None;
 
     let f = |x: u32| -> u32 {
-        //~^ ERROR closure may outlive the current function, but it borrows `factorial`
         let g = factorial.as_ref().unwrap();
+        //~^ ERROR `factorial` does not live long enough
         if x == 0 {1} else {x * g(x-1)}
     };
 
     factorial = Some(Box::new(f));
+    //~^ ERROR cannot assign to `factorial` because it is borrowed
 }
 
 fn main() { }

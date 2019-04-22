@@ -1,82 +1,82 @@
-error[E0596]: cannot borrow field of immutable binding as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:47:24
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:47:19
    |
 LL |     let __isize = &mut x.y;
-   |                        ^^^ cannot mutably borrow field of immutable binding
+   |                   ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow field of immutable binding as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:51:24
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:51:19
    |
 LL |     let __isize = &mut x.y;
-   |                        ^^^ cannot mutably borrow field of immutable binding
+   |                   ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow field of immutable binding as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:59:10
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:59:5
    |
 LL |     &mut x.y
-   |          ^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow field of immutable binding as mutable
-  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:63:10
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:63:5
    |
 LL |     &mut x.y
-   |          ^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^^ cannot borrow as mutable
 
-error[E0594]: cannot assign to field of immutable binding
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:67:5
    |
 LL |     x.y = 3;
-   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to field of immutable binding
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:71:5
    |
 LL |     x.y = 3;
-   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to field of immutable binding
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:75:5
    |
 LL |     x.y = 3;
-   |     ^^^^^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^ cannot assign
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:83:5
    |
 LL |     x.set(0, 0);
    |     ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:87:5
    |
 LL |     x.set(0, 0);
    |     ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:95:5
    |
 LL |     x.y_mut()
    |     ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:99:5
    |
 LL |     x.y_mut()
    |     ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:103:6
    |
 LL |     *x.y_mut() = 3;
    |      ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:107:6
    |
 LL |     *x.y_mut() = 3;
    |      ^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref.rs:111:6
    |
 LL |     *x.y_mut() = 3;
