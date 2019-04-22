@@ -75,8 +75,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 },
             );
 
-            // In constants, temp_lifetime is None for temporaries that live for the
-            // 'static lifetime. Thus we do not drop these temporaries and simply leak them.
+            // In constants, `temp_lifetime` is `None` for temporaries that live for the
+            // `'static` lifetime. Thus we do not drop these temporaries and simply leak them.
             // This is equivalent to what `let x = &foo();` does in functions. The temporary
             // is lifted to their surrounding scope. In a function that means the temporary lives
             // until just before the function returns. In constants that means it outlives the

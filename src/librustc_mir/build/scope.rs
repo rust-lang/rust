@@ -900,7 +900,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// * The variable must be in that scope.
     /// * The variable must be at the top of that scope: it's the next thing
     ///   scheduled to drop.
-    /// * The drop must be of DropKind::Storage.
+    /// * The drop must be of `DropKind::Storage`.
     ///
     /// This is used for the boolean holding the result of the match guard. We
     /// do this because:
