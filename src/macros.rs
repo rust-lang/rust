@@ -847,7 +847,7 @@ impl MacroArgParser {
         span: Span,
     ) -> Option<()> {
         let mut buffer = String::new();
-        let mut first = false;
+        let mut first = true;
         let mut lo = span.lo();
         let mut hi = span.hi();
 
