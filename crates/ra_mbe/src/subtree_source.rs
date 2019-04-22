@@ -219,17 +219,33 @@ pub(crate) trait Querier {
 #[derive(Debug)]
 pub(crate) struct WalkerOwner<'a> {
     walker: RefCell<SubTreeWalker<'a>>,
+    cached: RefCell<Vec<Option<TtToken>>>,
 }
 
 impl<'a> WalkerOwner<'a> {
     fn new<I: Into<TokenSeq<'a>>>(ts: I) -> Self {
-        WalkerOwner { walker: RefCell::new(SubTreeWalker::new(ts.into())) }
+        WalkerOwner {
+            walker: RefCell::new(SubTreeWalker::new(ts.into())),
+            cached: RefCell::new(Vec::with_capacity(10)),
+        }
     }
 
     fn get<'b>(&self, pos: usize) -> Option<TtToken> {
-        self.set_pos(pos);
-        let walker = self.walker.borrow();
-        walker.current().cloned()
+        let mut cached = self.cached.borrow_mut();
+        if pos < cached.len() {
+            return cached[pos].clone();
+        }
+
+        while pos >= cached.len() {
+            let len = cached.len();
+            cached.push({
+                self.set_pos(len);
+                let walker = self.walker.borrow();
+                walker.current().cloned()
+            });
+        }
+
+        return cached[pos].clone();
     }
 
     fn set_pos(&self, pos: usize) {
