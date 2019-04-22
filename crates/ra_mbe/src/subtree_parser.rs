@@ -5,6 +5,7 @@ use ra_syntax::{SyntaxKind};
 
 struct OffsetTokenSink {
     token_pos: usize,
+    error: bool,
 }
 
 impl TreeSink for OffsetTokenSink {
@@ -13,7 +14,9 @@ impl TreeSink for OffsetTokenSink {
     }
     fn start_node(&mut self, _kind: SyntaxKind) {}
     fn finish_node(&mut self) {}
-    fn error(&mut self, _error: ra_parser::ParseError) {}
+    fn error(&mut self, _error: ra_parser::ParseError) {
+        self.error = true;
+    }
 }
 
 pub(crate) struct Parser<'a> {
@@ -67,11 +70,15 @@ impl<'a> Parser<'a> {
         F: FnOnce(&dyn TokenSource, &mut dyn TreeSink),
     {
         let mut src = SubtreeTokenSource::new(&self.subtree.token_trees[*self.cur_pos..]);
-        let mut sink = OffsetTokenSink { token_pos: 0 };
+        let mut sink = OffsetTokenSink { token_pos: 0, error: false };
 
         f(&src, &mut sink);
 
-        self.finish(sink.token_pos, &mut src)
+        let r = self.finish(sink.token_pos, &mut src);
+        if sink.error {
+            return None;
+        }
+        r
     }
 
     fn finish(self, parsed_token: usize, src: &mut SubtreeTokenSource) -> Option<tt::TokenTree> {

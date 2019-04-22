@@ -149,3 +149,19 @@ impl fmt::Display for Punct {
         fmt::Display::fmt(&self.char, f)
     }
 }
+
+impl Subtree {
+    /// Count the number of tokens recursively
+    pub fn count(&self) -> usize {
+        let children_count = self
+            .token_trees
+            .iter()
+            .map(|c| match c {
+                TokenTree::Subtree(c) => c.count(),
+                _ => 0,
+            })
+            .sum::<usize>();
+
+        self.token_trees.len() + children_count
+    }
+}

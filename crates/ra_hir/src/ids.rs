@@ -94,6 +94,13 @@ fn parse_macro(
 
     let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
     let tt = macro_rules.expand(&macro_arg).map_err(|err| format!("{:?}", err))?;
+
+    // Set a hard limit for the expanded tt
+    let count = tt.count();
+    if count > 65536 {
+        return Err(format!("Total tokens count exceed limit : count = {}", count));
+    }
+
     Ok(mbe::token_tree_to_ast_item_list(&tt))
 }
 
