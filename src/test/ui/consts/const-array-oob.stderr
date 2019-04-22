@@ -1,5 +1,5 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const-array-oob.rs:8:19
+  --> $DIR/const-array-oob.rs:6:19
    |
 LL | const BLUB: [u32; FOO[4]] = [5, 6];
    |                   ^^^^^^ index out of bounds: the len is 3 but the index is 4

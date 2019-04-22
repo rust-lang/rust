@@ -1,4 +1,4 @@
-//~^^ ERROR
+//~ ERROR
 
 #![feature(optin_builtin_traits)]
 
