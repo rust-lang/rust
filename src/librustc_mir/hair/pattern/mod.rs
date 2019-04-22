@@ -986,6 +986,8 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
             ty::Ref(_, ty::TyS { sty: ty::Adt(adt_def, _), .. }, _)
             if !self.tcx.has_attr(adt_def.did, "structural_match") => {
+                // HACK(estebank): Side-step ICE #53708, but anything other than erroring here
+                // would be wrong. Returnging `PatternKind::Wild` is not technically correct.
                 let path = self.tcx.def_path_str(adt_def.did);
                 let msg = format!(
                     "to use a constant of type `{}` in a pattern, \
