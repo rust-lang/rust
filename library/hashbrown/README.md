@@ -62,7 +62,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-hashbrown = "0.2"
+hashbrown = "0.3"
 ```
 
 This crate has the following Cargo features:
