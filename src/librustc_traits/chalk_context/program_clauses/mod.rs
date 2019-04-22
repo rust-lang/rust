@@ -96,8 +96,27 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     );
                 }
 
+                if Some(trait_predicate.def_id()) == self.infcx.tcx.lang_items().copy_trait() {
+                    assemble_builtin_copy_clone_impls(
+                        self.infcx.tcx,
+                        trait_predicate.def_id(),
+                        trait_predicate.self_ty(),
+                        &mut clauses
+                    );
+                }
+
+                if Some(trait_predicate.def_id()) == self.infcx.tcx.lang_items().clone_trait() {
+                    // For all builtin impls, the conditions for `Copy` and
+                    // `Clone` are the same.
+                    assemble_builtin_copy_clone_impls(
+                        self.infcx.tcx,
+                        trait_predicate.def_id(),
+                        trait_predicate.self_ty(),
+                        &mut clauses
+                    );
+                }
+
                 // FIXME: we need to add special rules for other builtin impls:
-                // * `Copy` / `Clone`
                 // * `Generator`
                 // * `FnOnce` / `FnMut` / `Fn`
                 // * trait objects
