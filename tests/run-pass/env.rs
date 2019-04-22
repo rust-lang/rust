@@ -1,4 +1,4 @@
-//ignore-windows: env var emulation not implemented on Windows
+//ignore-windows: TODO env var emulation stubbed out on Windows
 
 use std::env;
 

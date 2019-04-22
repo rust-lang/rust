@@ -1,9 +1,32 @@
-//ignore-windows: inspects allocation base address on Windows
-
 #![feature(allocator_api)]
 
 use std::ptr::NonNull;
 use std::alloc::{Global, Alloc, Layout, System};
+use std::slice;
+
+fn check_alloc<T: Alloc>(mut allocator: T) { unsafe {
+    let layout = Layout::from_size_align(20, 4).unwrap();
+    let a = allocator.alloc(layout).unwrap();
+    allocator.dealloc(a, layout);
+
+    let p1 = allocator.alloc_zeroed(layout).unwrap();
+
+    let p2 = allocator.realloc(p1, Layout::from_size_align(20, 4).unwrap(), 40).unwrap();
+    let slice = slice::from_raw_parts(p2.as_ptr(), 20);
+    assert_eq!(&slice, &[0_u8; 20]);
+
+    // old size == new size
+    let p3 = allocator.realloc(p2, Layout::from_size_align(40, 4).unwrap(), 40).unwrap();
+    let slice = slice::from_raw_parts(p3.as_ptr(), 20);
+    assert_eq!(&slice, &[0_u8; 20]);
+
+    // old size > new size
+    let p4 = allocator.realloc(p3, Layout::from_size_align(40, 4).unwrap(), 10).unwrap();
+    let slice = slice::from_raw_parts(p4.as_ptr(), 10);
+    assert_eq!(&slice, &[0_u8; 10]);
+
+    allocator.dealloc(p4, Layout::from_size_align(10, 4).unwrap());
+} }
 
 fn check_overalign_requests<T: Alloc>(mut allocator: T) {
     let size = 8;
@@ -50,6 +73,9 @@ fn box_to_global() {
 }
 
 fn main() {
+    check_alloc(System);
+    check_alloc(Global);
+    #[cfg(not(target_os = "windows"))] // TODO: Inspects allocation base address on Windows; needs intptrcast model
     check_overalign_requests(System);
     check_overalign_requests(Global);
     global_to_box();

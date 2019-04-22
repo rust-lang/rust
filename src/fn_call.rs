@@ -50,6 +50,86 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         Ok(Some(this.load_mir(instance.def)?))
     }
 
+    fn malloc(
+        &mut self,
+        size: u64,
+        zero_init: bool,
+    ) -> Scalar<Tag> {
+        let this = self.eval_context_mut();
+        let tcx = &{this.tcx.tcx};
+        if size == 0 {
+            Scalar::from_int(0, this.pointer_size())
+        } else {
+            let align = this.tcx.data_layout.pointer_align.abi;
+            let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
+            if zero_init {
+                // We just allocated this, the access cannot fail
+                this.memory_mut()
+                    .get_mut(ptr.alloc_id).unwrap()
+                    .write_repeat(tcx, ptr, 0, Size::from_bytes(size)).unwrap();
+            }
+            Scalar::Ptr(ptr)
+        }
+    }
+
+    fn free(
+        &mut self,
+        ptr: Scalar<Tag>,
+    ) -> EvalResult<'tcx> {
+        let this = self.eval_context_mut();
+        if !ptr.is_null_ptr(this) {
+            this.memory_mut().deallocate(
+                ptr.to_ptr()?,
+                None,
+                MiriMemoryKind::C.into(),
+            )?;
+        }
+        Ok(())
+    }
+
+    fn realloc(
+        &mut self,
+        old_ptr: Scalar<Tag>,
+        new_size: u64,
+    ) -> EvalResult<'tcx, Scalar<Tag>> {
+        let this = self.eval_context_mut();
+        let align = this.tcx.data_layout.pointer_align.abi;
+        if old_ptr.is_null_ptr(this) {
+            if new_size == 0 {
+                Ok(Scalar::from_int(0, this.pointer_size()))
+            } else {
+                let new_ptr = this.memory_mut().allocate(
+                    Size::from_bytes(new_size),
+                    align,
+                    MiriMemoryKind::C.into()
+                );
+                Ok(Scalar::Ptr(new_ptr))
+            }
+        } else {
+            let old_ptr = old_ptr.to_ptr()?;
+            let memory = this.memory_mut();
+            let old_size = Size::from_bytes(memory.get(old_ptr.alloc_id)?.bytes.len() as u64);
+            if new_size == 0 {
+                memory.deallocate(
+                    old_ptr,
+                    Some((old_size, align)),
+                    MiriMemoryKind::C.into(),
+                )?;
+                Ok(Scalar::from_int(0, this.pointer_size()))
+            } else {
+                let new_ptr = memory.reallocate(
+                    old_ptr,
+                    old_size,
+                    align,
+                    Size::from_bytes(new_size),
+                    align,
+                    MiriMemoryKind::C.into(),
+                )?;
+                Ok(Scalar::Ptr(new_ptr))
+            }
+        }
+    }
+
     /// Emulates calling a foreign item, failing if the item is not supported.
     /// This function will handle `goto_block` if needed.
     fn emulate_foreign_item(
@@ -95,28 +175,15 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         match link_name {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_usize(this)?;
-                if size == 0 {
-                    this.write_null(dest)?;
-                } else {
-                    let align = this.tcx.data_layout.pointer_align.abi;
-                    let ptr = this.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into());
-                    this.write_scalar(Scalar::Ptr(ptr), dest)?;
-                }
+                let res = this.malloc(size, /*zero_init:*/ false);
+                this.write_scalar(res, dest)?;
             }
             "calloc" => {
                 let items = this.read_scalar(args[0])?.to_usize(this)?;
                 let len = this.read_scalar(args[1])?.to_usize(this)?;
-                let bytes = items.checked_mul(len).ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
-
-                if bytes == 0 {
-                    this.write_null(dest)?;
-                } else {
-                    let size = Size::from_bytes(bytes);
-                    let align = this.tcx.data_layout.pointer_align.abi;
-                    let ptr = this.memory_mut().allocate(size, align, MiriMemoryKind::C.into());
-                    this.memory_mut().get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, size)?;
-                    this.write_scalar(Scalar::Ptr(ptr), dest)?;
-                }
+                let size = items.checked_mul(len).ok_or_else(|| InterpError::Overflow(mir::BinOp::Mul))?;
+                let res = this.malloc(size, /*zero_init:*/ true);
+                this.write_scalar(res, dest)?;
             }
             "posix_memalign" => {
                 let ret = this.deref_operand(args[0])?;
@@ -144,55 +211,15 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 }
                 this.write_null(dest)?;
             }
-
             "free" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
-                if !ptr.is_null_ptr(this) {
-                    this.memory_mut().deallocate(
-                        ptr.to_ptr()?,
-                        None,
-                        MiriMemoryKind::C.into(),
-                    )?;
-                }
+                this.free(ptr)?;
             }
             "realloc" => {
                 let old_ptr = this.read_scalar(args[0])?.not_undef()?;
                 let new_size = this.read_scalar(args[1])?.to_usize(this)?;
-                let align = this.tcx.data_layout.pointer_align.abi;
-                if old_ptr.is_null_ptr(this) {
-                    if new_size == 0 {
-                        this.write_null(dest)?;
-                    } else {
-                        let new_ptr = this.memory_mut().allocate(
-                            Size::from_bytes(new_size),
-                            align,
-                            MiriMemoryKind::C.into()
-                        );
-                        this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
-                    }
-                } else {
-                    let old_ptr = old_ptr.to_ptr()?;
-                    let memory = this.memory_mut();
-                    let old_size = Size::from_bytes(memory.get(old_ptr.alloc_id)?.bytes.len() as u64);
-                    if new_size == 0 {
-                        memory.deallocate(
-                            old_ptr,
-                            Some((old_size, align)),
-                            MiriMemoryKind::C.into(),
-                        )?;
-                        this.write_null(dest)?;
-                    } else {
-                        let new_ptr = memory.reallocate(
-                            old_ptr,
-                            old_size,
-                            align,
-                            Size::from_bytes(new_size),
-                            align,
-                            MiriMemoryKind::C.into(),
-                        )?;
-                        this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
-                    }
-                }
+                let res = this.realloc(old_ptr, new_size)?;
+                this.write_scalar(res, dest)?;
             }
 
             "__rust_alloc" => {
@@ -279,19 +306,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                 match this.read_scalar(args[0])?.to_usize(this)? {
                     id if id == sys_getrandom => {
-                        let ptr = this.read_scalar(args[1])?.to_ptr()?;
+                        let ptr = this.read_scalar(args[1])?.not_undef()?;
                         let len = this.read_scalar(args[2])?.to_usize(this)?;
 
                         // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
                         // neither of which have any effect on our current PRNG
                         let _flags = this.read_scalar(args[3])?.to_i32()?;
 
-                        if len > 0 {
-                            let data = gen_random(this, len as usize)?;
-                            this.memory_mut().get_mut(ptr.alloc_id)?
-                                        .write_bytes(tcx, ptr, &data)?;
-                        }
-
+                        gen_random(this, len as usize, ptr)?;
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
@@ -693,8 +715,43 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             "_NSGetArgv" => {
                 this.write_scalar(Scalar::Ptr(this.machine.argv.unwrap()), dest)?;
             },
+            "SecRandomCopyBytes" => {
+                let len = this.read_scalar(args[1])?.to_usize(this)?;
+                let ptr = this.read_scalar(args[2])?.not_undef()?;
+                gen_random(this, len as usize, ptr)?;
+                this.write_null(dest)?;
+            }
 
             // Windows API stubs.
+            // HANDLE = isize
+            // DWORD = ULONG = u32
+            "GetProcessHeap" => {
+                // Just fake a HANDLE
+                this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;
+            }
+            "HeapAlloc" => {
+                let _handle = this.read_scalar(args[0])?.to_isize(this)?;
+                let flags = this.read_scalar(args[1])?.to_u32()?;
+                let size = this.read_scalar(args[2])?.to_usize(this)?;
+                let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
+                let res = this.malloc(size, zero_init);
+                this.write_scalar(res, dest)?;
+            }
+            "HeapFree" => {
+                let _handle = this.read_scalar(args[0])?.to_isize(this)?;
+                let _flags = this.read_scalar(args[1])?.to_u32()?;
+                let ptr = this.read_scalar(args[2])?.not_undef()?;
+                this.free(ptr)?;
+            }
+            "HeapReAlloc" => {
+                let _handle = this.read_scalar(args[0])?.to_isize(this)?;
+                let _flags = this.read_scalar(args[1])?.to_u32()?;
+                let ptr = this.read_scalar(args[2])?.not_undef()?;
+                let size = this.read_scalar(args[3])?.to_usize(this)?;
+                let res = this.realloc(ptr, size)?;
+                this.write_scalar(res, dest)?;
+            }
+
             "SetLastError" => {
                 let err = this.read_scalar(args[0])?.to_u32()?;
                 this.machine.last_error = err;
@@ -818,15 +875,9 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
             // The actual name of 'RtlGenRandom'
             "SystemFunction036" => {
-                let ptr = this.read_scalar(args[0])?.to_ptr()?;
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let len = this.read_scalar(args[1])?.to_u32()?;
-
-                if len > 0 {
-                    let data = gen_random(this, len as usize)?;
-                    this.memory_mut().get_mut(ptr.alloc_id)?
-                        .write_bytes(tcx, ptr, &data)?;
-                }
-
+                gen_random(this, len as usize, ptr)?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
 
@@ -867,21 +918,30 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 fn gen_random<'a, 'mir, 'tcx>(
     this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
     len: usize,
-) -> Result<Vec<u8>, EvalError<'tcx>>  {
+    dest: Scalar<Tag>,
+) -> EvalResult<'tcx>  {
+    if len == 0 {
+        // Nothing to do
+        return Ok(());
+    }
+    let ptr = dest.to_ptr()?;
 
-    match &mut this.machine.rng {
+    let data = match &mut this.machine.rng {
         Some(rng) => {
             let mut data = vec![0; len];
             rng.fill_bytes(&mut data);
-            Ok(data)
+            data
         }
         None => {
-            err!(Unimplemented(
+            return err!(Unimplemented(
                 "miri does not support gathering system entropy in deterministic mode!
                 Use '-Zmiri-seed=<seed>' to enable random number generation.
                 WARNING: Miri does *not* generate cryptographically secure entropy -
                 do not use Miri to run any program that needs secure random number generation".to_owned(),
-            ))
+            ));
         }
-    }
+    };
+    let tcx = &{this.tcx.tcx};
+    this.memory_mut().get_mut(ptr.alloc_id)?
+        .write_bytes(tcx, ptr, &data)
 }

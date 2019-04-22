@@ -5,11 +5,17 @@ Assumes the `MIRI_SYSROOT` env var to be set appropriately,
 and the working directory to contain the cargo-miri-test project.
 '''
 
-import sys, subprocess
+import sys, subprocess, os
 
 def fail(msg):
     print("TEST FAIL: {}".format(msg))
     sys.exit(1)
+
+def cargo_miri(cmd):
+    args = ["cargo", "miri", cmd, "-q"]
+    if 'MIRI_TEST_TARGET' in os.environ:
+        args += ["--target", os.environ['MIRI_TEST_TARGET']]
+    return args
 
 def test(name, cmd, stdout_ref, stderr_ref):
     print("==> Testing `{}` <==".format(name))
@@ -36,20 +42,29 @@ def test(name, cmd, stdout_ref, stderr_ref):
         fail("stderr does not match reference")
 
 def test_cargo_miri_run():
-    test("cargo miri run", ["cargo", "miri", "run", "-q"], "stdout.ref", "stderr.ref")
+    test("cargo miri run",
+        cargo_miri("run"),
+        "stdout.ref", "stderr.ref"
+    )
     test("cargo miri run (with arguments)",
-        ["cargo", "miri", "run", "-q", "--", "--", "hello world", '"hello world"'],
+        cargo_miri("run") + ["--", "--", "hello world", '"hello world"'],
         "stdout.ref", "stderr.ref2"
     )
 
 def test_cargo_miri_test():
-    test("cargo miri test", ["cargo", "miri", "test", "-q", "--", "-Zmiri-seed=feed"], "test.stdout.ref", "test.stderr.ref")
+    test("cargo miri test",
+        cargo_miri("test") + ["--", "-Zmiri-seed=feed"],
+        "test.stdout.ref", "test.stderr.ref"
+    )
     test("cargo miri test (with filter)",
-        ["cargo", "miri", "test", "-q", "--", "--", "impl"],
+        cargo_miri("test") + ["--", "--", "impl"],
         "test.stdout.ref2", "test.stderr.ref"
     )
 
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
 test_cargo_miri_run()
 test_cargo_miri_test()
+
 print("TEST SUCCESSFUL!")
 sys.exit(0)

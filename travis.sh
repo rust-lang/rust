@@ -3,13 +3,14 @@ set -euo pipefail
 
 # Determine configuration
 if [ "$TRAVIS_OS_NAME" == osx ]; then
-  export MIRI_SYSROOT_BASE=~/Library/Caches/miri.miri.miri/
+  MIRI_SYSROOT_BASE=~/Library/Caches/miri.miri.miri/
   FOREIGN_TARGET=i686-apple-darwin
 else
-  export MIRI_SYSROOT_BASE=~/.cache/miri/
+  MIRI_SYSROOT_BASE=~/.cache/miri/
   FOREIGN_TARGET=i686-unknown-linux-gnu
 fi
 
+# Prepare
 echo "Build and install miri"
 cargo build --release --all-features --all-targets
 cargo install --all-features --force --path .
@@ -20,11 +21,18 @@ cargo miri setup
 cargo miri setup --target "$FOREIGN_TARGET"
 echo
 
-echo "Test miri with full MIR, on the host and other architectures"
-MIRI_SYSROOT="$MIRI_SYSROOT_BASE"/HOST cargo test --release --all-features
-MIRI_SYSROOT="$MIRI_SYSROOT_BASE" MIRI_COMPILETEST_TARGET="$FOREIGN_TARGET" cargo test --release --all-features
+# Test
+function run_tests {
+  cargo test --release --all-features
+  test-cargo-miri/run-test.py
+}
+
+echo "Test host architecture"
+export MIRI_SYSROOT="$MIRI_SYSROOT_BASE"/HOST
+run_tests
 echo
 
-echo "Test cargo integration"
-(cd test-cargo-miri && MIRI_SYSROOT="$MIRI_SYSROOT_BASE"/HOST ./run-test.py)
+echo "Test foreign architecture ($FOREIGN_TARGET)"
+export MIRI_SYSROOT="$MIRI_SYSROOT_BASE" MIRI_TEST_TARGET="$FOREIGN_TARGET"
+run_tests
 echo
