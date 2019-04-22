@@ -37,8 +37,10 @@ pub(crate) fn fill_struct_fields(mut ctx: AssistCtx<impl HirDatabase>) -> Option
         };
 
         for field in fields {
-            let field =
-                AstBuilder::<ast::NamedField>::from_text(&format!("{}: ()", field.name(db)));
+            let field = AstBuilder::<ast::NamedField>::from_pieces(
+                &AstBuilder::<ast::NameRef>::new(&field.name(db).to_string()),
+                Some(&AstBuilder::<ast::Expr>::unit()),
+            );
             ast_editor.append_field(&field);
         }
 

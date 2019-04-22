@@ -37,7 +37,7 @@ pub struct AssistAction {
     pub target: Option<TextRange>,
 }
 
-/// Return all the assists applicable at the given position.
+/// Return all the assists eapplicable at the given position.
 ///
 /// Assists are returned in the "unresolved" state, that is only labels are
 /// returned, without actual edits.

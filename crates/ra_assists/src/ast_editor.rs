@@ -137,8 +137,31 @@ pub struct AstBuilder<N: AstNode> {
 }
 
 impl AstBuilder<ast::NamedField> {
-    pub fn from_text(text: &str) -> TreeArc<ast::NamedField> {
+    fn from_text(text: &str) -> TreeArc<ast::NamedField> {
         ast_node_from_file_text(&format!("fn f() {{ S {{ {}, }} }}", text))
+    }
+
+    pub fn from_pieces(name: &ast::NameRef, expr: Option<&ast::Expr>) -> TreeArc<ast::NamedField> {
+        match expr {
+            Some(expr) => Self::from_text(&format!("{}: {}", name.syntax(), expr.syntax())),
+            None => Self::from_text(&name.syntax().to_string()),
+        }
+    }
+}
+
+impl AstBuilder<ast::Expr> {
+    fn from_text(text: &str) -> TreeArc<ast::Expr> {
+        ast_node_from_file_text(&format!("fn f() {{ {}; }}", text))
+    }
+
+    pub fn unit() -> TreeArc<ast::Expr> {
+        Self::from_text("()")
+    }
+}
+
+impl AstBuilder<ast::NameRef> {
+    pub fn new(text: &str) -> TreeArc<ast::NameRef> {
+        ast_node_from_file_text(&format!("fn f() {{ {}; }}", text))
     }
 }
 
