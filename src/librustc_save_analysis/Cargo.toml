@@ -16,9 +16,8 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_target = { path = "../librustc_target" }
 rustc_typeck = { path = "../librustc_typeck" }
+serde_json = "1"
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-rls-data = "0.18.1"
-rls-span = "0.4"
-# FIXME(#40527) should move rustc serialize out of tree
-rustc-serialize = "0.3"
+rls-data = "0.19"
+rls-span = "0.5"

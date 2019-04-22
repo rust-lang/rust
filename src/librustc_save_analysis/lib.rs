@@ -1141,10 +1141,15 @@ fn find_config(supplied: Option<Config>) -> Config {
     if let Some(config) = supplied {
         return config;
     }
+
     match env::var_os("RUST_SAVE_ANALYSIS_CONFIG") {
-        Some(config_string) => rustc_serialize::json::decode(config_string.to_str().unwrap())
-            .expect("Could not deserialize save-analysis config"),
         None => Config::default(),
+        Some(config) => config.to_str()
+            .ok_or(())
+            .map_err(|_| error!("`RUST_SAVE_ANALYSIS_CONFIG` isn't UTF-8"))
+            .and_then(|cfg|  serde_json::from_str(cfg)
+                .map_err(|_| error!("Could not deserialize save-analysis config"))
+            ).unwrap_or_default()
     }
 }
 
