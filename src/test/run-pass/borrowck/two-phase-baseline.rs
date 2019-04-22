@@ -1,5 +1,4 @@
 // run-pass
-// compile-flags: -Z borrowck=mir -Z two-phase-borrows
 
 // This is the "goto example" for why we want two phase borrows.
 

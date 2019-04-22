@@ -3,8 +3,8 @@
 // outlive the location in which the type appears, even when the
 // associted type is in a supertype. Issue #22246.
 
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
+// revisions: migrate nll
+//[nll]compile-flags: -Z borrowck=mir
 
 #![allow(dead_code)]
 
@@ -40,11 +40,9 @@ fn with_assoc<'a,'b>() {
     // outlive 'a. In this case, that means TheType<'b>::TheAssocType,
     // which is &'b (), must outlive 'a.
 
-    // FIXME (#54943) NLL doesn't enforce WF condition in unreachable code if
-    // `_x` is changed to `_`
-    let _x: &'a WithAssoc<TheType<'b>> = loop { };
-    //[ast]~^ ERROR reference has a longer lifetime
-    //[mir]~^^ ERROR lifetime may not live long enough
+    let _: &'a WithAssoc<TheType<'b>> = loop { };
+    //[migrate]~^ ERROR reference has a longer lifetime
+    //[nll]~^^ ERROR lifetime may not live long enough
 }
 
 fn main() {

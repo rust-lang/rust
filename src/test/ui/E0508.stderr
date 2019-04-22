@@ -5,7 +5,7 @@ LL |     let _value = array[0];
    |                  ^^^^^^^^
    |                  |
    |                  cannot move out of here
-   |                  help: consider using a reference instead: `&array[0]`
+   |                  help: consider borrowing here: `&array[0]`
 
 error: aborting due to previous error
 

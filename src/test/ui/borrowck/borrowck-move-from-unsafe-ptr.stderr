@@ -5,7 +5,7 @@ LL |     let y = *x;
    |             ^^
    |             |
    |             cannot move out of dereference of raw pointer
-   |             help: consider using a reference instead: `&*x`
+   |             help: consider removing the `*`: `x`
 
 error: aborting due to previous error
 

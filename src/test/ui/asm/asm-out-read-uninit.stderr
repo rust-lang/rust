@@ -1,0 +1,9 @@
+error[E0381]: use of possibly uninitialized variable: `x`
+  --> $DIR/asm-out-read-uninit.rs:22:43
+   |
+LL |         asm!("mov $1, $0" : "=r"(x) : "r"(x));
+   |                                           ^ use of possibly uninitialized `x`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

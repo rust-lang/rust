@@ -32,7 +32,6 @@ fn foo(n: i32) {
 
         A { a: v } if *v == 42 => v,
         //[no_gate]~^ ERROR cannot bind by-move into a pattern guard
-        //[gate_and_2015]~^^ ERROR cannot bind by-move into a pattern guard
 
         _ => Box::new(0)
     };
@@ -42,6 +41,7 @@ fn foo(n: i32) {
 fn main() {
     foo(107)
 }
-//[gate_and_2018]~^^^ ERROR compilation successful
-//[gate_and_znll]~^^^^ ERROR compilation successful
-//[gate_and_feature_nll]~^^^^^ ERROR compilation successful
+//[gate_and_2015]~^^^ ERROR compilation successful
+//[gate_and_2018]~^^^^ ERROR compilation successful
+//[gate_and_znll]~^^^^^ ERROR compilation successful
+//[gate_and_feature_nll]~^^^^^^ ERROR compilation successful

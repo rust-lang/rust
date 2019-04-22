@@ -1,44 +1,44 @@
-error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:23:24
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:23:19
    |
 LL |     let __isize = &mut *x;
-   |                        ^^ cannot borrow as mutable
+   |                   ^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:27:24
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:27:19
    |
 LL |     let __isize = &mut *x;
-   |                        ^^ cannot borrow as mutable
+   |                   ^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:35:10
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:35:5
    |
 LL |     &mut **x
-   |          ^^^ cannot borrow as mutable
+   |     ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable borrowed content as mutable
-  --> $DIR/borrowck-borrow-overloaded-deref.rs:39:10
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/borrowck-borrow-overloaded-deref.rs:39:5
    |
 LL |     &mut **x
-   |          ^^^ cannot borrow as mutable
+   |     ^^^^^^^^ cannot borrow as mutable
 
-error[E0594]: cannot assign to immutable borrowed content
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref.rs:43:5
    |
 LL |     *x = 3;
-   |     ^^^^^^ cannot borrow as mutable
+   |     ^^^^^^ cannot assign
 
-error[E0594]: cannot assign to immutable borrowed content
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref.rs:47:5
    |
 LL |     **x = 3;
-   |     ^^^^^^^ cannot borrow as mutable
+   |     ^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to immutable borrowed content
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/borrowck-borrow-overloaded-deref.rs:51:5
    |
 LL |     **x = 3;
-   |     ^^^^^^^ cannot borrow as mutable
+   |     ^^^^^^^ cannot assign
 
 error: aborting due to 7 previous errors
 

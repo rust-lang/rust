@@ -2,35 +2,64 @@ error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-move-error-with-note.rs:11:11
    |
 LL |     match *f {
-   |           ^^ cannot move out of borrowed content
+   |           ^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider removing the `*`: `f`
 LL |
 LL |         Foo::Foo1(num1,
-   |                   ---- hint: to prevent move, use `ref num1` or `ref mut num1`
+   |                   ---- data moved here
 LL |                   num2) => (),
-   |                   ---- ...and here (use `ref num2` or `ref mut num2`)
+   |                   ---- ...and here
 LL |         Foo::Foo2(num) => (),
-   |                   --- ...and here (use `ref num` or `ref mut num`)
+   |                   --- ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/borrowck-move-error-with-note.rs:13:19
+   |
+LL |         Foo::Foo1(num1,
+   |                   ^^^^
+LL |                   num2) => (),
+   |                   ^^^^
+LL |         Foo::Foo2(num) => (),
+   |                   ^^^
 
 error[E0509]: cannot move out of type `S`, which implements the `Drop` trait
-  --> $DIR/borrowck-move-error-with-note.rs:30:9
+  --> $DIR/borrowck-move-error-with-note.rs:29:11
    |
-LL | /         S {
-LL | |
-LL | |             f: _s,
-   | |                -- hint: to prevent move, use `ref _s` or `ref mut _s`
-LL | |             g: _t
-   | |                -- ...and here (use `ref _t` or `ref mut _t`)
-LL | |         } => {}
-   | |_________^ cannot move out of here
+LL |     match (S {f: "foo".to_string(), g: "bar".to_string()}) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of here
+...
+LL |             f: _s,
+   |                -- data moved here
+LL |             g: _t
+   |                -- ...and here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/borrowck-move-error-with-note.rs:33:16
+   |
+LL |             f: _s,
+   |                ^^
+LL |             g: _t
+   |                ^^
 
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-move-error-with-note.rs:47:11
+  --> $DIR/borrowck-move-error-with-note.rs:48:11
    |
 LL |     match a.a {
-   |           ^ cannot move out of borrowed content
+   |           ^^^
+   |           |
+   |           cannot move out of borrowed content
+   |           help: consider borrowing here: `&a.a`
 LL |
 LL |         n => {
-   |         - hint: to prevent move, use `ref n` or `ref mut n`
+   |         - data moved here
+   |
+note: move occurs because `n` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
+  --> $DIR/borrowck-move-error-with-note.rs:50:9
+   |
+LL |         n => {
+   |         ^
 
 error: aborting due to 3 previous errors
 

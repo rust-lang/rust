@@ -1,17 +1,16 @@
-error[E0502]: cannot borrow `*ptr` as immutable because `ptr` is also borrowed as mutable
-  --> $DIR/issue-11192.rs:20:11
+error[E0502]: cannot borrow `*ptr` as immutable because it is also borrowed as mutable
+  --> $DIR/issue-11192.rs:20:10
    |
 LL |     let mut test = |foo: &Foo| {
    |                    ----------- mutable borrow occurs here
 LL |         println!("access {}", foo.x);
 LL |         ptr = box Foo { x: ptr.x + 1 };
-   |         --- previous borrow occurs due to use of `ptr` in closure
+   |         --- first borrow occurs due to use of `ptr` in closure
 ...
 LL |     test(&*ptr);
-   |           ^^^^ immutable borrow occurs here
-LL |
-LL | }
-   | - mutable borrow ends here
+   |     ---- ^^^^^ immutable borrow occurs here
+   |     |
+   |     mutable borrow later used by call
 
 error: aborting due to previous error
 

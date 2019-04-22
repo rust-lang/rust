@@ -1,0 +1,9 @@
+error[E0381]: use of possibly uninitialized variable: `origin`
+  --> $DIR/borrowck-init-in-fru.rs:9:5
+   |
+LL |     origin = Point { x: 10, ..origin };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ use of possibly uninitialized `origin.y`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0381`.

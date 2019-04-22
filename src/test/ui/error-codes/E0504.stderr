@@ -1,12 +1,17 @@
-error[E0504]: cannot move `fancy_num` into closure because it is borrowed
-  --> $DIR/E0504.rs:10:40
+error[E0505]: cannot move out of `fancy_num` because it is borrowed
+  --> $DIR/E0504.rs:9:13
    |
 LL |     let fancy_ref = &fancy_num;
-   |                      --------- borrow of `fancy_num` occurs here
-...
+   |                     ---------- borrow of `fancy_num` occurs here
+LL | 
+LL |     let x = move || {
+   |             ^^^^^^^ move out of `fancy_num` occurs here
 LL |         println!("child function: {}", fancy_num.num);
-   |                                        ^^^^^^^^^ move into closure occurs here
+   |                                        --------- move occurs due to use in closure
+...
+LL |     println!("main function: {}", fancy_ref.num);
+   |                                   ------------- borrow later used here
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0504`.
+For more information about this error, try `rustc --explain E0505`.

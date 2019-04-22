@@ -7,8 +7,8 @@
 fn escaping_borrow_of_closure_params_1() {
     let g = |x: usize, y:usize| {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-        //~^ ERROR `x` does not live long enough
-        //~| ERROR `y` does not live long enough
+        //~^ ERROR E0373
+        //~| ERROR E0373
         return f;
     };
 
@@ -22,8 +22,8 @@ fn escaping_borrow_of_closure_params_1() {
 fn escaping_borrow_of_closure_params_2() {
     let g = |x: usize, y:usize| {
         let f = |t: bool| if t { x } else { y }; // (separate errors for `x` vs `y`)
-        //~^ ERROR `x` does not live long enough
-        //~| ERROR `y` does not live long enough
+        //~^ ERROR E0373
+        //~| ERROR E0373
         f
     };
 

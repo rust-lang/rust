@@ -1,8 +1,10 @@
-error[E0381]: capture of possibly uninitialized variable: `x`
+error[E0381]: borrow of possibly uninitialized variable: `x`
   --> $DIR/borrowck-block-unint.rs:4:11
    |
 LL |     force(|| {
    |           ^^ use of possibly uninitialized `x`
+LL |         println!("{}", x);
+   |                        - borrow occurs due to use in closure
 
 error: aborting due to previous error
 

@@ -4,15 +4,15 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                            ^^^^^^^^ statics cannot evaluate destructors
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:9:60
    |
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                            ^^^^^^^^- temporary value only lives until here
-   |                                                            |
-   |                                                            temporary value does not live long enough
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |                                                      ------^^^^^^^^-
+   |                                                      |     |       |
+   |                                                      |     |       temporary value is freed at the end of this statement
+   |                                                      |     creates a temporary which is freed while still in use
+   |                                                      using this value as a static requires that borrow lasts for `'static`
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:13:59
@@ -20,15 +20,15 @@ error[E0493]: destructors cannot be evaluated at compile-time
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
    |                                                           ^^^^^^^^ constants cannot evaluate destructors
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:13:59
    |
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                           ^^^^^^^^- temporary value only lives until here
-   |                                                           |
-   |                                                           temporary value does not live long enough
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |                                                     ------^^^^^^^^-
+   |                                                     |     |       |
+   |                                                     |     |       temporary value is freed at the end of this statement
+   |                                                     |     creates a temporary which is freed while still in use
+   |                                                     using this value as a constant requires that borrow lasts for `'static`
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:17:28
@@ -68,4 +68,4 @@ LL | const EARLY_DROP_C_OPTION_CONSTANT: i32 = (HELPER, 0).1;
 
 error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0716`.

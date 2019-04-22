@@ -7,7 +7,7 @@ fn call1<'a>(x: &'a usize) {
     // &'a &'z usize requires that 'a <= 'z:
     let y: usize = 3;
     let z: &'a & usize = &(&y);
-    //~^ ERROR borrowed value does not live long enough
+    //~^ ERROR temporary value dropped while borrowed
     //~^^ ERROR `y` does not live long enough
 }
 

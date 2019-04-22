@@ -1,7 +1,4 @@
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
-#![feature(rustc_attrs)]
+// compile-pass
 
 enum Sexpression {
     Num(()),
@@ -11,12 +8,13 @@ enum Sexpression {
 fn causes_error_in_ast(mut l: &mut Sexpression) {
     loop { match l {
         &mut Sexpression::Num(ref mut n) => {},
-        &mut Sexpression::Cons(ref mut expr) => { //[ast]~ ERROR [E0499]
-            l = &mut **expr; //[ast]~ ERROR [E0506]
+        &mut Sexpression::Cons(ref mut expr) => {
+            l = &mut **expr;
         }
     }}
 }
 
-#[rustc_error]
-fn main() { //[mir]~ ERROR compilation successful
+
+fn main() {
+    causes_error_in_ast(&mut Sexpression::Num(()));
 }

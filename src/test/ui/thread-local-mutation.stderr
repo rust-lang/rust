@@ -1,8 +1,8 @@
-error[E0594]: cannot assign to immutable thread-local static item
+error[E0594]: cannot assign to immutable static item `S`
   --> $DIR/thread-local-mutation.rs:11:5
    |
 LL |     S = "after";
-   |     ^^^^^^^^^^^
+   |     ^^^^^^^^^^^ cannot assign
 
 error: aborting due to previous error
 

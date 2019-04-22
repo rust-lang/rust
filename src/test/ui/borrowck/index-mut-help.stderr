@@ -1,4 +1,4 @@
-error[E0596]: cannot borrow immutable indexed content as mutable
+error[E0596]: cannot borrow data in a `&` reference as mutable
   --> $DIR/index-mut-help.rs:11:5
    |
 LL |     map["peter"].clear();
@@ -6,19 +6,17 @@ LL |     map["peter"].clear();
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
 
-error[E0594]: cannot assign to immutable indexed content
+error[E0594]: cannot assign to data in a `&` reference
   --> $DIR/index-mut-help.rs:12:5
    |
 LL |     map["peter"] = "0".to_string();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot borrow as mutable
-   |
-   = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
+   |     ^^^^^^^^^^^^ cannot assign
 
-error[E0596]: cannot borrow immutable indexed content as mutable
-  --> $DIR/index-mut-help.rs:13:18
+error[E0596]: cannot borrow data in a `&` reference as mutable
+  --> $DIR/index-mut-help.rs:13:13
    |
 LL |     let _ = &mut map["peter"];
-   |                  ^^^^^^^^^^^^ cannot borrow as mutable
+   |             ^^^^^^^^^^^^^^^^^ cannot borrow as mutable
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `std::collections::HashMap<&str, std::string::String>`
 

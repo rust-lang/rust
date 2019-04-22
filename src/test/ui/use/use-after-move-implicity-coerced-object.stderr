@@ -1,12 +1,13 @@
-error[E0382]: use of moved value: `n`
+error[E0382]: borrow of moved value: `n`
   --> $DIR/use-after-move-implicity-coerced-object.rs:28:13
    |
+LL |     let n: Box<_> = box Number { n: 42 };
+   |         - move occurs because `n` has type `std::boxed::Box<Number>`, which does not implement the `Copy` trait
+LL |     let mut l: Box<_> = box List { list: Vec::new() };
 LL |     l.push(n);
    |            - value moved here
 LL |     let x = n.to_string();
-   |             ^ value used here after move
-   |
-   = note: move occurs because `n` has type `std::boxed::Box<Number>`, which does not implement the `Copy` trait
+   |             ^ value borrowed here after move
 
 error: aborting due to previous error
 

@@ -6,7 +6,7 @@ union Foo {
 }
 
 fn main() {
-    let x: &'static bool = &unsafe { //~ borrowed value does not live long enough
+    let x: &'static bool = &unsafe { //~ temporary value dropped while borrowed
         Foo { a: &1 }.b == Foo { a: &2 }.b
     };
 }

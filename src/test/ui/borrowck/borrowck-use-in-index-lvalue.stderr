@@ -1,0 +1,15 @@
+error[E0381]: use of possibly uninitialized variable: `w`
+  --> $DIR/borrowck-use-in-index-lvalue.rs:3:5
+   |
+LL |     w[5] = 0;
+   |     ^^^^ use of possibly uninitialized `*w`
+
+error[E0381]: use of possibly uninitialized variable: `w`
+  --> $DIR/borrowck-use-in-index-lvalue.rs:6:5
+   |
+LL |     w[5] = 0;
+   |     ^^^^ use of possibly uninitialized `*w`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0381`.

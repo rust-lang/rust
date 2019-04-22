@@ -4,8 +4,8 @@ fn nested() {
     let y = 3;
     ignore(
         |z| {
-            //~^ ERROR E0373
             if false { &y } else { z }
+            //~^ ERROR `y` does not live long enough
         });
 }
 

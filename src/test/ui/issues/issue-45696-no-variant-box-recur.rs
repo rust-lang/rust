@@ -1,16 +1,15 @@
-// rust-lang/rust#45696: This test checks the compiler won't infinite
-// loop when you declare a variable of type `struct A(Box<A>, ...);`
-// (which is impossible to construct but *is* possible to declare; see
-// also issues #4287, #44933, and #52852).
+// rust-lang/rust#45696: This test checks the compiler won't infinite loop when
+// you declare a variable of type `struct A(Box<A>, ...);` (which is impossible
+// to construct but *is* possible to declare; see also issues #4287, #44933,
+// and #52852).
 //
-// We will explicitly test AST-borrowck, NLL, and migration modes;
-// thus we will also skip the automated compare-mode=nll.
+// We will explicitly test NLL, and migration modes; thus we will also skip the
+// automated compare-mode=nll.
 
-// revisions: ast nll migrate
+// revisions: nll migrate
 // ignore-compare-mode-nll
 
 #![cfg_attr(nll, feature(nll))]
-//[migrate]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
 
 // run-pass
 

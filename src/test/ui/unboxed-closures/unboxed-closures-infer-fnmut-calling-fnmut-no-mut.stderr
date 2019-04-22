@@ -1,22 +1,21 @@
-error[E0595]: closure cannot assign to immutable local variable `tick1`
-  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:16:17
+error[E0596]: cannot borrow `tick1` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:16:9
    |
 LL |     let tick1 = || {
-   |         ----- help: make this binding mutable: `mut tick1`
+   |         ----- help: consider changing this to be mutable: `mut tick1`
 ...
-LL |     let tick2 = || {
-   |                 ^^ cannot borrow mutably
+LL |         tick1();
+   |         ^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow immutable local variable `tick2` as mutable
-  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:20:5
+error[E0596]: cannot borrow `tick2` as mutable, as it is not declared as mutable
+  --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:19:5
    |
 LL |     let tick2 = || {
-   |         ----- help: make this binding mutable: `mut tick2`
+   |         ----- help: consider changing this to be mutable: `mut tick2`
 ...
 LL |     tick2();
-   |     ^^^^^ cannot borrow mutably
+   |     ^^^^^ cannot borrow as mutable
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0595, E0596.
-For more information about an error, try `rustc --explain E0595`.
+For more information about this error, try `rustc --explain E0596`.

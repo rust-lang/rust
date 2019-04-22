@@ -5,6 +5,8 @@ LL |     let b: Vec<&str> = a.lines().collect();
    |                        - borrow of `a` occurs here
 LL |     drop(a);
    |          ^ move out of `a` occurs here
+LL |     for s in &b {
+   |              -- borrow later used here
 
 error: aborting due to previous error
 

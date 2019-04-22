@@ -1,30 +1,30 @@
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-closures-mut-of-imm.rs:13:25
+   |
+LL |     let mut c1 = || set(&mut *x);
+   |                         ^^^^^^^ cannot borrow as mutable
+
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-closures-mut-of-imm.rs:15:25
+   |
+LL |     let mut c2 = || set(&mut *x);
+   |                         ^^^^^^^ cannot borrow as mutable
+
 error[E0524]: two closures require unique access to `x` at the same time
   --> $DIR/borrowck-closures-mut-of-imm.rs:15:18
    |
 LL |     let mut c1 = || set(&mut *x);
-   |                  --           - previous borrow occurs due to use of `x` in closure
+   |                  --           - first borrow occurs due to use of `x` in closure
    |                  |
    |                  first closure is constructed here
 LL |
 LL |     let mut c2 = || set(&mut *x);
-   |                  ^^           - borrow occurs due to use of `x` in closure
+   |                  ^^           - second borrow occurs due to use of `x` in closure
    |                  |
    |                  second closure is constructed here
 ...
-LL | }
-   | - borrow from first closure ends here
-
-error[E0596]: cannot borrow immutable borrowed content `***x` as mutable
-  --> $DIR/borrowck-closures-mut-of-imm.rs:13:30
-   |
-LL |     let mut c1 = || set(&mut *x);
-   |                              ^^ cannot borrow as mutable
-
-error[E0596]: cannot borrow immutable borrowed content `***x` as mutable
-  --> $DIR/borrowck-closures-mut-of-imm.rs:15:30
-   |
-LL |     let mut c2 = || set(&mut *x);
-   |                              ^^ cannot borrow as mutable
+LL |     c2(); c1();
+   |           -- first borrow later used here
 
 error: aborting due to 3 previous errors
 

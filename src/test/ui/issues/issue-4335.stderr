@@ -1,3 +1,11 @@
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
+  --> $DIR/issue-4335.rs:6:20
+   |
+LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
+   |             - captured outer variable
+LL |     id(Box::new(|| *v))
+   |                    ^^ cannot move out of captured variable in an `FnMut` closure
+
 error[E0373]: closure may outlive the current function, but it borrows `v`, which is owned by the current function
   --> $DIR/issue-4335.rs:6:17
    |
@@ -5,16 +13,16 @@ LL |     id(Box::new(|| *v))
    |                 ^^  - `v` is borrowed here
    |                 |
    |                 may outlive borrowed value `v`
+   |
+note: closure is returned here
+  --> $DIR/issue-4335.rs:6:5
+   |
+LL |     id(Box::new(|| *v))
+   |     ^^^^^^^^^^^^^^^^^^^
 help: to force the closure to take ownership of `v` (and any other referenced variables), use the `move` keyword
    |
 LL |     id(Box::new(move || *v))
    |                 ^^^^^^^
-
-error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-4335.rs:6:20
-   |
-LL |     id(Box::new(|| *v))
-   |                    ^^ cannot move out of borrowed content
 
 error: aborting due to 2 previous errors
 

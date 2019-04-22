@@ -1,4 +1,4 @@
-// compile-flags: -Z borrowck=mir -Z two-phase-borrows
+// compile-flags: -Z borrowck=mir
 
 // This is the third counter-example from Niko's blog post
 // smallcultfollowing.com/babysteps/blog/2017/03/01/nested-method-calls-via-two-phase-borrowing/

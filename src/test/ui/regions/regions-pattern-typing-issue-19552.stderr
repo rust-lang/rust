@@ -3,11 +3,11 @@ error[E0597]: `line` does not live long enough
    |
 LL |     match [&*line] {
    |              ^^^^ borrowed value does not live long enough
-...
+LL |         [ word ] => { assert_static(word); }
+   |                       ------------------- argument requires that `line` is borrowed for `'static`
+LL |     }
 LL | }
-   | - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - `line` dropped here while still borrowed
 
 error: aborting due to previous error
 

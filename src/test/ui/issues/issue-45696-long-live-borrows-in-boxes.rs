@@ -1,14 +1,5 @@
 // rust-lang/rust#45696: This test is checking that we can return
 // mutable borrows owned by boxes even when the boxes are dropped.
-//
-// We will explicitly test AST-borrowck, NLL, and migration modes;
-// thus we will also skip the automated compare-mode=nll.
-
-// revisions: ast nll migrate
-// ignore-compare-mode-nll
-
-#![cfg_attr(nll, feature(nll))]
-//[migrate]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
 
 // run-pass
 

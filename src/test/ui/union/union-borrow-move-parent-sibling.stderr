@@ -1,65 +1,68 @@
-error[E0502]: cannot borrow `u.y` as immutable because `u.x.0` is also borrowed as mutable
-  --> $DIR/union-borrow-move-parent-sibling.rs:15:14
+error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0`)
+  --> $DIR/union-borrow-move-parent-sibling.rs:15:13
    |
 LL |     let a = &mut u.x.0;
-   |                  ----- mutable borrow occurs here
+   |             ---------- mutable borrow occurs here (via `u.x.0`)
 LL |     let b = &u.y;
-   |              ^^^ immutable borrow occurs here
+   |             ^^^^ immutable borrow of `u.y` -- which overlaps with `u.x.0` -- occurs here
 LL |     use_borrow(a);
-LL | }
-   | - mutable borrow ends here
-
-error[E0382]: use of moved value: `u.y`
-  --> $DIR/union-borrow-move-parent-sibling.rs:22:9
+   |                - mutable borrow later used here
    |
+   = note: `u.y` is a field of the union `U`, so it overlaps the field `u.x.0`
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/union-borrow-move-parent-sibling.rs:22:13
+   |
+LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = u.x.0;
-   |         - value moved here
+   |             ----- value moved here
 LL |     let b = u.y;
-   |         ^ value used here after move
-   |
-   = note: move occurs because `u.y` has type `[type error]`, which does not implement the `Copy` trait
+   |             ^^^ value used here after move
 
-error[E0502]: cannot borrow `u.y` as immutable because `u.x.0.0` is also borrowed as mutable
-  --> $DIR/union-borrow-move-parent-sibling.rs:28:14
+error[E0502]: cannot borrow `u` (via `u.y`) as immutable because it is also borrowed as mutable (via `u.x.0.0`)
+  --> $DIR/union-borrow-move-parent-sibling.rs:28:13
    |
 LL |     let a = &mut (u.x.0).0;
-   |                  --------- mutable borrow occurs here
+   |             -------------- mutable borrow occurs here (via `u.x.0.0`)
 LL |     let b = &u.y;
-   |              ^^^ immutable borrow occurs here
+   |             ^^^^ immutable borrow of `u.y` -- which overlaps with `u.x.0.0` -- occurs here
 LL |     use_borrow(a);
-LL | }
-   | - mutable borrow ends here
-
-error[E0382]: use of moved value: `u.y`
-  --> $DIR/union-borrow-move-parent-sibling.rs:35:9
+   |                - mutable borrow later used here
    |
+   = note: `u.y` is a field of the union `U`, so it overlaps the field `u.x.0.0`
+
+error[E0382]: use of moved value: `u`
+  --> $DIR/union-borrow-move-parent-sibling.rs:35:13
+   |
+LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = (u.x.0).0;
-   |         - value moved here
+   |             --------- value moved here
 LL |     let b = u.y;
-   |         ^ value used here after move
-   |
-   = note: move occurs because `u.y` has type `[type error]`, which does not implement the `Copy` trait
+   |             ^^^ value used here after move
 
-error[E0502]: cannot borrow `u` (via `u.x`) as immutable because `u` is also borrowed as mutable (via `*u.y`)
-  --> $DIR/union-borrow-move-parent-sibling.rs:41:14
+error[E0502]: cannot borrow `u` (via `u.x`) as immutable because it is also borrowed as mutable (via `*u.y`)
+  --> $DIR/union-borrow-move-parent-sibling.rs:41:13
    |
 LL |     let a = &mut *u.y;
-   |                  ---- mutable borrow occurs here (via `*u.y`)
+   |             --------- mutable borrow occurs here (via `*u.y`)
 LL |     let b = &u.x;
-   |              ^^^ immutable borrow of `u.x` -- which overlaps with `*u.y` -- occurs here
+   |             ^^^^ immutable borrow of `u.x` -- which overlaps with `*u.y` -- occurs here
 LL |     use_borrow(a);
-LL | }
-   | - mutable borrow ends here
+   |                - mutable borrow later used here
+   |
+   = note: `u.x` is a field of the union `U`, so it overlaps the field `*u.y`
 
-error[E0382]: use of moved value: `u.x`
-  --> $DIR/union-borrow-move-parent-sibling.rs:48:9
+error[E0382]: use of moved value: `u`
+  --> $DIR/union-borrow-move-parent-sibling.rs:48:13
    |
+LL |     let u = U { x: ((Vec::new(), Vec::new()), Vec::new()) };
+   |         - move occurs because `u` has type `U`, which does not implement the `Copy` trait
 LL |     let a = *u.y;
-   |         - value moved here
+   |             ---- value moved here
 LL |     let b = u.x;
-   |         ^ value used here after move
-   |
-   = note: move occurs because `u.x` has type `[type error]`, which does not implement the `Copy` trait
+   |             ^^^ value used here after move
 
 error: aborting due to 6 previous errors
 

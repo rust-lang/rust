@@ -14,7 +14,7 @@ fn main() {
         {
             let mut u = U { a: A };
             let a = u.a;
-            let a = u.a; //~ ERROR use of moved value: `u.a`
+            let a = u.a; //~ ERROR use of moved value: `u`
         }
         {
             let mut u = U { a: A };

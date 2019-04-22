@@ -9,8 +9,8 @@ impl Drop for Test {
 }
 
 fn createTest<'a>() -> &'a Test {
-  let testValue = &Test; //~ ERROR borrowed value does not live long enough
-  return testValue;
+  let testValue = &Test;
+  return testValue; //~ ERROR cannot return value referencing temporary value
 }
 
 

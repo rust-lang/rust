@@ -20,5 +20,5 @@ impl std::ops::Add<i32> for A<[u8]> {
 
 fn main() {
     udrop::<[u8]>(foo()[..]);
-    //~^ERROR cannot move out of indexed content
+    //~^ERROR cannot move out of type `[u8]`, a non-copy slice
 }

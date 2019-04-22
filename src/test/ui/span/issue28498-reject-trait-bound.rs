@@ -31,8 +31,7 @@ fn main() {
 
     last_dropped = ScribbleOnDrop(format!("last"));
     first_dropped = ScribbleOnDrop(format!("first"));
-    foo0 = Foo(0, &last_dropped);
-    //~^ ERROR `last_dropped` does not live long enough
+    foo0 = Foo(0, &last_dropped); // OK
     foo1 = Foo(1, &first_dropped);
     //~^ ERROR `first_dropped` does not live long enough
 

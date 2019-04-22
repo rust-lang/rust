@@ -4,7 +4,7 @@ fn main() {
     let y;
     {
         let x: &[isize] = &vec![1, 2, 3, 4, 5];
-        //~^ ERROR borrowed value does not live long enough
+        //~^ ERROR temporary value dropped while borrowed
         y = &x[1..];
     }
     y.use_ref();

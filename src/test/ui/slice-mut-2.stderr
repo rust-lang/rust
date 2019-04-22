@@ -1,8 +1,11 @@
-error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/slice-mut-2.rs:7:18
    |
+LL |     let x: &[isize] = &[1, 2, 3, 4, 5];
+   |                       ---------------- help: consider changing this to be a mutable reference: `&mut [1, 2, 3, 4, 5]`
+...
 LL |     let _ = &mut x[2..4];
-   |                  ^ cannot borrow as mutable
+   |                  ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
 error: aborting due to previous error
 

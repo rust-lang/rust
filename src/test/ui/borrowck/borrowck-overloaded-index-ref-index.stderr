@@ -1,0 +1,32 @@
+error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:49:22
+   |
+LL |     let rs = &mut s;
+   |              ------ mutable borrow occurs here
+LL |     println!("{}", f[&s]);
+   |                      ^^ immutable borrow occurs here
+...
+LL |     drop(rs);
+   |          -- mutable borrow later used here
+
+error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:51:7
+   |
+LL |     let rs = &mut s;
+   |              ------ mutable borrow occurs here
+...
+LL |     f[&s] = 10;
+   |       ^^ immutable borrow occurs here
+...
+LL |     drop(rs);
+   |          -- mutable borrow later used here
+
+error[E0594]: cannot assign to data in a `&` reference
+  --> $DIR/borrowck-overloaded-index-ref-index.rs:56:5
+   |
+LL |     s[2] = 20;
+   |     ^^^^^^^^^ cannot assign
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0502`.

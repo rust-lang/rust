@@ -25,13 +25,13 @@ fn stuff() {
     let u = Test;
     drop(t);
     t.b = Some(u);
-    //~^ ERROR partial reinitialization of uninitialized structure `t`
+    //~^ ERROR assign of moved value: `t`
 
     let mut t = Test3(None);
     let u = Test;
     drop(t);
     t.0 = Some(u);
-    //~^ ERROR partial reinitialization of uninitialized structure `t`
+    //~^ ERROR assign of moved value: `t`
 }
 
 fn main() {

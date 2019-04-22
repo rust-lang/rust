@@ -2,10 +2,10 @@ error[E0499]: cannot borrow `xs` as mutable more than once at a time
   --> $DIR/vec-mut-iter-borrow.rs:5:9
    |
 LL |     for x in &mut xs {
-   |                   --
-   |                   ||
-   |                   |first borrow ends here
-   |                   first mutable borrow occurs here
+   |              -------
+   |              |
+   |              first mutable borrow occurs here
+   |              first borrow later used here
 LL |         xs.push(1)
    |         ^^ second mutable borrow occurs here
 

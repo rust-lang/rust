@@ -26,5 +26,5 @@ fn main() {
     let mut l: Box<_> = box List { list: Vec::new() };
     l.push(n);
     let x = n.to_string();
-    //~^ ERROR: use of moved value: `n`
+    //~^ ERROR: borrow of moved value: `n`
 }

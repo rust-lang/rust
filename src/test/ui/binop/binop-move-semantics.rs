@@ -11,7 +11,7 @@ fn double_move<T: Add<Output=()>>(x: T) {
 fn move_then_borrow<T: Add<Output=()> + Clone>(x: T) {
     x
     +
-    x.clone();  //~ ERROR: use of moved value
+    x.clone();  //~ ERROR: borrow of moved value
 }
 
 fn move_borrowed<T: Add<Output=()>>(x: T, mut y: T) {

@@ -15,7 +15,7 @@ impl Drop for Test2 {
 fn stuff() {
     let mut x : (Test2, Test2);
     (x.0).0 = Some(Test);
-    //~^ ERROR partial reinitialization of uninitialized structure `x.0`
+    //~^ ERROR assign of possibly uninitialized variable: `x.0`
 }
 
 fn main() {

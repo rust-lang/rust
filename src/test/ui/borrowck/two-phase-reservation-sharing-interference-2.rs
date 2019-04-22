@@ -1,12 +1,11 @@
 // Test for #56254, we previously allowed the last example on the 2018
-// editiion. Make sure that we now emit a warning in that case and an error for
+// edition. Make sure that we now emit a warning in that case and an error for
 // everyone else.
 
 //ignore-compare-mode-nll
 
-//revisions: ast migrate2015 migrate2018 nll2015 nll2018
+//revisions: migrate2015 migrate2018 nll2015 nll2018
 
-//[migrate2015] compile-flags: -Zborrowck=migrate -Ztwo-phase-borrows
 //[migrate2018] edition:2018
 //[nll2018] edition:2018
 
@@ -21,7 +20,6 @@ fn double_conflicts() {
     //[nll2015]~^^ ERROR cannot borrow `v` as mutable
     //[migrate2018]~^^^ ERROR cannot borrow `v` as mutable
     //[nll2018]~^^^^ ERROR cannot borrow `v` as mutable
-    //[ast]~^^^^^ ERROR cannot borrow `v` as mutable
 }
 
 fn activation_conflict() {
@@ -32,7 +30,6 @@ fn activation_conflict() {
     //[nll2015]~^^ ERROR cannot borrow `v` as mutable
     //[migrate2018]~^^^ ERROR cannot borrow `v` as mutable
     //[nll2018]~^^^^ ERROR cannot borrow `v` as mutable
-    //[ast]~^^^^^ ERROR cannot borrow `v` as immutable
 }
 
 fn reservation_conflict() {
@@ -47,8 +44,6 @@ fn reservation_conflict() {
 
     //[migrate2018]~^^^^^^ WARNING cannot borrow `v` as mutable
     //[migrate2018]~| WARNING may become a hard error in the future
-
-    //[ast]~^^^^^^^^^ ERROR cannot borrow `v` as mutable
 }
 
 fn main() {}

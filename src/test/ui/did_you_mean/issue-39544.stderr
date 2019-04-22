@@ -1,100 +1,100 @@
-error[E0596]: cannot borrow field `z.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:11:18
+error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
+  --> $DIR/issue-39544.rs:11:13
    |
 LL |     let z = Z { x: X::Y };
-   |         - help: make this binding mutable: `mut z`
+   |         - help: consider changing this to be mutable: `mut z`
 LL |     let _ = &mut z.x;
-   |                  ^^^ cannot mutably borrow field of immutable binding
+   |             ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:16:22
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:16:17
    |
 LL |     fn foo<'z>(&'z self) {
-   |                -------- use `&'z mut self` here to make mutable
+   |                -------- help: consider changing this to be a mutable reference: `&'z mut self`
 LL |         let _ = &mut self.x;
-   |                      ^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:20:22
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:20:17
    |
 LL |     fn foo1(&self, other: &Z) {
-   |             ----- use `&mut self` here to make mutable
+   |             ----- help: consider changing this to be a mutable reference: `&mut self`
 LL |         let _ = &mut self.x;
-   |                      ^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:21:22
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:21:17
    |
 LL |     fn foo1(&self, other: &Z) {
-   |                           -- use `&mut Z` here to make mutable
+   |                           -- help: consider changing this to be a mutable reference: `&mut Z`
 LL |         let _ = &mut self.x;
 LL |         let _ = &mut other.x;
-   |                      ^^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:25:22
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:25:17
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
-   |                 -------- use `&'a mut self` here to make mutable
+   |                 -------- help: consider changing this to be a mutable reference: `&'a mut self`
 LL |         let _ = &mut self.x;
-   |                      ^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:26:22
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:26:17
    |
 LL |     fn foo2<'a>(&'a self, other: &Z) {
-   |                                  -- use `&mut Z` here to make mutable
+   |                                  -- help: consider changing this to be a mutable reference: `&mut Z`
 LL |         let _ = &mut self.x;
 LL |         let _ = &mut other.x;
-   |                      ^^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `self.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:30:22
+error[E0596]: cannot borrow `self.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:30:17
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
-   |                       -------- use `&'a mut Self` here to make mutable
+   |                       -------- help: consider changing this to be a mutable reference: `&'a mut Self`
 LL |         let _ = &mut self.x;
-   |                      ^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^ `self` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:31:22
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:31:17
    |
 LL |     fn foo3<'a>(self: &'a Self, other: &Z) {
-   |                                        -- use `&mut Z` here to make mutable
+   |                                        -- help: consider changing this to be a mutable reference: `&mut Z`
 LL |         let _ = &mut self.x;
 LL |         let _ = &mut other.x;
-   |                      ^^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `other.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:35:22
+error[E0596]: cannot borrow `other.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:35:17
    |
 LL |     fn foo4(other: &Z) {
-   |                    -- use `&mut Z` here to make mutable
+   |                    -- help: consider changing this to be a mutable reference: `&mut Z`
 LL |         let _ = &mut other.x;
-   |                      ^^^^^^^ cannot mutably borrow field of immutable binding
+   |                 ^^^^^^^^^^^^ `other` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow field `z.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:41:18
+error[E0596]: cannot borrow `z.x` as mutable, as `z` is not declared as mutable
+  --> $DIR/issue-39544.rs:41:13
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
-   |                 - help: make this binding mutable: `mut z`
+   |                 - help: consider changing this to be mutable: `mut z`
 LL |     let _ = &mut z.x;
-   |                  ^^^ cannot mutably borrow field of immutable binding
+   |             ^^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow field `w.x` of immutable binding as mutable
-  --> $DIR/issue-39544.rs:42:18
+error[E0596]: cannot borrow `w.x` as mutable, as it is behind a `&` reference
+  --> $DIR/issue-39544.rs:42:13
    |
 LL | pub fn with_arg(z: Z, w: &Z) {
-   |                          -- use `&mut Z` here to make mutable
+   |                          -- help: consider changing this to be a mutable reference: `&mut Z`
 LL |     let _ = &mut z.x;
 LL |     let _ = &mut w.x;
-   |                  ^^^ cannot mutably borrow field of immutable binding
+   |             ^^^^^^^^ `w` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0594]: cannot assign to borrowed content `*x.0` of immutable binding
+error[E0594]: cannot assign to `*x.0` which is behind a `&` reference
   --> $DIR/issue-39544.rs:48:5
    |
 LL |     *x.0 = 1;
-   |     ^^^^^^^^ cannot borrow as mutable
+   |     ^^^^^^^^ cannot assign
 
 error: aborting due to 12 previous errors
 

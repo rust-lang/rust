@@ -13,8 +13,8 @@ fn f10() {
         Foo {f} => {}
     };
 
-    touch(&x); //~ ERROR use of partially moved value: `x`
-    //~^ value used here after move
+    touch(&x); //~ ERROR borrow of moved value: `x`
+    //~^ value borrowed here after partial move
     //~| move occurs because `x.f` has type `std::string::String`
 }
 

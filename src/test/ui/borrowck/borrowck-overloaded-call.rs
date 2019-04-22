@@ -64,7 +64,7 @@ fn g() {
         x: 1,
         y: 2,
     };
-    s(3);   //~ ERROR cannot borrow immutable local variable `s` as mutable
+    s(3);   //~ ERROR cannot borrow `s` as mutable, as it is not declared as mutable
 }
 
 fn h() {

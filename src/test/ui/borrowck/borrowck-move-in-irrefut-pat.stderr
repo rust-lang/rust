@@ -1,0 +1,50 @@
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:3:13
+   |
+LL | fn arg_item(&_x: &String) {}
+   |             ^--
+   |             ||
+   |             |data moved here
+   |             cannot move out of borrowed content
+   |             help: consider removing the `&`: `_x`
+   |
+note: move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:3:14
+   |
+LL | fn arg_item(&_x: &String) {}
+   |              ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:7:11
+   |
+LL |     with(|&_x| ())
+   |           ^--
+   |           ||
+   |           |data moved here
+   |           cannot move out of borrowed content
+   |           help: consider removing the `&`: `_x`
+   |
+note: move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:7:12
+   |
+LL |     with(|&_x| ())
+   |            ^^
+
+error[E0507]: cannot move out of borrowed content
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:12:15
+   |
+LL |     let &_x = &"hi".to_string();
+   |         ---   ^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |         ||
+   |         |data moved here
+   |         help: consider removing the `&`: `_x`
+   |
+note: move occurs because `_x` has type `std::string::String`, which does not implement the `Copy` trait
+  --> $DIR/borrowck-move-in-irrefut-pat.rs:12:10
+   |
+LL |     let &_x = &"hi".to_string();
+   |          ^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0507`.

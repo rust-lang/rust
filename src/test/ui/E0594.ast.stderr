@@ -1,8 +1,0 @@
-error[E0594]: cannot assign to immutable static item
-  --> $DIR/E0594.rs:7:5
-   |
-LL |     NUM = 20;
-   |     ^^^^^^^^
-
-error: aborting due to previous error
-

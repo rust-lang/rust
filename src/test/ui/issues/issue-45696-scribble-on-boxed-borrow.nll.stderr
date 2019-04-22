@@ -1,5 +1,5 @@
 error[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:53:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:51:5
    |
 LL | fn scribbled<'a>(s: Scribble<'a>) -> &'a mut u32 {
    |              -- lifetime `'a` defined here
@@ -10,7 +10,7 @@ LL | }
    | - here, drop of `s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
 
 error[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:64:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:62:5
    |
 LL | fn boxed_scribbled<'a>(s: Box<Scribble<'a>>) -> &'a mut u32 {
    |                    -- lifetime `'a` defined here
@@ -21,7 +21,7 @@ LL | }
    | - here, drop of `s` needs exclusive access to `*s.0`, because the type `Scribble<'_>` implements the `Drop` trait
 
 error[E0713]: borrow may still be in use when destructor runs
-  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:75:5
+  --> $DIR/issue-45696-scribble-on-boxed-borrow.rs:73:5
    |
 LL | fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
    |                          -- lifetime `'a` defined here

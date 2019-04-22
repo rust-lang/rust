@@ -1,11 +1,11 @@
-error[E0596]: cannot borrow immutable local variable `key` as mutable
-  --> $DIR/issue-34337.rs:6:14
+error[E0596]: cannot borrow `key` as mutable, as it is not declared as mutable
+  --> $DIR/issue-34337.rs:6:9
    |
 LL |     get(&mut key);
-   |              ^^^
-   |              |
-   |              cannot reborrow mutably
-   |              try removing `&mut` here
+   |         ^^^^^^^^
+   |         |
+   |         cannot borrow as mutable
+   |         try removing `&mut` here
 
 error: aborting due to previous error
 

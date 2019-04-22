@@ -9,13 +9,6 @@
 // rust-lang/rust#56537
 
 // compile-pass
-// We are already testing NLL explicitly via the revision system below.
-// ignore-compare-mode-nll
-
-// revisions: ll nll migrate
-//[ll] compile-flags:-Zborrowck=ast
-//[nll] compile-flags:-Zborrowck=mir -Z two-phase-borrows
-//[migrate] compile-flags:-Zborrowck=migrate -Z two-phase-borrows
 
 fn willy_no_annot<'w>(p: &'w str, q: &str) -> &'w str {
     let free_dumb = |_x| { p }; // no type annotation at all

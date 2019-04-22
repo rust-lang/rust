@@ -1,11 +1,11 @@
-error[E0596]: cannot borrow immutable argument `self` as mutable
-  --> $DIR/issue-31424.rs:7:15
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-31424.rs:7:9
    |
 LL |         (&mut self).bar();
-   |               ^^^^
-   |               |
-   |               cannot reborrow mutably
-   |               try removing `&mut` here
+   |         ^^^^^^^^^^^
+   |         |
+   |         cannot borrow as mutable
+   |         try removing `&mut` here
 
 warning: function cannot return without recursing
   --> $DIR/issue-31424.rs:12:5
@@ -19,15 +19,14 @@ LL |         (&mut self).bar();
    = note: #[warn(unconditional_recursion)] on by default
    = help: a `loop` may express intention better if this is on purpose
 
-error[E0596]: cannot borrow immutable argument `self` as mutable
-  --> $DIR/issue-31424.rs:14:15
+error[E0596]: cannot borrow `self` as mutable, as it is not declared as mutable
+  --> $DIR/issue-31424.rs:14:9
    |
 LL |         (&mut self).bar();
-   |               ^^^^ cannot borrow mutably
-help: consider removing the `&mut`, as it is an immutable binding to a mutable reference
-   |
-LL |         self.bar();
-   |         ^^^^
+   |         ^^^^^^^^^^^
+   |         |
+   |         cannot borrow as mutable
+   |         try removing `&mut` here
 
 error: aborting due to 2 previous errors
 

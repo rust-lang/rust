@@ -1,0 +1,25 @@
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/mut-pattern-internal-mutability.rs:5:5
+   |
+LL |     let &mut x = foo;
+   |              -
+   |              |
+   |              first assignment to `x`
+   |              help: make this binding mutable: `mut x`
+LL |     x += 1;
+   |     ^^^^^^ cannot assign twice to immutable variable
+
+error[E0506]: cannot assign to `*foo` because it is borrowed
+  --> $DIR/mut-pattern-internal-mutability.rs:13:5
+   |
+LL |     let &mut ref x = foo;
+   |              ----- borrow of `*foo` occurs here
+LL |     *foo += 1;
+   |     ^^^^^^^^^ assignment to borrowed `*foo` occurs here
+LL |     drop(x);
+   |          - borrow later used here
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0384, E0506.
+For more information about an error, try `rustc --explain E0384`.

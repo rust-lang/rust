@@ -1,0 +1,15 @@
+error[E0017]: references in statics may only refer to immutable values
+  --> $DIR/issue-46604.rs:1:25
+   |
+LL | static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];
+   |                         ^^^^^^^^^^^^^^^^^^^^ statics require immutable values
+
+error[E0594]: cannot assign to `buf[_]`, as `buf` is an immutable static item
+  --> $DIR/issue-46604.rs:6:5
+   |
+LL |     buf[0]=2;
+   |     ^^^^^^^^ cannot assign
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0017`.

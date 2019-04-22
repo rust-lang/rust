@@ -71,5 +71,4 @@ fn main() {
     //~^ ERROR `container` does not live long enough
     println!("container.v[30]: {:?}", container.v.v[30]);
     container.store(test);
-    //~^ ERROR `container` does not live long enough
 }

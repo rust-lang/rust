@@ -1,6 +1,3 @@
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
 // Ensure that moves out of static items is forbidden
 
 struct Foo {
@@ -15,6 +12,5 @@ fn test(f: Foo) {
 }
 
 fn main() {
-    test(BAR); //[ast]~ ERROR cannot move out of static item [E0507]
-               //[mir]~^ ERROR [E0507]
+    test(BAR); //~ ERROR cannot move out of static item [E0507]
 }

@@ -1886,10 +1886,11 @@ impl<'test> TestCx<'test> {
 
         match self.config.compare_mode {
             Some(CompareMode::Nll) => {
-                rustc.args(&["-Zborrowck=migrate", "-Ztwo-phase-borrows"]);
+                // FIXME(#56993) use -Zborrowck=mir
+                rustc.args(&["-Zborrowck=migrate"]);
             }
             Some(CompareMode::Polonius) => {
-                rustc.args(&["-Zpolonius", "-Zborrowck=mir", "-Ztwo-phase-borrows"]);
+                rustc.args(&["-Zpolonius", "-Zborrowck=mir"]);
             }
             None => {}
         }

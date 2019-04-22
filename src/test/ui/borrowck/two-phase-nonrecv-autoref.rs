@@ -1,8 +1,7 @@
-// revisions: ast nll
-//[ast]compile-flags:
-//[nll]compile-flags: -Z borrowck=mir -Z two-phase-borrows
+// revisions: nll
+//[nll]compile-flags: -Z borrowck=mir
 
-//[g2p]compile-flags: -Z borrowck=mir -Z two-phase-borrows -Z two-phase-beyond-autoref
+//[g2p]compile-flags: -Z borrowck=mir -Z two-phase-beyond-autoref
 // the above revision is disabled until two-phase-beyond-autoref support is better
 
 // This is a test checking that when we limit two-phase borrows to
@@ -29,7 +28,6 @@ fn foo(x: &mut u32, y: u32) {
 
 fn deref_coercion(x: &mut u32) {
     foo(x, *x);
-    //[ast]~^ ERROR cannot use `*x` because it was mutably borrowed [E0503]
     // Above error is a known limitation of AST borrowck
 }
 
@@ -60,7 +58,6 @@ fn overloaded_call_traits() {
         f(f(10));
         //[nll]~^   ERROR cannot borrow `*f` as mutable more than once at a time
         //[g2p]~^^ ERROR cannot borrow `*f` as mutable more than once at a time
-        //[ast]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_si<F: Fn(i32) -> i32>(f: &mut F) {
         f(f(10));
@@ -69,14 +66,12 @@ fn overloaded_call_traits() {
         f(f(10));
         //[nll]~^   ERROR use of moved value: `f`
         //[g2p]~^^  ERROR use of moved value: `f`
-        //[ast]~^^^ ERROR use of moved value: `f`
     }
 
     fn twice_ten_om(f: &mut FnMut(i32) -> i32) {
         f(f(10));
         //[nll]~^   ERROR cannot borrow `*f` as mutable more than once at a time
         //[g2p]~^^  ERROR cannot borrow `*f` as mutable more than once at a time
-        //[ast]~^^^ ERROR cannot borrow `*f` as mutable more than once at a time
     }
     fn twice_ten_oi(f: &mut Fn(i32) -> i32) {
         f(f(10));
@@ -85,7 +80,6 @@ fn overloaded_call_traits() {
         f(f(10));
         //[nll]~^   ERROR use of moved value: `f`
         //[g2p]~^^  ERROR use of moved value: `f`
-        //[ast]~^^^ ERROR use of moved value: `f`
     }
 
     twice_ten_sm(&mut |x| x + 1);
@@ -125,11 +119,9 @@ fn coerce_unsized() {
     double_access(&mut a, &a);
     //[nll]~^   ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
     //[g2p]~^^  ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
-    //[ast]~^^^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
 
     // But this is okay.
     a.m(a.i(10));
-    //[ast]~^ ERROR cannot borrow `a` as immutable because it is also borrowed as mutable [E0502]
     // Above error is an expected limitation of AST borrowck
 }
 
@@ -152,13 +144,11 @@ fn coerce_index_op() {
     let mut i = I(10);
     i[i[3]] = 4;
     //[nll]~^  ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    //[ast]~^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
 
     i[3] = i[4];
 
     i[i[3]] = i[4];
     //[nll]~^  ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
-    //[ast]~^^ ERROR cannot borrow `i` as immutable because it is also borrowed as mutable [E0502]
 }
 
 fn main() {
@@ -166,7 +156,6 @@ fn main() {
     // As a reminder, this is the basic case we want to ensure we handle.
     let mut v = vec![1, 2, 3];
     v.push(v.len());
-    //[ast]~^ ERROR cannot borrow `v` as immutable because it is also borrowed as mutable [E0502]
     // Error above is an expected limitation of AST borrowck
 
     // (as a rule, pnkfelix does not like to write tests with dead code.)
@@ -177,12 +166,10 @@ fn main() {
 
     let mut s = S;
     s.m(s.i(10));
-    //[ast]~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable [E0502]
     // Error above is an expected limitation of AST borrowck
 
     let mut t = T;
     t.m(t.i(10));
-    //[ast]~^ ERROR cannot borrow `t` as immutable because it is also borrowed as mutable [E0502]
     // Error above is an expected limitation of AST borrowck
 
     coerce_unsized();

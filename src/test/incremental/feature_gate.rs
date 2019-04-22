@@ -4,10 +4,10 @@
 // compile-flags: -Z query-dep-graph
 
 #![feature(rustc_attrs)]
-#![cfg_attr(rpass1, feature(nll))]
+#![cfg_attr(rpass1, feature(abi_unadjusted))]
 
 fn main() {
-    let mut v = vec![1];
-    v.push(v[0]);
-    //[cfail2]~^ ERROR cannot borrow
 }
+
+extern "unadjusted" fn foo() {}
+//[cfail2]~^ ERROR: unadjusted ABI is an implementation detail and perma-unstable

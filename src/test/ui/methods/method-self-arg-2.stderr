@@ -1,24 +1,22 @@
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/method-self-arg-2.rs:15:15
+  --> $DIR/method-self-arg-2.rs:15:14
    |
 LL |     let y = &mut x;
-   |                  - mutable borrow occurs here
+   |             ------ mutable borrow occurs here
 LL |     Foo::bar(&x);
-   |               ^ immutable borrow occurs here
-...
-LL | }
-   | - mutable borrow ends here
+   |              ^^ immutable borrow occurs here
+LL |     y.use_mut();
+   |     - mutable borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
-  --> $DIR/method-self-arg-2.rs:20:19
+  --> $DIR/method-self-arg-2.rs:20:14
    |
 LL |     let y = &mut x;
-   |                  - first mutable borrow occurs here
+   |             ------ first mutable borrow occurs here
 LL |     Foo::baz(&mut x);
-   |                   ^ second mutable borrow occurs here
+   |              ^^^^^^ second mutable borrow occurs here
 LL |     y.use_mut();
-LL | }
-   | - first borrow ends here
+   |     - first borrow later used here
 
 error: aborting due to 2 previous errors
 

@@ -19,7 +19,7 @@ impl<'a, 'b> S<'a, 'b> {
 
 fn return_dangling_pointer_inherent(s: S2) -> &u32 {
     let s = s;
-    s.transmute_inherent(&mut 42) //~ ERROR does not live long enough
+    s.transmute_inherent(&mut 42) //~ ERROR cannot return value referencing temporary value
 }
 
 impl<'a, 'b> Deref for S<'a, 'b> {
@@ -32,15 +32,15 @@ impl<'a, 'b> Deref for S<'a, 'b> {
 fn return_dangling_pointer_coerce(s: S2) -> &u32 {
     let four = 4;
     let mut s = s;
-    s.bomb = Some(&four); //~ ERROR does not live long enough
-    &s
+    s.bomb = Some(&four);
+    &s //~ ERROR cannot return value referencing local variable `four`
 }
 
 fn return_dangling_pointer_unary_op(s: S2) -> &u32 {
     let four = 4;
     let mut s = s;
-    s.bomb = Some(&four); //~ ERROR does not live long enough
-    &*s
+    s.bomb = Some(&four);
+    &*s //~ ERROR cannot return value referencing local variable `four`
 }
 
 impl<'a, 'b> Shl<&'b u32> for S<'a, 'b> {
@@ -50,17 +50,17 @@ impl<'a, 'b> Shl<&'b u32> for S<'a, 'b> {
 
 fn return_dangling_pointer_binary_op(s: S2) -> &u32 {
     let s = s;
-    s << &mut 3 //~ ERROR does not live long enough
+    s << &mut 3 //~ ERROR cannot return value referencing temporary value
 }
 
 fn return_dangling_pointer_method(s: S2) -> &u32 {
     let s = s;
-    s.shl(&mut 3) //~ ERROR does not live long enough
+    s.shl(&mut 3) //~ ERROR cannot return value referencing temporary value
 }
 
 fn return_dangling_pointer_ufcs(s: S2) -> &u32 {
     let s = s;
-    S2::shl(s, &mut 3) //~ ERROR does not live long enough
+    S2::shl(s, &mut 3) //~ ERROR cannot return value referencing temporary value
 }
 
 fn main() {

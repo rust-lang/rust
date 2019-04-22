@@ -7,14 +7,15 @@ LL | fn f<'a: 'static>(_: &'a i32) {}
    = help: you can use the `'static` lifetime directly, in place of `'a`
 
 error[E0597]: `x` does not live long enough
-  --> $DIR/static-lifetime-bound.rs:5:8
+  --> $DIR/static-lifetime-bound.rs:5:7
    |
 LL |     f(&x);
-   |        ^ borrowed value does not live long enough
+   |     --^^-
+   |     | |
+   |     | borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
 LL | }
-   | - borrowed value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - `x` dropped here while still borrowed
 
 error: aborting due to previous error
 

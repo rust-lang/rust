@@ -1,10 +1,10 @@
-error[E0507]: cannot move out of captured outer variable in an `Fn` closure
+error[E0507]: cannot move out of captured variable in an `Fn` closure
   --> $DIR/borrowck-in-static.rs:5:17
    |
 LL |     let x = Box::new(0);
    |         - captured outer variable
 LL |     Box::new(|| x)
-   |                 ^ cannot move out of captured outer variable in an `Fn` closure
+   |                 ^ cannot move out of captured variable in an `Fn` closure
 
 error: aborting due to previous error
 

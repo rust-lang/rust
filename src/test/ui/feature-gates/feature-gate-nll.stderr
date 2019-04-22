@@ -1,11 +1,29 @@
-error[E0506]: cannot assign to `x` because it is borrowed
-  --> $DIR/feature-gate-nll.rs:17:5
+warning[E0502]: cannot borrow `*x.1` as immutable because it is also borrowed as mutable
+  --> $DIR/feature-gate-nll.rs:14:13
    |
-LL |     let p = &x;
-   |              - borrow of `x` occurs here
-LL |     x = 22;
-   |     ^^^^^^ assignment to borrowed `x` occurs here
+LL |     let m = &mut x;
+   |             ------ mutable borrow occurs here
+LL |     let p = &*x.1;
+   |             ^^^^^ immutable borrow occurs here
+...
+LL |     m;
+   |     - mutable borrow later used here
+   |
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+
+error: compilation successful
+  --> $DIR/feature-gate-nll.rs:10:1
+   |
+LL | / fn main() {
+LL | |     let mut x = (33, &0);
+LL | |
+LL | |     let m = &mut x;
+...  |
+LL | |     m;
+LL | | }
+   | |_^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0506`.
+For more information about this error, try `rustc --explain E0502`.

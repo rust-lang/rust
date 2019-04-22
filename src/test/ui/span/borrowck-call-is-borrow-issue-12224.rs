@@ -23,7 +23,7 @@ fn test1() {
 
 fn test2<F>(f: &F) where F: FnMut() {
     (*f)();
-    //~^ ERROR cannot borrow immutable borrowed content `*f` as mutable
+    //~^ ERROR cannot borrow `*f` as mutable, as it is behind a `&` reference
 }
 
 fn test3<F>(f: &mut F) where F: FnMut() {
@@ -32,7 +32,7 @@ fn test3<F>(f: &mut F) where F: FnMut() {
 
 fn test4(f: &Test) {
     f.f.call_mut(())
-    //~^ ERROR: cannot borrow field `f.f` of immutable binding as mutable
+    //~^ ERROR: cannot borrow `f.f` as mutable, as it is behind a `&` reference
 }
 
 fn test5(f: &mut Test) {
@@ -53,9 +53,9 @@ fn test7() {
         let _ = s.len();
     };
     f(Box::new(|a| {
+        //~^ ERROR cannot move out of `f` because it is borrowed
         foo(f);
-        //~^ ERROR cannot move `f` into closure because it is borrowed
-        //~| ERROR cannot move out of captured outer variable in an `FnMut` closure
+        //~^ ERROR cannot move out of captured variable in an `FnMut` closure
     }), 3);
 }
 

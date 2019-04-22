@@ -1,6 +1,4 @@
 // ignore-tidy-linelength
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
 
 #![feature(slice_patterns)]
 
@@ -40,24 +38,21 @@ fn main() {
     {
         let mut f = Foo { x: 22 };
         let x = f.x();
-        f.x; //[ast]~ ERROR cannot use `f.x` because it was mutably borrowed
-        //[mir]~^ ERROR cannot use `f.x` because it was mutably borrowed
+        f.x; //~ ERROR cannot use `f.x` because it was mutably borrowed
         drop(x);
     }
     // Local and field from tuple-struct
     {
         let mut g = Bar(22);
         let x = g.x();
-        g.0; //[ast]~ ERROR cannot use `g.0` because it was mutably borrowed
-             //[mir]~^ ERROR cannot use `g.0` because it was mutably borrowed
+        g.0; //~ ERROR cannot use `g.0` because it was mutably borrowed
         drop(x);
     }
     // Local and field from tuple
     {
         let mut h = (22, 23);
         let x = &mut h.0;
-        h.0; //[ast]~ ERROR cannot use `h.0` because it was mutably borrowed
-             //[mir]~^ ERROR cannot use `h.0` because it was mutably borrowed
+        h.0; //~ ERROR cannot use `h.0` because it was mutably borrowed
         drop(x);
     }
     // Local and field from enum
@@ -65,9 +60,7 @@ fn main() {
         let mut e = Baz::X(2);
         let x = e.x();
         match e {
-            Baz::X(value) => value
-            //[ast]~^ ERROR cannot use `e.0` because it was mutably borrowed
-            //[mir]~^^ ERROR cannot use `e.0` because it was mutably borrowed
+            Baz::X(value) => value //~ ERROR cannot use `e.0` because it was mutably borrowed
         };
         drop(x);
     }
@@ -75,32 +68,28 @@ fn main() {
     unsafe {
         let mut u = U { b: 0 };
         let x = &mut u.a;
-        u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowed
-             //[mir]~^ ERROR cannot use `u.a` because it was mutably borrowed
+        u.a; //~ ERROR cannot use `u.a` because it was mutably borrowed
         drop(x);
     }
     // Deref and field from struct
     {
         let mut f = Box::new(Foo { x: 22 });
         let x = f.x();
-        f.x; //[ast]~ ERROR cannot use `f.x` because it was mutably borrowed
-             //[mir]~^ ERROR cannot use `f.x` because it was mutably borrowed
+        f.x; //~ ERROR cannot use `f.x` because it was mutably borrowed
         drop(x);
     }
     // Deref and field from tuple-struct
     {
         let mut g = Box::new(Bar(22));
         let x = g.x();
-        g.0; //[ast]~ ERROR cannot use `g.0` because it was mutably borrowed
-             //[mir]~^ ERROR cannot use `g.0` because it was mutably borrowed
+        g.0; //~ ERROR cannot use `g.0` because it was mutably borrowed
         drop(x);
     }
     // Deref and field from tuple
     {
         let mut h = Box::new((22, 23));
         let x = &mut h.0;
-        h.0; //[ast]~ ERROR cannot use `h.0` because it was mutably borrowed
-             //[mir]~^ ERROR cannot use `h.0` because it was mutably borrowed
+        h.0; //~ ERROR cannot use `h.0` because it was mutably borrowed
         drop(x);
     }
     // Deref and field from enum
@@ -109,8 +98,7 @@ fn main() {
         let x = e.x();
         match *e {
             Baz::X(value) => value
-            //[ast]~^ ERROR cannot use `e.0` because it was mutably borrowed
-            //[mir]~^^ ERROR cannot use `e.0` because it was mutably borrowed
+            //~^ ERROR cannot use `e.0` because it was mutably borrowed
         };
         drop(x);
     }
@@ -118,8 +106,7 @@ fn main() {
     unsafe {
         let mut u = Box::new(U { b: 0 });
         let x = &mut u.a;
-        u.a; //[ast]~ ERROR cannot use `u.a` because it was mutably borrowed
-             //[mir]~^ ERROR cannot use `u.a` because it was mutably borrowed
+        u.a; //~ ERROR cannot use `u.a` because it was mutably borrowed
         drop(x);
     }
     // Constant index
@@ -128,26 +115,22 @@ fn main() {
         let x = &mut v;
         match v {
             &[x, _, .., _, _] => println!("{}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
                             _ => panic!("other case"),
         }
         match v {
             &[_, x, .., _, _] => println!("{}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
                             _ => panic!("other case"),
         }
         match v {
             &[_, _, .., x, _] => println!("{}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
                             _ => panic!("other case"),
         }
         match v {
             &[_, _, .., _, x] => println!("{}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
                             _ => panic!("other case"),
         }
         drop(x);
@@ -158,26 +141,22 @@ fn main() {
         let x = &mut v;
         match v {
             &[x..] => println!("{:?}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
         match v {
             &[_, x..] => println!("{:?}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
         match v {
             &[x.., _] => println!("{:?}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
         match v {
             &[_, x.., _] => println!("{:?}", x),
-                //[ast]~^ ERROR cannot use `v[..]` because it was mutably borrowed
-                //[mir]~^^ ERROR cannot use `v[..]` because it was mutably borrowed
+                //~^ ERROR cannot use `v[..]` because it was mutably borrowed
             _ => panic!("other case"),
         }
         drop(x);
@@ -190,13 +169,11 @@ fn main() {
         let x = &mut e;
         match e {
             E::A(ref ax) =>
-                //[ast]~^ ERROR cannot borrow `e.0` as immutable because `e` is also borrowed as mutable
-                //[mir]~^^ ERROR cannot borrow `e.0` as immutable because it is also borrowed as mutable
-                //[mir]~| ERROR cannot use `e` because it was mutably borrowed
+                //~^ ERROR cannot borrow `e.0` as immutable because it is also borrowed as mutable
+                //~| ERROR cannot use `e` because it was mutably borrowed
                 println!("e.ax: {:?}", ax),
             E::B { x: ref bx } =>
-                //[ast]~^ ERROR cannot borrow `e.x` as immutable because `e` is also borrowed as mutable
-                //[mir]~^^ ERROR cannot borrow `e.x` as immutable because it is also borrowed as mutable
+                //~^ ERROR cannot borrow `e.x` as immutable because it is also borrowed as mutable
                 println!("e.bx: {:?}", bx),
         }
         drop(x);
@@ -209,15 +186,13 @@ fn main() {
         let x = &mut s;
         match s {
             S  { y: (ref y0, _), .. } =>
-                //[ast]~^ ERROR cannot borrow `s.y.0` as immutable because `s` is also borrowed as mutable
-                //[mir]~^^ ERROR cannot borrow `s.y.0` as immutable because it is also borrowed as mutable
+                //~^ ERROR cannot borrow `s.y.0` as immutable because it is also borrowed as mutable
                 println!("y0: {:?}", y0),
             _ => panic!("other case"),
         }
         match s {
             S  { x: F { y: ref x0, .. }, .. } =>
-                //[ast]~^ ERROR cannot borrow `s.x.y` as immutable because `s` is also borrowed as mutable
-                //[mir]~^^ ERROR cannot borrow `s.x.y` as immutable because it is also borrowed as mutable
+                //~^ ERROR cannot borrow `s.x.y` as immutable because it is also borrowed as mutable
                 println!("x0: {:?}", x0),
             _ => panic!("other case"),
         }
@@ -233,8 +208,10 @@ fn main() {
         fn bump<'a>(mut block: &mut Block<'a>) {
             let x = &mut block;
             let p: &'a u8 = &*block.current;
-            //[mir]~^ ERROR cannot borrow `*block.current` as immutable because it is also borrowed as mutable
-            // No errors in AST because of issue rust#38899
+            //~^ WARNING cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+            //~| this error has been downgraded
+            //~| this warning will become a hard error in the future
+            // Warning because of issue rust#38899
             drop(x);
         }
     }
@@ -248,8 +225,10 @@ fn main() {
         unsafe fn bump2(mut block: *mut Block2) {
             let x = &mut block;
             let p : *const u8 = &*(*block).current;
-            //[mir]~^ ERROR cannot borrow `*block.current` as immutable because it is also borrowed as mutable
-            // No errors in AST because of issue rust#38899
+            //~^ WARNING cannot borrow `*block.current` as immutable because it is also borrowed as mutable
+            //~| this error has been downgraded
+            //~| this warning will become a hard error in the future
+            // Warning because of issue rust#38899
             drop(x);
         }
     }
@@ -259,9 +238,8 @@ fn main() {
         let mut v = &[F{x: 1, y: 2}, F{x: 3, y: 4}];
         let x = &mut v;
         v[0].y;
-        //[ast]~^ ERROR cannot use `v[..].y` because it was mutably borrowed
-        //[mir]~^^ ERROR cannot use `v[_].y` because it was mutably borrowed
-        //[mir]~| ERROR cannot use `*v` because it was mutably borrowed
+        //~^ ERROR cannot use `v[_].y` because it was mutably borrowed
+        //~| ERROR cannot use `*v` because it was mutably borrowed
         drop(x);
     }
     // Field of constant index
@@ -271,8 +249,7 @@ fn main() {
         let x = &mut v;
         match v {
             &[_, F {x: ref xf, ..}] => println!("{}", xf),
-            //[mir]~^ ERROR cannot borrow `v[..].x` as immutable because it is also borrowed as mutable
-            // No errors in AST
+            //~^ ERROR cannot borrow `v[..].x` as immutable because it is also borrowed as mutable
             _ => panic!("other case")
         }
         drop(x);
@@ -282,8 +259,7 @@ fn main() {
         let mut x = 0;
         || {
             let y = &mut x;
-            &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
-                    //[mir]~^ ERROR cannot borrow `x` as mutable more than once at a time
+            &mut x; //~ ERROR cannot borrow `x` as mutable more than once at a time
             *y = 1;
         };
     }
@@ -291,10 +267,9 @@ fn main() {
     {
         let mut x = 0;
            || {
-               || { //[mir]~ ERROR captured variable cannot escape `FnMut` closure body
+               || { //~ ERROR captured variable cannot escape `FnMut` closure body
                    let y = &mut x;
-                   &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than once at a time
-                   //[mir]~^ ERROR cannot borrow `x` as mutable more than once at a time
+                   &mut x; //~ ERROR cannot borrow `x` as mutable more than once at a time
                    *y = 1;
                    drop(y);
                 }
@@ -304,8 +279,7 @@ fn main() {
         fn foo(x: Vec<i32>) {
             let c = || {
                 drop(x);
-                drop(x); //[ast]~ ERROR use of moved value: `x`
-                         //[mir]~^ ERROR use of moved value: `x`
+                drop(x); //~ ERROR use of moved value: `x`
             };
             c();
         }

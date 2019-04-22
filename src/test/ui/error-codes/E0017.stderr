@@ -16,11 +16,11 @@ error: cannot mutate statics in the initializer of another static
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^
 
-error[E0596]: cannot borrow immutable static item as mutable
-  --> $DIR/E0017.rs:5:44
+error[E0596]: cannot borrow immutable static item `X` as mutable
+  --> $DIR/E0017.rs:5:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
-   |                                            ^
+   |                                       ^^^^^^ cannot borrow as mutable
 
 error[E0017]: references in statics may only refer to immutable values
   --> $DIR/E0017.rs:8:38

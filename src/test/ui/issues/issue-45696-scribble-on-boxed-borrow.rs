@@ -2,21 +2,19 @@
 // mutable borrows that would be scribbled over by destructors before
 // the return occurs.
 //
-// We will explicitly test AST-borrowck, NLL, and migration modes;
+// We will explicitly test NLL, and migration modes;
 // thus we will also skip the automated compare-mode=nll.
 
-// revisions: ast nll migrate
+// revisions: nll migrate
 // ignore-compare-mode-nll
 
-// This test is going to pass in the ast and migrate revisions,
-// because the AST-borrowck accepted this code in the past (see notes
-// below). So we use `#[rustc_error]` to keep the outcome as an error
-// in all scenarios, and rely on the stderr files to show what the
-// actual behavior is. (See rust-lang/rust#49855.)
+// This test is going to pass in the migrate revision, because the AST-borrowck
+// accepted this code in the past (see notes below). So we use `#[rustc_error]`
+// to keep the outcome as an error in all scenarios, and rely on the stderr
+// files to show what the actual behavior is. (See rust-lang/rust#49855.)
 #![feature(rustc_attrs)]
 
 #![cfg_attr(nll, feature(nll))]
-//[migrate]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
 
 struct Scribble<'a>(&'a mut u32);
 
@@ -79,8 +77,7 @@ fn boxed_boxed_scribbled<'a>(s: Box<Box<Scribble<'a>>>) -> &'a mut u32 {
 }
 
 #[rustc_error]
-fn main() { //[ast]~ ERROR compilation successful
-     //[migrate]~^ ERROR compilation successful
+fn main() { //[migrate]~ ERROR compilation successful
     let mut x = 1;
     {
         let mut long_lived = Scribble(&mut x);

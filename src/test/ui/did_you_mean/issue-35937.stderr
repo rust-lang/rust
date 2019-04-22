@@ -1,26 +1,26 @@
-error[E0596]: cannot borrow field `f.v` of immutable binding as mutable
+error[E0596]: cannot borrow `f.v` as mutable, as `f` is not declared as mutable
   --> $DIR/issue-35937.rs:7:5
    |
 LL |     let f = Foo { v: Vec::new() };
-   |         - help: make this binding mutable: `mut f`
+   |         - help: consider changing this to be mutable: `mut f`
 LL |     f.v.push("cat".to_string());
-   |     ^^^ cannot mutably borrow field of immutable binding
+   |     ^^^ cannot borrow as mutable
 
-error[E0594]: cannot assign to field `s.x` of immutable binding
+error[E0594]: cannot assign to `s.x`, as `s` is not declared as mutable
   --> $DIR/issue-35937.rs:16:5
    |
 LL |     let s = S { x: 42 };
-   |         - help: make this binding mutable: `mut s`
+   |         - help: consider changing this to be mutable: `mut s`
 LL |     s.x += 1;
-   |     ^^^^^^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^^ cannot assign
 
-error[E0594]: cannot assign to field `s.x` of immutable binding
+error[E0594]: cannot assign to `s.x`, as `s` is not declared as mutable
   --> $DIR/issue-35937.rs:20:5
    |
 LL | fn bar(s: S) {
-   |        - help: make this binding mutable: `mut s`
+   |        - help: consider changing this to be mutable: `mut s`
 LL |     s.x += 1;
-   |     ^^^^^^^^ cannot mutably borrow field of immutable binding
+   |     ^^^^^^^^ cannot assign
 
 error: aborting due to 3 previous errors
 

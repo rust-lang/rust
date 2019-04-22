@@ -2,9 +2,9 @@
 
 // This test is bogus (i.e., should be compile-fail) during the period
 // where #54986 is implemented and #54987 is *not* implemented. For
-// now: just ignore it under nll
+// now: just ignore it
 //
-// ignore-compare-mode-nll
+// ignore-test
 
 // This test is checking that the write to `c.0` (which has been moved out of)
 // won't overwrite the state in `c2`.

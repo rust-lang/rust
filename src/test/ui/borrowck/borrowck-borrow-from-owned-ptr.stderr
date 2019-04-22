@@ -1,168 +1,116 @@
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:18:22
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:18:17
    |
 LL |     let bar1 = &mut foo.bar1;
-   |                     -------- first mutable borrow occurs here
+   |                ------------- first mutable borrow occurs here
 LL |     let _bar2 = &mut foo.bar1;
-   |                      ^^^^^^^^ second mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - first borrow ends here
+   |     ----- first borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:25:18
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:25:17
    |
 LL |     let bar1 = &mut foo.bar1;
-   |                     -------- mutable borrow occurs here
+   |                ------------- mutable borrow occurs here
 LL |     let _bar2 = &foo.bar1;
-   |                  ^^^^^^^^ immutable borrow occurs here
+   |                 ^^^^^^^^^ immutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - mutable borrow ends here
+   |     ----- mutable borrow later used here
 
 error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:32:22
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:32:17
    |
 LL |     let bar1 = &foo.bar1;
-   |                 -------- immutable borrow occurs here
+   |                --------- immutable borrow occurs here
 LL |     let _bar2 = &mut foo.bar1;
-   |                      ^^^^^^^^ mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - immutable borrow ends here
-
-error[E0499]: cannot borrow `foo` (via `foo.bar2`) as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:46:22
-   |
-LL |     let bar1 = &mut foo.bar1;
-   |                     -------- first mutable borrow occurs here (via `foo.bar1`)
-LL |     let _bar2 = &mut foo.bar2;
-   |                      ^^^^^^^^ second mutable borrow occurs here (via `foo.bar2`)
-LL |     *bar1;
-LL | }
-   | - first borrow ends here
-
-error[E0499]: cannot borrow `foo` (via `foo.bar2`) as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:53:42
-   |
-LL |         Foo { bar1: ref mut _bar1, bar2: ref mut _bar2 } => {}
-   |                     -------------        ^^^^^^^^^^^^^ second mutable borrow occurs here (via `foo.bar2`)
-   |                     |
-   |                     first mutable borrow occurs here (via `foo.bar1`)
-LL |
-LL |     }
-   |     - first borrow ends here
+   |     ----- immutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:62:21
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:64:21
    |
 LL |     let bar1 = &mut foo.bar1;
-   |                     -------- first mutable borrow occurs here
+   |                ------------- first mutable borrow occurs here
 LL |     match *foo {
 LL |         Foo { bar1: ref mut _bar1, bar2: _ } => {}
    |                     ^^^^^^^^^^^^^ second mutable borrow occurs here
 ...
-LL | }
-   | - first borrow ends here
+LL |     *bar1;
+   |     ----- first borrow later used here
 
-error[E0502]: cannot borrow `foo.bar1` as immutable because `foo.bar1.int1` is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:71:18
+error[E0502]: cannot borrow `foo.bar1` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:73:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- mutable borrow occurs here
+   |                ------------------ mutable borrow occurs here
 LL |     let _foo1 = &foo.bar1;
-   |                  ^^^^^^^^ immutable borrow occurs here
-...
-LL | }
-   | - mutable borrow ends here
+   |                 ^^^^^^^^^ immutable borrow occurs here
+LL |     let _foo2 = &*foo;
+LL |     *bar1;
+   |     ----- mutable borrow later used here
 
-error[E0502]: cannot borrow `*foo` as immutable because `foo.bar1.int1` is also borrowed as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:72:18
+error[E0502]: cannot borrow `*foo` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:74:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- mutable borrow occurs here
+   |                ------------------ mutable borrow occurs here
 LL |     let _foo1 = &foo.bar1;
 LL |     let _foo2 = &*foo;
-   |                  ^^^^ immutable borrow occurs here
+   |                 ^^^^^ immutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - mutable borrow ends here
+   |     ----- mutable borrow later used here
 
 error[E0499]: cannot borrow `foo.bar1` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:79:22
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:81:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- first mutable borrow occurs here
+   |                ------------------ first mutable borrow occurs here
 LL |     let _foo1 = &mut foo.bar1;
-   |                      ^^^^^^^^ second mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - first borrow ends here
+   |     ----- first borrow later used here
 
 error[E0499]: cannot borrow `*foo` as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:86:22
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:88:17
    |
 LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- first mutable borrow occurs here
+   |                ------------------ first mutable borrow occurs here
 LL |     let _foo2 = &mut *foo;
-   |                      ^^^^ second mutable borrow occurs here
+   |                 ^^^^^^^^^ second mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - first borrow ends here
+   |     ----- first borrow later used here
 
-error[E0502]: cannot borrow `foo.bar1` as mutable because `foo.bar1.int1` is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:93:22
+error[E0502]: cannot borrow `foo.bar1` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:95:17
    |
 LL |     let bar1 = &foo.bar1.int1;
-   |                 ------------- immutable borrow occurs here
+   |                -------------- immutable borrow occurs here
 LL |     let _foo1 = &mut foo.bar1;
-   |                      ^^^^^^^^ mutable borrow occurs here
+   |                 ^^^^^^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - immutable borrow ends here
+   |     ----- immutable borrow later used here
 
-error[E0502]: cannot borrow `*foo` as mutable because `foo.bar1.int1` is also borrowed as immutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:100:22
+error[E0502]: cannot borrow `*foo` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:102:17
    |
 LL |     let bar1 = &foo.bar1.int1;
-   |                 ------------- immutable borrow occurs here
+   |                -------------- immutable borrow occurs here
 LL |     let _foo2 = &mut *foo;
-   |                      ^^^^ mutable borrow occurs here
+   |                 ^^^^^^^^^ mutable borrow occurs here
 LL |     *bar1;
-LL | }
-   | - immutable borrow ends here
+   |     ----- immutable borrow later used here
 
-error[E0502]: cannot borrow `foo` (via `foo.bar2`) as immutable because `foo` is also borrowed as mutable (via `foo.bar1`)
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:115:18
-   |
-LL |     let bar1 = &mut foo.bar1;
-   |                     -------- mutable borrow occurs here (via `foo.bar1`)
-LL |     let _foo1 = &foo.bar2;
-   |                  ^^^^^^^^ immutable borrow of `foo.bar2` -- which overlaps with `foo.bar1` -- occurs here
-LL |     *bar1;
-LL | }
-   | - mutable borrow ends here
-
-error[E0596]: cannot borrow field `foo.bar1` of immutable binding as mutable
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:121:21
+error[E0596]: cannot borrow `foo.bar1` as mutable, as `foo` is not declared as mutable
+  --> $DIR/borrowck-borrow-from-owned-ptr.rs:122:16
    |
 LL |     let foo = make_foo();
-   |         --- help: make this binding mutable: `mut foo`
+   |         --- help: consider changing this to be mutable: `mut foo`
 LL |     let bar1 = &mut foo.bar1;
-   |                     ^^^^^^^^ cannot mutably borrow field of immutable binding
+   |                ^^^^^^^^^^^^^ cannot borrow as mutable
 
-error[E0499]: cannot borrow `foo` (via `foo.bar2.int2`) as mutable more than once at a time
-  --> $DIR/borrowck-borrow-from-owned-ptr.rs:128:21
-   |
-LL |     let bar1 = &mut foo.bar1.int1;
-   |                     ------------- first mutable borrow occurs here (via `foo.bar1.int1`)
-LL |     let foo1 = &mut foo.bar2.int2;
-   |                     ^^^^^^^^^^^^^ second mutable borrow occurs here (via `foo.bar2.int2`)
-...
-LL | }
-   | - first borrow ends here
-
-error: aborting due to 15 previous errors
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0499, E0502, E0596.
 For more information about an error, try `rustc --explain E0499`.

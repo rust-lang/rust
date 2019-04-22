@@ -1,16 +1,10 @@
-// revisions: ast mir
-//[mir]compile-flags: -Zborrowck=mir
-
 fn test() {
-    let b = Box::new(1); //[ast]~ NOTE first assignment
-                         //[mir]~^ NOTE first assignment
-                         //[mir]~| HELP make this binding mutable
-                         //[mir]~| SUGGESTION mut b
+    let b = Box::new(1); //~ NOTE first assignment
+                         //~| HELP make this binding mutable
+                         //~| SUGGESTION mut b
     drop(b);
-    b = Box::new(2); //[ast]~ ERROR cannot assign twice to immutable variable
-                     //[mir]~^ ERROR cannot assign twice to immutable variable `b`
-                     //[ast]~| NOTE cannot assign twice to immutable
-                     //[mir]~| NOTE cannot assign twice to immutable
+    b = Box::new(2); //~ ERROR cannot assign twice to immutable variable `b`
+                     //~| NOTE cannot assign twice to immutable
     drop(b);
 }
 

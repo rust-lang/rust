@@ -1,8 +1,5 @@
 // run-pass
 
-// revisions: normal nll
-//[nll] compile-flags:-Zborrowck=mir
-
 #![feature(fn_traits,
            step_trait,
            unboxed_closures,

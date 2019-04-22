@@ -1,22 +1,22 @@
-error[E0502]: cannot borrow `a` as mutable because `*a` is also borrowed as immutable
-  --> $DIR/borrowck-bad-nested-calls-free.rs:25:22
+error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-bad-nested-calls-free.rs:25:17
    |
+LL |     add(
+   |     --- immutable borrow later used by call
 LL |         &*a,
-   |          -- immutable borrow occurs here
+   |         --- immutable borrow occurs here
 LL |         rewrite(&mut a));
-   |                      ^ - immutable borrow ends here
-   |                      |
-   |                      mutable borrow occurs here
+   |                 ^^^^^^ mutable borrow occurs here
 
-error[E0502]: cannot borrow `a` as mutable because `*a` is also borrowed as immutable
-  --> $DIR/borrowck-bad-nested-calls-free.rs:32:22
+error[E0502]: cannot borrow `a` as mutable because it is also borrowed as immutable
+  --> $DIR/borrowck-bad-nested-calls-free.rs:32:17
    |
+LL |     add(
+   |     --- immutable borrow later used by call
 LL |         &*a,
-   |          -- immutable borrow occurs here
+   |         --- immutable borrow occurs here
 LL |         rewrite(&mut a));
-   |                      ^ - immutable borrow ends here
-   |                      |
-   |                      mutable borrow occurs here
+   |                 ^^^^^^ mutable borrow occurs here
 
 error: aborting due to 2 previous errors
 

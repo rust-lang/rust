@@ -1,6 +1,3 @@
-// revisions: ast mir
-//[mir]compile-flags: -Z borrowck=mir
-
 #![feature(asm)]
 #![allow(dead_code)]
 

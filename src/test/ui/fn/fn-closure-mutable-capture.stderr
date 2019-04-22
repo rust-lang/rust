@@ -1,11 +1,10 @@
-error[E0594]: cannot assign to captured outer variable in an `Fn` closure
+error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
   --> $DIR/fn-closure-mutable-capture.rs:5:17
    |
 LL |     bar(move || x = 1);
-   |                 ^^^^^
+   |                 ^^^^^ cannot assign
    |
-   = note: `Fn` closures cannot capture their enclosing environment for modifications
-help: consider changing this closure to take self by mutable reference
+help: consider changing this to accept closures that implement `FnMut`
   --> $DIR/fn-closure-mutable-capture.rs:5:9
    |
 LL |     bar(move || x = 1);

@@ -13,7 +13,8 @@ impl Foo {
 }
 
 fn bar(f: &mut Foo) {
-  f.foo(
+    f.foo(
+    //~^ ERROR cannot borrow `*f` as mutable
         |a| { //~ ERROR closure requires unique access to `f`
             f.n.insert(*a);
         })

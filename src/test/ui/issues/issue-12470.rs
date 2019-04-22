@@ -25,8 +25,8 @@ fn make_a<'a>(p: &'a X) -> A<'a> {
 
 fn make_make_a<'a>() -> A<'a> {
     let b: Box<B> = box B {i:1};
-    let bb: &B = &*b;    //~ ERROR does not live long enough
-    make_a(bb)
+    let bb: &B = &*b;
+    make_a(bb)  //~ ERROR cannot return value referencing local data `*b`
 }
 
 fn main() {

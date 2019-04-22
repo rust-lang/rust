@@ -2,9 +2,6 @@
 #![allow(dead_code)]
 #![allow(dead_code)]
 
-// revisions:lexical nll
-#![cfg_attr(nll, feature(nll))]
-
 #![feature(generators)]
 
 fn bar<'a>() {

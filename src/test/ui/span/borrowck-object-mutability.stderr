@@ -1,17 +1,17 @@
-error[E0596]: cannot borrow immutable borrowed content `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-object-mutability.rs:8:5
    |
 LL | fn borrowed_receiver(x: &Foo) {
-   |                         ---- use `&mut Foo` here to make mutable
+   |                         ---- help: consider changing this to be a mutable reference: `&mut dyn Foo`
 LL |     x.borrowed();
 LL |     x.borrowed_mut();
-   |     ^ cannot borrow as mutable
+   |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0596]: cannot borrow immutable `Box` content `*x` as mutable
+error[E0596]: cannot borrow `*x` as mutable, as `x` is not declared as mutable
   --> $DIR/borrowck-object-mutability.rs:18:5
    |
 LL | fn owned_receiver(x: Box<Foo>) {
-   |                   - help: make this binding mutable: `mut x`
+   |                   - help: consider changing this to be mutable: `mut x`
 LL |     x.borrowed();
 LL |     x.borrowed_mut();
    |     ^ cannot borrow as mutable

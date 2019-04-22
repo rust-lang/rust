@@ -256,8 +256,20 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
+warning[E0515]: cannot return reference to temporary value
+  --> $DIR/min_const_fn.rs:136:63
+   |
+LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
+   |                                                               ^--
+   |                                                               ||
+   |                                                               |temporary value created here
+   |                                                               returns a reference to data owned by the current function
+   |
+   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
+   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable (see issue #57563)
-  --> $DIR/min_const_fn.rs:141:41
+  --> $DIR/min_const_fn.rs:144:41
    |
 LL | const fn really_no_traits_i_mean_it() { (&() as &std::fmt::Debug, ()).1 }
    |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -265,7 +277,7 @@ LL | const fn really_no_traits_i_mean_it() { (&() as &std::fmt::Debug, ()).1 }
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable (see issue #57563)
-  --> $DIR/min_const_fn.rs:144:21
+  --> $DIR/min_const_fn.rs:147:21
    |
 LL | const fn no_fn_ptrs(_x: fn()) {}
    |                     ^^
@@ -273,7 +285,7 @@ LL | const fn no_fn_ptrs(_x: fn()) {}
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error[E0723]: function pointers in const fn are unstable (see issue #57563)
-  --> $DIR/min_const_fn.rs:146:27
+  --> $DIR/min_const_fn.rs:149:27
    |
 LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
    |                           ^^^^
@@ -282,4 +294,5 @@ LL | const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
 
 error: aborting due to 36 previous errors
 
-For more information about this error, try `rustc --explain E0723`.
+Some errors have detailed explanations: E0515, E0723.
+For more information about an error, try `rustc --explain E0515`.

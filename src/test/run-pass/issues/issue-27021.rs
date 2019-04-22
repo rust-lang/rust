@@ -2,9 +2,9 @@
 
 // This test is bogus (i.e., should be compile-fail) during the period
 // where #54986 is implemented and #54987 is *not* implemented. For
-// now: just ignore it under nll
+// now: just ignore it
 //
-// ignore-compare-mode-nll
+// ignore-test
 
 // These are variants of issue-26996.rs. In all cases we are writing
 // into a record field that has been moved out of, and ensuring that

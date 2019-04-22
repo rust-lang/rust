@@ -13,5 +13,5 @@ impl Mine{
 fn main(){
     let start = Mine{test:"Foo".to_string(), other_val:0};
     let end = Mine{other_val:1, ..start.make_string_bar()};
-    println!("{}", start.test); //~ ERROR use of moved value: `start.test`
+    println!("{}", start.test); //~ ERROR borrow of moved value: `start`
 }

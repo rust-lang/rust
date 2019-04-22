@@ -1,11 +1,19 @@
-error[E0507]: cannot move out of indexed content
+error[E0507]: cannot move out of borrowed content
   --> $DIR/issue-40402-2.rs:5:18
    |
 LL |     let (a, b) = x[0];
-   |          -  -    ^^^^ cannot move out of indexed content
-   |          |  |
-   |          |  ...and here (use `ref b` or `ref mut b`)
-   |          hint: to prevent move, use `ref a` or `ref mut a`
+   |          -  -    ^^^^
+   |          |  |    |
+   |          |  |    cannot move out of borrowed content
+   |          |  |    help: consider borrowing here: `&x[0]`
+   |          |  ...and here
+   |          data moved here
+   |
+note: move occurs because these variables have types that don't implement the `Copy` trait
+  --> $DIR/issue-40402-2.rs:5:10
+   |
+LL |     let (a, b) = x[0];
+   |          ^  ^
 
 error: aborting due to previous error
 

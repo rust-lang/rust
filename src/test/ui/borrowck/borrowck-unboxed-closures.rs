@@ -4,7 +4,7 @@ fn a<F:Fn(isize, isize) -> isize>(mut f: F) {
     use_mut(g);
 }
 fn b<F:FnMut(isize, isize) -> isize>(f: F) {
-    f(1, 2);    //~ ERROR cannot borrow immutable argument
+    f(1, 2);    //~ ERROR cannot borrow `f` as mutable, as it is not declared as mutable
 }
 
 fn c<F:FnOnce(isize, isize) -> isize>(f: F) {

@@ -1,11 +1,11 @@
-error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
+error[E0507]: cannot move out of captured variable in an `FnMut` closure
   --> $DIR/borrowck-move-by-capture.rs:9:29
    |
 LL |     let bar: Box<_> = box 3;
    |         --- captured outer variable
 LL |     let _g = to_fn_mut(|| {
 LL |         let _h = to_fn_once(move || -> isize { *bar });
-   |                             ^^^^^^^^^^^^^^^^ cannot move out of captured outer variable in an `FnMut` closure
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of captured variable in an `FnMut` closure
 
 error: aborting due to previous error
 

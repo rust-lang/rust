@@ -56,11 +56,11 @@ fn imm_local(x: (i32,)) {
 }
 
 fn imm_capture(x: (i32,)) {
-    || { //~ ERROR
-        x = (1,);
-        x.0 = 1;
-        &mut x;
-        &mut x.0;
+    || {
+        x = (1,); //~ ERROR
+        x.0 = 1; //~ ERROR
+        &mut x; //~ ERROR
+        &mut x.0; //~ ERROR
     };
     move || {
         x = (1,); //~ ERROR
