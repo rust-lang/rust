@@ -1621,7 +1621,7 @@ pub trait Iterator {
     fn try_fold_self<F, R>(&mut self, mut f: F) -> Option<R>
         where Self: Sized,
               F: FnMut(Self::Item, Self::Item) -> R,
-              R: Try<Ok=Self::Item>
+              R: Try<Ok = Self::Item>
     {
         self.next().map(move |first| self.try_fold(first, f))
     }
