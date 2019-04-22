@@ -1,5 +1,3 @@
-// ignore-tidy-end-whitespace
-
 #![deny(intra_doc_link_resolution_failure)]
 
 // An error in calculating spans while reporting intra-doc link resolution errors caused rustdoc to
