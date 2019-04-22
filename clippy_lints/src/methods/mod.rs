@@ -20,11 +20,11 @@ use syntax::symbol::LocalInternedString;
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
-    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy, is_expn_of,
-    is_self, is_self_ty, iter_input_pats, last_path_segment, match_path, match_qpath, match_trait_method, match_type,
-    match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet,
-    snippet_with_applicability, snippet_with_macro_callsite, span_lint, span_lint_and_sugg, span_lint_and_then,
-    span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
+    is_ctor_function, is_expn_of, is_self, is_self_ty, iter_input_pats, last_path_segment, match_path, match_qpath,
+    match_trait_method, match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys,
+    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 
 declare_clippy_lint! {
@@ -1069,6 +1069,11 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
 
         // early check if the name is one we care about
         if know_types.iter().all(|k| !k.2.contains(&name)) {
+            return;
+        }
+
+        // ignore enum and struct constructors
+        if is_ctor_function(cx, &arg) {
             return;
         }
 
