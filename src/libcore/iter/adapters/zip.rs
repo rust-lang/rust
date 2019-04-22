@@ -51,6 +51,14 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         ZipImpl::nth(self, n)
     }
+
+    #[inline]
+    fn try_fold<Acc, F, R>(&mut self, init: Acc, f: F) -> R
+        where F: FnMut(Acc, Self::Item) -> R,
+              R: Try<Ok = Acc>,
+    {
+        ZipImpl::try_fold(self, init, f)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -75,6 +83,9 @@ trait ZipImpl<A, B> {
     fn next_back(&mut self) -> Option<Self::Item>
         where A: DoubleEndedIterator + ExactSizeIterator,
               B: DoubleEndedIterator + ExactSizeIterator;
+    fn try_fold<Acc, F, R>(&mut self, init: Acc, f: F) -> R
+        where F: FnMut(Acc, Self::Item) -> R,
+              R: Try<Ok = Acc>;
 }
 
 // General Zip impl
@@ -94,11 +105,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
 
     #[inline]
     default fn next(&mut self) -> Option<(A::Item, B::Item)> {
-        self.a.next().and_then(|x| {
-            self.b.next().and_then(|y| {
-                Some((x, y))
-            })
-        })
+        Some((self.a.next()?, self.b.next()?))
     }
 
     #[inline]
@@ -143,6 +150,20 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         };
 
         (lower, upper)
+    }
+
+    #[inline]
+    default fn try_fold<Acc, F, R>(&mut self, init: Acc, mut fold: F) -> R
+        where F: FnMut(Acc, Self::Item) -> R,
+              R: Try<Ok = Acc>,
+    {
+        let b = &mut self.b;
+        self.a.try_fold(init, move |acc, a_item| {
+            match b.next() {
+                None => LoopState::Break(Try::from_ok(acc)),
+                Some(b_item) => LoopState::from_try(fold(acc, (a_item, b_item))),
+            }
+        }).into_try()
     }
 }
 
