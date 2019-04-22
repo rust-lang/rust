@@ -210,6 +210,15 @@ impl ast::EnumVariant {
     }
 }
 
+impl ast::FnDef {
+    pub fn semicolon_token(&self) -> Option<SyntaxToken<'_>> {
+        self.syntax()
+            .last_child_or_token()
+            .and_then(|it| it.as_token())
+            .filter(|it| it.kind() == SEMI)
+    }
+}
+
 impl ast::LetStmt {
     pub fn has_semi(&self) -> bool {
         match self.syntax().last_child_or_token() {

@@ -7,6 +7,7 @@
 //! modules just wraps its API.
 
 use std::{
+    ops::RangeInclusive,
     fmt::{self, Write},
     any::Any,
     borrow::Borrow,
@@ -323,8 +324,6 @@ impl SyntaxNode {
     ///
     /// This is a type-unsafe low-level editing API, if you need to use it,
     /// prefer to create a type-safe abstraction on top of it instead.
-    ///
-    ///
     pub fn insert_children<'a>(
         &self,
         position: InsertPosition<SyntaxElement<'_>>,
@@ -338,12 +337,6 @@ impl SyntaxNode {
 
         let old_children = self.0.green().children();
 
-        let get_anchor_pos = |anchor: SyntaxElement| -> usize {
-            self.children_with_tokens()
-                .position(|it| it == anchor)
-                .expect("anchor is not a child of current element")
-        };
-
         let new_children = match position {
             InsertPosition::First => {
                 to_insert.chain(old_children.iter().cloned()).collect::<Box<[_]>>()
@@ -353,7 +346,8 @@ impl SyntaxNode {
             }
             InsertPosition::Before(anchor) | InsertPosition::After(anchor) => {
                 let take_anchor = if let InsertPosition::After(_) = position { 1 } else { 0 };
-                let (before, after) = old_children.split_at(get_anchor_pos(anchor) + take_anchor);
+                let split_at = self.position_of_child(anchor) + take_anchor;
+                let (before, after) = old_children.split_at(split_at);
                 before
                     .iter()
                     .cloned()
@@ -363,6 +357,33 @@ impl SyntaxNode {
             }
         };
 
+        self.with_children(new_children)
+    }
+
+    /// Replaces all nodes in `to_delete` with nodes from `to_insert`
+    ///
+    /// This is a type-unsafe low-level editing API, if you need to use it,
+    /// prefer to create a type-safe abstraction on top of it instead.
+    pub fn replace_children<'a>(
+        &self,
+        to_delete: RangeInclusive<SyntaxElement<'_>>,
+        to_insert: impl Iterator<Item = SyntaxElement<'a>>,
+    ) -> TreeArc<SyntaxNode> {
+        let start = self.position_of_child(*to_delete.start());
+        let end = self.position_of_child(*to_delete.end());
+        let old_children = self.0.green().children();
+
+        let new_children = old_children[..start]
+            .iter()
+            .cloned()
+            .chain(to_insert.map(to_green_element))
+            .chain(old_children[end + 1..].iter().cloned())
+            .collect::<Box<[_]>>();
+        self.with_children(new_children)
+    }
+
+    fn with_children(&self, new_children: Box<[rowan::GreenElement]>) -> TreeArc<SyntaxNode> {
+        let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
         let new_node = GreenNode::new(rowan::SyntaxKind(self.kind() as u16), new_children);
         let new_file_node = self.replace_with(new_node);
         let file = SourceFile::new(new_file_node, Vec::new());
@@ -370,16 +391,22 @@ impl SyntaxNode {
         // FIXME: use a more elegant way to re-fetch the node (#1185), make
         // `range` private afterwards
         let mut ptr = SyntaxNodePtr::new(self);
-        ptr.range = TextRange::from_to(ptr.range().start(), ptr.range().end() + delta);
+        ptr.range = TextRange::offset_len(ptr.range().start(), len);
         return ptr.to_node(&file).to_owned();
+    }
 
-        fn to_green_element(element: SyntaxElement) -> rowan::GreenElement {
-            match element {
-                SyntaxElement::Node(node) => node.0.green().clone().into(),
-                SyntaxElement::Token(tok) => {
-                    GreenToken::new(rowan::SyntaxKind(tok.kind() as u16), tok.text().clone()).into()
-                }
-            }
+    fn position_of_child(&self, child: SyntaxElement) -> usize {
+        self.children_with_tokens()
+            .position(|it| it == child)
+            .expect("elemetn is not a child of current element")
+    }
+}
+
+fn to_green_element(element: SyntaxElement) -> rowan::GreenElement {
+    match element {
+        SyntaxElement::Node(node) => node.0.green().clone().into(),
+        SyntaxElement::Token(tok) => {
+            GreenToken::new(rowan::SyntaxKind(tok.kind() as u16), tok.text().clone()).into()
         }
     }
 }
