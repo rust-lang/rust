@@ -2023,6 +2023,9 @@ mod tests {
         check!("224.0.0.0", global|multicast);
         check!("239.255.255.255", global|multicast);
         check!("255.255.255.255");
+        check!("198.18.0.0");
+        check!("198.18.54.2");
+        check!("198.19.255.255");
 
         check!("::", unspec);
         check!("::1", loopback);
@@ -2058,14 +2061,15 @@ mod tests {
             };
 
             ($s:expr, $mask:expr) => {{
-                let unspec: u8 = 1 << 0;
-                let loopback: u8 = 1 << 1;
-                let private: u8 = 1 << 2;
-                let link_local: u8 = 1 << 3;
-                let global: u8 = 1 << 4;
-                let multicast: u8 = 1 << 5;
-                let broadcast: u8 = 1 << 6;
-                let documentation: u8 = 1 << 7;
+                let unspec: u16 = 1 << 0;
+                let loopback: u16 = 1 << 1;
+                let private: u16 = 1 << 2;
+                let link_local: u16 = 1 << 3;
+                let global: u16 = 1 << 4;
+                let multicast: u16 = 1 << 5;
+                let broadcast: u16 = 1 << 6;
+                let documentation: u16 = 1 << 7;
+                let benchmarking: u16 = 1 << 8;
 
                 if ($mask & unspec) == unspec {
                     assert!(ip!($s).is_unspecified());
@@ -2114,17 +2118,24 @@ mod tests {
                 } else {
                     assert!(!ip!($s).is_documentation());
                 }
+
+                if ($mask & benchmarking) == benchmarking {
+                    assert!(ip!($s).is_benchmarking());
+                } else {
+                    assert!(!ip!($s).is_benchmarking());
+                }
             }}
         }
 
-        let unspec: u8 = 1 << 0;
-        let loopback: u8 = 1 << 1;
-        let private: u8 = 1 << 2;
-        let link_local: u8 = 1 << 3;
-        let global: u8 = 1 << 4;
-        let multicast: u8 = 1 << 5;
-        let broadcast: u8 = 1 << 6;
-        let documentation: u8 = 1 << 7;
+        let unspec: u16 = 1 << 0;
+        let loopback: u16 = 1 << 1;
+        let private: u16 = 1 << 2;
+        let link_local: u16 = 1 << 3;
+        let global: u16 = 1 << 4;
+        let multicast: u16 = 1 << 5;
+        let broadcast: u16 = 1 << 6;
+        let documentation: u16 = 1 << 7;
+        let benchmarking: u16 = 1 << 8;
 
         check!("0.0.0.0", unspec);
         check!("0.0.0.1");
@@ -2142,6 +2153,9 @@ mod tests {
         check!("224.0.0.0", global|multicast);
         check!("239.255.255.255", global|multicast);
         check!("255.255.255.255", broadcast);
+        check!("198.18.0.0", benchmarking);
+        check!("198.18.54.2", benchmarking);
+        check!("198.19.255.255", benchmarking);
     }
 
     #[test]
