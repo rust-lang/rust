@@ -308,6 +308,7 @@ fn main() {
     {
         cmd.arg("-Dwarnings");
         cmd.arg("-Dbare_trait_objects");
+        cmd.arg("-Drust_2018_idioms");
     }
 
     if verbose > 1 {

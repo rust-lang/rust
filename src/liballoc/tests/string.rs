@@ -54,11 +54,11 @@ fn test_from_utf8() {
 #[test]
 fn test_from_utf8_lossy() {
     let xs = b"hello";
-    let ys: Cow<str> = "hello".into_cow();
+    let ys: Cow<'_, str> = "hello".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = "ศไทย中华Việt Nam".as_bytes();
-    let ys: Cow<str> = "ศไทย中华Việt Nam".into_cow();
+    let ys: Cow<'_, str> = "ศไทย中华Việt Nam".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = b"Hello\xC2 There\xFF Goodbye";

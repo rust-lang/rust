@@ -6,7 +6,7 @@ mod debug_struct {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_struct("Foo").finish()
             }
         }
@@ -20,7 +20,7 @@ mod debug_struct {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_struct("Foo")
                     .field("bar", &true)
                     .finish()
@@ -40,7 +40,7 @@ mod debug_struct {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_struct("Foo")
                     .field("bar", &true)
                     .field("baz", &format_args!("{}/{}", 10, 20))
@@ -62,7 +62,7 @@ mod debug_struct {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_struct("Foo")
                     .field("bar", &true)
                     .field("baz", &format_args!("{}/{}", 10, 20))
@@ -73,7 +73,7 @@ mod debug_struct {
         struct Bar;
 
         impl fmt::Debug for Bar {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_struct("Bar")
                     .field("foo", &Foo)
                     .field("hello", &"world")
@@ -103,7 +103,7 @@ mod debug_tuple {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_tuple("Foo").finish()
             }
         }
@@ -117,7 +117,7 @@ mod debug_tuple {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_tuple("Foo")
                     .field(&true)
                     .finish()
@@ -137,7 +137,7 @@ mod debug_tuple {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_tuple("Foo")
                     .field(&true)
                     .field(&format_args!("{}/{}", 10, 20))
@@ -159,7 +159,7 @@ mod debug_tuple {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_tuple("Foo")
                     .field(&true)
                     .field(&format_args!("{}/{}", 10, 20))
@@ -170,7 +170,7 @@ mod debug_tuple {
         struct Bar;
 
         impl fmt::Debug for Bar {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_tuple("Bar")
                     .field(&Foo)
                     .field(&"world")
@@ -200,7 +200,7 @@ mod debug_map {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_map().finish()
             }
         }
@@ -214,7 +214,7 @@ mod debug_map {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_map()
                     .entry(&"bar", &true)
                     .finish()
@@ -234,7 +234,7 @@ mod debug_map {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_map()
                     .entry(&"bar", &true)
                     .entry(&10, &format_args!("{}/{}", 10, 20))
@@ -256,7 +256,7 @@ mod debug_map {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_map()
                     .entry(&"bar", &true)
                     .entry(&10, &format_args!("{}/{}", 10, 20))
@@ -267,7 +267,7 @@ mod debug_map {
         struct Bar;
 
         impl fmt::Debug for Bar {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_map()
                     .entry(&"foo", &Foo)
                     .entry(&Foo, &"world")
@@ -301,7 +301,7 @@ mod debug_set {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_set().finish()
             }
         }
@@ -315,7 +315,7 @@ mod debug_set {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_set()
                     .entry(&true)
                     .finish()
@@ -335,7 +335,7 @@ mod debug_set {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_set()
                     .entry(&true)
                     .entry(&format_args!("{}/{}", 10, 20))
@@ -357,7 +357,7 @@ mod debug_set {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_set()
                     .entry(&true)
                     .entry(&format_args!("{}/{}", 10, 20))
@@ -368,7 +368,7 @@ mod debug_set {
         struct Bar;
 
         impl fmt::Debug for Bar {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_set()
                     .entry(&Foo)
                     .entry(&"world")
@@ -398,7 +398,7 @@ mod debug_list {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_list().finish()
             }
         }
@@ -412,7 +412,7 @@ mod debug_list {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_list()
                     .entry(&true)
                     .finish()
@@ -432,7 +432,7 @@ mod debug_list {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_list()
                     .entry(&true)
                     .entry(&format_args!("{}/{}", 10, 20))
@@ -454,7 +454,7 @@ mod debug_list {
         struct Foo;
 
         impl fmt::Debug for Foo {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_list()
                     .entry(&true)
                     .entry(&format_args!("{}/{}", 10, 20))
@@ -465,7 +465,7 @@ mod debug_list {
         struct Bar;
 
         impl fmt::Debug for Bar {
-            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+            fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
                 fmt.debug_list()
                     .entry(&Foo)
                     .entry(&"world")

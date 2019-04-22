@@ -139,11 +139,11 @@ fn ref_clone_updates_flag() {
 fn ref_map_does_not_update_flag() {
     let x = RefCell::new(Some(5));
     {
-        let b1: Ref<Option<u32>> = x.borrow();
+        let b1: Ref<'_, Option<u32>> = x.borrow();
         assert!(x.try_borrow().is_ok());
         assert!(x.try_borrow_mut().is_err());
         {
-            let b2: Ref<u32> = Ref::map(b1, |o| o.as_ref().unwrap());
+            let b2: Ref<'_, u32> = Ref::map(b1, |o| o.as_ref().unwrap());
             assert_eq!(*b2, 5);
             assert!(x.try_borrow().is_ok());
             assert!(x.try_borrow_mut().is_err());
@@ -217,12 +217,12 @@ fn ref_mut_map_split() {
 fn ref_map_accessor() {
     struct X(RefCell<(u32, char)>);
     impl X {
-        fn accessor(&self) -> Ref<u32> {
+        fn accessor(&self) -> Ref<'_, u32> {
             Ref::map(self.0.borrow(), |tuple| &tuple.0)
         }
     }
     let x = X(RefCell::new((7, 'z')));
-    let d: Ref<u32> = x.accessor();
+    let d: Ref<'_, u32> = x.accessor();
     assert_eq!(*d, 7);
 }
 
@@ -230,13 +230,13 @@ fn ref_map_accessor() {
 fn ref_mut_map_accessor() {
     struct X(RefCell<(u32, char)>);
     impl X {
-        fn accessor(&self) -> RefMut<u32> {
+        fn accessor(&self) -> RefMut<'_, u32> {
             RefMut::map(self.0.borrow_mut(), |tuple| &mut tuple.0)
         }
     }
     let x = X(RefCell::new((7, 'z')));
     {
-        let mut d: RefMut<u32> = x.accessor();
+        let mut d: RefMut<'_ ,u32> = x.accessor();
         assert_eq!(*d, 7);
         *d += 1;
     }
@@ -333,16 +333,16 @@ fn refcell_unsized() {
 fn refcell_ref_coercion() {
     let cell: RefCell<[i32; 3]> = RefCell::new([1, 2, 3]);
     {
-        let mut cellref: RefMut<[i32; 3]> = cell.borrow_mut();
+        let mut cellref: RefMut<'_, [i32; 3]> = cell.borrow_mut();
         cellref[0] = 4;
-        let mut coerced: RefMut<[i32]> = cellref;
+        let mut coerced: RefMut<'_, [i32]> = cellref;
         coerced[2] = 5;
     }
     {
         let comp: &mut [i32] = &mut [4, 2, 5];
-        let cellref: Ref<[i32; 3]> = cell.borrow();
+        let cellref: Ref<'_, [i32; 3]> = cell.borrow();
         assert_eq!(&*cellref, comp);
-        let coerced: Ref<[i32]> = cellref;
+        let coerced: Ref<'_, [i32]> = cellref;
         assert_eq!(&*coerced, comp);
     }
 }
