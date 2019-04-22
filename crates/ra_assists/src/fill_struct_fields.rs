@@ -1,94 +1,55 @@
-use std::fmt::Write;
-
 use hir::{AdtDef, db::HirDatabase};
 
 use ra_syntax::ast::{self, AstNode};
 
-use crate::{AssistCtx, Assist, AssistId};
+use crate::{AssistCtx, Assist, AssistId, ast_editor::{AstEditor, AstBuilder}};
 
 pub(crate) fn fill_struct_fields(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let struct_lit = ctx.node_at_offset::<ast::StructLit>()?;
-    let mut fsf = FillStructFields {
-        ctx: &mut ctx,
-        named_field_list: struct_lit.named_field_list()?,
-        struct_fields: vec![],
-        struct_lit,
-    };
-    fsf.evaluate_struct_def_fields()?;
-    if fsf.struct_lit_and_def_have_the_same_number_of_fields() {
-        return None;
-    }
-    fsf.remove_already_included_fields()?;
-    fsf.add_action()?;
-    ctx.build()
-}
+    let named_field_list = struct_lit.named_field_list()?;
 
-struct FillStructFields<'a, 'b: 'a, DB> {
-    ctx: &'a mut AssistCtx<'b, DB>,
-    named_field_list: &'a ast::NamedFieldList,
-    struct_fields: Vec<(String, String)>,
-    struct_lit: &'a ast::StructLit,
-}
-
-impl<DB> FillStructFields<'_, '_, DB>
-where
-    DB: HirDatabase,
-{
-    fn add_action(&mut self) -> Option<()> {
-        let named_field_list = self.named_field_list;
-        let struct_fields_string = self.struct_fields_string()?;
-        let struct_lit = self.struct_lit;
-        self.ctx.add_action(AssistId("fill_struct_fields"), "fill struct fields", |edit| {
-            edit.target(struct_lit.syntax().range());
-            edit.set_cursor(struct_lit.syntax().range().start());
-            edit.replace_node_and_indent(named_field_list.syntax(), struct_fields_string);
-        });
-        Some(())
-    }
-
-    fn struct_lit_and_def_have_the_same_number_of_fields(&self) -> bool {
-        self.named_field_list.fields().count() == self.struct_fields.len()
-    }
-
-    fn evaluate_struct_def_fields(&mut self) -> Option<()> {
-        let analyzer = hir::SourceAnalyzer::new(
-            self.ctx.db,
-            self.ctx.frange.file_id,
-            self.struct_lit.syntax(),
-            None,
-        );
-        let struct_lit_ty = analyzer.type_of(self.ctx.db, self.struct_lit.into())?;
+    // Collect all fields from struct definition
+    let mut fields = {
+        let analyzer =
+            hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, struct_lit.syntax(), None);
+        let struct_lit_ty = analyzer.type_of(ctx.db, struct_lit.into())?;
         let struct_def = match struct_lit_ty.as_adt() {
             Some((AdtDef::Struct(s), _)) => s,
             _ => return None,
         };
-        self.struct_fields = struct_def
-            .fields(self.ctx.db)
-            .into_iter()
-            .map(|f| (f.name(self.ctx.db).to_string(), "()".into()))
-            .collect();
-        Some(())
+        struct_def.fields(ctx.db)
+    };
+
+    // Filter out existing fields
+    for ast_field in named_field_list.fields() {
+        let name_from_ast = ast_field.name_ref()?.text().to_string();
+        fields.retain(|field| field.name(ctx.db).to_string() != name_from_ast);
+    }
+    if fields.is_empty() {
+        return None;
     }
 
-    fn remove_already_included_fields(&mut self) -> Option<()> {
-        for ast_field in self.named_field_list.fields() {
-            let expr = ast_field.expr()?.syntax().text().to_string();
-            let name_from_ast = ast_field.name_ref()?.text().to_string();
-            if let Some(idx) = self.struct_fields.iter().position(|(n, _)| n == &name_from_ast) {
-                self.struct_fields[idx] = (name_from_ast, expr);
-            }
-        }
-        Some(())
-    }
+    let db = ctx.db;
+    ctx.add_action(AssistId("fill_struct_fields"), "fill struct fields", |edit| {
+        let mut ast_editor = AstEditor::new(named_field_list);
+        if named_field_list.fields().count() == 0 && fields.len() > 2 {
+            ast_editor.make_multiline();
+        };
 
-    fn struct_fields_string(&mut self) -> Option<String> {
-        let mut buf = String::from("{\n");
-        for (name, expr) in &self.struct_fields {
-            write!(&mut buf, "    {}: {},\n", name, expr).unwrap();
+        for field in fields {
+            let field = AstBuilder::<ast::NamedField>::from_pieces(
+                &AstBuilder::<ast::NameRef>::new(&field.name(db).to_string()),
+                Some(&AstBuilder::<ast::Expr>::unit()),
+            );
+            ast_editor.append_field(&field);
         }
-        buf.push_str("}");
-        Some(buf)
-    }
+
+        edit.target(struct_lit.syntax().range());
+        edit.set_cursor(struct_lit.syntax().range().start());
+
+        ast_editor.into_text_edit(edit.text_edit_builder());
+    });
+    ctx.build()
 }
 
 #[cfg(test)]
@@ -225,12 +186,39 @@ mod tests {
 
             fn main() {
                 let s = <|>S {
+                    c: (1, 2),
+                    e: "foo",
                     a: (),
                     b: (),
-                    c: (1, 2),
                     d: (),
-                    e: "foo",
                 }
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn fill_struct_short() {
+        check_assist(
+            fill_struct_fields,
+            r#"
+            struct S {
+                foo: u32,
+                bar: String,
+            }
+
+            fn main() {
+                let s = S {<|> };
+            }
+            "#,
+            r#"
+            struct S {
+                foo: u32,
+                bar: String,
+            }
+
+            fn main() {
+                let s = <|>S { foo: (), bar: () };
             }
             "#,
         );

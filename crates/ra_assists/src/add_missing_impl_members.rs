@@ -1,14 +1,9 @@
-use std::fmt::Write;
-
-use crate::{Assist, AssistId, AssistCtx};
+use crate::{Assist, AssistId, AssistCtx, ast_editor::{AstEditor, AstBuilder}};
 
 use hir::db::HirDatabase;
-use ra_syntax::{SmolStr, SyntaxKind, TextRange, TextUnit, TreeArc};
-use ra_syntax::ast::{self, AstNode, AstToken, FnDef, ImplItem, ImplItemKind, NameOwner};
+use ra_syntax::{SmolStr, TreeArc};
+use ra_syntax::ast::{self, AstNode, FnDef, ImplItem, ImplItemKind, NameOwner};
 use ra_db::FilePosition;
-use ra_fmt::{leading_indent, reindent};
-
-use itertools::Itertools;
 
 enum AddMissingImplMembersMode {
     DefaultMethodsOnly,
@@ -76,46 +71,33 @@ fn add_missing_impl_members_inner(
     }
 
     ctx.add_action(AssistId(assist_id), label, |edit| {
-        let (parent_indent, indent) = {
-            // FIXME: Find a way to get the indent already used in the file.
-            // Now, we copy the indent of first item or indent with 4 spaces relative to impl block
-            const DEFAULT_INDENT: &str = "    ";
-            let first_item = impl_item_list.impl_items().next();
-            let first_item_indent =
-                first_item.and_then(|i| leading_indent(i.syntax())).map(ToOwned::to_owned);
-            let impl_block_indent = leading_indent(impl_node.syntax()).unwrap_or_default();
+        let n_existing_items = impl_item_list.impl_items().count();
+        let fns = missing_fns.into_iter().map(add_body_and_strip_docstring).collect::<Vec<_>>();
 
-            (
-                impl_block_indent.to_owned(),
-                first_item_indent.unwrap_or_else(|| impl_block_indent.to_owned() + DEFAULT_INDENT),
-            )
-        };
+        let mut ast_editor = AstEditor::new(impl_item_list);
+        if n_existing_items == 0 {
+            ast_editor.make_multiline();
+        }
+        ast_editor.append_functions(fns.iter().map(|it| &**it));
+        let first_new_item = ast_editor.ast().impl_items().nth(n_existing_items).unwrap();
+        let cursor_poisition = first_new_item.syntax().range().start();
+        ast_editor.into_text_edit(edit.text_edit_builder());
 
-        let changed_range = {
-            let children = impl_item_list.syntax().children_with_tokens();
-            let last_whitespace =
-                children.filter_map(|it| ast::Whitespace::cast(it.as_token()?)).last();
-
-            last_whitespace.map(|w| w.syntax().range()).unwrap_or_else(|| {
-                let in_brackets = impl_item_list.syntax().range().end() - TextUnit::of_str("}");
-                TextRange::from_to(in_brackets, in_brackets)
-            })
-        };
-
-        let func_bodies = format!("\n{}", missing_fns.into_iter().map(build_func_body).join("\n"));
-        let trailing_whitespace = format!("\n{}", parent_indent);
-        let func_bodies = reindent(&func_bodies, &indent) + &trailing_whitespace;
-
-        let replaced_text_range = TextUnit::of_str(&func_bodies);
-
-        edit.replace(changed_range, func_bodies);
-        // FIXME: place the cursor on the first unimplemented?
-        edit.set_cursor(
-            changed_range.start() + replaced_text_range - TextUnit::of_str(&trailing_whitespace),
-        );
+        edit.set_cursor(cursor_poisition);
     });
 
     ctx.build()
+}
+
+fn add_body_and_strip_docstring(fn_def: &ast::FnDef) -> TreeArc<ast::FnDef> {
+    let mut ast_editor = AstEditor::new(fn_def);
+    if fn_def.body().is_none() {
+        ast_editor.set_body(&AstBuilder::<ast::Block>::single_expr(
+            &AstBuilder::<ast::Expr>::unimplemented(),
+        ));
+    }
+    ast_editor.strip_attrs_and_docs();
+    ast_editor.ast().to_owned()
 }
 
 /// Given an `ast::ImplBlock`, resolves the target trait (the one being
@@ -132,22 +114,6 @@ fn resolve_target_trait_def(
         Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).1),
         _ => None,
     }
-}
-
-fn build_func_body(def: &ast::FnDef) -> String {
-    let mut buf = String::new();
-
-    for child in def.syntax().children_with_tokens() {
-        match (child.prev_sibling_or_token().map(|c| c.kind()), child.kind()) {
-            (_, SyntaxKind::SEMI) => buf.push_str(" {\n    unimplemented!()\n}"),
-            (_, SyntaxKind::ATTR) | (_, SyntaxKind::COMMENT) => {}
-            (Some(SyntaxKind::ATTR), SyntaxKind::WHITESPACE)
-            | (Some(SyntaxKind::COMMENT), SyntaxKind::WHITESPACE) => {}
-            _ => write!(buf, "{}", child).unwrap(),
-        };
-    }
-
-    buf.trim_end().to_string()
 }
 
 #[cfg(test)]
@@ -170,7 +136,7 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    <|>
+<|>
 }",
             "
 trait Foo {
@@ -183,12 +149,9 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    fn foo(&self) {
-        unimplemented!()
-    }
-    fn baz(&self) {
-        unimplemented!()
-    }<|>
+    <|>fn foo(&self) { unimplemented!() }
+    fn baz(&self) { unimplemented!() }
+
 }",
         );
     }
@@ -208,7 +171,7 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    <|>
+<|>
 }",
             "
 trait Foo {
@@ -221,9 +184,8 @@ struct S;
 
 impl Foo for S {
     fn bar(&self) {}
-    fn foo(&self) {
-        unimplemented!()
-    }<|>
+    <|>fn foo(&self) { unimplemented!() }
+
 }",
         );
     }
@@ -240,9 +202,7 @@ impl Foo for S { <|> }",
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    fn foo(&self) {
-        unimplemented!()
-    }<|>
+    <|>fn foo(&self) { unimplemented!() }
 }",
         );
     }
@@ -259,9 +219,7 @@ impl Foo for S {}<|>",
 trait Foo { fn foo(&self); }
 struct S;
 impl Foo for S {
-    fn foo(&self) {
-        unimplemented!()
-    }<|>
+    <|>fn foo(&self) { unimplemented!() }
 }",
         )
     }
@@ -292,35 +250,6 @@ impl Foo for S { <|> }",
     }
 
     #[test]
-    fn test_indented_impl_block() {
-        check_assist(
-            add_missing_impl_members,
-            "
-trait Foo {
-    fn valid(some: u32) -> bool;
-}
-struct S;
-
-mod my_mod {
-    impl crate::Foo for S { <|> }
-}",
-            "
-trait Foo {
-    fn valid(some: u32) -> bool;
-}
-struct S;
-
-mod my_mod {
-    impl crate::Foo for S {
-        fn valid(some: u32) -> bool {
-            unimplemented!()
-        }<|>
-    }
-}",
-        )
-    }
-
-    #[test]
     fn test_with_docstring_and_attrs() {
         check_assist(
             add_missing_impl_members,
@@ -342,9 +271,7 @@ trait Foo {
 }
 struct S;
 impl Foo for S {
-    fn foo(&self) {
-        unimplemented!()
-    }<|>
+    <|>fn foo(&self) { unimplemented!() }
 }"#,
         )
     }
@@ -367,7 +294,7 @@ trait Foo {
 }
 struct S;
 impl Foo for S {
-    fn valid(some: u32) -> bool { false }<|>
+    <|>fn valid(some: u32) -> bool { false }
 }",
         )
     }

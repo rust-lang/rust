@@ -1,6 +1,6 @@
 ---
-created: "2019-02-18T09:22:24.127119709Z"
-creator: insta@0.6.2
+created: "2019-04-22T07:37:13.981826301Z"
+creator: insta@0.7.4
 source: crates/ra_ide_api/src/completion/completion_item.rs
 expression: kind_completions
 ---
@@ -23,7 +23,7 @@ expression: kind_completions
         label: "match",
         source_range: [76; 76),
         delete: [72; 76),
-        insert: "match bar {\n${1:_} => {$0\\},\n}",
+        insert: "match bar {\n    ${1:_} => {$0\\},\n}",
         detail: "match expr {}"
     },
     CompletionItem {
