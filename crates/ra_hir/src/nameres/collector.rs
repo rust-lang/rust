@@ -42,14 +42,40 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
         global_macro_scope: FxHashMap::default(),
-        marco_stack_count: 0,
+        macro_stack_monitor: SimpleMacroStackMonitor::default(),
     };
     collector.collect();
     collector.finish()
 }
 
+trait MacroStackMonitor {
+    fn increase(&mut self, macro_def_id: MacroDefId);
+    fn decrease(&mut self, macro_def_id: MacroDefId);
+
+    fn is_poison(&self, macro_def_id: MacroDefId) -> bool;
+}
+
+#[derive(Default)]
+struct SimpleMacroStackMonitor {
+    counts: FxHashMap<MacroDefId, u32>,
+}
+
+impl MacroStackMonitor for SimpleMacroStackMonitor {
+    fn increase(&mut self, macro_def_id: MacroDefId) {
+        *self.counts.entry(macro_def_id).or_default() += 1;
+    }
+
+    fn decrease(&mut self, macro_def_id: MacroDefId) {
+        *self.counts.entry(macro_def_id).or_default() -= 1;
+    }
+
+    fn is_poison(&self, macro_def_id: MacroDefId) -> bool {
+        *self.counts.get(&macro_def_id).unwrap_or(&0) > 100
+    }
+}
+
 /// Walks the tree of module recursively
-struct DefCollector<DB> {
+struct DefCollector<DB, M> {
     db: DB,
     def_map: CrateDefMap,
     glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
@@ -59,12 +85,13 @@ struct DefCollector<DB> {
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
     /// To prevent stackoverflow, we add a deep counter here for prevent that.
-    marco_stack_count: u32,
+    macro_stack_monitor: M,
 }
 
-impl<'a, DB> DefCollector<&'a DB>
+impl<'a, DB, M> DefCollector<&'a DB, M>
 where
     DB: DefDatabase,
+    M: MacroStackMonitor,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
@@ -317,30 +344,40 @@ where
             let def_map = self.db.crate_def_map(krate);
             if let Some(macro_id) = def_map.public_macros.get(&path.segments[1].name).cloned() {
                 let call_id = MacroCallLoc { def: macro_id, ast_id: *ast_id }.id(self.db);
-                resolved.push((*module_id, call_id));
+                resolved.push((*module_id, call_id, macro_id));
             }
             false
         });
 
-        for (module_id, macro_call_id) in resolved {
-            self.collect_macro_expansion(module_id, macro_call_id);
+        for (module_id, macro_call_id, macro_def_id) in resolved {
+            self.collect_macro_expansion(module_id, macro_call_id, macro_def_id);
         }
         res
     }
 
-    fn collect_macro_expansion(&mut self, module_id: CrateModuleId, macro_call_id: MacroCallId) {
-        self.marco_stack_count += 1;
+    fn collect_macro_expansion(
+        &mut self,
+        module_id: CrateModuleId,
+        macro_call_id: MacroCallId,
+        macro_def_id: MacroDefId,
+    ) {
+        if self.def_map.poison_macros.contains(&macro_def_id) {
+            return;
+        }
 
-        if self.marco_stack_count < 300 {
+        self.macro_stack_monitor.increase(macro_def_id);
+
+        if !self.macro_stack_monitor.is_poison(macro_def_id) {
             let file_id: HirFileId = macro_call_id.into();
             let raw_items = self.db.raw_items(file_id);
             ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
-                .collect(raw_items.items())
+                .collect(raw_items.items());
         } else {
             log::error!("Too deep macro expansion: {}", macro_call_id.debug_dump(self.db));
+            self.def_map.poison_macros.insert(macro_def_id);
         }
 
-        self.marco_stack_count -= 1;
+        self.macro_stack_monitor.decrease(macro_def_id);
     }
 
     fn finish(self) -> CrateDefMap {
@@ -356,9 +393,10 @@ struct ModCollector<'a, D> {
     raw_items: &'a raw::RawItems,
 }
 
-impl<DB> ModCollector<'_, &'_ mut DefCollector<&'_ DB>>
+impl<DB, M> ModCollector<'_, &'_ mut DefCollector<&'_ DB, M>>
 where
     DB: DefDatabase,
+    M: MacroStackMonitor,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         for item in items {
@@ -484,7 +522,7 @@ where
         {
             let macro_call_id = MacroCallLoc { def: macro_id, ast_id }.id(self.def_collector.db);
 
-            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id);
+            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_id);
             return;
         }
 
@@ -528,5 +566,125 @@ fn resolve_submodule(
     match points_to.next() {
         Some(file_id) => Ok(file_id),
         None => Err(if is_dir_owner { file_mod } else { file_dir_mod }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ra_db::SourceDatabase;
+
+    use crate::{Crate, mock::MockDatabase, DefDatabase};
+    use ra_arena::{Arena};
+    use super::*;
+    use rustc_hash::FxHashSet;
+
+    struct LimitedMacroStackMonitor {
+        count: u32,
+        limit: u32,
+        poison_limit: u32,
+    }
+
+    impl MacroStackMonitor for LimitedMacroStackMonitor {
+        fn increase(&mut self, _: MacroDefId) {
+            self.count += 1;
+            assert!(self.count < self.limit);
+        }
+
+        fn decrease(&mut self, _: MacroDefId) {
+            self.count -= 1;
+        }
+
+        fn is_poison(&self, _: MacroDefId) -> bool {
+            self.count >= self.poison_limit
+        }
+    }
+
+    fn do_collect_defs(
+        db: &impl DefDatabase,
+        def_map: CrateDefMap,
+        monitor: impl MacroStackMonitor,
+    ) -> CrateDefMap {
+        let mut collector = DefCollector {
+            db,
+            def_map,
+            glob_imports: FxHashMap::default(),
+            unresolved_imports: Vec::new(),
+            unexpanded_macros: Vec::new(),
+            global_macro_scope: FxHashMap::default(),
+            macro_stack_monitor: monitor,
+        };
+        collector.collect();
+        collector.finish()
+    }
+
+    fn do_limited_resolve(code: &str, limit: u32, poison_limit: u32) -> CrateDefMap {
+        let (db, _source_root, _) = MockDatabase::with_single_file(&code);
+        let crate_id = db.crate_graph().iter().next().unwrap();
+        let krate = Crate { crate_id };
+
+        let def_map = {
+            let edition = krate.edition(&db);
+            let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
+            let root = modules.alloc(ModuleData::default());
+            CrateDefMap {
+                krate,
+                edition,
+                extern_prelude: FxHashMap::default(),
+                prelude: None,
+                root,
+                modules,
+                public_macros: FxHashMap::default(),
+                poison_macros: FxHashSet::default(),
+                diagnostics: Vec::new(),
+            }
+        };
+
+        do_collect_defs(&db, def_map, LimitedMacroStackMonitor { count: 0, limit, poison_limit })
+    }
+
+    #[test]
+    fn test_macro_expand_limit_width() {
+        do_limited_resolve(
+            r#"
+        macro_rules! foo {
+            ($($ty:ty)*) => { foo!($($ty)*, $($ty)*); }
+        }
+foo!(KABOOM);
+        "#,
+            16,
+            1000,
+        );
+    }
+
+    #[test]
+    fn test_macro_expand_poisoned() {
+        let def = do_limited_resolve(
+            r#"
+        macro_rules! foo {
+            ($ty:ty) => { foo!($ty); }
+        }
+foo!(KABOOM);
+        "#,
+            100,
+            16,
+        );
+
+        assert_eq!(def.poison_macros.len(), 1);
+    }
+
+    #[test]
+    fn test_macro_expand_normal() {
+        let def = do_limited_resolve(
+            r#"
+        macro_rules! foo {
+            ($ident:ident) => { struct $ident {} }
+        }
+foo!(Bar);
+        "#,
+            16,
+            16,
+        );
+
+        assert_eq!(def.poison_macros.len(), 0);
     }
 }

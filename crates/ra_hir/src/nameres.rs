@@ -55,7 +55,7 @@ mod tests;
 
 use std::sync::Arc;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use ra_arena::{Arena, RawId, impl_arena_id};
 use ra_db::{FileId, Edition};
 use test_utils::tested_by;
@@ -91,6 +91,19 @@ pub struct CrateDefMap {
     root: CrateModuleId,
     modules: Arena<CrateModuleId, ModuleData>,
     public_macros: FxHashMap<Name, MacroDefId>,
+
+    /// Some macros are not well-behavior, which leads to infinite loop
+    /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
+    /// We mark it down and skip it in collector
+    ///
+    /// FIXME:
+    /// Right now it only handle a poison macro in a single crate,
+    /// such that if other crate try to call that macro,
+    /// the whole process will do again until it became poisoned in that crate.
+    /// We should handle this macro set globally
+    /// However, do we want to put it as a global variable?
+    poison_macros: FxHashSet<MacroDefId>,
+
     diagnostics: Vec<DefDiagnostic>,
 }
 
@@ -195,6 +208,7 @@ impl CrateDefMap {
                 root,
                 modules,
                 public_macros: FxHashMap::default(),
+                poison_macros: FxHashSet::default(),
                 diagnostics: Vec::new(),
             }
         };
