@@ -1,4 +1,3 @@
-
 mod Mod {
     pub struct FakeVariant<T>(pub T);
 }

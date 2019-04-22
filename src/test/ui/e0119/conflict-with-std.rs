@@ -1,4 +1,3 @@
-
 use std::marker::PhantomData;
 use std::convert::{TryFrom, AsRef};
 

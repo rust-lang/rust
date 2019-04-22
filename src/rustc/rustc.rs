@@ -1,4 +1,3 @@
-
 fn main() {
     // Pull in jemalloc when enabled.
     //
