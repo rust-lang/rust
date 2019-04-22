@@ -337,7 +337,7 @@ impl NameMapping {
             Fn(_) |
             Const(_) |
             ConstParam(_) |
-            Static(_, _) |
+            Static(_) |
             Ctor(_, _, _) |
             SelfCtor(_) |
             Method(_) |

@@ -199,7 +199,9 @@ fn diff_structure<'a, 'tcx>(
                             | (Method(_), Method(_))
                             | (Err, Err) => {}
                             // statics are subject to mutability comparison
-                            (Static(_, old_mut), Static(_, new_mut)) => {
+                            (Static(_), Static(_)) => {
+                                let old_mut = tcx.is_mutable_static(o_def_id);
+                                let new_mut = tcx.is_mutable_static(n_def_id);
                                 if old_mut != new_mut {
                                     let change_type =
                                         ChangeType::StaticMutabilityChanged { now_mut: new_mut };
@@ -810,7 +812,7 @@ fn diff_types<'a, 'tcx>(
 
     match old {
         // type aliases, consts and statics just need their type to be checked
-        TyAlias(_) | Const(_) | Static(_, _) => {
+        TyAlias(_) | Const(_) | Static(_) => {
             cmp_types(
                 changes,
                 id_mapping,
