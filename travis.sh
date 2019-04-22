@@ -24,7 +24,7 @@ echo
 # Test
 function run_tests {
   cargo test --release --all-features
-  (cd test-cargo-miri && ./run-test.py)
+  test-cargo-miri/run-test.py
 }
 
 echo "Test host architecture"

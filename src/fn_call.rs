@@ -298,19 +298,14 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                 match this.read_scalar(args[0])?.to_usize(this)? {
                     id if id == sys_getrandom => {
-                        let ptr = this.read_scalar(args[1])?.to_ptr()?;
+                        let ptr = this.read_scalar(args[1])?.not_undef()?;
                         let len = this.read_scalar(args[2])?.to_usize(this)?;
 
                         // The only supported flags are GRND_RANDOM and GRND_NONBLOCK,
                         // neither of which have any effect on our current PRNG
                         let _flags = this.read_scalar(args[3])?.to_i32()?;
 
-                        if len > 0 {
-                            let data = gen_random(this, len as usize)?;
-                            this.memory_mut().get_mut(ptr.alloc_id)?
-                                        .write_bytes(tcx, ptr, &data)?;
-                        }
-
+                        gen_random(this, len as usize, ptr)?;
                         this.write_scalar(Scalar::from_uint(len, dest.layout.size), dest)?;
                     }
                     id => {
@@ -712,6 +707,12 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             "_NSGetArgv" => {
                 this.write_scalar(Scalar::Ptr(this.machine.argv.unwrap()), dest)?;
             },
+            "SecRandomCopyBytes" => {
+                let len = this.read_scalar(args[1])?.to_usize(this)?;
+                let ptr = this.read_scalar(args[2])?.not_undef()?;
+                gen_random(this, len as usize, ptr)?;
+                this.write_null(dest)?;
+            }
 
             // Windows API stubs.
             // HANDLE = isize
@@ -866,15 +867,9 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             }
             // The actual name of 'RtlGenRandom'
             "SystemFunction036" => {
-                let ptr = this.read_scalar(args[0])?.to_ptr()?;
+                let ptr = this.read_scalar(args[0])?.not_undef()?;
                 let len = this.read_scalar(args[1])?.to_u32()?;
-
-                if len > 0 {
-                    let data = gen_random(this, len as usize)?;
-                    this.memory_mut().get_mut(ptr.alloc_id)?
-                        .write_bytes(tcx, ptr, &data)?;
-                }
-
+                gen_random(this, len as usize, ptr)?;
                 this.write_scalar(Scalar::from_bool(true), dest)?;
             }
 
@@ -915,21 +910,30 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 fn gen_random<'a, 'mir, 'tcx>(
     this: &mut MiriEvalContext<'a, 'mir, 'tcx>,
     len: usize,
-) -> Result<Vec<u8>, EvalError<'tcx>>  {
+    dest: Scalar<Tag>,
+) -> EvalResult<'tcx>  {
+    if len == 0 {
+        // Nothing to do
+        return Ok(());
+    }
+    let ptr = dest.to_ptr()?;
 
-    match &mut this.machine.rng {
+    let data = match &mut this.machine.rng {
         Some(rng) => {
             let mut data = vec![0; len];
             rng.fill_bytes(&mut data);
-            Ok(data)
+            data
         }
         None => {
-            err!(Unimplemented(
+            return err!(Unimplemented(
                 "miri does not support gathering system entropy in deterministic mode!
                 Use '-Zmiri-seed=<seed>' to enable random number generation.
                 WARNING: Miri does *not* generate cryptographically secure entropy -
                 do not use Miri to run any program that needs secure random number generation".to_owned(),
-            ))
+            ));
         }
-    }
+    };
+    let tcx = &{this.tcx.tcx};
+    this.memory_mut().get_mut(ptr.alloc_id)?
+        .write_bytes(tcx, ptr, &data)
 }

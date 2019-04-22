@@ -61,7 +61,10 @@ def test_cargo_miri_test():
         "test.stdout.ref2", "test.stderr.ref"
     )
 
+os.chdir(os.path.dirname(os.path.realpath(__file__)))
+
 test_cargo_miri_run()
 test_cargo_miri_test()
+
 print("TEST SUCCESSFUL!")
 sys.exit(0)
