@@ -14,7 +14,7 @@ use rustc::ty::TyCtxt;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Mir, Place, PlaceBase, Rvalue};
 use rustc::mir::{Statement, StatementKind};
-use rustc::mir::{Terminator, TerminatorKind};
+use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
 
@@ -136,14 +136,14 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
         self.super_statement(statement, location);
     }
 
-    fn visit_terminator(
+    fn visit_terminator_kind(
         &mut self,
-        kind: &Terminator<'tcx>,
+        kind: &TerminatorKind<'tcx>,
         location: Location
     ) {
         self.check_activations(location);
 
-        match terminator.kind {
+        match kind {
             TerminatorKind::SwitchInt {
                 ref discr,
                 switch_ty: _,
@@ -256,7 +256,7 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             }
         }
 
-        self.super_terminator(terminator, location);
+        self.super_terminator_kind(kind, location);
     }
 }
 
