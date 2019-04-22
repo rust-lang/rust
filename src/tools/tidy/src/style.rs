@@ -213,7 +213,13 @@ pub fn check(path: &Path, bad: &mut bool) {
             n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
         };
         if !skip_file_length && lines > LINES {
-            tidy_error!(bad, "{}: too many lines ({})", file.display(), lines);
+            tidy_error!(
+                bad,
+                "{}: too many lines ({}) (add `// ignore-tidy-filelength` to the file to \
+                 suppress this error)",
+                file.display(),
+                lines
+            );
         }
 
         if let Directive::Ignore(false) = skip_cr {
