@@ -2050,6 +2050,10 @@ mod tests {
         check!("240.0.0.0");
         check!("251.54.1.76");
         check!("254.255.255.255");
+        // make sure shared addresses are not global
+        check!("100.64.0.0");
+        check!("100.127.255.255");
+        check!("100.100.100.0");
 
         check!("::", unspec);
         check!("::1", loopback);
@@ -2096,6 +2100,7 @@ mod tests {
                 let benchmarking: u16 = 1 << 8;
                 let ietf_protocol_assignment: u16 = 1 << 9;
                 let reserved: u16 = 1 << 10;
+                let shared: u16 = 1 << 11;
 
                 if ($mask & unspec) == unspec {
                     assert!(ip!($s).is_unspecified());
@@ -2162,6 +2167,12 @@ mod tests {
                 } else {
                     assert!(!ip!($s).is_reserved());
                 }
+
+                if ($mask & shared) == shared {
+                    assert!(ip!($s).is_shared());
+                } else {
+                    assert!(!ip!($s).is_shared());
+                }
             }}
         }
 
@@ -2176,6 +2187,7 @@ mod tests {
         let benchmarking: u16 = 1 << 8;
         let ietf_protocol_assignment: u16 = 1 << 9;
         let reserved: u16 = 1 << 10;
+        let shared: u16 = 1 << 11;
 
         check!("0.0.0.0", unspec);
         check!("0.0.0.1");
@@ -2202,6 +2214,9 @@ mod tests {
         check!("240.0.0.0", reserved);
         check!("251.54.1.76", reserved);
         check!("254.255.255.255", reserved);
+        check!("100.64.0.0", shared);
+        check!("100.127.255.255", shared);
+        check!("100.100.100.0", shared);
     }
 
     #[test]
