@@ -949,7 +949,7 @@ fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
         CAST_LOSSLESS,
         expr.span,
         &format!(
-            "casting {} to {} may become silently lossy if types change",
+            "casting {} to {} may become silently lossy if you later change the type",
             cast_from, cast_to
         ),
         "try",
