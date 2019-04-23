@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, fmt, hash, ops::Deref, sync::Arc};
+use std::{borrow::Borrow, fmt, hash, iter, ops::Deref, sync::Arc};
 
 /// A `SmolStr` is a string type that has the following properties:
 ///
@@ -140,6 +140,27 @@ impl fmt::Debug for SmolStr {
 impl fmt::Display for SmolStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self.as_str(), f)
+    }
+}
+
+impl iter::FromIterator<char> for SmolStr {
+    fn from_iter<I: iter::IntoIterator<Item = char>>(iter: I) -> SmolStr {
+        let mut len = 0;
+        let mut buf = [0u8; INLINE_CAP];
+        let mut iter = iter.into_iter();
+        while let Some(ch) = iter.next() {
+            let size = ch.len_utf8();
+            if size + len > INLINE_CAP {
+                let mut heap = String::with_capacity(size + len);
+                heap.push_str(std::str::from_utf8(&buf[..len]).unwrap());
+                heap.push(ch);
+                heap.extend(iter);
+                return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
+            }
+            ch.encode_utf8(&mut buf[len..]);
+            len += size;
+        }
+        SmolStr(Repr::Inline { len: len as u8, buf })
     }
 }
 
