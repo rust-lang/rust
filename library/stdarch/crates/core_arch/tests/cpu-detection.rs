@@ -31,6 +31,7 @@ fn x86_all() {
         "avx512_vpopcntdq {:?}",
         is_x86_feature_detected!("avx512vpopcntdq")
     );
+    println!("f16c: {:?}", is_x86_feature_detected!("f16c"));
     println!("fma: {:?}", is_x86_feature_detected!("fma"));
     println!("abm: {:?}", is_x86_feature_detected!("abm"));
     println!("bmi: {:?}", is_x86_feature_detected!("bmi1"));

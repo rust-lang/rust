@@ -113,13 +113,14 @@ fn detect_features() -> cache::Initializer {
         };
 
         enable(proc_info_ecx, 0, Feature::sse3);
+        enable(proc_info_ecx, 1, Feature::pclmulqdq);
         enable(proc_info_ecx, 9, Feature::ssse3);
         enable(proc_info_ecx, 13, Feature::cmpxchg16b);
         enable(proc_info_ecx, 19, Feature::sse4_1);
         enable(proc_info_ecx, 20, Feature::sse4_2);
         enable(proc_info_ecx, 23, Feature::popcnt);
         enable(proc_info_ecx, 25, Feature::aes);
-        enable(proc_info_ecx, 1, Feature::pclmulqdq);
+        enable(proc_info_ecx, 29, Feature::f16c);
         enable(proc_info_ecx, 30, Feature::rdrand);
         enable(extended_features_ebx, 18, Feature::rdseed);
         enable(extended_features_ebx, 19, Feature::adx);

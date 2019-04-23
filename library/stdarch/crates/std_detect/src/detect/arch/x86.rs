@@ -62,6 +62,7 @@
 /// * `"avx512ifma"`
 /// * `"avx512vbmi"`
 /// * `"avx512vpopcntdq"`
+/// * `"f16c"`
 /// * `"fma"`
 /// * `"bmi1"`
 /// * `"bmi2"`
@@ -178,6 +179,10 @@ macro_rules! is_x86_feature_detected {
     ("avx512vpopcntdq") => {
         cfg!(target_feature = "avx512vpopcntdq") || $crate::detect::check_for(
             $crate::detect::Feature::avx512_vpopcntdq)
+    };
+    ("f16c") => {
+        cfg!(target_feature = "avx512f") || $crate::detect::check_for(
+            $crate::detect::Feature::f16c)
     };
     ("fma") => {
         cfg!(target_feature = "fma") || $crate::detect::check_for(
@@ -309,6 +314,8 @@ pub enum Feature {
     /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and
     /// Quadword)
     avx512_vpopcntdq,
+    /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
+    f16c,
     /// FMA (Fused Multiply Add)
     fma,
     /// BMI1 (Bit Manipulation Instructions 1)
