@@ -179,10 +179,10 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                         // Enable followiing code when everything is fixed
                         // At least we can dogfood itself to not stackoverflow
                         //
-                        // "tt" => {
-                        //     let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
-                        //     res.inner.insert(text.clone(), Binding::Simple(token.into()));
-                        // }
+                        "tt" => {
+                            let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
+                            res.inner.insert(text.clone(), Binding::Simple(token.into()));
+                        }
                         "item" => {
                             let item =
                                 input.eat_item().ok_or(ExpandError::UnexpectedToken)?.clone();
@@ -226,18 +226,36 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                 // This should be replaced by a propper macro-by-example implementation
                 let mut limit = 128;
                 let mut counter = 0;
-                while let Ok(nested) = match_lhs(subtree, input) {
-                    counter += 1;
-                    limit -= 1;
-                    if limit == 0 {
-                        break;
-                    }
-                    res.push_nested(nested)?;
-                    if let Some(separator) = *separator {
-                        if !input.is_eof() {
-                            if input.eat_punct().map(|p| p.char) != Some(separator) {
-                                return Err(ExpandError::UnexpectedToken);
+
+                let mut memento = input.save();
+
+                loop {
+                    match match_lhs(subtree, input) {
+                        Ok(nested) => {
+                            counter += 1;
+                            limit -= 1;
+                            if limit == 0 {
+                                break;
                             }
+
+                            memento = input.save();
+                            res.push_nested(nested)?;
+                            if counter == 1 {
+                                if let crate::RepeatKind::ZeroOrOne = kind {
+                                    break;
+                                }
+                            }
+
+                            if let Some(separator) = *separator {
+                                if input.eat_punct().map(|p| p.char) != Some(separator) {
+                                    input.rollback(memento);
+                                    break;
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            input.rollback(memento);
+                            break;
                         }
                     }
                 }
@@ -246,10 +264,6 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                     crate::RepeatKind::OneOrMore if counter == 0 => {
                         return Err(ExpandError::UnexpectedToken);
                     }
-                    crate::RepeatKind::ZeroOrOne if counter > 1 => {
-                        return Err(ExpandError::UnexpectedToken);
-                    }
-
                     _ => {}
                 }
             }
@@ -333,10 +347,7 @@ fn expand_tt(
                 }
             }
             nesting.pop().unwrap();
-
-            // Dirty hack for remove the last sep
-            // if it is a "," undo the push
-            if has_sep && repeat.separator.unwrap() == ',' {
+            if has_sep {
                 token_trees.pop();
             }
 

@@ -7,6 +7,10 @@ pub(crate) struct TtCursor<'a> {
     pos: usize,
 }
 
+pub(crate) struct TtCursorMemento {
+    pos: usize,
+}
+
 impl<'a> TtCursor<'a> {
     pub(crate) fn new(subtree: &'a tt::Subtree) -> TtCursor<'a> {
         TtCursor { subtree, pos: 0 }
@@ -156,5 +160,14 @@ impl<'a> TtCursor<'a> {
         } else {
             Err(ParseError::Expected(format!("`{}`", char)))
         }
+    }
+
+    #[must_use]
+    pub(crate) fn save(&self) -> TtCursorMemento {
+        TtCursorMemento { pos: self.pos }
+    }
+
+    pub(crate) fn rollback(&mut self, memento: TtCursorMemento) {
+        self.pos = memento.pos;
     }
 }
