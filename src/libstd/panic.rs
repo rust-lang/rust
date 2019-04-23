@@ -319,7 +319,7 @@ impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
     }
 }
 
-#[unstable(feature = "futures_api", issue = "50547")]
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl<F: Future> Future for AssertUnwindSafe<F> {
     type Output = F::Output;
 

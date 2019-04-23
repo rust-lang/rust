@@ -235,6 +235,8 @@ rustc_queries! {
         /// constructor function).
         query is_promotable_const_fn(_: DefId) -> bool {}
 
+        query const_fn_is_allowed_fn_ptr(_: DefId) -> bool {}
+
         /// True if this is a foreign item (i.e., linked via `extern { ... }`).
         query is_foreign_item(_: DefId) -> bool {}
 

@@ -1,0 +1,12 @@
+error[E0658]: unless otherwise specified, attributes with the prefix `rustc_` are reserved for internal compiler diagnostics
+  --> $DIR/allow_const_fn_ptr_feature_gate.rs:7:3
+   |
+LL | #[rustc_allow_const_fn_ptr]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29642
+   = help: add #![feature(rustc_attrs)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

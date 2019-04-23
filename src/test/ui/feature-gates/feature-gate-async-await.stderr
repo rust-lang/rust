@@ -1,11 +1,11 @@
 error[E0706]: trait fns cannot be declared `async`
-  --> $DIR/feature-gate-async-await.rs:12:5
+  --> $DIR/feature-gate-async-await.rs:10:5
    |
 LL |     async fn foo();
    |     ^^^^^^^^^^^^^^^
 
 error[E0658]: async fn is unstable
-  --> $DIR/feature-gate-async-await.rs:8:5
+  --> $DIR/feature-gate-async-await.rs:6:5
    |
 LL |     async fn foo() {}
    |     ^^^^^^^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL |     async fn foo() {}
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error[E0658]: async fn is unstable
-  --> $DIR/feature-gate-async-await.rs:12:5
+  --> $DIR/feature-gate-async-await.rs:10:5
    |
 LL |     async fn foo();
    |     ^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL |     async fn foo();
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error[E0658]: async fn is unstable
-  --> $DIR/feature-gate-async-await.rs:16:1
+  --> $DIR/feature-gate-async-await.rs:14:1
    |
 LL | async fn foo() {}
    | ^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL | async fn foo() {}
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error[E0658]: async blocks are unstable
-  --> $DIR/feature-gate-async-await.rs:19:13
+  --> $DIR/feature-gate-async-await.rs:17:13
    |
 LL |     let _ = async {};
    |             ^^^^^^^^
@@ -41,7 +41,7 @@ LL |     let _ = async {};
    = help: add #![feature(async_await)] to the crate attributes to enable
 
 error[E0658]: async closures are unstable
-  --> $DIR/feature-gate-async-await.rs:20:13
+  --> $DIR/feature-gate-async-await.rs:18:13
    |
 LL |     let _ = async || {};
    |             ^^^^^^^^^^^
