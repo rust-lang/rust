@@ -111,31 +111,31 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// and for error reporting logic to read arbitrary node types.
     pub in_progress_tables: Option<&'a RefCell<ty::TypeckTables<'tcx>>>,
 
-    // Cache for projections. This cache is snapshotted along with the
-    // infcx.
-    //
-    // Public so that `traits::project` can use it.
+    /// Cache for projections. This cache is snapshotted along with the
+    /// infcx.
+    ///
+    /// Public so that `traits::project` can use it.
     pub projection_cache: RefCell<traits::ProjectionCache<'tcx>>,
 
-    // We instantiate UnificationTable with bounds<Ty> because the
-    // types that might instantiate a general type variable have an
-    // order, represented by its upper and lower bounds.
+    /// We instantiate `UnificationTable` with `bounds<Ty>` because the
+    /// types that might instantiate a general type variable have an
+    /// order, represented by its upper and lower bounds.
     pub type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
-    // Map from integral variable to the kind of integer it represents
+    /// Map from integral variable to the kind of integer it represents
     int_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::IntVid>>>,
 
-    // Map from floating variable to the kind of float it represents
+    /// Map from floating variable to the kind of float it represents
     float_unification_table: RefCell<ut::UnificationTable<ut::InPlace<ty::FloatVid>>>,
 
-    // Tracks the set of region variables and the constraints between
-    // them.  This is initially `Some(_)` but when
-    // `resolve_regions_and_report_errors` is invoked, this gets set
-    // to `None` -- further attempts to perform unification etc may
-    // fail if new region constraints would've been added.
+    /// Tracks the set of region variables and the constraints between
+    /// them.  This is initially `Some(_)` but when
+    /// `resolve_regions_and_report_errors` is invoked, this gets set
+    /// to `None` -- further attempts to perform unification etc may
+    /// fail if new region constraints would've been added.
     region_constraints: RefCell<Option<RegionConstraintCollector<'tcx>>>,
 
-    // Once region inference is done, the values for each variable.
+    /// Once region inference is done, the values for each variable.
     lexical_region_resolutions: RefCell<Option<LexicalRegionResolutions<'tcx>>>,
 
     /// Caches the results of trait selection. This cache is used
@@ -145,65 +145,65 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Caches the results of trait evaluation.
     pub evaluation_cache: traits::EvaluationCache<'tcx>,
 
-    // the set of predicates on which errors have been reported, to
-    // avoid reporting the same error twice.
+    /// the set of predicates on which errors have been reported, to
+    /// avoid reporting the same error twice.
     pub reported_trait_errors: RefCell<FxHashMap<Span, Vec<ty::Predicate<'tcx>>>>,
 
-    // When an error occurs, we want to avoid reporting "derived"
-    // errors that are due to this original failure. Normally, we
-    // handle this with the `err_count_on_creation` count, which
-    // basically just tracks how many errors were reported when we
-    // started type-checking a fn and checks to see if any new errors
-    // have been reported since then. Not great, but it works.
-    //
-    // However, when errors originated in other passes -- notably
-    // resolve -- this heuristic breaks down. Therefore, we have this
-    // auxiliary flag that one can set whenever one creates a
-    // type-error that is due to an error in a prior pass.
-    //
-    // Don't read this flag directly, call `is_tainted_by_errors()`
-    // and `set_tainted_by_errors()`.
+    /// When an error occurs, we want to avoid reporting "derived"
+    /// errors that are due to this original failure. Normally, we
+    /// handle this with the `err_count_on_creation` count, which
+    /// basically just tracks how many errors were reported when we
+    /// started type-checking a fn and checks to see if any new errors
+    /// have been reported since then. Not great, but it works.
+    ///
+    /// However, when errors originated in other passes -- notably
+    /// resolve -- this heuristic breaks down. Therefore, we have this
+    /// auxiliary flag that one can set whenever one creates a
+    /// type-error that is due to an error in a prior pass.
+    ///
+    /// Don't read this flag directly, call `is_tainted_by_errors()`
+    /// and `set_tainted_by_errors()`.
     tainted_by_errors_flag: Cell<bool>,
 
-    // Track how many errors were reported when this infcx is created.
-    // If the number of errors increases, that's also a sign (line
-    // `tained_by_errors`) to avoid reporting certain kinds of errors.
+    /// Track how many errors were reported when this infcx is created.
+    /// If the number of errors increases, that's also a sign (line
+    /// `tained_by_errors`) to avoid reporting certain kinds of errors.
     err_count_on_creation: usize,
 
-    // This flag is true while there is an active snapshot.
+    /// This flag is true while there is an active snapshot.
     in_snapshot: Cell<bool>,
 
-    // A set of constraints that regionck must validate. Each
-    // constraint has the form `T:'a`, meaning "some type `T` must
-    // outlive the lifetime 'a". These constraints derive from
-    // instantiated type parameters. So if you had a struct defined
-    // like
-    //
-    //     struct Foo<T:'static> { ... }
-    //
-    // then in some expression `let x = Foo { ... }` it will
-    // instantiate the type parameter `T` with a fresh type `$0`. At
-    // the same time, it will record a region obligation of
-    // `$0:'static`. This will get checked later by regionck. (We
-    // can't generally check these things right away because we have
-    // to wait until types are resolved.)
-    //
-    // These are stored in a map keyed to the id of the innermost
-    // enclosing fn body / static initializer expression. This is
-    // because the location where the obligation was incurred can be
-    // relevant with respect to which sublifetime assumptions are in
-    // place. The reason that we store under the fn-id, and not
-    // something more fine-grained, is so that it is easier for
-    // regionck to be sure that it has found *all* the region
-    // obligations (otherwise, it's easy to fail to walk to a
-    // particular node-id).
-    //
-    // Before running `resolve_regions_and_report_errors`, the creator
-    // of the inference context is expected to invoke
-    // `process_region_obligations` (defined in `self::region_obligations`)
-    // for each body-id in this map, which will process the
-    // obligations within. This is expected to be done 'late enough'
-    // that all type inference variables have been bound and so forth.
+    /// A set of constraints that regionck must validate. Each
+    /// constraint has the form `T:'a`, meaning "some type `T` must
+    /// outlive the lifetime 'a". These constraints derive from
+    /// instantiated type parameters. So if you had a struct defined
+    /// like
+    ///
+    ///     struct Foo<T:'static> { ... }
+    ///
+    /// then in some expression `let x = Foo { ... }` it will
+    /// instantiate the type parameter `T` with a fresh type `$0`. At
+    /// the same time, it will record a region obligation of
+    /// `$0:'static`. This will get checked later by regionck. (We
+    /// can't generally check these things right away because we have
+    /// to wait until types are resolved.)
+    ///
+    /// These are stored in a map keyed to the id of the innermost
+    /// enclosing fn body / static initializer expression. This is
+    /// because the location where the obligation was incurred can be
+    /// relevant with respect to which sublifetime assumptions are in
+    /// place. The reason that we store under the fn-id, and not
+    /// something more fine-grained, is so that it is easier for
+    /// regionck to be sure that it has found *all* the region
+    /// obligations (otherwise, it's easy to fail to walk to a
+    /// particular node-id).
+    ///
+    /// Before running `resolve_regions_and_report_errors`, the creator
+    /// of the inference context is expected to invoke
+    /// `process_region_obligations` (defined in `self::region_obligations`)
+    /// for each body-id in this map, which will process the
+    /// obligations within. This is expected to be done 'late enough'
+    /// that all type inference variables have been bound and so forth.
     pub region_obligations: RefCell<Vec<(hir::HirId, RegionObligation<'tcx>)>>,
 
     /// What is the innermost universe we have created? Starts out as
@@ -247,85 +247,85 @@ pub struct TypeTrace<'tcx> {
 /// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
-    // Arose from a subtyping relation
+    /// Arose from a subtyping relation
     Subtype(TypeTrace<'tcx>),
 
-    // Stack-allocated closures cannot outlive innermost loop
-    // or function so as to ensure we only require finite stack
+    /// Stack-allocated closures cannot outlive innermost loop
+    /// or function so as to ensure we only require finite stack
     InfStackClosure(Span),
 
-    // Invocation of closure must be within its lifetime
+    /// Invocation of closure must be within its lifetime
     InvokeClosure(Span),
 
-    // Dereference of reference must be within its lifetime
+    /// Dereference of reference must be within its lifetime
     DerefPointer(Span),
 
-    // Closure bound must not outlive captured free variables
+    /// Closure bound must not outlive captured free variables
     FreeVariable(Span, ast::NodeId),
 
-    // Index into slice must be within its lifetime
+    /// Index into slice must be within its lifetime
     IndexSlice(Span),
 
-    // When casting `&'a T` to an `&'b Trait` object,
-    // relating `'a` to `'b`
+    /// When casting `&'a T` to an `&'b Trait` object,
+    /// relating `'a` to `'b`
     RelateObjectBound(Span),
 
-    // Some type parameter was instantiated with the given type,
-    // and that type must outlive some region.
+    /// Some type parameter was instantiated with the given type,
+    /// and that type must outlive some region.
     RelateParamBound(Span, Ty<'tcx>),
 
-    // The given region parameter was instantiated with a region
-    // that must outlive some other region.
+    /// The given region parameter was instantiated with a region
+    /// that must outlive some other region.
     RelateRegionParamBound(Span),
 
-    // A bound placed on type parameters that states that must outlive
-    // the moment of their instantiation.
+    /// A bound placed on type parameters that states that must outlive
+    /// the moment of their instantiation.
     RelateDefaultParamBound(Span, Ty<'tcx>),
 
-    // Creating a pointer `b` to contents of another reference
+    /// Creating a pointer `b` to contents of another reference
     Reborrow(Span),
 
-    // Creating a pointer `b` to contents of an upvar
+    /// Creating a pointer `b` to contents of an upvar
     ReborrowUpvar(Span, ty::UpvarId),
 
-    // Data with type `Ty<'tcx>` was borrowed
+    /// Data with type `Ty<'tcx>` was borrowed
     DataBorrowed(Ty<'tcx>, Span),
 
-    // (&'a &'b T) where a >= b
+    /// (&'a &'b T) where a >= b
     ReferenceOutlivesReferent(Ty<'tcx>, Span),
 
-    // Type or region parameters must be in scope.
+    /// Type or region parameters must be in scope.
     ParameterInScope(ParameterOrigin, Span),
 
-    // The type T of an expression E must outlive the lifetime for E.
+    /// The type T of an expression E must outlive the lifetime for E.
     ExprTypeIsNotInScope(Ty<'tcx>, Span),
 
-    // A `ref b` whose region does not enclose the decl site
+    /// A `ref b` whose region does not enclose the decl site
     BindingTypeIsNotValidAtDecl(Span),
 
-    // Regions appearing in a method receiver must outlive method call
+    /// Regions appearing in a method receiver must outlive method call
     CallRcvr(Span),
 
-    // Regions appearing in a function argument must outlive func call
+    /// Regions appearing in a function argument must outlive func call
     CallArg(Span),
 
-    // Region in return type of invoked fn must enclose call
+    /// Region in return type of invoked fn must enclose call
     CallReturn(Span),
 
-    // Operands must be in scope
+    /// Operands must be in scope
     Operand(Span),
 
-    // Region resulting from a `&` expr must enclose the `&` expr
+    /// Region resulting from a `&` expr must enclose the `&` expr
     AddrOf(Span),
 
-    // An auto-borrow that does not enclose the expr where it occurs
+    /// An auto-borrow that does not enclose the expr where it occurs
     AutoBorrow(Span),
 
-    // Region constraint arriving from destructor safety
+    /// Region constraint arriving from destructor safety
     SafeDestructor(Span),
 
-    // Comparing the signature and requirements of an impl method against
-    // the containing trait.
+    /// Comparing the signature and requirements of an impl method against
+    /// the containing trait.
     CompareImplMethodObligation {
         span: Span,
         item_name: ast::Name,
@@ -361,35 +361,35 @@ pub enum LateBoundRegionConversionTime {
 /// See `error_reporting` module for more details
 #[derive(Copy, Clone, Debug)]
 pub enum RegionVariableOrigin {
-    // Region variables created for ill-categorized reasons,
-    // mostly indicates places in need of refactoring
+    /// Region variables created for ill-categorized reasons,
+    /// mostly indicates places in need of refactoring
     MiscVariable(Span),
 
-    // Regions created by a `&P` or `[...]` pattern
+    /// Regions created by a `&P` or `[...]` pattern
     PatternRegion(Span),
 
-    // Regions created by `&` operator
+    /// Regions created by `&` operator
     AddrOfRegion(Span),
 
-    // Regions created as part of an autoref of a method receiver
+    /// Regions created as part of an autoref of a method receiver
     Autoref(Span),
 
-    // Regions created as part of an automatic coercion
+    /// Regions created as part of an automatic coercion
     Coercion(Span),
 
-    // Region variables created as the values for early-bound regions
+    /// Region variables created as the values for early-bound regions
     EarlyBoundRegion(Span, InternedString),
 
-    // Region variables created for bound regions
-    // in a function or method that is called
+    /// Region variables created for bound regions
+    /// in a function or method that is called
     LateBoundRegion(Span, ty::BoundRegion, LateBoundRegionConversionTime),
 
     UpvarRegion(ty::UpvarId, Span),
 
     BoundRegionInCoherence(ast::Name),
 
-    // This origin is used for the inference variables that we create
-    // during NLL region processing.
+    /// This origin is used for the inference variables that we create
+    /// during NLL region processing.
     NLL(NLLRegionVariableOrigin),
 }
 
@@ -686,22 +686,22 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // Clear the "currently in a snapshot" flag, invoke the closure,
-    // then restore the flag to its original value. This flag is a
-    // debugging measure designed to detect cases where we start a
-    // snapshot, create type variables, and register obligations
-    // which may involve those type variables in the fulfillment cx,
-    // potentially leaving "dangling type variables" behind.
-    // In such cases, an assertion will fail when attempting to
-    // register obligations, within a snapshot. Very useful, much
-    // better than grovelling through megabytes of RUST_LOG output.
-    //
-    // HOWEVER, in some cases the flag is unhelpful. In particular, we
-    // sometimes create a "mini-fulfilment-cx" in which we enroll
-    // obligations. As long as this fulfillment cx is fully drained
-    // before we return, this is not a problem, as there won't be any
-    // escaping obligations in the main cx. In those cases, you can
-    // use this function.
+    /// Clear the "currently in a snapshot" flag, invoke the closure,
+    /// then restore the flag to its original value. This flag is a
+    /// debugging measure designed to detect cases where we start a
+    /// snapshot, create type variables, and register obligations
+    /// which may involve those type variables in the fulfillment cx,
+    /// potentially leaving "dangling type variables" behind.
+    /// In such cases, an assertion will fail when attempting to
+    /// register obligations, within a snapshot. Very useful, much
+    /// better than grovelling through megabytes of `RUST_LOG` output.
+    ///
+    /// HOWEVER, in some cases the flag is unhelpful. In particular, we
+    /// sometimes create a "mini-fulfilment-cx" in which we enroll
+    /// obligations. As long as this fulfillment cx is fully drained
+    /// before we return, this is not a problem, as there won't be any
+    /// escaping obligations in the main cx. In those cases, you can
+    /// use this function.
     pub fn save_and_restore_in_snapshot_flag<F, R>(&self, func: F) -> R
     where
         F: FnOnce(&Self) -> R,
@@ -828,7 +828,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
-    // Execute `f` in a snapshot, and commit the bindings it creates
+    /// Execute `f` in a snapshot, and commit the bindings it creates.
     pub fn in_snapshot<T, F>(&self, f: F) -> T
     where
         F: FnOnce(&CombinedSnapshot<'a, 'tcx>) -> T,
@@ -854,9 +854,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Scan the constraints produced since `snapshot` began and returns:
     ///
-    /// - None -- if none of them involve "region outlives" constraints
-    /// - Some(true) -- if there are `'a: 'b` constraints where `'a` or `'b` is a placehodler
-    /// - Some(false) -- if there are `'a: 'b` constraints but none involve placeholders
+    /// - `None` -- if none of them involve "region outlives" constraints
+    /// - `Some(true)` -- if there are `'a: 'b` constraints where `'a` or `'b` is a placeholder
+    /// - `Some(false)` -- if there are `'a: 'b` constraints but none involve placeholders
     pub fn region_constraints_added_in_snapshot(
         &self,
         snapshot: &CombinedSnapshot<'a, 'tcx>,
@@ -1292,19 +1292,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.type_variables.borrow_mut().root_var(var)
     }
 
+    /// Where possible, replaces type/int/float variables in
+    /// `value` with their final value. Note that region variables
+    /// are unaffected. If a type variable has not been unified, it
+    /// is left as is. This is an idempotent operation that does
+    /// not affect inference state in any way and so you can do it
+    /// at will.
     pub fn resolve_type_vars_if_possible<T>(&self, value: &T) -> T
     where
         T: TypeFoldable<'tcx>,
     {
-        /*!
-         * Where possible, replaces type/int/float variables in
-         * `value` with their final value. Note that region variables
-         * are unaffected. If a type variable has not been unified, it
-         * is left as is. This is an idempotent operation that does
-         * not affect inference state in any way and so you can do it
-         * at will.
-         */
-
         if !value.needs_infer() {
             return value.clone(); // avoid duplicated subst-folding
         }
