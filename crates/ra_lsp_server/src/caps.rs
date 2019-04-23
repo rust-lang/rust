@@ -2,7 +2,7 @@ use lsp_types::{
     CodeActionProviderCapability, CodeLensOptions, CompletionOptions, DocumentOnTypeFormattingOptions,
     ExecuteCommandOptions, FoldingRangeProviderCapability, RenameOptions, RenameProviderCapability,
     ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, ImplementationProviderCapability, GenericCapability,
+    TextDocumentSyncOptions, ImplementationProviderCapability, GenericCapability, TypeDefinitionProviderCapability
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -23,7 +23,7 @@ pub fn server_capabilities() -> ServerCapabilities {
             trigger_characters: Some(vec!["(".to_string(), ",".to_string(), ")".to_string()]),
         }),
         definition_provider: Some(true),
-        type_definition_provider: None,
+        type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
         implementation_provider: Some(ImplementationProviderCapability::Simple(true)),
         references_provider: Some(true),
         document_highlight_provider: Some(true),

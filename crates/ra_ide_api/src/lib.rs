@@ -19,6 +19,7 @@ mod status;
 mod completion;
 mod runnables;
 mod goto_definition;
+mod goto_type_definition;
 mod extend_selection;
 mod hover;
 mod call_info;
@@ -414,6 +415,13 @@ impl Analysis {
         position: FilePosition,
     ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
         self.with_db(|db| impls::goto_implementation(db, position))
+    }
+
+    pub fn goto_type_definition(
+        &self,
+        position: FilePosition,
+    ) -> Cancelable<Option<RangeInfo<Vec<NavigationTarget>>>> {
+        self.with_db(|db| goto_type_definition::goto_type_definition(db, position))
     }
 
     /// Finds all usages of the reference at point.
