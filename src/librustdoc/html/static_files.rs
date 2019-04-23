@@ -91,7 +91,7 @@ pub mod source_serif_pro {
     pub static ITALIC: &'static [u8] = include_bytes!("static/SourceSerifPro-It.ttf.woff");
 
     /// The file `SourceSerifPro-LICENSE.txt`, the license text for the Source Serif Pro font.
-    pub static LICENSE: &'static [u8] = include_bytes!("static/SourceSerifPro-LICENSE.txt");
+    pub static LICENSE: &'static [u8] = include_bytes!("static/SourceSerifPro-LICENSE.md");
 }
 
 /// Files related to the Source Code Pro font.
@@ -103,7 +103,7 @@ pub mod source_code_pro {
     pub static SEMIBOLD: &'static [u8] = include_bytes!("static/SourceCodePro-Semibold.woff");
 
     /// The file `SourceCodePro-LICENSE.txt`, the license text of the Source Code Pro font.
-    pub static LICENSE: &'static [u8] = include_bytes!("static/SourceCodePro-LICENSE.txt");
+    pub static LICENSE: &'static [u8] = include_bytes!("static/SourceCodePro-LICENSE.md");
 }
 
 /// Files related to the sidebar in rustdoc sources.
