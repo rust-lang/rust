@@ -888,6 +888,17 @@ pub struct Local {
     pub id: NodeId,
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
+    /// Origin of this local variable.
+    pub source: LocalSource,
+}
+
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum LocalSource {
+    /// Local was parsed from source.
+    Normal,
+    /// Within `ast::IsAsync::Async`, a local is generated that will contain the moved arguments
+    /// of an `async fn`.
+    AsyncFn,
 }
 
 /// An arm of a 'match'.
@@ -1725,6 +1736,16 @@ pub struct Arg {
     pub ty: P<Ty>,
     pub pat: P<Pat>,
     pub id: NodeId,
+    pub source: ArgSource,
+}
+
+/// The source of an argument in a function header.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum ArgSource {
+    /// Argument as written by the user.
+    Normal,
+    /// Argument from `async fn` lowering, contains the original binding pattern.
+    AsyncFn(P<Pat>),
 }
 
 /// Alternative representation for `Arg`s describing `self` parameter of methods.
@@ -1784,6 +1805,7 @@ impl Arg {
             }),
             ty,
             id: DUMMY_NODE_ID,
+            source: ArgSource::Normal,
         };
         match eself.node {
             SelfKind::Explicit(ty, mutbl) => arg(mutbl, ty),
@@ -1838,18 +1860,35 @@ pub enum Unsafety {
     Normal,
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct AsyncArgument {
+    /// `__arg0`
+    pub ident: Ident,
+    /// `__arg0: <ty>` argument to replace existing function argument `<pat>: <ty>`.
+    pub arg: Arg,
+    /// `let <pat>: <ty> = __arg0;` statement to be inserted at the start of the block.
+    pub stmt: Stmt,
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum IsAsync {
     Async {
         closure_id: NodeId,
         return_impl_trait_id: NodeId,
+        /// This field stores the arguments and statements that are used in HIR lowering to
+        /// ensure that `async fn` arguments are dropped at the correct time.
+        ///
+        /// The argument and statements here are generated at parse time as they are required in
+        /// both the hir lowering, def collection and name resolution and this stops them needing
+        /// to be created in each place.
+        arguments: Vec<AsyncArgument>,
     },
     NotAsync,
 }
 
 impl IsAsync {
-    pub fn is_async(self) -> bool {
-        if let IsAsync::Async { .. } = self {
+    pub fn is_async(&self) -> bool {
+        if let IsAsync::Async { .. } = *self {
             true
         } else {
             false
@@ -1857,12 +1896,12 @@ impl IsAsync {
     }
 
     /// In ths case this is an `async` return, the `NodeId` for the generated `impl Trait` item.
-    pub fn opt_return_id(self) -> Option<NodeId> {
+    pub fn opt_return_id(&self) -> Option<NodeId> {
         match self {
             IsAsync::Async {
                 return_impl_trait_id,
                 ..
-            } => Some(return_impl_trait_id),
+            } => Some(*return_impl_trait_id),
             IsAsync::NotAsync => None,
         }
     }
@@ -2202,7 +2241,7 @@ impl Item {
 ///
 /// All the information between the visibility and the name of the function is
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct FnHeader {
     pub unsafety: Unsafety,
     pub asyncness: Spanned<IsAsync>,

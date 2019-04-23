@@ -128,6 +128,7 @@ fn stmt_let_undescore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> ast
         id: ast::DUMMY_NODE_ID,
         span: sp,
         attrs: ThinVec::new(),
+        source: ast::LocalSource::Normal,
     });
     ast::Stmt {
         id: ast::DUMMY_NODE_ID,

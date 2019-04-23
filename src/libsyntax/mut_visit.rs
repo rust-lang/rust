@@ -208,6 +208,10 @@ pub trait MutVisitor: Sized {
         noop_visit_local(l, self);
     }
 
+    fn visit_local_source(&mut self, l: &mut LocalSource) {
+        noop_visit_local_source(l, self);
+    }
+
     fn visit_mac(&mut self, _mac: &mut Mac) {
         panic!("visit_mac disabled by default");
         // N.B., see note about macros above. If you really want a visitor that
@@ -229,6 +233,10 @@ pub trait MutVisitor: Sized {
 
     fn visit_arg(&mut self, a: &mut Arg) {
         noop_visit_arg(a, self);
+    }
+
+    fn visit_arg_source(&mut self, a: &mut ArgSource) {
+        noop_visit_arg_source(a, self);
     }
 
     fn visit_generics(&mut self, generics: &mut Generics) {
@@ -511,13 +519,17 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(args: &mut Parenth
 }
 
 pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
-    let Local { id, pat, ty, init, span, attrs } = local.deref_mut();
+    let Local { id, pat, ty, init, span, attrs, source } = local.deref_mut();
     vis.visit_id(id);
     vis.visit_pat(pat);
     visit_opt(ty, |ty| vis.visit_ty(ty));
     visit_opt(init, |init| vis.visit_expr(init));
     vis.visit_span(span);
     visit_thin_attrs(attrs, vis);
+    vis.visit_local_source(source);
+}
+
+pub fn noop_visit_local_source<T: MutVisitor>(_local_source: &mut LocalSource, _vis: &mut T) {
 }
 
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
@@ -556,10 +568,18 @@ pub fn noop_visit_meta_item<T: MutVisitor>(mi: &mut MetaItem, vis: &mut T) {
     vis.visit_span(span);
 }
 
-pub fn noop_visit_arg<T: MutVisitor>(Arg { id, pat, ty }: &mut Arg, vis: &mut T) {
+pub fn noop_visit_arg<T: MutVisitor>(Arg { id, pat, ty, source }: &mut Arg, vis: &mut T) {
     vis.visit_id(id);
     vis.visit_pat(pat);
     vis.visit_ty(ty);
+    vis.visit_arg_source(source);
+}
+
+pub fn noop_visit_arg_source<T: MutVisitor>(source: &mut ArgSource, vis: &mut T) {
+    match source {
+        ArgSource::Normal => {},
+        ArgSource::AsyncFn(pat) => vis.visit_pat(pat),
+    }
 }
 
 pub fn noop_visit_tt<T: MutVisitor>(tt: &mut TokenTree, vis: &mut T) {
@@ -671,9 +691,17 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
 
 pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T) {
     match asyncness {
-        IsAsync::Async { closure_id, return_impl_trait_id } => {
+        IsAsync::Async { closure_id, return_impl_trait_id, ref mut arguments } => {
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);
+            for AsyncArgument { ident, arg, stmt } in arguments.iter_mut() {
+                vis.visit_ident(ident);
+                vis.visit_arg(arg);
+                visit_clobber(stmt, |stmt| {
+                    vis.flat_map_stmt(stmt)
+                        .expect_one("expected visitor to produce exactly one item")
+                });
+            }
         }
         IsAsync::NotAsync => {}
     }

@@ -1,7 +1,7 @@
-use crate::ast::{AngleBracketedArgs, ParenthesizedArgs, AttrStyle, BareFnTy};
+use crate::ast::{AngleBracketedArgs, AsyncArgument, ParenthesizedArgs, AttrStyle, BareFnTy};
 use crate::ast::{GenericBound, TraitBoundModifier};
 use crate::ast::Unsafety;
-use crate::ast::{Mod, AnonConst, Arg, Arm, Guard, Attribute, BindingMode, TraitItemKind};
+use crate::ast::{Mod, AnonConst, Arg, ArgSource, Arm, Guard, Attribute, BindingMode, TraitItemKind};
 use crate::ast::Block;
 use crate::ast::{BlockCheckMode, CaptureBy, Movability};
 use crate::ast::{Constness, Crate};
@@ -14,7 +14,7 @@ use crate::ast::{GenericParam, GenericParamKind};
 use crate::ast::GenericArg;
 use crate::ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
 use crate::ast::{Label, Lifetime, Lit, LitKind};
-use crate::ast::Local;
+use crate::ast::{Local, LocalSource};
 use crate::ast::MacStmtStyle;
 use crate::ast::{Mac, Mac_, MacDelimiter};
 use crate::ast::{MutTy, Mutability};
@@ -550,7 +550,7 @@ fn dummy_arg(span: Span) -> Arg {
         span,
         id: ast::DUMMY_NODE_ID
     };
-    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
+    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -1517,6 +1517,7 @@ impl<'a> Parser<'a> {
             IsAsync::Async {
                 closure_id: ast::DUMMY_NODE_ID,
                 return_impl_trait_id: ast::DUMMY_NODE_ID,
+                arguments: Vec::new(),
             }
         } else {
             IsAsync::NotAsync
@@ -1575,7 +1576,7 @@ impl<'a> Parser<'a> {
             // trait item macro.
             (keywords::Invalid.ident(), ast::TraitItemKind::Macro(mac), ast::Generics::default())
         } else {
-            let (constness, unsafety, asyncness, abi) = self.parse_fn_front_matter()?;
+            let (constness, unsafety, mut asyncness, abi) = self.parse_fn_front_matter()?;
 
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
@@ -1589,6 +1590,7 @@ impl<'a> Parser<'a> {
                 p.parse_arg_general(p.span.rust_2018(), true, false)
             })?;
             generics.where_clause = self.parse_where_clause()?;
+            self.construct_async_arguments(&mut asyncness, &d);
 
             let sig = ast::MethodSig {
                 header: FnHeader {
@@ -2124,7 +2126,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID })
+        Ok(Arg { ty, pat, id: ast::DUMMY_NODE_ID, source: ast::ArgSource::Normal })
     }
 
     /// Parses a single function argument.
@@ -2147,7 +2149,8 @@ impl<'a> Parser<'a> {
         Ok(Arg {
             ty: t,
             pat,
-            id: ast::DUMMY_NODE_ID
+            id: ast::DUMMY_NODE_ID,
+            source: ast::ArgSource::Normal,
         })
     }
 
@@ -5029,6 +5032,7 @@ impl<'a> Parser<'a> {
             id: ast::DUMMY_NODE_ID,
             span: lo.to(hi),
             attrs,
+            source: LocalSource::Normal,
         }))
     }
 
@@ -6566,7 +6570,7 @@ impl<'a> Parser<'a> {
     /// Parses an item-position function declaration.
     fn parse_item_fn(&mut self,
                      unsafety: Unsafety,
-                     asyncness: Spanned<IsAsync>,
+                     mut asyncness: Spanned<IsAsync>,
                      constness: Spanned<Constness>,
                      abi: Abi)
                      -> PResult<'a, ItemInfo> {
@@ -6575,6 +6579,7 @@ impl<'a> Parser<'a> {
         let decl = self.parse_fn_decl(allow_c_variadic)?;
         generics.where_clause = self.parse_where_clause()?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
+        self.construct_async_arguments(&mut asyncness, &decl);
         let header = FnHeader { unsafety, asyncness, constness, abi };
         Ok((ident, ItemKind::Fn(decl, header, generics, body), Some(inner_attrs)))
     }
@@ -6755,11 +6760,12 @@ impl<'a> Parser<'a> {
             Ok((keywords::Invalid.ident(), vec![], ast::Generics::default(),
                 ast::ImplItemKind::Macro(mac)))
         } else {
-            let (constness, unsafety, asyncness, abi) = self.parse_fn_front_matter()?;
+            let (constness, unsafety, mut asyncness, abi) = self.parse_fn_front_matter()?;
             let ident = self.parse_ident()?;
             let mut generics = self.parse_generics()?;
             let decl = self.parse_fn_decl_with_self(|p| p.parse_arg())?;
             generics.where_clause = self.parse_where_clause()?;
+            self.construct_async_arguments(&mut asyncness, &decl);
             *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
             let header = ast::FnHeader { abi, unsafety, constness, asyncness };
@@ -8181,6 +8187,7 @@ impl<'a> Parser<'a> {
                                    respan(async_span, IsAsync::Async {
                                        closure_id: ast::DUMMY_NODE_ID,
                                        return_impl_trait_id: ast::DUMMY_NODE_ID,
+                                       arguments: Vec::new(),
                                    }),
                                    respan(fn_span, Constness::NotConst),
                                    Abi::Rust)?;
@@ -8823,6 +8830,68 @@ impl<'a> Parser<'a> {
                     err.emit();
                 }
                 Err(mut err) => err.emit(),
+            }
+        }
+    }
+
+    /// When lowering a `async fn` to the HIR, we need to move all of the arguments of the function
+    /// into the generated closure so that they are dropped when the future is polled and not when
+    /// it is created.
+    ///
+    /// The arguments of the function are replaced in HIR lowering with the arguments created by
+    /// this function and the statements created here are inserted at the top of the closure body.
+    fn construct_async_arguments(&mut self, asyncness: &mut Spanned<IsAsync>, decl: &FnDecl) {
+        if let IsAsync::Async { ref mut arguments, .. } = asyncness.node {
+            for (index, input) in decl.inputs.iter().enumerate() {
+                let id = ast::DUMMY_NODE_ID;
+                let span = input.pat.span;
+
+                // Construct a name for our temporary argument.
+                let name = format!("__arg{}", index);
+                let ident = Ident::from_str(&name);
+
+                // Construct an argument representing `__argN: <ty>` to replace the argument of the
+                // async function.
+                let arg = Arg {
+                    ty: input.ty.clone(),
+                    id,
+                    pat: P(Pat {
+                        id,
+                        node: PatKind::Ident(
+                            BindingMode::ByValue(Mutability::Immutable), ident, None,
+                        ),
+                        span,
+                    }),
+                    source: ArgSource::AsyncFn(input.pat.clone()),
+                };
+
+                // Construct a `let <pat> = __argN;` statement to insert at the top of the
+                // async closure.
+                let local = P(Local {
+                    pat: input.pat.clone(),
+                    // We explicitly do not specify the type for this statement. When the user's
+                    // argument type is `impl Trait` then this would require the
+                    // `impl_trait_in_bindings` feature to also be present for that same type to
+                    // be valid in this binding. At the time of writing (13 Mar 19),
+                    // `impl_trait_in_bindings` is not stable.
+                    ty: None,
+                    init: Some(P(Expr {
+                        id,
+                        node: ExprKind::Path(None, ast::Path {
+                            span,
+                            segments: vec![PathSegment { ident, id, args: None }],
+                        }),
+                        span,
+                        attrs: ThinVec::new(),
+                    })),
+                    id,
+                    span,
+                    attrs: ThinVec::new(),
+                    source: LocalSource::AsyncFn,
+                });
+                let stmt = Stmt { id, node: StmtKind::Local(local), span, };
+
+                arguments.push(AsyncArgument { ident, arg, stmt });
             }
         }
     }

@@ -2421,7 +2421,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             let help_name = if let Some(body) = parent {
                 let arg = &self.tcx.hir().body(body).arguments[index];
-                format!("`{}`", self.tcx.hir().hir_to_pretty_string(arg.pat.hir_id))
+                format!("`{}`", self.tcx.hir().hir_to_pretty_string(arg.original_pat().hir_id))
             } else {
                 format!("argument {}", index + 1)
             };
