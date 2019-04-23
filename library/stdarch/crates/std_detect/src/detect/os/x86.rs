@@ -126,7 +126,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable(proc_info_edx, 26, Feature::sse2);
         enable(extended_features_ebx, 29, Feature::sha);
 
-        enable(extended_features_ebx, 3, Feature::bmi);
+        enable(extended_features_ebx, 3, Feature::bmi1);
         enable(extended_features_ebx, 8, Feature::bmi2);
 
         // `XSAVE` and `AVX` support:
@@ -203,17 +203,17 @@ pub(crate) fn detect_features() -> cache::Initializer {
                     if os_avx512_support {
                         enable(extended_features_ebx, 16, Feature::avx512f);
                         enable(extended_features_ebx, 17, Feature::avx512dq);
-                        enable(extended_features_ebx, 21, Feature::avx512_ifma);
+                        enable(extended_features_ebx, 21, Feature::avx512ifma);
                         enable(extended_features_ebx, 26, Feature::avx512pf);
                         enable(extended_features_ebx, 27, Feature::avx512er);
                         enable(extended_features_ebx, 28, Feature::avx512cd);
                         enable(extended_features_ebx, 30, Feature::avx512bw);
                         enable(extended_features_ebx, 31, Feature::avx512vl);
-                        enable(extended_features_ecx, 1, Feature::avx512_vbmi);
+                        enable(extended_features_ecx, 1, Feature::avx512vbmi);
                         enable(
                             extended_features_ecx,
                             14,
-                            Feature::avx512_vpopcntdq,
+                            Feature::avx512vpopcntdq,
                         );
                     }
                 }
@@ -227,7 +227,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
         //
         // The `is_x86_feature_detected!("lzcnt")` macro then
         // internally maps to Feature::abm.
-        enable(extended_proc_info_ecx, 5, Feature::abm);
+        enable(extended_proc_info_ecx, 5, Feature::lzcnt);
+
         // As Hygon Dhyana originates from AMD technology and shares most of the architecture with
         // AMD's family 17h, but with different CPU Vendor ID("HygonGenuine")/Family series
         // number(Family 18h).

@@ -20,6 +20,9 @@
 #[macro_use]
 mod error_macros;
 
+#[macro_use]
+mod macros;
+
 cfg_if! {
     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         #[path = "arch/x86.rs"]
@@ -95,4 +98,37 @@ cfg_if! {
 #[inline]
 pub fn check_for(x: Feature) -> bool {
     cache::test(x as u32, self::os::detect_features)
+}
+
+/// Returns an `Iterator<Item=(&'static str, bool)>` where
+/// `Item.0` is the feature name, and `Item.1` is a `bool` which
+/// is `true` if the feature is supported by the host and `false` otherwise.
+#[unstable(feature = "stdsimd", issue = "27731")]
+pub fn features() -> impl Iterator<Item = (&'static str, bool)> {
+    cfg_if! {
+        if #[cfg(any(
+            target_arch = "x86",
+            target_arch = "x86_64",
+            target_arch = "arm",
+            target_arch = "aarch64",
+            target_arch = "powerpc",
+            target_arch = "powerpc64",
+            target_arch = "mips",
+            target_arch = "mips64",
+        ))] {
+            fn impl_() -> impl Iterator<Item=(&'static str, bool)> {
+                (0_u8..Feature::_last as u8).map(|discriminant: u8| {
+                    let f: Feature = unsafe { crate::mem::transmute(discriminant) };
+                    let name: &'static str = f.to_str();
+                    let enabled: bool = check_for(f);
+                    (name, enabled)
+                })
+            }
+        } else {
+            fn impl_() -> impl Iterator<Item=(&'static str, bool)> {
+                (0_u8..0_u8).map(|_x: u8| ("", false))
+            }
+        }
+    }
+    impl_()
 }

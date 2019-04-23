@@ -15,334 +15,154 @@
 //! in a global `AtomicUsize` variable. The query is performed by just checking
 //! whether the feature bit in this global variable is set or cleared.
 
-/// A macro to test at *runtime* whether a CPU feature is available on
-/// x86/x86-64 platforms.
-///
-/// This macro is provided in the standard library and will detect at runtime
-/// whether the specified CPU feature is detected. This does **not** resolve at
-/// compile time unless the specified feature is already enabled for the entire
-/// crate. Runtime detection currently relies mostly on the `cpuid` instruction.
-///
-/// This macro only takes one argument which is a string literal of the feature
-/// being tested for. The feature names supported are the lowercase versions of
-/// the ones defined by Intel in [their documentation][docs].
-///
-/// ## Supported arguments
-///
-/// This macro supports the same names that `#[target_feature]` supports. Unlike
-/// `#[target_feature]`, however, this macro does not support names separated
-/// with a comma. Instead testing for multiple features must be done through
-/// separate macro invocations for now.
-///
-/// Supported arguments are:
-///
-/// * `"aes"`
-/// * `"pclmulqdq"`
-/// * `"rdrand"`
-/// * `"rdseed"`
-/// * `"tsc"`
-/// * `"mmx"`
-/// * `"sse"`
-/// * `"sse2"`
-/// * `"sse3"`
-/// * `"ssse3"`
-/// * `"sse4.1"`
-/// * `"sse4.2"`
-/// * `"sse4a"`
-/// * `"sha"`
-/// * `"avx"`
-/// * `"avx2"`
-/// * `"avx512f"`
-/// * `"avx512cd"`
-/// * `"avx512er"`
-/// * `"avx512pf"`
-/// * `"avx512bw"`
-/// * `"avx512dq"`
-/// * `"avx512vl"`
-/// * `"avx512ifma"`
-/// * `"avx512vbmi"`
-/// * `"avx512vpopcntdq"`
-/// * `"f16c"`
-/// * `"fma"`
-/// * `"bmi1"`
-/// * `"bmi2"`
-/// * `"abm"`
-/// * `"lzcnt"`
-/// * `"tbm"`
-/// * `"popcnt"`
-/// * `"fxsr"`
-/// * `"xsave"`
-/// * `"xsaveopt"`
-/// * `"xsaves"`
-/// * `"xsavec"`
-/// * `"adx"`
-/// * `"rtm"`
-///
-/// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
-#[macro_export]
-#[stable(feature = "simd_x86", since = "1.27.0")]
-#[allow_internal_unstable(stdsimd_internal,stdsimd)]
-macro_rules! is_x86_feature_detected {
-    ("aes") => {
-        cfg!(target_feature = "aes") || $crate::detect::check_for(
-            $crate::detect::Feature::aes)  };
-    ("pclmulqdq") => {
-        cfg!(target_feature = "pclmulqdq") || $crate::detect::check_for(
-            $crate::detect::Feature::pclmulqdq)  };
-    ("rdrand") => {
-        cfg!(target_feature = "rdrand") || $crate::detect::check_for(
-            $crate::detect::Feature::rdrand)  };
-    ("rdseed") => {
-        cfg!(target_feature = "rdseed") || $crate::detect::check_for(
-            $crate::detect::Feature::rdseed)  };
-    ("tsc") => {
-        cfg!(target_feature = "tsc") || $crate::detect::check_for(
-            $crate::detect::Feature::tsc)  };
-    ("mmx") => {
-        cfg!(target_feature = "mmx") || $crate::detect::check_for(
-            $crate::detect::Feature::mmx)  };
-    ("sse") => {
-        cfg!(target_feature = "sse") || $crate::detect::check_for(
-            $crate::detect::Feature::sse)  };
-    ("sse2") => {
-        cfg!(target_feature = "sse2") || $crate::detect::check_for(
-            $crate::detect::Feature::sse2)
-    };
-    ("sse3") => {
-        cfg!(target_feature = "sse3") || $crate::detect::check_for(
-            $crate::detect::Feature::sse3)
-    };
-    ("ssse3") => {
-        cfg!(target_feature = "ssse3") || $crate::detect::check_for(
-            $crate::detect::Feature::ssse3)
-    };
-    ("sse4.1") => {
-        cfg!(target_feature = "sse4.1") || $crate::detect::check_for(
-            $crate::detect::Feature::sse4_1)
-    };
-    ("sse4.2") => {
-        cfg!(target_feature = "sse4.2") || $crate::detect::check_for(
-            $crate::detect::Feature::sse4_2)
-    };
-    ("sse4a") => {
-        cfg!(target_feature = "sse4a") || $crate::detect::check_for(
-            $crate::detect::Feature::sse4a)
-    };
-    ("sha") => {
-        cfg!(target_feature = "sha") || $crate::detect::check_for(
-            $crate::detect::Feature::sha)
-    };
-    ("avx") => {
-        cfg!(target_feature = "avx") || $crate::detect::check_for(
-            $crate::detect::Feature::avx)
-    };
-    ("avx2") => {
-        cfg!(target_feature = "avx2") || $crate::detect::check_for(
-            $crate::detect::Feature::avx2)
-    };
-    ("avx512f") => {
-        cfg!(target_feature = "avx512f") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512f)
-    };
-    ("avx512cd") => {
-        cfg!(target_feature = "avx512cd") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512cd)
-    };
-    ("avx512er") => {
-        cfg!(target_feature = "avx512er") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512er)
-    };
-    ("avx512pf") => {
-        cfg!(target_feature = "avx512pf") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512pf)
-    };
-    ("avx512bw") => {
-        cfg!(target_feature = "avx512bw") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512bw)
-    };
-    ("avx512dq") => {
-        cfg!(target_feature = "avx512dq") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512dq)
-    };
-    ("avx512vl") => {
-        cfg!(target_Feature = "avx512vl") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512vl)
-    };
-    ("avx512ifma") => {
-        cfg!(target_feature = "avx512ifma") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512_ifma)
-    };
-    ("avx512vbmi") => {
-        cfg!(target_feature = "avx512vbmi") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512_vbmi)
-    };
-    ("avx512vpopcntdq") => {
-        cfg!(target_feature = "avx512vpopcntdq") || $crate::detect::check_for(
-            $crate::detect::Feature::avx512_vpopcntdq)
-    };
-    ("f16c") => {
-        cfg!(target_feature = "f16c") || $crate::detect::check_for(
-            $crate::detect::Feature::f16c)
-    };
-    ("fma") => {
-        cfg!(target_feature = "fma") || $crate::detect::check_for(
-            $crate::detect::Feature::fma)
-    };
-    ("bmi1") => {
-        cfg!(target_feature = "bmi1") || $crate::detect::check_for(
-            $crate::detect::Feature::bmi)
-    };
-    ("bmi2") => {
-        cfg!(target_feature = "bmi2") || $crate::detect::check_for(
-            $crate::detect::Feature::bmi2)
-    };
-    ("abm") => {
-        cfg!(target_feature = "abm") || $crate::detect::check_for(
-            $crate::detect::Feature::abm)
-    };
-    ("lzcnt") => {
-        cfg!(target_feature = "lzcnt") || $crate::detect::check_for(
-            $crate::detect::Feature::abm)
-    };
-    ("tbm") => {
-        cfg!(target_feature = "tbm") || $crate::detect::check_for(
-            $crate::detect::Feature::tbm)
-    };
-    ("popcnt") => {
-        cfg!(target_feature = "popcnt") || $crate::detect::check_for(
-            $crate::detect::Feature::popcnt)
-    };
-    ("fxsr") => {
-        cfg!(target_feature = "fxsr") || $crate::detect::check_for(
-            $crate::detect::Feature::fxsr)
-    };
-    ("xsave") => {
-        cfg!(target_feature = "xsave") || $crate::detect::check_for(
-            $crate::detect::Feature::xsave)
-    };
-    ("xsaveopt") => {
-        cfg!(target_feature = "xsaveopt") || $crate::detect::check_for(
-            $crate::detect::Feature::xsaveopt)
-    };
-    ("xsaves") => {
-        cfg!(target_feature = "xsaves") || $crate::detect::check_for(
-            $crate::detect::Feature::xsaves)
-    };
-    ("xsavec") => {
-        cfg!(target_feature = "xsavec") || $crate::detect::check_for(
-            $crate::detect::Feature::xsavec)
-    };
-    ("cmpxchg16b") => {
-        cfg!(target_feature = "cmpxchg16b") || $crate::detect::check_for(
-            $crate::detect::Feature::cmpxchg16b)
-    };
-    ("adx") => {
-        cfg!(target_feature = "adx") || $crate::detect::check_for(
-            $crate::detect::Feature::adx)
-    };
-    ("rtm") => {
-        cfg!(target_feature = "rtm") || $crate::detect::check_for(
-            $crate::detect::Feature::rtm)
-    };
-    ($t:tt,) => {
-        is_x86_feature_detected!($t);
-    };
-    ($t:tt) => {
-        compile_error!(concat!("unknown target feature: ", $t))
-    };
-}
-
-/// X86 CPU Feature enum. Each variant denotes a position in a bitset for a
-/// particular feature.
-///
-/// This is an unstable implementation detail subject to change.
-#[allow(non_camel_case_types)]
-#[repr(u8)]
-#[doc(hidden)]
-#[unstable(feature = "stdsimd_internal", issue = "0")]
-pub enum Feature {
+features! {
+    @TARGET: x86;
+    @MACRO_NAME: is_x86_feature_detected;
+    @MACRO_ATTRS:
+    /// A macro to test at *runtime* whether a CPU feature is available on
+    /// x86/x86-64 platforms.
+    ///
+    /// This macro is provided in the standard library and will detect at runtime
+    /// whether the specified CPU feature is detected. This does **not** resolve at
+    /// compile time unless the specified feature is already enabled for the entire
+    /// crate. Runtime detection currently relies mostly on the `cpuid` instruction.
+    ///
+    /// This macro only takes one argument which is a string literal of the feature
+    /// being tested for. The feature names supported are the lowercase versions of
+    /// the ones defined by Intel in [their documentation][docs].
+    ///
+    /// ## Supported arguments
+    ///
+    /// This macro supports the same names that `#[target_feature]` supports. Unlike
+    /// `#[target_feature]`, however, this macro does not support names separated
+    /// with a comma. Instead testing for multiple features must be done through
+    /// separate macro invocations for now.
+    ///
+    /// Supported arguments are:
+    ///
+    /// * `"aes"`
+    /// * `"pclmulqdq"`
+    /// * `"rdrand"`
+    /// * `"rdseed"`
+    /// * `"tsc"`
+    /// * `"mmx"`
+    /// * `"sse"`
+    /// * `"sse2"`
+    /// * `"sse3"`
+    /// * `"ssse3"`
+    /// * `"sse4.1"`
+    /// * `"sse4.2"`
+    /// * `"sse4a"`
+    /// * `"sha"`
+    /// * `"avx"`
+    /// * `"avx2"`
+    /// * `"avx512f"`
+    /// * `"avx512cd"`
+    /// * `"avx512er"`
+    /// * `"avx512pf"`
+    /// * `"avx512bw"`
+    /// * `"avx512dq"`
+    /// * `"avx512vl"`
+    /// * `"avx512ifma"`
+    /// * `"avx512vbmi"`
+    /// * `"avx512vpopcntdq"`
+    /// * `"fma"`
+    /// * `"bmi1"`
+    /// * `"bmi2"`
+    /// * `"abm"`
+    /// * `"lzcnt"`
+    /// * `"tbm"`
+    /// * `"popcnt"`
+    /// * `"fxsr"`
+    /// * `"xsave"`
+    /// * `"xsaveopt"`
+    /// * `"xsaves"`
+    /// * `"xsavec"`
+    ///
+    /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
+    #[stable(feature = "simd_x86", since = "1.27.0")]
+    @BIND_FEATURE_NAME: "abm"; "lzcnt"; // abm is a synonym for lzcnt
+    @FEATURE: aes: "aes";
     /// AES (Advanced Encryption Standard New Instructions AES-NI)
-    aes,
+    @FEATURE: pclmulqdq: "pclmulqdq";
     /// CLMUL (Carry-less Multiplication)
-    pclmulqdq,
+    @FEATURE: rdrand: "rdrand";
     /// RDRAND
-    rdrand,
+    @FEATURE: rdseed: "rdseed";
     /// RDSEED
-    rdseed,
+    @FEATURE: tsc: "tsc";
     /// TSC (Time Stamp Counter)
-    tsc,
-    /// MMX
-    mmx,
+    @FEATURE: mmx: "mmx";
+    /// MMX (MultiMedia eXtensions)
+    @FEATURE: sse: "sse";
     /// SSE (Streaming SIMD Extensions)
-    sse,
+    @FEATURE: sse2: "sse2";
     /// SSE2 (Streaming SIMD Extensions 2)
-    sse2,
+    @FEATURE: sse3: "sse3";
     /// SSE3 (Streaming SIMD Extensions 3)
-    sse3,
+    @FEATURE: ssse3: "ssse3";
     /// SSSE3 (Supplemental Streaming SIMD Extensions 3)
-    ssse3,
+    @FEATURE: sse4_1: "sse4.1";
     /// SSE4.1 (Streaming SIMD Extensions 4.1)
-    sse4_1,
+    @FEATURE: sse4_2: "sse4.2";
     /// SSE4.2 (Streaming SIMD Extensions 4.2)
-    sse4_2,
+    @FEATURE: sse4a: "sse4a";
     /// SSE4a (Streaming SIMD Extensions 4a)
-    sse4a,
+    @FEATURE: sha: "sha";
     /// SHA
-    sha,
+    @FEATURE: avx: "avx";
     /// AVX (Advanced Vector Extensions)
-    avx,
+    @FEATURE: avx2: "avx2";
     /// AVX2 (Advanced Vector Extensions 2)
-    avx2,
+    @FEATURE: avx512f: "avx512f" ;
     /// AVX-512 F (Foundation)
-    avx512f,
+    @FEATURE: avx512cd: "avx512cd" ;
     /// AVX-512 CD (Conflict Detection Instructions)
-    avx512cd,
-    /// AVX-512 ER (Exponential and Reciprocal Instructions)
-    avx512er,
+    @FEATURE: avx512er: "avx512er";
+    /// AVX-512 ER (Expo nential and Reciprocal Instructions)
+    @FEATURE: avx512pf: "avx512pf";
     /// AVX-512 PF (Prefetch Instructions)
-    avx512pf,
+    @FEATURE: avx512bw: "avx512bw";
     /// AVX-512 BW (Byte and Word Instructions)
-    avx512bw,
+    @FEATURE: avx512dq: "avx512dq";
     /// AVX-512 DQ (Doubleword and Quadword)
-    avx512dq,
+    @FEATURE: avx512vl: "avx512vl";
     /// AVX-512 VL (Vector Length Extensions)
-    avx512vl,
+    @FEATURE: avx512ifma: "avx512ifma";
     /// AVX-512 IFMA (Integer Fused Multiply Add)
-    avx512_ifma,
+    @FEATURE: avx512vbmi: "avx512vbmi";
     /// AVX-512 VBMI (Vector Byte Manipulation Instructions)
-    avx512_vbmi,
+    @FEATURE: avx512vpopcntdq: "avx512vpopcntdq";
     /// AVX-512 VPOPCNTDQ (Vector Population Count Doubleword and
     /// Quadword)
-    avx512_vpopcntdq,
+    @FEATURE: f16c: "f16c";
     /// F16C (Conversions between IEEE-754 `binary16` and `binary32` formats)
-    f16c,
+    @FEATURE: fma: "fma";
     /// FMA (Fused Multiply Add)
-    fma,
+    @FEATURE: bmi1: "bmi1" ;
     /// BMI1 (Bit Manipulation Instructions 1)
-    bmi,
-    /// BMI1 (Bit Manipulation Instructions 2)
-    bmi2,
-    /// ABM (Advanced Bit Manipulation) on AMD / LZCNT (Leading Zero
-    /// Count) on Intel
-    abm,
+    @FEATURE: bmi2: "bmi2" ;
+    /// BMI2 (Bit Manipulation Instructions 2)
+    @FEATURE: lzcnt: "lzcnt";
+    /// ABM (Advanced Bit Manipulation) / LZCNT (Leading Zero Count)
+    @FEATURE: tbm: "tbm";
     /// TBM (Trailing Bit Manipulation)
-    tbm,
+    @FEATURE: popcnt: "popcnt";
     /// POPCNT (Population Count)
-    popcnt,
+    @FEATURE: fxsr: "fxsr";
     /// FXSR (Floating-point context fast save and restor)
-    fxsr,
+    @FEATURE: xsave: "xsave";
     /// XSAVE (Save Processor Extended States)
-    xsave,
+    @FEATURE: xsaveopt: "xsaveopt";
     /// XSAVEOPT (Save Processor Extended States Optimized)
-    xsaveopt,
+    @FEATURE: xsaves: "xsaves";
     /// XSAVES (Save Processor Extended States Supervisor)
-    xsaves,
+    @FEATURE: xsavec: "xsavec";
     /// XSAVEC (Save Processor Extended States Compacted)
-    xsavec,
-    /// CMPXCH16B, a 16-byte compare-and-swap instruction
-    cmpxchg16b,
+    @FEATURE: cmpxchg16b: "cmpxchg16b";
+    /// CMPXCH16B (16-byte compare-and-swap instruction)
+    @FEATURE: adx: "adx";
     /// ADX, Intel ADX (Multi-Precision Add-Carry Instruction Extensions)
-    adx,
+    @FEATURE: rtm: "rtm";
     /// RTM, Intel (Restricted Transactional Memory)
-    rtm,
 }
