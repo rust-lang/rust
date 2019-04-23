@@ -351,7 +351,7 @@ supported_targets! {
     ("s390x-unknown-linux-gnu", s390x_unknown_linux_gnu),
     ("sparc-unknown-linux-gnu", sparc_unknown_linux_gnu),
     ("sparc64-unknown-linux-gnu", sparc64_unknown_linux_gnu),
-    ("arm-none-eabi", arm_none_eabi),
+    ("armv7-none-eabihf", armv7_none_eabihf),
     ("arm-unknown-linux-gnueabi", arm_unknown_linux_gnueabi),
     ("arm-unknown-linux-gnueabihf", arm_unknown_linux_gnueabihf),
     ("arm-unknown-linux-musleabi", arm_unknown_linux_musleabi),

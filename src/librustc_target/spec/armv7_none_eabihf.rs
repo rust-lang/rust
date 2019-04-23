@@ -6,11 +6,11 @@
 //
 // For example, `-C target-cpu=cortex-a7`.
 
-use super::{LinkerFlavor, Target, TargetOptions, PanicStrategy};
+use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions, TargetResult};
 
-pub fn target() -> Result<Target, String> {
+pub fn target() -> TargetResult {
     Ok(Target {
-        llvm_target: "arm-none-eabi".to_string(),
+        llvm_target: "armv7-none-eabihf".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         target_c_int_width: "32".to_string(),
@@ -19,10 +19,11 @@ pub fn target() -> Result<Target, String> {
         target_os: "none".to_string(),
         target_env: String::new(),
         target_vendor: String::new(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
-            features: "+strict-align,+v6".to_string(),
+            features: "+v7,+vfp3,+d16,+thumb2,-neon".to_string(),
+            linker: Some("rust-lld".to_owned()),
             executables: true,
             relocation_model: "static".to_string(),
             max_atomic_width: Some(64),

@@ -120,7 +120,7 @@ ENV TARGETS=$TARGETS,armebv7r-none-eabi
 ENV TARGETS=$TARGETS,armebv7r-none-eabihf
 ENV TARGETS=$TARGETS,armv7r-none-eabi
 ENV TARGETS=$TARGETS,armv7r-none-eabihf
-ENV TARGETS=$TARGETS,arm-none-eabi
+ENV TARGETS=$TARGETS,armv7-none-eabihf
 ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
 
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
@@ -128,7 +128,7 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
     CC_x86_64_unknown_redox=x86_64-unknown-redox-gcc \
     CC_armebv7r_none_eabi=arm-none-eabi-gcc \
-    CC_arm_none_eabi=arm-none-eabi-gcc \
+    CC_armv7_none_eabihf=arm-none-eabi-gcc \
     CC_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-gcc \
     AR_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-ar \
     CXX_thumbv7neon_unknown_linux_gnueabihf=arm-linux-gnueabihf-g++
