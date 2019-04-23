@@ -1285,10 +1285,29 @@ declare_lint! {
     "`...` range patterns are deprecated"
 }
 
-declare_lint_pass!(EllipsisInclusiveRangePatterns => [ELLIPSIS_INCLUSIVE_RANGE_PATTERNS]);
+pub struct EllipsisInclusiveRangePatterns {
+    /// If `Some(_)`, suppress all subsequent pattern
+    /// warnings for better diagnostics.
+    node_id: Option<ast::NodeId>,
+}
+
+impl_lint_pass!(EllipsisInclusiveRangePatterns => [ELLIPSIS_INCLUSIVE_RANGE_PATTERNS]);
+
+impl EllipsisInclusiveRangePatterns {
+    pub fn new() -> Self {
+        Self {
+            node_id: None,
+        }
+    }
+}
 
 impl EarlyLintPass for EllipsisInclusiveRangePatterns {
-    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &ast::Pat, visit_subpats: &mut bool) {
+    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &ast::Pat) {
+        if self.node_id.is_some() {
+            // Don't recursively warn about patterns inside range endpoints.
+            return
+        }
+
         use self::ast::{PatKind, RangeEnd, RangeSyntax::DotDotDot};
 
         /// If `pat` is a `...` pattern, return the start and end of the range, as well as the span
@@ -1311,7 +1330,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             let msg = "`...` range patterns are deprecated";
             let suggestion = "use `..=` for an inclusive range";
             if parenthesise {
-                *visit_subpats = false;
+                self.node_id = Some(pat.id);
                 let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, msg);
                 err.span_suggestion(
                     pat.span,
@@ -1330,6 +1349,14 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                 );
                 err.emit();
             };
+        }
+    }
+
+    fn check_pat_post(&mut self, _cx: &EarlyContext<'_>, pat: &ast::Pat) {
+        if let Some(node_id) = self.node_id {
+            if pat.id == node_id {
+                self.node_id = None
+            }
         }
     }
 }

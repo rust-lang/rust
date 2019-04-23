@@ -1164,12 +1164,10 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     }
 
     fn visit_pat(&mut self, p: &'a ast::Pat) {
-        let mut visit_subpats = true;
-        run_early_pass!(self, check_pat, p, &mut visit_subpats);
+        run_early_pass!(self, check_pat, p);
         self.check_id(p.id);
-        if visit_subpats {
-            ast_visit::walk_pat(self, p);
-        }
+        ast_visit::walk_pat(self, p);
+        run_early_pass!(self, check_pat_post, p);
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
