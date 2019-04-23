@@ -1,7 +1,6 @@
 // This test depends on a patch that was committed to upstream LLVM
 // after 5.0, then backported to the Rust LLVM fork.
 
-// ignore-tidy-linelength
 // ignore-windows
 // ignore-macos
 

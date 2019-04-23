@@ -1,5 +1,4 @@
 // ignore-windows
-// ignore-tidy-linelength
 // compile-flags: -g -C metadata=foo -C no-prepopulate-passes
 // aux-build:xcrate-generic.rs
 

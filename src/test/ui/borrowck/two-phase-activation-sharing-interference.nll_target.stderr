@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-activation-sharing-interference.rs:32:15
+  --> $DIR/two-phase-activation-sharing-interference.rs:30:15
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
@@ -10,7 +10,7 @@ LL |     *y += 1;
    |     ------- mutable borrow later used here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-activation-sharing-interference.rs:40:13
+  --> $DIR/two-phase-activation-sharing-interference.rs:38:13
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
@@ -21,7 +21,7 @@ LL |     *y += 1;
    |     ------- mutable borrow later used here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-activation-sharing-interference.rs:51:13
+  --> $DIR/two-phase-activation-sharing-interference.rs:49:13
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here
@@ -32,7 +32,7 @@ LL |     *y += 1;
    |     ------- mutable borrow later used here
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-activation-sharing-interference.rs:62:14
+  --> $DIR/two-phase-activation-sharing-interference.rs:60:14
    |
 LL |     let y = &mut x;
    |             ------ mutable borrow occurs here

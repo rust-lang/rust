@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // ignore-lldb
 
 // Require LLVM with DW_TAG_variant_part and a gdb that can read it.

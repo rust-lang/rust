@@ -1583,6 +1583,17 @@ pub enum LocalSource {
     Normal,
     /// A desugared `for _ in _ { .. }` loop.
     ForLoopDesugar,
+    /// When lowering async functions, we create locals within the `async move` so that
+    /// all arguments are dropped after the future is polled.
+    ///
+    /// ```ignore (pseudo-Rust)
+    /// async fn foo(<pattern> @ x: Type) {
+    ///     async move {
+    ///         let <pattern> = x;
+    ///     }
+    /// }
+    /// ```
+    AsyncFn,
 }
 
 /// Hints at the original code for a `match _ { .. }`.
@@ -1883,6 +1894,26 @@ pub struct InlineAsm {
 pub struct Arg {
     pub pat: P<Pat>,
     pub hir_id: HirId,
+    pub source: ArgSource,
+}
+
+impl Arg {
+    /// Returns the pattern representing the original binding for this argument.
+    pub fn original_pat(&self) -> &P<Pat> {
+        match &self.source {
+            ArgSource::Normal => &self.pat,
+            ArgSource::AsyncFn(pat) => &pat,
+        }
+    }
+}
+
+/// Represents the source of an argument in a function header.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub enum ArgSource {
+    /// Argument as specified by the user.
+    Normal,
+    /// Generated argument from `async fn` lowering, contains the original binding pattern.
+    AsyncFn(P<Pat>),
 }
 
 /// Represents the header (not the body) of a function declaration.

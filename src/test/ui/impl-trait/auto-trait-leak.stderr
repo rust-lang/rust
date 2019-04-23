@@ -1,29 +1,29 @@
 error[E0391]: cycle detected when processing `cycle1::{{opaque}}#0`
-  --> $DIR/auto-trait-leak.rs:14:16
+  --> $DIR/auto-trait-leak.rs:12:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    |
 note: ...which requires processing `cycle1`...
-  --> $DIR/auto-trait-leak.rs:14:1
+  --> $DIR/auto-trait-leak.rs:12:1
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle2::{{opaque}}#0`...
-  --> $DIR/auto-trait-leak.rs:23:16
+  --> $DIR/auto-trait-leak.rs:21:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:23:1
+  --> $DIR/auto-trait-leak.rs:21:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
    = note: ...which again requires processing `cycle1::{{opaque}}#0`, completing the cycle
 note: cycle used when checking item types in top-level module
-  --> $DIR/auto-trait-leak.rs:3:1
+  --> $DIR/auto-trait-leak.rs:1:1
    |
 LL | / use std::cell::Cell;
 LL | | use std::rc::Rc;
@@ -35,30 +35,30 @@ LL | | }
    | |_^
 
 error[E0391]: cycle detected when processing `cycle1::{{opaque}}#0`
-  --> $DIR/auto-trait-leak.rs:14:16
+  --> $DIR/auto-trait-leak.rs:12:16
    |
 LL | fn cycle1() -> impl Clone {
    |                ^^^^^^^^^^
    |
 note: ...which requires processing `cycle1`...
-  --> $DIR/auto-trait-leak.rs:14:1
+  --> $DIR/auto-trait-leak.rs:12:1
    |
 LL | fn cycle1() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which requires evaluating trait selection obligation `impl std::clone::Clone: std::marker::Send`...
 note: ...which requires processing `cycle2::{{opaque}}#0`...
-  --> $DIR/auto-trait-leak.rs:23:16
+  --> $DIR/auto-trait-leak.rs:21:16
    |
 LL | fn cycle2() -> impl Clone {
    |                ^^^^^^^^^^
 note: ...which requires processing `cycle2`...
-  --> $DIR/auto-trait-leak.rs:23:1
+  --> $DIR/auto-trait-leak.rs:21:1
    |
 LL | fn cycle2() -> impl Clone {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: ...which again requires processing `cycle1::{{opaque}}#0`, completing the cycle
 note: cycle used when checking item types in top-level module
-  --> $DIR/auto-trait-leak.rs:3:1
+  --> $DIR/auto-trait-leak.rs:1:1
    |
 LL | / use std::cell::Cell;
 LL | | use std::rc::Rc;
@@ -70,7 +70,7 @@ LL | | }
    | |_^
 
 error[E0277]: `std::rc::Rc<std::string::String>` cannot be sent between threads safely
-  --> $DIR/auto-trait-leak.rs:17:5
+  --> $DIR/auto-trait-leak.rs:15:5
    |
 LL |     send(cycle2().clone());
    |     ^^^^ `std::rc::Rc<std::string::String>` cannot be sent between threads safely
@@ -78,7 +78,7 @@ LL |     send(cycle2().clone());
    = help: within `impl std::clone::Clone`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<std::string::String>`
    = note: required because it appears within the type `impl std::clone::Clone`
 note: required by `send`
-  --> $DIR/auto-trait-leak.rs:6:1
+  --> $DIR/auto-trait-leak.rs:4:1
    |
 LL | fn send<T: Send>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^

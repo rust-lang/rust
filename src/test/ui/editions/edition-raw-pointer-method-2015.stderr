@@ -1,11 +1,11 @@
 error: type annotations needed
-  --> $DIR/edition-raw-pointer-method-2015.rs:10:15
+  --> $DIR/edition-raw-pointer-method-2015.rs:9:15
    |
 LL |     let _ = y.is_null();
    |               ^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/edition-raw-pointer-method-2015.rs:6:8
+  --> $DIR/edition-raw-pointer-method-2015.rs:5:8
    |
 LL | #[deny(warnings)]
    |        ^^^^^^^^

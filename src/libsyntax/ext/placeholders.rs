@@ -102,6 +102,13 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
     fn remove(&mut self, id: ast::NodeId) -> AstFragment {
         self.expanded_fragments.remove(&id).unwrap()
     }
+
+    fn next_id(&mut self, id: &mut ast::NodeId) {
+        if self.monotonic {
+            assert_eq!(*id, ast::DUMMY_NODE_ID);
+            *id = self.cx.resolver.next_node_id()
+        }
+    }
 }
 
 impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
@@ -183,9 +190,16 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
         noop_visit_block(block, self);
 
         for stmt in block.stmts.iter_mut() {
-            if self.monotonic {
-                assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
-                stmt.id = self.cx.resolver.next_node_id();
+            self.next_id(&mut stmt.id);
+        }
+    }
+
+    fn visit_asyncness(&mut self, a: &mut ast::IsAsync) {
+        noop_visit_asyncness(a, self);
+
+        if let ast::IsAsync::Async { ref mut arguments, .. } = a {
+            for argument in arguments.iter_mut() {
+                self.next_id(&mut argument.stmt.id);
             }
         }
     }

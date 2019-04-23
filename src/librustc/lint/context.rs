@@ -1326,6 +1326,25 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
 
         run_early_pass!(self, check_mac, mac);
     }
+
+    fn visit_fn_header(&mut self, header: &'a ast::FnHeader) {
+        // Unlike in HIR lowering and name resolution, the `AsyncArgument` statements are not added
+        // to the function body and the arguments do not replace those in the declaration. They are
+        // still visited manually here so that buffered lints can be emitted.
+        if let ast::IsAsync::Async { ref arguments, .. } = header.asyncness.node {
+            for a in arguments {
+                // Visit the argument..
+                self.visit_pat(&a.arg.pat);
+                if let ast::ArgSource::AsyncFn(pat) = &a.arg.source {
+                    self.visit_pat(pat);
+                }
+                self.visit_ty(&a.arg.ty);
+
+                // ..and the statement.
+                self.visit_stmt(&a.stmt);
+            }
+        }
+    }
 }
 
 struct LateLintPassObjects<'a> {

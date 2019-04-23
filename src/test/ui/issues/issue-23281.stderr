@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `(dyn std::ops::Fn() + 'static)` cannot be known at compilation time
-  --> $DIR/issue-23281.rs:6:5
+  --> $DIR/issue-23281.rs:4:5
    |
 LL |     pub fn function(funs: Vec<Fn() -> ()>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time

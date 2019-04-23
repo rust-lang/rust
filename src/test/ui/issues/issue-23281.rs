@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 pub struct Struct;
 
 impl Struct {
