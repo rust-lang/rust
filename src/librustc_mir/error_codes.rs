@@ -2062,6 +2062,36 @@ fn get_owned_iterator() -> IntoIter<i32> {
 ```
 "##,
 
+E0594: r##"
+Cannot assign to immutable static item.
+
+Example of erroneous code:
+
+```compile_fail,E0594
+static NUM: i32 = 18;
+NUM = 20; // error: cannot assign
+```
+
+Statics are shared everywhere, and if they are mutable one might violate memory
+safety since holding multiple mutable references to shared data is not allowed.
+
+If you really want global mutable state, try using `static mut`. You will also
+need to wrap the assignment in an `unsafe` block, see E0133.
+
+```
+static mut NUM: i32 = 18;
+unsafe {
+    NUM = 20;
+}
+```
+
+See also:
+
+    https://doc.rust-lang.org/book/ch19-01-unsafe-rust.html
+    https://doc.rust-lang.org/stable/reference/items/static-items.html
+    https://doc.rust-lang.org/stable/rust-by-example/custom_types/constants.html
+"##,
+
 E0595: r##"
 #### Note: this error code is no longer emitted by the compiler.
 
@@ -2435,7 +2465,6 @@ register_diagnostics! {
     E0521,  // borrowed data escapes outside of closure
     E0524, // two closures require unique access to `..` at the same time
     E0526, // shuffle indices are not constant
-    E0594, // cannot assign to {}
     E0598, // lifetime of {} is too short to guarantee its contents can be...
     E0625, // thread-local statics cannot be accessed at compile-time
 }
