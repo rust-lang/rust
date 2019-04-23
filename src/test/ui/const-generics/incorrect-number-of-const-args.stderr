@@ -1,0 +1,21 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/incorrect-number-of-const-args.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+error[E0107]: wrong number of const arguments: expected 2, found 1
+  --> $DIR/incorrect-number-of-const-args.rs:9:5
+   |
+LL |     foo::<0>();
+   |     ^^^^^^^^ expected 2 const arguments
+
+error[E0107]: wrong number of const arguments: expected 2, found 3
+  --> $DIR/incorrect-number-of-const-args.rs:10:17
+   |
+LL |     foo::<0, 0, 0>();
+   |                 ^ unexpected const argument
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.
