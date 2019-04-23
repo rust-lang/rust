@@ -20,7 +20,6 @@
 //! file in the current workspace, and run a query against the union of all
 //! those FSTs.
 use std::{
-    cmp::Ordering,
     hash::{Hash, Hasher},
     sync::Arc,
     mem,
@@ -137,13 +136,32 @@ impl Hash for SymbolIndex {
 
 impl SymbolIndex {
     fn new(mut symbols: Vec<FileSymbol>) -> SymbolIndex {
-        fn cmp(s1: &FileSymbol, s2: &FileSymbol) -> Ordering {
-            unicase::Ascii::new(s1.name.as_str()).cmp(&unicase::Ascii::new(s2.name.as_str()))
+        fn cmp_key<'a>(s1: &'a FileSymbol) -> impl Ord + Eq + 'a {
+            unicase::Ascii::new(s1.name.as_str())
         }
-        symbols.par_sort_by(cmp);
-        symbols.dedup_by(|s1, s2| cmp(s1, s2) == Ordering::Equal);
-        let names = symbols.iter().map(|it| it.name.as_str().to_lowercase());
-        let map = fst::Map::from_iter(names.zip(0u64..)).unwrap();
+
+        symbols.par_sort_by(|s1, s2| cmp_key(s1).cmp(&cmp_key(s2)));
+
+        let mut builder = fst::MapBuilder::memory();
+
+        let mut last_batch_start = 0;
+
+        for idx in 0..symbols.len() {
+            if symbols.get(last_batch_start).map(cmp_key) == symbols.get(idx + 1).map(cmp_key) {
+                continue;
+            }
+
+            let start = last_batch_start;
+            let end = idx + 1;
+            last_batch_start = end;
+
+            let key = symbols[start].name.as_str().to_lowercase();
+            let value = SymbolIndex::range_to_map_value(start, end);
+
+            builder.insert(key, value).unwrap();
+        }
+
+        let map = fst::Map::from_bytes(builder.into_inner().unwrap()).unwrap();
         SymbolIndex { symbols, map }
     }
 
@@ -163,6 +181,19 @@ impl SymbolIndex {
             .collect::<Vec<_>>();
         SymbolIndex::new(symbols)
     }
+
+    fn range_to_map_value(start: usize, end: usize) -> u64 {
+        debug_assert![start <= (std::u32::MAX as usize)];
+        debug_assert![end <= (std::u32::MAX as usize)];
+
+        ((start as u64) << 32) + end as u64
+    }
+
+    fn map_value_to_range(value: u64) -> (usize, usize) {
+        let end = value as u32 as usize;
+        let start = (value >> 32) as usize;
+        (start, end)
+    }
 }
 
 impl Query {
@@ -179,17 +210,18 @@ impl Query {
                 break;
             }
             for indexed_value in indexed_values {
-                let file_symbols = &indices[indexed_value.index];
-                let idx = indexed_value.value as usize;
+                let symbol_index = &indices[indexed_value.index];
+                let (start, end) = SymbolIndex::map_value_to_range(indexed_value.value);
 
-                let symbol = &file_symbols.symbols[idx];
-                if self.only_types && !is_type(symbol.ptr.kind()) {
-                    continue;
+                for symbol in &symbol_index.symbols[start..end] {
+                    if self.only_types && !is_type(symbol.ptr.kind()) {
+                        continue;
+                    }
+                    if self.exact && symbol.name != self.query {
+                        continue;
+                    }
+                    res.push(symbol.clone());
                 }
-                if self.exact && symbol.name != self.query {
-                    continue;
-                }
-                res.push(symbol.clone());
             }
         }
         res
@@ -273,7 +305,10 @@ fn to_file_symbol(node: &SyntaxNode, file_id: FileId) -> Option<FileSymbol> {
 
 #[cfg(test)]
 mod tests {
-    use ra_syntax::SmolStr;
+    use ra_syntax::{
+        SmolStr,
+        SyntaxKind::{FN_DEF, STRUCT_DEF}
+};
     use crate::{
         display::NavigationTarget,
         mock_analysis::single_file,
@@ -321,6 +356,23 @@ mod foo {
 
         assert_eq!(s.name(), "FooInner");
         assert_eq!(s.container_name(), Some(&SmolStr::new("foo")));
+    }
+
+    #[test]
+    fn test_world_symbols_are_case_sensitive() {
+        let code = r#"
+fn foo() {}
+
+struct Foo;
+        "#;
+
+        let symbols = get_symbols_matching(code, "Foo");
+
+        let fn_match = symbols.iter().find(|s| s.name() == "foo").map(|s| s.kind());
+        let struct_match = symbols.iter().find(|s| s.name() == "Foo").map(|s| s.kind());
+
+        assert_eq!(fn_match, Some(FN_DEF));
+        assert_eq!(struct_match, Some(STRUCT_DEF));
     }
 
     fn get_symbols_matching(text: &str, query: &str) -> Vec<NavigationTarget> {
