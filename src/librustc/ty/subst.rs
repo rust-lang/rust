@@ -439,16 +439,16 @@ struct SubstFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     substs: &'a [Kind<'tcx>],
 
-    // The location for which the substitution is performed, if available.
+    /// The location for which the substitution is performed, if available.
     span: Option<Span>,
 
-    // The root type that is being substituted, if available.
+    /// The root type that is being substituted, if available.
     root_ty: Option<Ty<'tcx>>,
 
-    // Depth of type stack
+    /// Depth of type stack
     ty_stack_depth: usize,
 
-    // Number of region binders we have passed through while doing the substitution
+    /// Number of region binders we have passed through while doing the substitution
     binders_passed: u32,
 }
 
