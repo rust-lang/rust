@@ -75,7 +75,8 @@ pub unsafe fn _xend() {
 /// [Intel's documentation](https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-xabort).
 #[inline]
 #[target_feature(enable = "rtm")]
-#[cfg_attr(test, assert_instr(xabort))]
+#[cfg_attr(test, assert_instr(xabort, imm8 = 0x0))]
+#[rustc_args_required_const(0)]
 pub unsafe fn _xabort(imm8: u32) {
     macro_rules! call {
         ($imm8:expr) => {
