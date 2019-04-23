@@ -12,7 +12,7 @@ fn expect_free_supply_free<'x>(x: &'x u32) {
         x.push(22_u32);
 
         // ...since we now know the type of `y` and can resolve the method call.
-        y.wrapping_add(1);
+        let _ = y.wrapping_add(1);
     });
 }
 
