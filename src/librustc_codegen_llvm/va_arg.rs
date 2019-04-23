@@ -145,4 +145,3 @@ pub(super) fn emit_va_arg(
         }
     }
 }
-

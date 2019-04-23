@@ -26,4 +26,3 @@ abi="$(echo "${details}" | awk '{print($2)}')"
 echo no | avdmanager create avd \
     -n "$abi-$api" \
     -k "system-images;android-$api;default;$abi"
-

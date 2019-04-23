@@ -45,4 +45,3 @@ fn main() {
         //~^ ERROR unreachable pattern
     }
 }
-

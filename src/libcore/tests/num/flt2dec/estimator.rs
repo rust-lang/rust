@@ -47,4 +47,3 @@ fn test_estimate_scaling_factor() {
         assert_almost_eq!(estimate_scaling_factor(1, i as i16), expected as i16);
     }
 }
-

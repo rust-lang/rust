@@ -60,4 +60,3 @@ fn main() {
     nonexhaustive_2();
     nonexhaustive_3();
 }
-

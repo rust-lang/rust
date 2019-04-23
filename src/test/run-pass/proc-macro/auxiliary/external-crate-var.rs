@@ -38,4 +38,3 @@ macro_rules! external { () => {
         }
     }
 } }
-

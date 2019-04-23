@@ -7,4 +7,3 @@ fn main() {
     assert!(match 'x' { 'a' ... 'z' => true, _ => false });
     assert!(match 'x' { 'a' ..= 'z' => true, _ => false });
 }
-

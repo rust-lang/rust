@@ -22,4 +22,3 @@ fn main() {
                 k, v, output);
     }
 }
-

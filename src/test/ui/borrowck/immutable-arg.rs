@@ -7,4 +7,3 @@ fn foo(_x: u32) {
 }
 
 fn main() {}
-

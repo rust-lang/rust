@@ -502,4 +502,3 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
         }
     }
 }
-

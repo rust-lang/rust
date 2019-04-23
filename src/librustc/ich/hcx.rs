@@ -435,4 +435,3 @@ pub fn hash_stable_trait_impls<'a, 'gcx, W>(
         }
     }
 }
-

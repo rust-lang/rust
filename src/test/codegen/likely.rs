@@ -28,4 +28,3 @@ pub fn check_unlikely(x: i32, y: i32) -> Option<i32> {
         }
     }
 }
-

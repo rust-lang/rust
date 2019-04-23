@@ -10,4 +10,3 @@ extern crate link_cfg_works_transitive_dylib;
 extern {}
 
 fn main() {}
-

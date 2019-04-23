@@ -10,4 +10,3 @@ extern {
 pub fn foo2() -> i32 {
     unsafe { foo() }
 }
-

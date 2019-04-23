@@ -88,4 +88,3 @@ fn any_with<'a, A: Arbitrary<'a>>(args: A::Parameters) -> StrategyType<'a, A> {
 }
 
 fn main() { }
-

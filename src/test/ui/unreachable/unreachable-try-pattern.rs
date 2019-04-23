@@ -39,4 +39,3 @@ fn main() {
     let _ = qux(Ok(123));
     let _ = vom(Ok(123));
 }
-

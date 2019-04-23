@@ -20,4 +20,3 @@ fn main() {
     define_f!(concat!("exported_", "f"));
     m!(stringify!(foo));
 }
-

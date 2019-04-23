@@ -8,4 +8,3 @@ use std::option; //~ WARN
 
 
 fn main() {}
-

@@ -6,4 +6,3 @@
 pub fn main() {
     unsafe { asm!(concat!("", "")) };
 }
-

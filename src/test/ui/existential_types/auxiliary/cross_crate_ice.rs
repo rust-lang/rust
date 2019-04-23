@@ -9,4 +9,3 @@ pub existential type Foo: std::fmt::Debug;
 pub fn foo() -> Foo {
     5
 }
-

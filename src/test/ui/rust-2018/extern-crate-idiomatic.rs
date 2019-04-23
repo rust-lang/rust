@@ -16,4 +16,3 @@ use edition_lint_paths::foo;
 fn main() {
     foo();
 }
-

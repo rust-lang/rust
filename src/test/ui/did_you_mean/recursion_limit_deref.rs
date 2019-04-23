@@ -50,4 +50,3 @@ fn main() {
     let x: &Bottom = &t; //~ ERROR mismatched types
     //~^ error recursion limit
 }
-

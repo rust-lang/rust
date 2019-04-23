@@ -14,4 +14,3 @@ enum Foo { //~ WARN never used
 }
 
 fn main() {}
-

@@ -48,4 +48,3 @@ where H: Fn() + Copy
 }
 
 fn main() { }
-

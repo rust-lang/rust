@@ -241,4 +241,3 @@ fn output_fileline(w: &mut dyn Write,
 
     w.write_all(b"\n")
 }
-

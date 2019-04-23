@@ -8,4 +8,3 @@ fn test() {
 }
 
 fn main() { }
-

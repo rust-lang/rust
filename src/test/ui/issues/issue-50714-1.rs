@@ -9,4 +9,3 @@ extern crate std;
 fn start(_: isize, _: *const *const u8) -> isize where fn(&()): Eq { //~ ERROR [E0647]
     0
 }
-

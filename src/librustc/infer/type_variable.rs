@@ -444,4 +444,3 @@ impl ut::UnifyKey for ty::TyVid {
     fn from_index(i: u32) -> ty::TyVid { ty::TyVid { index: i } }
     fn tag() -> &'static str { "TyVid" }
 }
-

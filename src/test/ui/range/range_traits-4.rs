@@ -7,4 +7,3 @@ struct R(RangeTo<usize>);
 
 
 fn main() {}
-

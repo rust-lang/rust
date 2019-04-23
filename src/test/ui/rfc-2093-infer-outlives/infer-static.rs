@@ -10,4 +10,3 @@ struct Bar<T: 'static> {
 }
 
 fn main() {}
-

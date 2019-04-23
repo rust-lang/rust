@@ -23,4 +23,3 @@ enum_number!(Change {
 fn main() {
     if let Some(Change::Down) = foo(-1) {} else { panic!() }
 }
-

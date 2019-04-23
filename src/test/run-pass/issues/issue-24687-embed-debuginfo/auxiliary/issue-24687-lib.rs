@@ -8,4 +8,3 @@
 mod issue_24687_mbcs_in_comments;
 
 pub use issue_24687_mbcs_in_comments::D;
-

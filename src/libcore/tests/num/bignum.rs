@@ -236,4 +236,3 @@ fn test_fmt() {
     assert_eq!(format!("{:?}", Big::from_u64(0x12345)), "0x1_23_45");
     assert_eq!(format!("{:?}", Big::from_u64(0x123456)), "0x12_34_56");
 }
-

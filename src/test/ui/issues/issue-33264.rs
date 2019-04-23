@@ -27,4 +27,3 @@ impl D32x4 {
 }
 
 fn main() { }
-

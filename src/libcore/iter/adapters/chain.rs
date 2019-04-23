@@ -258,4 +258,3 @@ impl<A, B> FusedIterator for Chain<A, B>
 unsafe impl<A, B> TrustedLen for Chain<A, B>
     where A: TrustedLen, B: TrustedLen<Item=A::Item>,
 {}
-

@@ -21,4 +21,3 @@ fn main() {
     let x = MyRc { _ptr: &iter, _boo: NotPhantomData(PhantomData) };
     let _y: MyRc<Iterator<Item=&u32>> = x;
 }
-

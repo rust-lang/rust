@@ -73,4 +73,3 @@ pub union UnionBool { b:bool }
 #[no_mangle]
 pub fn test_UnionBool(b: UnionBool) -> bool { unsafe { b.b }  }
 // CHECK: %0 = trunc i8 %b to i1
-
