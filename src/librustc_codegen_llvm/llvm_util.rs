@@ -145,6 +145,7 @@ const X86_WHITELIST: &[(&str, Option<&str>)] = &[
     ("bmi1", None),
     ("bmi2", None),
     ("cmpxchg16b", Some("cmpxchg16b_target_feature")),
+    ("f16c", Some("f16c_target_feature")),
     ("fma", None),
     ("fxsr", None),
     ("lzcnt", None),
