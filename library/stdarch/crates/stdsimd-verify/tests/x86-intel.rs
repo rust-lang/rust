@@ -293,11 +293,16 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             .flat_map(|c| c.to_lowercase())
             .collect::<String>();
 
-        // The XML file names IFMA as "avx512ifma52", while Rust calls
-        // it "avx512ifma".  Fix this mismatch by replacing the Intel
-        // name with the Rust name.
+        // Fix mismatching feature names:
         let fixup_cpuid = |cpuid: String| match cpuid.as_ref() {
+            // The XML file names IFMA as "avx512ifma52", while Rust calls
+            // it "avx512ifma".
             "avx512ifma52" => String::from("avx512ifma"),
+            // See: https://github.com/rust-lang-nursery/stdsimd/issues/738
+            // FIXME: we need to fix "fp16c" to "f16c" here. Since
+            // https://github.com/rust-lang/rust/pull/60191 is not merged,
+            // we temporarily map it to "avx512f".
+            "fp16c" => String::from("avx512f"),
             _ => cpuid,
         };
         let fixed_cpuid = fixup_cpuid(cpuid);
