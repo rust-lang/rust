@@ -9,8 +9,8 @@
 //! * No `TODO` or `XXX` directives.
 //! * No unexplained ` ```ignore ` or ` ```rust,ignore ` doc tests.
 //!
-//! A number of these checks can be opted-out of with various directives like
-//! `// ignore-tidy-linelength`.
+//! A number of these checks can be opted-out of with various directives of the form:
+//! `// ignore-tidy-CHECK-NAME`.
 
 use std::fs::File;
 use std::io::prelude::*;
@@ -90,6 +90,36 @@ fn long_line_is_ok(line: &str) -> bool {
     false
 }
 
+enum Directive {
+    /// By default, tidy always warns against style issues.
+    Deny,
+
+    /// `Ignore(false)` means that an `ignore-tidy-*` directive
+    /// has been provided, but is unnecessary. `Ignore(true)`
+    /// means that it is necessary (i.e. a warning would be
+    /// produced if `ignore-tidy-*` was not present).
+    Ignore(bool),
+}
+
+fn contains_ignore_directive(contents: &String, check: &str) -> Directive {
+    if contents.contains(&format!("// ignore-tidy-{}", check)) ||
+        contents.contains(&format!("# ignore-tidy-{}", check)) {
+        Directive::Ignore(false)
+    } else {
+        Directive::Deny
+    }
+}
+
+macro_rules! suppressible_tidy_err {
+    ($err:ident, $skip:ident, $msg:expr) => {
+        if let Directive::Deny = $skip {
+            $err($msg);
+        } else {
+            $skip = Directive::Ignore(true);
+        }
+    };
+}
+
 pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
     super::walk(path, &mut super::filter_dirs, &mut |file| {
@@ -107,29 +137,32 @@ pub fn check(path: &Path, bad: &mut bool) {
             tidy_error!(bad, "{}: empty file", file.display());
         }
 
-        let skip_cr = contents.contains("ignore-tidy-cr");
-        let skip_tab = contents.contains("ignore-tidy-tab");
-        let skip_length = contents.contains("ignore-tidy-linelength");
-        let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
-        let skip_copyright = contents.contains("ignore-tidy-copyright");
+        let mut skip_cr = contains_ignore_directive(&contents, "cr");
+        let mut skip_tab = contains_ignore_directive(&contents, "tab");
+        let mut skip_length = contains_ignore_directive(&contents, "linelength");
+        let mut skip_end_whitespace = contains_ignore_directive(&contents, "end-whitespace");
+        let mut skip_copyright = contains_ignore_directive(&contents, "copyright");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         for (i, line) in contents.split('\n').enumerate() {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
-            if !skip_length && line.chars().count() > COLS
-                && !long_line_is_ok(line) {
-                    err(&format!("line longer than {} chars", COLS));
+            if line.chars().count() > COLS && !long_line_is_ok(line) {
+                suppressible_tidy_err!(
+                    err,
+                    skip_length,
+                    &format!("line longer than {} chars", COLS)
+                );
             }
-            if !skip_tab && line.contains('\t') {
-                err("tab character");
+            if line.contains('\t') {
+                suppressible_tidy_err!(err, skip_tab, "tab character");
             }
-            if !skip_end_whitespace && (line.ends_with(' ') || line.ends_with('\t')) {
-                err("trailing whitespace");
+            if line.ends_with(' ') || line.ends_with('\t') {
+                suppressible_tidy_err!(err, skip_end_whitespace, "trailing whitespace");
             }
-            if !skip_cr && line.contains('\r') {
-                err("CR character");
+            if line.contains('\r') {
+                suppressible_tidy_err!(err, skip_cr, "CR character");
             }
             if filename != "style.rs" {
                 if line.contains("TODO") {
@@ -139,12 +172,16 @@ pub fn check(path: &Path, bad: &mut bool) {
                     err("XXX is deprecated; use FIXME")
                 }
             }
-            if !skip_copyright && (line.starts_with("// Copyright") ||
-                                   line.starts_with("# Copyright") ||
-                                   line.starts_with("Copyright"))
-                               && (line.contains("Rust Developers") ||
-                                   line.contains("Rust Project Developers")) {
-                err("copyright notices attributed to the Rust Project Developers are deprecated");
+            if (line.starts_with("// Copyright") ||
+                line.starts_with("# Copyright") ||
+                line.starts_with("Copyright"))
+                && (line.contains("Rust Developers") ||
+                    line.contains("Rust Project Developers")) {
+                suppressible_tidy_err!(
+                    err,
+                    skip_copyright,
+                    "copyright notices attributed to the Rust Project Developers are deprecated"
+                );
             }
             if line.ends_with("```ignore") || line.ends_with("```rust,ignore") {
                 err(UNEXPLAINED_IGNORE_DOCTEST_INFO);
@@ -169,5 +206,21 @@ pub fn check(path: &Path, bad: &mut bool) {
             1 => {}
             n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
         };
+
+        if let Directive::Ignore(false) = skip_cr {
+            tidy_error!(bad, "{}: ignoring CR characters unnecessarily", file.display());
+        }
+        if let Directive::Ignore(false) = skip_tab {
+            tidy_error!(bad, "{}: ignoring tab characters unnecessarily", file.display());
+        }
+        if let Directive::Ignore(false) = skip_length {
+            tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
+        }
+        if let Directive::Ignore(false) = skip_end_whitespace {
+            tidy_error!(bad, "{}: ignoring trailing whitespace unnecessarily", file.display());
+        }
+        if let Directive::Ignore(false) = skip_copyright {
+            tidy_error!(bad, "{}: ignoring copyright unnecessarily", file.display());
+        }
     })
 }

@@ -1,5 +1,5 @@
 error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + 'static)`: (E0119)
-  --> $DIR/lint-incoherent-auto-trait-objects.rs:7:1
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:5:1
    |
 LL | impl Foo for dyn Send {}
    | --------------------- first implementation here
@@ -12,7 +12,7 @@ LL | impl Foo for dyn Send + Send {}
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/lint-incoherent-auto-trait-objects.rs:13:1
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:11:1
    |
 LL | impl Foo for dyn Send + Sync {}
    | ---------------------------- first implementation here
@@ -24,7 +24,7 @@ LL | impl Foo for dyn Sync + Send {}
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: conflicting implementations of trait `Foo` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/lint-incoherent-auto-trait-objects.rs:17:1
+  --> $DIR/lint-incoherent-auto-trait-objects.rs:15:1
    |
 LL | impl Foo for dyn Sync + Send {}
    | ---------------------------- first implementation here
