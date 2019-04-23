@@ -22,6 +22,9 @@ extern "unadjusted" {
     fn llvm_vcvtps2ph_256(a: f32x8, rounding: i32) -> i16x8;
 }
 
+/// Converts the 4 x 16-bit half-precision float values in the lowest 64-bit of
+/// the 128-bit vector `a` into 4 x 32-bit float values stored in a 128-bit wide
+/// vector.
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
@@ -29,6 +32,8 @@ pub unsafe fn _mm_cvtph_ps(a: __m128i) -> __m128 {
     transmute(llvm_vcvtph2ps_128(transmute(a)))
 }
 
+/// Converts the 8 x 16-bit half-precision float values in the 128-bit vector
+/// `a` into 8 x 32-bit float values stored in a 256-bit wide vector.
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
@@ -54,32 +59,53 @@ macro_rules! dispatch_rounding {
     }};
 }
 
+/// Converts the 4 x 32-bit float values in the 128-bit vector `a` into 4 x
+/// 16-bit half-precision float values stored in the lowest 64-bit of a 128-bit
+/// vector.
+///
+/// Rounding is done according to the `imm_rounding` parameter, which can be one of:
+///
+/// * `_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC`: round to nearest and suppress exceptions,
+/// * `_MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC`: round down and suppress exceptions,
+/// * `_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC`: round up and suppress exceptions,
+/// * `_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC`: truncate and suppress exceptions,
+/// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[rustc_args_required_const(1)]
-#[cfg_attr(test, assert_instr("vcvtps2ph", rounding = 0))]
-pub unsafe fn _mm_cvtps_ph(a: __m128, rounding: i32) -> __m128i {
+#[cfg_attr(test, assert_instr("vcvtps2ph", imm_rounding = 0))]
+pub unsafe fn _mm_cvtps_ph(a: __m128, imm_rounding: i32) -> __m128i {
     let a = transmute(a);
     macro_rules! call {
         ($rounding:ident) => {
             llvm_vcvtps2ph_128(a, $rounding)
         };
     }
-    transmute(dispatch_rounding!(rounding, call))
+    transmute(dispatch_rounding!(imm_rounding, call))
 }
 
+/// Converts the 8 x 32-bit float values in the 256-bit vector `a` into 8 x
+/// 16-bit half-precision float values stored in a 128-bit wide vector.
+///
+/// Rounding is done according to the `imm_rounding` parameter, which can be one of:
+///
+/// * `_MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC`: round to nearest and suppress exceptions,
+/// * `_MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC`: round down and suppress exceptions,
+/// * `_MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC`: round up and suppress exceptions,
+/// * `_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC`: truncate and suppress exceptions,
+/// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
 #[inline]
 #[target_feature(enable = "avx512f")]
 #[rustc_args_required_const(1)]
-#[cfg_attr(test, assert_instr("vcvtps2ph", rounding = 0))]
-pub unsafe fn _mm256_cvtps_ph(a: __m256, rounding: i32) -> __m128i {
+#[cfg_attr(test, assert_instr("vcvtps2ph", imm_rounding = 0))]
+pub unsafe fn _mm256_cvtps_ph(a: __m256, imm_rounding: i32) -> __m128i {
     let a = transmute(a);
     macro_rules! call {
         ($rounding:ident) => {
             llvm_vcvtps2ph_256(a, $rounding)
         };
     }
-    transmute(dispatch_rounding!(rounding, call))
+    transmute(dispatch_rounding!(imm_rounding, call))
 }
 
 #[cfg(test)]
