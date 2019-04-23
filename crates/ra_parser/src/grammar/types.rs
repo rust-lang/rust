@@ -166,6 +166,7 @@ fn placeholder_type(p: &mut Parser) {
 // type A = fn();
 // type B = unsafe fn();
 // type C = unsafe extern "C" fn();
+// type D = extern "C" fn ( u8 , ... ) -> u8;
 fn fn_pointer_type(p: &mut Parser) {
     let m = p.start();
     p.eat(UNSAFE_KW);

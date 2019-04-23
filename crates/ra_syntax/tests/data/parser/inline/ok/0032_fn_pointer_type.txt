@@ -1,4 +1,4 @@
-SOURCE_FILE@[0; 70)
+SOURCE_FILE@[0; 113)
   TYPE_ALIAS_DEF@[0; 14)
     TYPE_KW@[0; 4) "type"
     WHITESPACE@[4; 5) " "
@@ -53,3 +53,45 @@ SOURCE_FILE@[0; 70)
         R_PAREN@[67; 68) ")"
     SEMI@[68; 69) ";"
   WHITESPACE@[69; 70) "\n"
+  TYPE_ALIAS_DEF@[70; 112)
+    TYPE_KW@[70; 74) "type"
+    WHITESPACE@[74; 75) " "
+    NAME@[75; 76)
+      IDENT@[75; 76) "D"
+    WHITESPACE@[76; 77) " "
+    EQ@[77; 78) "="
+    WHITESPACE@[78; 79) " "
+    FN_POINTER_TYPE@[79; 111)
+      ABI@[79; 89)
+        EXTERN_KW@[79; 85) "extern"
+        WHITESPACE@[85; 86) " "
+        STRING@[86; 89) "\"C\""
+      WHITESPACE@[89; 90) " "
+      FN_KW@[90; 92) "fn"
+      WHITESPACE@[92; 93) " "
+      PARAM_LIST@[93; 105)
+        L_PAREN@[93; 94) "("
+        WHITESPACE@[94; 95) " "
+        PARAM@[95; 97)
+          PATH_TYPE@[95; 97)
+            PATH@[95; 97)
+              PATH_SEGMENT@[95; 97)
+                NAME_REF@[95; 97)
+                  IDENT@[95; 97) "u8"
+        WHITESPACE@[97; 98) " "
+        COMMA@[98; 99) ","
+        WHITESPACE@[99; 100) " "
+        DOTDOTDOT@[100; 103) "..."
+        WHITESPACE@[103; 104) " "
+        R_PAREN@[104; 105) ")"
+      WHITESPACE@[105; 106) " "
+      RET_TYPE@[106; 111)
+        THIN_ARROW@[106; 108) "->"
+        WHITESPACE@[108; 109) " "
+        PATH_TYPE@[109; 111)
+          PATH@[109; 111)
+            PATH_SEGMENT@[109; 111)
+              NAME_REF@[109; 111)
+                IDENT@[109; 111) "u8"
+    SEMI@[111; 112) ";"
+  WHITESPACE@[112; 113) "\n"

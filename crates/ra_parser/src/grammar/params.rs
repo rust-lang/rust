@@ -43,7 +43,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     if flavor.type_required() {
         opt_self_param(p);
     }
-    while !p.at(EOF) && !p.at(ket) && !(flavor == Flavor::Normal && p.at(DOTDOTDOT)) {
+    while !p.at(EOF) && !p.at(ket) && !(flavor.type_required() && p.at(DOTDOTDOT)) {
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
             p.error("expected value parameter");
             break;
@@ -55,7 +55,7 @@ fn list_(p: &mut Parser, flavor: Flavor) {
     }
     // test param_list_vararg
     // extern "C" { fn printf(format: *const i8, ...) -> i32; }
-    if flavor == Flavor::Normal {
+    if flavor.type_required() {
         p.eat(DOTDOTDOT);
     }
     p.expect(ket);
