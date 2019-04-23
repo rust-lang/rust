@@ -268,3 +268,21 @@ fn main() {
     let opt = Some(0);
     let _ = opt.unwrap();
 }
+
+struct Foo(u8);
+#[rustfmt::skip]
+fn test_or_with_ctors() {
+    let opt = Some(1);
+    let opt_opt = Some(Some(1));
+    // we also test for const promotion, this makes sure we don't hit that
+    let two = 2;
+
+    let _ = opt_opt.unwrap_or(Some(2));
+    let _ = opt_opt.unwrap_or(Some(two));
+    let _ = opt.ok_or(Some(2));
+    let _ = opt.ok_or(Some(two));
+    let _ = opt.ok_or(Foo(2));
+    let _ = opt.ok_or(Foo(two));
+    let _ = opt.or(Some(2));
+    let _ = opt.or(Some(two));
+}

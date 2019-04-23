@@ -742,6 +742,19 @@ pub fn is_copy<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx.global_tcx(), cx.param_env, DUMMY_SP)
 }
 
+/// Checks if an expression is constructing a tuple-like enum variant or struct
+pub fn is_ctor_function(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
+    if let ExprKind::Call(ref fun, _) = expr.node {
+        if let ExprKind::Path(ref qp) = fun.node {
+            return matches!(
+                cx.tables.qpath_def(qp, fun.hir_id),
+                def::Def::Variant(..) | def::Def::Ctor(..)
+            );
+        }
+    }
+    false
+}
+
 /// Returns `true` if a pattern is refutable.
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> bool {
