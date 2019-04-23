@@ -12,4 +12,5 @@ LL |     buf[0]=2;
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0017`.
+Some errors have detailed explanations: E0017, E0594.
+For more information about an error, try `rustc --explain E0017`.
