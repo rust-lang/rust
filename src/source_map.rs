@@ -11,6 +11,7 @@ pub trait SpanUtils {
     fn span_after(&self, original: Span, needle: &str) -> BytePos;
     fn span_after_last(&self, original: Span, needle: &str) -> BytePos;
     fn span_before(&self, original: Span, needle: &str) -> BytePos;
+    fn span_before_last(&self, original: Span, needle: &str) -> BytePos;
     fn opt_span_after(&self, original: Span, needle: &str) -> Option<BytePos>;
     fn opt_span_before(&self, original: Span, needle: &str) -> Option<BytePos>;
 }
@@ -54,6 +55,17 @@ impl<'a> SpanUtils for SnippetProvider<'a> {
                 self.span_to_snippet(original).unwrap()
             )
         })
+    }
+
+    fn span_before_last(&self, original: Span, needle: &str) -> BytePos {
+        let snippet = self.span_to_snippet(original).unwrap();
+        let mut offset = 0;
+
+        while let Some(additional_offset) = snippet[offset..].find_uncommented(needle) {
+            offset += additional_offset + needle.len();
+        }
+
+        original.lo() + BytePos(offset as u32 - 1)
     }
 
     fn opt_span_after(&self, original: Span, needle: &str) -> Option<BytePos> {

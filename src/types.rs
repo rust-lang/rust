@@ -8,7 +8,9 @@ use syntax::symbol::keywords;
 use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity};
 use crate::expr::{format_expr, rewrite_assign_rhs, rewrite_tuple, rewrite_unary_prefix, ExprType};
-use crate::lists::{definitive_tactic, itemize_list, write_list, ListFormatting, Separator};
+use crate::lists::{
+    definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
+};
 use crate::macros::{rewrite_macro, MacroPosition};
 use crate::overflow;
 use crate::pairs::{rewrite_pair, PairParts};
@@ -314,46 +316,55 @@ where
         let offset = shape.indent + 1;
         Shape::legacy(budget, offset)
     };
+
     let list_lo = context.snippet_provider.span_after(span, "(");
-    let items = itemize_list(
-        context.snippet_provider,
-        inputs,
-        ")",
-        ",",
-        |arg| arg.span().lo(),
-        |arg| arg.span().hi(),
-        |arg| arg.rewrite(context, list_shape),
-        list_lo,
-        span.hi(),
-        false,
-    );
-
-    let item_vec: Vec<_> = items.collect();
-
-    // If the return type is multi-lined, then force to use multiple lines for
-    // arguments as well.
-    let tactic = if output.contains('\n') {
-        DefinitiveListTactic::Vertical
+    let (list_str, tactic) = if inputs.len() == 0 {
+        let tactic = get_tactics(&[], &output, shape);
+        let list_hi = context.snippet_provider.span_before_last(span, ")");
+        let comment = context
+            .snippet_provider
+            .span_to_snippet(mk_sp(list_lo, list_hi))?
+            .trim();
+        let comment = if comment.starts_with("//") {
+            format!(
+                "{}{}{}",
+                &list_shape.indent.to_string_with_newline(context.config),
+                comment,
+                &shape.block().indent.to_string_with_newline(context.config)
+            )
+        } else {
+            comment.to_string()
+        };
+        (comment, tactic)
     } else {
-        definitive_tactic(
-            &*item_vec,
-            ListTactic::HorizontalVertical,
-            Separator::Comma,
-            shape.width.saturating_sub(2 + output.len()),
-        )
-    };
-    let trailing_separator = if !context.use_block_indent() || variadic {
-        SeparatorTactic::Never
-    } else {
-        context.config.trailing_comma()
-    };
+        let items = itemize_list(
+            context.snippet_provider,
+            inputs,
+            ")",
+            ",",
+            |arg| arg.span().lo(),
+            |arg| arg.span().hi(),
+            |arg| arg.rewrite(context, list_shape),
+            list_lo,
+            span.hi(),
+            false,
+        );
 
-    let fmt = ListFormatting::new(list_shape, context.config)
-        .tactic(tactic)
-        .trailing_separator(trailing_separator)
-        .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
-        .preserve_newline(true);
-    let list_str = write_list(&item_vec, &fmt)?;
+        let item_vec: Vec<_> = items.collect();
+        let tactic = get_tactics(&item_vec, &output, shape);
+        let trailing_separator = if !context.use_block_indent() || variadic {
+            SeparatorTactic::Never
+        } else {
+            context.config.trailing_comma()
+        };
+
+        let fmt = ListFormatting::new(list_shape, context.config)
+            .tactic(tactic)
+            .trailing_separator(trailing_separator)
+            .ends_with_newline(tactic.ends_with_newline(context.config.indent_style()))
+            .preserve_newline(true);
+        (write_list(&item_vec, &fmt)?, tactic)
+    };
 
     let args = if tactic == DefinitiveListTactic::Horizontal || !context.use_block_indent() {
         format!("({})", list_str)
@@ -379,6 +390,22 @@ where
 
 fn type_bound_colon(context: &RewriteContext<'_>) -> &'static str {
     colon_spaces(context.config)
+}
+
+// If the return type is multi-lined, then force to use multiple lines for
+// arguments as well.
+fn get_tactics(item_vec: &[ListItem], output: &str, shape: Shape) -> DefinitiveListTactic {
+    if output.contains('\n') {
+        DefinitiveListTactic::Vertical
+    } else {
+        definitive_tactic(
+            item_vec,
+            ListTactic::HorizontalVertical,
+            Separator::Comma,
+            // 2 is for the case of ',\n'
+            shape.width.saturating_sub(2 + output.len()),
+        )
+    }
 }
 
 impl Rewrite for ast::WherePredicate {
