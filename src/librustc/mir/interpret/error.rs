@@ -461,7 +461,7 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for InterpError<'tcx, O> {
         use self::InterpError::*;
         match *self {
             PointerOutOfBounds { ptr, msg, allocation_size } => {
-                write!(f, "{} test failed: pointer must be in-bounds at offset {}, \
+                write!(f, "{} failed: pointer must be in-bounds at offset {}, \
                           but is outside bounds of allocation {} which has size {}",
                     msg, ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },

@@ -32,8 +32,10 @@ pub enum CheckInAllocMsg {
 }
 
 impl Display for CheckInAllocMsg {
+    /// When this printed as an error the context looks like this
+    /// "{test name} test failed: pointer must be in-bounds at offset..."
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match *self {
+        write!(f, "{} test", match *self {
             CheckInAllocMsg::MemoryAccessTest => "Memory access",
             CheckInAllocMsg::NullPointerTest => "Null pointer",
             CheckInAllocMsg::PointerArithmeticTest => "Pointer arithmetic",
