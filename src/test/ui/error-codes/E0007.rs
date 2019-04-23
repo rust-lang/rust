@@ -4,6 +4,7 @@ fn main() {
         op_string @ Some(s) => {},
         //~^ ERROR E0007
         //~| ERROR E0303
+        //~| ERROR E0382
         None => {},
     }
 }

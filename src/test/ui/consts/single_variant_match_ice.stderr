@@ -10,12 +10,13 @@ error[E0019]: constant contains unimplemented expression type
 LL |     x => 42,
    |     ^
 
-error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn (see issue #57563)
+error[E0723]: `if`, `match`, `&&` and `||` are not stable in const fn
   --> $DIR/single_variant_match_ice.rs:18:13
    |
 LL |             Prob => 0x1,
    |             ^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 3 previous errors

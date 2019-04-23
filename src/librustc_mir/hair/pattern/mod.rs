@@ -974,10 +974,27 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Wild
             }
             ty::Adt(adt_def, _) if !self.tcx.has_attr(adt_def.did, "structural_match") => {
-                let msg = format!("to use a constant of type `{}` in a pattern, \
-                                    `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                    self.tcx.def_path_str(adt_def.did),
-                                    self.tcx.def_path_str(adt_def.did));
+                let path = self.tcx.def_path_str(adt_def.did);
+                let msg = format!(
+                    "to use a constant of type `{}` in a pattern, \
+                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                    path,
+                    path,
+                );
+                self.tcx.sess.span_err(span, &msg);
+                PatternKind::Wild
+            }
+            ty::Ref(_, ty::TyS { sty: ty::Adt(adt_def, _), .. }, _)
+            if !self.tcx.has_attr(adt_def.did, "structural_match") => {
+                // HACK(estebank): Side-step ICE #53708, but anything other than erroring here
+                // would be wrong. Returnging `PatternKind::Wild` is not technically correct.
+                let path = self.tcx.def_path_str(adt_def.did);
+                let msg = format!(
+                    "to use a constant of type `{}` in a pattern, \
+                     `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
+                    path,
+                    path,
+                );
                 self.tcx.sess.span_err(span, &msg);
                 PatternKind::Wild
             }

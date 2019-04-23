@@ -1,9 +1,10 @@
-error[E0723]: function pointers in const fn are unstable (see issue #57563)
+error[E0723]: function pointers in const fn are unstable
   --> $DIR/cmp_fn_pointers.rs:1:14
    |
 LL | const fn cmp(x: fn(), y: fn()) -> bool {
    |              ^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to previous error

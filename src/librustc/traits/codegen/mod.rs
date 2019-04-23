@@ -5,9 +5,7 @@
 
 use crate::dep_graph::{DepKind, DepTrackingMapConfig};
 use std::marker::PhantomData;
-use syntax_pos::DUMMY_SP;
 use crate::infer::InferCtxt;
-use syntax_pos::Span;
 use crate::traits::{FulfillmentContext, Obligation, ObligationCause, SelectionContext,
              TraitEngine, Vtable};
 use crate::ty::{self, Ty, TyCtxt};
@@ -69,7 +67,7 @@ pub fn codegen_fulfill_obligation<'a, 'tcx>(ty: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
             fulfill_cx.register_predicate_obligation(&infcx, predicate);
         });
-        let vtable = infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &vtable);
+        let vtable = infcx.drain_fulfillment_cx_or_panic(&mut fulfill_cx, &vtable);
 
         info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
         vtable
@@ -141,7 +139,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// unified, and hence we need to process those obligations to get
     /// the complete picture of the type.
     fn drain_fulfillment_cx_or_panic<T>(&self,
-                                        span: Span,
                                         fulfill_cx: &mut FulfillmentContext<'tcx>,
                                         result: &T)
                                         -> T::Lifted
@@ -153,15 +150,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // contains unbound type parameters. It could be a slight
         // optimization to stop iterating early.
         if let Err(errors) = fulfill_cx.select_all_or_error(self) {
-            span_bug!(span, "Encountered errors `{:?}` resolving bounds after type-checking",
-                      errors);
+            bug!("Encountered errors `{:?}` resolving bounds after type-checking", errors);
         }
 
         let result = self.resolve_type_vars_if_possible(result);
         let result = self.tcx.erase_regions(&result);
 
         self.tcx.lift_to_global(&result).unwrap_or_else(||
-            span_bug!(span, "Uninferred types/regions in `{:?}`", result)
+            bug!("Uninferred types/regions in `{:?}`", result)
         )
     }
 }

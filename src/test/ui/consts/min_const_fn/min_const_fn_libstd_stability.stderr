@@ -1,33 +1,37 @@
-error[E0723]: can only call other `const fn` within a `const fn`, but `const foo` is not stable as `const fn` (see issue #57563)
+error[E0723]: can only call other `const fn` within a `const fn`, but `const foo` is not stable as `const fn`
   --> $DIR/min_const_fn_libstd_stability.rs:15:25
    |
 LL | const fn bar() -> u32 { foo() }
    |                         ^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2` is not stable as `const fn` (see issue #57563)
+error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2` is not stable as `const fn`
   --> $DIR/min_const_fn_libstd_stability.rs:22:26
    |
 LL | const fn bar2() -> u32 { foo2() }
    |                          ^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: only int, `bool` and `char` operations are stable in const fn (see issue #57563)
+error[E0723]: only int, `bool` and `char` operations are stable in const fn
   --> $DIR/min_const_fn_libstd_stability.rs:26:26
    |
 LL | const fn bar3() -> u32 { (5f32 + 6f32) as u32 }
    |                          ^^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
-error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2_gated` is not stable as `const fn` (see issue #57563)
+error[E0723]: can only call other `const fn` within a `const fn`, but `const foo2_gated` is not stable as `const fn`
   --> $DIR/min_const_fn_libstd_stability.rs:34:32
    |
 LL | const fn bar2_gated() -> u32 { foo2_gated() }
    |                                ^^^^^^^^^^^^
    |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable
 
 error: aborting due to 4 previous errors
