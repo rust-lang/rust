@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use rustc::infer::InferOk;
-use rustc::traits::{ObligationCause, ObligationCauseCode};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 
 use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::Span;
@@ -324,8 +324,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             sp,
         );
 
-        match (&expected.sty, &checked_ty.sty) {
-            (&ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
+        // Check the `expn_info()` to see if this is a macro; if so, it's hard to
+        // extract the text and make a good suggestion, so don't bother.
+        let is_macro = sp.ctxt().outer().expn_info().is_some();
+
+        match (&expr.node, &expected.sty, &checked_ty.sty) {
+            (_, &ty::Ref(_, exp, _), &ty::Ref(_, check, _)) => match (&exp.sty, &check.sty) {
                 (&ty::Str, &ty::Array(arr, _)) |
                 (&ty::Str, &ty::Slice(arr)) if arr == self.tcx.types.u8 => {
                     if let hir::ExprKind::Lit(_) = expr.node {
@@ -352,7 +356,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 _ => {}
             },
-            (&ty::Ref(_, _, mutability), _) => {
+            (_, &ty::Ref(_, _, mutability), _) => {
                 // Check if it can work when put into a ref. For example:
                 //
                 // ```
@@ -407,59 +411,66 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         });
                     }
                 }
-            }
-            (_, &ty::Ref(_, checked, _)) => {
+            },
+            (hir::ExprKind::AddrOf(_, ref expr), _, &ty::Ref(_, checked, _)) if {
+                self.infcx.can_sub(self.param_env, checked, &expected).is_ok() && !is_macro
+            } => {
                 // We have `&T`, check if what was expected was `T`. If so,
-                // we may want to suggest adding a `*`, or removing
-                // a `&`.
-                //
-                // (But, also check the `expn_info()` to see if this is
-                // a macro; if so, it's hard to extract the text and make a good
-                // suggestion, so don't bother.)
-                if self.infcx.can_sub(self.param_env, checked, &expected).is_ok() &&
-                   sp.ctxt().outer().expn_info().is_none() {
-                    match expr.node {
-                        // Maybe remove `&`?
-                        hir::ExprKind::AddrOf(_, ref expr) => {
-                            if !cm.span_to_filename(expr.span).is_real() {
-                                if let Ok(code) = cm.span_to_snippet(sp) {
-                                    if code.chars().next() == Some('&') {
-                                        return Some((
-                                            sp,
-                                            "consider removing the borrow",
-                                            code[1..].to_string()),
-                                        );
-                                    }
-                                }
-                                return None;
-                            }
-                            if let Ok(code) = cm.span_to_snippet(expr.span) {
-                                return Some((sp, "consider removing the borrow", code));
-                            }
+                // we may want to suggest removing a `&`.
+                if !cm.span_to_filename(expr.span).is_real() {
+                    if let Ok(code) = cm.span_to_snippet(sp) {
+                        if code.chars().next() == Some('&') {
+                            return Some((
+                                sp,
+                                "consider removing the borrow",
+                                code[1..].to_string(),
+                            ));
                         }
+                    }
+                    return None;
+                }
+                if let Ok(code) = cm.span_to_snippet(expr.span) {
+                    return Some((sp, "consider removing the borrow", code));
+                }
+            },
+            _ if sp == expr.span && !is_macro => {
+                // Check for `Deref` implementations by constructing a predicate to
+                // prove: `<T as Deref>::Output == U`
+                let deref_trait = self.tcx.lang_items().deref_trait().unwrap();
+                let item_def_id = self.tcx.associated_items(deref_trait).next().unwrap().def_id;
+                let predicate = ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
+                    // `<T as Deref>::Output`
+                    projection_ty: ty::ProjectionTy {
+                        // `T`
+                        substs: self.tcx.mk_substs_trait(
+                            checked_ty,
+                            self.fresh_substs_for_item(sp, item_def_id),
+                        ),
+                        // `Deref::Output`
+                        item_def_id,
+                    },
+                    // `U`
+                    ty: expected,
+                }));
+                let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
+                let impls_deref = self.infcx.predicate_may_hold(&obligation);
 
-                        // Maybe add `*`? Only if `T: Copy`.
-                        _ => {
-                            if self.infcx.type_is_copy_modulo_regions(self.param_env,
-                                                                      checked,
-                                                                      sp) {
-                                // do not suggest if the span comes from a macro (#52783)
-                                if let (Ok(code), true) = (
-                                    cm.span_to_snippet(sp),
-                                    sp == expr.span,
-                                ) {
-                                    return Some((
-                                        sp,
-                                        "consider dereferencing the borrow",
-                                        if is_struct_pat_shorthand_field {
-                                            format!("{}: *{}", code, code)
-                                        } else {
-                                            format!("*{}", code)
-                                        },
-                                    ));
-                                }
-                            }
-                        }
+                // For a suggestion to make sense, the type would need to be `Copy`.
+                let is_copy = self.infcx.type_is_copy_modulo_regions(self.param_env, expected, sp);
+
+                if is_copy && impls_deref {
+                    if let Ok(code) = cm.span_to_snippet(sp) {
+                        let message = if checked_ty.is_region_ptr() {
+                            "consider dereferencing the borrow"
+                        } else {
+                            "consider dereferencing the type"
+                        };
+                        let suggestion = if is_struct_pat_shorthand_field {
+                            format!("{}: *{}", code, code)
+                        } else {
+                            format!("*{}", code)
+                        };
+                        return Some((sp, message, suggestion));
                     }
                 }
             }

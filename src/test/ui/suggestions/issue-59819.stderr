@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-59819.rs:28:18
+   |
+LL |     let y: i32 = x;
+   |                  ^
+   |                  |
+   |                  expected i32, found struct `Foo`
+   |                  help: consider dereferencing the type: `*x`
+   |
+   = note: expected type `i32`
+              found type `Foo`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-59819.rs:30:18
+   |
+LL |     let b: i32 = a;
+   |                  ^
+   |                  |
+   |                  expected i32, found &{integer}
+   |                  help: consider dereferencing the borrow: `*a`
+   |
+   = note: expected type `i32`
+              found type `&{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-59819.rs:34:21
+   |
+LL |     let g: String = f;
+   |                     ^
+   |                     |
+   |                     expected struct `std::string::String`, found struct `Bar`
+   |                     help: try using a conversion method: `f.to_string()`
+   |
+   = note: expected type `std::string::String`
+              found type `Bar`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
