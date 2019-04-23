@@ -128,8 +128,14 @@ pub struct MacroDefId(pub(crate) AstId<ast::MacroCall>);
 pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<Arc<MacroRules>> {
     let macro_call = id.0.to_node(db);
     let arg = macro_call.token_tree()?;
-    let (tt, _) = mbe::ast_to_token_tree(arg)?;
-    let rules = MacroRules::parse(&tt).ok()?;
+    let (tt, _) = mbe::ast_to_token_tree(arg).or_else(|| {
+        log::warn!("fail on macro_def to token tree: {:#?}", arg);
+        None
+    })?;
+    let rules = MacroRules::parse(&tt).ok().or_else(|| {
+        log::warn!("fail on macro_def parse: {:#?}", tt);
+        None
+    })?;
     Some(Arc::new(rules))
 }
 
