@@ -223,7 +223,7 @@ impl EarlyLintPass for MiscEarlyLints {
         }
     }
 
-    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat, _: &mut bool) {
+    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
             let type_name = npat
