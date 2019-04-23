@@ -431,6 +431,7 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::PrimSigned(8), "char") => {}
         (&Type::PrimUnsigned(16), "unsigned short") => {}
         (&Type::PrimUnsigned(32), "unsigned int") => {}
+        (&Type::PrimUnsigned(32), "const unsigned int") => {}
         (&Type::PrimUnsigned(64), "unsigned __int64") => {}
         (&Type::PrimUnsigned(8), "unsigned char") => {}
 

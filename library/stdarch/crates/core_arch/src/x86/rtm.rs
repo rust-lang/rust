@@ -126,18 +126,19 @@ mod tests {
 
     #[simd_test(enable = "rtm")]
     unsafe fn test_xabort() {
+        const ABORT_CODE: u32 = 42;
         // aborting outside a transactional region does nothing
-        _xabort(0);
+        _xabort(ABORT_CODE);
 
-        for abort_code in 0..10 {
+        for _ in 0..10 {
             let mut x = 0;
             let code = rtm::_xbegin();
             if code == _XBEGIN_STARTED {
                 x += 1;
-                rtm::_xabort(abort_code);
+                rtm::_xabort(ABORT_CODE);
             } else if code & _XABORT_EXPLICIT != 0 {
                 let test_abort_code = rtm::_xabort_code(code);
-                assert_eq!(test_abort_code, abort_code);
+                assert_eq!(test_abort_code, ABORT_CODE);
             }
             assert_eq!(x, 0);
         }
