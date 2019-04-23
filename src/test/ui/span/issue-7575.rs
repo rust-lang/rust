@@ -1,6 +1,4 @@
 // Test the mechanism for warning about possible missing `self` declarations.
-// ignore-tidy-linelength
-
 trait CtxtFn {
     fn f8(self, _: usize) -> usize;
     fn f9(_: usize) -> usize;

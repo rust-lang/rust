@@ -1,5 +1,5 @@
 error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-22560.rs:5:13
+  --> $DIR/issue-22560.rs:3:13
    |
 LL | type Test = Add +
    |             ^^^ missing reference to `Rhs`
@@ -7,7 +7,7 @@ LL | type Test = Add +
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
 error[E0393]: the type parameter `Rhs` must be explicitly specified
-  --> $DIR/issue-22560.rs:8:13
+  --> $DIR/issue-22560.rs:6:13
    |
 LL |             Sub;
    |             ^^^ missing reference to `Rhs`
@@ -15,13 +15,13 @@ LL |             Sub;
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/issue-22560.rs:8:13
+  --> $DIR/issue-22560.rs:6:13
    |
 LL |             Sub;
    |             ^^^ non-auto additional trait
 
 error[E0191]: the value of the associated type `Output` (from the trait `std::ops::Add`) must be specified
-  --> $DIR/issue-22560.rs:5:13
+  --> $DIR/issue-22560.rs:3:13
    |
 LL |   type Test = Add +
    |  _____________^

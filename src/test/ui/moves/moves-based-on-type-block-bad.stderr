@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of borrowed content
-  --> $DIR/moves-based-on-type-block-bad.rs:24:19
+  --> $DIR/moves-based-on-type-block-bad.rs:22:19
    |
 LL |             match hellothere.x {
    |                   ^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL |                 box E::Bar(x) => println!("{}", x.to_string()),
    |                            - data moved here
    |
 note: move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
-  --> $DIR/moves-based-on-type-block-bad.rs:27:28
+  --> $DIR/moves-based-on-type-block-bad.rs:25:28
    |
 LL |                 box E::Bar(x) => println!("{}", x.to_string()),
    |                            ^

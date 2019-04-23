@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 use std::ops::{Add, Sub};
 
 type Test = Add +

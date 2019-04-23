@@ -1,5 +1,5 @@
 error[E0277]: the type `[i32]` cannot be indexed by `i32`
-  --> $DIR/slice-index.rs:11:5
+  --> $DIR/slice-index.rs:8:5
    |
 LL |     x[1i32];
    |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
@@ -8,7 +8,7 @@ LL |     x[1i32];
    = note: required because of the requirements on the impl of `std::ops::Index<i32>` for `[i32]`
 
 error[E0277]: the type `[i32]` cannot be indexed by `std::ops::RangeTo<i32>`
-  --> $DIR/slice-index.rs:12:5
+  --> $DIR/slice-index.rs:9:5
    |
 LL |     x[..1i32];
    |     ^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
