@@ -46,9 +46,32 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
     }
+
+    // When we'll want to use `extern crate ..` for a dependency that is used
+    // both by the crate and the compiler itself, we can't simply pass -L flags
+    // as we'll get a duplicate matching versions. Instead, disambiguate with
+    // `--extern dep=path`.
+    // See https://github.com/rust-lang/rust-clippy/issues/4015.
+    let needs_disambiguation = ["serde"];
+    // This assumes that deps are compiled (they are for Cargo integration tests).
+    let deps = std::fs::read_dir(host_libs().join("deps")).unwrap();
+    let disambiguated = deps
+        .filter_map(|dep| {
+            let path = dep.ok()?.path();
+            let name = path.file_name()?.to_string_lossy();
+            // NOTE: This only handles a single dep
+            // https://github.com/laumann/compiletest-rs/issues/101
+            needs_disambiguation
+                .iter()
+                .find(|dep| name.starts_with(&format!("lib{}-", dep)))
+                .map(|dep| format!("--extern {}={}", dep, path.display()))
+        })
+        .collect::<Vec<_>>();
+
     config.target_rustcflags = Some(format!(
-        "-L {0} -L {0}/deps -Dwarnings -Zui-testing",
-        host_libs().display()
+        "-L {0} -L {0}/deps -Dwarnings -Zui-testing {1}",
+        host_libs().display(),
+        disambiguated.join(" ")
     ));
 
     config.mode = cfg_mode;
