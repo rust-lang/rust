@@ -184,6 +184,10 @@ simd_ty!(i32x8[i32]:
          | x0, x1, x2, x3, x4, x5, x6, x7);
 simd_ty!(i64x4[i64]: i64, i64, i64, i64 | x0, x1, x2, x3);
 
+simd_ty!(f32x8[f32]:
+         f32, f32, f32, f32, f32, f32, f32, f32 |
+         x0, x1, x2, x3, x4, x5, x6, x7);
+
 // 512-bit wide types:
 
 simd_ty!(i32x16[i32]:

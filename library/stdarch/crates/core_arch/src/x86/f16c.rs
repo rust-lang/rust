@@ -1,0 +1,109 @@
+//! F16C intrinsics:
+//! https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=fp16&expand=1769
+
+use crate::{
+    core_arch::{simd::*, x86::*},
+    hint::unreachable_unchecked,
+    mem::transmute,
+};
+
+#[cfg(test)]
+use stdsimd_test::assert_instr;
+
+#[allow(improper_ctypes)]
+extern "unadjusted" {
+    #[link_name = "llvm.x86.vcvtph2ps.128"]
+    fn llvm_vcvtph2ps_128(a: i16x8) -> f32x4;
+    #[link_name = "llvm.x86.vcvtph2ps.256"]
+    fn llvm_vcvtph2ps_256(a: i16x8) -> f32x8;
+    #[link_name = "llvm.x86.vcvtps2ph.128"]
+    fn llvm_vcvtps2ph_128(a: f32x4, rounding: i32) -> i16x8;
+    #[link_name = "llvm.x86.vcvtps2ph.256"]
+    fn llvm_vcvtps2ph_256(a: f32x8, rounding: i32) -> i16x8;
+}
+
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr("vcvtph2ps"))]
+pub unsafe fn _mm_cvtph_ps(a: __m128i) -> __m128 {
+    transmute(llvm_vcvtph2ps_128(transmute(a)))
+}
+
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[cfg_attr(test, assert_instr("vcvtph2ps"))]
+pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
+    transmute(llvm_vcvtph2ps_256(transmute(a)))
+}
+
+macro_rules! dispatch_rounding {
+    ($rounding:ident, $call:ident) => {{
+        const NEAREST: i32 = _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
+        const DOWN: i32 = _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC;
+        const UP: i32 = _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC;
+        const TRUNCATE: i32 = _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC;
+        const MXCSR: i32 = _MM_FROUND_CUR_DIRECTION;
+        match $rounding {
+            NEAREST => call!(NEAREST),
+            DOWN => call!(DOWN),
+            UP => call!(UP),
+            TRUNCATE => call!(TRUNCATE),
+            MXCSR => call!(MXCSR),
+            _ => unreachable_unchecked(),
+        }
+    }};
+}
+
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr("vcvtps2ph", rounding = 0))]
+pub unsafe fn _mm_cvtps_ph(a: __m128, rounding: i32) -> __m128i {
+    let a = transmute(a);
+    macro_rules! call {
+        ($rounding:ident) => {
+            llvm_vcvtps2ph_128(a, $rounding)
+        };
+    }
+    transmute(dispatch_rounding!(rounding, call))
+}
+
+#[inline]
+#[target_feature(enable = "avx512f")]
+#[rustc_args_required_const(1)]
+#[cfg_attr(test, assert_instr("vcvtps2ph", rounding = 0))]
+pub unsafe fn _mm256_cvtps_ph(a: __m256, rounding: i32) -> __m128i {
+    let a = transmute(a);
+    macro_rules! call {
+        ($rounding:ident) => {
+            llvm_vcvtps2ph_256(a, $rounding)
+        };
+    }
+    transmute(dispatch_rounding!(rounding, call))
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{core_arch::x86::*, mem::transmute};
+    use stdsimd_test::simd_test;
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm_cvtph_ps() {
+        let array = [1_f32, 2_f32, 3_f32, 4_f32];
+        let float_vec: __m128 = transmute(array);
+        let halfs: __m128i = _mm_cvtps_ph(float_vec, 0);
+        let floats: __m128 = _mm_cvtph_ps(halfs);
+        let result: [f32; 4] = transmute(floats);
+        assert_eq!(result, array);
+    }
+
+    #[simd_test(enable = "avx512f")]
+    unsafe fn test_mm256_cvtph_ps() {
+        let array = [1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32];
+        let float_vec: __m256 = transmute(array);
+        let halfs: __m128i = _mm256_cvtps_ph(float_vec, 0);
+        let floats: __m256 = _mm256_cvtph_ps(halfs);
+        let result: [f32; 8] = transmute(floats);
+        assert_eq!(result, array);
+    }
+}

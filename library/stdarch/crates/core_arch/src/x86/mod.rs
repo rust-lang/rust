@@ -568,3 +568,6 @@ pub use self::bt::*;
 
 mod rtm;
 pub use self::rtm::*;
+
+mod f16c;
+pub use self::f16c::*;
