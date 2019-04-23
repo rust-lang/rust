@@ -24,11 +24,11 @@ struct SyntaxContextData {
     outer_mark: Mark,
     transparency: Transparency,
     prev_ctxt: SyntaxContext,
-    // This context, but with all transparent and semi-transparent marks filtered away.
+    /// This context, but with all transparent and semi-transparent marks filtered away.
     opaque: SyntaxContext,
-    // This context, but with all transparent marks filtered away.
+    /// This context, but with all transparent marks filtered away.
     opaque_and_semitransparent: SyntaxContext,
-    // Name of the crate to which `$crate` with this context would resolve.
+    /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
 }
 
