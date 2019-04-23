@@ -1335,6 +1335,14 @@ impl Ipv6Addr {
     ///     assert_eq!(Ipv6Addr::new(0xfec2, 0, 0, 0, 0, 0, 0, 0).is_unicast_site_local(), true);
     /// }
     /// ```
+    ///
+    /// # Warning
+    ///
+    /// As per [RFC 3879], the whole `FEC0::/10` prefix is
+    /// deprecated. New software must not support site-local
+    /// addresses.
+    ///
+    /// [RFC 3879]: https://tools.ietf.org/html/rfc3879
     pub fn is_unicast_site_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfec0
     }
