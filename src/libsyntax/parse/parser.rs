@@ -1165,7 +1165,7 @@ impl<'a> Parser<'a> {
                          to tuple field access",
                     );
                     err.note(
-                        "for more context, see https://github.com/rust-lang/rust/issues/59553",
+                        "for more context, see https://github.com/rust-lang/rust/issues/60210",
                     );
                     err
                 } else {
