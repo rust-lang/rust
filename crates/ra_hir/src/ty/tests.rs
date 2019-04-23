@@ -2417,6 +2417,30 @@ fn test() -> u64 {
     );
 }
 
+#[test]
+fn infer_macros_expanded() {
+    assert_snapshot_matches!(
+        infer(r#"
+struct Foo(Vec<i32>);
+
+macro_rules! foo {
+    ($($item:expr),*) => {
+            {
+                Foo(vec![$($item,)*])
+            }
+    };
+}
+
+fn main() {
+    let x = foo!(1,2);
+}
+"#),
+        @r###"
+[156; 182) '{     ...,2); }': ()
+[166; 167) 'x': Foo"###
+    );
+}
+
 #[ignore]
 #[test]
 fn method_resolution_trait_before_autoref() {
@@ -2510,6 +2534,7 @@ fn type_at(content: &str) -> String {
 fn infer(content: &str) -> String {
     let (db, _, file_id) = MockDatabase::with_single_file(content);
     let source_file = db.parse(file_id);
+
     let mut acc = String::new();
     acc.push_str("\n");
 
@@ -2532,6 +2557,7 @@ fn infer(content: &str) -> String {
             };
             types.push((syntax_ptr, ty));
         }
+
         // sort ranges for consistency
         types.sort_by_key(|(ptr, _)| (ptr.range().start(), ptr.range().end()));
         for (syntax_ptr, ty) in &types {

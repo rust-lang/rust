@@ -104,6 +104,7 @@ pub struct CrateDefMap {
     /// However, do we want to put it as a global variable?
     poison_macros: FxHashSet<MacroDefId>,
 
+    local_macros: FxHashMap<Name, MacroDefId>,
     diagnostics: Vec<DefDiagnostic>,
 }
 
@@ -209,6 +210,7 @@ impl CrateDefMap {
                 modules,
                 public_macros: FxHashMap::default(),
                 poison_macros: FxHashSet::default(),
+                local_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };
@@ -268,6 +270,10 @@ impl CrateDefMap {
     ) -> (PerNs<ModuleDef>, Option<usize>) {
         let res = self.resolve_path_fp(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
+    }
+
+    pub(crate) fn find_macro(&self, name: &Name) -> Option<&MacroDefId> {
+        self.public_macros.get(name).or(self.local_macros.get(name))
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change

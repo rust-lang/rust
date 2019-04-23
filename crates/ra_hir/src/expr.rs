@@ -5,13 +5,14 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
-    SyntaxNodePtr, AstPtr, AstNode,
+    SyntaxNodePtr, AstPtr, AstNode,TreeArc,
     ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner}
 };
 
 use crate::{
     Path, Name, HirDatabase, Resolver,DefWithBody, Either,
     name::AsName,
+    ids::{MacroCallId},
     type_ref::{Mutability, TypeRef},
 };
 use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
@@ -478,38 +479,54 @@ impl Pat {
 
 // Queries
 
-pub(crate) struct ExprCollector {
+pub(crate) struct ExprCollector<DB> {
+    db: DB,
     owner: DefWithBody,
     exprs: Arena<ExprId, Expr>,
     pats: Arena<PatId, Pat>,
     source_map: BodySourceMap,
     params: Vec<PatId>,
     body_expr: Option<ExprId>,
+    resolver: Resolver,
+    // FIXEME: Its a quick hack,see issue #1196
+    is_in_macro: bool,
 }
 
-impl ExprCollector {
-    fn new(owner: DefWithBody) -> Self {
+impl<'a, DB> ExprCollector<&'a DB>
+where
+    DB: HirDatabase,
+{
+    fn new(owner: DefWithBody, resolver: Resolver, db: &'a DB) -> Self {
         ExprCollector {
             owner,
+            resolver,
+            db,
             exprs: Arena::default(),
             pats: Arena::default(),
             source_map: BodySourceMap::default(),
             params: Vec::new(),
             body_expr: None,
+            is_in_macro: false,
         }
     }
-
     fn alloc_expr(&mut self, expr: Expr, syntax_ptr: SyntaxNodePtr) -> ExprId {
         let id = self.exprs.alloc(expr);
-        self.source_map.expr_map.insert(syntax_ptr, id);
-        self.source_map.expr_map_back.insert(id, syntax_ptr);
+        if !self.is_in_macro {
+            self.source_map.expr_map.insert(syntax_ptr, id);
+            self.source_map.expr_map_back.insert(id, syntax_ptr);
+        }
+
         id
     }
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.pats.alloc(pat);
-        self.source_map.pat_map.insert(ptr, id);
-        self.source_map.pat_map_back.insert(id, ptr);
+
+        if !self.is_in_macro {
+            self.source_map.pat_map.insert(ptr, id);
+            self.source_map.pat_map_back.insert(id, ptr);
+        }
+
         id
     }
 
@@ -794,7 +811,26 @@ impl ExprCollector {
             ast::ExprKind::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::IndexExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::ExprKind::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::ExprKind::MacroCall(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            ast::ExprKind::MacroCall(e) => {
+                // very hacky.FIXME change to use the macro resolution
+                let path = e.path().and_then(Path::from_ast);
+
+                if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, e) {
+                    if let Some(expr) = expand_macro_to_expr(self.db, call_id, e.token_tree()) {
+                        log::debug!("macro expansion {}", expr.syntax().debug_dump());
+                        let old = std::mem::replace(&mut self.is_in_macro, true);
+                        let id = self.collect_expr(&expr);
+                        self.is_in_macro = old;
+                        id
+                    } else {
+                        // FIXME: Instead of just dropping the error from expansion
+                        // report it
+                        self.alloc_expr(Expr::Missing, syntax_ptr)
+                    }
+                } else {
+                    self.alloc_expr(Expr::Missing, syntax_ptr)
+                }
+            }
         }
     }
 
@@ -952,11 +988,25 @@ impl ExprCollector {
     }
 }
 
+fn expand_macro_to_expr(
+    db: &impl HirDatabase,
+    macro_call: MacroCallId,
+    args: Option<&ast::TokenTree>,
+) -> Option<TreeArc<ast::Expr>> {
+    let rules = db.macro_def(macro_call.loc(db).def)?;
+
+    let args = mbe::ast_to_token_tree(args?)?.0;
+
+    let expanded = rules.expand(&args).ok()?;
+
+    mbe::token_tree_to_expr(&expanded).ok()
+}
+
 pub(crate) fn body_with_source_map_query(
     db: &impl HirDatabase,
     def: DefWithBody,
 ) -> (Arc<Body>, Arc<BodySourceMap>) {
-    let mut collector = ExprCollector::new(def);
+    let mut collector = ExprCollector::new(def, def.resolver(db), db);
 
     match def {
         DefWithBody::Const(ref c) => collector.collect_const_body(&c.source(db).1),

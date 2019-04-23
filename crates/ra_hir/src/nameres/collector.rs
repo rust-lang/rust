@@ -131,6 +131,8 @@ where
     fn define_macro(&mut self, name: Name, macro_id: MacroDefId, export: bool) {
         if export {
             self.def_map.public_macros.insert(name.clone(), macro_id);
+        } else {
+            self.def_map.local_macros.insert(name.clone(), macro_id);
         }
         self.global_macro_scope.insert(name, macro_id);
     }
@@ -517,12 +519,12 @@ where
 
         // Case 2: try to expand macro_rules from this crate, triggering
         // recursive item collection.
-        if let Some(&macro_id) =
-            mac.path.as_ident().and_then(|name| self.def_collector.global_macro_scope.get(name))
+        if let Some(macro_id) =
+            mac.path.as_ident().and_then(|name| self.def_collector.global_macro_scope.get(&name))
         {
-            let macro_call_id = MacroCallLoc { def: macro_id, ast_id }.id(self.def_collector.db);
+            let macro_call_id = MacroCallLoc { def: *macro_id, ast_id }.id(self.def_collector.db);
 
-            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_id);
+            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, *macro_id);
             return;
         }
 
@@ -614,6 +616,7 @@ mod tests {
                 modules,
                 public_macros: FxHashMap::default(),
                 poison_macros: FxHashSet::default(),
+                local_macros: FxHashMap::default(),
                 diagnostics: Vec::new(),
             }
         };
