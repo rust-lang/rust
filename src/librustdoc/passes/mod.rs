@@ -333,24 +333,24 @@ pub fn look_for_tests<'tcx>(
         found_tests: 0,
     };
 
-    if find_testable_code(&dox, &mut tests, ErrorCodes::No).is_ok() {
-        if check_missing_code == true && tests.found_tests == 0 {
-            let mut diag = cx.tcx.struct_span_lint_hir(
-                lint::builtin::MISSING_DOC_CODE_EXAMPLES,
-                hir::CRATE_HIR_ID,
-                span_of_attrs(&item.attrs),
-                "Missing code example in this documentation");
-            diag.emit();
-        } else if check_missing_code == false &&
-                  tests.found_tests > 0 &&
-                  !cx.renderinfo.borrow().access_levels.is_doc_reachable(item.def_id) {
-            let mut diag = cx.tcx.struct_span_lint_hir(
-                lint::builtin::PRIVATE_DOC_TESTS,
-                hir::CRATE_HIR_ID,
-                span_of_attrs(&item.attrs),
-                "Documentation test in private item");
-            diag.emit();
-        }
+    find_testable_code(&dox, &mut tests, ErrorCodes::No);
+
+    if check_missing_code == true && tests.found_tests == 0 {
+        let mut diag = cx.tcx.struct_span_lint_hir(
+            lint::builtin::MISSING_DOC_CODE_EXAMPLES,
+            hir::CRATE_HIR_ID,
+            span_of_attrs(&item.attrs),
+            "Missing code example in this documentation");
+        diag.emit();
+    } else if check_missing_code == false &&
+              tests.found_tests > 0 &&
+              !cx.renderinfo.borrow().access_levels.is_doc_reachable(item.def_id) {
+        let mut diag = cx.tcx.struct_span_lint_hir(
+            lint::builtin::PRIVATE_DOC_TESTS,
+            hir::CRATE_HIR_ID,
+            span_of_attrs(&item.attrs),
+            "Documentation test in private item");
+        diag.emit();
     }
 }
 

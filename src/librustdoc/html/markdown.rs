@@ -33,8 +33,11 @@ use crate::html::toc::TocBuilder;
 use crate::html::highlight;
 use crate::test;
 
-use pulldown_cmark::{html, Event, Tag, Parser};
-use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
+use pulldown_cmark::{html, CowStr, Event, Options, Parser, Tag};
+
+fn opts() -> Options {
+    Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES
+}
 
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -297,12 +300,11 @@ impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for LinkReplacer<'a, 'b, I>
 
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
-        if let Some(Event::Start(Tag::Link(dest, text))) = event {
-            if let Some(&(_, ref replace)) = self.links.into_iter().find(|link| &*link.0 == &*dest)
-            {
-                Some(Event::Start(Tag::Link(replace.to_owned().into(), text)))
+        if let Some(Event::Start(Tag::Link(kind, dest, text))) = event {
+            if let Some(&(_, ref replace)) = self.links.iter().find(|link| link.0 == *dest) {
+                Some(Event::Start(Tag::Link(kind, replace.to_owned().into(), text)))
             } else {
-                Some(Event::Start(Tag::Link(dest, text)))
+                Some(Event::Start(Tag::Link(kind, dest, text)))
             }
         } else {
             event
@@ -393,7 +395,7 @@ fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
         | Tag::Emphasis
         | Tag::Strong
         | Tag::Code
-        | Tag::Link(_, _)
+        | Tag::Link(..)
         | Tag::BlockQuote => true,
         _ => false,
     }
@@ -520,63 +522,39 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
     }
 }
 
-pub struct TestableCodeError(());
-
-impl fmt::Display for TestableCodeError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "invalid start of a new code block")
-    }
-}
-
-pub fn find_testable_code<T: test::Tester>(
-    doc: &str,
-    tests: &mut T,
-    error_codes: ErrorCodes,
-) -> Result<(), TestableCodeError> {
+pub fn find_testable_code<T: test::Tester>(doc: &str, tests: &mut T, error_codes: ErrorCodes) {
     let mut parser = Parser::new(doc);
     let mut prev_offset = 0;
     let mut nb_lines = 0;
     let mut register_header = None;
-    'main: while let Some(event) = parser.next() {
+    while let Some(event) = parser.next() {
         match event {
             Event::Start(Tag::CodeBlock(s)) => {
+                let offset = parser.get_offset();
+
                 let block_info = if s.is_empty() {
                     LangString::all_false()
                 } else {
                     LangString::parse(&*s, error_codes)
                 };
                 if !block_info.rust {
-                    continue
+                    continue;
                 }
                 let mut test_s = String::new();
-                let mut offset = None;
-                loop {
-                    let event = parser.next();
-                    if let Some(event) = event {
-                        match event {
-                            Event::End(Tag::CodeBlock(_)) => break,
-                            Event::Text(ref s) => {
-                                test_s.push_str(s);
-                                if offset.is_none() {
-                                    offset = Some(parser.get_offset());
-                                }
-                            }
-                            _ => {}
-                        }
-                    } else {
-                        break 'main;
-                    }
+
+                while let Some(Event::Text(s)) = parser.next() {
+                    test_s.push_str(&s);
                 }
-                if let Some(offset) = offset {
-                    let lines = test_s.lines().map(|l| map_line(l).for_code());
-                    let text = lines.collect::<Vec<Cow<'_, str>>>().join("\n");
-                    nb_lines += doc[prev_offset..offset].lines().count();
-                    let line = tests.get_line() + (nb_lines - 1);
-                    tests.add_test(text, block_info, line);
-                    prev_offset = offset;
-                } else {
-                    return Err(TestableCodeError(()));
-                }
+
+                let text = test_s
+                    .lines()
+                    .map(|l| map_line(l).for_code())
+                    .collect::<Vec<Cow<'_, str>>>()
+                    .join("\n");
+                nb_lines += doc[prev_offset..offset].lines().count();
+                let line = tests.get_line() + nb_lines;
+                tests.add_test(text, block_info, line);
+                prev_offset = offset;
             }
             Event::Start(Tag::Header(level)) => {
                 register_header = Some(level as u32);
@@ -593,7 +571,6 @@ pub fn find_testable_code<T: test::Tester>(
             _ => {}
         }
     }
-    Ok(())
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -687,10 +664,6 @@ impl<'a> fmt::Display for Markdown<'a> {
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
-        let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
-
         let replacer = |_: &str, s: &str| {
             if let Some(&(_, ref replace)) = links.into_iter().find(|link| &*link.0 == s) {
                 Some((replace.clone(), s.to_owned()))
@@ -699,7 +672,7 @@ impl<'a> fmt::Display for Markdown<'a> {
             }
         };
 
-        let p = Parser::new_with_broken_link_callback(md, opts, Some(&replacer));
+        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&replacer));
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
@@ -718,11 +691,7 @@ impl<'a> fmt::Display for MarkdownWithToc<'a> {
         let MarkdownWithToc(md, ref ids, codes) = *self;
         let mut ids = ids.borrow_mut();
 
-        let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
-
-        let p = Parser::new_ext(md, opts);
+        let p = Parser::new_ext(md, opts());
 
         let mut s = String::with_capacity(md.len() * 3 / 2);
 
@@ -748,11 +717,7 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
 
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
-        let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
-
-        let p = Parser::new_ext(md, opts);
+        let p = Parser::new_ext(md, opts());
 
         // Treat inline HTML as plain text.
         let p = p.map(|event| match event {
@@ -868,10 +833,6 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         return vec![];
     }
 
-    let mut opts = Options::empty();
-    opts.insert(OPTION_ENABLE_TABLES);
-    opts.insert(OPTION_ENABLE_FOOTNOTES);
-
     let mut links = vec![];
     let shortcut_links = RefCell::new(vec![]);
 
@@ -894,8 +855,7 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
             shortcut_links.borrow_mut().push((s.to_owned(), locate(s)));
             None
         };
-        let p = Parser::new_with_broken_link_callback(md, opts,
-            Some(&push));
+        let p = Parser::new_with_broken_link_callback(md, opts(), Some(&push));
 
         // There's no need to thread an IdMap through to here because
         // the IDs generated aren't going to be emitted anywhere.
@@ -903,11 +863,11 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
         let iter = Footnotes::new(HeadingLinks::new(p, None, &mut ids));
 
         for ev in iter {
-            if let Event::Start(Tag::Link(dest, _)) = ev {
+            if let Event::Start(Tag::Link(_, dest, _)) = ev {
                 debug!("found link: {}", dest);
                 links.push(match dest {
-                    Cow::Borrowed(s) => (s.to_owned(), locate(s)),
-                    Cow::Owned(s) => (s, None),
+                    CowStr::Borrowed(s) => (s.to_owned(), locate(s)),
+                    s @ CowStr::Boxed(..) | s @ CowStr::Inlined(..) => (s.into_string(), None),
                 });
             }
         }
@@ -939,10 +899,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
         return code_blocks;
     }
 
-    let mut opts = Options::empty();
-    opts.insert(OPTION_ENABLE_TABLES);
-    opts.insert(OPTION_ENABLE_FOOTNOTES);
-    let mut p = Parser::new_ext(md, opts);
+    let mut p = Parser::new_ext(md, opts());
 
     let mut code_block_start = 0;
     let mut code_start = 0;
@@ -1013,7 +970,7 @@ crate fn rust_code_blocks(md: &str) -> Vec<RustCodeBlock> {
                         end: code_end,
                     },
                     syntax: if !syntax.is_empty() {
-                        Some(syntax.into_owned())
+                        Some(syntax.into_string())
                     } else {
                         None
                     },
