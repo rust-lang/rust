@@ -677,6 +677,13 @@ impl Ipv4Addr {
     /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
     /// [`true`]: ../../std/primitive.bool.html
     ///
+    /// # Warning
+    ///
+    /// As IANA assigns new addresses, this method will be
+    /// updated. This may result in non-reserved addresses being
+    /// treated as reserved in code that relies on an outdated version
+    /// of this method.
+    ///
     /// # Examples
     ///
     /// ```
