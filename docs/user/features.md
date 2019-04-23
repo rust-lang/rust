@@ -42,6 +42,18 @@ is a relatively new feature of LSP:
 https://github.com/Microsoft/language-server-protocol/issues/613, check your
 editor's LSP library to see if this feature is supported.
 
+### Go to Definition
+
+Navigates to the definition of an identifier.
+
+### Go to Implementation
+
+Navigates to the impl block of structs, enums or traits. Also implemented as a code lens.
+
+### Go to Type Defintion
+
+Navigates to the type of an identifier.
+
 ### Commands <kbd>ctrl+shift+p</kbd>
 
 #### Run
