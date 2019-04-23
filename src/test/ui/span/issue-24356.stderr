@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `Target`
-  --> $DIR/issue-24356.rs:20:9
+  --> $DIR/issue-24356.rs:18:9
    |
 LL |         impl Deref for Thing {
    |         ^^^^^^^^^^^^^^^^^^^^ missing `Target` in implementation

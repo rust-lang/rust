@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature 'unstable_test_feature'
-  --> $DIR/stability-attribute-issue.rs:10:5
+  --> $DIR/stability-attribute-issue.rs:8:5
    |
 LL |     unstable();
    |     ^^^^^^^^
@@ -8,7 +8,7 @@ LL |     unstable();
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature': message
-  --> $DIR/stability-attribute-issue.rs:12:5
+  --> $DIR/stability-attribute-issue.rs:10:5
    |
 LL |     unstable_msg();
    |     ^^^^^^^^^^^^

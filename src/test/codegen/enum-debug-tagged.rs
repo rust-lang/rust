@@ -2,7 +2,6 @@
 // before 7.0, then backported to the Rust LLVM fork.  It tests that
 // debug info for tagged (ordinary) enums is properly emitted.
 
-// ignore-tidy-linelength
 // ignore-windows
 // min-system-llvm-version 8.0
 

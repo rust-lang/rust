@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // compile-flags:-Z unstable-options --extern-html-root-url core=https://example.com/core/0.1.0
 
 // @has extern_html_root_url/index.html

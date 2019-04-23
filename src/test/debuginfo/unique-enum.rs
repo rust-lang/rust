@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // Require LLVM with DW_TAG_variant_part and a gdb and lldb that can
 // read it.
 // min-system-llvm-version: 8.0

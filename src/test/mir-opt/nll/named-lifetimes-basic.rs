@@ -5,7 +5,6 @@
 
 // compile-flags:-Zborrowck=mir -Zverbose
 //                              ^^^^^^^^^ force compiler to dump more region information
-// ignore-tidy-linelength
 
 #![allow(warnings)]
 

@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 trait A<T=Self> {}
 
 fn f(a: &A) {}
