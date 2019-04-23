@@ -31,7 +31,7 @@ extern "C" {
 pub const _XBEGIN_STARTED: u32 = !0;
 
 /// Transaction explicitly aborted with xabort. The parameter passed to xabort is available with
-/// _xabort_code(status).
+/// `_xabort_code(status)`.
 pub const _XABORT_EXPLICIT: u32 = 1 << 0;
 
 /// Transaction retry is possible.
