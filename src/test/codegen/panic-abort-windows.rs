@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // This test is for *-windows-msvc only.
 // ignore-android
 // ignore-bitrig

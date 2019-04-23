@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# ignore-tidy-linelength
-
 set -ex
 source shared.sh
 

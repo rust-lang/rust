@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // edition:2018
 
 // tests that editions work with the tyvar warning-turned-error

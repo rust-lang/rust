@@ -1,11 +1,11 @@
 error: `[i]` cannot be resolved, ignoring it...
-  --> $DIR/intra-link-span-ice-55723.rs:11:10
+  --> $DIR/intra-link-span-ice-55723.rs:9:10
    |
 LL | /// （arr[i]）
    |           ^ cannot be resolved, ignoring
    |
 note: lint level defined here
-  --> $DIR/intra-link-span-ice-55723.rs:3:9
+  --> $DIR/intra-link-span-ice-55723.rs:1:9
    |
 LL | #![deny(intra_doc_link_resolution_failure)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

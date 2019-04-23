@@ -5,8 +5,6 @@
 // so subtle breakage in them can leave a quite hard-to-find trail of
 // destruction.
 
-// ignore-tidy-linelength
-
 fn main() {
     let nodrop_x = false;
     let nodrop_y;
