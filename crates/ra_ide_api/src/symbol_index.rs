@@ -136,7 +136,7 @@ impl Hash for SymbolIndex {
 
 impl SymbolIndex {
     fn new(mut symbols: Vec<FileSymbol>) -> SymbolIndex {
-        fn cmp_key<'a>(s1: &'a FileSymbol) -> impl Ord + Eq + 'a {
+        fn cmp_key<'a>(s1: &'a FileSymbol) -> impl Ord + 'a {
             unicase::Ascii::new(s1.name.as_str())
         }
 
@@ -186,7 +186,7 @@ impl SymbolIndex {
         debug_assert![start <= (std::u32::MAX as usize)];
         debug_assert![end <= (std::u32::MAX as usize)];
 
-        ((start as u64) << 32) + end as u64
+        ((start as u64) << 32) | end as u64
     }
 
     fn map_value_to_range(value: u64) -> (usize, usize) {
