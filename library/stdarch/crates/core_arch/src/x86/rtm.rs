@@ -1,14 +1,14 @@
 //! Intel's Restricted Transactional Memory (RTM).
-//! 
+//!
 //! This CPU feature is available on Intel Broadwell or later CPUs (and some Haswell).
-//! 
+//!
 //! The reference is [Intel 64 and IA-32 Architectures Software Developer's
 //! Manual Volume 2: Instruction Set Reference, A-Z][intel64_ref].
-//! 
+//!
 //! [Wikipedia][wikipedia_rtm] provides a quick overview of the assembly instructions, and
 //! Intel's [programming considerations][intel_consid] details what sorts of instructions within a
 //! transaction are likely to cause an abort.
-//! 
+//!
 //! [intel64_ref]: http://www.intel.de/content/dam/www/public/us/en/documents/manuals/64-ia-32-architectures-software-developer-instruction-set-reference-manual-325383.pdf
 //! [wikipedia_rtm]: https://en.wikipedia.org/wiki/Transactional_Synchronization_Extensions#Restricted_Transactional_Memory
 //! [intel_consid]: https://software.intel.com/en-us/cpp-compiler-developer-guide-and-reference-intel-transactional-synchronization-extensions-intel-tsx-programming-considerations
@@ -97,7 +97,7 @@ pub unsafe fn _xtest() -> u8 {
     x86_xtest() as _
 }
 
-/// Retrieves the parameter passed to [`_xabort`] when [`_xbegin`]'s status has the 
+/// Retrieves the parameter passed to [`_xabort`] when [`_xbegin`]'s status has the
 /// `_XABORT_EXPLICIT` flag set.
 #[inline]
 pub const fn _xabort_code(status: u32) -> u32 {
@@ -119,7 +119,7 @@ mod tests {
                 x += 1;
                 rtm::_xend();
                 assert_eq!(x, 1);
-                break
+                break;
             }
             assert_eq!(x, 0);
         }
@@ -158,7 +158,7 @@ mod tests {
                 // putting the assert inside the transaction would abort the transaction on fail
                 // without any output/panic/etc
                 assert_eq!(in_tx, 1);
-                break
+                break;
             }
         }
     }
