@@ -853,6 +853,21 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         self.infcx.fully_resolve(&r).unwrap_or(self.tcx.lifetimes.re_static)
     }
+
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        match self.infcx.fully_resolve(&ct) {
+            Ok(ct) => ct,
+            Err(_) => {
+                debug!(
+                    "Resolver::fold_const: input const `{:?}` not fully resolvable",
+                    ct
+                );
+                // FIXME: we'd like to use `self.report_error`, but it doesn't yet
+                // accept a &'tcx ty::Const.
+                self.tcx().types.ct_err
+            }
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
