@@ -18,4 +18,3 @@ mod my_mod {
 fn main() {
     let _: my_mod::Foot = my_mod::get_foot();
 }
-

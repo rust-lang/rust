@@ -16,4 +16,3 @@ use my_crate::foo;
 fn main() {
     foo();
 }
-

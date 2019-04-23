@@ -248,4 +248,3 @@ mod statics {
 }
 
 fn main() { }
-

@@ -21,4 +21,3 @@ impl Foo for Blah {
 fn main() {
     Blah.smeg();
 }
-

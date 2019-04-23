@@ -35,4 +35,3 @@ pub fn main() {
         *i_ptr = 50;
     }
 }
-

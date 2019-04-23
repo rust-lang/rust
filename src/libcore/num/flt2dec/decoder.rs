@@ -86,4 +86,3 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
     };
     (sign < 0, decoded)
 }
-

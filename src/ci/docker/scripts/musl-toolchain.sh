@@ -71,4 +71,3 @@ cmake ../libunwind-release_$LLVM \
 hide_output make -j$(nproc)
 cp lib/libunwind.a $OUTPUT/$TARGET/lib
 cd - && rm -rf libunwind-build
-

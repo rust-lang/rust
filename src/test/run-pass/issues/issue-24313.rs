@@ -30,4 +30,3 @@ fn main() {
         }).join().unwrap();
     }
 }
-

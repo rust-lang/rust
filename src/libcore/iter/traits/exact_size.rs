@@ -140,4 +140,3 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for &mut I {
         (**self).is_empty()
     }
 }
-

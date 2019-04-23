@@ -12,4 +12,3 @@ fn main() {
     assert_eq!(size_of::<S1>(), 6);
     assert_eq!(size_of::<S2>(), 6);
 }
-

@@ -43,4 +43,3 @@ pub fn macro_stringify(input: TokenStream) -> TokenStream {
     let src = span.source_text().expect("source_text");
     TokenTree::Literal(Literal::string(&src)).into()
 }
-

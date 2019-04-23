@@ -10,4 +10,3 @@ use std::alloc::System;
 static A: System = System;
 
 fn main() {}
-

@@ -20,4 +20,3 @@ pub fn derive(input: TokenStream) -> TokenStream {
         }
     "#.parse().unwrap()
 }
-

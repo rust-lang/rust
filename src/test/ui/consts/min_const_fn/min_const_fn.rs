@@ -148,4 +148,3 @@ const fn no_fn_ptrs(_x: fn()) {}
 //~^ ERROR function pointers in const fn are unstable
 const fn no_fn_ptrs2() -> fn() { fn foo() {} foo }
 //~^ ERROR function pointers in const fn are unstable
-

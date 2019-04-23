@@ -8,4 +8,3 @@ pub const C5: &'static usize = &C4;
 
 pub static S1: usize = 3;
 pub static S2: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
-

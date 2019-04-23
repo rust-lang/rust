@@ -45,4 +45,3 @@ pub fn main() {
     // the type of `m` *strictly outlives* `'m`. Hence we get an
     // error.
 }
-

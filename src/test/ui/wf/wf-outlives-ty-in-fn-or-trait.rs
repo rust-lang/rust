@@ -20,4 +20,3 @@ impl<'a, T> Trait<'a, T> for u32 {
 }
 
 fn main() { }
-

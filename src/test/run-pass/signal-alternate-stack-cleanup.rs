@@ -33,4 +33,3 @@ fn main() {
         atexit(send_signal);
     }
 }
-

@@ -23,4 +23,3 @@ mod A {
 use A::*;
 
 fn main() {}
-

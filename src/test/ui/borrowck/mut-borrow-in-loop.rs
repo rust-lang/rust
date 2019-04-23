@@ -27,4 +27,3 @@ impl<'a, T : 'a> FuncWrapper<'a, T> {
 
 fn main() {
 }
-

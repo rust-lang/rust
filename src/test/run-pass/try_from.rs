@@ -34,4 +34,3 @@ impl<T> Into<Vec<T>> for Foo<T> {
 pub fn main() {
     let _: Result<Vec<i32>, Infallible> = Foo { t: 10 }.try_into();
 }
-

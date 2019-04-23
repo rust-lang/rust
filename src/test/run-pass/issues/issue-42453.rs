@@ -8,4 +8,3 @@ struct builder;
 fn main() {
 
 }
-

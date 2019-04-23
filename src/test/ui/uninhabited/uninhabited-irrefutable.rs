@@ -26,4 +26,3 @@ fn main() {
     let x: Foo = Foo::D(123);
     let Foo::D(_y) = x; //~ ERROR refutable pattern in local binding: `A(_)` not covered
 }
-

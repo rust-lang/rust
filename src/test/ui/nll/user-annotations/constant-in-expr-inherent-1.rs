@@ -12,4 +12,3 @@ fn foo<'a>(_: &'a u32) -> &'static u32 {
 
 fn main() {
 }
-

@@ -18,4 +18,3 @@ fn main() {
     foo.data[0].1.set(Some(&foo.data[1]));
     foo.data[1].1.set(Some(&foo.data[0]));
 }
-

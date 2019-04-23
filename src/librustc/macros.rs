@@ -509,4 +509,3 @@ macro_rules! EnumTypeFoldableImpl {
         )
     };
 }
-

@@ -7,4 +7,3 @@ extern crate issue_23207_2;
 // @has issue_23207/fmt/index.html
 // @count - '//*[@class="struct"]' 1
 pub use issue_23207_2::fmt;
-

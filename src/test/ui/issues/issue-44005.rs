@@ -27,4 +27,3 @@ pub fn broken<F: Fn(&i32)>(x: &i32, f: F) {
 }
 
 fn main() { }
-

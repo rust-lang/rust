@@ -116,4 +116,3 @@ impl MetadataExt for Metadata {
         self.as_inner().as_inner().st_blocks as u64
     }
 }
-

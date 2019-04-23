@@ -5,4 +5,3 @@ type Foo<
 fn main() {
 
 }
-

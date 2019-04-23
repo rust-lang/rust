@@ -8,4 +8,3 @@ extern crate test;
 
 fn main() {
 }
-

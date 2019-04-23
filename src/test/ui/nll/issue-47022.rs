@@ -34,4 +34,3 @@ fn convert(objects: Vec<LoadedObject>) -> (Vec<Body>, Vec<Graphic>) {
 }
 
 fn main() {}
-

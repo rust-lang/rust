@@ -20,4 +20,3 @@ fn main() {
     for _ in unimplemented!() as Void {}
     //~^ ERROR unreachable pattern
 }
-

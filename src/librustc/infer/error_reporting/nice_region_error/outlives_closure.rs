@@ -109,4 +109,3 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
         None
     }
 }
-

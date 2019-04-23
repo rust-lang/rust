@@ -32,4 +32,3 @@ fn main(){
     assert_eq!(mir(), (STRUCT, TUPLE1, TUPLE2, PAIR_NEWTYPE));
     test_promoted_newtype_str_ref();
 }
-

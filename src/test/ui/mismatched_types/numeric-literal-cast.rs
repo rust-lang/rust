@@ -10,4 +10,3 @@ fn main() {
     foo2(3i16);
 //~^ ERROR mismatched types
 }
-

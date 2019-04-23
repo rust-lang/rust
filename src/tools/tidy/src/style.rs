@@ -166,7 +166,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
         match trailing_new_lines {
             0 => tidy_error!(bad, "{}: missing trailing newline", file.display()),
-            1 | 2 => {}
+            1 => {}
             n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
         };
     })

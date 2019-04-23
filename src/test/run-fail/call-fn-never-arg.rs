@@ -12,4 +12,3 @@ fn foo(x: !) -> ! {
 fn main() {
     foo(panic!("wowzers!"))
 }
-

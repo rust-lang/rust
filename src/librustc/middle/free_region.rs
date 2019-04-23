@@ -104,4 +104,3 @@ impl<'a, 'gcx, 'tcx> RegionRelations<'a, 'gcx, 'tcx> {
         self.free_regions.lub_free_regions(self.tcx, r_a, r_b)
     }
 }
-

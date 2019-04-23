@@ -16,4 +16,3 @@ fn foo() -> <() as Foo>::Bar {
 }
 
 fn main() { }
-

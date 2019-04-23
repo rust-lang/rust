@@ -7,4 +7,3 @@ static B: System = System;
 //~^ ERROR: cannot define more than one #[global_allocator]
 
 fn main() {}
-

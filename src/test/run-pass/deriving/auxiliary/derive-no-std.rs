@@ -27,4 +27,3 @@ pub struct Empty;
 #[derive(Clone, Hash, PartialEq, Eq, PartialOrd, Ord,
          Debug, Copy)]
 pub struct AlsoEmpty {}
-

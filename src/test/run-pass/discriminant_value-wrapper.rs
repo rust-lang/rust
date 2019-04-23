@@ -13,4 +13,3 @@ pub fn main() {
     let _ = mem::discriminant(&10);
     let _ = mem::discriminant(&"test");
 }
-

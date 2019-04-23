@@ -23,4 +23,3 @@ fn main() {
     println!("! is {}", <!>::stringify_type());
     println!("None is {}", maybe_stringify(None::<!>));
 }
-

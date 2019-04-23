@@ -10,4 +10,3 @@ const VAL: u32 = dummy(0xFFFF);
 fn main() {
     assert_eq!(VAL, 0xFFFF0000);
 }
-

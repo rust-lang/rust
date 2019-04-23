@@ -9,4 +9,3 @@ fn main() {
         x, y, z //~ ERROR struct `Foo` has no field named `z`
     };
 }
-
