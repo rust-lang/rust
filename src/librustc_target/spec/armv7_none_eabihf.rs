@@ -22,7 +22,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
-            features: "+v7,+vfp3,+d16,+thumb2,-neon".to_string(),
+            features: "+strict-align,+v7,+vfp3,+d16,+thumb2,-neon".to_string(),
             linker: Some("rust-lld".to_owned()),
             executables: true,
             relocation_model: "static".to_string(),
