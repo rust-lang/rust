@@ -46,7 +46,7 @@ This list documents LSP features, supported by rust-analyzer.
  - trigger characters: `(`,  `,`,  `)`
 - [ ] [textDocument/declaration](https://microsoft.github.io/language-server-protocol/specification#textDocument_declaration)
 - [x] [textDocument/definition](https://microsoft.github.io/language-server-protocol/specification#textDocument_definition)
-- [ ] [textDocument/typeDefinition](https://microsoft.github.io/language-server-protocol/specification#textDocument_typeDefinition)
+- [x] [textDocument/typeDefinition](https://microsoft.github.io/language-server-protocol/specification#textDocument_typeDefinition)
 - [x] [textDocument/implementation](https://microsoft.github.io/language-server-protocol/specification#textDocument_implementation)
 - [x] [textDocument/references](https://microsoft.github.io/language-server-protocol/specification#textDocument_references)
 - [x] [textDocument/documentHighlight](https://microsoft.github.io/language-server-protocol/specification#textDocument_documentHighlight)
