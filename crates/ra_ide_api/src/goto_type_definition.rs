@@ -30,12 +30,10 @@ pub(crate) fn goto_type_definition(
         return None;
     };
 
-    if let Some((adt_def, _)) = ty.as_adt() {
-        let nav = NavigationTarget::from_adt_def(db, adt_def);
-        return Some(RangeInfo::new(node.range(), vec![nav]));
-    };
+    let (adt_def, _) = ty.as_adt()?;
+    let nav = NavigationTarget::from_adt_def(db, adt_def);
 
-    None
+    Some(RangeInfo::new(node.range(), vec![nav]))
 }
 
 #[cfg(test)]
