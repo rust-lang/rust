@@ -207,6 +207,28 @@ impl AssocOp {
             ObsoleteInPlace | Assign | AssignOp(_) | As | DotDot | DotDotEq | Colon => None
         }
     }
+
+    pub fn can_continue_expr_unambiguously(&self) -> bool {
+        use AssocOp::*;
+        match self {
+            BitXor | // `{ 42 } ^ 3`
+            Assign | // `{ 42 } = { 42 }`
+            Divide | // `{ 42 } / 42`
+            Modulus | // `{ 42 } % 2`
+            ShiftRight | // `{ 42 } >> 2`
+            LessEqual | // `{ 42 } <= 3`
+            Greater | // `{ 42 } > 3`
+            GreaterEqual | // `{ 42 } >= 3`
+            AssignOp(_) | // `{ 42 } +=`
+            LAnd | // `{ 42 } &&foo`
+            As | // `{ 42 } as usize`
+            // Equal | // `{ 42 } == { 42 }`    Accepting these here would regress incorrect
+            // NotEqual | // `{ 42 } != { 42 }  struct literals parser recovery.
+            Colon => true, // `{ 42 }: usize`
+            _ => false,
+        }
+
+    }
 }
 
 pub const PREC_RESET: i8 = -100;

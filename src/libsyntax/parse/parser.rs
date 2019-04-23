@@ -186,6 +186,7 @@ enum PrevTokenKind {
     Interpolated,
     Eof,
     Ident,
+    BitOr,
     Other,
 }
 
@@ -1410,6 +1411,7 @@ impl<'a> Parser<'a> {
             token::DocComment(..) => PrevTokenKind::DocComment,
             token::Comma => PrevTokenKind::Comma,
             token::BinOp(token::Plus) => PrevTokenKind::Plus,
+            token::BinOp(token::Or) => PrevTokenKind::BitOr,
             token::Interpolated(..) => PrevTokenKind::Interpolated,
             token::Eof => PrevTokenKind::Eof,
             token::Ident(..) => PrevTokenKind::Ident,
@@ -2925,6 +2927,19 @@ impl<'a> Parser<'a> {
                             let msg = format!("expected expression, found {}",
                                               self.this_token_descr());
                             let mut err = self.fatal(&msg);
+                            let sp = self.sess.source_map().start_point(self.span);
+                            if let Some(sp) = self.sess.abiguous_block_expr_parse.borrow()
+                                .get(&sp)
+                            {
+                                if let Ok(snippet) = self.sess.source_map().span_to_snippet(*sp) {
+                                    err.span_suggestion(
+                                        *sp,
+                                        "parenthesis are required to parse this as an expression",
+                                        format!("({})", snippet),
+                                        Applicability::MachineApplicable,
+                                    );
+                                }
+                            }
                             err.span_label(self.span, "expected expression");
                             return Err(err);
                         }
@@ -3616,9 +3631,41 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if self.expr_is_complete(&lhs) {
-            // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
-            return Ok(lhs);
+        match (self.expr_is_complete(&lhs), AssocOp::from_token(&self.token)) {
+            (true, None) => {
+                // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
+                return Ok(lhs);
+            }
+            (false, _) => {} // continue parsing the expression
+            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;`
+            (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
+            (true, Some(AssocOp::Add)) => { // `{ 42 } + 42
+                // These cases are ambiguous and can't be identified in the parser alone
+                let sp = self.sess.source_map().start_point(self.span);
+                self.sess.abiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
+                return Ok(lhs);
+            }
+            (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => {
+                return Ok(lhs);
+            }
+            (true, Some(_)) => {
+                // #54186, #54482, #59975
+                // We've found an expression that would be parsed as a statement, but the next
+                // token implies this should be parsed as an expression.
+                let mut err = self.sess.span_diagnostic.struct_span_err(
+                    self.span,
+                    "ambiguous parse",
+                );
+                let snippet = self.sess.source_map().span_to_snippet(lhs.span)
+                    .unwrap_or_else(|_| pprust::expr_to_string(&lhs));
+                err.span_suggestion(
+                    lhs.span,
+                    "parenthesis are required to parse this as an expression",
+                    format!("({})", snippet),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+            }
         }
         self.expected_tokens.push(TokenType::Operator);
         while let Some(op) = AssocOp::from_token(&self.token) {
@@ -4929,6 +4976,17 @@ impl<'a> Parser<'a> {
                         );
                         let mut err = self.fatal(&msg);
                         err.span_label(self.span, format!("expected {}", expected));
+                        let sp = self.sess.source_map().start_point(self.span);
+                        if let Some(sp) = self.sess.abiguous_block_expr_parse.borrow().get(&sp) {
+                            if let Ok(snippet) = self.sess.source_map().span_to_snippet(*sp) {
+                                err.span_suggestion(
+                                    *sp,
+                                    "parenthesis are required to parse this as an expression",
+                                    format!("({})", snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
+                        }
                         return Err(err);
                     }
                 }

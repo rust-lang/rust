@@ -16,7 +16,7 @@ use rustc_data_structures::sync::{Lrc, Lock};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use log::debug;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use std::borrow::Cow;
 use std::iter;
 use std::path::{Path, PathBuf};
@@ -47,6 +47,7 @@ pub struct ParseSess {
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
+    pub abiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
 }
 
 impl ParseSess {
@@ -70,6 +71,7 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
+            abiguous_block_expr_parse: Lock::new(FxHashMap::default()),
         }
     }
 

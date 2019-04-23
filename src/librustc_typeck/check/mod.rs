@@ -4165,9 +4165,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 oprnd_t = self.make_overloaded_place_return_type(method).ty;
                                 self.write_method_call(expr.hir_id, method);
                             } else {
-                                type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
-                                                   "type `{}` cannot be dereferenced",
-                                                   oprnd_t).emit();
+                                let mut err = type_error_struct!(
+                                    tcx.sess,
+                                    expr.span,
+                                    oprnd_t,
+                                    E0614,
+                                    "type `{}` cannot be dereferenced",
+                                    oprnd_t,
+                                );
+                                let sp = tcx.sess.source_map().start_point(expr.span);
+                                if let Some(sp) = tcx.sess.parse_sess.abiguous_block_expr_parse
+                                    .borrow().get(&sp)
+                                {
+                                    if let Ok(snippet) = tcx.sess.source_map()
+                                        .span_to_snippet(*sp)
+                                    {
+                                        err.span_suggestion(
+                                            *sp,
+                                            "parenthesis are required to parse this \
+                                             as an expression",
+                                            format!("({})", snippet),
+                                            Applicability::MachineApplicable,
+                                        );
+                                    }
+                                }
+                                err.emit();
                                 oprnd_t = tcx.types.err;
                             }
                         }
