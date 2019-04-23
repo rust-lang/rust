@@ -1,7 +1,5 @@
 // edition:2015
 
-#![feature(futures_api)]
-
 async fn foo() {} //~ ERROR `async fn` is not permitted in the 2015 edition
                   //~^ ERROR async fn is unstable
 

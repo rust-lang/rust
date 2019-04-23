@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(arbitrary_self_types, async_await, await_macro, futures_api, pin)]
+#![feature(async_await, await_macro)]
 
 fn main() {
     let _ = async |x: u8| {};

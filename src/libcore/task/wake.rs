@@ -1,6 +1,4 @@
-#![unstable(feature = "futures_api",
-            reason = "futures in libcore are unstable",
-            issue = "50547")]
+#![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::fmt;
 use crate::marker::{PhantomData, Unpin};
@@ -13,6 +11,7 @@ use crate::marker::{PhantomData, Unpin};
 /// It consists of a data pointer and a [virtual function pointer table (vtable)][vtable] that
 /// customizes the behavior of the `RawWaker`.
 #[derive(PartialEq, Debug)]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub struct RawWaker {
     /// A data pointer, which can be used to store arbitrary data as required
     /// by the executor. This could be e.g. a type-erased pointer to an `Arc`
@@ -37,9 +36,7 @@ impl RawWaker {
     /// from a `RawWaker`. For each operation on the `Waker`, the associated
     /// function in the `vtable` of the underlying `RawWaker` will be called.
     #[rustc_promotable]
-    #[unstable(feature = "futures_api",
-            reason = "futures in libcore are unstable",
-            issue = "50547")]
+    #[stable(feature = "futures_api", since = "1.36.0")]
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
         RawWaker {
             data,
@@ -58,6 +55,7 @@ impl RawWaker {
 /// pointer of a properly constructed [`RawWaker`] object from inside the
 /// [`RawWaker`] implementation. Calling one of the contained functions using
 /// any other `data` pointer will cause undefined behavior.
+#[stable(feature = "futures_api", since = "1.36.0")]
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub struct RawWakerVTable {
     /// This function will be called when the [`RawWaker`] gets cloned, e.g. when
@@ -131,9 +129,14 @@ impl RawWakerVTable {
     /// resources that are associated with this instance of a [`RawWaker`] and
     /// associated task.
     #[rustc_promotable]
-    #[unstable(feature = "futures_api",
-            reason = "futures in libcore are unstable",
-            issue = "50547")]
+    #[cfg_attr(stage0, unstable(feature = "futures_api_const_fn_ptr", issue = "50547"))]
+    #[cfg_attr(not(stage0), stable(feature = "futures_api", since = "1.36.0"))]
+    // `rustc_allow_const_fn_ptr` is a hack that should not be used anywhere else
+    // without first consulting with T-Lang.
+    //
+    // FIXME: remove whenever we have a stable way to accept fn pointers from const fn
+    // (see https://github.com/rust-rfcs/const-eval/issues/19#issuecomment-472799062)
+    #[cfg_attr(not(stage0), rustc_allow_const_fn_ptr)]
     pub const fn new(
         clone: unsafe fn(*const ()) -> RawWaker,
         wake: unsafe fn(*const ()),
@@ -153,6 +156,7 @@ impl RawWakerVTable {
 ///
 /// Currently, `Context` only serves to provide access to a `&Waker`
 /// which can be used to wake the current task.
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Context<'a> {
     waker: &'a Waker,
     // Ensure we future-proof against variance changes by forcing
@@ -164,6 +168,7 @@ pub struct Context<'a> {
 
 impl<'a> Context<'a> {
     /// Create a new `Context` from a `&Waker`.
+    #[stable(feature = "futures_api", since = "1.36.0")]
     #[inline]
     pub fn from_waker(waker: &'a Waker) -> Self {
         Context {
@@ -173,12 +178,14 @@ impl<'a> Context<'a> {
     }
 
     /// Returns a reference to the `Waker` for the current task.
+    #[stable(feature = "futures_api", since = "1.36.0")]
     #[inline]
     pub fn waker(&self) -> &'a Waker {
         &self.waker
     }
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl fmt::Debug for Context<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Context")
@@ -195,17 +202,22 @@ impl fmt::Debug for Context<'_> {
 ///
 /// Implements [`Clone`], [`Send`], and [`Sync`].
 #[repr(transparent)]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub struct Waker {
     waker: RawWaker,
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl Unpin for Waker {}
+#[stable(feature = "futures_api", since = "1.36.0")]
 unsafe impl Send for Waker {}
+#[stable(feature = "futures_api", since = "1.36.0")]
 unsafe impl Sync for Waker {}
 
 impl Waker {
     /// Wake up the task associated with this `Waker`.
     #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn wake(self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
@@ -227,6 +239,7 @@ impl Waker {
     /// where an owned `Waker` is available. This method should be preferred to
     /// calling `waker.clone().wake()`.
     #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn wake_by_ref(&self) {
         // The actual wakeup call is delegated through a virtual function call
         // to the implementation which is defined by the executor.
@@ -243,6 +256,7 @@ impl Waker {
     ///
     /// This function is primarily used for optimization purposes.
     #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
     pub fn will_wake(&self, other: &Waker) -> bool {
         self.waker == other.waker
     }
@@ -253,6 +267,7 @@ impl Waker {
     /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
     /// Therefore this method is unsafe.
     #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
     pub unsafe fn from_raw(waker: RawWaker) -> Waker {
         Waker {
             waker,
@@ -260,6 +275,7 @@ impl Waker {
     }
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl Clone for Waker {
     #[inline]
     fn clone(&self) -> Self {
@@ -272,6 +288,7 @@ impl Clone for Waker {
     }
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl Drop for Waker {
     #[inline]
     fn drop(&mut self) {
@@ -282,6 +299,7 @@ impl Drop for Waker {
     }
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl fmt::Debug for Waker {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let vtable_ptr = self.waker.vtable as *const RawWakerVTable;

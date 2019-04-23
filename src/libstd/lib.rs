@@ -263,7 +263,6 @@
 #![feature(fixed_size_array)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
-#![feature(futures_api)]
 #![feature(generator_trait)]
 #![feature(hash_raw_entry)]
 #![feature(hashmap_internals)]
@@ -458,18 +457,15 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub mod task {
     //! Types and Traits for working with asynchronous tasks.
     #[doc(inline)]
+    #[stable(feature = "futures_api", since = "1.36.0")]
     pub use core::task::*;
 }
 
-#[unstable(feature = "futures_api",
-           reason = "futures in libcore are unstable",
-           issue = "50547")]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub mod future;
 
 // Platform-abstraction modules

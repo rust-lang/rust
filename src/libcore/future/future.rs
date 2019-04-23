@@ -1,6 +1,4 @@
-#![unstable(feature = "futures_api",
-            reason = "futures in libcore are unstable",
-            issue = "50547")]
+#![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::marker::Unpin;
 use crate::ops;
@@ -26,8 +24,10 @@ use crate::task::{Context, Poll};
 /// `await!` the value.
 #[doc(spotlight)]
 #[must_use = "futures do nothing unless polled"]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub trait Future {
     /// The type of value produced on completion.
+    #[stable(feature = "futures_api", since = "1.36.0")]
     type Output;
 
     /// Attempt to resolve the future to a final value, registering
@@ -92,9 +92,11 @@ pub trait Future {
     /// [`Context`]: ../task/struct.Context.html
     /// [`Waker`]: ../task/struct.Waker.html
     /// [`Waker::wake`]: ../task/struct.Waker.html#method.wake
+    #[stable(feature = "futures_api", since = "1.36.0")]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl<F: ?Sized + Future + Unpin> Future for &mut F {
     type Output = F::Output;
 
@@ -103,6 +105,7 @@ impl<F: ?Sized + Future + Unpin> Future for &mut F {
     }
 }
 
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl<P> Future for Pin<P>
 where
     P: Unpin + ops::DerefMut,

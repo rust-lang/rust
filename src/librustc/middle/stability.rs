@@ -441,6 +441,7 @@ impl<'a, 'tcx> Index<'tcx> {
                     rustc_depr: None,
                     const_stability: None,
                     promotable: false,
+                    allow_const_fn_ptr: false,
                 });
                 annotator.parent_stab = Some(stability);
             }
