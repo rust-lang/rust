@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 fn foo() -> i32 {
     42
 }
