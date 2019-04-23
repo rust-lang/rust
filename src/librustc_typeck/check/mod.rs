@@ -1005,6 +1005,16 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
     // Don't descend into the bodies of nested closures
     fn visit_fn(&mut self, _: intravisit::FnKind<'gcx>, _: &'gcx hir::FnDecl,
                 _: hir::BodyId, _: Span, _: hir::HirId) { }
+
+    fn visit_argument_source(&mut self, s: &'gcx hir::ArgSource) {
+        match s {
+            // Don't visit the pattern in `ArgSource::AsyncFn`, it contains a pattern which has
+            // a `NodeId` w/out a type, as it is only used for getting the name of the original
+            // pattern for diagnostics where only an `hir::Arg` is present.
+            hir::ArgSource::AsyncFn(..) => {},
+            _ => intravisit::walk_argument_source(self, s),
+        }
+    }
 }
 
 /// When `check_fn` is invoked on a generator (i.e., a body that
