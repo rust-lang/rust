@@ -15,7 +15,7 @@ error[E0425]: cannot find value `no` in this scope
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0425`.
-thread '$DIR/failed-doctest-output.rs - OtherStruct (line 17)' panicked at 'couldn't compile the test', src/librustdoc/test.rs:310:13
+thread '$DIR/failed-doctest-output.rs - OtherStruct (line 17)' panicked at 'couldn't compile the test', src/librustdoc/test.rs:319:13
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 ---- $DIR/failed-doctest-output.rs - SomeStruct (line 11) stdout ----
@@ -24,7 +24,7 @@ thread '$DIR/failed-doctest-output.rs - SomeStruct (line 11)' panicked at 'test 
 thread 'main' panicked at 'oh no', $DIR/failed-doctest-output.rs:3:1
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
-', src/librustdoc/test.rs:332:17
+', src/librustdoc/test.rs:341:17
 
 
 failures:

@@ -166,9 +166,18 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
             maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition,
             persist_doctests: Option<PathBuf>) {
-    // The test harness wants its own `main` and top-level functions, so
-    // never wrap the test in `fn main() { ... }`.
-    let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
+    let (test, line_offset) = match panic::catch_unwind(|| {
+        make_test(test, Some(cratename), as_test_harness, opts)
+    }) {
+        Ok((test, line_offset)) => (test, line_offset),
+        Err(cause) if cause.is::<errors::FatalErrorMarker>() => {
+            // If the parser used by `make_test` panicked due to a fatal error, pass the test code
+            // through unchanged. The error will be reported during compilation.
+            (test.to_owned(), 0)
+        },
+        Err(cause) => panic::resume_unwind(cause),
+    };
+
     // FIXME(#44940): if doctests ever support path remapping, then this filename
     // needs to be the result of `SourceMap::span_to_unmapped_path`.
     let path = match filename {
@@ -337,7 +346,13 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     }
 }
 
-/// Makes the test file. Also returns the number of lines before the code begins
+/// Transforms a test into code that can be compiled into a Rust binary, and returns the number of
+/// lines before the test code begins.
+///
+/// # Panics
+///
+/// This function uses the compiler's parser internally. The parser will panic if it encounters a
+/// fatal error while parsing the test.
 pub fn make_test(s: &str,
                  cratename: Option<&str>,
                  dont_insert_main: bool,
