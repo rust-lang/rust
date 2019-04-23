@@ -487,8 +487,30 @@ impl DroplessArena {
     }
 
     #[inline]
+    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
+        &self,
+        mut iter: I,
+        len: usize,
+        mem: *mut T,
+    ) -> &mut [T] {
+        let mut i = 0;
+        // Use a manual loop since LLVM manages to optimize it better for
+        // slice iterators
+        loop {
+            let value = iter.next();
+            if i >= len || value.is_none() {
+                // We only return as many items as the iterator gave us, even
+                // though it was supposed to give us `len`
+                return slice::from_raw_parts_mut(mem, i);
+            }
+            ptr::write(mem.offset(i as isize), value.unwrap());
+            i += 1;
+        }
+    }
+
+    #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        let mut iter = iter.into_iter();
+        let iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
         assert!(!mem::needs_drop::<T>());
 
@@ -505,10 +527,7 @@ impl DroplessArena {
                 let size = len.checked_mul(mem::size_of::<T>()).unwrap();
                 let mem = self.alloc_raw(size, mem::align_of::<T>()) as *mut _ as *mut T;
                 unsafe {
-                    for i in 0..len {
-                        ptr::write(mem.offset(i as isize), iter.next().unwrap())
-                    }
-                    slice::from_raw_parts_mut(mem, len)
+                    self.write_from_iter(iter, len, mem)
                 }
             }
             (_, _) => {
