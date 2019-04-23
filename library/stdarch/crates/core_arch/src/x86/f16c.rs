@@ -43,17 +43,15 @@ pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
 
 macro_rules! dispatch_rounding {
     ($rounding:ident, $call:ident) => {{
-        const NEAREST: i32 = _MM_FROUND_TO_NEAREST_INT | _MM_FROUND_NO_EXC;
-        const DOWN: i32 = _MM_FROUND_TO_NEG_INF | _MM_FROUND_NO_EXC;
-        const UP: i32 = _MM_FROUND_TO_POS_INF | _MM_FROUND_NO_EXC;
-        const TRUNCATE: i32 = _MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC;
-        const MXCSR: i32 = _MM_FROUND_CUR_DIRECTION;
         match $rounding {
-            NEAREST => call!(NEAREST),
-            DOWN => call!(DOWN),
-            UP => call!(UP),
-            TRUNCATE => call!(TRUNCATE),
-            MXCSR => call!(MXCSR),
+            0 => call!(0),
+            1 => call!(1),
+            2 => call!(2),
+            3 => call!(3),
+            4 => call!(4),
+            5 => call!(5),
+            6 => call!(6),
+            7 => call!(7),
             _ => unreachable_unchecked(),
         }
     }};
@@ -77,7 +75,7 @@ macro_rules! dispatch_rounding {
 pub unsafe fn _mm_cvtps_ph(a: __m128, imm_rounding: i32) -> __m128i {
     let a = transmute(a);
     macro_rules! call {
-        ($rounding:ident) => {
+        ($rounding:expr) => {
             llvm_vcvtps2ph_128(a, $rounding)
         };
     }
@@ -101,7 +99,7 @@ pub unsafe fn _mm_cvtps_ph(a: __m128, imm_rounding: i32) -> __m128i {
 pub unsafe fn _mm256_cvtps_ph(a: __m256, imm_rounding: i32) -> __m128i {
     let a = transmute(a);
     macro_rules! call {
-        ($rounding:ident) => {
+        ($rounding:expr) => {
             llvm_vcvtps2ph_256(a, $rounding)
         };
     }
