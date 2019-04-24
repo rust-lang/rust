@@ -114,6 +114,8 @@ pub struct Stability {
     pub const_stability: Option<Symbol>,
     /// whether the function has a `#[rustc_promotable]` attribute
     pub promotable: bool,
+    /// whether the function has a `#[rustc_allow_const_fn_ptr]` attribute
+    pub allow_const_fn_ptr: bool,
 }
 
 /// The available stability levels.
@@ -178,6 +180,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
     let mut rustc_depr: Option<RustcDeprecation> = None;
     let mut rustc_const_unstable: Option<Symbol> = None;
     let mut promotable = false;
+    let mut allow_const_fn_ptr = false;
     let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
@@ -187,6 +190,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
             "unstable",
             "stable",
             "rustc_promotable",
+            "rustc_allow_const_fn_ptr",
         ].iter().any(|&s| attr.path == s) {
             continue // not a stability level
         }
@@ -197,6 +201,9 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 
         if attr.path == "rustc_promotable" {
             promotable = true;
+        }
+        if attr.path == "rustc_allow_const_fn_ptr" {
+            allow_const_fn_ptr = true;
         }
         // attributes with data
         else if let Some(MetaItem { node: MetaItemKind::List(ref metas), .. }) = meta {
@@ -354,6 +361,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                 rustc_depr: None,
                                 const_stability: None,
                                 promotable: false,
+                                allow_const_fn_ptr: false,
                             })
                         }
                         (None, _, _) => {
@@ -418,6 +426,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                 rustc_depr: None,
                                 const_stability: None,
                                 promotable: false,
+                                allow_const_fn_ptr: false,
                             })
                         }
                         (None, _) => {
@@ -458,13 +467,14 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
     }
 
     // Merge the const-unstable info into the stability info
-    if promotable {
+    if promotable || allow_const_fn_ptr {
         if let Some(ref mut stab) = stab {
-            stab.promotable = true;
+            stab.promotable = promotable;
+            stab.allow_const_fn_ptr = allow_const_fn_ptr;
         } else {
             span_err!(diagnostic, item_sp, E0717,
-                      "rustc_promotable attribute must be paired with \
-                       either stable or unstable attribute");
+                      "rustc_promotable and rustc_allow_const_fn_ptr attributes \
+                      must be paired with either stable or unstable attribute");
         }
     }
 

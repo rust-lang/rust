@@ -1,7 +1,5 @@
 // edition:2018
 
-#![feature(futures_api)]
-
 struct S;
 
 impl S {

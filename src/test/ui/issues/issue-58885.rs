@@ -1,7 +1,7 @@
 // compile-pass
 // edition:2018
 
-#![feature(async_await, await_macro, futures_api)]
+#![feature(async_await, await_macro)]
 
 struct Xyz {
     a: u64,

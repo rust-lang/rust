@@ -1,7 +1,7 @@
 // edition:2018
 // run-pass
 
-#![feature(async_await, await_macro, futures_api)]
+#![feature(async_await, await_macro)]
 
 trait Foo { }
 

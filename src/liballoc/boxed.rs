@@ -911,7 +911,7 @@ impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
     }
 }
 
-#[unstable(feature = "futures_api", issue = "50547")]
+#[stable(feature = "futures_api", since = "1.36.0")]
 impl<F: ?Sized + Future + Unpin> Future for Box<F> {
     type Output = F::Output;
 
