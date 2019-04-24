@@ -1,5 +1,6 @@
 // compile-flags:--test
 // ignore-emscripten
+// ignore-sgx no thread sleep support
 
 use std::sync::mpsc::channel;
 use std::sync::mpsc::TryRecvError;

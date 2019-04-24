@@ -11,6 +11,7 @@
 // ignore-netbsd
 // ignore-openbsd
 // ignore-solaris
+// ignore-sgx
 
 // compile-flags: -C no-prepopulate-passes -C panic=abort -O
 

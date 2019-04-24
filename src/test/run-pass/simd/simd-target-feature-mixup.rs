@@ -4,6 +4,7 @@
 #![allow(overflowing_literals)]
 
 // ignore-emscripten
+// ignore-sgx no processes
 
 #![feature(repr_simd, target_feature, cfg_target_feature)]
 #![feature(avx512_target_feature)]

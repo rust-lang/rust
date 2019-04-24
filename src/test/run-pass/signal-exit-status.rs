@@ -1,5 +1,6 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 // ignore-windows
 
 use std::env;

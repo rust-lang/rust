@@ -1,5 +1,6 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 fn check_for_no_backtrace(test: std::process::Output) {
     assert!(!test.status.success());

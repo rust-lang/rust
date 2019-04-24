@@ -2,6 +2,7 @@
 // ignore-cloudabi no files or I/O
 // ignore-wasm32-bare no files or I/O
 // ignore-emscripten no files
+// ignore-sgx no files
 
 use std::fs;
 use std::io;

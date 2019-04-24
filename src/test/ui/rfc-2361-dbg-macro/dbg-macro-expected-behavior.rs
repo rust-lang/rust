@@ -1,6 +1,7 @@
 // run-pass
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 // Tests ensuring that `dbg!(expr)` has the expected run-time behavior.
 // as well as some compile time properties we expect.

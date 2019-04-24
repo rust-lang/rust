@@ -12,6 +12,7 @@
 // ignore-netbsd
 // ignore-openbsd
 // ignore-solaris
+// ignore-sgx no dynamic linking
 
 // aux-build:dummy.rs
 // aux-build:wrapper.rs

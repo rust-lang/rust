@@ -2,6 +2,7 @@
 // ignore-windows - this is a unix-specific test
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 #![feature(process_exec, rustc_private)]
 
 extern crate libc;

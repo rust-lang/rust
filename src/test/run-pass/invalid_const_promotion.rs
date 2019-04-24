@@ -1,6 +1,7 @@
 #![allow(unused_mut)]
 // ignore-wasm32
 // ignore-emscripten
+// ignore-sgx no processes
 
 // compile-flags: -C debug_assertions=yes
 

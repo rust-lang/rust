@@ -4,6 +4,7 @@
 // no-prefer-dynamic
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 // ignore-macos
 
 use std::process::Command;

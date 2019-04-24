@@ -1,6 +1,7 @@
 // run-pass
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 // Make sure that if a process doesn't have its stdio/stderr descriptors set up
 // that we don't die in a large ball of fire

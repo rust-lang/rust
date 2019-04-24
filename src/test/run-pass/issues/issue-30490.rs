@@ -1,6 +1,7 @@
 // run-pass
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
+// ignore-sgx no processes
 
 // Previously libstd would set stdio descriptors of a child process
 // by `dup`ing the requested descriptors to inherit directly into the
