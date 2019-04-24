@@ -41,15 +41,17 @@ const LINE_FEED: char = '\n';
 const CARRIAGE_RETURN: char = '\r';
 
 fn auto_detect_newline_style(raw_input_text: &str) -> EffectiveNewlineStyle {
-    if let Some(pos) = raw_input_text.chars().position(|ch| ch == LINE_FEED) {
-        let pos = pos.saturating_sub(1);
-        if let Some(CARRIAGE_RETURN) = raw_input_text.chars().nth(pos) {
-            EffectiveNewlineStyle::Windows
-        } else {
-            EffectiveNewlineStyle::Unix
+    let first_line_feed_pos = raw_input_text.chars().position(|ch| ch == LINE_FEED);
+    match first_line_feed_pos {
+        Some(first_line_feed_pos) => {
+            let char_before_line_feed_pos = first_line_feed_pos.saturating_sub(1);
+            let char_before_line_feed = raw_input_text.chars().nth(char_before_line_feed_pos);
+            match char_before_line_feed {
+                Some(CARRIAGE_RETURN) => EffectiveNewlineStyle::Windows,
+                _ => EffectiveNewlineStyle::Unix,
+            }
         }
-    } else {
-        native_newline_style()
+        None => native_newline_style(),
     }
 }
 
