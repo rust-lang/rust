@@ -11,26 +11,13 @@ pub(crate) fn apply_newline_style(
     formatted_text: &mut String,
     raw_input_text: &str,
 ) {
-    const WINDOWS_NEWLINE: &str = "\r\n";
-
     match effective_newline_style(newline_style, raw_input_text) {
         EffectiveNewlineStyle::Windows => {
-            let mut transformed = String::with_capacity(2 * formatted_text.capacity());
-            for c in formatted_text.chars() {
-                match c {
-                    LINE_FEED => transformed.push_str(WINDOWS_NEWLINE),
-                    CARRIAGE_RETURN => continue,
-                    c => transformed.push(c),
-                }
-            }
-            *formatted_text = transformed;
+            *formatted_text = convert_to_windows_newlines(formatted_text);
         }
         EffectiveNewlineStyle::Unix => {}
     }
 }
-
-const LINE_FEED: char = '\n';
-const CARRIAGE_RETURN: char = '\r';
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum EffectiveNewlineStyle {
@@ -49,6 +36,9 @@ fn effective_newline_style(
         NewlineStyle::Unix => EffectiveNewlineStyle::Unix,
     }
 }
+
+const LINE_FEED: char = '\n';
+const CARRIAGE_RETURN: char = '\r';
 
 fn auto_detect_newline_style(raw_input_text: &str) -> EffectiveNewlineStyle {
     if let Some(pos) = raw_input_text.find(LINE_FEED) {
@@ -69,6 +59,19 @@ fn native_newline_style() -> EffectiveNewlineStyle {
     } else {
         EffectiveNewlineStyle::Unix
     }
+}
+
+fn convert_to_windows_newlines(formatted_text: &String) -> String {
+    let mut transformed = String::with_capacity(2 * formatted_text.capacity());
+    for c in formatted_text.chars() {
+        const WINDOWS_NEWLINE: &str = "\r\n";
+        match c {
+            LINE_FEED => transformed.push_str(WINDOWS_NEWLINE),
+            CARRIAGE_RETURN => continue,
+            c => transformed.push(c),
+        }
+    }
+    transformed
 }
 
 #[cfg(test)]
