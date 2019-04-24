@@ -521,6 +521,10 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&base);
             }
 
+            hir::ExprKind::Use(ref expr) => {
+                self.consume_expr(&expr);
+            }
+
             hir::ExprKind::AssignOp(_, ref lhs, ref rhs) => {
                 if self.mc.tables.is_method_call(expr) {
                     self.consume_expr(lhs);

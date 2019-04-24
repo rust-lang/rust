@@ -995,23 +995,32 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::SubItem(ii.hir_id))
     }
 
+    pub fn print_local(
+        &mut self,
+        init: Option<&hir::Expr>,
+        decl: impl Fn(&mut Self) -> io::Result<()>
+    ) -> io::Result<()> {
+        self.space_if_not_bol()?;
+        self.ibox(indent_unit)?;
+        self.word_nbsp("let")?;
+
+        self.ibox(indent_unit)?;
+        decl(self)?;
+        self.end()?;
+
+        if let Some(ref init) = init {
+            self.nbsp()?;
+            self.word_space("=")?;
+            self.print_expr(&init)?;
+        }
+        self.end()
+    }
+
     pub fn print_stmt(&mut self, st: &hir::Stmt) -> io::Result<()> {
         self.maybe_print_comment(st.span.lo())?;
         match st.node {
             hir::StmtKind::Local(ref loc) => {
-                self.space_if_not_bol()?;
-                self.ibox(indent_unit)?;
-                self.word_nbsp("let")?;
-
-                self.ibox(indent_unit)?;
-                self.print_local_decl(&loc)?;
-                self.end()?;
-                if let Some(ref init) = loc.init {
-                    self.nbsp()?;
-                    self.word_space("=")?;
-                    self.print_expr(&init)?;
-                }
-                self.end()?
+                self.print_local(loc.init.deref(), |this| this.print_local_decl(&loc))?;
             }
             hir::StmtKind::Item(item) => {
                 self.ann.nested(self, Nested::Item(item))?
@@ -1378,6 +1387,24 @@ impl<'a> State<'a> {
                 self.print_expr_maybe_paren(&expr, prec)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
+            }
+            hir::ExprKind::Use(ref init) => {
+                // Print `{`:
+                self.cbox(indent_unit)?;
+                self.ibox(0)?;
+                self.bopen()?;
+
+                // Print `let _t = $init;`:
+                let temp = ast::Ident::from_str("_t");
+                self.print_local(Some(init), |this| this.print_ident(temp))?;
+                self.s.word(";")?;
+
+                // Print `_t`:
+                self.space_if_not_bol()?;
+                self.print_ident(temp)?;
+
+                // Print `}`:
+                self.bclose_maybe_open(expr.span, indent_unit, true)?;
             }
             hir::ExprKind::If(ref test, ref blk, ref elseopt) => {
                 self.print_if(&test, &blk, elseopt.as_ref().map(|e| &**e))?;

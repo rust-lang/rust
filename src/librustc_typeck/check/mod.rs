@@ -4533,6 +4533,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_expr_eq_type(&e, ty);
                 ty
             }
+            ExprKind::Use(ref e) => {
+                self.check_expr_with_expectation(e, expected)
+            }
             ExprKind::Array(ref args) => {
                 let uty = expected.to_option(self).and_then(|uty| {
                     match uty.sty {
