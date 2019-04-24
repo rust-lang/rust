@@ -8,11 +8,11 @@ environment:
         - TARGET: x86_64-pc-windows-msvc
 
 branches:
-    # Don't build these branches
-    except:
-        # Used by bors
-        - trying.tmp
-        - staging.tmp
+    # Only build AppVeyor on r+, try and the master branch
+    only:
+      - auto
+      - try
+      - master
 
 install:
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
