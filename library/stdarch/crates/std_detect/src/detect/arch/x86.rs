@@ -181,7 +181,7 @@ macro_rules! is_x86_feature_detected {
             $crate::detect::Feature::avx512_vpopcntdq)
     };
     ("f16c") => {
-        cfg!(target_feature = "avx512f") || $crate::detect::check_for(
+        cfg!(target_feature = "f16c") || $crate::detect::check_for(
             $crate::detect::Feature::f16c)
     };
     ("fma") => {

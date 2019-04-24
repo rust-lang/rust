@@ -27,7 +27,7 @@ extern "unadjusted" {
 /// the 128-bit vector `a` into 4 x 32-bit float values stored in a 128-bit wide
 /// vector.
 #[inline]
-#[target_feature(enable = "avx512f")]
+#[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 pub unsafe fn _mm_cvtph_ps(a: __m128i) -> __m128 {
     transmute(llvm_vcvtph2ps_128(transmute(a)))
@@ -36,7 +36,7 @@ pub unsafe fn _mm_cvtph_ps(a: __m128i) -> __m128 {
 /// Converts the 8 x 16-bit half-precision float values in the 128-bit vector
 /// `a` into 8 x 32-bit float values stored in a 256-bit wide vector.
 #[inline]
-#[target_feature(enable = "avx512f")]
+#[target_feature(enable = "f16c")]
 #[cfg_attr(test, assert_instr("vcvtph2ps"))]
 pub unsafe fn _mm256_cvtph_ps(a: __m128i) -> __m256 {
     transmute(llvm_vcvtph2ps_256(transmute(a)))
@@ -70,7 +70,7 @@ macro_rules! dispatch_rounding {
 /// * `_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC`: truncate and suppress exceptions,
 /// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
 #[inline]
-#[target_feature(enable = "avx512f")]
+#[target_feature(enable = "f16c")]
 #[rustc_args_required_const(1)]
 #[cfg_attr(test, assert_instr("vcvtps2ph", imm_rounding = 0))]
 pub unsafe fn _mm_cvtps_ph(a: __m128, imm_rounding: i32) -> __m128i {
@@ -94,7 +94,7 @@ pub unsafe fn _mm_cvtps_ph(a: __m128, imm_rounding: i32) -> __m128i {
 /// * `_MM_FROUND_TO_ZERO | _MM_FROUND_NO_EXC`: truncate and suppress exceptions,
 /// * `_MM_FROUND_CUR_DIRECTION`: use `MXCSR.RC` - see [`_MM_SET_ROUNDING_MODE`].
 #[inline]
-#[target_feature(enable = "avx512f")]
+#[target_feature(enable = "f16c")]
 #[rustc_args_required_const(1)]
 #[cfg_attr(test, assert_instr("vcvtps2ph", imm_rounding = 0))]
 pub unsafe fn _mm256_cvtps_ph(a: __m256, imm_rounding: i32) -> __m128i {
@@ -112,7 +112,7 @@ mod tests {
     use crate::{core_arch::x86::*, mem::transmute};
     use stdsimd_test::simd_test;
 
-    #[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "f16c")]
     unsafe fn test_mm_cvtph_ps() {
         let array = [1_f32, 2_f32, 3_f32, 4_f32];
         let float_vec: __m128 = transmute(array);
@@ -122,7 +122,7 @@ mod tests {
         assert_eq!(result, array);
     }
 
-    #[simd_test(enable = "avx512f")]
+    #[simd_test(enable = "f16c")]
     unsafe fn test_mm256_cvtph_ps() {
         let array = [1_f32, 2_f32, 3_f32, 4_f32, 5_f32, 6_f32, 7_f32, 8_f32];
         let float_vec: __m256 = transmute(array);

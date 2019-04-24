@@ -299,10 +299,9 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
             // it "avx512ifma".
             "avx512ifma52" => String::from("avx512ifma"),
             // See: https://github.com/rust-lang-nursery/stdsimd/issues/738
-            // FIXME: we need to fix "fp16c" to "f16c" here. Since
-            // https://github.com/rust-lang/rust/pull/60191 is not merged,
-            // we temporarily map it to "avx512f".
-            "fp16c" => String::from("avx512f"),
+            // The intrinsics guide calls `f16c` `fp16c` in disagreement with
+            // Intel's architecture manuals.
+            "fp16c" => String::from("f16c"),
             _ => cpuid,
         };
         let fixed_cpuid = fixup_cpuid(cpuid);
