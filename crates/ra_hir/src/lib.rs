@@ -69,7 +69,7 @@ pub use self::{
     expr::ExprScopes,
     resolve::Resolution,
     generics::{GenericParams, GenericParam, HasGenericParams},
-    source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax},
+    source_binder::{SourceAnalyzer, PathResolution, ScopeEntryWithSyntax,MacroByExampleDef},
 };
 
 pub use self::code_model_api::{
@@ -80,5 +80,5 @@ pub use self::code_model_api::{
     Function, FnSignature,
     StructField, FieldSource,
     Static, Const, ConstSignature,
-    Trait, TypeAlias, Container,
+    Trait, TypeAlias, Container
 };
