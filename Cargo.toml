@@ -39,7 +39,7 @@ indexmap = "1.0.2"
 #gimli = { path = "../" }
 
 [patch.crates-io]
-ar = { git = "https://github.com/mdsteele/rust-ar.git" }
+ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "non_multiple_of_two_identifiers_gnu_format" }
 
 [profile.dev.overrides."*"]
 opt-level = 3
