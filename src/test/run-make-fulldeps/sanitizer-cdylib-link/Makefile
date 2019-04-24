@@ -1,4 +1,6 @@
 # needs-sanitizer-support
+# only-x86_64
+# only-linux
 
 -include ../tools.mk
 
@@ -9,11 +11,8 @@ LOG := $(TMPDIR)/log.txt
 # are compiled with address sanitizer, and we assert that a fault in the cdylib
 # is correctly detected.
 
-ifeq ($(TARGET),x86_64-unknown-linux-gnu)
-
 # See comment in sanitizer-address/Makefile for why this is here
 EXTRA_RUSTFLAG=-C relocation-model=dynamic-no-pic
-endif
 
 all:
 	$(RUSTC) -g -Z sanitizer=address --crate-type cdylib --target $(TARGET) $(EXTRA_RUSTFLAG) library.rs
