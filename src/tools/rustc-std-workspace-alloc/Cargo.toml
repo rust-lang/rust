@@ -1,0 +1,14 @@
+[package]
+name = "rustc-std-workspace-alloc"
+version = "1.0.0"
+authors = ["Alex Crichton <alex@alexcrichton.com>"]
+license = 'MIT/Apache-2.0'
+description = """
+Hack for the compiler's own build system
+"""
+
+[lib]
+path = "lib.rs"
+
+[dependencies]
+alloc = { path = "../../liballoc" }
