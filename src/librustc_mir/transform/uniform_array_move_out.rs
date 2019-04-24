@@ -304,7 +304,7 @@ impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
 
     fn visit_local(&mut self,
                    local: &Local,
-                   context: PlaceContext<'tcx>,
+                   context: PlaceContext,
                    location: Location) {
         let local_use = &mut self.locals_use[*local];
         match context {

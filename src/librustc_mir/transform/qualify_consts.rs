@@ -929,7 +929,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     fn visit_place(&mut self,
                     place: &Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         debug!("visit_place: place={:?} context={:?} location={:?}", place, context, location);
         self.super_place(place, context, location);
@@ -1066,7 +1066,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         debug!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Check nested operands and places.
-        if let Rvalue::Ref(region, kind, ref place) = *rvalue {
+        if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut is_reborrow = false;
             if let Place::Projection(ref proj) = *place {
@@ -1081,16 +1081,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             if is_reborrow {
                 let ctx = match kind {
                     BorrowKind::Shared => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::SharedBorrow(region),
+                        NonMutatingUseContext::SharedBorrow,
                     ),
                     BorrowKind::Shallow => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::ShallowBorrow(region),
+                        NonMutatingUseContext::ShallowBorrow,
                     ),
                     BorrowKind::Unique => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::UniqueBorrow(region),
+                        NonMutatingUseContext::UniqueBorrow,
                     ),
                     BorrowKind::Mut { .. } => PlaceContext::MutatingUse(
-                        MutatingUseContext::Borrow(region),
+                        MutatingUseContext::Borrow,
                     ),
                 };
                 self.super_place(place, ctx, location);

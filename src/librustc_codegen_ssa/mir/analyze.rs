@@ -151,7 +151,7 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
     fn visit_place(&mut self,
                    place: &mir::Place<'tcx>,
-                   context: PlaceContext<'tcx>,
+                   context: PlaceContext,
                    location: Location) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
         let cx = self.fx.cx;
@@ -203,7 +203,7 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
     fn visit_local(&mut self,
                    &local: &mir::Local,
-                   context: PlaceContext<'tcx>,
+                   context: PlaceContext,
                    location: Location) {
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
@@ -233,11 +233,11 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
             PlaceContext::MutatingUse(MutatingUseContext::Store) |
             PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
-            PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) |
+            PlaceContext::MutatingUse(MutatingUseContext::Borrow) |
             PlaceContext::MutatingUse(MutatingUseContext::Projection) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow) |
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
                 self.not_ssa(local);
             }

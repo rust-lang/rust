@@ -1,6 +1,6 @@
 use crate::hir::def_id::DefId;
 use crate::ty::subst::SubstsRef;
-use crate::ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Region, Ty};
+use crate::ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Ty};
 use crate::mir::*;
 use syntax_pos::Span;
 
@@ -147,14 +147,14 @@ macro_rules! make_mir_visitor {
 
             fn visit_place(&mut self,
                             place: & $($mutability)? Place<'tcx>,
-                            context: PlaceContext<'tcx>,
+                            context: PlaceContext,
                             location: Location) {
                 self.super_place(place, context, location);
             }
 
             fn visit_projection(&mut self,
                                 place: & $($mutability)? PlaceProjection<'tcx>,
-                                context: PlaceContext<'tcx>,
+                                context: PlaceContext,
                                 location: Location) {
                 self.super_projection(place, context, location);
             }
@@ -252,7 +252,7 @@ macro_rules! make_mir_visitor {
 
             fn visit_local(&mut self,
                             _local: & $($mutability)? Local,
-                            _context: PlaceContext<'tcx>,
+                            _context: PlaceContext,
                             _location: Location) {
             }
 
@@ -576,16 +576,16 @@ macro_rules! make_mir_visitor {
                         self.visit_region(r, location);
                         let ctx = match bk {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::SharedBorrow(*r)
+                                NonMutatingUseContext::SharedBorrow
                             ),
                             BorrowKind::Shallow => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::ShallowBorrow(*r)
+                                NonMutatingUseContext::ShallowBorrow
                             ),
                             BorrowKind::Unique => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::UniqueBorrow(*r)
+                                NonMutatingUseContext::UniqueBorrow
                             ),
                             BorrowKind::Mut { .. } =>
-                                PlaceContext::MutatingUse(MutatingUseContext::Borrow(*r)),
+                                PlaceContext::MutatingUse(MutatingUseContext::Borrow),
                         };
                         self.visit_place(path, ctx, location);
                     }
@@ -716,7 +716,7 @@ macro_rules! make_mir_visitor {
 
             fn super_place(&mut self,
                             place: & $($mutability)? Place<'tcx>,
-                            context: PlaceContext<'tcx>,
+                            context: PlaceContext,
                             location: Location) {
                 match place {
                     Place::Base(PlaceBase::Local(local)) => {
@@ -736,7 +736,7 @@ macro_rules! make_mir_visitor {
 
             fn super_projection(&mut self,
                                 proj: & $($mutability)? PlaceProjection<'tcx>,
-                                context: PlaceContext<'tcx>,
+                                context: PlaceContext,
                                 location: Location) {
                 let Projection { base, elem } = proj;
                 let context = if context.is_mutating_use() {
@@ -948,7 +948,7 @@ pub enum TyContext {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum NonMutatingUseContext<'tcx> {
+pub enum NonMutatingUseContext {
     /// Being inspected in some way, like loading a len.
     Inspect,
     /// Consumed as part of an operand.
@@ -956,11 +956,11 @@ pub enum NonMutatingUseContext<'tcx> {
     /// Consumed as part of an operand.
     Move,
     /// Shared borrow.
-    SharedBorrow(Region<'tcx>),
+    SharedBorrow,
     /// Shallow borrow.
-    ShallowBorrow(Region<'tcx>),
+    ShallowBorrow,
     /// Unique borrow.
-    UniqueBorrow(Region<'tcx>),
+    UniqueBorrow,
     /// Used as base for another place, e.g., `x` in `x.y`. Will not mutate the place.
     /// For example, the projection `x.y` is not marked as a mutation in these cases:
     ///
@@ -971,7 +971,7 @@ pub enum NonMutatingUseContext<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum MutatingUseContext<'tcx> {
+pub enum MutatingUseContext {
     /// Appears as LHS of an assignment.
     Store,
     /// Can often be treated as a `Store`, but needs to be separate because
@@ -983,7 +983,7 @@ pub enum MutatingUseContext<'tcx> {
     /// Being dropped.
     Drop,
     /// Mutable borrow.
-    Borrow(Region<'tcx>),
+    Borrow,
     /// Used as base for another place, e.g., `x` in `x.y`. Could potentially mutate the place.
     /// For example, the projection `x.y` is marked as a mutation in these cases:
     ///
@@ -1006,13 +1006,13 @@ pub enum NonUseContext {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum PlaceContext<'tcx> {
-    NonMutatingUse(NonMutatingUseContext<'tcx>),
-    MutatingUse(MutatingUseContext<'tcx>),
+pub enum PlaceContext {
+    NonMutatingUse(NonMutatingUseContext),
+    MutatingUse(MutatingUseContext),
     NonUse(NonUseContext),
 }
 
-impl<'tcx> PlaceContext<'tcx> {
+impl<'tcx> PlaceContext {
     /// Returns `true` if this place context represents a drop.
     pub fn is_drop(&self) -> bool {
         match *self {
@@ -1024,10 +1024,10 @@ impl<'tcx> PlaceContext<'tcx> {
     /// Returns `true` if this place context represents a borrow.
     pub fn is_borrow(&self) -> bool {
         match *self {
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
-            PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) => true,
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow) |
+            PlaceContext::MutatingUse(MutatingUseContext::Borrow) => true,
             _ => false,
         }
     }

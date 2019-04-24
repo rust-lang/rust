@@ -199,7 +199,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 
     fn visit_place(&mut self,
                     place: &Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         match place {
             &Place::Projection(box Projection {

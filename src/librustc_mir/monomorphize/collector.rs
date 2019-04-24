@@ -658,7 +658,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
     fn visit_place(&mut self,
                     place: &mir::Place<'tcx>,
-                    context: mir::visit::PlaceContext<'tcx>,
+                    context: mir::visit::PlaceContext,
                     location: Location) {
         match place {
             Place::Base(

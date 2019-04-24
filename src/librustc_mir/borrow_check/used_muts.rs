@@ -102,7 +102,7 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
     fn visit_local(
         &mut self,
         local: &Local,
-        place_context: PlaceContext<'tcx>,
+        place_context: PlaceContext,
         location: Location,
     ) {
         if place_context.is_place_assignment() && self.temporary_used_locals.contains(local) {

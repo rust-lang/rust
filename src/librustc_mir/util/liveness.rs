@@ -110,7 +110,7 @@ pub enum DefUse {
     Drop,
 }
 
-pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
+pub fn categorize<'tcx>(context: PlaceContext) -> Option<DefUse> {
     match context {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS
@@ -147,10 +147,10 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
         // This won't affect the results since we use this analysis for generators
         // and we only care about the result at suspension points. Borrows cannot
         // cross suspension points so this behavior is unproblematic.
-        PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) |
-        PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
-        PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
-        PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
+        PlaceContext::MutatingUse(MutatingUseContext::Borrow) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow) |
 
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
@@ -220,7 +220,7 @@ impl DefsUses {
 
 impl<'tcx> Visitor<'tcx> for DefsUsesVisitor
 {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         match categorize(context) {
             Some(DefUse::Def) => self.defs_uses.add_def(local),
             Some(DefUse::Use) | Some(DefUse::Drop) => self.defs_uses.add_use(local),
