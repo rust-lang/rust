@@ -1618,7 +1618,7 @@ define_print_and_forward_display! {
                 p!(write("b\""));
                 for &c in byte_str {
                     for e in std::ascii::escape_default(c) {
-                        p!(write("{}", e as char));
+                        cx.write_char(e as char)?;
                     }
                 }
                 p!(write("\""));
