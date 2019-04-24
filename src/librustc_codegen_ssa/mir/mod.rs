@@ -598,9 +598,10 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 tmp
             }
         };
+        let upvar_debuginfo = &mir.__upvar_debuginfo_codegen_only_do_not_use;
         arg_scope.map(|scope| {
             // Is this a regular argument?
-            if arg_index > 0 || mir.upvar_decls.is_empty() {
+            if arg_index > 0 || upvar_debuginfo.is_empty() {
                 // The Rust ABI passes indirect variables using a pointer and a manual copy, so we
                 // need to insert a deref here, but the C ABI uses a pointer and a copy using the
                 // byval attribute, for which LLVM always does the deref itself,
@@ -638,16 +639,16 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             let (def_id, upvar_substs) = match closure_layout.ty.sty {
                 ty::Closure(def_id, substs) => (def_id, UpvarSubsts::Closure(substs)),
                 ty::Generator(def_id, substs, _) => (def_id, UpvarSubsts::Generator(substs)),
-                _ => bug!("upvar_decls with non-closure arg0 type `{}`", closure_layout.ty)
+                _ => bug!("upvar debuginfo with non-closure arg0 type `{}`", closure_layout.ty)
             };
             let upvar_tys = upvar_substs.upvar_tys(def_id, tcx);
 
             let extra_locals = {
-                let upvars = mir.upvar_decls
+                let upvars = upvar_debuginfo
                     .iter()
                     .zip(upvar_tys)
                     .enumerate()
-                    .map(|(i, (decl, ty))| (i, decl.debug_name, decl.by_ref, ty));
+                    .map(|(i, (upvar, ty))| (i, upvar.debug_name, upvar.by_ref, ty));
 
                 let generator_fields = mir.generator_layout.as_ref().map(|generator_layout| {
                     let (def_id, gen_substs) = match closure_layout.ty.sty {
@@ -656,7 +657,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                     };
                     let state_tys = gen_substs.state_tys(def_id, tcx);
 
-                    let upvar_count = mir.upvar_decls.len();
+                    let upvar_count = upvar_debuginfo.len();
                     generator_layout.fields
                         .iter()
                         .zip(state_tys)
@@ -673,7 +674,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             for (field, name, by_ref, ty) in extra_locals {
                 let byte_offset_of_var_in_env = closure_layout.fields.offset(field).bytes();
 
-                let ops = bx.debuginfo_upvar_decls_ops_sequence(byte_offset_of_var_in_env);
+                let ops = bx.debuginfo_upvar_ops_sequence(byte_offset_of_var_in_env);
 
                 // The environment and the capture can each be indirect.
                 let mut ops = if env_ref { &ops[..] } else { &ops[1..] };

@@ -222,10 +222,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         debug!("should_inline({:?})", callsite);
         let tcx = self.tcx;
 
-        // Don't inline closures that have captures
+        // Don't inline closures that have capture debuginfo
         // FIXME: Handle closures better
-        if callee_mir.upvar_decls.len() > 0 {
-            debug!("    upvar decls present - not inlining");
+        if callee_mir.__upvar_debuginfo_codegen_only_do_not_use.len() > 0 {
+            debug!("    upvar debuginfo present - not inlining");
             return false;
         }
 

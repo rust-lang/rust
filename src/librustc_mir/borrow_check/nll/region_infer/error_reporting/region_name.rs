@@ -2,6 +2,7 @@ use std::fmt::{self, Display};
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use crate::borrow_check::nll::universal_regions::DefiningTy;
 use crate::borrow_check::nll::ToRegionVid;
+use crate::borrow_check::Upvar;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -144,6 +145,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
         mir: &Mir<'tcx>,
+        upvars: &[Upvar],
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
@@ -160,7 +162,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_upvars(
-                    infcx.tcx, mir, fr, counter,
+                    infcx.tcx, upvars, fr, counter,
                 )
             })
             .or_else(|| {
@@ -639,13 +641,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_anonymous_region_appears_in_upvars(
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        upvars: &[Upvar],
         fr: RegionVid,
         counter: &mut usize,
     ) -> Option<RegionName> {
         let upvar_index = self.get_upvar_index_for_region(tcx, fr)?;
         let (upvar_name, upvar_span) =
-            self.get_upvar_name_and_span_for_region(tcx, mir, upvar_index);
+            self.get_upvar_name_and_span_for_region(tcx, upvars, upvar_index);
         let region_name = self.synthesize_region_name(counter);
 
         Some(RegionName {

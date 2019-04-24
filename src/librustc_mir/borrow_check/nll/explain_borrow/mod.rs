@@ -273,11 +273,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 if mir.local_decls[local].name.is_some() {
                     if let Some((WriteKind::StorageDeadOrDrop, place)) = kind_place {
                         if let Place::Base(PlaceBase::Local(borrowed_local)) = place {
-                            let dropped_local_scope = mir.local_decls[local].visibility_scope;
-                            let borrowed_local_scope =
-                                mir.local_decls[*borrowed_local].visibility_scope;
-
-                            if mir.is_sub_scope(borrowed_local_scope, dropped_local_scope)
+                             if mir.local_decls[*borrowed_local].name.is_some()
                                 && local != *borrowed_local
                             {
                                 should_note_order = true;
@@ -298,6 +294,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     let (category, from_closure, span, region_name) =
                         self.nonlexical_regioncx.free_region_constraint_info(
                             self.mir,
+                        &self.upvars,
                             self.mir_def_id,
                             self.infcx,
                             borrow_region_vid,

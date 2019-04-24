@@ -490,7 +490,7 @@ fn locals_live_across_suspend_points(
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             source: MirSource<'tcx>,
-                            upvars: Vec<Ty<'tcx>>,
+                            upvars: &Vec<Ty<'tcx>>,
                             interior: Ty<'tcx>,
                             movable: bool,
                             mir: &mut Mir<'tcx>)
@@ -505,7 +505,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                             movable);
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
-    let allowed_upvars = tcx.erase_regions(&upvars);
+    let allowed_upvars = tcx.erase_regions(upvars);
     let allowed = match interior.sty {
         ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(&s),
         _ => bug!(),
@@ -528,7 +528,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let upvar_len = mir.upvar_decls.len();
+    let upvar_len = upvars.len();
     let dummy_local = LocalDecl::new_internal(tcx.mk_unit(), mir.span);
 
     // Gather live locals and their indices replacing values in mir.local_decls with a dummy
@@ -917,12 +917,12 @@ impl MirPass for StateTransform {
         let (remap, layout, storage_liveness) = compute_layout(
             tcx,
             source,
-            upvars,
+            &upvars,
             interior,
             movable,
             mir);
 
-        let state_field = mir.upvar_decls.len();
+        let state_field = upvars.len();
 
         // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
