@@ -1,11 +1,11 @@
 error: expected token: `,`
-  --> $DIR/missing-comma.rs:15:19
+  --> $DIR/missing-comma.rs:19:19
    |
 LL |     println!("{}" a);
    |                   ^
 
 error: no rules expected the token `b`
-  --> $DIR/missing-comma.rs:17:12
+  --> $DIR/missing-comma.rs:21:12
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -16,7 +16,7 @@ LL |     foo!(a b);
    |           help: missing comma here
 
 error: no rules expected the token `e`
-  --> $DIR/missing-comma.rs:19:21
+  --> $DIR/missing-comma.rs:23:21
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -27,7 +27,7 @@ LL |     foo!(a, b, c, d e);
    |                    help: missing comma here
 
 error: no rules expected the token `d`
-  --> $DIR/missing-comma.rs:21:18
+  --> $DIR/missing-comma.rs:25:18
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -38,7 +38,7 @@ LL |     foo!(a, b, c d, e);
    |                 help: missing comma here
 
 error: no rules expected the token `d`
-  --> $DIR/missing-comma.rs:23:18
+  --> $DIR/missing-comma.rs:27:18
    |
 LL | macro_rules! foo {
    | ---------------- when calling this macro
@@ -47,7 +47,7 @@ LL |     foo!(a, b, c d e);
    |                  ^ no rules expected this token in macro call
 
 error: unexpected end of macro invocation
-  --> $DIR/missing-comma.rs:25:23
+  --> $DIR/missing-comma.rs:29:23
    |
 LL | macro_rules! bar {
    | ---------------- when calling this macro
@@ -55,5 +55,14 @@ LL | macro_rules! bar {
 LL |     bar!(Level::Error, );
    |                       ^ missing tokens in macro arguments
 
-error: aborting due to 6 previous errors
+error: no rules expected the token `,`
+  --> $DIR/missing-comma.rs:32:38
+   |
+LL | macro_rules! check {
+   | ------------------ when calling this macro
+...
+LL |     check!(<str as Debug>::fmt, "fmt",);
+   |                                      ^ no rules expected this token in macro call
+
+error: aborting due to 7 previous errors
 
