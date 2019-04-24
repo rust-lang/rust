@@ -132,7 +132,7 @@ macro_rules! late_lint_passes {
             // Depends on access levels
             // FIXME: Turn the computation of types which implement Debug into a query
             // and change this to a module lint pass
-            MissingDebugImplementations: MissingDebugImplementations::new(),
+            MissingDebugImplementations: MissingDebugImplementations::default(),
         ]);
     )
 }
