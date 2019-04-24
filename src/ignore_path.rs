@@ -1,5 +1,4 @@
 use ignore::{self, gitignore};
-use std::path::PathBuf;
 
 use crate::config::{FileName, IgnoreList};
 
@@ -9,7 +8,7 @@ pub struct IgnorePathSet {
 
 impl IgnorePathSet {
     pub fn from_ignore_list(ignore_list: &IgnoreList) -> Result<Self, ignore::Error> {
-        let mut ignore_builder = gitignore::GitignoreBuilder::new(PathBuf::from(""));
+        let mut ignore_builder = gitignore::GitignoreBuilder::new(ignore_list.rustfmt_toml_path());
 
         for ignore_path in ignore_list {
             ignore_builder.add_line(None, ignore_path.to_str().unwrap())?;
@@ -33,16 +32,19 @@ impl IgnorePathSet {
 
 #[cfg(test)]
 mod test {
+    use std::path::{Path, PathBuf};
+
     use crate::config::{Config, FileName};
     use crate::ignore_path::IgnorePathSet;
-    use std::path::PathBuf;
 
     #[test]
     fn test_ignore_path_set() {
         match option_env!("CFG_RELEASE_CHANNEL") {
             // this test requires nightly
             None | Some("nightly") => {
-                let config = Config::from_toml(r#"ignore = ["foo.rs", "bar_dir/*"]"#).unwrap();
+                let config =
+                    Config::from_toml(r#"ignore = ["foo.rs", "bar_dir/*"]"#, Path::new(""))
+                        .unwrap();
                 let ignore_path_set = IgnorePathSet::from_ignore_list(&config.ignore()).unwrap();
 
                 assert!(ignore_path_set.is_match(&FileName::Real(PathBuf::from("src/foo.rs"))));

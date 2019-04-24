@@ -190,7 +190,8 @@ impl Config {
         let mut file = File::open(&file_path)?;
         let mut toml = String::new();
         file.read_to_string(&mut toml)?;
-        Config::from_toml(&toml).map_err(|err| Error::new(ErrorKind::InvalidData, err))
+        Config::from_toml(&toml, file_path.parent().unwrap())
+            .map_err(|err| Error::new(ErrorKind::InvalidData, err))
     }
 
     /// Resolves the config for input in `dir`.
@@ -252,7 +253,7 @@ impl Config {
         }
     }
 
-    pub(crate) fn from_toml(toml: &str) -> Result<Config, String> {
+    pub(crate) fn from_toml(toml: &str, dir: &Path) -> Result<Config, String> {
         let parsed: ::toml::Value = toml
             .parse()
             .map_err(|e| format!("Could not parse TOML: {}", e))?;
@@ -271,7 +272,7 @@ impl Config {
                 if !err.is_empty() {
                     eprint!("{}", err);
                 }
-                Ok(Config::default().fill_from_parsed_config(parsed_config))
+                Ok(Config::default().fill_from_parsed_config(parsed_config, dir))
             }
             Err(e) => {
                 err.push_str("Error: Decoding config file failed:\n");
@@ -425,7 +426,7 @@ mod test {
 
     #[test]
     fn test_was_set() {
-        let config = Config::from_toml("hard_tabs = true").unwrap();
+        let config = Config::from_toml("hard_tabs = true", Path::new("")).unwrap();
 
         assert_eq!(config.was_set().hard_tabs(), true);
         assert_eq!(config.was_set().verbose(), false);
