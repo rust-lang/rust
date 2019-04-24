@@ -3,7 +3,8 @@ set -e
 cd $(dirname "$0")
 
 # Cleanup for previous run
-cargo clean
+#     v Clean target dir except for build scripts and incremental cache
+rm -r target/*/{debug,release}/{build,deps,examples,libsysroot*,native} || true
 rm Cargo.lock 2>/dev/null || true
 rm -r sysroot 2>/dev/null || true
 
