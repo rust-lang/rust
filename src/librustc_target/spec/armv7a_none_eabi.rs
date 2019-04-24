@@ -1,4 +1,4 @@
-// Generic arm target for bare-metal code
+// Generic ARM-v7 Cortex-A target, with software floating-point emulation.
 //
 // Can be used in conjunction with the `target-feature` and
 // `target-cpu` compiler flags to opt-in more hardware-specific
@@ -10,7 +10,7 @@ use crate::spec::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions,
 
 pub fn target() -> TargetResult {
     Ok(Target {
-        llvm_target: "armv7-none-eabihf".to_string(),
+        llvm_target: "armv7a-none-eabi".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         target_c_int_width: "32".to_string(),
@@ -22,7 +22,7 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
-            features: "+strict-align,+v7,+vfp3,+d16,+thumb2,-neon".to_string(),
+            features: "+strict-align,+v7,+thumb2,-neon".to_string(),
             linker: Some("rust-lld".to_owned()),
             executables: true,
             relocation_model: "static".to_string(),
