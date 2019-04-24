@@ -137,6 +137,8 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         ty::Int(..) |
         ty::Uint(..) |
         ty::Float(..) |
+        ty::Infer(ty::IntVar(_)) |
+        ty::Infer(ty::FloatVar(_)) |
         ty::Error |
         ty::Never => push_builtin_impl(ty, &[]),
 
@@ -188,14 +190,11 @@ crate fn assemble_builtin_sized_impls<'tcx>(
             push_builtin_impl(adt, &sized_constraint);
         }
 
-        // Artificially trigger an ambiguity.
-        ty::Infer(..) => {
-            // Everybody can find at least two types to unify against:
-            // general ty vars, int vars and float vars.
+        // Artificially trigger an ambiguity by adding two possible types to
+        // unify against.
+        ty::Infer(ty::TyVar(_)) => {
             push_builtin_impl(tcx.types.i32, &[]);
-            push_builtin_impl(tcx.types.u32, &[]);
             push_builtin_impl(tcx.types.f32, &[]);
-            push_builtin_impl(tcx.types.f64, &[]);
         }
 
         ty::Projection(_projection_ty) => {
@@ -216,7 +215,10 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         ty::Opaque(..) => (),
 
         ty::Bound(..) |
-        ty::GeneratorWitness(..) => bug!("unexpected type {:?}", ty),
+        ty::GeneratorWitness(..) |
+        ty::Infer(ty::FreshTy(_)) |
+        ty::Infer(ty::FreshIntTy(_)) |
+        ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
     }
 }
 
@@ -243,7 +245,9 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         ty::Never |
         ty::Ref(_, _, hir::MutImmutable) => (),
 
-        // Non parametric primitive type.
+        // Non parametric primitive types.
+        ty::Infer(ty::IntVar(_)) |
+        ty::Infer(ty::FloatVar(_)) |
         ty::Error => push_builtin_impl(ty, &[]),
 
         // These implement `Copy`/`Clone` if their element types do.
@@ -283,13 +287,11 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         // These depend on whatever user-defined impls might exist.
         ty::Adt(_, _) => (),
 
-        // int vars and float vars are always `Copy`.
-        // Other vars will trigger an ambiguity.
-        ty::Infer(..) => {
+        // Artificially trigger an ambiguity by adding two possible types to
+        // unify against.
+        ty::Infer(ty::TyVar(_)) => {
             push_builtin_impl(tcx.types.i32, &[]);
-            push_builtin_impl(tcx.types.u32, &[]);
             push_builtin_impl(tcx.types.f32, &[]);
-            push_builtin_impl(tcx.types.f64, &[]);
         }
 
         ty::Projection(_projection_ty) => {
@@ -312,6 +314,9 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         ty::Ref(_, _, hir::MutMutable) => (),
 
         ty::Bound(..) |
-        ty::GeneratorWitness(..) => bug!("unexpected type {:?}", ty),
+        ty::GeneratorWitness(..) |
+        ty::Infer(ty::FreshTy(_)) |
+        ty::Infer(ty::FreshIntTy(_)) |
+        ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
     }
 }
