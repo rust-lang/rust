@@ -132,9 +132,6 @@ fn run(config: &cargo::Config, matches: &getopts::Matches, explain: bool) -> Res
     let (stable_rlib, stable_deps_output) =
         stable.rlib_and_dep_output(config, &name, false, matches)?;
 
-    println!("current_rlib: {:?}", current_rlib);
-    println!("stable_rlib: {:?}", stable_rlib);
-
     if matches.opt_present("d") {
         println!(
             "--extern old={} -L{} --extern new={} -L{}",
