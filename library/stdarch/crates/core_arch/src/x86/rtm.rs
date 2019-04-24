@@ -154,7 +154,7 @@ mod tests {
             if code == _XBEGIN_STARTED {
                 let in_tx = _xtest();
                 rtm::_xend();
-                
+
                 // putting the assert inside the transaction would abort the transaction on fail
                 // without any output/panic/etc
                 assert_eq!(in_tx, 1);
