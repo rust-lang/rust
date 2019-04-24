@@ -4,6 +4,7 @@ use crate::borrow_check::nll::constraints::{ConstraintSccIndex, ConstraintSet, O
 use crate::borrow_check::nll::region_infer::values::{
     PlaceholderIndices, RegionElement, ToElementIndex
 };
+use crate::borrow_check::Upvar;
 use crate::borrow_check::nll::type_check::free_region_relations::UniversalRegionRelations;
 use crate::borrow_check::nll::type_check::Locations;
 use rustc::hir::def_id::DefId;
@@ -400,6 +401,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        upvars: &[Upvar],
         mir_def_id: DefId,
         errors_buffer: &mut Vec<Diagnostic>,
     ) -> Option<ClosureRegionRequirements<'gcx>> {
@@ -407,7 +409,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             infcx.tcx.sess.time_extended(),
             Some(infcx.tcx.sess),
             &format!("solve_nll_region_constraints({:?})", mir_def_id),
-            || self.solve_inner(infcx, mir, mir_def_id, errors_buffer),
+            || self.solve_inner(infcx, mir, upvars, mir_def_id, errors_buffer),
         )
     }
 
@@ -415,6 +417,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        upvars: &[Upvar],
         mir_def_id: DefId,
         errors_buffer: &mut Vec<Diagnostic>,
     ) -> Option<ClosureRegionRequirements<'gcx>> {
@@ -442,6 +445,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.check_universal_regions(
             infcx,
             mir,
+            upvars,
             mir_def_id,
             outlives_requirements.as_mut(),
             errors_buffer,
@@ -1102,6 +1106,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        upvars: &[Upvar],
         mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -1115,6 +1120,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.check_universal_region(
                         infcx,
                         mir,
+                        upvars,
                         mir_def_id,
                         fr,
                         &mut propagated_outlives_requirements,
@@ -1145,6 +1151,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        upvars: &[Upvar],
         mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
@@ -1177,6 +1184,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 representative,
                 infcx,
                 mir,
+                upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
                 errors_buffer,
@@ -1192,6 +1200,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 shorter_fr,
                 infcx,
                 mir,
+                upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
                 errors_buffer,
@@ -1208,6 +1217,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         shorter_fr: RegionVid,
         infcx: &InferCtxt<'_, 'gcx, 'tcx>,
         mir: &Mir<'tcx>,
+        upvars: &[Upvar],
         mir_def_id: DefId,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'gcx>>>,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -1265,7 +1275,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         //
         // Note: in this case, we use the unapproximated regions to report the
         // error. This gives better error messages in some cases.
-        self.report_error(mir, infcx, mir_def_id, longer_fr, shorter_fr, errors_buffer);
+        self.report_error(mir, upvars, infcx, mir_def_id, longer_fr, shorter_fr, errors_buffer);
         Some(ErrorReported)
     }
 

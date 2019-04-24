@@ -133,41 +133,6 @@ impl<'tcx> Place<'tcx> {
                 proj.base.ty(local_decls, tcx).projection_ty(tcx, &proj.elem),
         }
     }
-
-    /// If this is a field projection, and the field is being projected from a closure type,
-    /// then returns the index of the field being projected. Note that this closure will always
-    /// be `self` in the current MIR, because that is the only time we directly access the fields
-    /// of a closure type.
-    pub fn is_upvar_field_projection<'cx, 'gcx>(&self, mir: &'cx Mir<'tcx>,
-                                                tcx: &TyCtxt<'cx, 'gcx, 'tcx>) -> Option<Field> {
-        let (place, by_ref) = if let Place::Projection(ref proj) = self {
-            if let ProjectionElem::Deref = proj.elem {
-                (&proj.base, true)
-            } else {
-                (self, false)
-            }
-        } else {
-            (self, false)
-        };
-
-        match place {
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Field(field, _ty) => {
-                    let base_ty = proj.base.ty(mir, *tcx).ty;
-
-                    if (base_ty.is_closure() || base_ty.is_generator()) &&
-                        (!by_ref || mir.upvar_decls[field.index()].by_ref)
-                    {
-                        Some(field)
-                    } else {
-                        None
-                    }
-                },
-                _ => None,
-            }
-            _ => None,
-        }
-    }
 }
 
 pub enum RvalueInitializationState {

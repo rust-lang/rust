@@ -1,7 +1,7 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
 use crate::borrow_check::nll::region_infer::RegionInferenceContext;
-use rustc::hir;
+use rustc::hir::{self, HirId};
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
@@ -27,6 +27,7 @@ use std::collections::BTreeMap;
 use std::mem;
 use std::rc::Rc;
 
+use syntax::ast::Name;
 use syntax_pos::{Span, DUMMY_SP};
 
 use crate::dataflow::indexes::{BorrowIndex, InitIndex, MoveOutIndex, MovePathIndex};
@@ -62,6 +63,19 @@ mod prefixes;
 mod used_muts;
 
 pub(crate) mod nll;
+
+// FIXME(eddyb) perhaps move this somewhere more centrally.
+#[derive(Debug)]
+crate struct Upvar {
+    name: Name,
+
+    var_hir_id: HirId,
+
+    /// If true, the capture is behind a reference.
+    by_ref: bool,
+
+    mutability: Mutability,
+}
 
 pub fn provide(providers: &mut Providers<'_>) {
     *providers = Providers {
@@ -126,6 +140,36 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         .as_local_hir_id(def_id)
         .expect("do_mir_borrowck: non-local DefId");
 
+    // Gather the upvars of a closure, if any.
+    let tables = tcx.typeck_tables_of(def_id);
+    let upvars: Vec<_> = tables
+        .upvar_list
+        .get(&def_id)
+        .into_iter()
+        .flatten()
+        .map(|upvar_id| {
+            let var_hir_id = upvar_id.var_path.hir_id;
+            let var_node_id = tcx.hir().hir_to_node_id(var_hir_id);
+            let capture = tables.upvar_capture(*upvar_id);
+            let by_ref = match capture {
+                ty::UpvarCapture::ByValue => false,
+                ty::UpvarCapture::ByRef(..) => true,
+            };
+            let mut upvar = Upvar {
+                name: tcx.hir().name(var_node_id),
+                var_hir_id,
+                by_ref,
+                mutability: Mutability::Not,
+            };
+            let bm = *tables.pat_binding_modes().get(var_hir_id)
+                .expect("missing binding mode");
+            if bm == ty::BindByValue(hir::MutMutable) {
+                upvar.mutability = Mutability::Mut;
+            }
+            upvar
+        })
+        .collect();
+
     // Replace all regions with fresh inference variables. This
     // requires first making our own copy of the MIR. This copy will
     // be modified (in place) to contain non-lexical lifetimes. It
@@ -168,6 +212,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         def_id,
         free_regions,
         mir,
+        &upvars,
         location_table,
         param_env,
         &mut flow_inits,
@@ -240,6 +285,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         used_mut_upvars: SmallVec::new(),
         borrow_set,
         dominators,
+        upvars,
     };
 
     let mut state = Flows::new(
@@ -475,6 +521,9 @@ pub struct MirBorrowckCtxt<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 
     /// Dominators for MIR
     dominators: Dominators<BasicBlock>,
+
+    /// Information about upvars not necessarily preserved in types or MIR
+    upvars: Vec<Upvar>,
 }
 
 // Check that:
@@ -1287,8 +1336,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let propagate_closure_used_mut_place = |this: &mut Self, place: &Place<'tcx>| {
             match *place {
                 Place::Projection { .. } => {
-                    if let Some(field) = place.is_upvar_field_projection(
-                            this.mir, &this.infcx.tcx) {
+                    if let Some(field) = this.is_upvar_field_projection(place) {
                         this.used_mut_upvars.push(field);
                     }
                 }
@@ -2057,7 +2105,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 place: place @ Place::Projection(_),
                 is_local_mutation_allowed: _,
             } => {
-                if let Some(field) = place.is_upvar_field_projection(self.mir, &self.infcx.tcx) {
+                if let Some(field) = self.is_upvar_field_projection(place) {
                     self.used_mut_upvars.push(field);
                 }
             }
@@ -2127,13 +2175,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     // Mutably borrowed data is mutable, but only if we have a
                                     // unique path to the `&mut`
                                     hir::MutMutable => {
-                                        let mode = match place.is_upvar_field_projection(
-                                            self.mir, &self.infcx.tcx)
-                                        {
+                                        let mode = match self.is_upvar_field_projection(place) {
                                             Some(field)
-                                                if {
-                                                    self.mir.upvar_decls[field.index()].by_ref
-                                                } =>
+                                                if self.upvars[field.index()].by_ref =>
                                             {
                                                 is_local_mutation_allowed
                                             }
@@ -2173,15 +2217,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     | ProjectionElem::ConstantIndex { .. }
                     | ProjectionElem::Subslice { .. }
                     | ProjectionElem::Downcast(..) => {
-                        let upvar_field_projection = place.is_upvar_field_projection(
-                            self.mir, &self.infcx.tcx);
+                        let upvar_field_projection = self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
-                            let decl = &self.mir.upvar_decls[field.index()];
+                            let upvar = &self.upvars[field.index()];
                             debug!(
-                                "decl.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
-                                decl, is_local_mutation_allowed, place
+                                "upvar.mutability={:?} local_mutation_is_allowed={:?} place={:?}",
+                                upvar, is_local_mutation_allowed, place
                             );
-                            match (decl.mutability, is_local_mutation_allowed) {
+                            match (upvar.mutability, is_local_mutation_allowed) {
                                 (Mutability::Not, LocalMutationIsAllowed::No)
                                 | (Mutability::Not, LocalMutationIsAllowed::ExceptUpvars) => {
                                     Err(place)
@@ -2227,6 +2270,41 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
                 }
             }
+        }
+    }
+
+    /// If `place` is a field projection, and the field is being projected from a closure type,
+    /// then returns the index of the field being projected. Note that this closure will always
+    /// be `self` in the current MIR, because that is the only time we directly access the fields
+    /// of a closure type.
+    pub fn is_upvar_field_projection(&self, place: &Place<'tcx>) -> Option<Field> {
+        let (place, by_ref) = if let Place::Projection(ref proj) = place {
+            if let ProjectionElem::Deref = proj.elem {
+                (&proj.base, true)
+            } else {
+                (place, false)
+            }
+        } else {
+            (place, false)
+        };
+
+        match place {
+            Place::Projection(ref proj) => match proj.elem {
+                ProjectionElem::Field(field, _ty) => {
+                    let tcx = self.infcx.tcx;
+                    let base_ty = proj.base.ty(self.mir, tcx).ty;
+
+                    if (base_ty.is_closure() || base_ty.is_generator()) &&
+                        (!by_ref || self.upvars[field.index()].by_ref)
+                    {
+                        Some(field)
+                    } else {
+                        None
+                    }
+                },
+                _ => None,
+            }
+            _ => None,
         }
     }
 }

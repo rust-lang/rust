@@ -18,16 +18,16 @@ impl Drop for Droppy {
 // START rustc.main.EraseRegions.before.mir
 // fn main() -> () {
 //     let mut _0: ();
-//     scope 1 {
-//     }
-//     scope 2 {
-//         let mut _1: Packed;
-//     }
 //     let mut _2: Aligned;
 //     let mut _3: Droppy;
 //     let mut _4: Aligned;
 //     let mut _5: Droppy;
 //     let mut _6: Aligned;
+//     scope 1 {
+//         let mut _1: Packed;
+//     }
+//     scope 2 {
+//     }
 //
 //     bb0: {
 //         StorageLive(_1);

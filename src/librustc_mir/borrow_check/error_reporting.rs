@@ -1088,7 +1088,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         | LocalKind::Temp => bug!("temporary or return pointer with a name"),
                         LocalKind::Var => "local variable ",
                         LocalKind::Arg
-                        if !self.mir.upvar_decls.is_empty()
+                        if !self.upvars.is_empty()
                             && local == Local::new(1) => {
                             "variable captured by `move` "
                         }
@@ -1632,11 +1632,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 match proj.elem {
                     ProjectionElem::Deref => {
                         let upvar_field_projection =
-                            place.is_upvar_field_projection(self.mir, &self.infcx.tcx);
+                            self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
-                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
-                            if self.mir.upvar_decls[var_index].by_ref {
+                            let name = self.upvars[var_index].name.to_string();
+                            if self.upvars[var_index].by_ref {
                                 buf.push_str(&name);
                             } else {
                                 buf.push_str(&format!("*{}", &name));
@@ -1694,10 +1694,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         autoderef = true;
 
                         let upvar_field_projection =
-                            place.is_upvar_field_projection(self.mir, &self.infcx.tcx);
+                            self.is_upvar_field_projection(place);
                         if let Some(field) = upvar_field_projection {
                             let var_index = field.index();
-                            let name = self.mir.upvar_decls[var_index].debug_name.to_string();
+                            let name = self.upvars[var_index].name.to_string();
                             buf.push_str(&name);
                         } else {
                             let field_name = self.describe_field(&proj.base, field);
