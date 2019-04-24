@@ -12,7 +12,7 @@ struct ArchiveConfig<'a> {
     dst: PathBuf,
     src: Option<PathBuf>,
     lib_search_paths: Vec<PathBuf>,
-    is_like_osx: bool,
+    use_gnu_style_archive: bool,
 }
 
 #[derive(Debug)]
@@ -36,7 +36,8 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             dst: output.to_path_buf(),
             src: input.map(|p| p.to_path_buf()),
             lib_search_paths: archive_search_paths(sess),
-            is_like_osx: sess.target.target.options.is_like_osx, // FIXME should probably check for linux
+            // FIXME test for linux and System V derivatives instead
+            use_gnu_style_archive: !sess.target.target.options.is_like_osx,
         };
 
         let (src_archives, entries) = if let Some(src) = &config.src {
@@ -128,13 +129,13 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         }
 
         let archive_file = File::create(&self.config.dst).unwrap();
-        let mut builder = if self.config.is_like_osx {
-            BuilderKind::Bsd(ar::Builder::new(archive_file))
-        } else {
+        let mut builder = if self.config.use_gnu_style_archive {
             BuilderKind::Gnu(ar::GnuBuilder::new(
                 archive_file,
                 self.entries.keys().map(|key| key.as_bytes().to_vec()).collect(),
             ))
+        } else {
+            BuilderKind::Bsd(ar::Builder::new(archive_file))
         };
 
         // Add all files
