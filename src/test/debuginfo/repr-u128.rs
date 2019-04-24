@@ -10,11 +10,6 @@ pub enum Foo {
     Hi = 1 << 64,
 }
 
-pub fn foo() -> Option<Foo> {
-    None
-}
-
-// CHECK: declare void @llvm.dbg.value
 fn main() {
     let vals = (Some(Foo::Lo), None::<Foo>);
 }
