@@ -159,19 +159,19 @@ LL |     false as bool;
    |     ^^^^^^^^^^^^^
 
 error: casting integer literal to f32 is unnecessary
-  --> $DIR/cast.rs:52:5
+  --> $DIR/cast.rs:64:5
    |
 LL |     100 as f32;
    |     ^^^^^^^^^^ help: try: `100_f32`
 
 error: casting integer literal to f64 is unnecessary
-  --> $DIR/cast.rs:53:5
+  --> $DIR/cast.rs:65:5
    |
 LL |     100 as f64;
    |     ^^^^^^^^^^ help: try: `100_f64`
 
 error: casting integer literal to f64 is unnecessary
-  --> $DIR/cast.rs:54:5
+  --> $DIR/cast.rs:66:5
    |
 LL |     100_i32 as f64;
    |     ^^^^^^^^^^^^^^ help: try: `100_f64`

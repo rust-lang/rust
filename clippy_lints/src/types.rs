@@ -1110,6 +1110,9 @@ fn fp_ty_mantissa_nbits(typ: Ty<'_>) -> u32 {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
+        if in_macro(expr.span) {
+            return;
+        }
         if let ExprKind::Cast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
             lint_fn_to_numeric_cast(cx, expr, ex, cast_from, cast_to);
