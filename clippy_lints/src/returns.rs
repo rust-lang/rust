@@ -157,7 +157,7 @@ impl Return {
             if let ast::StmtKind::Local(ref local) = stmt.node;
             // don't lint in the presence of type inference
             if local.ty.is_none();
-            if !local.attrs.iter().any(attr_is_cfg);
+            if local.attrs.is_empty();
             if let Some(ref initexpr) = local.init;
             if let ast::PatKind::Ident(_, ident, _) = local.pat.node;
             if let ast::ExprKind::Path(_, ref path) = retexpr.node;
