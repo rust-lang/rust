@@ -41,7 +41,7 @@ const LINE_FEED: char = '\n';
 const CARRIAGE_RETURN: char = '\r';
 
 fn auto_detect_newline_style(raw_input_text: &str) -> EffectiveNewlineStyle {
-    if let Some(pos) = raw_input_text.find(LINE_FEED) {
+    if let Some(pos) = raw_input_text.chars().position(|ch| ch == LINE_FEED) {
         let pos = pos.saturating_sub(1);
         if let Some(CARRIAGE_RETURN) = raw_input_text.chars().nth(pos) {
             EffectiveNewlineStyle::Windows
@@ -91,6 +91,14 @@ mod tests {
         assert_eq!(
             EffectiveNewlineStyle::Windows,
             auto_detect_newline_style("One\r\nTwo\r\nThree")
+        );
+    }
+
+    #[test]
+    fn auto_detects_windows_newlines_with_multibyte_char_on_first_line() {
+        assert_eq!(
+            EffectiveNewlineStyle::Windows,
+            auto_detect_newline_style("A 🎢 of a first line\r\nTwo\r\nThree")
         );
     }
 
