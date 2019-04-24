@@ -3,7 +3,7 @@
 // run-pass
 
 #![allow(unused_variables)]
-#![feature(async_await, await_macro, futures_api)]
+#![feature(async_await, await_macro)]
 
 extern crate arc_wake;
 

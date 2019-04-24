@@ -9,6 +9,7 @@ use core::task::{Context, Poll};
 use core::ops::{Drop, Generator, GeneratorState};
 
 #[doc(inline)]
+#[stable(feature = "futures_api", since = "1.36.0")]
 pub use core::future::*;
 
 /// Wrap a generator in a future.

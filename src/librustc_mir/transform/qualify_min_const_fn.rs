@@ -60,13 +60,14 @@ pub fn is_min_const_fn(
     }
 
     for local in &mir.local_decls {
-        check_ty(tcx, local.ty, local.source_info.span)?;
+        check_ty(tcx, local.ty, local.source_info.span, def_id)?;
     }
     // impl trait is gone in MIR, so check the return type manually
     check_ty(
         tcx,
         tcx.fn_sig(def_id).output().skip_binder(),
         mir.local_decls.iter().next().unwrap().source_info.span,
+        def_id,
     )?;
 
     for bb in mir.basic_blocks() {
@@ -82,6 +83,7 @@ fn check_ty(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: ty::Ty<'tcx>,
     span: Span,
+    fn_def_id: DefId,
 ) -> McfResult {
     for ty in ty.walk() {
         match ty.sty {
@@ -91,7 +93,9 @@ fn check_ty(
             )),
             ty::Opaque(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
-                return Err((span, "function pointers in const fn are unstable".into()))
+                if !tcx.const_fn_is_allowed_fn_ptr(fn_def_id) {
+                    return Err((span, "function pointers in const fn are unstable".into()))
+                }
             }
             ty::Dynamic(preds, _) => {
                 for pred in preds.iter() {

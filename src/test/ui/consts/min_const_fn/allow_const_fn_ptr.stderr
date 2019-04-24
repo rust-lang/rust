@@ -1,0 +1,12 @@
+error[E0723]: function pointers in const fn are unstable
+  --> $DIR/allow_const_fn_ptr.rs:4:16
+   |
+LL | const fn error(_: fn()) {}
+   |                ^
+   |
+   = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
+   = help: add #![feature(const_fn)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0723`.
