@@ -7,7 +7,7 @@ use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
 use rustc::infer::canonical::QueryRegionConstraint;
-use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, Mir};
+use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, Body};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
@@ -32,7 +32,7 @@ use std::rc::Rc;
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'gcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'gcx, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -72,7 +72,7 @@ where
     elements: &'me RegionValueElements,
 
     /// MIR we are analyzing.
-    mir: &'me Mir<'tcx>,
+    mir: &'me Body<'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'me MoveData<'tcx>,

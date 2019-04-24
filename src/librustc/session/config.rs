@@ -141,7 +141,7 @@ pub enum OutputType {
     Bitcode,
     Assembly,
     LlvmAssembly,
-    Mir,
+    Body,
     Metadata,
     Object,
     Exe,
@@ -157,7 +157,7 @@ impl OutputType {
             OutputType::Bitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
-            | OutputType::Mir
+            | OutputType::Body
             | OutputType::Object
             | OutputType::Metadata => false,
         }
@@ -168,7 +168,7 @@ impl OutputType {
             OutputType::Bitcode => "llvm-bc",
             OutputType::Assembly => "asm",
             OutputType::LlvmAssembly => "llvm-ir",
-            OutputType::Mir => "mir",
+            OutputType::Body => "mir",
             OutputType::Object => "obj",
             OutputType::Metadata => "metadata",
             OutputType::Exe => "link",
@@ -180,7 +180,7 @@ impl OutputType {
         Some(match shorthand {
             "asm" => OutputType::Assembly,
             "llvm-ir" => OutputType::LlvmAssembly,
-            "mir" => OutputType::Mir,
+            "mir" => OutputType::Body,
             "llvm-bc" => OutputType::Bitcode,
             "obj" => OutputType::Object,
             "metadata" => OutputType::Metadata,
@@ -196,7 +196,7 @@ impl OutputType {
             OutputType::Bitcode.shorthand(),
             OutputType::Assembly.shorthand(),
             OutputType::LlvmAssembly.shorthand(),
-            OutputType::Mir.shorthand(),
+            OutputType::Body.shorthand(),
             OutputType::Object.shorthand(),
             OutputType::Metadata.shorthand(),
             OutputType::Exe.shorthand(),
@@ -209,7 +209,7 @@ impl OutputType {
             OutputType::Bitcode => "bc",
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
-            OutputType::Mir => "mir",
+            OutputType::Body => "mir",
             OutputType::Object => "o",
             OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
@@ -276,7 +276,7 @@ impl OutputTypes {
             OutputType::Bitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
-            | OutputType::Mir
+            | OutputType::Body
             | OutputType::Object
             | OutputType::Exe => true,
             OutputType::Metadata | OutputType::DepInfo => false,
@@ -460,7 +460,7 @@ pub enum PrintRequest {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BorrowckMode {
-    Mir,
+    Body,
     Compare,
     Migrate,
 }
@@ -471,7 +471,7 @@ impl BorrowckMode {
     pub fn migrate(self) -> bool {
         match self {
             BorrowckMode::Compare => false,
-            BorrowckMode::Mir => false,
+            BorrowckMode::Body => false,
             BorrowckMode::Migrate => true,
         }
     }
@@ -480,7 +480,7 @@ impl BorrowckMode {
     pub fn use_ast(self) -> bool {
         match self {
             BorrowckMode::Compare => true,
-            BorrowckMode::Mir => false,
+            BorrowckMode::Body => false,
             BorrowckMode::Migrate => false,
         }
     }
@@ -2315,7 +2315,7 @@ pub fn build_session_options_and_crate_config(
 
     let borrowck_mode = match debugging_opts.borrowck.as_ref().map(|s| &s[..]) {
         None | Some("migrate") => BorrowckMode::Migrate,
-        Some("mir") => BorrowckMode::Mir,
+        Some("mir") => BorrowckMode::Body,
         Some("compare") => BorrowckMode::Compare,
         Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     };

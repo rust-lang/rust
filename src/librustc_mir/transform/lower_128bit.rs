@@ -13,7 +13,7 @@ impl MirPass for Lower128Bit {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         let debugging_override = tcx.sess.opts.debugging_opts.lower_128bit_ops;
         let target_default = tcx.sess.host.options.i128_lowering;
         if !debugging_override.unwrap_or(target_default) {
@@ -25,7 +25,7 @@ impl MirPass for Lower128Bit {
 }
 
 impl Lower128Bit {
-    fn lower_128bit_ops<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx>) {
+    fn lower_128bit_ops<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Body<'tcx>) {
         let mut new_blocks = Vec::new();
         let cur_len = mir.basic_blocks().len();
 

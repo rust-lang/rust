@@ -16,7 +16,7 @@
 //! [`FakeRead`]: rustc::mir::StatementKind::FakeRead
 //! [`Nop`]: rustc::mir::StatementKind::Nop
 
-use rustc::mir::{BasicBlock, BorrowKind, Rvalue, Location, Mir};
+use rustc::mir::{BasicBlock, BorrowKind, Rvalue, Location, Body};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -30,7 +30,7 @@ impl MirPass for CleanupNonCodegenStatements {
     fn run_pass<'a, 'tcx>(&self,
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         let mut delete = DeleteNonCodegenStatements;
         delete.visit_mir(mir);
     }

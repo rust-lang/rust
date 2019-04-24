@@ -5,16 +5,16 @@ use crate::dataflow::BitDenotation;
 
 #[derive(Copy, Clone)]
 pub struct MaybeStorageLive<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
 }
 
 impl<'a, 'tcx: 'a> MaybeStorageLive<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>)
+    pub fn new(mir: &'a Body<'tcx>)
                -> Self {
         MaybeStorageLive { mir }
     }
 
-    pub fn mir(&self) -> &Mir<'tcx> {
+    pub fn mir(&self) -> &Body<'tcx> {
         self.mir
     }
 }

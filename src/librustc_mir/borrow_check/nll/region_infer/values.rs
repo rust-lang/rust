@@ -1,4 +1,4 @@
-use rustc::mir::{BasicBlock, Location, Mir};
+use rustc::mir::{BasicBlock, Location, Body};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_data_structures::fx::FxHashMap;
@@ -20,7 +20,7 @@ crate struct RegionValueElements {
 }
 
 impl RegionValueElements {
-    crate fn new(mir: &Mir<'_>) -> Self {
+    crate fn new(mir: &Body<'_>) -> Self {
         let mut num_points = 0;
         let statements_before_block: IndexVec<BasicBlock, usize> = mir.basic_blocks()
             .iter()
@@ -92,7 +92,7 @@ impl RegionValueElements {
     /// Pushes all predecessors of `index` onto `stack`.
     crate fn push_predecessors(
         &self,
-        mir: &Mir<'_>,
+        mir: &Body<'_>,
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {

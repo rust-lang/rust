@@ -11,7 +11,7 @@ fn test() {
     } else {
         x = 2;
         x = 3;      //~ ERROR (Ast) [E0384]
-                    //~^ ERROR (Mir) [E0384]
+                    //~^ ERROR (Body) [E0384]
     }
 }
 
@@ -23,7 +23,7 @@ fn test_in_loop() {
         } else {
             x = 2;
             x = 3;      //~ ERROR (Ast) [E0384]
-                        //~^ ERROR (Mir) [E0384]
+                        //~^ ERROR (Body) [E0384]
         }
     }
 }
@@ -33,10 +33,10 @@ fn test_using_loop() {
     loop {
         if true {
             x = 1;      //~ ERROR (Ast) [E0384]
-                        //~^ ERROR (Mir) [E0384]
+                        //~^ ERROR (Body) [E0384]
         } else {
             x = 2;      //~ ERROR (Ast) [E0384]
-                        //~^ ERROR (Mir) [E0384]
+                        //~^ ERROR (Body) [E0384]
         }
     }
 }

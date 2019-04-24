@@ -3,7 +3,7 @@
 
 
 use rustc::hir::def::Def;
-use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind, Static, StaticKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
@@ -30,7 +30,7 @@ impl MirPass for ConstProp {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           source: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -71,7 +71,7 @@ type Const<'tcx> = (OpTy<'tcx>, Span);
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
     ecx: InterpretCx<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
-    mir: &'mir Mir<'tcx>,
+    mir: &'mir Body<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     source: MirSource<'tcx>,
     places: IndexVec<Local, Option<Const<'tcx>>>,
@@ -104,7 +104,7 @@ impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'a, 'b, 'tcx> {
 
 impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
     fn new(
-        mir: &'mir Mir<'tcx>,
+        mir: &'mir Body<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'a, 'mir, 'tcx> {
@@ -488,7 +488,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(mir: &Mir<'_>) -> IndexVec<Local, bool> {
+    fn check(mir: &Body<'_>) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(true, &mir.local_decls),
             found_assignment: IndexVec::from_elem(false, &mir.local_decls),

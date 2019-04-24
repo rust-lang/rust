@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::hir::Node;
-use rustc::mir::{self, BindingForm, Constant, ClearCrossCrate, Local, Location, Mir};
+use rustc::mir::{self, BindingForm, Constant, ClearCrossCrate, Local, Location, Body};
 use rustc::mir::{
     Mutability, Operand, Place, PlaceBase, Projection, ProjectionElem, Static, StaticKind,
 };
@@ -172,14 +172,14 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         let span = match error_access {
             AccessKind::Move => {
                 err = self.infcx.tcx
-                    .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
+                    .cannot_move_out_of(span, &(item_msg + &reason), Origin::Body);
                 err.span_label(span, "cannot move");
                 err.buffer(&mut self.errors_buffer);
                 return;
             }
             AccessKind::Mutate => {
                 err = self.infcx.tcx
-                    .cannot_assign(span, &(item_msg + &reason), Origin::Mir);
+                    .cannot_assign(span, &(item_msg + &reason), Origin::Body);
                 act = "assign";
                 acted_on = "written";
                 span
@@ -194,7 +194,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     borrow_span,
                     &item_msg,
                     &reason,
-                    Origin::Mir,
+                    Origin::Body,
                 );
                 borrow_spans.var_span_label(
                     &mut err,
@@ -559,7 +559,7 @@ fn suggest_ampmut_self<'cx, 'gcx, 'tcx>(
 // by trying (3.), then (2.) and finally falling back on (1.).
 fn suggest_ampmut<'cx, 'gcx, 'tcx>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
     opt_ty_info: Option<Span>,

@@ -73,7 +73,7 @@ LL |     let c2 = to_fn_mut(|| set(&mut *x.f));
 LL | }
    | - first borrow ends here
 
-error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `x` as mutable more than once at a time (Body)
   --> $DIR/borrowck-closures-two-mut.rs:14:24
    |
 LL |     let c1 = to_fn_mut(|| x = 4);
@@ -88,7 +88,7 @@ LL |
 LL |     drop((c1, c2));
    |           -- first borrow later used here
 
-error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `x` as mutable more than once at a time (Body)
   --> $DIR/borrowck-closures-two-mut.rs:26:24
    |
 LL |     let c1 = to_fn_mut(|| set(&mut x));
@@ -103,7 +103,7 @@ LL |
 LL |     drop((c1, c2));
    |           -- first borrow later used here
 
-error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `x` as mutable more than once at a time (Body)
   --> $DIR/borrowck-closures-two-mut.rs:34:24
    |
 LL |     let c1 = to_fn_mut(|| x = 5);
@@ -118,7 +118,7 @@ LL |
 LL |     drop((c1, c2));
    |           -- first borrow later used here
 
-error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `x` as mutable more than once at a time (Body)
   --> $DIR/borrowck-closures-two-mut.rs:42:24
    |
 LL |     let c1 = to_fn_mut(|| x = 5);
@@ -133,7 +133,7 @@ LL |     let c2 = to_fn_mut(|| { let _y = to_fn_mut(|| set(&mut x)); }); // (nes
 LL |     drop((c1, c2));
    |           -- first borrow later used here
 
-error[E0499]: cannot borrow `x` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `x` as mutable more than once at a time (Body)
   --> $DIR/borrowck-closures-two-mut.rs:55:24
    |
 LL |     let c1 = to_fn_mut(|| set(&mut *x.f));

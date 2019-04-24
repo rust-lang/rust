@@ -6,7 +6,7 @@ use crate::borrow_check::Upvar;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::mir::Mir;
+use rustc::mir::Body;
 use rustc::ty::subst::{SubstsRef, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::ty::print::RegionHighlightMode;
@@ -144,7 +144,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn give_region_a_name(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         fr: RegionVid,
@@ -319,7 +319,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_anonymous_region_appears_in_arguments(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,
@@ -347,7 +347,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_can_match_hir_ty_from_argument(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         mir_def_id: DefId,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
@@ -393,7 +393,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_we_cannot_match_hir_ty(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         needle_fr: RegionVid,
         argument_ty: Ty<'tcx>,
         counter: &mut usize,
@@ -663,7 +663,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn give_name_if_anonymous_region_appears_in_output(
         &self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         mir_def_id: DefId,
         fr: RegionVid,
         counter: &mut usize,

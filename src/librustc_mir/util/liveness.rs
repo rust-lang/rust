@@ -58,7 +58,7 @@ pub struct LivenessResult {
 /// `mir`. The liveness mode `mode` determines what sorts of uses are
 /// considered to make a variable live (e.g., do drops count?).
 pub fn liveness_of_locals<'tcx>(
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
 ) -> LivenessResult {
     let num_live_vars = mir.local_decls.len();
 
@@ -259,7 +259,7 @@ pub fn dump_mir<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pass_name: &str,
     source: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     result: &LivenessResult,
 ) {
     if !dump_enabled(tcx, pass_name, source) {
@@ -277,7 +277,7 @@ fn dump_matched_mir_node<'a, 'tcx>(
     pass_name: &str,
     node_path: &str,
     source: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     result: &LivenessResult,
 ) {
     let mut file_path = PathBuf::new();
@@ -298,7 +298,7 @@ fn dump_matched_mir_node<'a, 'tcx>(
 pub fn write_mir_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     src: MirSource<'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     w: &mut dyn Write,
     result: &LivenessResult,
 ) -> io::Result<()> {

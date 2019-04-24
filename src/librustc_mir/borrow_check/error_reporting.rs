@@ -91,7 +91,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 desired_action.as_noun(),
                 &self.describe_place_with_options(moved_place, IncludingDowncast(true))
                     .unwrap_or_else(|| "_".to_owned()),
-                Origin::Mir,
+                Origin::Body,
             );
             err.span_label(span, format!("use of possibly uninitialized {}", item_msg));
 
@@ -122,7 +122,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 desired_action.as_noun(),
                 msg,
                 self.describe_place_with_options(&moved_place, IncludingDowncast(true)),
-                Origin::Mir,
+                Origin::Body,
             );
 
             self.add_moved_or_invoked_closure_note(
@@ -289,7 +289,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut err = tcx.cannot_move_when_borrowed(
             span,
             &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
-            Origin::Mir,
+            Origin::Body,
         );
         err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
         err.span_label(span, format!("move out of {} occurs here", value_msg));
@@ -334,7 +334,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             borrow_span,
             &self.describe_place(&borrow.borrowed_place)
                 .unwrap_or_else(|| "_".to_owned()),
-            Origin::Mir,
+            Origin::Body,
         );
 
         borrow_spans.var_span_label(&mut err, {
@@ -401,7 +401,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     rgt,
                     &msg_borrow,
                     None,
-                    Origin::Mir,
+                    Origin::Body,
                 )
             }
             (BorrowKind::Mut { .. }, _, lft, BorrowKind::Shared, rgt, _) => {
@@ -416,7 +416,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     rgt,
                     &msg_borrow,
                     None,
-                    Origin::Mir,
+                    Origin::Body,
                 )
             }
 
@@ -429,7 +429,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     issued_span,
                     &msg_borrow,
                     None,
-                    Origin::Mir,
+                    Origin::Body,
                 )
             }
 
@@ -440,7 +440,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     &desc_place,
                     issued_span,
                     None,
-                    Origin::Mir,
+                    Origin::Body,
                 )
             }
 
@@ -451,7 +451,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     issued_span,
                     &desc_place,
                     "mutably borrow",
-                    Origin::Mir,
+                    Origin::Body,
                 );
                 borrow_spans.var_span_label(
                     &mut err,
@@ -474,7 +474,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "it",
                     "",
                     None,
-                    Origin::Mir,
+                    Origin::Body,
                 )
             },
 
@@ -490,7 +490,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "",
                     None,
                     second_borrow_desc,
-                    Origin::Mir,
+                    Origin::Body,
                 )
             }
 
@@ -506,7 +506,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     "",
                     None,
                     second_borrow_desc,
-                    Origin::Mir,
+                    Origin::Body,
                 )
             }
 
@@ -843,7 +843,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mut err = self.infcx.tcx.path_does_not_live_long_enough(
             borrow_span,
             &format!("`{}`", name),
-            Origin::Mir,
+            Origin::Body,
         );
 
         if let Some(annotation) = self.annotate_argument_and_return_for_borrow(borrow) {
@@ -933,7 +933,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = self.infcx
             .tcx
-            .cannot_borrow_across_destructor(borrow_span, Origin::Mir);
+            .cannot_borrow_across_destructor(borrow_span, Origin::Body);
 
         let what_was_dropped = match self.describe_place(place) {
             Some(name) => format!("`{}`", name.as_str()),
@@ -986,7 +986,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = self.infcx
             .tcx
-            .thread_local_value_does_not_live_long_enough(borrow_span, Origin::Mir);
+            .thread_local_value_does_not_live_long_enough(borrow_span, Origin::Body);
 
         err.span_label(
             borrow_span,
@@ -1029,7 +1029,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
 
         let tcx = self.infcx.tcx;
-        let mut err = tcx.temporary_value_borrowed_for_too_long(proper_span, Origin::Mir);
+        let mut err = tcx.temporary_value_borrowed_for_too_long(proper_span, Origin::Body);
         err.span_label(
             proper_span,
             "creates a temporary which is freed while still in use",
@@ -1133,7 +1133,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             return_span,
             reference_desc,
             &place_desc,
-            Origin::Mir,
+            Origin::Body,
         );
 
         if return_span != borrow_span {
@@ -1158,7 +1158,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             args_span,
             captured_var,
             var_span,
-          Origin::Mir,
+          Origin::Body,
         );
 
         let suggestion = match tcx.sess.source_map().span_to_snippet(args_span) {
@@ -1214,7 +1214,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "function"
         };
 
-        let mut err = tcx.borrowed_data_escapes_closure(escape_span, escapes_from, Origin::Mir);
+        let mut err = tcx.borrowed_data_escapes_closure(escape_span, escapes_from, Origin::Body);
 
         err.span_label(
             upvar_span,
@@ -1363,7 +1363,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 loan_span,
                 &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
                 "assign",
-                Origin::Mir,
+                Origin::Body,
             );
             loan_spans.var_span_label(
                 &mut err,
@@ -1379,7 +1379,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             span,
             loan_span,
             &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
-            Origin::Mir,
+            Origin::Body,
         );
 
         loan_spans.var_span_label(
@@ -1444,7 +1444,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             span,
             place_description.as_ref().map(AsRef::as_ref).unwrap_or("_"),
             from_arg,
-            Origin::Mir,
+            Origin::Body,
         );
         let msg = if from_arg {
             "cannot assign to immutable argument"

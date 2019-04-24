@@ -70,7 +70,7 @@ LL |
 LL | }
    | - first borrow ends here
 
-error[E0499]: cannot borrow `data` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Body)
   --> $DIR/loan_ends_mid_block_vec.rs:13:5
    |
 LL |     let slice = &mut data;
@@ -82,7 +82,7 @@ LL |     data.push('d');
 LL |     capitalize(slice);
    |                ----- first borrow later used here
 
-error[E0499]: cannot borrow `data` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Body)
   --> $DIR/loan_ends_mid_block_vec.rs:16:5
    |
 LL |     let slice = &mut data;
@@ -94,7 +94,7 @@ LL |     data.push('e');
 LL |     capitalize(slice);
    |                ----- first borrow later used here
 
-error[E0499]: cannot borrow `data` as mutable more than once at a time (Mir)
+error[E0499]: cannot borrow `data` as mutable more than once at a time (Body)
   --> $DIR/loan_ends_mid_block_vec.rs:19:5
    |
 LL |     let slice = &mut data;

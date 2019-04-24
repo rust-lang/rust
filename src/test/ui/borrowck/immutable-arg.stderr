@@ -6,7 +6,7 @@ LL | fn foo(_x: u32) {
 LL |     _x = 4;
    |     ^^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign to immutable argument `_x` (Mir)
+error[E0384]: cannot assign to immutable argument `_x` (Body)
   --> $DIR/immutable-arg.rs:4:5
    |
 LL | fn foo(_x: u32) {

@@ -473,7 +473,7 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
                 metadata_config.emit_obj = true;
                 allocator_config.emit_obj = true;
             },
-            OutputType::Mir => {}
+            OutputType::Body => {}
             OutputType::DepInfo => {}
         }
     }
@@ -625,7 +625,7 @@ fn produce_final_output_artifacts(sess: &Session,
                 user_wants_objects = true;
                 copy_if_one_unit(OutputType::Object, true);
             }
-            OutputType::Mir |
+            OutputType::Body |
             OutputType::Metadata |
             OutputType::Exe |
             OutputType::DepInfo => {}

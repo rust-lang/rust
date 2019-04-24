@@ -28,7 +28,7 @@ fn foo2() {
     if value.is_empty() {
         my_struct.field.push_str("Hello, world!");
         //~^ ERROR (Ast) [E0502]
-        //~| ERROR (Mir) [E0502]
+        //~| ERROR (Body) [E0502]
     }
     drop(value);
 }

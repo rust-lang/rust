@@ -19,7 +19,7 @@ use std::ops::Bound;
 use crate::util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     const_context: bool,
     min_const_fn: bool,
     source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
@@ -36,7 +36,7 @@ impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn new(
         const_context: bool,
         min_const_fn: bool,
-        mir: &'a Mir<'tcx>,
+        mir: &'a Body<'tcx>,
         source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         param_env: ty::ParamEnv<'tcx>,

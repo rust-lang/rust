@@ -29,7 +29,7 @@ LL |             x = 1;
 LL |             x = 2;
    |             ^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
+error[E0384]: cannot assign twice to immutable variable `x` (Body)
   --> $DIR/liveness-assign-imm-local-notes.rs:13:9
    |
 LL |     let x;
@@ -40,7 +40,7 @@ LL |         x = 2;
 LL |         x = 3;
    |         ^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
+error[E0384]: cannot assign twice to immutable variable `x` (Body)
   --> $DIR/liveness-assign-imm-local-notes.rs:25:13
    |
 LL |         let x;
@@ -51,7 +51,7 @@ LL |             x = 2;
 LL |             x = 3;
    |             ^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
+error[E0384]: cannot assign twice to immutable variable `x` (Body)
   --> $DIR/liveness-assign-imm-local-notes.rs:35:13
    |
 LL |     let x;
@@ -60,7 +60,7 @@ LL |     let x;
 LL |             x = 1;
    |             ^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
+error[E0384]: cannot assign twice to immutable variable `x` (Body)
   --> $DIR/liveness-assign-imm-local-notes.rs:38:13
    |
 LL |     let x;

@@ -6,7 +6,7 @@ use crate::borrow_check::nll::region_infer::values::LivenessValues;
 use rustc::infer::InferCtxt;
 use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
-use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, PlaceBase, Rvalue};
+use rustc::mir::{BasicBlock, BasicBlockData, Location, Body, Place, PlaceBase, Rvalue};
 use rustc::mir::{SourceInfo, Statement, Terminator};
 use rustc::mir::UserTypeProjection;
 use rustc::ty::fold::TypeFoldable;
@@ -18,7 +18,7 @@ pub(super) fn generate_constraints<'cx, 'gcx, 'tcx>(
     liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     borrow_set: &BorrowSet<'tcx>,
 ) {
     let mut cg = ConstraintGeneration {

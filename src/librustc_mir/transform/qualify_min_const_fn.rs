@@ -11,7 +11,7 @@ type McfResult = Result<(), (Span, Cow<'static, str>)>;
 pub fn is_min_const_fn(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
 ) -> McfResult {
     let mut current = def_id;
     loop {
@@ -130,7 +130,7 @@ fn check_ty(
 
 fn check_rvalue(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     rvalue: &Rvalue<'tcx>,
     span: Span,
 ) -> McfResult {
@@ -210,7 +210,7 @@ fn check_rvalue(
 
 fn check_statement(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     statement: &Statement<'tcx>,
 ) -> McfResult {
     let span = statement.source_info.span;
@@ -240,7 +240,7 @@ fn check_statement(
 
 fn check_operand(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     operand: &Operand<'tcx>,
     span: Span,
 ) -> McfResult {
@@ -254,7 +254,7 @@ fn check_operand(
 
 fn check_place(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     place: &Place<'tcx>,
     span: Span,
 ) -> McfResult {
@@ -280,7 +280,7 @@ fn check_place(
 
 fn check_terminator(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     terminator: &Terminator<'tcx>,
 ) -> McfResult {
     let span = terminator.source_info.span;

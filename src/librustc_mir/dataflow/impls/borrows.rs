@@ -1,7 +1,7 @@
 use crate::borrow_check::borrow_set::{BorrowSet, BorrowData};
 use crate::borrow_check::place_ext::PlaceExt;
 
-use rustc::mir::{self, Location, Place, PlaceBase, Mir};
+use rustc::mir::{self, Location, Place, PlaceBase, Body};
 use rustc::ty::TyCtxt;
 use rustc::ty::RegionVid;
 
@@ -31,7 +31,7 @@ newtype_index! {
 /// borrows in compact bitvectors.
 pub struct Borrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
 
     borrow_set: Rc<BorrowSet<'tcx>>,
     borrows_out_of_scope_at_location: FxHashMap<Location, Vec<BorrowIndex>>,
@@ -48,7 +48,7 @@ struct StackEntry {
 }
 
 fn precompute_borrows_out_of_scope<'tcx>(
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     borrows_out_of_scope_at_location: &mut FxHashMap<Location, Vec<BorrowIndex>>,
     borrow_index: BorrowIndex,
@@ -136,7 +136,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
 impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     crate fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        mir: &'a Mir<'tcx>,
+        mir: &'a Body<'tcx>,
         nonlexical_regioncx: Rc<RegionInferenceContext<'tcx>>,
         borrow_set: &Rc<BorrowSet<'tcx>>,
     ) -> Self {

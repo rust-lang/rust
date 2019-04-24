@@ -8,7 +8,7 @@ use std::fmt;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Origin {
     Ast,
-    Mir,
+    Body,
 }
 
 impl fmt::Display for Origin {
@@ -25,7 +25,7 @@ impl fmt::Display for Origin {
         });
         if display_origin {
             match *self {
-                Origin::Mir => write!(w, " (Mir)"),
+                Origin::Body => write!(w, " (Body)"),
                 Origin::Ast => write!(w, " (Ast)"),
             }
         } else {
@@ -40,7 +40,7 @@ impl Origin {
     pub fn should_emit_errors(self, mode: BorrowckMode) -> bool {
         match self {
             Origin::Ast => mode.use_ast(),
-            Origin::Mir => true,
+            Origin::Body => true,
         }
     }
 }

@@ -8,7 +8,7 @@ LL |     box (x, x)
    |
    = note: move occurs because `x` has type `std::boxed::Box<isize>`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value: `x` (Mir)
+error[E0382]: use of moved value: `x` (Body)
   --> $DIR/moves-based-on-type-tuple.rs:6:13
    |
 LL | fn dup(x: Box<isize>) -> Box<(Box<isize>,Box<isize>)> {

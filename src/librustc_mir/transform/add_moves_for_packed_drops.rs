@@ -43,7 +43,7 @@ impl MirPass for AddMovesForPackedDrops {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>)
+                          mir: &mut Body<'tcx>)
     {
         debug!("add_moves_for_packed_drops({:?} @ {:?})", src, mir.span);
         add_moves_for_packed_drops(tcx, mir, src.def_id());
@@ -52,7 +52,7 @@ impl MirPass for AddMovesForPackedDrops {
 
 pub fn add_moves_for_packed_drops<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &mut Mir<'tcx>,
+    mir: &mut Body<'tcx>,
     def_id: DefId)
 {
     let patch = add_moves_for_packed_drops_patch(tcx, mir, def_id);
@@ -61,7 +61,7 @@ pub fn add_moves_for_packed_drops<'a, 'tcx>(
 
 fn add_moves_for_packed_drops_patch<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     def_id: DefId)
     -> MirPatch<'tcx>
 {
@@ -92,7 +92,7 @@ fn add_moves_for_packed_drops_patch<'a, 'tcx>(
 
 fn add_move_for_packed_drop<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     patch: &mut MirPatch<'tcx>,
     terminator: &Terminator<'tcx>,
     loc: Location,

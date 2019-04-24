@@ -11,7 +11,7 @@ pub struct RemoveNoopLandingPads;
 
 pub fn remove_noop_landing_pads<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    mir: &mut Mir<'tcx>)
+    mir: &mut Body<'tcx>)
 {
     if tcx.sess.no_landing_pads() {
         return
@@ -25,7 +25,7 @@ impl MirPass for RemoveNoopLandingPads {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         remove_noop_landing_pads(tcx, mir);
     }
 }
@@ -34,7 +34,7 @@ impl RemoveNoopLandingPads {
     fn is_nop_landing_pad(
         &self,
         bb: BasicBlock,
-        mir: &Mir<'_>,
+        mir: &Body<'_>,
         nop_landing_pads: &BitSet<BasicBlock>,
     ) -> bool {
         for stmt in &mir[bb].statements {
@@ -86,7 +86,7 @@ impl RemoveNoopLandingPads {
         }
     }
 
-    fn remove_nop_landing_pads(&self, mir: &mut Mir<'_>) {
+    fn remove_nop_landing_pads(&self, mir: &mut Body<'_>) {
         // make sure there's a single resume block
         let resume_block = {
             let patch = MirPatch::new(mir);

@@ -97,7 +97,7 @@ impl SuppressRegionErrors {
 
             // If we're on MIR or Compare mode, don't report AST region errors as they should
             // be reported by NLL
-            BorrowckMode::Compare | BorrowckMode::Mir => SuppressRegionErrors { suppressed: true },
+            BorrowckMode::Compare | BorrowckMode::Body => SuppressRegionErrors { suppressed: true },
         }
     }
 }

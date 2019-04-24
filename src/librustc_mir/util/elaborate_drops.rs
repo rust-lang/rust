@@ -74,7 +74,7 @@ pub trait DropElaborator<'a, 'tcx: 'a> : fmt::Debug {
     type Path : Copy + fmt::Debug;
 
     fn patch(&mut self) -> &mut MirPatch<'tcx>;
-    fn mir(&self) -> &'a Mir<'tcx>;
+    fn mir(&self) -> &'a Body<'tcx>;
     fn tcx(&self) -> TyCtxt<'a, 'tcx, 'tcx>;
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
 

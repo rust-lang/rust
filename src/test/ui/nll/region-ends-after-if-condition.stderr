@@ -22,7 +22,7 @@ LL |         my_struct.field.push_str("Hello, world!");
 LL | }
    | - immutable borrow ends here
 
-error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Mir)
+error[E0502]: cannot borrow `my_struct.field` as mutable because it is also borrowed as immutable (Body)
   --> $DIR/region-ends-after-if-condition.rs:29:9
    |
 LL |     let value = &my_struct.field;

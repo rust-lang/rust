@@ -21,7 +21,7 @@ fn nll_fail() {
     loop {
         my_struct.field.push_str("Hello, world!");
         //~^ ERROR (Ast) [E0499]
-        //~| ERROR (Mir) [E0499]
+        //~| ERROR (Body) [E0499]
         value.len();
         return;
     }

@@ -1025,7 +1025,7 @@ pub fn start_codegen<'tcx>(
         tcx.print_debug_stats();
     }
 
-    if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+    if tcx.sess.opts.output_types.contains_key(&OutputType::Body) {
         if let Err(e) = mir::transform::dump_mir::emit_mir(tcx, outputs) {
             tcx.sess.err(&format!("could not emit MIR: {}", e));
             tcx.sess.abort_if_errors();

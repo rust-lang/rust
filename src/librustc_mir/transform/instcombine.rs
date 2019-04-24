@@ -1,6 +1,6 @@
 //! Performs various peephole optimizations.
 
-use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, ProjectionElem, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, PlaceBase, Body, Operand, ProjectionElem, Rvalue, Local};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -14,7 +14,7 @@ impl MirPass for InstCombine {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return
@@ -63,13 +63,13 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
 
 /// Finds optimization opportunities on the MIR.
 struct OptimizationFinder<'b, 'a, 'tcx:'a+'b> {
-    mir: &'b Mir<'tcx>,
+    mir: &'b Body<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     optimizations: OptimizationList<'tcx>,
 }
 
 impl<'b, 'a, 'tcx:'b> OptimizationFinder<'b, 'a, 'tcx> {
-    fn new(mir: &'b Mir<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'a, 'tcx> {
+    fn new(mir: &'b Body<'tcx>, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> OptimizationFinder<'b, 'a, 'tcx> {
         OptimizationFinder {
             mir,
             tcx,

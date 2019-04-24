@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         (span, original_path, kind)
                     },
                 };
-            let origin = Origin::Mir;
+            let origin = Origin::Body;
             debug!("report: original_path={:?} span={:?}, kind={:?} \
                    original_path.is_upvar_field_projection={:?}", original_path, span, kind,
                    self.is_upvar_field_projection(original_path));

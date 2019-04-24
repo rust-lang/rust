@@ -52,7 +52,7 @@ LL |     let c = &mut data.0;
 LL |     data.0 = 'g';
    |     ^^^^^^^^^^^^ assignment to borrowed `data.0` occurs here
 
-error[E0506]: cannot assign to `data.0` because it is borrowed (Mir)
+error[E0506]: cannot assign to `data.0` because it is borrowed (Body)
   --> $DIR/loan_ends_mid_block_pair.rs:14:5
    |
 LL |     let c = &mut data.0;

@@ -13,7 +13,7 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 LL | fn bar<'a>() -> &'a mut u32 {
    |        ^^
 
-error[E0515]: cannot return reference to temporary value (Mir)
+error[E0515]: cannot return reference to temporary value (Body)
   --> $DIR/issue-46472.rs:4:5
    |
 LL |     &mut 4

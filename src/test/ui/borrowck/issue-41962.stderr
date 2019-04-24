@@ -16,7 +16,7 @@ LL |         if let Some(thing) = maybe {
    |
    = note: move occurs because the value has type `std::vec::Vec<bool>`, which does not implement the `Copy` trait
 
-error[E0382]: use of moved value (Mir)
+error[E0382]: use of moved value (Body)
   --> $DIR/issue-41962.rs:7:21
    |
 LL |         if let Some(thing) = maybe {

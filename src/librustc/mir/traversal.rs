@@ -21,14 +21,14 @@ use super::*;
 /// A preorder traversal of this graph is either `A B D C` or `A C D B`
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
+    pub fn new(mir: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
         Preorder {
@@ -40,7 +40,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
     }
 }
 
-pub fn preorder<'a, 'tcx>(mir: &'a Mir<'tcx>) -> Preorder<'a, 'tcx> {
+pub fn preorder<'a, 'tcx>(mir: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
     Preorder::new(mir, START_BLOCK)
 }
 
@@ -99,14 +99,14 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 ///
 /// A Postorder traversal of this graph is `D B C A` or `D C B A`
 pub struct Postorder<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     visited: BitSet<BasicBlock>,
     visit_stack: Vec<(BasicBlock, Successors<'a>)>,
     root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
+    pub fn new(mir: &'a Body<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             mir,
             visited: BitSet::new_empty(mir.basic_blocks().len()),
@@ -194,7 +194,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
     }
 }
 
-pub fn postorder<'a, 'tcx>(mir: &'a Mir<'tcx>) -> Postorder<'a, 'tcx> {
+pub fn postorder<'a, 'tcx>(mir: &'a Body<'tcx>) -> Postorder<'a, 'tcx> {
     Postorder::new(mir, START_BLOCK)
 }
 
@@ -252,13 +252,13 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 /// to re-use the traversal
 #[derive(Clone)]
 pub struct ReversePostorder<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     blocks: Vec<BasicBlock>,
     idx: usize
 }
 
 impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
+    pub fn new(mir: &'a Body<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
         let blocks : Vec<_> = Postorder::new(mir, root).map(|(bb, _)| bb).collect();
 
         let len = blocks.len();
@@ -276,7 +276,7 @@ impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
 }
 
 
-pub fn reverse_postorder<'a, 'tcx>(mir: &'a Mir<'tcx>) -> ReversePostorder<'a, 'tcx> {
+pub fn reverse_postorder<'a, 'tcx>(mir: &'a Body<'tcx>) -> ReversePostorder<'a, 'tcx> {
     ReversePostorder::new(mir, START_BLOCK)
 }
 

@@ -113,7 +113,7 @@ mod relate_tys;
 pub(crate) fn type_check<'gcx, 'tcx>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
     param_env: ty::ParamEnv<'gcx>,
-    mir: &Mir<'tcx>,
+    mir: &Body<'tcx>,
     mir_def_id: DefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
@@ -182,7 +182,7 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'gcx>,
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: Option<ty::Region<'tcx>>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
@@ -256,7 +256,7 @@ enum FieldAccessError {
 /// is a problem.
 struct TypeVerifier<'a, 'b: 'a, 'gcx: 'tcx, 'tcx: 'b> {
     cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>,
-    mir: &'b Mir<'tcx>,
+    mir: &'b Body<'tcx>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
@@ -371,7 +371,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_mir(&mut self, mir: &Mir<'tcx>) {
+    fn visit_mir(&mut self, mir: &Body<'tcx>) {
         self.sanitize_type(&"return type", mir.return_ty());
         for local_decl in &mir.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
@@ -384,7 +384,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 }
 
 impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
-    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'b Mir<'tcx>) -> Self {
+    fn new(cx: &'a mut TypeChecker<'b, 'gcx, 'tcx>, mir: &'b Body<'tcx>) -> Self {
         TypeVerifier {
             mir,
             mir_def_id: cx.mir_def_id,
@@ -538,7 +538,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         place_ty
     }
 
-    fn sanitize_promoted(&mut self, promoted_mir: &'b Mir<'tcx>, location: Location) {
+    fn sanitize_promoted(&mut self, promoted_mir: &'b Body<'tcx>, location: Location) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
@@ -949,7 +949,7 @@ impl Locations {
     }
 
     /// Gets a span representing the location.
-    pub fn span(&self, mir: &Mir<'_>) -> Span {
+    pub fn span(&self, mir: &Body<'_>) -> Span {
         match self {
             Locations::All(span) => *span,
             Locations::Single(l) => mir.source_info(*l).span,
@@ -960,7 +960,7 @@ impl Locations {
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn new(
         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-        mir: &'a Mir<'tcx>,
+        mir: &'a Body<'tcx>,
         mir_def_id: DefId,
         param_env: ty::ParamEnv<'gcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
@@ -1302,7 +1302,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 
-    fn check_stmt(&mut self, mir: &Mir<'tcx>, stmt: &Statement<'tcx>, location: Location) {
+    fn check_stmt(&mut self, mir: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
@@ -1441,7 +1441,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn check_terminator(
         &mut self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         term: &Terminator<'tcx>,
         term_location: Location,
     ) {
@@ -1605,7 +1605,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn check_call_dest(
         &mut self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         term: &Terminator<'tcx>,
         sig: &ty::FnSig<'tcx>,
         destination: &Option<(Place<'tcx>, BasicBlock)>,
@@ -1674,7 +1674,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn check_call_inputs(
         &mut self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         term: &Terminator<'tcx>,
         sig: &ty::FnSig<'tcx>,
         args: &[Operand<'tcx>],
@@ -1715,7 +1715,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block_data: &BasicBlockData<'tcx>) {
+    fn check_iscleanup(&mut self, mir: &Body<'tcx>, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
         self.last_span = block_data.terminator().source_info.span;
         match block_data.terminator().kind {
@@ -1807,7 +1807,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn assert_iscleanup(
         &mut self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         ctxt: &dyn fmt::Debug,
         bb: BasicBlock,
         iscleanuppad: bool,
@@ -1823,7 +1823,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_local(&mut self, mir: &Mir<'tcx>, local: Local, local_decl: &LocalDecl<'tcx>) {
+    fn check_local(&mut self, mir: &Body<'tcx>, local: Local, local_decl: &LocalDecl<'tcx>) {
         match mir.local_kind(local) {
             LocalKind::ReturnPointer | LocalKind::Arg => {
                 // return values of normal functions are required to be
@@ -1929,7 +1929,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_rvalue(&mut self, mir: &Mir<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn check_rvalue(&mut self, mir: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
 
         match rvalue {
@@ -2265,7 +2265,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn check_aggregate_rvalue(
         &mut self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         rvalue: &Rvalue<'tcx>,
         aggregate_kind: &AggregateKind<'tcx>,
         operands: &[Operand<'tcx>],
@@ -2323,7 +2323,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// - `borrowed_place`: the place `P` being borrowed
     fn add_reborrow_constraint(
         &mut self,
-        mir: &Mir<'tcx>,
+        mir: &Body<'tcx>,
         location: Location,
         borrow_region: ty::Region<'tcx>,
         borrowed_place: &Place<'tcx>,
@@ -2617,7 +2617,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
+    fn typeck_mir(&mut self, mir: &Body<'tcx>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
 
@@ -2667,7 +2667,7 @@ impl MirPass for TypeckMir {
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         src: MirSource<'tcx>,
-        mir: &mut Mir<'tcx>,
+        mir: &mut Body<'tcx>,
     ) {
         let def_id = src.def_id();
         debug!("run_pass: {:?}", def_id);

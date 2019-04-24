@@ -34,7 +34,7 @@ LL |                 map.set(String::new()); // Ideally, just AST would error he
 LL | }
    | - immutable borrow ends here
 
-error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Body)
   --> $DIR/get_default.rs:23:17
    |
 LL | fn ok(map: &mut Map) -> &String {
@@ -49,7 +49,7 @@ LL |                 return v;
 LL |                 map.set(String::new()); // Ideally, this would not error.
    |                 ^^^ mutable borrow occurs here
 
-error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Body)
   --> $DIR/get_default.rs:35:17
    |
 LL | fn err(map: &mut Map) -> &String {
@@ -64,7 +64,7 @@ LL |                 map.set(String::new()); // Both AST and MIR error here
 LL |                 return v;
    |                        - returning this value requires that `*map` is borrowed for `'1`
 
-error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Mir)
+error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable (Body)
   --> $DIR/get_default.rs:41:17
    |
 LL | fn err(map: &mut Map) -> &String {

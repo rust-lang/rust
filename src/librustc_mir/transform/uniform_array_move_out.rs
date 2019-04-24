@@ -40,7 +40,7 @@ impl MirPass for UniformArrayMoveOut {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(mir);
         {
             let mut visitor = UniformArrayMoveOutVisitor{mir, patch: &mut patch, tcx};
@@ -51,7 +51,7 @@ impl MirPass for UniformArrayMoveOut {
 }
 
 struct UniformArrayMoveOutVisitor<'a, 'tcx: 'a> {
-    mir: &'a Mir<'tcx>,
+    mir: &'a Body<'tcx>,
     patch: &'a mut MirPatch<'tcx>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
@@ -166,7 +166,7 @@ impl MirPass for RestoreSubsliceArrayMoveOut {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>) {
+                          mir: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(mir);
         {
             let mut visitor = RestoreDataCollector {
@@ -255,7 +255,7 @@ impl RestoreSubsliceArrayMoveOut {
     }
 
     fn try_get_item_source<'a, 'tcx>(local_use: &LocalUse,
-                                     mir: &'a Mir<'tcx>) -> Option<(u32, &'a Place<'tcx>)> {
+                                     mir: &'a Body<'tcx>) -> Option<(u32, &'a Place<'tcx>)> {
         if let Some(location) = local_use.first_use {
             let block = &mir[location.block];
             if block.statements.len() > location.statement_index {

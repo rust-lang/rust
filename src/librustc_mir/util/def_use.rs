@@ -1,6 +1,6 @@
 //! Def-use analysis.
 
-use rustc::mir::{Local, Location, Mir};
+use rustc::mir::{Local, Location, Body};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::marker::PhantomData;
@@ -24,13 +24,13 @@ pub struct Use<'tcx> {
 }
 
 impl<'tcx> DefUseAnalysis<'tcx> {
-    pub fn new(mir: &Mir<'tcx>) -> DefUseAnalysis<'tcx> {
+    pub fn new(mir: &Body<'tcx>) -> DefUseAnalysis<'tcx> {
         DefUseAnalysis {
             info: IndexVec::from_elem_n(Info::new(), mir.local_decls.len()),
         }
     }
 
-    pub fn analyze(&mut self, mir: &Mir<'tcx>) {
+    pub fn analyze(&mut self, mir: &Body<'tcx>) {
         self.clear();
 
         let mut finder = DefUseFinder {
@@ -50,7 +50,7 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'tcx>, mut callback: F)
+    fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Body<'tcx>, mut callback: F)
                                where F: for<'a> FnMut(&'a mut Local,
                                                       PlaceContext<'tcx>,
                                                       Location) {
@@ -64,7 +64,7 @@ impl<'tcx> DefUseAnalysis<'tcx> {
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          mir: &mut Mir<'tcx>,
+                                          mir: &mut Body<'tcx>,
                                           new_local: Local) {
         self.mutate_defs_and_uses(local, mir, |local, _, _| *local = new_local)
     }
@@ -127,7 +127,7 @@ struct MutateUseVisitor<'tcx, F> {
 }
 
 impl<'tcx, F> MutateUseVisitor<'tcx, F> {
-    fn new(query: Local, callback: F, _: &Mir<'tcx>)
+    fn new(query: Local, callback: F, _: &Body<'tcx>)
            -> MutateUseVisitor<'tcx, F>
            where F: for<'a> FnMut(&'a mut Local, PlaceContext<'tcx>, Location) {
         MutateUseVisitor {

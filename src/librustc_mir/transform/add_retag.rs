@@ -77,7 +77,7 @@ impl MirPass for AddRetag {
     fn run_pass<'a, 'tcx>(&self,
                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _src: MirSource<'tcx>,
-                          mir: &mut Mir<'tcx>)
+                          mir: &mut Body<'tcx>)
     {
         if !tcx.sess.opts.debugging_opts.mir_emit_retag {
             return;
