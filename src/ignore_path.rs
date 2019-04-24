@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use ignore::{self, gitignore};
 
 use crate::config::{FileName, IgnoreList};
@@ -10,7 +8,7 @@ pub struct IgnorePathSet {
 
 impl IgnorePathSet {
     pub fn from_ignore_list(ignore_list: &IgnoreList) -> Result<Self, ignore::Error> {
-        let mut ignore_builder = gitignore::GitignoreBuilder::new(PathBuf::from(""));
+        let mut ignore_builder = gitignore::GitignoreBuilder::new(ignore_list.rustfmt_toml_path());
 
         for ignore_path in ignore_list {
             ignore_builder.add_line(None, ignore_path.to_str().unwrap())?;
