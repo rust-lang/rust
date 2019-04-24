@@ -30,9 +30,12 @@ pub(crate) fn goto_type_definition(
         return None;
     };
 
-    let (adt_def, _) = ty.as_adt()?;
-    let nav = NavigationTarget::from_adt_def(db, adt_def);
+    let adt_def = ty.autoderef(db).find_map(|ty| match ty.as_adt() {
+        Some((adt_def, _)) => Some(adt_def),
+        None => None,
+    })?;
 
+    let nav = NavigationTarget::from_adt_def(db, adt_def);
     Some(RangeInfo::new(node.range(), vec![nav]))
 }
 
@@ -57,6 +60,21 @@ mod tests {
             struct Foo;
             fn foo() {
                 let f: Foo;
+                f<|>
+            }
+            ",
+            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+        );
+    }
+
+    #[test]
+    fn goto_type_definition_works_simple_ref() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo;
+            fn foo() {
+                let f: &Foo;
                 f<|>
             }
             ",
