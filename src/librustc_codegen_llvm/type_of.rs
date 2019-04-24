@@ -1,9 +1,6 @@
 use crate::abi::{FnType, FnTypeExt};
 use crate::common::*;
 use crate::type_::Type;
-use rustc::hir;
-use abi::{FnType, FnTypeExt};
-use common::*;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, Align, LayoutOf, PointeeInfo, Size, TyLayout};
 use rustc_target::abi::{FloatTy, TyLayoutMethods};

@@ -12,7 +12,7 @@ use std::iter;
 use std::mem;
 use std::ops::Bound;
 
-use hir;
+use crate::hir;
 use crate::ich::StableHashingContext;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -1892,25 +1892,27 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 
             _ => {
                 let mut data_variant = match this.variants {
-                    Variants::NicheFilling { dataful_variant, .. } => {
-                        // Only the niche in this is always initialized,
-                        // so only check for a pointer at its offset.
-                        //
-                        // If the niche is a pointer, it's either valid
-                        // (according to its type), or null (which the
-                        // niche field's scalar validity range encodes).
-                        // This allows using `dereferenceable_or_null`
-                        // for e.g., `Option<&T>`, and this will continue
-                        // to work as long as we don't start using more
-                        // niches than just null (e.g., the first page
-                        // of the address space, or unaligned pointers).
-                        if this.fields.offset(0) == offset {
-                            Some(this.for_variant(cx, dataful_variant))
-                        } else {
-                            None
-                        }
-                    }
-                    _ => Some(this)
+                    // Within the discriminant field, only the niche itself is
+                    // always initialized, so we only check for a pointer at its
+                    // offset.
+                    //
+                    // If the niche is a pointer, it's either valid (according
+                    // to its type), or null (which the niche field's scalar
+                    // validity range encodes).  This allows using
+                    // `dereferenceable_or_null` for e.g., `Option<&T>`, and
+                    // this will continue to work as long as we don't start
+                    // using more niches than just null (e.g., the first page of
+                    // the address space, or unaligned pointers).
+                    Variants::Multiple {
+                        discr_kind: DiscriminantKind::Niche {
+                            dataful_variant,
+                            ..
+                        },
+                        discr_index,
+                        ..
+                    } if this.fields.offset(discr_index) == offset =>
+                        Some(this.for_variant(cx, dataful_variant)),
+                    _ => Some(this),
                 };
 
                 if let Some(variant) = data_variant {
@@ -1931,9 +1933,8 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                             result = field.ok()
                                 .and_then(|field| {
                                     if ptr_end <= field_start + field.size {
-                                        let off = offset - field_start;
                                         // We found the right field, look inside it.
-                                        Self::pointee_info_at(field, cx, off, param_env)
+                                        field.pointee_info_at(cx, offset - field_start, param_env)
                                     } else {
                                         None
                                     }

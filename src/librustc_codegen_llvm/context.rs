@@ -8,7 +8,6 @@ use rustc::hir;
 
 use crate::monomorphize::partitioning::CodegenUnit;
 use crate::type_::Type;
-use crate::type_of::PointeeInfo;
 use rustc_codegen_ssa::traits::*;
 
 use rustc_data_structures::base_n;

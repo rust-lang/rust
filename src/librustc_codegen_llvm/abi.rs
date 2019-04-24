@@ -2,17 +2,11 @@ use crate::llvm::{self, AttributePlace};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::type_::Type;
-use crate::type_of::{LayoutLlvmExt, PointerKind};
 use crate::value::Value;
+use crate::type_of::{LayoutLlvmExt};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
-<<<<<<< HEAD
-=======
-use type_::Type;
-use type_of::{LayoutLlvmExt};
-use value::Value;
->>>>>>> Remove old pointee_info_at body.
 use rustc_target::abi::call::ArgType;
 
 use rustc_codegen_ssa::traits::*;
