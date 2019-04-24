@@ -190,7 +190,7 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
     linkage: Linkage,
 ) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
-    let is_mutable = if let ::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
+    let is_mutable = if tcx.is_mutable_static(def_id) {
         true
     } else {
         !tcx.type_of(def_id)
