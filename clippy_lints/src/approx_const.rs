@@ -19,10 +19,7 @@ declare_clippy_lint! {
     /// actually more precise, please [file a Rust
     /// issue](https://github.com/rust-lang/rust/issues).
     ///
-    /// **Known problems:** If you happen to have a value that is within 1/8192 of a
-    /// known constant, but is not *and should not* be the same, this lint will
-    /// report your value anyway. We have not yet noticed any false positives in
-    /// code we tested clippy with (this includes servo), but YMMV.
+    /// **Known problems:** None.
     ///
     /// **Example:**
     /// ```rust
