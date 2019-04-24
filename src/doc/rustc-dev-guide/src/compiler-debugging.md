@@ -70,8 +70,10 @@ stack backtrace:
 [getting-a-backtrace-for-errors]: #getting-a-backtrace-for-errors
 
 If you want to get a backtrace to the point where the compiler emits
-an error message, you can pass the `-Z treat-err-as-bug`, which
-will make the compiler panic on the first error it sees.
+an error message, you can pass the `-Z treat-err-as-bug=n`, which
+will make the compiler skip `n` errors or `delay_span_bug` calls and then
+panic on the next one. If you leave off `=n`, the compiler will assume `0` for
+`n` and thus panic on the first error it encounters.
 
 This can also help when debugging `delay_span_bug` calls - it will make
 the first `delay_span_bug` call panic, which will give you a useful backtrace.
