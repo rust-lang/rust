@@ -154,7 +154,7 @@ pub struct CodegenResults {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
-    pub metadata_module: CompiledModule,
+    pub metadata_module: Option<CompiledModule>,
     pub crate_hash: Svh,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
     pub windows_subsystem: Option<String>,
