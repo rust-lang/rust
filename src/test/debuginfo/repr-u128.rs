@@ -1,4 +1,7 @@
-// compile-flags: --emit=llvm-ir -C debuginfo=2
+// ignore-windows
+//min-system-llvm-version 8.0
+
+//compile-flags: -g -C no-prepopulate-passes
 #![feature(repr128)]
 
 #[repr(u128)]
