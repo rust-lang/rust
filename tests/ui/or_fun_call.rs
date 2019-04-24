@@ -64,6 +64,10 @@ fn or_fun_call() {
 
     let stringy = Some(String::from(""));
     let _ = stringy.unwrap_or("".to_owned());
+
+    let opt = Some(1);
+    let hello = "Hello";
+    let _ = opt.ok_or(format!("{} world.", hello));
 }
 
 fn main() {}
