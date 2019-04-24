@@ -67,7 +67,6 @@ fn convert_to_windows_newlines(formatted_text: &String) -> String {
         const WINDOWS_NEWLINE: &str = "\r\n";
         match c {
             LINE_FEED => transformed.push_str(WINDOWS_NEWLINE),
-            CARRIAGE_RETURN => continue,
             c => transformed.push(c),
         }
     }
@@ -154,5 +153,27 @@ mod tests {
                 "auto-native-unix should detect 'lf'"
             );
         }
+    }
+
+    #[test]
+    fn preserves_standalone_carriage_returns_when_applying_windows_newlines() {
+        let formatted_text = "One\nTwo\nThree\rDrei";
+        let raw_input_text = "One\nTwo\nThree\rDrei";
+
+        let mut out = String::from(formatted_text);
+        apply_newline_style(NewlineStyle::Windows, &mut out, raw_input_text);
+
+        assert_eq!("One\r\nTwo\r\nThree\rDrei", &out);
+    }
+
+    #[test]
+    fn preserves_standalone_carriage_returns_when_applying_unix_newlines() {
+        let formatted_text = "One\nTwo\nThree\rDrei";
+        let raw_input_text = "One\nTwo\nThree\rDrei";
+
+        let mut out = String::from(formatted_text);
+        apply_newline_style(NewlineStyle::Unix, &mut out, raw_input_text);
+
+        assert_eq!("One\nTwo\nThree\rDrei", &out);
     }
 }
