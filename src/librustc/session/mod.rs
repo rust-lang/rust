@@ -408,9 +408,6 @@ impl Session {
     pub fn next_node_id(&self) -> NodeId {
         self.reserve_node_ids(1)
     }
-    pub(crate) fn current_node_id_count(&self) -> usize {
-        self.next_node_id.get().as_u32() as usize
-    }
     pub fn diagnostic<'a>(&'a self) -> &'a errors::Handler {
         &self.parse_sess.span_diagnostic
     }

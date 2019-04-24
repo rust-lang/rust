@@ -11,6 +11,7 @@ use crate::middle::cstore::CrateStoreDyn;
 
 use rustc_target::spec::abi::Abi;
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::indexed_vec::IndexVec;
 use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
 use syntax::ext::base::MacroKind;
@@ -161,6 +162,8 @@ impl Forest {
     }
 }
 
+pub(super) type HirMap<'hir> = [Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>; 2];
+
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
 pub struct Map<'hir> {
@@ -174,7 +177,7 @@ pub struct Map<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    map: FxHashMap<HirId, Entry<'hir>>,
+    map: HirMap<'hir>,
 
     definitions: &'hir Definitions,
 
@@ -183,6 +186,12 @@ pub struct Map<'hir> {
 }
 
 impl<'hir> Map<'hir> {
+    #[inline]
+    fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
+        let local_map = self.map[id.owner.address_space().index()].get(id.owner.as_array_index())?;
+        local_map.as_ref()?.get(id.local_id)?.as_ref()
+    }
+
     /// Registers a read in the dependency graph of the AST node with
     /// the given `id`. This needs to be called each time a public
     /// function returns the HIR for a node -- in other words, when it
@@ -191,7 +200,7 @@ impl<'hir> Map<'hir> {
     /// read recorded). If the function just returns a DefId or
     /// NodeId, no actual content was returned, so no read is needed.
     pub fn read(&self, hir_id: HirId) {
-        if let Some(entry) = self.map.get(&hir_id) {
+        if let Some(entry) = self.lookup(hir_id) {
             self.dep_graph.read_index(entry.dep_node);
         } else {
             bug!("called `HirMap::read()` with invalid `HirId`: {:?}", hir_id)
@@ -378,12 +387,8 @@ impl<'hir> Map<'hir> {
         })
     }
 
-    fn entry_count(&self) -> usize {
-        self.map.len()
-    }
-
     fn find_entry(&self, id: HirId) -> Option<Entry<'hir>> {
-        self.map.get(&id).cloned()
+        self.lookup(id).cloned()
     }
 
     pub fn krate(&self) -> &'hir Crate {
@@ -433,7 +438,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(&self, BodyId { hir_id }: BodyId) -> NodeId {
         let parent = self.get_parent_node_by_hir_id(hir_id);
-        assert!(self.map.get(&parent).map_or(false, |e| e.is_body_owner(hir_id)));
+        assert!(self.lookup(parent).map_or(false, |e| e.is_body_owner(hir_id)));
         self.hir_to_node_id(parent)
     }
 
@@ -1004,6 +1009,24 @@ impl<'hir> Map<'hir> {
         attrs.unwrap_or(&[])
     }
 
+    /// Returns an iterator that yields all the hir ids in the map.
+    fn all_ids<'a>(&'a self) -> impl Iterator<Item = HirId> + 'a {
+        let map = &self.map;
+        let spaces = [DefIndexAddressSpace::Low, DefIndexAddressSpace::High].iter().cloned();
+        spaces.flat_map(move |space| {
+            map[space.index()].iter().enumerate().filter_map(|(i, local_map)| {
+                local_map.as_ref().map(|m| (i, m))
+            }).flat_map(move |(def_index, local_map)| {
+                local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
+                    HirId {
+                        owner: DefIndex::from_array_index(def_index, space),
+                        local_id: i,
+                    }
+                }))
+            })
+        })
+    }
+
     /// Returns an iterator that yields the node id's with paths that
     /// match `parts`.  (Requires `parts` is non-empty.)
     ///
@@ -1012,13 +1035,16 @@ impl<'hir> Map<'hir> {
     /// such as `foo::bar::quux`, `bar::quux`, `other::bar::quux`, and
     /// any other such items it can find in the map.
     pub fn nodes_matching_suffix<'a>(&'a self, parts: &'a [String])
-                                 -> NodesMatchingSuffix<'a, 'hir> {
-        NodesMatchingSuffix {
+                                 -> impl Iterator<Item = NodeId> + 'a {
+        let nodes = NodesMatchingSuffix {
             map: self,
             item_name: parts.last().unwrap(),
             in_which: &parts[..parts.len() - 1],
-            idx: ast::CRATE_NODE_ID,
-        }
+        };
+
+        self.all_ids().filter(move |hir| nodes.matces_suffix(*hir)).map(move |hir| {
+            self.hir_to_node_id(hir)
+        })
     }
 
     pub fn span(&self, id: NodeId) -> Span {
@@ -1097,21 +1123,20 @@ impl<'hir> Map<'hir> {
     }
 }
 
-pub struct NodesMatchingSuffix<'a, 'hir:'a> {
-    map: &'a Map<'hir>,
+pub struct NodesMatchingSuffix<'a> {
+    map: &'a Map<'a>,
     item_name: &'a String,
     in_which: &'a [String],
-    idx: NodeId,
 }
 
-impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
+impl<'a> NodesMatchingSuffix<'a> {
     /// Returns `true` only if some suffix of the module path for parent
     /// matches `self.in_which`.
     ///
     /// In other words: let `[x_0,x_1,...,x_k]` be `self.in_which`;
     /// returns true if parent's path ends with the suffix
     /// `x_0::x_1::...::x_k`.
-    fn suffix_matches(&self, parent: NodeId) -> bool {
+    fn suffix_matches(&self, parent: HirId) -> bool {
         let mut cursor = parent;
         for part in self.in_which.iter().rev() {
             let (mod_id, mod_name) = match find_first_mod_parent(self.map, cursor) {
@@ -1121,7 +1146,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
             if mod_name != &**part {
                 return false;
             }
-            cursor = self.map.get_parent(mod_id);
+            cursor = self.map.get_parent_item(mod_id);
         }
         return true;
 
@@ -1131,14 +1156,14 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
         // If `id` itself is a mod named `m` with parent `p`, then
         // returns `Some(id, m, p)`.  If `id` has no mod in its parent
         // chain, then returns `None`.
-        fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: NodeId) -> Option<(NodeId, Name)> {
+        fn find_first_mod_parent<'a>(map: &'a Map<'_>, mut id: HirId) -> Option<(HirId, Name)> {
             loop {
-                if let Node::Item(item) = map.find(id)? {
+                if let Node::Item(item) = map.find_by_hir_id(id)? {
                     if item_is_mod(&item) {
                         return Some((id, item.ident.name))
                     }
                 }
-                let parent = map.get_parent(id);
+                let parent = map.get_parent_item(id);
                 if parent == id { return None }
                 id = parent;
             }
@@ -1154,35 +1179,21 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
 
     // We are looking at some node `n` with a given name and parent
     // id; do their names match what I am seeking?
-    fn matches_names(&self, parent_of_n: NodeId, name: Name) -> bool {
+    fn matches_names(&self, parent_of_n: HirId, name: Name) -> bool {
         name == &**self.item_name && self.suffix_matches(parent_of_n)
     }
-}
 
-impl<'a, 'hir> Iterator for NodesMatchingSuffix<'a, 'hir> {
-    type Item = NodeId;
-
-    fn next(&mut self) -> Option<NodeId> {
-        loop {
-            let idx = self.idx;
-            if idx.as_usize() >= self.map.entry_count() {
-                return None;
-            }
-            self.idx = NodeId::from_u32(self.idx.as_u32() + 1);
-            let hir_idx = self.map.node_to_hir_id(idx);
-            let name = match self.map.find_entry(hir_idx).map(|entry| entry.node) {
-                Some(Node::Item(n)) => n.name(),
-                Some(Node::ForeignItem(n)) => n.name(),
-                Some(Node::TraitItem(n)) => n.name(),
-                Some(Node::ImplItem(n)) => n.name(),
-                Some(Node::Variant(n)) => n.name(),
-                Some(Node::Field(n)) => n.name(),
-                _ => continue,
-            };
-            if self.matches_names(self.map.get_parent(idx), name) {
-                return Some(idx)
-            }
-        }
+    fn matces_suffix(&self, hir: HirId) -> bool {
+        let name = match self.map.find_entry(hir).map(|entry| entry.node) {
+            Some(Node::Item(n)) => n.name(),
+            Some(Node::ForeignItem(n)) => n.name(),
+            Some(Node::TraitItem(n)) => n.name(),
+            Some(Node::ImplItem(n)) => n.name(),
+            Some(Node::Variant(n)) => n.name(),
+            Some(Node::Field(n)) => n.name(),
+            _ => return false,
+        };
+        self.matches_names(self.map.get_parent_item(hir), name)
     }
 }
 

@@ -543,12 +543,12 @@ impl FromStr for UserIdentifiedItem {
     }
 }
 
-enum NodesMatchingUII<'a, 'hir: 'a> {
+enum NodesMatchingUII<'a> {
     NodesMatchingDirect(option::IntoIter<ast::NodeId>),
-    NodesMatchingSuffix(hir_map::NodesMatchingSuffix<'a, 'hir>),
+    NodesMatchingSuffix(Box<dyn Iterator<Item = ast::NodeId> + 'a>),
 }
 
-impl<'a, 'hir> Iterator for NodesMatchingUII<'a, 'hir> {
+impl<'a> Iterator for NodesMatchingUII<'a> {
     type Item = ast::NodeId;
 
     fn next(&mut self) -> Option<ast::NodeId> {
@@ -576,10 +576,12 @@ impl UserIdentifiedItem {
 
     fn all_matching_node_ids<'a, 'hir>(&'a self,
                                        map: &'a hir_map::Map<'hir>)
-                                       -> NodesMatchingUII<'a, 'hir> {
+                                       -> NodesMatchingUII<'a> {
         match *self {
             ItemViaNode(node_id) => NodesMatchingDirect(Some(node_id).into_iter()),
-            ItemViaPath(ref parts) => NodesMatchingSuffix(map.nodes_matching_suffix(&parts)),
+            ItemViaPath(ref parts) => {
+                NodesMatchingSuffix(Box::new(map.nodes_matching_suffix(&parts)))
+            }
         }
     }
 
