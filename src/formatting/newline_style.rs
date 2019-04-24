@@ -79,25 +79,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_newline_style_auto_detect() {
-        let lf = "One\nTwo\nThree";
-        let crlf = "One\r\nTwo\r\nThree";
-        let none = "One Two Three";
+    fn auto_detects_unix_newlines() {
+        assert_eq!(
+            EffectiveNewlineStyle::Unix,
+            auto_detect_newline_style("One\nTwo\nThree")
+        );
+    }
 
-        assert_eq!(EffectiveNewlineStyle::Unix, auto_detect_newline_style(lf));
+    #[test]
+    fn auto_detects_windows_newlines() {
         assert_eq!(
             EffectiveNewlineStyle::Windows,
-            auto_detect_newline_style(crlf)
+            auto_detect_newline_style("One\r\nTwo\r\nThree")
         );
+    }
 
-        if cfg!(windows) {
-            assert_eq!(
-                EffectiveNewlineStyle::Windows,
-                auto_detect_newline_style(none)
-            );
+    #[test]
+    fn falls_back_to_native_newlines_if_no_newlines_are_found() {
+        let expected_newline_style = if cfg!(windows) {
+            EffectiveNewlineStyle::Windows
         } else {
-            assert_eq!(EffectiveNewlineStyle::Unix, auto_detect_newline_style(none));
-        }
+            EffectiveNewlineStyle::Unix
+        };
+        assert_eq!(
+            expected_newline_style,
+            auto_detect_newline_style("One Two Three")
+        );
     }
 
     #[test]
