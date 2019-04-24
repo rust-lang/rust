@@ -325,14 +325,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
             return Box::new(CodegenResults {
                 crate_name: tcx.crate_name(LOCAL_CRATE),
                 modules: vec![emit_module(
-                    "u",
+                    "dummy_name",
                     ModuleKind::Regular,
                     faerie_module,
                     debug,
                 )],
                 allocator_module: if created_alloc_shim {
                     Some(emit_module(
-                        "a",
+                        "allocator_shim",
                         ModuleKind::Allocator,
                         allocator_module,
                         None,
@@ -341,7 +341,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     None
                 },
                 metadata_module: CompiledModule {
-                    name: "m".to_string(),
+                    name: "dummy_metadata".to_string(),
                     kind: ModuleKind::Metadata,
                     object: None,
                     bytecode: None,
