@@ -1,137 +1,5 @@
-error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:41:14
-   |
-LL |     for i in 0..vec.len() {
-   |              ^^^^^^^^^^^^
-   |
-   = note: `-D clippy::needless-range-loop` implied by `-D warnings`
-help: consider using an iterator
-   |
-LL |     for <item> in &vec {
-   |         ^^^^^^    ^^^^
-
-error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:50:14
-   |
-LL |     for i in 0..vec.len() {
-   |              ^^^^^^^^^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in &vec {
-   |         ^^^^^^    ^^^^
-
-error: the loop variable `j` is only used to index `STATIC`.
-  --> $DIR/for_loop.rs:55:14
-   |
-LL |     for j in 0..4 {
-   |              ^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in &STATIC {
-   |         ^^^^^^    ^^^^^^^
-
-error: the loop variable `j` is only used to index `CONST`.
-  --> $DIR/for_loop.rs:59:14
-   |
-LL |     for j in 0..4 {
-   |              ^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in &CONST {
-   |         ^^^^^^    ^^^^^^
-
-error: the loop variable `i` is used to index `vec`
-  --> $DIR/for_loop.rs:63:14
-   |
-LL |     for i in 0..vec.len() {
-   |              ^^^^^^^^^^^^
-help: consider using an iterator
-   |
-LL |     for (i, <item>) in vec.iter().enumerate() {
-   |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is only used to index `vec2`.
-  --> $DIR/for_loop.rs:71:14
-   |
-LL |     for i in 0..vec.len() {
-   |              ^^^^^^^^^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in vec2.iter().take(vec.len()) {
-   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:75:14
-   |
-LL |     for i in 5..vec.len() {
-   |              ^^^^^^^^^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in vec.iter().skip(5) {
-   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:79:14
-   |
-LL |     for i in 0..MAX_LEN {
-   |              ^^^^^^^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in vec.iter().take(MAX_LEN) {
-   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:83:14
-   |
-LL |     for i in 0..=MAX_LEN {
-   |              ^^^^^^^^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in vec.iter().take(MAX_LEN + 1) {
-   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:87:14
-   |
-LL |     for i in 5..10 {
-   |              ^^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in vec.iter().take(10).skip(5) {
-   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is only used to index `vec`.
-  --> $DIR/for_loop.rs:91:14
-   |
-LL |     for i in 5..=10 {
-   |              ^^^^^^
-help: consider using an iterator
-   |
-LL |     for <item> in vec.iter().take(10 + 1).skip(5) {
-   |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is used to index `vec`
-  --> $DIR/for_loop.rs:95:14
-   |
-LL |     for i in 5..vec.len() {
-   |              ^^^^^^^^^^^^
-help: consider using an iterator
-   |
-LL |     for (i, <item>) in vec.iter().enumerate().skip(5) {
-   |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: the loop variable `i` is used to index `vec`
-  --> $DIR/for_loop.rs:99:14
-   |
-LL |     for i in 5..10 {
-   |              ^^^^^
-help: consider using an iterator
-   |
-LL |     for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
-   |         ^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:103:14
+  --> $DIR/for_loop.rs:40:14
    |
 LL |     for i in 10..0 {
    |              ^^^^^
@@ -143,7 +11,7 @@ LL |     for i in (0..10).rev() {
    |              ^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:107:14
+  --> $DIR/for_loop.rs:44:14
    |
 LL |     for i in 10..=0 {
    |              ^^^^^^
@@ -153,7 +21,7 @@ LL |     for i in (0...10).rev() {
    |              ^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:111:14
+  --> $DIR/for_loop.rs:48:14
    |
 LL |     for i in MAX_LEN..0 {
    |              ^^^^^^^^^^
@@ -163,13 +31,13 @@ LL |     for i in (0..MAX_LEN).rev() {
    |              ^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:115:14
+  --> $DIR/for_loop.rs:52:14
    |
 LL |     for i in 5..5 {
    |              ^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:140:14
+  --> $DIR/for_loop.rs:77:14
    |
 LL |     for i in 10..5 + 4 {
    |              ^^^^^^^^^
@@ -179,7 +47,7 @@ LL |     for i in (5 + 4..10).rev() {
    |              ^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:144:14
+  --> $DIR/for_loop.rs:81:14
    |
 LL |     for i in (5 + 2)..(3 - 1) {
    |              ^^^^^^^^^^^^^^^^
@@ -189,13 +57,13 @@ LL |     for i in ((3 - 1)..(5 + 2)).rev() {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this range is empty so this for loop will never run
-  --> $DIR/for_loop.rs:148:14
+  --> $DIR/for_loop.rs:85:14
    |
 LL |     for i in (5 + 2)..(8 - 1) {
    |              ^^^^^^^^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:170:15
+  --> $DIR/for_loop.rs:107:15
    |
 LL |     for _v in vec.iter() {}
    |               ^^^^^^^^^^
@@ -203,13 +71,13 @@ LL |     for _v in vec.iter() {}
    = note: `-D clippy::explicit-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:172:15
+  --> $DIR/for_loop.rs:109:15
    |
 LL |     for _v in vec.iter_mut() {}
    |               ^^^^^^^^^^^^^^
 
 error: it is more concise to loop over containers instead of using explicit iteration methods`
-  --> $DIR/for_loop.rs:175:15
+  --> $DIR/for_loop.rs:112:15
    |
 LL |     for _v in out_vec.into_iter() {}
    |               ^^^^^^^^^^^^^^^^^^^
@@ -217,67 +85,67 @@ LL |     for _v in out_vec.into_iter() {}
    = note: `-D clippy::explicit-into-iter-loop` implied by `-D warnings`
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:178:15
+  --> $DIR/for_loop.rs:115:15
    |
 LL |     for _v in array.into_iter() {}
    |               ^^^^^^^^^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:183:15
+  --> $DIR/for_loop.rs:120:15
    |
 LL |     for _v in [1, 2, 3].iter() {}
    |               ^^^^^^^^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:187:15
+  --> $DIR/for_loop.rs:124:15
    |
 LL |     for _v in [0; 32].iter() {}
    |               ^^^^^^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:192:15
+  --> $DIR/for_loop.rs:129:15
    |
 LL |     for _v in ll.iter() {}
    |               ^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:195:15
+  --> $DIR/for_loop.rs:132:15
    |
 LL |     for _v in vd.iter() {}
    |               ^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:198:15
+  --> $DIR/for_loop.rs:135:15
    |
 LL |     for _v in bh.iter() {}
    |               ^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:201:15
+  --> $DIR/for_loop.rs:138:15
    |
 LL |     for _v in hm.iter() {}
    |               ^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:204:15
+  --> $DIR/for_loop.rs:141:15
    |
 LL |     for _v in bt.iter() {}
    |               ^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:207:15
+  --> $DIR/for_loop.rs:144:15
    |
 LL |     for _v in hs.iter() {}
    |               ^^^^^^^^^
 
 error: it is more concise to loop over references to containers instead of using explicit iteration methods
-  --> $DIR/for_loop.rs:210:15
+  --> $DIR/for_loop.rs:147:15
    |
 LL |     for _v in bs.iter() {}
    |               ^^^^^^^^^
 
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
-  --> $DIR/for_loop.rs:212:15
+  --> $DIR/for_loop.rs:149:15
    |
 LL |     for _v in vec.iter().next() {}
    |               ^^^^^^^^^^^^^^^^^
@@ -285,12 +153,12 @@ LL |     for _v in vec.iter().next() {}
    = note: `-D clippy::iter-next-loop` implied by `-D warnings`
 
 error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
-  --> $DIR/for_loop.rs:219:5
+  --> $DIR/for_loop.rs:156:5
    |
 LL |     vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::unused-collect` implied by `-D warnings`
 
-error: aborting due to 35 previous errors
+error: aborting due to 22 previous errors
 
