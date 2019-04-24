@@ -154,6 +154,32 @@ mod tests {
     }
 
     #[test]
+    fn test_saturating_abs() {
+        assert_eq!((0 as $T).saturating_abs(), 0);
+        assert_eq!((123 as $T).saturating_abs(), 123);
+        assert_eq!((-123 as $T).saturating_abs(), 123);
+        assert_eq!((MAX - 2).saturating_abs(), MAX - 2);
+        assert_eq!((MAX - 1).saturating_abs(), MAX - 1);
+        assert_eq!(MAX.saturating_abs(), MAX);
+        assert_eq!((MIN + 2).saturating_abs(), MAX - 1);
+        assert_eq!((MIN + 1).saturating_abs(), MAX);
+        assert_eq!(MIN.saturating_abs(), MAX);
+    }
+
+    #[test]
+    fn test_saturating_neg() {
+        assert_eq!((0 as $T).saturating_neg(), 0);
+        assert_eq!((123 as $T).saturating_neg(), -123);
+        assert_eq!((-123 as $T).saturating_neg(), 123);
+        assert_eq!((MAX - 2).saturating_neg(), MIN + 3);
+        assert_eq!((MAX - 1).saturating_neg(), MIN + 2);
+        assert_eq!(MAX.saturating_neg(), MIN + 1);
+        assert_eq!((MIN + 2).saturating_neg(), MAX - 1);
+        assert_eq!((MIN + 1).saturating_neg(), MAX);
+        assert_eq!(MIN.saturating_neg(), MAX);
+    }
+
+    #[test]
     fn test_from_str() {
         fn from_str<T: ::std::str::FromStr>(t: &str) -> Option<T> {
             ::std::str::FromStr::from_str(t).ok()
