@@ -67,6 +67,14 @@ fn format_project<T: FormatHandler>(
     let main_file = input.file_name();
     let input_is_stdin = main_file == FileName::Stdin;
 
+    let ignore_path_set = match IgnorePathSet::from_ignore_list(&config.ignore()) {
+        Ok(set) => set,
+        Err(e) => return Err(ErrorKind::InvalidGlobPattern(e)),
+    };
+    if config.skip_children() && ignore_path_set.is_match(&main_file) {
+        return Ok(FormatReport::new());
+    }
+
     // Parse the crate.
     let source_map = Rc::new(SourceMap::new(FilePathMapping::empty()));
     let mut parse_session = make_parse_sess(source_map.clone(), config);
@@ -91,11 +99,6 @@ fn format_project<T: FormatHandler>(
     parse_session.span_diagnostic = Handler::with_emitter(true, None, silent_emitter);
 
     let mut context = FormatContext::new(&krate, report, parse_session, config, handler);
-    let ignore_path_set = match IgnorePathSet::from_ignore_list(&config.ignore()) {
-        Ok(set) => set,
-        Err(e) => return Err(ErrorKind::InvalidGlobPattern(e)),
-    };
-
     let files = modules::ModResolver::new(
         context.parse_session.source_map(),
         directory_ownership.unwrap_or(parse::DirectoryOwnership::UnownedViaMod(false)),
