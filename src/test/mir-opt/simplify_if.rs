@@ -5,13 +5,15 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.main.SimplifyBranches-initial.before.mir
+// START rustc.main.SimplifyBranches-after-copy-prop.before.mir
 // bb0: {
-//     switchInt(const false) -> [false: bb3, otherwise: bb2];
+//     ...
+//     switchInt(const false) -> [false: bb3, otherwise: bb1];
 // }
-// END rustc.main.SimplifyBranches-initial.before.mir
-// START rustc.main.SimplifyBranches-initial.after.mir
+// END rustc.main.SimplifyBranches-after-copy-prop.before.mir
+// START rustc.main.SimplifyBranches-after-copy-prop.after.mir
 // bb0: {
+//     ...
 //     goto -> bb3;
 // }
-// END rustc.main.SimplifyBranches-initial.after.mir
+// END rustc.main.SimplifyBranches-after-copy-prop.after.mir
