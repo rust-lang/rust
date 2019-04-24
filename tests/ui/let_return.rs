@@ -39,4 +39,10 @@ fn test_nowarn_4() -> i32 {
     x
 }
 
+fn test_nowarn_5(x: i16) -> u16 {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let x = x as u16;
+    x
+}
+
 fn main() {}
