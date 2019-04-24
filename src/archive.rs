@@ -36,7 +36,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             dst: output.to_path_buf(),
             src: input.map(|p| p.to_path_buf()),
             lib_search_paths: archive_search_paths(sess),
-            is_like_osx: sess.target.target.options.is_like_osx,
+            is_like_osx: sess.target.target.options.is_like_osx, // FIXME should probably check for linux
         };
 
         let (src_archives, entries) = if let Some(src) = &config.src {
@@ -122,9 +122,6 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn build(mut self) {
-        println!("{:?}", self.src_archives.len());
-        println!("{:?}", self.entries);
-
         enum BuilderKind {
             Bsd(ar::Builder<File>),
             Gnu(ar::GnuBuilder<File>),
