@@ -116,46 +116,42 @@ mod tests {
     }
 
     #[test]
-    fn test_newline_style_auto_apply() {
-        let auto = NewlineStyle::Auto;
-
+    fn auto_detects_and_applies_unix_newlines() {
         let formatted_text = "One\nTwo\nThree";
         let raw_input_text = "One\nTwo\nThree";
 
         let mut out = String::from(formatted_text);
-        apply_newline_style(auto, &mut out, raw_input_text);
+        apply_newline_style(NewlineStyle::Auto, &mut out, raw_input_text);
         assert_eq!("One\nTwo\nThree", &out, "auto should detect 'lf'");
+    }
 
+    #[test]
+    fn auto_detects_and_applies_windows_newlines() {
         let formatted_text = "One\nTwo\nThree";
         let raw_input_text = "One\r\nTwo\r\nThree";
 
         let mut out = String::from(formatted_text);
-        apply_newline_style(auto, &mut out, raw_input_text);
+        apply_newline_style(NewlineStyle::Auto, &mut out, raw_input_text);
         assert_eq!("One\r\nTwo\r\nThree", &out, "auto should detect 'crlf'");
+    }
 
-        #[cfg(not(windows))]
-        {
-            let formatted_text = "One\nTwo\nThree";
-            let raw_input_text = "One Two Three";
+    #[test]
+    fn auto_detects_and_applies_native_newlines() {
+        let formatted_text = "One\nTwo\nThree";
+        let raw_input_text = "One Two Three";
 
-            let mut out = String::from(formatted_text);
-            apply_newline_style(auto, &mut out, raw_input_text);
-            assert_eq!(
-                "One\nTwo\nThree", &out,
-                "auto-native-unix should detect 'lf'"
-            );
-        }
+        let mut out = String::from(formatted_text);
+        apply_newline_style(NewlineStyle::Auto, &mut out, raw_input_text);
 
-        #[cfg(windows)]
-        {
-            let formatted_text = "One\nTwo\nThree";
-            let raw_input_text = "One Two Three";
-
-            let mut out = String::from(formatted_text);
-            apply_newline_style(auto, &mut out, raw_input_text);
+        if cfg!(windows) {
             assert_eq!(
                 "One\r\nTwo\r\nThree", &out,
                 "auto-native-windows should detect 'crlf'"
+            );
+        } else {
+            assert_eq!(
+                "One\nTwo\nThree", &out,
+                "auto-native-unix should detect 'lf'"
             );
         }
     }
