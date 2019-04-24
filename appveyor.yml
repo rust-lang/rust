@@ -1,3 +1,7 @@
+# LLDB seems missing on the stable branch, while it's fine on the master
+# branch. This is a temporary fix to get 1.34.1 out.
+image: Previous Visual Studio 2017
+
 environment:
 
   # By default schannel checks revocation of certificates unlike some other SSL

@@ -1,3 +1,14 @@
+Version 1.34.1 (2019-04-25)
+===========================
+
+* [Fix false positives for the `redundant_closure` Clippy lint][clippy/3821]
+* [Fix false positives for the `missing_const_for_fn` Clippy lint][clippy/3844]
+* [Fix Clippy panic when checking some macros][clippy/3805]
+
+[clippy/3821]: https://github.com/rust-lang/rust-clippy/pull/3821
+[clippy/3844]: https://github.com/rust-lang/rust-clippy/pull/3844
+[clippy/3805]: https://github.com/rust-lang/rust-clippy/pull/3805
+
 Version 1.34.0 (2019-04-11)
 ==========================
 
@@ -113,15 +124,15 @@ Compatibility Notes
 [56470]: https://github.com/rust-lang/rust/pull/56470/
 [cargo/6654]: https://github.com/rust-lang/cargo/pull/6654/
 [`Any::type_id`]: https://doc.rust-lang.org/std/any/trait.Any.html#tymethod.type_id
-[`Error::type_id`]: https://doc.rust-lang.org/std/error/trait.Error.html#tymethod.type_id
-[`atomic::AtomicI16`]: https://doc.rust-lang.org/std/atomic/struct.AtomicI16.html
-[`atomic::AtomicI32`]: https://doc.rust-lang.org/std/atomic/struct.AtomicI32.html
-[`atomic::AtomicI64`]: https://doc.rust-lang.org/std/atomic/struct.AtomicI64.html
-[`atomic::AtomicI8`]: https://doc.rust-lang.org/std/atomic/struct.AtomicI8.html
-[`atomic::AtomicU16`]: https://doc.rust-lang.org/std/atomic/struct.AtomicU16.html
-[`atomic::AtomicU32`]: https://doc.rust-lang.org/std/atomic/struct.AtomicU32.html
-[`atomic::AtomicU64`]: https://doc.rust-lang.org/std/atomic/struct.AtomicU64.html
-[`atomic::AtomicU8`]: https://doc.rust-lang.org/std/atomic/struct.AtomicU8.html
+[`Error::type_id`]: https://doc.rust-lang.org/std/error/trait.Error.html#method.type_id
+[`atomic::AtomicI16`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicI16.html
+[`atomic::AtomicI32`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicI32.html
+[`atomic::AtomicI64`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicI64.html
+[`atomic::AtomicI8`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicI8.html
+[`atomic::AtomicU16`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU16.html
+[`atomic::AtomicU32`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU32.html
+[`atomic::AtomicU64`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU64.html
+[`atomic::AtomicU8`]: https://doc.rust-lang.org/std/sync/atomic/struct.AtomicU8.html
 [`convert::Infallible`]: https://doc.rust-lang.org/std/convert/enum.Infallible.html
 [`convert::TryFrom`]: https://doc.rust-lang.org/std/convert/trait.TryFrom.html
 [`convert::TryInto`]: https://doc.rust-lang.org/std/convert/trait.TryInto.html
@@ -133,7 +144,7 @@ Compatibility Notes
 [`num::NonZeroI64`]: https://doc.rust-lang.org/std/num/struct.NonZeroI64.html
 [`num::NonZeroI8`]: https://doc.rust-lang.org/std/num/struct.NonZeroI8.html
 [`num::NonZeroIsize`]: https://doc.rust-lang.org/std/num/struct.NonZeroIsize.html
-[`slice::sort_by_cached_key`]: https://doc.rust-lang.org/std/slice/fn.sort_by_cached_key
+[`slice::sort_by_cached_key`]: https://doc.rust-lang.org/std/primitive.slice.html#method.sort_by_cached_key
 [`str::escape_debug`]: https://doc.rust-lang.org/std/primitive.str.html#method.escape_debug
 [`str::escape_default`]: https://doc.rust-lang.org/std/primitive.str.html#method.escape_default
 [`str::escape_unicode`]: https://doc.rust-lang.org/std/primitive.str.html#method.escape_unicode
