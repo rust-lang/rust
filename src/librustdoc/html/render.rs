@@ -951,40 +951,15 @@ themePicker.onblur = handleThemeButtonsBlur;
         key: &str,
         for_search_index: bool,
     ) -> io::Result<(Vec<String>, Vec<String>, Vec<String>)> {
-        use minifier::js;
-
         let mut ret = Vec::new();
         let mut krates = Vec::new();
         let mut variables = Vec::new();
-
-        let mut krate = krate.to_owned();
 
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
                 if for_search_index && line.starts_with("var R") {
                     variables.push(line.clone());
-                    // We need to check if the crate name has been put into a variable as well.
-                    let tokens: js::Tokens<'_> = js::simple_minify(&line)
-                                                    .into_iter()
-                                                    .filter(js::clean_token)
-                                                    .collect::<Vec<_>>()
-                                                    .into();
-                    let mut pos = 0;
-                    while pos < tokens.len() {
-                        if let Some((var_pos, Some(value_pos))) =
-                                js::get_variable_name_and_value_positions(&tokens, pos) {
-                            if let Some(s) = tokens.0[value_pos].get_string() {
-                                if &s[1..s.len() - 1] == krate {
-                                    if let Some(var) = tokens[var_pos].get_other() {
-                                        krate = var.to_owned();
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                        pos += 1;
-                    }
                     continue;
                 }
                 if !line.starts_with(key) {
@@ -1344,6 +1319,8 @@ fn write_minify_replacer<W: Write>(
                             f,
                             "R",
                             Token::Char(ReservedChar::Backline),
+                            // This closure prevents crates' name to be aggregated. It allows to not
+                            // have to look for crate's name into the strings array.
                             |tokens, pos| {
                                 pos < 2 ||
                                 !tokens[pos - 1].is_char(ReservedChar::OpenBracket) ||
