@@ -83,14 +83,16 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
         for obj in codegen_results.modules.iter().filter_map(|m| m.bytecode_compressed.as_ref()) {
             remove(sess, obj);
         }
-        if let Some(ref obj) = codegen_results.metadata_module.object {
-            remove(sess, obj);
-        }
-        if let Some(ref allocator) = codegen_results.allocator_module {
-            if let Some(ref obj) = allocator.object {
+        if let Some(ref metadata_module) = codegen_results.metadata_module {
+            if let Some(ref obj) = metadata_module.object {
                 remove(sess, obj);
             }
-            if let Some(ref bc) = allocator.bytecode_compressed {
+         }
+        if let Some(ref allocator_module) = codegen_results.allocator_module {
+            if let Some(ref obj) = allocator_module.object {
+                remove(sess, obj);
+            }
+            if let Some(ref bc) = allocator_module.bytecode_compressed {
                 remove(sess, bc);
             }
         }
@@ -1067,7 +1069,10 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(cmd: &mut dyn Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateType::Dylib ||
        crate_type == config::CrateType::ProcMacro {
-        if let Some(obj) = codegen_results.metadata_module.object.as_ref() {
+        let obj = codegen_results.metadata_module
+            .as_ref()
+            .and_then(|m| m.object.as_ref());
+        if let Some(obj) = obj {
             cmd.add_object(obj);
         }
     }

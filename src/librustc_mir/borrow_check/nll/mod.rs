@@ -8,6 +8,7 @@ use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
+use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, Mir};
@@ -72,6 +73,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
     mir: &Mir<'tcx>,
+    upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'gcx>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'cx, 'gcx, 'tcx>>,
@@ -187,7 +189,8 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'gcx, 'tcx>(
     });
 
     // Solve the region constraints.
-    let closure_region_requirements = regioncx.solve(infcx, &mir, def_id, errors_buffer);
+    let closure_region_requirements =
+        regioncx.solve(infcx, &mir, upvars, def_id, errors_buffer);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.

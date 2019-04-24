@@ -85,7 +85,6 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(fundamental)]
-#![feature(futures_api)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(needs_allocator)]

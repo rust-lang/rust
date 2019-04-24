@@ -121,6 +121,7 @@ impl_stable_hash_for!(struct ::syntax::attr::Stability {
     feature,
     rustc_depr,
     promotable,
+    allow_const_fn_ptr,
     const_stability
 });
 

@@ -3,6 +3,7 @@ use std::hash::Hash;
 use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::Symbol;
+use rustc::hir;
 use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
@@ -165,13 +166,28 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
         match layout.ty.sty {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                if let Some(upvar) = self.ecx.tcx.optimized_mir(def_id).upvar_decls.get(field) {
-                    PathElem::ClosureVar(upvar.debug_name)
-                } else {
-                    // Sometimes the index is beyond the number of freevars (seen
-                    // for a generator).
-                    PathElem::ClosureVar(Symbol::intern(&field.to_string()))
+                let mut name = None;
+                if def_id.is_local() {
+                    let tables = self.ecx.tcx.typeck_tables_of(def_id);
+                    if let Some(upvars) = tables.upvar_list.get(&def_id) {
+                        // Sometimes the index is beyond the number of freevars (seen
+                        // for a generator).
+                        if let Some(upvar_id) = upvars.get(field) {
+                            let var_hir_id = upvar_id.var_path.hir_id;
+                            let var_node_id = self.ecx.tcx.hir().hir_to_node_id(var_hir_id);
+                            if let hir::Node::Binding(pat) = self.ecx.tcx.hir().get(var_node_id) {
+                                if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
+                                    name = Some(ident.name);
+                                }
+                            }
+                        }
+                    }
                 }
+
+                PathElem::ClosureVar(name.unwrap_or_else(|| {
+                    // Fall back to showing the field index.
+                    Symbol::intern(&field.to_string())
+                }))
             }
 
             // tuples

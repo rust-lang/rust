@@ -25,7 +25,7 @@ use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
-use rustc::session::config::{self, EntryFnType, Lto};
+use rustc::session::config::{self, CrateType, EntryFnType, Lto};
 use rustc::session::Session;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use rustc_mir::monomorphize::Instance;
@@ -550,12 +550,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     });
     tcx.sess.profiler(|p| p.end_activity("codegen crate metadata"));
 
-    let metadata_module = ModuleCodegen {
-        name: metadata_cgu_name,
-        module_llvm: metadata_llvm_module,
-        kind: ModuleKind::Metadata,
-    };
-
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen ||
        !tcx.sess.opts.output_types.should_codegen() {
@@ -566,7 +560,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             rx,
             1);
 
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
         ongoing_codegen.codegen_finished(tcx);
 
         assert_and_save_dep_graph(tcx);
@@ -639,7 +632,24 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
     }
 
-    ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
+    let needs_metadata_module = tcx.sess.crate_types.borrow().iter().any(|ct| {
+        match *ct {
+            CrateType::Dylib |
+            CrateType::ProcMacro => true,
+            CrateType::Executable |
+            CrateType::Rlib |
+            CrateType::Staticlib |
+            CrateType::Cdylib => false,
+        }
+    });
+    if needs_metadata_module {
+        let metadata_module = ModuleCodegen {
+            name: metadata_cgu_name,
+            module_llvm: metadata_llvm_module,
+            kind: ModuleKind::Metadata,
+        };
+        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
+    }
 
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently.

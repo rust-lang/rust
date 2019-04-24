@@ -1145,9 +1145,34 @@ impl<'a> Parser<'a> {
                 if text.is_empty() {
                     self.span_bug(sp, "found empty literal suffix in Some")
                 }
-                self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
-                    .span_label(sp, format!("invalid suffix `{}`", text))
-                    .emit();
+                let mut err = if kind == "a tuple index" &&
+                    ["i32", "u32", "isize", "usize"].contains(&text.to_string().as_str())
+                {
+                    // #59553: warn instead of reject out of hand to allow the fix to percolate
+                    // through the ecosystem when people fix their macros
+                    let mut err = self.struct_span_warn(
+                        sp,
+                        &format!("suffixes on {} are invalid", kind),
+                    );
+                    err.note(&format!(
+                        "`{}` is *temporarily* accepted on tuple index fields as it was \
+                         incorrectly accepted on stable for a few releases",
+                        text,
+                    ));
+                    err.help(
+                        "on proc macros, you'll want to use `syn::Index::from` or \
+                         `proc_macro::Literal::*_unsuffixed` for code that will desugar \
+                         to tuple field access",
+                    );
+                    err.note(
+                        "for more context, see https://github.com/rust-lang/rust/issues/60210",
+                    );
+                    err
+                } else {
+                    self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
+                };
+                err.span_label(sp, format!("invalid suffix `{}`", text));
+                err.emit();
             }
         }
     }
@@ -1454,6 +1479,9 @@ impl<'a> Parser<'a> {
     }
     fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
+    }
+    fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
+        self.sess.span_diagnostic.struct_span_warn(sp, m)
     }
     crate fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)

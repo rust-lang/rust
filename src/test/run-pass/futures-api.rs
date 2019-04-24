@@ -1,7 +1,5 @@
 // aux-build:arc_wake.rs
 
-#![feature(futures_api)]
-
 extern crate arc_wake;
 
 use std::future::Future;
