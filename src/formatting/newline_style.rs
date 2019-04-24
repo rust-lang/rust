@@ -11,13 +11,15 @@ pub(crate) fn apply_newline_style(
     formatted_text: &mut String,
     raw_input_text: &str,
 ) {
+    const WINDOWS_NEWLINE: &str = "\r\n";
+
     match effective_newline_style(newline_style, raw_input_text) {
         EffectiveNewlineStyle::Windows => {
             let mut transformed = String::with_capacity(2 * formatted_text.capacity());
             for c in formatted_text.chars() {
                 match c {
-                    '\n' => transformed.push_str("\r\n"),
-                    '\r' => continue,
+                    LINE_FEED => transformed.push_str(WINDOWS_NEWLINE),
+                    CARRIAGE_RETURN => continue,
                     c => transformed.push(c),
                 }
             }
@@ -26,6 +28,9 @@ pub(crate) fn apply_newline_style(
         EffectiveNewlineStyle::Unix => {}
     }
 }
+
+const LINE_FEED: char = '\n';
+const CARRIAGE_RETURN: char = '\r';
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 enum EffectiveNewlineStyle {
@@ -46,9 +51,9 @@ fn effective_newline_style(
 }
 
 fn auto_detect_newline_style(raw_input_text: &str) -> EffectiveNewlineStyle {
-    if let Some(pos) = raw_input_text.find('\n') {
+    if let Some(pos) = raw_input_text.find(LINE_FEED) {
         let pos = pos.saturating_sub(1);
-        if let Some('\r') = raw_input_text.chars().nth(pos) {
+        if let Some(CARRIAGE_RETURN) = raw_input_text.chars().nth(pos) {
             EffectiveNewlineStyle::Windows
         } else {
             EffectiveNewlineStyle::Unix
