@@ -184,12 +184,12 @@ a.test-arrow {
 	color: #ddd;
 }
 
-.stab.unstable {background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
+.stab.unstable { background: #FFF5D6; border-color: #FFC600; color: #2f2f2f; }
 .stab.internal { background: #FFB9B3; border-color: #B71C1C; color: #2f2f2f; }
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; color: #2f2f2f; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; color: #2f2f2f; }
 
-.stab > code {
+.stab.portability > code {
 	color: #ddd;
 }
 

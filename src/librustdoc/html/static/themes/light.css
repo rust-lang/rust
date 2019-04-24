@@ -190,7 +190,7 @@ a.test-arrow {
 .stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 .stab.portability { background: #C4ECFF; border-color: #7BA5DB; }
 
-.stab > code {
+.stab.portability > code {
 	color: #000;
 }
 
