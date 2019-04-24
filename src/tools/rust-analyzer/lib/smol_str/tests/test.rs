@@ -73,3 +73,29 @@ fn test_search_in_hashmap() {
     m.insert("aaa".into(), 17);
     assert_eq!(17, *m.get("aaa").unwrap());
 }
+
+#[test]
+fn test_from_iterator() {
+    let examples = [
+        // Simple keyword-like strings
+        ("if", false),
+        ("for", false),
+        ("impl", false),
+
+        // Strings containing two-byte characters
+        ("パーティーへ行かないか", true),
+        ("パーティーへ行か", true),
+        ("パーティーへ行_", false),
+        ("和製漢語", false),
+        ("部落格", false),
+        ("사회과학원 어학연구소", true),
+
+        // String containin diverse characters
+        ("表ポあA鷗ŒéＢ逍Üßªąñ丂㐀𠀀", true),
+    ];
+    for (raw, is_heap) in &examples {
+        let s: SmolStr = raw.chars().collect();
+        assert_eq!(s.as_str(), *raw);
+        assert_eq!(s.is_heap_allocated(), *is_heap);
+    }
+}
