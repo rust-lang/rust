@@ -11,16 +11,8 @@ pub(crate) fn apply_newline_style(
     formatted_text: &mut String,
     raw_input_text: &str,
 ) {
-    use crate::NewlineStyle::*;
-    let mut style = newline_style;
-    if style == Auto {
-        style = auto_detect_newline_style(raw_input_text);
-    }
-    if style == Native {
-        style = native();
-    }
-    match style {
-        Windows => {
+    match effective_newline_style(newline_style, raw_input_text) {
+        EffectiveNewlineStyle::Windows => {
             let mut transformed = String::with_capacity(2 * formatted_text.capacity());
             for c in formatted_text.chars() {
                 match c {
@@ -31,30 +23,46 @@ pub(crate) fn apply_newline_style(
             }
             *formatted_text = transformed;
         }
-        Unix => return,
-        Native => unreachable!("NewlineStyle::Native"),
-        Auto => unreachable!("NewlineStyle::Auto"),
+        EffectiveNewlineStyle::Unix => {}
     }
 }
 
-fn auto_detect_newline_style(raw_input_text: &str) -> NewlineStyle {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum EffectiveNewlineStyle {
+    Windows,
+    Unix,
+}
+
+fn effective_newline_style(
+    newline_style: NewlineStyle,
+    raw_input_text: &str,
+) -> EffectiveNewlineStyle {
+    match newline_style {
+        NewlineStyle::Auto => auto_detect_newline_style(raw_input_text),
+        NewlineStyle::Native => native_newline_style(),
+        NewlineStyle::Windows => EffectiveNewlineStyle::Windows,
+        NewlineStyle::Unix => EffectiveNewlineStyle::Unix,
+    }
+}
+
+fn auto_detect_newline_style(raw_input_text: &str) -> EffectiveNewlineStyle {
     if let Some(pos) = raw_input_text.find('\n') {
         let pos = pos.saturating_sub(1);
         if let Some('\r') = raw_input_text.chars().nth(pos) {
-            NewlineStyle::Windows
+            EffectiveNewlineStyle::Windows
         } else {
-            NewlineStyle::Unix
+            EffectiveNewlineStyle::Unix
         }
     } else {
-        NewlineStyle::Native
+        native_newline_style()
     }
 }
 
-fn native() -> NewlineStyle {
+fn native_newline_style() -> EffectiveNewlineStyle {
     if cfg!(windows) {
-        NewlineStyle::Windows
+        EffectiveNewlineStyle::Windows
     } else {
-        NewlineStyle::Unix
+        EffectiveNewlineStyle::Unix
     }
 }
 
@@ -68,9 +76,20 @@ mod tests {
         let crlf = "One\r\nTwo\r\nThree";
         let none = "One Two Three";
 
-        assert_eq!(NewlineStyle::Unix, auto_detect_newline_style(lf));
-        assert_eq!(NewlineStyle::Windows, auto_detect_newline_style(crlf));
-        assert_eq!(NewlineStyle::Native, auto_detect_newline_style(none));
+        assert_eq!(EffectiveNewlineStyle::Unix, auto_detect_newline_style(lf));
+        assert_eq!(
+            EffectiveNewlineStyle::Windows,
+            auto_detect_newline_style(crlf)
+        );
+
+        if cfg!(windows) {
+            assert_eq!(
+                EffectiveNewlineStyle::Windows,
+                auto_detect_newline_style(none)
+            );
+        } else {
+            assert_eq!(EffectiveNewlineStyle::Unix, auto_detect_newline_style(none));
+        }
     }
 
     #[test]
