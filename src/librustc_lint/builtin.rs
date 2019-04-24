@@ -1280,6 +1280,7 @@ declare_lint! {
     "`...` range patterns are deprecated"
 }
 
+#[derive(Default)]
 pub struct EllipsisInclusiveRangePatterns {
     /// If `Some(_)`, suppress all subsequent pattern
     /// warnings for better diagnostics.
@@ -1287,14 +1288,6 @@ pub struct EllipsisInclusiveRangePatterns {
 }
 
 impl_lint_pass!(EllipsisInclusiveRangePatterns => [ELLIPSIS_INCLUSIVE_RANGE_PATTERNS]);
-
-impl EllipsisInclusiveRangePatterns {
-    pub fn new() -> Self {
-        Self {
-            node_id: None,
-        }
-    }
-}
 
 impl EarlyLintPass for EllipsisInclusiveRangePatterns {
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &ast::Pat) {
