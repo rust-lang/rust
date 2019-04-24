@@ -24,6 +24,7 @@ mod subtree_source;
 mod subtree_parser;
 
 use ra_syntax::SmolStr;
+use smallvec::SmallVec;
 
 pub use tt::{Delimiter, Punct};
 
@@ -99,10 +100,17 @@ pub(crate) struct Subtree {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Separator {
+    Literal(tt::Literal),
+    Ident(tt::Ident),
+    Puncts(SmallVec<[tt::Punct; 3]>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Repeat {
     pub(crate) subtree: Subtree,
     pub(crate) kind: RepeatKind,
-    pub(crate) separator: Option<char>,
+    pub(crate) separator: Option<Separator>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -175,8 +183,8 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let expansion = rules.expand(&invocation_tt).unwrap();
         assert_eq!(
         expansion.to_string(),
-        "impl From < Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree :: Leaf (it)}} \
-         impl From < Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree :: Subtree (it)}}"
+        "impl From <Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree ::Leaf (it)}} \
+         impl From <Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree ::Subtree (it)}}"
     )
     }
 
@@ -384,7 +392,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
 "#,
         );
 
-        assert_expansion(&rules, "foo! { foo, bar }", "fn baz {foo () ; bar ()}");
+        assert_expansion(&rules, "foo! { foo, bar }", "fn baz {foo () ;bar ()}");
     }
 
     #[test]
@@ -414,6 +422,18 @@ impl_froms!(TokenTree: Leaf, Subtree);
         );
 
         assert_expansion(&rules, "foo! {fn baz {a b} }", "fn baz () {a () ; b () ;}");
+    }
+
+    #[test]
+    fn test_match_group_with_multichar_sep() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {            
+            (fn $name:ident {$($i:literal)*} ) => ( fn $name() -> bool { $($i)&&*} );            
+        }"#,
+        );
+
+        assert_expansion(&rules, "foo! (fn baz {true true} )", "fn baz () -> bool {true &&true}");
     }
 
     #[test]
@@ -597,7 +617,7 @@ MACRO_ITEMS@[0; 40)
         assert_expansion(
             &rules,
             "foo! { bar::<u8>::baz::<u8> }",
-            "fn foo () {let a = bar :: < u8 > :: baz :: < u8 > ;}",
+            "fn foo () {let a = bar ::< u8 >:: baz ::< u8 > ;}",
         );
     }
 
@@ -891,7 +911,7 @@ MACRO_ITEMS@[0; 40)
         }
 "#,
         );
-        assert_expansion(&rules, r#"foo!{'a}"#, r#"struct Ref < 'a > {s : & 'a str}"#);
+        assert_expansion(&rules, r#"foo!{'a}"#, r#"struct Ref <'a > {s : &'a str}"#);
     }
 
     #[test]
@@ -1063,7 +1083,7 @@ macro_rules! int_base {
         );
 
         assert_expansion(&rules, r#" int_base!{Binary for isize as usize -> Binary}"#, 
-        "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt :: Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
+        "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt ::Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
         );
     }
 
@@ -1139,187 +1159,5 @@ impl_fn_for_zst !   {
 
         assert_expansion(&rules, r#"impl_nonzero_fmt ! { # [ stable ( feature = "nonzero" , since = "1.28.0" ) ] ( Debug , Display , Binary , Octal , LowerHex , UpperHex ) for NonZeroU8 }"#, 
         "fn foo () {}");
-    }
-
-    #[test]
-    fn test_tuple_impls() {
-        // from https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/num/mod.rs#L12
-        let rules = create_rules(
-            r#"
-    macro_rules! tuple_impls {
-    ($(
-        $Tuple:ident {
-            $(($idx:tt) -> $T:ident)+
-        }
-    )+) => {
-        $(
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialEq),+> PartialEq for ($($T,)+) where last_type!($($T,)+): ?Sized {
-                #[inline]
-                fn eq(&self, other: &($($T,)+)) -> bool {
-                    $(self.$idx == other.$idx)&&+
-                }
-                #[inline]
-                fn ne(&self, other: &($($T,)+)) -> bool {
-                    $(self.$idx != other.$idx)||+
-                }
-            }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Eq),+> Eq for ($($T,)+) where last_type!($($T,)+): ?Sized {}
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:PartialOrd + PartialEq),+> PartialOrd for ($($T,)+)
-                    where last_type!($($T,)+): ?Sized {
-                #[inline]
-                fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
-                    lexical_partial_cmp!($(self.$idx, other.$idx),+)
-                }
-                #[inline]
-                fn lt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(lt, $(self.$idx, other.$idx),+)
-                }
-                #[inline]
-                fn le(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(le, $(self.$idx, other.$idx),+)
-                }
-                #[inline]
-                fn ge(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(ge, $(self.$idx, other.$idx),+)
-                }
-                #[inline]
-                fn gt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(gt, $(self.$idx, other.$idx),+)
-                }
-            }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Ord),+> Ord for ($($T,)+) where last_type!($($T,)+): ?Sized {
-                #[inline]
-                fn cmp(&self, other: &($($T,)+)) -> Ordering {
-                    lexical_cmp!($(self.$idx, other.$idx),+)
-                }
-            }
-
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($T:Default),+> Default for ($($T,)+) {
-                #[inline]
-                fn default() -> ($($T,)+) {
-                    ($({ let x: $T = Default::default(); x},)+)
-                }
-            }
-        )+
-    }
-}"#,
-        );
-
-        assert_expansion(
-            &rules,
-            r#"tuple_impls ! { 
-    Tuple1   { 
-         ( 0 )   ->   A 
-     } 
-     Tuple2   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-     } 
-     Tuple3   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-     } 
-     Tuple4   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-     } 
-     Tuple5   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-     } 
-     Tuple6   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-         ( 5 )   ->   F 
-     } 
-     Tuple7   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-         ( 5 )   ->   F 
-         ( 6 )   ->   G 
-     } 
-     Tuple8   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-         ( 5 )   ->   F 
-         ( 6 )   ->   G 
-         ( 7 )   ->   H 
-     } 
-     Tuple9   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-         ( 5 )   ->   F 
-         ( 6 )   ->   G 
-         ( 7 )   ->   H 
-         ( 8 )   ->   I 
-     } 
-     Tuple10   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-         ( 5 )   ->   F 
-         ( 6 )   ->   G 
-         ( 7 )   ->   H 
-         ( 8 )   ->   I 
-         ( 9 )   ->   J 
-     } 
-     Tuple11   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-         ( 5 )   ->   F 
-         ( 6 )   ->   G 
-         ( 7 )   ->   H 
-         ( 8 )   ->   I 
-         ( 9 )   ->   J 
-         ( 10 )   ->   K 
-     } 
-     Tuple12   { 
-         ( 0 )   ->   A 
-         ( 1 )   ->   B 
-         ( 2 )   ->   C 
-         ( 3 )   ->   D 
-         ( 4 )   ->   E 
-         ( 5 )   ->   F 
-         ( 6 )   ->   G 
-         ( 7 )   ->   H 
-         ( 8 )   ->   I 
-         ( 9 )   ->   J 
-         ( 10 )   ->   K 
-         ( 11 )   ->   L 
-     } 
-}"#,
-            "fn foo () {}",
-        );
     }
 }

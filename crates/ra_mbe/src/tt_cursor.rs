@@ -1,5 +1,7 @@
 use crate::ParseError;
 use crate::subtree_parser::Parser;
+use crate::subtree_source::TokenPeek;
+use smallvec::{SmallVec, smallvec};
 
 #[derive(Clone)]
 pub(crate) struct TtCursor<'a> {
@@ -159,6 +161,95 @@ impl<'a> TtCursor<'a> {
             Ok(())
         } else {
             Err(ParseError::Expected(format!("`{}`", char)))
+        }
+    }
+
+    fn eat_punct3(&mut self, p: &tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
+        let sec = self.eat_punct()?.clone();
+        let third = self.eat_punct()?.clone();
+        Some(smallvec![p.clone(), sec, third])
+    }
+
+    fn eat_punct2(&mut self, p: &tt::Punct) -> Option<SmallVec<[tt::Punct; 3]>> {
+        let sec = self.eat_punct()?.clone();
+        Some(smallvec![p.clone(), sec])
+    }
+
+    fn eat_multi_char_punct<'b, I>(
+        &mut self,
+        p: &tt::Punct,
+        iter: &mut TokenPeek<'b, I>,
+    ) -> Option<SmallVec<[tt::Punct; 3]>>
+    where
+        I: Iterator<Item = &'b tt::TokenTree>,
+    {
+        if let Some((m, _)) = iter.current_punct3(p) {
+            if let r @ Some(_) = match m {
+                ('<', '<', '=') | ('>', '>', '=') | ('.', '.', '.') | ('.', '.', '=') => {
+                    self.eat_punct3(p)
+                }
+                _ => None,
+            } {
+                return r;
+            }
+        }
+
+        if let Some((m, _)) = iter.current_punct2(p) {
+            if let r @ Some(_) = match m {
+                ('<', '=')
+                | ('>', '=')
+                | ('+', '=')
+                | ('-', '=')
+                | ('|', '=')
+                | ('&', '=')
+                | ('^', '=')
+                | ('/', '=')
+                | ('*', '=')
+                | ('%', '=')
+                | ('&', '&')
+                | ('|', '|')
+                | ('<', '<')
+                | ('>', '>')
+                | ('-', '>')
+                | ('!', '=')
+                | ('=', '>')
+                | ('=', '=')
+                | ('.', '.')
+                | (':', ':') => self.eat_punct2(p),
+
+                _ => None,
+            } {
+                return r;
+            }
+        }
+
+        None
+    }
+
+    pub(crate) fn eat_seperator(&mut self) -> Option<crate::Separator> {
+        match self.eat()? {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(lit)) => {
+                Some(crate::Separator::Literal(lit.clone()))
+            }
+            tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
+                Some(crate::Separator::Ident(ident.clone()))
+            }
+            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) => {
+                match punct.char {
+                    '*' | '+' | '?' => return None,
+                    _ => {}
+                };
+
+                // FIXME: The parser is only handle some compositeable punct,
+                // But at this phase, some punct still is jointed.
+                // So we by pass that check here.
+                let mut peekable = TokenPeek::new(self.subtree.token_trees[self.pos..].iter());
+                let puncts = self.eat_multi_char_punct(punct, &mut peekable);
+                let puncts = puncts.unwrap_or_else(|| smallvec![punct.clone()]);
+
+                Some(crate::Separator::Puncts(puncts))
+            }
+            _ => None,
         }
     }
 

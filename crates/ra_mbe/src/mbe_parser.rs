@@ -74,18 +74,11 @@ fn parse_var(p: &mut TtCursor, transcriber: bool) -> Result<crate::Var, ParseErr
     Ok(crate::Var { text, kind })
 }
 
-fn parse_repeat(p: &mut TtCursor, transcriber: bool) -> Result<crate::Repeat, ParseError> {
-    let subtree = p.eat_subtree().unwrap();
-    let mut subtree = parse_subtree(subtree, transcriber)?;
-    subtree.delimiter = crate::Delimiter::None;
-    let sep = p.eat_punct().ok_or(ParseError::Expected(String::from("separator")))?;
-    let (separator, rep) = match sep.char {
-        '*' | '+' | '?' => (None, sep.char),
-        char => {
-            (Some(char), p.eat_punct().ok_or(ParseError::Expected(String::from("separator")))?.char)
-        }
-    };
-
+fn mk_repeat(
+    rep: char,
+    subtree: crate::Subtree,
+    separator: Option<crate::Separator>,
+) -> Result<crate::Repeat, ParseError> {
     let kind = match rep {
         '*' => crate::RepeatKind::ZeroOrMore,
         '+' => crate::RepeatKind::OneOrMore,
@@ -93,6 +86,27 @@ fn parse_repeat(p: &mut TtCursor, transcriber: bool) -> Result<crate::Repeat, Pa
         _ => return Err(ParseError::Expected(String::from("repeat"))),
     };
     Ok(crate::Repeat { subtree, kind, separator })
+}
+
+fn parse_repeat(p: &mut TtCursor, transcriber: bool) -> Result<crate::Repeat, ParseError> {
+    let subtree = p.eat_subtree().unwrap();
+    let mut subtree = parse_subtree(subtree, transcriber)?;
+    subtree.delimiter = crate::Delimiter::None;
+
+    if let Some(rep) = p.at_punct() {
+        match rep.char {
+            '*' | '+' | '?' => {
+                p.bump();
+                return mk_repeat(rep.char, subtree, None);
+            }
+            _ => {}
+        }
+    }
+
+    let sep = p.eat_seperator().ok_or(ParseError::Expected(String::from("separator")))?;
+    let rep = p.eat_punct().ok_or(ParseError::Expected(String::from("repeat")))?;
+
+    mk_repeat(rep.char, subtree, Some(sep))
 }
 
 #[cfg(test)]
@@ -109,7 +123,7 @@ mod tests {
         is_valid("($i:ident) => ()");
         expect_err("$i:ident => ()", "subtree");
         expect_err("($i:ident) ()", "`=`");
-        expect_err("($($i:ident)_) => ()", "separator");
+        expect_err("($($i:ident)_) => ()", "repeat");
     }
 
     fn expect_err(macro_body: &str, expected: &str) {

@@ -196,6 +196,7 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                         "literal" => {
                             let literal =
                                 input.eat_literal().ok_or(ExpandError::UnexpectedToken)?.clone();
+
                             res.inner.insert(
                                 text.clone(),
                                 Binding::Simple(tt::Leaf::from(literal).into()),
@@ -210,7 +211,7 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                     }
                 }
                 crate::Leaf::Punct(punct) => {
-                    if input.eat_punct() != Some(punct) {
+                    if !input.eat_punct().map(|p| p.char == punct.char).unwrap_or(false) {
                         return Err(ExpandError::UnexpectedToken);
                     }
                 }
@@ -246,8 +247,23 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                                 }
                             }
 
-                            if let Some(separator) = *separator {
-                                if input.eat_punct().map(|p| p.char) != Some(separator) {
+                            if let Some(separator) = separator {
+                                use crate::Separator::*;
+
+                                if !input
+                                    .eat_seperator()
+                                    .map(|sep| match (sep, separator) {
+                                        (Ident(ref a), Ident(ref b)) => a.text == b.text,
+                                        (Literal(ref a), Literal(ref b)) => a.text == b.text,
+                                        (Puncts(ref a), Puncts(ref b)) if a.len() == b.len() => {
+                                            let a_iter = a.iter().map(|a| a.char);
+                                            let b_iter = b.iter().map(|b| b.char);
+                                            a_iter.eq(b_iter)
+                                        }
+                                        _ => false,
+                                    })
+                                    .unwrap_or(false)
+                                {
                                     input.rollback(memento);
                                     break;
                                 }
@@ -328,7 +344,7 @@ fn expand_tt(
             // Dirty hack to make macro-expansion terminate.
             // This should be replaced by a propper macro-by-example implementation
             let mut limit = 128;
-            let mut has_sep = false;
+            let mut has_seps = 0;
 
             while let Ok(t) = expand_subtree(&repeat.subtree, bindings, nesting) {
                 limit -= 1;
@@ -339,15 +355,28 @@ fn expand_tt(
                 nesting.push(idx + 1);
                 token_trees.push(reduce_single_token(t).into());
 
-                if let Some(sep) = repeat.separator {
-                    let punct =
-                        tt::Leaf::from(tt::Punct { char: sep, spacing: tt::Spacing::Alone });
-                    token_trees.push(punct.into());
-                    has_sep = true;
+                if let Some(ref sep) = repeat.separator {
+                    match sep {
+                        crate::Separator::Ident(ident) => {
+                            has_seps = 1;
+                            token_trees.push(tt::Leaf::from(ident.clone()).into());
+                        }
+                        crate::Separator::Literal(lit) => {
+                            has_seps = 1;
+                            token_trees.push(tt::Leaf::from(lit.clone()).into());
+                        }
+
+                        crate::Separator::Puncts(puncts) => {
+                            has_seps = puncts.len();
+                            for punct in puncts {
+                                token_trees.push(tt::Leaf::from(*punct).into());
+                            }
+                        }
+                    }
                 }
             }
             nesting.pop().unwrap();
-            if has_sep {
+            for _ in 0..has_seps {
                 token_trees.pop();
             }
 
