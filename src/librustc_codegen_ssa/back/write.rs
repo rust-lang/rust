@@ -350,7 +350,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
 pub struct CompiledModules {
     pub modules: Vec<CompiledModule>,
-    pub metadata_module: CompiledModule,
+    pub metadata_module: Option<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
 }
 
@@ -682,8 +682,10 @@ fn produce_final_output_artifacts(sess: &Session,
         }
 
         if !user_wants_bitcode {
-            if let Some(ref path) = compiled_modules.metadata_module.bytecode {
-                remove(sess, &path);
+            if let Some(ref metadata_module) = compiled_modules.metadata_module {
+                if let Some(ref path) = metadata_module.bytecode {
+                    remove(sess, &path);
+                }
             }
 
             if let Some(ref allocator_module) = compiled_modules.allocator_module {
@@ -1563,9 +1565,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         // the backend in the same order every time to ensure that we're handing
         // out deterministic results.
         compiled_modules.sort_by(|a, b| a.name.cmp(&b.name));
-
-        let compiled_metadata_module = compiled_metadata_module
-            .expect("Metadata module not compiled?");
 
         Ok(CompiledModules {
             modules: compiled_modules,
