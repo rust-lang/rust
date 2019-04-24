@@ -1545,10 +1545,19 @@ define_print_and_forward_display! {
         }
         if let ConstValue::Unevaluated(did, substs) = self.val {
             match cx.tcx().describe_def(did) {
-                | Some(Def::Static(_, _))
-                | Some(Def::Const(_, false))
-                | Some(Def::AssociatedConst(_)) => p!(write("{}", cx.tcx().def_path_str(did))),
-                _ => p!(write("_")),
+                | Some(Def::Static(_))
+                | Some(Def::Const(_))
+                | Some(Def::AssociatedConst(_)) => p!(print_value_path(did, substs)),
+                _ => if did.is_local() {
+                    let span = cx.tcx().def_span(did);
+                    if let Ok(snip) = cx.tcx().sess.source_map().span_to_snippet(span) {
+                        p!(write("{}", snip))
+                    } else {
+                        p!(write("_"))
+                    }
+                } else {
+                    p!(write("_"))
+                },
             }
             return Ok(cx);
         }
