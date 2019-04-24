@@ -19,7 +19,6 @@ matrix:
     - env: CFG_RELEASE_CHANNEL=beta
     - os: osx
     - env: INTEGRATION=bitflags
-    - env: INTEGRATION=cargo
     - env: INTEGRATION=chalk
     - env: INTEGRATION=crater
     - env: INTEGRATION=error-chain
@@ -41,6 +40,8 @@ matrix:
     - env: INTEGRATION=rust-semverver
     # can be moved back to include section after https://github.com/rust-lang-nursery/failure/pull/298 is merged
     - env: INTEGRATION=failure
+    # `cargo test` doesn't finish - disabling for now.
+    # - env: INTEGRATION=cargo
 
 script:
   - |
