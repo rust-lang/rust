@@ -20,6 +20,8 @@ use crate::utils::{count_newlines, get_skip_macro_names};
 use crate::visitor::{FmtVisitor, SnippetProvider};
 use crate::{modules, source_file, ErrorKind, FormatReport, Input, Session};
 
+mod newline_style;
+
 // A map of the files of a crate, with their new content
 pub(crate) type SourceFile = Vec<FileRecord>;
 pub(crate) type FileRecord = (FileName, String);
