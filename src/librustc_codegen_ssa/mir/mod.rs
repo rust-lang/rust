@@ -655,10 +655,12 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                         ty::Generator(def_id, substs, _) => (def_id, substs),
                         _ => bug!("generator layout without generator substs"),
                     };
+                    // TODO handle variant scopes here
                     let state_tys = gen_substs.state_tys(def_id, tcx);
 
-                    let upvar_count = upvar_debuginfo.len();
-                    generator_layout.fields
+                    // TODO remove assumption of only one variant
+                    let upvar_count = mir.upvar_decls.len();
+                    generator_layout.variant_fields[0]
                         .iter()
                         .zip(state_tys)
                         .enumerate()

@@ -549,7 +549,8 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }).unzip();
 
     let layout = GeneratorLayout {
-        fields: vars
+        // Put everything in one variant, for now.
+        variant_fields: vec![vars]
     };
 
     (remap, layout, storage_liveness)
