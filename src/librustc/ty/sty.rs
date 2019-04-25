@@ -171,7 +171,7 @@ pub enum TyKind<'tcx> {
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
-    Tuple(&'tcx List<Ty<'tcx>>),
+    Tuple(SubstsRef<'tcx>),
 
     /// The projection of an associated type. For example,
     /// `<T as Trait<..>>::N`.
