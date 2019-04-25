@@ -541,6 +541,8 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
         let opt_ty = self.substs.get(p.idx as usize).map(|k| k.unpack());
         let ty = match opt_ty {
             Some(UnpackedKind::Type(ty)) => ty,
+            Some(UnpackedKind::Const(ty::Const { ty, ..})) => ty,
+            None => source_ty,
             _ => {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 span_bug!(
@@ -551,7 +553,8 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
                     source_ty,
                     p.idx,
                     self.root_ty,
-                    self.substs);
+                    self.substs,
+                );
             }
         };
 

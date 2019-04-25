@@ -1,0 +1,28 @@
+error[E0573]: expected type, found const parameter `N`
+  --> $DIR/issue-60264.rs:3:14
+   |
+LL | struct B<T = N, const N: T>(PhantomData<[T; N]>);
+   |              ^ help: a struct with a similar name exists: `B`
+
+error[E0658]: const generics are unstable
+  --> $DIR/issue-60264.rs:3:23
+   |
+LL | struct B<T = N, const N: T>(PhantomData<[T; N]>);
+   |                       ^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44580
+   = help: add #![feature(const_generics)] to the crate attributes to enable
+
+error[E0308]: mismatched types
+  --> $DIR/issue-60264.rs:3:45
+   |
+LL | struct B<T = N, const N: T>(PhantomData<[T; N]>);
+   |                                             ^ expected usize, found type parameter
+   |
+   = note: expected type `usize`
+              found type `T`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0658.
+For more information about an error, try `rustc --explain E0308`.
