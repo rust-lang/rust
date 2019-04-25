@@ -542,17 +542,12 @@ declare_lint! {
     "detects missing implementations of fmt::Debug"
 }
 
+#[derive(Default)]
 pub struct MissingDebugImplementations {
     impling_types: Option<HirIdSet>,
 }
 
 impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
-
-impl MissingDebugImplementations {
-    pub fn new() -> MissingDebugImplementations {
-        MissingDebugImplementations { impling_types: None }
-    }
-}
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, item: &hir::Item) {
@@ -1285,6 +1280,7 @@ declare_lint! {
     "`...` range patterns are deprecated"
 }
 
+#[derive(Default)]
 pub struct EllipsisInclusiveRangePatterns {
     /// If `Some(_)`, suppress all subsequent pattern
     /// warnings for better diagnostics.
@@ -1292,14 +1288,6 @@ pub struct EllipsisInclusiveRangePatterns {
 }
 
 impl_lint_pass!(EllipsisInclusiveRangePatterns => [ELLIPSIS_INCLUSIVE_RANGE_PATTERNS]);
-
-impl EllipsisInclusiveRangePatterns {
-    pub fn new() -> Self {
-        Self {
-            node_id: None,
-        }
-    }
-}
 
 impl EarlyLintPass for EllipsisInclusiveRangePatterns {
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &ast::Pat) {
