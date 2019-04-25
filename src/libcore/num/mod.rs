@@ -959,6 +959,62 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Saturating integer negation. Computes `-self`, returning `MAX` if `self == MIN`
+instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "#![feature(saturating_neg)]
+assert_eq!(100", stringify!($SelfT), ".saturating_neg(), -100);
+assert_eq!((-100", stringify!($SelfT), ").saturating_neg(), 100);
+assert_eq!(", stringify!($SelfT), "::min_value().saturating_neg(), ", stringify!($SelfT),
+"::max_value());
+assert_eq!(", stringify!($SelfT), "::max_value().saturating_neg(), ", stringify!($SelfT),
+"::min_value() + 1);",
+$EndFeature, "
+```"),
+
+            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[inline]
+            pub fn saturating_neg(self) -> Self {
+                intrinsics::saturating_sub(0, self)
+            }
+        }
+
+        doc_comment! {
+            concat!("Saturating absolute value. Computes `self.abs()`, returning `MAX` if `self ==
+MIN` instead of overflowing.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "#![feature(saturating_neg)]
+assert_eq!(100", stringify!($SelfT), ".saturating_abs(), 100);
+assert_eq!((-100", stringify!($SelfT), ").saturating_abs(), 100);
+assert_eq!(", stringify!($SelfT), "::min_value().saturating_abs(), ", stringify!($SelfT),
+"::max_value());
+assert_eq!((", stringify!($SelfT), "::min_value() + 1).saturating_abs(), ", stringify!($SelfT),
+"::max_value());",
+$EndFeature, "
+```"),
+
+            #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[inline]
+            pub fn saturating_abs(self) -> Self {
+                if self.is_negative() {
+                    self.saturating_neg()
+                } else {
+                    self
+                }
+            }
+        }
+
+        doc_comment! {
             concat!("Saturating integer multiplication. Computes `self * rhs`, saturating at the
 numeric bounds instead of overflowing.
 
