@@ -5,6 +5,7 @@ use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
 
+// use std::convert::From;
 use std::cmp;
 use std::fmt;
 use std::i128;
@@ -1544,32 +1545,38 @@ impl<'gcx, 'tcx, T: HasTyCtxt<'gcx>> HasTyCtxt<'gcx> for LayoutCx<'tcx, T> {
 }
 
 pub trait MaybeResult<T> {
+    type Item;
+
     fn from_ok(x: T) -> Self;
     fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self;
-    fn ok(self) -> Option<T>;
+    fn to_result(self) -> Result<T, Self::Item>;
 }
 
 impl<T> MaybeResult<T> for T {
+    type Item = !;
+
     fn from_ok(x: T) -> Self {
         x
     }
     fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
         f(self)
     }
-    fn ok(self) -> Option<T> {
-        Some(self)
+    fn to_result(self) -> Result<T, !> {
+        Ok(self)
     }
 }
 
 impl<T, E> MaybeResult<T> for Result<T, E> {
+    type Item = E;
+
     fn from_ok(x: T) -> Self {
         Ok(x)
     }
     fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
         self.map(f)
     }
-    fn ok(self) -> Option<T> {
-        self.ok()
+    fn to_result(self) -> Result<T, E> {
+        self
     }
 }
 
@@ -1843,7 +1850,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     ) -> Option<PointeeInfo> {
         match this.ty.sty {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
-                cx.layout_of(mt.ty).ok()
+                cx.layout_of(mt.ty).to_result().ok()
                     .map(|layout| PointeeInfo {
                         size: layout.size,
                         align: layout.align.abi,
@@ -1882,7 +1889,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     }
                 };
 
-                cx.layout_of(ty).ok()
+                cx.layout_of(ty).to_result().ok()
                     .map(|layout| PointeeInfo {
                         size: layout.size,
                         align: layout.align.abi,
@@ -1930,7 +1937,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                         let field_start = variant.fields.offset(i);
                         if field_start <= offset {
                             let field = variant.field(cx, i);
-                            result = field.ok()
+                            result = field.to_result().ok()
                                 .and_then(|field| {
                                     if ptr_end <= field_start + field.size {
                                         // We found the right field, look inside it.
