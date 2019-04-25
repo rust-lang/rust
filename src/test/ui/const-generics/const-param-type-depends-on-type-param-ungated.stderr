@@ -1,0 +1,19 @@
+error[E0671]: const parameters cannot depend on type parameters
+  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:22
+   |
+LL | struct B<T, const N: T>(PhantomData<[T; N]>);
+   |                      ^ const parameter depends on type parameter
+
+error[E0658]: const generics are unstable
+  --> $DIR/const-param-type-depends-on-type-param-ungated.rs:3:19
+   |
+LL | struct B<T, const N: T>(PhantomData<[T; N]>);
+   |                   ^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44580
+   = help: add #![feature(const_generics)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0658, E0671.
+For more information about an error, try `rustc --explain E0658`.
