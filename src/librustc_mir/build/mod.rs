@@ -147,7 +147,21 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             build::construct_fn(cx, id, arguments, safety, abi,
                                 return_ty, yield_ty, return_ty_span, body)
         } else {
-            build::construct_const(cx, body_id, return_ty_span)
+            // Get the revealed type of this const. This is *not* the adjusted
+            // type of its body, which may be a subtype of this type. For
+            // example:
+            //
+            // fn foo(_: &()) {}
+            // static X: fn(&'static ()) = foo;
+            //
+            // The adjusted type of the body of X is `for<'a> fn(&'a ())` which
+            // is not the same as the type of X. We need the type of the return
+            // place to be the type of the constant because NLL typeck will
+            // equate them.
+
+            let return_ty = cx.tables().node_type(id);
+
+            build::construct_const(cx, body_id, return_ty, return_ty_span)
         };
 
         // Convert the Mir to global types.
@@ -730,16 +744,25 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 fn construct_const<'a, 'gcx, 'tcx>(
     hir: Cx<'a, 'gcx, 'tcx>,
     body_id: hir::BodyId,
-    ty_span: Span,
+    const_ty: Ty<'tcx>,
+    const_ty_span: Span,
 ) -> Mir<'tcx> {
     let tcx = hir.tcx();
-    let ast_expr = &tcx.hir().body(body_id).value;
-    let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir().body_owner(body_id);
     let span = tcx.hir().span(owner_id);
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, ty_span, vec![], vec![]);
+    let mut builder = Builder::new(
+        hir,
+        span,
+        0,
+        Safety::Safe,
+        const_ty,
+        const_ty_span,
+        vec![],
+        vec![],
+    );
 
     let mut block = START_BLOCK;
+    let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
     unpack!(block = builder.into_expr(&Place::RETURN_PLACE, block, expr));
 

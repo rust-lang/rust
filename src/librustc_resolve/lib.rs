@@ -364,7 +364,12 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver<'_>,
                                            "use of undeclared label `{}`",
                                            name);
             if let Some(lev_candidate) = lev_candidate {
-                err.span_label(span, format!("did you mean `{}`?", lev_candidate));
+                err.span_suggestion(
+                    span,
+                    "a label with a similar name exists in this scope",
+                    lev_candidate.to_string(),
+                    Applicability::MaybeIncorrect,
+                );
             } else {
                 err.span_label(span, format!("undeclared label `{}`", name));
             }
@@ -4280,7 +4285,13 @@ impl<'a> Resolver<'a> {
                         // Picks the first label that is "close enough", which is not necessarily
                         // the closest match
                         let close_match = self.search_label(label.ident, |rib, ident| {
-                            let names = rib.bindings.iter().map(|(id, _)| &id.name);
+                            let names = rib.bindings.iter().filter_map(|(id, _)| {
+                                if id.span.ctxt() == label.ident.span.ctxt() {
+                                    Some(&id.name)
+                                } else {
+                                    None
+                                }
+                            });
                             find_best_match_for_name(names, &*ident.as_str(), None)
                         });
                         self.record_def(expr.id, err_path_resolution());

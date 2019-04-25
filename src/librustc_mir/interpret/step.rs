@@ -259,8 +259,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 )?;
             }
 
-            Cast(kind, ref operand, cast_ty) => {
-                debug_assert_eq!(self.monomorphize(cast_ty)?, dest.layout.ty);
+            Cast(kind, ref operand, _) => {
                 let src = self.eval_operand(operand, None)?;
                 self.cast(src, kind, dest)?;
             }

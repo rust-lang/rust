@@ -88,6 +88,9 @@ impl EarlyProps {
             }
         }
 
+        let rustc_has_profiler_support = env::var_os("RUSTC_PROFILER_SUPPORT").is_some();
+        let rustc_has_sanitizer_support = env::var_os("RUSTC_SANITIZER_SUPPORT").is_some();
+
         iter_header(testfile, None, &mut |ln| {
             // we should check if any only-<platform> exists and if it exists
             // and does not matches the current platform, skip the test
@@ -114,6 +117,16 @@ impl EarlyProps {
 
                 if config.run_clang_based_tests_with.is_none() &&
                    config.parse_needs_matching_clang(ln) {
+                    props.ignore = Ignore::Ignore;
+                }
+
+                if !rustc_has_profiler_support &&
+                   config.parse_needs_profiler_support(ln) {
+                    props.ignore = Ignore::Ignore;
+                }
+
+                if !rustc_has_sanitizer_support &&
+                   config.parse_needs_sanitizer_support(ln) {
                     props.ignore = Ignore::Ignore;
                 }
             }
@@ -746,6 +759,14 @@ impl Config {
 
     fn parse_needs_matching_clang(&self, line: &str) -> bool {
         self.parse_name_directive(line, "needs-matching-clang")
+    }
+
+    fn parse_needs_profiler_support(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "needs-profiler-support")
+    }
+
+    fn parse_needs_sanitizer_support(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "needs-sanitizer-support")
     }
 
     /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
