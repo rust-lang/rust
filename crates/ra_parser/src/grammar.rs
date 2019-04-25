@@ -119,7 +119,22 @@ pub(crate) fn meta_item(p: &mut Parser) {
             items::token_tree(p);
             break;
         } else {
-            p.bump();
+            // https://doc.rust-lang.org/reference/attributes.html
+            // https://doc.rust-lang.org/reference/paths.html#simple-paths
+            // The start of an meta must be a simple path
+            match p.current() {
+                IDENT | COLONCOLON | SUPER_KW | SELF_KW | CRATE_KW => p.bump(),
+                EQ => {
+                    p.bump();
+                    match p.current() {
+                        c if c.is_literal() => p.bump(),
+                        TRUE_KW | FALSE_KW => p.bump(),
+                        _ => {}
+                    }
+                    break;
+                }
+                _ => break,
+            }
         }
     }
 

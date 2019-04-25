@@ -212,7 +212,7 @@ impl<'a> SubTreeWalker<'a> {
 }
 
 pub(crate) trait Querier {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr);
+    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool);
 }
 
 // A wrapper class for ref cell
@@ -292,9 +292,10 @@ impl<'a> WalkerOwner<'a> {
 }
 
 impl<'a> Querier for WalkerOwner<'a> {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr) {
-        let tkn = self.get(uidx).unwrap();
-        (tkn.kind, tkn.text)
+    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool) {
+        self.get(uidx)
+            .map(|tkn| (tkn.kind, tkn.text, tkn.is_joint_to_next))
+            .unwrap_or_else(|| (SyntaxKind::EOF, "".into(), false))
     }
 }
 
@@ -342,7 +343,7 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
     }
 }
 
-struct TokenPeek<'a, I>
+pub(crate) struct TokenPeek<'a, I>
 where
     I: Iterator<Item = &'a tt::TokenTree>,
 {
@@ -365,7 +366,7 @@ where
         TokenPeek { iter: itertools::multipeek(iter) }
     }
 
-    fn current_punct2(&mut self, p: &tt::Punct) -> Option<((char, char), bool)> {
+    pub fn current_punct2(&mut self, p: &tt::Punct) -> Option<((char, char), bool)> {
         if p.spacing != tt::Spacing::Joint {
             return None;
         }
@@ -375,7 +376,7 @@ where
         Some(((p.char, p1.char), p1.spacing == tt::Spacing::Joint))
     }
 
-    fn current_punct3(&mut self, p: &tt::Punct) -> Option<((char, char, char), bool)> {
+    pub fn current_punct3(&mut self, p: &tt::Punct) -> Option<((char, char, char), bool)> {
         self.current_punct2(p).and_then(|((p0, p1), last_joint)| {
             if !last_joint {
                 None
@@ -437,12 +438,14 @@ fn convert_delim(d: tt::Delimiter, closing: bool) -> TtToken {
 }
 
 fn convert_literal(l: &tt::Literal) -> TtToken {
-    TtToken {
-        kind: classify_literal(&l.text).unwrap().kind,
-        is_joint_to_next: false,
-        text: l.text.clone(),
-        n_tokens: 1,
-    }
+    let kind =
+        classify_literal(&l.text).map(|tkn| tkn.kind).unwrap_or_else(|| match l.text.as_ref() {
+            "true" => SyntaxKind::TRUE_KW,
+            "false" => SyntaxKind::FALSE_KW,
+            _ => panic!("Fail to convert given literal {:#?}", &l),
+        });
+
+    TtToken { kind, is_joint_to_next: false, text: l.text.clone(), n_tokens: 1 }
 }
 
 fn convert_ident(ident: &tt::Ident) -> TtToken {

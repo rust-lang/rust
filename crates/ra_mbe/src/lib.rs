@@ -24,6 +24,7 @@ mod subtree_source;
 mod subtree_parser;
 
 use ra_syntax::SmolStr;
+use smallvec::SmallVec;
 
 pub use tt::{Delimiter, Punct};
 
@@ -99,10 +100,17 @@ pub(crate) struct Subtree {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Separator {
+    Literal(tt::Literal),
+    Ident(tt::Ident),
+    Puncts(SmallVec<[tt::Punct; 3]>),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Repeat {
     pub(crate) subtree: Subtree,
     pub(crate) kind: RepeatKind,
-    pub(crate) separator: Option<char>,
+    pub(crate) separator: Option<Separator>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -175,8 +183,8 @@ impl_froms!(TokenTree: Leaf, Subtree);
         let expansion = rules.expand(&invocation_tt).unwrap();
         assert_eq!(
         expansion.to_string(),
-        "impl From < Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree :: Leaf (it)}} \
-         impl From < Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree :: Subtree (it)}}"
+        "impl From <Leaf > for TokenTree {fn from (it : Leaf) -> TokenTree {TokenTree ::Leaf (it)}} \
+         impl From <Subtree > for TokenTree {fn from (it : Subtree) -> TokenTree {TokenTree ::Subtree (it)}}"
     )
     }
 
@@ -384,7 +392,7 @@ impl_froms!(TokenTree: Leaf, Subtree);
 "#,
         );
 
-        assert_expansion(&rules, "foo! { foo, bar }", "fn baz {foo () ; bar () ;}");
+        assert_expansion(&rules, "foo! { foo, bar }", "fn baz {foo () ;bar ()}");
     }
 
     #[test]
@@ -414,6 +422,42 @@ impl_froms!(TokenTree: Leaf, Subtree);
         );
 
         assert_expansion(&rules, "foo! {fn baz {a b} }", "fn baz () {a () ; b () ;}");
+    }
+
+    #[test]
+    fn test_match_group_with_multichar_sep() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {            
+            (fn $name:ident {$($i:literal)*} ) => ( fn $name() -> bool { $($i)&&*} );            
+        }"#,
+        );
+
+        assert_expansion(&rules, "foo! (fn baz {true true} )", "fn baz () -> bool {true &&true}");
+    }
+
+    #[test]
+    fn test_match_group_zero_match() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {            
+            ( $($i:ident)* ) => ();            
+        }"#,
+        );
+
+        assert_expansion(&rules, "foo! ()", "");
+    }
+
+    #[test]
+    fn test_match_group_in_group() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {            
+            { $( ( $($i:ident)* ) )* } => ( $( ( $($i)* ) )* );
+        }"#,
+        );
+
+        assert_expansion(&rules, "foo! ( (a b) )", "(a b)");
     }
 
     #[test]
@@ -597,7 +641,7 @@ MACRO_ITEMS@[0; 40)
         assert_expansion(
             &rules,
             "foo! { bar::<u8>::baz::<u8> }",
-            "fn foo () {let a = bar :: < u8 > :: baz :: < u8 > ;}",
+            "fn foo () {let a = bar ::< u8 >:: baz ::< u8 > ;}",
         );
     }
 
@@ -891,7 +935,7 @@ MACRO_ITEMS@[0; 40)
         }
 "#,
         );
-        assert_expansion(&rules, r#"foo!{'a}"#, r#"struct Ref < 'a > {s : & 'a str}"#);
+        assert_expansion(&rules, r#"foo!{'a}"#, r#"struct Ref <'a > {s : &'a str}"#);
     }
 
     #[test]
@@ -1063,7 +1107,165 @@ macro_rules! int_base {
         );
 
         assert_expansion(&rules, r#" int_base!{Binary for isize as usize -> Binary}"#, 
-        "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt :: Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
+        "# [stable (feature = \"rust1\" , since = \"1.0.0\")] impl fmt ::Binary for isize {fn fmt (& self , f : & mut fmt :: Formatter < \'_ >) -> fmt :: Result {Binary . fmt_int (* self as usize , f)}}"
         );
+    }
+
+    #[test]
+    fn test_generate_pattern_iterators() {
+        // from https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/str/mod.rs
+        let rules = create_rules(
+            r#"
+macro_rules! generate_pattern_iterators {        
+        { double ended; with $(#[$common_stability_attribute:meta])*,
+                           $forward_iterator:ident,
+                           $reverse_iterator:ident, $iterty:ty
+        } => {
+            fn foo(){}
+        }
+}
+"#,
+        );
+
+        assert_expansion(&rules, r#"generate_pattern_iterators ! ( double ended ; with # [ stable ( feature = "rust1" , since = "1.0.0" ) ] , Split , RSplit , & 'a str )"#, 
+        "fn foo () {}");
+    }
+
+    #[test]
+    fn test_impl_fn_for_zst() {
+        // from https://github.com/rust-lang/rust/blob/5d20ff4d2718c820632b38c1e49d4de648a9810b/src/libcore/internal_macros.rs
+        let rules = create_rules(
+            r#"
+macro_rules! impl_fn_for_zst  {        
+        {  $( $( #[$attr: meta] )*
+        struct $Name: ident impl$( <$( $lifetime : lifetime ),+> )? Fn =
+            |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty
+$body: block; )+
+        } => {
+           $(
+            $( #[$attr] )*
+            struct $Name;
+
+            impl $( <$( $lifetime ),+> )? Fn<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call(&self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    $body
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )? FnMut<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call_mut(
+                    &mut self,
+                    ($( $arg, )*): ($( $ArgTy, )*)
+                ) -> $ReturnTy {
+                    Fn::call(&*self, ($( $arg, )*))
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )? FnOnce<($( $ArgTy, )*)> for $Name {
+                type Output = $ReturnTy;
+
+                #[inline]
+                extern "rust-call" fn call_once(self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    Fn::call(&self, ($( $arg, )*))
+                }
+            }
+        )+
+}
+        }
+}
+"#,
+        );
+
+        assert_expansion(&rules, r#"
+impl_fn_for_zst !   { 
+     # [ derive ( Clone ) ] 
+     struct   CharEscapeDebugContinue   impl   Fn   =   | c :   char |   ->   char :: EscapeDebug   { 
+         c . escape_debug_ext ( false ) 
+     } ; 
+
+     # [ derive ( Clone ) ] 
+     struct   CharEscapeUnicode   impl   Fn   =   | c :   char |   ->   char :: EscapeUnicode   { 
+         c . escape_unicode ( ) 
+     } ; 
+     # [ derive ( Clone ) ] 
+     struct   CharEscapeDefault   impl   Fn   =   | c :   char |   ->   char :: EscapeDefault   { 
+         c . escape_default ( ) 
+     } ; 
+ }
+"#, 
+        "# [derive (Clone)] struct CharEscapeDebugContinue ; impl  Fn < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDebug {{c . escape_debug_ext (false)}}} impl  FnMut < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (&* self , (c ,))}} impl  FnOnce < (char ,) > for CharEscapeDebugContinue {type Output = char :: EscapeDebug ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeUnicode ; impl  Fn < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeUnicode {{c . escape_unicode ()}}} impl  FnMut < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (&* self , (c ,))}} impl  FnOnce < (char ,) > for CharEscapeUnicode {type Output = char :: EscapeUnicode ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeDefault ; impl  Fn < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDefault {{c . escape_default ()}}} impl  FnMut < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (&* self , (c ,))}} impl  FnOnce < (char ,) > for CharEscapeDefault {type Output = char :: EscapeDefault ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (& self , (c ,))}}");
+    }
+
+    #[test]
+    fn test_impl_nonzero_fmt() {
+        // from https://github.com/rust-lang/rust/blob/316a391dcb7d66dc25f1f9a4ec9d368ef7615005/src/libcore/num/mod.rs#L12
+        let rules = create_rules(
+            r#"
+        macro_rules! impl_nonzero_fmt {
+            ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
+                fn foo() {}
+            }
+        }
+"#,
+        );
+
+        assert_expansion(&rules, r#"impl_nonzero_fmt ! { # [ stable ( feature = "nonzero" , since = "1.28.0" ) ] ( Debug , Display , Binary , Octal , LowerHex , UpperHex ) for NonZeroU8 }"#, 
+        "fn foo () {}");
+    }
+
+    #[test]
+    fn test_cfg_if_items() {
+        // from https://github.com/rust-lang/rust/blob/33fe1131cadba69d317156847be9a402b89f11bb/src/libstd/macros.rs#L986
+        let rules = create_rules(
+            r#"
+        macro_rules! __cfg_if_items {
+            (($($not:meta,)*) ; ) => {};
+            (($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
+                 __cfg_if_items! { ($($not,)* $($m,)*) ; $($rest)* }
+            }
+        }
+"#,
+        );
+
+        assert_expansion(&rules, r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,         
+        "__cfg_if_items ! {(rustdoc , ) ; }");
+    }
+
+    #[test]
+    fn test_cfg_if_main() {
+        // from https://github.com/rust-lang/rust/blob/3d211248393686e0f73851fc7548f6605220fbe1/src/libpanic_unwind/macros.rs#L9
+        let rules = create_rules(
+            r#"
+        macro_rules! cfg_if {
+            ($(
+                if #[cfg($($meta:meta),*)] { $($it:item)* }
+            ) else * else {
+                $($it2:item)*
+            }) => {
+                __cfg_if_items! {
+                    () ;
+                    $( ( ($($meta),*) ($($it)*) ), )*
+                    ( () ($($it2)*) ),
+                }
+            }
+        }
+"#,
+        );
+
+        assert_expansion(&rules, r#"
+cfg_if !   { 
+     if   # [ cfg ( target_env   =   "msvc" ) ]   { 
+         // no extra unwinder support needed 
+     }   else   if   # [ cfg ( all ( target_arch   =   "wasm32" ,   not ( target_os   =   "emscripten" ) ) ) ]   { 
+         // no unwinder on the system! 
+     }   else   { 
+         mod   libunwind ; 
+         pub   use   libunwind :: * ; 
+     } 
+ }        
+"#,         
+        "__cfg_if_items ! {() ;  (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
     }
 }

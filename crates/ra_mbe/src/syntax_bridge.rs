@@ -123,6 +123,11 @@ fn convert_tt(
     global_offset: TextUnit,
     tt: &SyntaxNode,
 ) -> Option<tt::Subtree> {
+    // This tree is empty
+    if tt.first_child_or_token().is_none() {
+        return Some(tt::Subtree { token_trees: vec![], delimiter: tt::Delimiter::None });
+    }
+
     let first_child = tt.first_child_or_token()?;
     let last_child = tt.last_child_or_token()?;
     let (delimiter, skip_first) = match (first_child.kind(), last_child.kind()) {
@@ -133,7 +138,9 @@ fn convert_tt(
     };
 
     let mut token_trees = Vec::new();
-    for child in tt.children_with_tokens().skip(skip_first as usize) {
+    let mut child_iter = tt.children_with_tokens().skip(skip_first as usize).peekable();
+
+    while let Some(child) = child_iter.next() {
         if (skip_first && (child == first_child || child == last_child)) || child.kind().is_trivia()
         {
             continue;
@@ -152,12 +159,25 @@ fn convert_tt(
                         prev = Some(char)
                     }
                     if let Some(char) = prev {
-                        token_trees.push(
-                            tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Alone }).into(),
-                        );
+                        let spacing = match child_iter.peek() {
+                            Some(SyntaxElement::Token(token)) => {
+                                if token.kind().is_punct() {
+                                    tt::Spacing::Joint
+                                } else {
+                                    tt::Spacing::Alone
+                                }
+                            }
+                            _ => tt::Spacing::Alone,
+                        };
+
+                        token_trees.push(tt::Leaf::from(tt::Punct { char, spacing }).into());
                     }
                 } else {
-                    let child: tt::TokenTree = if token.kind().is_keyword()
+                    let child: tt::TokenTree = if token.kind() == SyntaxKind::TRUE_KW
+                        || token.kind() == SyntaxKind::FALSE_KW
+                    {
+                        tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
+                    } else if token.kind().is_keyword()
                         || token.kind() == IDENT
                         || token.kind() == LIFETIME
                     {
@@ -218,7 +238,16 @@ impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
         self.text_pos += TextUnit::of_str(&self.buf);
         let text = SmolStr::new(self.buf.as_str());
         self.buf.clear();
-        self.inner.token(kind, text)
+        self.inner.token(kind, text);
+
+        // // Add a white space to token
+        // let (last_kind, _, last_joint_to_next ) = self.src_querier.token(self.token_pos-n_tokens as usize);
+        // if !last_joint_to_next && last_kind.is_punct() {
+        //     let (cur_kind, _, _ ) = self.src_querier.token(self.token_pos);
+        //     if cur_kind.is_punct() {
+        //         self.inner.token(WHITESPACE, " ".into());
+        //     }
+        // }
     }
 
     fn start_node(&mut self, kind: SyntaxKind) {
