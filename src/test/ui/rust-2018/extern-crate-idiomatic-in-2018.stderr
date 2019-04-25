@@ -11,11 +11,5 @@ LL | #![deny(rust_2018_idioms)]
    |         ^^^^^^^^^^^^^^^^
    = note: #[deny(unused_extern_crates)] implied by #[deny(rust_2018_idioms)]
 
-error: `extern crate` is not idiomatic in the new edition
-  --> $DIR/extern-crate-idiomatic-in-2018.rs:15:1
-   |
-LL | extern crate edition_lint_paths as bar;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: convert it to a `use`
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

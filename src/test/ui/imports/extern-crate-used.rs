@@ -5,10 +5,14 @@
 
 #![deny(unused_extern_crates)]
 
-extern crate core as iso1; //~ ERROR `extern crate` is not idiomatic in the new edition
-extern crate core as iso2; //~ ERROR `extern crate` is not idiomatic in the new edition
-extern crate core as iso3; //~ ERROR `extern crate` is not idiomatic in the new edition
-extern crate core as iso4; //~ ERROR `extern crate` is not idiomatic in the new edition
+// Shouldn't suggest changing to `use`, as new name
+// would no longer be added to the prelude which could cause
+// compilation errors for imports that use the new name in
+// other modules. See #57672.
+extern crate core as iso1;
+extern crate core as iso2;
+extern crate core as iso3;
+extern crate core as iso4;
 
 // Doesn't introduce its extern prelude entry, so it's still considered unused.
 extern crate core; //~ ERROR unused extern crate
