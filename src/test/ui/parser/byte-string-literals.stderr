@@ -23,10 +23,10 @@ LL |     b"é";
    |       ^
 
 error: unterminated double quote byte string
-  --> $DIR/byte-string-literals.rs:9:7
+  --> $DIR/byte-string-literals.rs:9:6
    |
 LL |       b"a
-   |  _______^
+   |  ______^
 LL | | }
    | |__^
 

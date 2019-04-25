@@ -184,7 +184,7 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   ) -> &mut Self);
     forward!(pub fn warn(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_warn<S: Into<MultiSpan>>(&mut self, sp: S, msg: &str) -> &mut Self);
-    forward!(pub fn help(&mut self , msg: &str) -> &mut Self);
+    forward!(pub fn help(&mut self, msg: &str) -> &mut Self);
     forward!(pub fn span_help<S: Into<MultiSpan>>(&mut self,
                                                   sp: S,
                                                   msg: &str,

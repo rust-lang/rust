@@ -1,14 +1,14 @@
 error: numeric character escape is too short
-  --> $DIR/lex-bad-char-literals-1.rs:3:8
+  --> $DIR/lex-bad-char-literals-1.rs:3:6
    |
 LL |     '\x1'
-   |        ^
+   |      ^^^
 
 error: numeric character escape is too short
-  --> $DIR/lex-bad-char-literals-1.rs:7:8
+  --> $DIR/lex-bad-char-literals-1.rs:7:6
    |
 LL |     "\x1"
-   |        ^
+   |      ^^^
 
 error: unknown character escape: \u{25cf}
   --> $DIR/lex-bad-char-literals-1.rs:11:7

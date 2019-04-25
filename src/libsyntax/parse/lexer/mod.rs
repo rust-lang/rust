@@ -1,8 +1,10 @@
 use crate::ast::{self, Ident};
 use crate::parse::{token, ParseSess};
 use crate::symbol::Symbol;
+use crate::parse::unescape;
+use crate::parse::unescape_error_reporting::{emit_unescape_error, push_escaped_char};
 
-use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
+use errors::{FatalError, Diagnostic, DiagnosticBuilder};
 use syntax_pos::{BytePos, Pos, Span, NO_EXPANSION};
 use core::unicode::property::Pattern_White_Space;
 
@@ -334,25 +336,12 @@ impl<'a> StringReader<'a> {
         self.err_span(self.mk_sp(from_pos, to_pos), m)
     }
 
-    /// Pushes a character to a message string for error reporting
-    fn push_escaped_char_for_msg(m: &mut String, c: char) {
-        match c {
-            '\u{20}'..='\u{7e}' => {
-                // Don't escape \, ' or " for user-facing messages
-                m.push(c);
-            }
-            _ => {
-                m.extend(c.escape_default());
-            }
-        }
-    }
-
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
     /// escaped character to the error message
     fn fatal_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) -> FatalError {
         let mut m = m.to_string();
         m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
+        push_escaped_char(&mut m, c);
 
         self.fatal_span_(from_pos, to_pos, &m[..])
     }
@@ -368,7 +357,7 @@ impl<'a> StringReader<'a> {
     {
         let mut m = m.to_string();
         m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
+        push_escaped_char(&mut m, c);
 
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
     }
@@ -378,27 +367,8 @@ impl<'a> StringReader<'a> {
     fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
         let mut m = m.to_string();
         m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
+        push_escaped_char(&mut m, c);
         self.err_span_(from_pos, to_pos, &m[..]);
-    }
-
-    fn struct_err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char)
-        -> DiagnosticBuilder<'a>
-    {
-        let mut m = m.to_string();
-        m.push_str(": ");
-        Self::push_escaped_char_for_msg(&mut m, c);
-
-        self.sess.span_diagnostic.struct_span_err(self.mk_sp(from_pos, to_pos), &m[..])
-    }
-
-    /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
-    /// offending string to the error message
-    fn fatal_span_verbose(&self, from_pos: BytePos, to_pos: BytePos, mut m: String) -> FatalError {
-        m.push_str(": ");
-        m.push_str(&self.src[self.src_index(from_pos)..self.src_index(to_pos)]);
-
-        self.fatal_span_(from_pos, to_pos, &m[..])
     }
 
     /// Advance peek_tok and peek_span to refer to the next token, and
@@ -863,271 +833,6 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Scan over `n_digits` hex digits, stopping at `delim`, reporting an
-    /// error if too many or too few digits are encountered.
-    fn scan_hex_digits(&mut self, n_digits: usize, delim: char, below_0x7f_only: bool) -> bool {
-        debug!("scanning {} digits until {:?}", n_digits, delim);
-        let start_bpos = self.pos;
-        let mut accum_int = 0;
-
-        let mut valid = true;
-        for _ in 0..n_digits {
-            if self.is_eof() {
-                let last_bpos = self.pos;
-                self.fatal_span_(start_bpos,
-                                 last_bpos,
-                                 "unterminated numeric character escape").raise();
-            }
-            if self.ch_is(delim) {
-                let last_bpos = self.pos;
-                self.err_span_(start_bpos,
-                               last_bpos,
-                               "numeric character escape is too short");
-                valid = false;
-                break;
-            }
-            let c = self.ch.unwrap_or('\x00');
-            accum_int *= 16;
-            accum_int += c.to_digit(16).unwrap_or_else(|| {
-                self.err_span_char(self.pos,
-                                   self.next_pos,
-                                   "invalid character in numeric character escape",
-                                   c);
-
-                valid = false;
-                0
-            });
-            self.bump();
-        }
-
-        if below_0x7f_only && accum_int >= 0x80 {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "this form of character escape may only be used with characters in \
-                            the range [\\x00-\\x7f]");
-            valid = false;
-        }
-
-        match char::from_u32(accum_int) {
-            Some(_) => valid,
-            None => {
-                let last_bpos = self.pos;
-                self.err_span_(start_bpos, last_bpos, "invalid numeric character escape");
-                false
-            }
-        }
-    }
-
-    /// Scan for a single (possibly escaped) byte or char
-    /// in a byte, (non-raw) byte string, char, or (non-raw) string literal.
-    /// `start` is the position of `first_source_char`, which is already consumed.
-    ///
-    /// Returns `true` if there was a valid char/byte.
-    fn scan_char_or_byte(&mut self,
-                         start: BytePos,
-                         first_source_char: char,
-                         ascii_only: bool,
-                         delim: char)
-                         -> bool
-    {
-        match first_source_char {
-            '\\' => {
-                // '\X' for some X must be a character constant:
-                let escaped = self.ch;
-                let escaped_pos = self.pos;
-                self.bump();
-                match escaped {
-                    None => {}  // EOF here is an error that will be checked later.
-                    Some(e) => {
-                        return match e {
-                            'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
-                            'x' => self.scan_byte_escape(delim, !ascii_only),
-                            'u' => {
-                                let valid = if self.ch_is('{') {
-                                    self.scan_unicode_escape(delim) && !ascii_only
-                                } else {
-                                    let span = self.mk_sp(start, self.pos);
-                                    let mut suggestion = "\\u{".to_owned();
-                                    let msg = "incorrect unicode escape sequence";
-                                    let mut err = self.sess.span_diagnostic.struct_span_err(
-                                        span,
-                                        msg,
-                                    );
-                                    let mut i = 0;
-                                    while let (Some(ch), true) = (self.ch, i < 6) {
-                                        if ch.is_digit(16) {
-                                            suggestion.push(ch);
-                                            self.bump();
-                                            i += 1;
-                                        } else {
-                                            break;
-                                        }
-                                    }
-                                    if i != 0 {
-                                        suggestion.push('}');
-                                        err.span_suggestion(
-                                            self.mk_sp(start, self.pos),
-                                            "format of unicode escape sequences uses braces",
-                                            suggestion,
-                                            Applicability::MaybeIncorrect,
-                                        );
-                                    } else {
-                                        err.span_label(span, msg);
-                                        err.help(
-                                            "format of unicode escape sequences is `\\u{...}`",
-                                        );
-                                    }
-                                    err.emit();
-                                    false
-                                };
-                                if ascii_only {
-                                    self.err_span_(start,
-                                                   self.pos,
-                                                   "unicode escape sequences cannot be used as a \
-                                                    byte or in a byte string");
-                                }
-                                valid
-
-                            }
-                            '\n' if delim == '"' => {
-                                self.consume_whitespace();
-                                true
-                            }
-                            '\r' if delim == '"' && self.ch_is('\n') => {
-                                self.consume_whitespace();
-                                true
-                            }
-                            c => {
-                                let pos = self.pos;
-                                let msg = if ascii_only {
-                                    "unknown byte escape"
-                                } else {
-                                    "unknown character escape"
-                                };
-                                let mut err = self.struct_err_span_char(escaped_pos, pos, msg, c);
-                                err.span_label(self.mk_sp(escaped_pos, pos), msg);
-                                if e == '\r' {
-                                    err.help(
-                                        "this is an isolated carriage return; consider checking \
-                                         your editor and version control settings",
-                                    );
-                                }
-                                if (e == '{' || e == '}') && !ascii_only {
-                                    err.help(
-                                        "if used in a formatting string, curly braces are escaped \
-                                         with `{{` and `}}`",
-                                    );
-                                }
-                                err.emit();
-                                false
-                            }
-                        }
-                    }
-                }
-            }
-            '\t' | '\n' | '\r' | '\'' if delim == '\'' => {
-                let pos = self.pos;
-                self.err_span_char(start,
-                                   pos,
-                                   if ascii_only {
-                                       "byte constant must be escaped"
-                                   } else {
-                                       "character constant must be escaped"
-                                   },
-                                   first_source_char);
-                return false;
-            }
-            '\r' => {
-                if self.ch_is('\n') {
-                    self.bump();
-                    return true;
-                } else {
-                    self.err_span_(start,
-                                   self.pos,
-                                   "bare CR not allowed in string, use \\r instead");
-                    return false;
-                }
-            }
-            _ => {
-                if ascii_only && first_source_char > '\x7F' {
-                    let pos = self.pos;
-                    self.err_span_(start,
-                                   pos,
-                                   "byte constant must be ASCII. Use a \\xHH escape for a \
-                                    non-ASCII byte");
-                    return false;
-                }
-            }
-        }
-        true
-    }
-
-    /// Scan over a `\u{...}` escape
-    ///
-    /// At this point, we have already seen the `\` and the `u`, the `{` is the current character.
-    /// We will read a hex number (with `_` separators), with 1 to 6 actual digits,
-    /// and pass over the `}`.
-    fn scan_unicode_escape(&mut self, delim: char) -> bool {
-        self.bump(); // past the {
-        let start_bpos = self.pos;
-        let mut valid = true;
-
-        if let Some('_') = self.ch {
-            // disallow leading `_`
-            self.err_span_(self.pos,
-                           self.next_pos,
-                           "invalid start of unicode escape");
-            valid = false;
-        }
-
-        let count = self.scan_digits(16, 16);
-
-        if count > 6 {
-            self.err_span_(start_bpos,
-                           self.pos,
-                           "overlong unicode escape (must have at most 6 hex digits)");
-            valid = false;
-        }
-
-        loop {
-            match self.ch {
-                Some('}') => {
-                    if valid && count == 0 {
-                        self.err_span_(start_bpos,
-                                       self.pos,
-                                       "empty unicode escape (must have at least 1 hex digit)");
-                        valid = false;
-                    }
-                    self.bump(); // past the ending `}`
-                    break;
-                },
-                Some(c) => {
-                    if c == delim {
-                        self.err_span_(self.pos,
-                                       self.pos,
-                                       "unterminated unicode escape (needed a `}`)");
-                        valid = false;
-                        break;
-                    } else if valid {
-                        self.err_span_char(start_bpos,
-                                           self.pos,
-                                           "invalid character in unicode escape",
-                                           c);
-                        valid = false;
-                    }
-                },
-                None => {
-                    self.fatal_span_(start_bpos,
-                                     self.pos,
-                                     "unterminated unicode escape (found EOF)").raise();
-                }
-            }
-            self.bump();
-        }
-
-        valid
-    }
-
     /// Scan over a float exponent.
     fn scan_float_exponent(&mut self) {
         if self.ch_is('e') || self.ch_is('E') {
@@ -1393,26 +1098,21 @@ impl<'a> StringReader<'a> {
                 self.bump();
                 let start = self.pos;
 
-                // the eof will be picked up by the final `'` check below
-                let c2 = self.ch.unwrap_or('\x00');
-                self.bump();
-
                 // If the character is an ident start not followed by another single
                 // quote, then this is a lifetime name:
-                if (ident_start(Some(c2)) || c2.is_numeric()) && !self.ch_is('\'') {
+                let starts_with_number = self.ch.unwrap_or('\x00').is_numeric();
+                if (ident_start(self.ch) || starts_with_number) && !self.nextch_is('\'') {
+                    self.bump();
                     while ident_continue(self.ch) {
                         self.bump();
                     }
                     // lifetimes shouldn't end with a single quote
                     // if we find one, then this is an invalid character literal
                     if self.ch_is('\'') {
-                        self.err_span_(
-                            start_with_quote,
-                            self.next_pos,
-                            "character literal may only contain one codepoint");
+                        let id = self.name_from(start);
                         self.bump();
-                        return Ok(token::Literal(token::Err(Symbol::intern("??")), None))
-
+                        self.validate_char_escape(start_with_quote);
+                        return Ok(token::Literal(token::Char(id), None))
                     }
 
                     // Include the leading `'` in the real identifier, for macro
@@ -1422,7 +1122,7 @@ impl<'a> StringReader<'a> {
                         self.mk_ident(lifetime_name)
                     });
 
-                    if c2.is_numeric() {
+                    if starts_with_number {
                         // this is a recovered lifetime written `'1`, error but accept it
                         self.err_span_(
                             start_with_quote,
@@ -1433,58 +1133,30 @@ impl<'a> StringReader<'a> {
 
                     return Ok(token::Lifetime(ident));
                 }
-
-                let valid = self.scan_char_or_byte(start, c2, /* ascii_only */ false, '\'');
-
-                if !self.ch_is('\'') {
-                    let pos = self.pos;
-
-                    loop {
-                        self.bump();
-                        if self.ch_is('\'') {
-                            let start = self.src_index(start);
-                            let end = self.src_index(self.pos);
-                            self.bump();
-                            let span = self.mk_sp(start_with_quote, self.pos);
-                            self.sess.span_diagnostic
-                                .struct_span_err(span,
-                                                 "character literal may only contain one codepoint")
-                                .span_suggestion(
-                                    span,
-                                    "if you meant to write a `str` literal, use double quotes",
-                                    format!("\"{}\"", &self.src[start..end]),
-                                    Applicability::MachineApplicable
-                                ).emit();
-                            return Ok(token::Literal(token::Err(Symbol::intern("??")), None))
-                        }
-                        if self.ch_is('\n') || self.is_eof() || self.ch_is('/') {
-                            // Only attempt to infer single line string literals. If we encounter
-                            // a slash, bail out in order to avoid nonsensical suggestion when
-                            // involving comments.
-                            break;
-                        }
-                    }
-
-                    self.fatal_span_verbose(start_with_quote, pos,
-                        String::from("character literal may only contain one codepoint")).raise();
-                }
-
-                let id = if valid {
-                    self.name_from(start)
-                } else {
-                    Symbol::intern("0")
-                };
-
-                self.bump(); // advance ch past token
+                let msg = "unterminated character literal";
+                let id = self.scan_single_quoted_string(start_with_quote, msg);
+                self.validate_char_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-
                 Ok(token::Literal(token::Char(id), suffix))
             }
             'b' => {
                 self.bump();
                 let lit = match self.ch {
-                    Some('\'') => self.scan_byte(),
-                    Some('"') => self.scan_byte_string(),
+                    Some('\'') => {
+                        let start_with_quote = self.pos;
+                        self.bump();
+                        let msg = "unterminated byte constant";
+                        let id = self.scan_single_quoted_string(start_with_quote, msg);
+                        self.validate_byte_escape(start_with_quote);
+                        token::Byte(id)
+                    },
+                    Some('"') => {
+                        let start_with_quote = self.pos;
+                        let msg = "unterminated double quote byte string";
+                        let id = self.scan_double_quoted_string(msg);
+                        self.validate_byte_str_escape(start_with_quote);
+                        token::ByteStr(id)
+                    },
                     Some('r') => self.scan_raw_byte_string(),
                     _ => unreachable!(),  // Should have been a token::Ident above.
                 };
@@ -1493,32 +1165,11 @@ impl<'a> StringReader<'a> {
                 Ok(token::Literal(lit, suffix))
             }
             '"' => {
-                let start_bpos = self.pos;
-                let mut valid = true;
-                self.bump();
-
-                while !self.ch_is('"') {
-                    if self.is_eof() {
-                        let last_bpos = self.pos;
-                        self.fatal_span_(start_bpos,
-                                         last_bpos,
-                                         "unterminated double quote string").raise();
-                    }
-
-                    let ch_start = self.pos;
-                    let ch = self.ch.unwrap();
-                    self.bump();
-                    valid &= self.scan_char_or_byte(ch_start, ch, /* ascii_only */ false, '"');
-                }
-                // adjust for the ASCII " at the start of the literal
-                let id = if valid {
-                    self.name_from(start_bpos + BytePos(1))
-                } else {
-                    Symbol::intern("??")
-                };
-                self.bump();
+                let start_with_quote = self.pos;
+                let msg = "unterminated double quote string";
+                let id = self.scan_double_quoted_string(msg);
+                self.validate_str_escape(start_with_quote);
                 let suffix = self.scan_optional_raw_name();
-
                 Ok(token::Literal(token::Str_(id), suffix))
             }
             'r' => {
@@ -1659,12 +1310,6 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    fn consume_whitespace(&mut self) {
-        while is_pattern_whitespace(self.ch) && !self.is_eof() {
-            self.bump();
-        }
-    }
-
     fn read_to_eol(&mut self) -> String {
         let mut val = String::new();
         while !self.ch_is('\n') && !self.is_eof() {
@@ -1698,73 +1343,63 @@ impl<'a> StringReader<'a> {
         (self.ch_is('#') && self.nextch_is('!') && !self.nextnextch_is('['))
     }
 
-    fn scan_byte(&mut self) -> token::Lit {
-        self.bump();
+    fn scan_single_quoted_string(&mut self,
+                                 start_with_quote: BytePos,
+                                 unterminated_msg: &str) -> ast::Name {
+        // assumes that first `'` is consumed
         let start = self.pos;
+        // lex `'''` as a single char, for recovery
+        if self.ch_is('\'') && self.nextch_is('\'') {
+            self.bump();
+        } else {
+            let mut first = true;
+            loop {
+                if self.ch_is('\'') {
+                    break;
+                }
+                if self.ch_is('\\') && (self.nextch_is('\'') || self.nextch_is('\\')) {
+                    self.bump();
+                    self.bump();
+                } else {
+                    // Only attempt to infer single line string literals. If we encounter
+                    // a slash, bail out in order to avoid nonsensical suggestion when
+                    // involving comments.
+                    if self.is_eof()
+                        || (self.ch_is('/') && !first)
+                        || (self.ch_is('\n') && !self.nextch_is('\'')) {
 
-        // the eof will be picked up by the final `'` check below
-        let c2 = self.ch.unwrap_or('\x00');
-        self.bump();
-
-        let valid = self.scan_char_or_byte(start,
-                                           c2,
-                                           // ascii_only =
-                                           true,
-                                           '\'');
-        if !self.ch_is('\'') {
-            // Byte offsetting here is okay because the
-            // character before position `start` are an
-            // ascii single quote and ascii 'b'.
-            let pos = self.pos;
-            self.fatal_span_verbose(start - BytePos(2),
-                                    pos,
-                                    "unterminated byte constant".to_string()).raise();
+                        self.fatal_span_(start_with_quote, self.pos, unterminated_msg.into())
+                            .raise()
+                    }
+                    self.bump();
+                }
+                first = false;
+            }
         }
 
-        let id = if valid {
-            self.name_from(start)
-        } else {
-            Symbol::intern("?")
-        };
-        self.bump(); // advance ch past token
-
-        token::Byte(id)
+        let id = self.name_from(start);
+        self.bump();
+        id
     }
 
-    #[inline]
-    fn scan_byte_escape(&mut self, delim: char, below_0x7f_only: bool) -> bool {
-        self.scan_hex_digits(2, delim, below_0x7f_only)
-    }
-
-    fn scan_byte_string(&mut self) -> token::Lit {
+    fn scan_double_quoted_string(&mut self, unterminated_msg: &str) -> ast::Name {
+        debug_assert!(self.ch_is('\"'));
+        let start_with_quote = self.pos;
         self.bump();
         let start = self.pos;
-        let mut valid = true;
-
         while !self.ch_is('"') {
             if self.is_eof() {
                 let pos = self.pos;
-                self.fatal_span_(start, pos, "unterminated double quote byte string").raise();
+                self.fatal_span_(start_with_quote, pos, unterminated_msg).raise();
             }
-
-            let ch_start = self.pos;
-            let ch = self.ch.unwrap();
+            if self.ch_is('\\') && (self.nextch_is('\\') || self.nextch_is('"')) {
+                self.bump();
+            }
             self.bump();
-            valid &= self.scan_char_or_byte(ch_start,
-                                            ch,
-                                            // ascii_only =
-                                            true,
-                                            '"');
         }
-
-        let id = if valid {
-            self.name_from(start)
-        } else {
-            Symbol::intern("??")
-        };
+        let id = self.name_from(start);
         self.bump();
-
-        token::ByteStr(id)
+        id
     }
 
     fn scan_raw_byte_string(&mut self) -> token::Lit {
@@ -1825,6 +1460,70 @@ impl<'a> StringReader<'a> {
         self.bump();
 
         token::ByteStrRaw(self.name_from_to(content_start_bpos, content_end_bpos), hash_count)
+    }
+
+    fn validate_char_escape(&self, start_with_quote: BytePos) {
+        self.with_str_from_to(start_with_quote + BytePos(1), self.pos - BytePos(1), |lit| {
+            if let Err((off, err)) = unescape::unescape_char(lit) {
+                emit_unescape_error(
+                    &self.sess.span_diagnostic,
+                    lit,
+                    self.mk_sp(start_with_quote, self.pos),
+                    unescape::Mode::Char,
+                    0..off,
+                    err,
+                )
+            }
+        });
+    }
+
+    fn validate_byte_escape(&self, start_with_quote: BytePos) {
+        self.with_str_from_to(start_with_quote + BytePos(1), self.pos - BytePos(1), |lit| {
+            if let Err((off, err)) = unescape::unescape_byte(lit) {
+                emit_unescape_error(
+                    &self.sess.span_diagnostic,
+                    lit,
+                    self.mk_sp(start_with_quote, self.pos),
+                    unescape::Mode::Byte,
+                    0..off,
+                    err,
+                )
+            }
+        });
+    }
+
+    fn validate_str_escape(&self, start_with_quote: BytePos) {
+        self.with_str_from_to(start_with_quote + BytePos(1), self.pos - BytePos(1), |lit| {
+            unescape::unescape_str(lit, &mut |range, c| {
+                if let Err(err) = c {
+                    emit_unescape_error(
+                        &self.sess.span_diagnostic,
+                        lit,
+                        self.mk_sp(start_with_quote, self.pos),
+                        unescape::Mode::Str,
+                        range,
+                        err,
+                    )
+                }
+            })
+        });
+    }
+
+    fn validate_byte_str_escape(&self, start_with_quote: BytePos) {
+        self.with_str_from_to(start_with_quote + BytePos(1), self.pos - BytePos(1), |lit| {
+            unescape::unescape_byte_str(lit, &mut |range, c| {
+                if let Err(err) = c {
+                    emit_unescape_error(
+                        &self.sess.span_diagnostic,
+                        lit,
+                        self.mk_sp(start_with_quote, self.pos),
+                        unescape::Mode::ByteStr,
+                        range,
+                        err,
+                    )
+                }
+            })
+        });
     }
 }
 
