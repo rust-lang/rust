@@ -308,7 +308,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             };
 
             let mut diag = struct_span_err!(tcx.sess,
-                                            cause.span(&tcx),
+                                            cause.span(tcx),
                                             E0053,
                                             "method `{}` has an incompatible type for trait",
                                             trait_m.ident);
@@ -448,9 +448,9 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                 }).map(|(ref impl_arg, ref trait_arg)| {
                     (impl_arg.span, Some(trait_arg.span))
                 })
-                .unwrap_or_else(|| (cause.span(&tcx), tcx.hir().span_if_local(trait_m.def_id)))
+                .unwrap_or_else(|| (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)))
             } else {
-                (cause.span(&tcx), tcx.hir().span_if_local(trait_m.def_id))
+                (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
             }
         }
         TypeError::Sorts(ExpectedFound { .. }) => {
@@ -483,14 +483,14 @@ fn extract_spans_for_error_reporting<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a
                              {
                                  (impl_m_output.span(), Some(trait_m_output.span()))
                              } else {
-                                 (cause.span(&tcx), tcx.hir().span_if_local(trait_m.def_id))
+                                 (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
                              }
                          )
             } else {
-                (cause.span(&tcx), tcx.hir().span_if_local(trait_m.def_id))
+                (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id))
             }
         }
-        _ => (cause.span(&tcx), tcx.hir().span_if_local(trait_m.def_id)),
+        _ => (cause.span(tcx), tcx.hir().span_if_local(trait_m.def_id)),
     }
 }
 
@@ -549,7 +549,7 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 err.span_label(span, format!("trait method declared without `{}`", self_descr));
             } else {
                 err.note_trait_signature(trait_m.ident.to_string(),
-                                         trait_m.signature(&tcx));
+                                         trait_m.signature(tcx));
             }
             err.emit();
             return Err(ErrorReported);
@@ -569,7 +569,7 @@ fn compare_self_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 err.span_label(span, format!("`{}` used in trait", self_descr));
             } else {
                 err.note_trait_signature(trait_m.ident.to_string(),
-                                         trait_m.signature(&tcx));
+                                         trait_m.signature(tcx));
             }
             err.emit();
             return Err(ErrorReported);
@@ -726,7 +726,7 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 potentially_plural_count(trait_number_args, "parameter")));
         } else {
             err.note_trait_signature(trait_m.ident.to_string(),
-                                     trait_m.signature(&tcx));
+                                     trait_m.signature(tcx));
         }
         err.span_label(impl_span, format!("expected {}, found {}",
             potentially_plural_count(trait_number_args, "parameter"), impl_number_args));

@@ -1667,7 +1667,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 err.span_label(span, format!("`{}` from trait", trait_item.ident));
             } else {
                 err.note_trait_signature(trait_item.ident.to_string(),
-                                         trait_item.signature(&tcx));
+                                         trait_item.signature(tcx));
             }
         }
         err.emit();

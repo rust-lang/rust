@@ -198,7 +198,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_ty(&mut self,
-                        ty: & $($mutability)? Ty<'tcx>,
+                        ty: $(& $mutability)? Ty<'tcx>,
                         _: TyContext) {
                 self.super_ty(ty);
             }
@@ -864,7 +864,7 @@ macro_rules! make_mir_visitor {
                 self.visit_ty(& $($mutability)? ty.inferred_ty, TyContext::UserTy(ty.span));
             }
 
-            fn super_ty(&mut self, _ty: & $($mutability)? Ty<'tcx>) {
+            fn super_ty(&mut self, _ty: $(& $mutability)? Ty<'tcx>) {
             }
 
             fn super_region(&mut self, _region: & $($mutability)? ty::Region<'tcx>) {

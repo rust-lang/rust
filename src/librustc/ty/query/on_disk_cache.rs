@@ -9,7 +9,7 @@ use crate::rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder, SpecializedEncoder,
                       UseSpecializedDecodable, UseSpecializedEncodable};
 use crate::session::{CrateDisambiguator, Session};
-use crate::ty;
+use crate::ty::{self, Ty};
 use crate::ty::codec::{self as ty_codec, TyDecoder, TyEncoder};
 use crate::ty::context::TyCtxt;
 use crate::util::common::{time, time_ext};
@@ -545,8 +545,8 @@ impl<'a, 'tcx: 'a, 'x> ty_codec::TyDecoder<'a, 'tcx> for CacheDecoder<'a, 'tcx, 
     fn cached_ty_for_shorthand<F>(&mut self,
                                   shorthand: usize,
                                   or_insert_with: F)
-                                  -> Result<ty::Ty<'tcx>, Self::Error>
-        where F: FnOnce(&mut Self) -> Result<ty::Ty<'tcx>, Self::Error>
+                                  -> Result<Ty<'tcx>, Self::Error>
+        where F: FnOnce(&mut Self) -> Result<Ty<'tcx>, Self::Error>
     {
         let tcx = self.tcx();
 
@@ -751,7 +751,7 @@ struct CacheEncoder<'enc, 'a, 'tcx, E>
 {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     encoder: &'enc mut E,
-    type_shorthands: FxHashMap<ty::Ty<'tcx>, usize>,
+    type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
     expn_info_shorthands: FxHashMap<Mark, AbsoluteBytePos>,
     interpret_allocs: FxHashMap<interpret::AllocId, usize>,
@@ -881,11 +881,11 @@ impl<'enc, 'a, 'tcx, E> SpecializedEncoder<CrateNum> for CacheEncoder<'enc, 'a, 
     }
 }
 
-impl<'enc, 'a, 'tcx, E> SpecializedEncoder<ty::Ty<'tcx>> for CacheEncoder<'enc, 'a, 'tcx, E>
+impl<'enc, 'a, 'tcx, E> SpecializedEncoder<Ty<'tcx>> for CacheEncoder<'enc, 'a, 'tcx, E>
     where E: 'enc + ty_codec::TyEncoder
 {
     #[inline]
-    fn specialized_encode(&mut self, ty: &ty::Ty<'tcx>) -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, ty: &Ty<'tcx>) -> Result<(), Self::Error> {
         ty_codec::encode_with_shorthand(self, ty,
             |encoder| &mut encoder.type_shorthands)
     }

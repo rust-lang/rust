@@ -267,7 +267,7 @@ where
     fn relate_projection_ty(
         &mut self,
         projection_ty: ty::ProjectionTy<'tcx>,
-        value_ty: ty::Ty<'tcx>,
+        value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
         use crate::infer::type_variable::TypeVariableOrigin;
         use crate::traits::WhereClause;

@@ -3,7 +3,7 @@ use smallvec::SmallVec;
 use crate::traits;
 use crate::traits::project::Normalized;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use crate::ty::{self, Lift, TyCtxt};
+use crate::ty::{self, Lift, Ty, TyCtxt};
 use syntax::symbol::InternedString;
 
 use std::fmt;
@@ -311,7 +311,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
         result
     }
 
-    fn visit_ty(&mut self, t: ty::Ty<'tcx>) -> bool {
+    fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         use syntax::symbol::Symbol;
 
         match t.sty {

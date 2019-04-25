@@ -138,7 +138,7 @@ pub struct ObligationCause<'tcx> {
 }
 
 impl<'tcx> ObligationCause<'tcx> {
-    pub fn span<'a, 'gcx>(&self, tcx: &TyCtxt<'a, 'gcx, 'tcx>) -> Span {
+    pub fn span<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Span {
         match self.code {
             ObligationCauseCode::CompareImplMethodObligation { .. } |
             ObligationCauseCode::MainFunctionType |

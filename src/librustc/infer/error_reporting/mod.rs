@@ -690,7 +690,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         name: String,
         sub: ty::subst::SubstsRef<'tcx>,
         pos: usize,
-        other_ty: &Ty<'tcx>,
+        other_ty: Ty<'tcx>,
     ) {
         // `value` and `other_value` hold two incomplete type representation for display.
         // `name` is the path of both types being compared. `sub`
@@ -768,10 +768,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         path: String,
         sub: ty::subst::SubstsRef<'tcx>,
         other_path: String,
-        other_ty: &Ty<'tcx>,
+        other_ty: Ty<'tcx>,
     ) -> Option<()> {
         for (i, ta) in sub.types().enumerate() {
-            if &ta == other_ty {
+            if ta == other_ty {
                 self.highlight_outer(&mut t1_out, &mut t2_out, path, sub, i, &other_ty);
                 return Some(());
             }
@@ -839,7 +839,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagnosticStyledString, DiagnosticStyledString) {
-        fn equals<'tcx>(a: &Ty<'tcx>, b: &Ty<'tcx>) -> bool {
+        fn equals<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
             match (&a.sty, &b.sty) {
                 (a, b) if *a == *b => true,
                 (&ty::Int(_), &ty::Infer(ty::InferTy::IntVar(_)))
@@ -1099,7 +1099,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let span = cause.span(&self.tcx);
+        let span = cause.span(self.tcx);
 
         diag.span_label(span, terr.to_string());
         if let Some((sp, msg)) = secondary_span {
@@ -1233,7 +1233,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             trace, terr
         );
 
-        let span = trace.cause.span(&self.tcx);
+        let span = trace.cause.span(self.tcx);
         let failure_code = trace.cause.as_failure_code(terr);
         let mut diag = match failure_code {
             FailureCode::Error0317(failure_str) => {

@@ -18,7 +18,7 @@ pub enum MonoItem<'tcx> {
 }
 
 impl<'tcx> MonoItem<'tcx> {
-    pub fn size_estimate<'a>(&self, tcx: &TyCtxt<'a, 'tcx, 'tcx>) -> usize {
+    pub fn size_estimate<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> usize {
         match *self {
             MonoItem::Fn(instance) => {
                 // Estimate the size of a function based on how many statements
@@ -144,7 +144,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         base_n::encode(hash, base_n::CASE_INSENSITIVE)
     }
 
-    pub fn estimate_size<'a>(&mut self, tcx: &TyCtxt<'a, 'tcx, 'tcx>) {
+    pub fn estimate_size<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         // Estimate the size of a codegen unit as (approximately) the number of MIR
         // statements it corresponds to.
         self.size_estimate = Some(self.items.keys().map(|mi| mi.size_estimate(tcx)).sum());

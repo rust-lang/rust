@@ -64,7 +64,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
 
     /// We sometimes have `ty` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
-    fn visit_ty(&mut self, ty: &ty::Ty<'tcx>, ty_context: TyContext) {
+    fn visit_ty(&mut self, ty: ty::Ty<'tcx>, ty_context: TyContext) {
         match ty_context {
             TyContext::ReturnTy(SourceInfo { span, .. })
             | TyContext::YieldTy(SourceInfo { span, .. })
@@ -77,7 +77,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
                 );
             }
             TyContext::Location(location) => {
-                self.add_regular_live_constraint(*ty, location);
+                self.add_regular_live_constraint(ty, location);
             }
         }
 
