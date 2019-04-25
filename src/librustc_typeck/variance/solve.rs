@@ -78,6 +78,22 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
+    fn enforce_const_invariance(&self, generics: &ty::Generics, variances: &mut Vec<ty::Variance>) {
+        let tcx = self.terms_cx.tcx;
+
+        // Make all const parameters invariant.
+        for param in generics.params.iter() {
+            if let ty::GenericParamDefKind::Const = param.kind {
+                variances[param.index as usize] = ty::Invariant;
+            }
+        }
+
+        // Make all the const parameters in the parent invariant (recursively).
+        if let Some(def_id) = generics.parent {
+            self.enforce_const_invariance(tcx.generics_of(def_id), variances);
+        }
+    }
+
     fn create_map(&self) -> FxHashMap<DefId, Lrc<Vec<ty::Variance>>> {
         let tcx = self.terms_cx.tcx;
 
@@ -91,11 +107,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             debug!("id={} variances={:?}", id, variances);
 
             // Const parameters are always invariant.
-            for (idx, param) in generics.params.iter().enumerate() {
-                if let ty::GenericParamDefKind::Const = param.kind {
-                    variances[idx] = ty::Invariant;
-                }
-            }
+            self.enforce_const_invariance(generics, &mut variances);
 
             // Functions are permitted to have unused generic parameters: make those invariant.
             if let ty::FnDef(..) = tcx.type_of(def_id).sty {
