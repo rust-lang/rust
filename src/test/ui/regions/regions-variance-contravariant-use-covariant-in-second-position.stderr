@@ -2,9 +2,7 @@ error[E0623]: lifetime mismatch
   --> $DIR/regions-variance-contravariant-use-covariant-in-second-position.rs:25:30
    |
 LL | fn use_<'short,'long>(c: S<'long, 'short>,
-   |                          ----------------
-   |                          |
-   |                          this type is declared with multiple lifetimes...
+   |                          ---------------- this type is declared with multiple lifetimes...
 ...
 LL |     let _: S<'long, 'long> = c;
    |                              ^ ...but data with one lifetime flows into the other here
