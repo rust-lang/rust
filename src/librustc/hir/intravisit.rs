@@ -1029,6 +1029,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
+        ExprKind::Use(ref subexpression) => {
+            visitor.visit_expr(subexpression);
+        }
         ExprKind::If(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
             visitor.visit_expr(if_block);
