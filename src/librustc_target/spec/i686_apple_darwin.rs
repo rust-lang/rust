@@ -8,8 +8,14 @@ pub fn target() -> TargetResult {
     base.stack_probes = true;
     base.eliminate_frame_pointer = false;
 
+    // Clang automatically chooses a more specific target based on
+    // MACOSX_DEPLOYMENT_TARGET.  To enable cross-language LTO to work
+    // correctly, we do too.
+    let arch = "i686";
+    let llvm_target = super::apple_base::macos_llvm_target(&arch);
+
     Ok(Target {
-        llvm_target: "i686-apple-darwin".to_string(),
+        llvm_target: llvm_target,
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         target_c_int_width: "32".to_string(),
