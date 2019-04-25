@@ -438,14 +438,12 @@ fn convert_delim(d: tt::Delimiter, closing: bool) -> TtToken {
 }
 
 fn convert_literal(l: &tt::Literal) -> TtToken {
-    let kind = classify_literal(&l.text)
-        .map(|tkn| tkn.kind)
-        .or_else(|| match l.text.as_ref() {
-            "true" => Some(SyntaxKind::TRUE_KW),
-            "false" => Some(SyntaxKind::FALSE_KW),
-            _ => None,
-        })
-        .unwrap();
+    let kind =
+        classify_literal(&l.text).map(|tkn| tkn.kind).unwrap_or_else(|| match l.text.as_ref() {
+            "true" => SyntaxKind::TRUE_KW,
+            "false" => SyntaxKind::FALSE_KW,
+            _ => panic!("Fail to convert given literal {:#?}", &l),
+        });
 
     TtToken { kind, is_joint_to_next: false, text: l.text.clone(), n_tokens: 1 }
 }
