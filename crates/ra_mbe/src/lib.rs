@@ -437,6 +437,30 @@ impl_froms!(TokenTree: Leaf, Subtree);
     }
 
     #[test]
+    fn test_match_group_zero_match() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {            
+            ( $($i:ident)* ) => ();            
+        }"#,
+        );
+
+        assert_expansion(&rules, "foo! ()", "");
+    }
+
+    #[test]
+    fn test_match_group_in_group() {
+        let rules = create_rules(
+            r#"
+        macro_rules! foo {            
+            { $( ( $($i:ident)* ) )* } => ( $( ( $($i)* ) )* );
+        }"#,
+        );
+
+        assert_expansion(&rules, "foo! ( (a b) )", "(a b)");
+    }
+
+    #[test]
     fn test_expand_to_item_list() {
         let rules = create_rules(
             "
@@ -1118,7 +1142,37 @@ macro_rules! impl_fn_for_zst  {
             |$( $arg: ident: $ArgTy: ty ),*| -> $ReturnTy: ty
 $body: block; )+
         } => {
-            fn foo(){}
+           $(
+            $( #[$attr] )*
+            struct $Name;
+
+            impl $( <$( $lifetime ),+> )? Fn<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call(&self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    $body
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )? FnMut<($( $ArgTy, )*)> for $Name {
+                #[inline]
+                extern "rust-call" fn call_mut(
+                    &mut self,
+                    ($( $arg, )*): ($( $ArgTy, )*)
+                ) -> $ReturnTy {
+                    Fn::call(&*self, ($( $arg, )*))
+                }
+            }
+
+            impl $( <$( $lifetime ),+> )? FnOnce<($( $ArgTy, )*)> for $Name {
+                type Output = $ReturnTy;
+
+                #[inline]
+                extern "rust-call" fn call_once(self, ($( $arg, )*): ($( $ArgTy, )*)) -> $ReturnTy {
+                    Fn::call(&self, ($( $arg, )*))
+                }
+            }
+        )+
+}
         }
 }
 "#,
@@ -1141,7 +1195,7 @@ impl_fn_for_zst !   {
      } ; 
  }
 "#, 
-        "fn foo () {}");
+        "# [derive (Clone)] struct CharEscapeDebugContinue ; impl  Fn < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDebug {{c . escape_debug_ext (false)}}} impl  FnMut < (char ,) > for CharEscapeDebugContinue {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (&* self , (c ,))}} impl  FnOnce < (char ,) > for CharEscapeDebugContinue {type Output = char :: EscapeDebug ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDebug {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeUnicode ; impl  Fn < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeUnicode {{c . escape_unicode ()}}} impl  FnMut < (char ,) > for CharEscapeUnicode {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (&* self , (c ,))}} impl  FnOnce < (char ,) > for CharEscapeUnicode {type Output = char :: EscapeUnicode ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeUnicode {Fn :: call (& self , (c ,))}} # [derive (Clone)] struct CharEscapeDefault ; impl  Fn < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call (& self , (c ,) : (char ,)) -> char :: EscapeDefault {{c . escape_default ()}}} impl  FnMut < (char ,) > for CharEscapeDefault {# [inline] extern \"rust-call\" fn call_mut (& mut self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (&* self , (c ,))}} impl  FnOnce < (char ,) > for CharEscapeDefault {type Output = char :: EscapeDefault ; # [inline] extern \"rust-call\" fn call_once (self , (c ,) : (char ,)) -> char :: EscapeDefault {Fn :: call (& self , (c ,))}}");
     }
 
     #[test]
@@ -1159,5 +1213,59 @@ impl_fn_for_zst !   {
 
         assert_expansion(&rules, r#"impl_nonzero_fmt ! { # [ stable ( feature = "nonzero" , since = "1.28.0" ) ] ( Debug , Display , Binary , Octal , LowerHex , UpperHex ) for NonZeroU8 }"#, 
         "fn foo () {}");
+    }
+
+    #[test]
+    fn test_cfg_if_items() {
+        // from https://github.com/rust-lang/rust/blob/33fe1131cadba69d317156847be9a402b89f11bb/src/libstd/macros.rs#L986
+        let rules = create_rules(
+            r#"
+        macro_rules! __cfg_if_items {
+            (($($not:meta,)*) ; ) => {};
+            (($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
+                 __cfg_if_items! { ($($not,)* $($m,)*) ; $($rest)* }
+            }
+        }
+"#,
+        );
+
+        assert_expansion(&rules, r#"__cfg_if_items ! { ( rustdoc , ) ; ( ( ) ( # [ cfg ( any ( target_os = "redox" , unix ) ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as unix ; # [ cfg ( windows ) ] # [ stable ( feature = "rust1" , since = "1.0.0" ) ] pub use sys :: ext as windows ; # [ cfg ( any ( target_os = "linux" , target_os = "l4re" ) ) ] pub mod linux ; ) ) , }"#,         
+        "__cfg_if_items ! {(rustdoc , ) ; }");
+    }
+
+    #[test]
+    fn test_cfg_if_main() {
+        // from https://github.com/rust-lang/rust/blob/3d211248393686e0f73851fc7548f6605220fbe1/src/libpanic_unwind/macros.rs#L9
+        let rules = create_rules(
+            r#"
+        macro_rules! cfg_if {
+            ($(
+                if #[cfg($($meta:meta),*)] { $($it:item)* }
+            ) else * else {
+                $($it2:item)*
+            }) => {
+                __cfg_if_items! {
+                    () ;
+                    $( ( ($($meta),*) ($($it)*) ), )*
+                    ( () ($($it2)*) ),
+                }
+            }
+        }
+"#,
+        );
+
+        assert_expansion(&rules, r#"
+cfg_if !   { 
+     if   # [ cfg ( target_env   =   "msvc" ) ]   { 
+         // no extra unwinder support needed 
+     }   else   if   # [ cfg ( all ( target_arch   =   "wasm32" ,   not ( target_os   =   "emscripten" ) ) ) ]   { 
+         // no unwinder on the system! 
+     }   else   { 
+         mod   libunwind ; 
+         pub   use   libunwind :: * ; 
+     } 
+ }        
+"#,         
+        "__cfg_if_items ! {() ;  (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
     }
 }

@@ -212,7 +212,7 @@ impl<'a> SubTreeWalker<'a> {
 }
 
 pub(crate) trait Querier {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr);
+    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool);
 }
 
 // A wrapper class for ref cell
@@ -292,9 +292,10 @@ impl<'a> WalkerOwner<'a> {
 }
 
 impl<'a> Querier for WalkerOwner<'a> {
-    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr) {
-        let tkn = self.get(uidx).unwrap();
-        (tkn.kind, tkn.text)
+    fn token(&self, uidx: usize) -> (SyntaxKind, SmolStr, bool) {
+        self.get(uidx)
+            .map(|tkn| (tkn.kind, tkn.text, tkn.is_joint_to_next))
+            .unwrap_or_else(|| (SyntaxKind::EOF, "".into(), false))
     }
 }
 

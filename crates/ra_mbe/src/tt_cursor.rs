@@ -3,7 +3,7 @@ use crate::subtree_parser::Parser;
 use crate::subtree_source::TokenPeek;
 use smallvec::{SmallVec, smallvec};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct TtCursor<'a> {
     subtree: &'a tt::Subtree,
     pos: usize,
