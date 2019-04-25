@@ -2043,6 +2043,36 @@ a (non-transparent) struct containing a single float, while `Grams` is a
 transparent wrapper around a float. This can make a difference for the ABI.
 "##,
 
+E0698: r##"
+When using generators (or async) all type variables must be bound so a
+generator can be constructed.
+
+Erroneous code example:
+
+```edition2018,compile-fail,E0698
+#![feature(futures_api, async_await, await_macro)]
+async fn bar<T>() -> () {}
+
+async fn foo() {
+  await!(bar());  // error: cannot infer type for `T`
+}
+```
+
+In the above example `T` is unknowable by the compiler.
+To fix this you must bind `T` to a concrete type such as `String`
+so that a generator can then be constructed:
+
+```edition2018
+#![feature(futures_api, async_await, await_macro)]
+async fn bar<T>() -> () {}
+
+async fn foo() {
+  await!(bar::<String>());
+  //          ^^^^^^^^ specify type explicitly
+}
+```
+"##,
+
 E0700: r##"
 The `impl Trait` return type captures lifetime parameters that do not
 appear within the `impl Trait` itself.

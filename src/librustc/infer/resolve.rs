@@ -1,4 +1,4 @@
-use super::{InferCtxt, FixupError, FixupResult};
+use super::{InferCtxt, FixupError, FixupResult, Span, type_variable::TypeVariableOrigin};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 
@@ -77,17 +77,20 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
 ///////////////////////////////////////////////////////////////////////////
 // UNRESOLVED TYPE FINDER
 
-/// The unresolved type **finder** walks your type and searches for
-/// type variables that don't yet have a value. They get pushed into a
-/// vector. It does not construct the fully resolved type (which might
+/// The unresolved type **finder** walks a type searching for
+/// type variables that don't yet have a value. The first unresolved type is stored.
+/// It does not construct the fully resolved type (which might
 /// involve some hashing and so forth).
 pub struct UnresolvedTypeFinder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+
+    /// Used to find the type parameter name and location for error reporting.
+    pub first_unresolved: Option<(Ty<'tcx>,Option<Span>)>,
 }
 
 impl<'a, 'gcx, 'tcx> UnresolvedTypeFinder<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        UnresolvedTypeFinder { infcx }
+        UnresolvedTypeFinder { infcx, first_unresolved: None }
     }
 }
 
@@ -95,21 +98,36 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> 
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
         let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
-            if let ty::Infer(_) = t.sty {
+            if let ty::Infer(infer_ty) = t.sty {
                 // Since we called `shallow_resolve` above, this must
                 // be an (as yet...) unresolved inference variable.
-                true
+                let ty_var_span =
+                if let ty::TyVar(ty_vid) = infer_ty {
+                    let ty_vars = self.infcx.type_variables.borrow();
+                    if let TypeVariableOrigin::TypeParameterDefinition(span, _name)
+                        = *ty_vars.var_origin(ty_vid)
+                    {
+                        Some(span)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                self.first_unresolved = Some((t, ty_var_span));
+                true  // Halt visiting.
             } else {
                 // Otherwise, visit its contents.
                 t.super_visit_with(self)
             }
         } else {
-            // Micro-optimize: no inference types at all Can't have unresolved type
-            // variables, no need to visit the contents.
+            // All type variables in inference types must already be resolved,
+            // - no need to visit the contents, continue visiting.
             false
         }
     }
 }
+
 
 ///////////////////////////////////////////////////////////////////////////
 // FULL TYPE RESOLUTION

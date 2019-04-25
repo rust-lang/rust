@@ -1309,17 +1309,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         value.fold_with(&mut r)
     }
 
-    /// Returns `true` if `T` contains unresolved type variables. In the
+    /// Returns first unresolved variable contained in `T`. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than
     /// `resolve_type_vars_if_possible()`.
-    pub fn any_unresolved_type_vars<T>(&self, value: &T) -> bool
+    pub fn unresolved_type_vars<T>(&self, value: &T) -> Option<(Ty<'tcx>, Option<Span>)>
     where
         T: TypeFoldable<'tcx>,
     {
         let mut r = resolve::UnresolvedTypeFinder::new(self);
-        value.visit_with(&mut r)
+        value.visit_with(&mut r);
+        r.first_unresolved
     }
 
     pub fn fully_resolve<T: TypeFoldable<'tcx>>(&self, value: &T) -> FixupResult<T> {

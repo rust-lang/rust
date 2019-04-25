@@ -88,23 +88,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         s
     }
 
-    pub fn need_type_info_err(&self,
-                            body_id: Option<hir::BodyId>,
-                            span: Span,
-                            ty: Ty<'tcx>)
-                            -> DiagnosticBuilder<'gcx> {
+    pub fn need_type_info_err(
+        &self,
+        body_id: Option<hir::BodyId>,
+        span: Span,
+        ty: Ty<'tcx>
+    ) -> DiagnosticBuilder<'gcx> {
         let ty = self.resolve_type_vars_if_possible(&ty);
         let name = self.extract_type_name(&ty, None);
 
         let mut err_span = span;
-        let mut labels = vec![(
-            span,
-            if &name == "_" {
-                "cannot infer type".to_owned()
-            } else {
-                format!("cannot infer type for `{}`", name)
-            },
-        )];
+        let mut labels = vec![(span, InferCtxt::missing_type_msg(&name))];
 
         let mut local_visitor = FindLocalByTypeVisitor {
             infcx: &self,
@@ -165,5 +159,29 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
 
         err
+    }
+
+    pub fn need_type_info_err_in_generator(
+        &self,
+        span: Span,
+        ty: Ty<'tcx>
+    ) -> DiagnosticBuilder<'gcx> {
+        let ty = self.resolve_type_vars_if_possible(&ty);
+        let name = self.extract_type_name(&ty, None);
+
+        let mut err = struct_span_err!(self.tcx.sess,
+                       span,
+                       E0698,
+                       "type inside generator must be known in this context");
+        err.span_label(span, InferCtxt::missing_type_msg(&name));
+        err
+    }
+
+    fn missing_type_msg(type_name: &str) -> String {
+        if type_name == "_" {
+            "cannot infer type".to_owned()
+        } else {
+            format!("cannot infer type for `{}`", type_name)
+        }
     }
 }
