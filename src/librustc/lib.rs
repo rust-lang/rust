@@ -37,6 +37,7 @@
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
+#![feature(inner_deref)]
 #![cfg_attr(windows, feature(libc))]
 #![feature(never_type)]
 #![feature(exhaustive_patterns)]
