@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionEraserVisitor<'a, 'gcx, 't
         // whenever a substitution occurs.
         match *r {
             ty::ReLateBound(..) => r,
-            _ => self.tcx.types.re_erased
+            _ => self.tcx.lifetimes.re_erased
         }
     }
 }

@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
             ty::ReEmpty |
             ty::ReErased => {
                 // replace all free regions with 'erased
-                self.tcx().types.re_erased
+                self.tcx().lifetimes.re_erased
             }
 
             ty::ReClosureBound(..) => {

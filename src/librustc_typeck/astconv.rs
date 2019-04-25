@@ -112,7 +112,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         let r = match tcx.named_region(lifetime.hir_id) {
             Some(rl::Region::Static) => {
-                tcx.types.re_static
+                tcx.lifetimes.re_static
             }
 
             Some(rl::Region::LateBound(debruijn, id, _)) => {
@@ -155,7 +155,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
                         // Supply some dummy value. We don't have an
                         // `re_error`, annoyingly, so use `'static`.
-                        tcx.types.re_static
+                        tcx.lifetimes.re_static
                     })
             }
         };
@@ -633,7 +633,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             // Provide substitutions for parameters for which arguments are inferred.
             |substs, param, infer_types| {
                 match param.kind {
-                    GenericParamDefKind::Lifetime => tcx.types.re_static.into(),
+                    GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
                     GenericParamDefKind::Type { has_default, .. } => {
                         if !infer_types && has_default {
                             // No type parameter provided, but a default exists.
@@ -1174,7 +1174,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                         span_err!(tcx.sess, span, E0228,
                                   "the lifetime bound for this object type cannot be deduced \
                                    from context; please supply an explicit bound");
-                        tcx.types.re_static
+                        tcx.lifetimes.re_static
                     })
                 }
             })
@@ -1954,7 +1954,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 // Replace all parent lifetimes with 'static.
                 match param.kind {
                     GenericParamDefKind::Lifetime => {
-                        tcx.types.re_static.into()
+                        tcx.lifetimes.re_static.into()
                     }
                     _ => tcx.mk_param_from_def(param)
                 }
@@ -2074,7 +2074,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         // If any of the derived region bounds are 'static, that is always
         // the best choice.
         if derived_region_bounds.iter().any(|&r| ty::ReStatic == *r) {
-            return Some(tcx.types.re_static);
+            return Some(tcx.lifetimes.re_static);
         }
 
         // Determine whether there is exactly one unique region in the set

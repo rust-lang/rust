@@ -307,7 +307,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let (mty, method) = self.hir.trait_method(eq_def_id, "eq", ty, &[ty.into()]);
                     let method = self.hir.tcx().mk_const(method);
 
-                    let re_erased = self.hir.tcx().types.re_erased;
+                    let re_erased = self.hir.tcx().lifetimes.re_erased;
                     // take the argument by reference
                     let tam = ty::TypeAndMut {
                         ty,

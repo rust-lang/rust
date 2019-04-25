@@ -624,7 +624,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn erase_late_bound_regions<T>(self, value: &Binder<T>) -> T
         where T : TypeFoldable<'tcx>
     {
-        self.replace_late_bound_regions(value, |_| self.types.re_erased).0
+        self.replace_late_bound_regions(value, |_| self.lifetimes.re_erased).0
     }
 
     /// Rewrite any late-bound regions so that they are anonymous. Region numbers are

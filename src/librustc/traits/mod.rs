@@ -1010,7 +1010,7 @@ fn vtable_methods<'a, 'tcx>(
                 let substs = trait_ref.map_bound(|trait_ref|
                     InternalSubsts::for_item(tcx, def_id, |param, _|
                         match param.kind {
-                            GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
+                            GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
                             GenericParamDefKind::Type { .. } |
                             GenericParamDefKind::Const => {
                                 trait_ref.substs[param.index as usize]

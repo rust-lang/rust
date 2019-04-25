@@ -787,7 +787,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         (None, Some(t_a)) => {
                             select.infcx().register_region_obligation_with_cause(
                                 t_a,
-                                select.infcx().tcx.types.re_static,
+                                select.infcx().tcx.lifetimes.re_static,
                                 &dummy_cause,
                             );
                         }

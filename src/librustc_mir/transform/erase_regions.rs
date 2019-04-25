@@ -29,7 +29,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_region(&mut self, region: &mut ty::Region<'tcx>, _: Location) {
-        *region = self.tcx.types.re_erased;
+        *region = self.tcx.lifetimes.re_erased;
     }
 
     fn visit_const(&mut self, constant: &mut &'tcx ty::Const<'tcx>, _: Location) {

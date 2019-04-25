@@ -601,7 +601,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> SubstsRef<'tcx> {
         InternalSubsts::for_item(self, item_def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime => self.types.re_erased.into(),
+                GenericParamDefKind::Lifetime => self.lifetimes.re_erased.into(),
                 GenericParamDefKind::Type { .. } => {
                     bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
                 }
