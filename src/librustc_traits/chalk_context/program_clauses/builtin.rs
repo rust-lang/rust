@@ -6,9 +6,41 @@ use rustc::traits::{
 };
 use rustc::ty;
 use rustc::ty::subst::{InternalSubsts, Subst};
+use rustc::hir;
 use rustc::hir::def_id::DefId;
 use crate::lowering::Lower;
 use crate::generic_types;
+
+/// Returns a predicate of the form
+/// `Implemented(ty: Trait) :- Implemented(nested: Trait)...`
+/// where `Trait` is specified by `trait_def_id`.
+fn builtin_impl_clause(
+    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    ty: ty::Ty<'tcx>,
+    nested: &[ty::Ty<'tcx>],
+    trait_def_id: DefId
+) -> ProgramClause<'tcx> {
+    ProgramClause {
+        goal: ty::TraitPredicate {
+            trait_ref: ty::TraitRef {
+                def_id: trait_def_id,
+                substs: tcx.mk_substs_trait(ty, &[]),
+            },
+        }.lower(),
+        hypotheses: tcx.mk_goals(
+            nested.iter()
+                .cloned()
+                .map(|nested_ty| ty::TraitRef {
+                    def_id: trait_def_id,
+                    substs: tcx.mk_substs_trait(nested_ty, &[]),
+                })
+                .map(|trait_ref| ty::TraitPredicate { trait_ref })
+                .map(|pred| GoalKind::DomainGoal(pred.lower()))
+                .map(|goal_kind| tcx.mk_goal(goal_kind))
+        ),
+        category: ProgramClauseCategory::Other,
+    }
+}
 
 crate fn assemble_builtin_unsize_impls<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
@@ -93,26 +125,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
     clauses: &mut Vec<Clause<'tcx>>
 ) {
     let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[ty::Ty<'tcx>]| {
-        let clause = ProgramClause {
-            goal: ty::TraitPredicate {
-                trait_ref: ty::TraitRef {
-                    def_id: sized_def_id,
-                    substs: tcx.mk_substs_trait(ty, &[]),
-                },
-            }.lower(),
-            hypotheses: tcx.mk_goals(
-                nested.iter()
-                    .cloned()
-                    .map(|nested_ty| ty::TraitRef {
-                        def_id: sized_def_id,
-                        substs: tcx.mk_substs_trait(nested_ty, &[]),
-                    })
-                    .map(|trait_ref| ty::TraitPredicate { trait_ref })
-                    .map(|pred| GoalKind::DomainGoal(pred.lower()))
-                    .map(|goal_kind| tcx.mk_goal(goal_kind))
-            ),
-            category: ProgramClauseCategory::Other,
-        };
+        let clause = builtin_impl_clause(tcx, ty, nested, sized_def_id);
         // Bind innermost bound vars that may exist in `ty` and `nested`.
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
     };
@@ -124,6 +137,8 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         ty::Int(..) |
         ty::Uint(..) |
         ty::Float(..) |
+        ty::Infer(ty::IntVar(_)) |
+        ty::Infer(ty::FloatVar(_)) |
         ty::Error |
         ty::Never => push_builtin_impl(ty, &[]),
 
@@ -175,14 +190,11 @@ crate fn assemble_builtin_sized_impls<'tcx>(
             push_builtin_impl(adt, &sized_constraint);
         }
 
-        // Artificially trigger an ambiguity.
-        ty::Infer(..) => {
-            // Everybody can find at least two types to unify against:
-            // general ty vars, int vars and float vars.
+        // Artificially trigger an ambiguity by adding two possible types to
+        // unify against.
+        ty::Infer(ty::TyVar(_)) => {
             push_builtin_impl(tcx.types.i32, &[]);
-            push_builtin_impl(tcx.types.u32, &[]);
             push_builtin_impl(tcx.types.f32, &[]);
-            push_builtin_impl(tcx.types.f64, &[]);
         }
 
         ty::Projection(_projection_ty) => {
@@ -203,6 +215,108 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         ty::Opaque(..) => (),
 
         ty::Bound(..) |
-        ty::GeneratorWitness(..) => bug!("unexpected type {:?}", ty),
+        ty::GeneratorWitness(..) |
+        ty::Infer(ty::FreshTy(_)) |
+        ty::Infer(ty::FreshIntTy(_)) |
+        ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
+    }
+}
+
+crate fn assemble_builtin_copy_clone_impls<'tcx>(
+    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    trait_def_id: DefId,
+    ty: ty::Ty<'tcx>,
+    clauses: &mut Vec<Clause<'tcx>>
+) {
+    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[ty::Ty<'tcx>]| {
+        let clause = builtin_impl_clause(tcx, ty, nested, trait_def_id);
+        // Bind innermost bound vars that may exist in `ty` and `nested`.
+        clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
+    };
+
+    match &ty.sty {
+        // Implementations provided in libcore.
+        ty::Bool |
+        ty::Char |
+        ty::Int(..) |
+        ty::Uint(..) |
+        ty::Float(..) |
+        ty::RawPtr(..) |
+        ty::Never |
+        ty::Ref(_, _, hir::MutImmutable) => (),
+
+        // Non parametric primitive types.
+        ty::Infer(ty::IntVar(_)) |
+        ty::Infer(ty::FloatVar(_)) |
+        ty::Error => push_builtin_impl(ty, &[]),
+
+        // These implement `Copy`/`Clone` if their element types do.
+        &ty::Array(_, length) => {
+            let element_ty = generic_types::bound(tcx, 0);
+            push_builtin_impl(tcx.mk_ty(ty::Array(element_ty, length)), &[element_ty]);
+        }
+        &ty::Tuple(type_list) => {
+            let type_list = generic_types::type_list(tcx, type_list.len());
+            push_builtin_impl(tcx.mk_ty(ty::Tuple(type_list)), &**type_list);
+        }
+        &ty::Closure(def_id, ..) => {
+            let closure_ty = generic_types::closure(tcx, def_id);
+            let upvar_tys: Vec<_> = match &closure_ty.sty {
+                ty::Closure(_, substs) => substs.upvar_tys(def_id, tcx).collect(),
+                _ => bug!(),
+            };
+            push_builtin_impl(closure_ty, &upvar_tys);
+        }
+
+        // These ones are always `Clone`.
+        ty::FnPtr(fn_ptr) => {
+            let fn_ptr = fn_ptr.skip_binder();
+            let fn_ptr = generic_types::fn_ptr(
+                tcx,
+                fn_ptr.inputs_and_output.len(),
+                fn_ptr.c_variadic,
+                fn_ptr.unsafety,
+                fn_ptr.abi
+            );
+            push_builtin_impl(fn_ptr, &[]);
+        }
+        &ty::FnDef(def_id, ..) => {
+            push_builtin_impl(generic_types::fn_def(tcx, def_id), &[]);
+        }
+
+        // These depend on whatever user-defined impls might exist.
+        ty::Adt(_, _) => (),
+
+        // Artificially trigger an ambiguity by adding two possible types to
+        // unify against.
+        ty::Infer(ty::TyVar(_)) => {
+            push_builtin_impl(tcx.types.i32, &[]);
+            push_builtin_impl(tcx.types.f32, &[]);
+        }
+
+        ty::Projection(_projection_ty) => {
+            // FIXME: add builtin impls from the associated type values found in
+            // trait impls of `projection_ty.trait_ref(tcx)`.
+        }
+
+        // The `Copy`/`Clone` bound can only come from the environment.
+        ty::Param(..) |
+        ty::Placeholder(..) |
+        ty::UnnormalizedProjection(..) |
+        ty::Opaque(..) => (),
+
+        // Definitely not `Copy`/`Clone`.
+        ty::Dynamic(..) |
+        ty::Foreign(..) |
+        ty::Generator(..) |
+        ty::Str |
+        ty::Slice(..) |
+        ty::Ref(_, _, hir::MutMutable) => (),
+
+        ty::Bound(..) |
+        ty::GeneratorWitness(..) |
+        ty::Infer(ty::FreshTy(_)) |
+        ty::Infer(ty::FreshIntTy(_)) |
+        ty::Infer(ty::FreshFloatTy(_)) => bug!("unexpected type {:?}", ty),
     }
 }
