@@ -1459,12 +1459,12 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     let map = &cx.tcx.hir();
-    let expr_node_id = map.hir_to_node_id(expr.hir_id);
+    let expr_node_id = expr.hir_id;
     let parent_scope = map
         .get_enclosing_scope(expr_node_id)
         .and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
-        if let Node::Block(block) = map.get(parent_id) {
+        if let Node::Block(block) = map.get_by_hir_id(parent_id) {
             for (id, _) in visitor.states.iter().filter(|&(_, v)| *v == VarState::IncrOnce) {
                 let mut visitor2 = InitializeVisitor {
                     cx,
