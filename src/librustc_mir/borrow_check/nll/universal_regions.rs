@@ -580,7 +580,7 @@ impl<'cx, 'gcx, 'tcx> UniversalRegionsBuilder<'cx, 'gcx, 'tcx> {
 
                         tcx.mk_type_list(
                             iter::once(closure_ty)
-                                .chain(inputs.iter().cloned())
+                                .chain(inputs.iter().map(|k| k.expect_ty()))
                                 .chain(iter::once(output)),
                         )
                     },

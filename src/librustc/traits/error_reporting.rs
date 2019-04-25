@@ -875,7 +875,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let expected_ty = expected_trait_ref.skip_binder().substs.type_at(1);
                 let expected = match expected_ty.sty {
                     ty::Tuple(ref tys) => tys.iter()
-                        .map(|t| ArgKind::from_expected_ty(t, Some(span))).collect(),
+                        .map(|t| ArgKind::from_expected_ty(t.expect_ty(), Some(span))).collect(),
                     _ => vec![ArgKind::Arg("_".to_owned(), expected_ty.to_string())],
                 };
 
@@ -1247,7 +1247,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let inputs = trait_ref.substs.type_at(1);
             let sig = if let ty::Tuple(inputs) = inputs.sty {
                 tcx.mk_fn_sig(
-                    inputs.iter().cloned(),
+                    inputs.iter().map(|k| k.expect_ty()),
                     tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
                     false,
                     hir::Unsafety::Normal,

@@ -278,7 +278,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
                 ty::Tuple(tys) => {
                     if let Some((&last_ty, _)) = tys.split_last() {
-                        ty = last_ty;
+                        ty = last_ty.expect_ty();
                     } else {
                         break;
                     }
@@ -316,8 +316,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 (&Tuple(a_tys), &Tuple(b_tys))
                         if a_tys.len() == b_tys.len() => {
                     if let Some(a_last) = a_tys.last() {
-                        a = a_last;
-                        b = b_tys.last().unwrap();
+                        a = a_last.expect_ty();
+                        b = b_tys.last().unwrap().expect_ty();
                     } else {
                         break;
                     }
@@ -795,7 +795,13 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 Tuple(ref ts) => {
                     // Find non representable
                     fold_repr(ts.iter().map(|ty| {
-                        is_type_structurally_recursive(tcx, sp, seen, representable_cache, ty)
+                        is_type_structurally_recursive(
+                            tcx,
+                            sp,
+                            seen,
+                            representable_cache,
+                            ty.expect_ty(),
+                        )
                     }))
                 }
                 // Fixed-length vectors.
@@ -1048,7 +1054,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // state transformation pass
         ty::Generator(..) => true,
 
-        ty::Tuple(ref tys) => tys.iter().cloned().any(needs_drop),
+        ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).any(needs_drop),
 
         // unions don't have destructors because of the child types,
         // only if they manually implement `Drop` (handled above).

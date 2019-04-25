@@ -526,7 +526,9 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Tuple(as_), &ty::Tuple(bs)) =>
         {
             if as_.len() == bs.len() {
-                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)))?)
+                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| {
+                    relation.relate(&a.expect_ty(), &b.expect_ty())
+                }))?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(
                     expected_found(relation, &as_.len(), &bs.len())))

@@ -2431,7 +2431,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let converted_sig = sig.map_bound(|s| {
             let params_iter = match s.inputs()[0].sty {
                 ty::Tuple(params) => {
-                    params.into_iter().cloned()
+                    params.into_iter().map(|k| k.expect_ty())
                 }
                 _ => bug!(),
             };
@@ -2573,11 +2573,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
-        self.mk_ty(Tuple(self.intern_type_list(ts)))
+        let kinds: Vec<_> = ts.into_iter().map(|&t| Kind::from(t)).collect();
+        self.mk_ty(Tuple(self.intern_substs(&kinds)))
     }
 
     pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
-        iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(ts))))
+        iter.intern_with(|ts| {
+            let kinds: Vec<_> = ts.into_iter().map(|&t| Kind::from(t)).collect();
+            self.mk_ty(Tuple(self.intern_substs(&kinds)))
+        })
     }
 
     #[inline]
