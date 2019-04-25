@@ -2691,6 +2691,10 @@ impl<'test> TestCx<'test> {
             cmd.env("CLANG", clang);
         }
 
+        if let Some(ref filecheck) = self.config.llvm_filecheck {
+            cmd.env("LLVM_FILECHECK", filecheck);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
