@@ -89,6 +89,19 @@ matrix:
 
 script:
   - |
+    if [ "$TRAVIS_BRANCH" == "auto" ] || [ "$TRAVIS_BRANCH" == "try" ]; then
+      output=$(curl -s "https://api.github.com/repos/rust-lang/rust-clippy/pulls/$TRAVIS_PULL_REQUEST" | \
+        python -c "import sys, json; print(json.load(sys.stdin)['body'])" | \
+        grep "changelog: " | \
+        sed "s/changelog: //g")
+      if [ -z "$output" ]; then
+        echo "ERROR: PR body must contain 'changelog: ...'"
+        exit 1
+      elif [ "$output" = "none" ]; then
+        echo "WARNING: changelog is 'none'"
+      fi
+    fi
+  - |
       rm rust-toolchain
       ./setup-toolchain.sh
       if [ "$TRAVIS_OS_NAME" == "windows" ]; then
