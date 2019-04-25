@@ -1319,8 +1319,11 @@ fn write_minify_replacer<W: Write>(
                             f,
                             "R",
                             Token::Char(ReservedChar::Backline),
-                            // This closure prevents crates' name to be aggregated. It allows to not
-                            // have to look for crate's name into the strings array.
+                            // This closure prevents crates' names from being aggregated.
+                            //
+                            // The point here is to check if the string is preceded by '[' and
+                            // "searchIndex". If so, it means this is a crate name and that it
+                            // shouldn't be aggregated.
                             |tokens, pos| {
                                 pos < 2 ||
                                 !tokens[pos - 1].is_char(ReservedChar::OpenBracket) ||
