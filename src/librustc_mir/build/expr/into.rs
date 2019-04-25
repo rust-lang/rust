@@ -327,6 +327,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     success.unit()
                 }
             }
+            ExprKind::Use { source } => {
+                this.into(destination, block, source)
+            }
 
             // These cases don't actually need a destination
             ExprKind::Assign { .. }
@@ -379,7 +382,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::Binary { .. }
             | ExprKind::Box { .. }
             | ExprKind::Cast { .. }
-            | ExprKind::Use { .. }
             | ExprKind::Pointer { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
