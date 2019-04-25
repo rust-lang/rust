@@ -349,6 +349,18 @@ where
         // around pinning.
         unsafe { Pin::new_unchecked(pointer) }
     }
+
+    /// Unwraps this `Pin<P>` returning the underlying pointer.
+    ///
+    /// This requires that the data inside this `Pin` is [`Unpin`] so that we
+    /// can ignore the pinning invariants when unwrapping it.
+    ///
+    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
+    #[unstable(feature = "pin_into_inner", issue = "60245")]
+    #[inline(always)]
+    pub fn into_inner(pin: Pin<P>) -> P {
+        pin.pointer
+    }
 }
 
 impl<P: Deref> Pin<P> {
@@ -433,6 +445,28 @@ impl<P: Deref> Pin<P> {
     #[inline(always)]
     pub fn as_ref(self: &Pin<P>) -> Pin<&P::Target> {
         unsafe { Pin::new_unchecked(&*self.pointer) }
+    }
+
+    /// Unwraps this `Pin<P>` returning the underlying pointer.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe. You must guarantee that you will continue to
+    /// treat the pointer `P` as pinned after you call this function, so that
+    /// the invariants on the `Pin` type can be upheld. If the code using the
+    /// resulting `P` does not continue to maintain the pinning invariants that
+    /// is a violation of the API contract and may lead to undefined behavior in
+    /// later (safe) operations.
+    ///
+    /// If the underlying data is [`Unpin`], [`Pin::into_inner`] should be used
+    /// instead.
+    ///
+    /// [`Unpin`]: ../../std/marker/trait.Unpin.html
+    /// [`Pin::into_inner`]: #method.into_inner
+    #[unstable(feature = "pin_into_inner", issue = "60245")]
+    #[inline(always)]
+    pub unsafe fn into_inner_unchecked(pin: Pin<P>) -> P {
+        pin.pointer
     }
 }
 
