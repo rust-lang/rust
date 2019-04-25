@@ -1,4 +1,5 @@
 use if_chain::if_chain;
+use matches::matches;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
@@ -65,6 +66,9 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             if !(is_adjusted(cx, ex) || args.iter().any(|arg| is_adjusted(cx, arg)));
 
             let fn_ty = cx.tables.expr_ty(caller);
+
+            if matches!(fn_ty.sty, ty::FnDef(_, _) | ty::FnPtr(_) | ty::Closure(_, _));
+
             if !type_is_unsafe_function(cx, fn_ty);
 
             if compare_inputs(&mut iter_input_pats(decl, body), &mut args.into_iter());
