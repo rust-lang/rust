@@ -5,13 +5,13 @@ LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
 
 error[E0671]: const parameters cannot depend on type parameters
-  --> $DIR/const-param-type-depends-on-type-param.rs:4:34
+  --> $DIR/const-param-type-depends-on-type-param.rs:9:34
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
    |                                  ^ const parameter depends on type parameter
 
 error[E0392]: parameter `T` is never used
-  --> $DIR/const-param-type-depends-on-type-param.rs:4:22
+  --> $DIR/const-param-type-depends-on-type-param.rs:9:22
    |
 LL | pub struct Dependent<T, const X: T>([(); X]);
    |                      ^ unused parameter
