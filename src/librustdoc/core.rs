@@ -166,15 +166,6 @@ impl<'tcx> DocContext<'tcx> {
 
     /// Like the function of the same name on the HIR map, but skips calling it on fake DefIds.
     /// (This avoids a slice-index-out-of-bounds panic.)
-    pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
-        if self.all_fake_def_ids.borrow().contains(&def_id) {
-            None
-        } else {
-            self.tcx.hir().as_local_node_id(def_id)
-        }
-    }
-
-    // FIXME(@ljedrz): remove the NodeId variant
     pub fn as_local_hir_id(&self, def_id: DefId) -> Option<HirId> {
         if self.all_fake_def_ids.borrow().contains(&def_id) {
             None

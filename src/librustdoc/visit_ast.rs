@@ -31,7 +31,7 @@ pub struct RustdocVisitor<'a, 'tcx> {
     pub module: Module,
     pub attrs: hir::HirVec<ast::Attribute>,
     pub cx: &'a core::DocContext<'tcx>,
-    view_item_stack: FxHashSet<ast::NodeId>,
+    view_item_stack: FxHashSet<hir::HirId>,
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
@@ -44,7 +44,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     ) -> RustdocVisitor<'a, 'tcx> {
         // If the root is re-exported, terminate all recursion.
         let mut stack = FxHashSet::default();
-        stack.insert(ast::CRATE_NODE_ID);
+        stack.insert(hir::CRATE_HIR_ID);
         RustdocVisitor {
             module: Module::new(None),
             attrs: hir::HirVec::new(),
@@ -271,13 +271,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                           om: &mut Module,
                           please_inline: bool) -> bool {
 
-        fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: ast::NodeId) -> bool {
+        fn inherits_doc_hidden(cx: &core::DocContext<'_>, mut node: hir::HirId) -> bool {
             while let Some(id) = cx.tcx.hir().get_enclosing_scope(node) {
                 node = id;
-                if cx.tcx.hir().attrs(node).lists("doc").has_word("hidden") {
+                if cx.tcx.hir().attrs_by_hir_id(node).lists("doc").has_word("hidden") {
                     return true;
                 }
-                if node == ast::CRATE_NODE_ID {
+                if node == hir::CRATE_HIR_ID {
                     break;
                 }
             }
@@ -326,21 +326,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false
         }
 
-        let def_node_id = match tcx.hir().as_local_node_id(def_did) {
+        let def_hir_id = match tcx.hir().as_local_hir_id(def_did) {
             Some(n) => n, None => return false
         };
 
         let is_private = !self.cx.renderinfo.borrow().access_levels.is_public(def_did);
-        let is_hidden = inherits_doc_hidden(self.cx, def_node_id);
+        let is_hidden = inherits_doc_hidden(self.cx, def_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
             return false
         }
 
-        if !self.view_item_stack.insert(def_node_id) { return false }
+        if !self.view_item_stack.insert(def_hir_id) { return false }
 
-        let ret = match tcx.hir().get(def_node_id) {
+        let ret = match tcx.hir().get_by_hir_id(def_hir_id) {
             Node::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
@@ -373,7 +373,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             _ => false,
         };
-        self.view_item_stack.remove(&def_node_id);
+        self.view_item_stack.remove(&def_hir_id);
         ret
     }
 
