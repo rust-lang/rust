@@ -183,13 +183,13 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
         if layout.logo.is_empty() {
             format!("<a href='{path}index.html'>\
                      <img src='{static_root_path}rust-logo{suffix}.png' \
-                          alt='logo' width='100' height='100'></a>",
+                          alt='logo' width='100'></a>",
                     path=p,
                     static_root_path=static_root_path,
                     suffix=page.resource_suffix)
         } else {
             format!("<a href='{}index.html'>\
-                     <img src='{}' alt='logo' width='100' height='100'></a>",
+                     <img src='{}' alt='logo' width='100'></a>",
                     p,
                     layout.logo)
         }
