@@ -10,7 +10,8 @@ use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::middle::borrowck::SignalledError;
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
-    ClearCrossCrate, Local, Location, Body, Mutability, Operand, Place, PlaceBase, Static, StaticKind
+    ClearCrossCrate, Local, Location, Body, Mutability, Operand, Place, PlaceBase, Static,
+    StaticKind
 };
 use rustc::mir::{Field, Projection, ProjectionElem, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};

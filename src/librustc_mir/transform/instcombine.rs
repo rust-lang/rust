@@ -1,6 +1,8 @@
 //! Performs various peephole optimizations.
 
-use rustc::mir::{Constant, Location, Place, PlaceBase, Body, Operand, ProjectionElem, Rvalue, Local};
+use rustc::mir::{Constant, Location, Place, PlaceBase, Body, Operand, ProjectionElem, Rvalue,
+    Local
+};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
