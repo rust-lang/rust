@@ -67,13 +67,13 @@ pub struct DocContext<'tcx> {
     pub ct_substs: RefCell<FxHashMap<DefId, clean::Constant>>,
     /// Table DefId of `impl Trait` in argument position -> bounds
     pub impl_trait_bounds: RefCell<FxHashMap<DefId, Vec<clean::GenericBound>>>,
-    pub send_trait: Option<DefId>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
     /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
     // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
     pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
     pub all_traits: Vec<DefId>,
+    pub auto_traits: Vec<DefId>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -367,15 +367,10 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                                     .collect()
             };
 
-            let send_trait = if crate_name == Some("core".to_string()) {
-                clean::path_to_def_local(tcx, &[sym::marker, sym::Send])
-            } else {
-                clean::path_to_def(tcx, &[sym::core, sym::marker, sym::Send])
-            };
-
             let mut renderinfo = RenderInfo::default();
             renderinfo.access_levels = access_levels;
 
+            let all_traits = tcx.all_traits(LOCAL_CRATE).to_vec();
             let ctxt = DocContext {
                 tcx,
                 resolver,
@@ -388,11 +383,13 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 lt_substs: Default::default(),
                 ct_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
-                send_trait: send_trait,
                 fake_def_ids: Default::default(),
                 all_fake_def_ids: Default::default(),
                 generated_synthetics: Default::default(),
-                all_traits: tcx.all_traits(LOCAL_CRATE).to_vec(),
+                auto_traits: all_traits.iter().cloned().filter(|trait_def_id| {
+                    tcx.trait_is_auto(*trait_def_id)
+                }).collect(),
+                all_traits,
             };
             debug!("crate: {:?}", tcx.hir().krate());
 
