@@ -7,4 +7,6 @@
 
 #![feature(lang_items)] //~ ERROR
 
+#![feature(unknown_stdlib_feature)] //~ ERROR
+
 fn main() {}
