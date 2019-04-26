@@ -1634,7 +1634,7 @@ pub unsafe fn _mm256_load_pd(mem_addr: *const f64) -> __m256d {
 #[cfg_attr(test, assert_instr(vmovaps))] // FIXME vmovapd expected
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-pub unsafe fn _mm256_store_pd(mem_addr: *const f64, a: __m256d) {
+pub unsafe fn _mm256_store_pd(mem_addr: *mut f64, a: __m256d) {
     *(mem_addr as *mut __m256d) = a;
 }
 
@@ -1664,7 +1664,7 @@ pub unsafe fn _mm256_load_ps(mem_addr: *const f32) -> __m256 {
 #[cfg_attr(test, assert_instr(vmovaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 #[allow(clippy::cast_ptr_alignment)]
-pub unsafe fn _mm256_store_ps(mem_addr: *const f32, a: __m256) {
+pub unsafe fn _mm256_store_ps(mem_addr: *mut f32, a: __m256) {
     *(mem_addr as *mut __m256) = a;
 }
 
