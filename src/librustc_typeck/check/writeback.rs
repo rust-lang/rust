@@ -405,7 +405,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 c_ty
             } else {
                 span_bug!(
-                    hir_id.to_span(&self.fcx.tcx),
+                    hir_id.to_span(self.fcx.tcx),
                     "writeback: `{:?}` missing from the global type context",
                     c_ty
                 );
@@ -730,7 +730,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             lifted
         } else {
             span_bug!(
-                span.to_span(&self.fcx.tcx),
+                span.to_span(self.fcx.tcx),
                 "writeback: `{:?}` missing from the global type context",
                 x
             );
@@ -739,24 +739,24 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 }
 
 trait Locatable {
-    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span;
+    fn to_span(&self, tcx: TyCtxt<'_, '_, '_>) -> Span;
 }
 
 impl Locatable for Span {
-    fn to_span(&self, _: &TyCtxt<'_, '_, '_>) -> Span {
+    fn to_span(&self, _: TyCtxt<'_, '_, '_>) -> Span {
         *self
     }
 }
 
 impl Locatable for DefIndex {
-    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span {
+    fn to_span(&self, tcx: TyCtxt<'_, '_, '_>) -> Span {
         let hir_id = tcx.hir().def_index_to_hir_id(*self);
         tcx.hir().span_by_hir_id(hir_id)
     }
 }
 
 impl Locatable for hir::HirId {
-    fn to_span(&self, tcx: &TyCtxt<'_, '_, '_>) -> Span {
+    fn to_span(&self, tcx: TyCtxt<'_, '_, '_>) -> Span {
         tcx.hir().span_by_hir_id(*self)
     }
 }
@@ -789,7 +789,7 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
     fn report_error(&self, t: Ty<'tcx>) {
         if !self.tcx.sess.has_errors() {
             self.infcx
-                .need_type_info_err(Some(self.body.id()), self.span.to_span(&self.tcx), t)
+                .need_type_info_err(Some(self.body.id()), self.span.to_span(self.tcx), t)
                 .emit();
         }
     }

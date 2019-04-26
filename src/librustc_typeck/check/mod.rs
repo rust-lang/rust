@@ -1026,10 +1026,10 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 /// points.
 struct GeneratorTypes<'tcx> {
     /// Type of value that is yielded.
-    yield_ty: ty::Ty<'tcx>,
+    yield_ty: Ty<'tcx>,
 
     /// Types that are captured (see `GeneratorInterior` for more).
-    interior: ty::Ty<'tcx>,
+    interior: Ty<'tcx>,
 
     /// Indicates if the generator is movable or static (immovable).
     movability: hir::GeneratorMovability,
