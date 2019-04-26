@@ -77,6 +77,10 @@ pub struct Options {
     /// Optional path to persist the doctest executables to, defaults to a
     /// temporary directory if not set.
     pub persist_doctests: Option<PathBuf>,
+    /// Runtool to run doctests with
+    pub runtool: Option<String>,
+    /// Arguments to pass to the runtool
+    pub runtool_args: Vec<String>,
 
     // Options that affect the documentation process
 
@@ -140,6 +144,8 @@ impl fmt::Debug for Options {
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
             .field("render_options", &self.render_options)
+            .field("runtool", &self.runtool)
+            .field("runtool_args", &self.runtool_args)
             .finish()
     }
 }
@@ -466,6 +472,8 @@ impl Options {
         let codegen_options_strs = matches.opt_strs("C");
         let lib_strs = matches.opt_strs("L");
         let extern_strs = matches.opt_strs("extern");
+        let runtool = matches.opt_str("runtool");
+        let runtool_args = matches.opt_strs("runtool-arg");
 
         let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
 
@@ -496,6 +504,8 @@ impl Options {
             show_coverage,
             crate_version,
             persist_doctests,
+            runtool,
+            runtool_args,
             render_options: RenderOptions {
                 output,
                 external_html,

@@ -272,7 +272,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             ))
         });
 
-        let tooltip = if ignore {
+        let tooltip = if ignore != Ignore::None {
             Some(("This example is not tested".to_owned(), "ignore"))
         } else if compile_fail {
             Some(("This example deliberately fails to compile".to_owned(), "compile_fail"))
@@ -286,7 +286,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             s.push_str(&highlight::render_with_highlighting(
                 &text,
                 Some(&format!("rust-example-rendered{}",
-                                if ignore { " ignore" }
+                                if ignore != Ignore::None { " ignore" }
                                 else if compile_fail { " compile_fail" }
                                 else if explicit_edition { " edition " }
                                 else { "" })),
@@ -297,7 +297,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             s.push_str(&highlight::render_with_highlighting(
                 &text,
                 Some(&format!("rust-example-rendered{}",
-                                if ignore { " ignore" }
+                                if ignore != Ignore::None { " ignore" }
                                 else if compile_fail { " compile_fail" }
                                 else if explicit_edition { " edition " }
                                 else { "" })),
@@ -607,7 +607,7 @@ pub struct LangString {
     original: String,
     pub should_panic: bool,
     pub no_run: bool,
-    pub ignore: bool,
+    pub ignore: Ignore,
     pub rust: bool,
     pub test_harness: bool,
     pub compile_fail: bool,
@@ -616,13 +616,20 @@ pub struct LangString {
     pub edition: Option<Edition>
 }
 
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum Ignore {
+    All,
+    None,
+    Some(Vec<String>),
+}
+
 impl LangString {
     fn all_false() -> LangString {
         LangString {
             original: String::new(),
             should_panic: false,
             no_run: false,
-            ignore: false,
+            ignore: Ignore::None,
             rust: true,  // NB This used to be `notrust = false`
             test_harness: false,
             compile_fail: false,
@@ -637,6 +644,7 @@ impl LangString {
         let mut seen_rust_tags = false;
         let mut seen_other_tags = false;
         let mut data = LangString::all_false();
+        let mut ignores = vec![];
 
         data.original = string.to_owned();
         let tokens = string.split(|c: char|
@@ -651,7 +659,11 @@ impl LangString {
                     seen_rust_tags = seen_other_tags == false;
                 }
                 "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
-                "ignore" => { data.ignore = true; seen_rust_tags = !seen_other_tags; }
+                "ignore" => { data.ignore = Ignore::All; seen_rust_tags = !seen_other_tags; }
+                x if x.starts_with("ignore-") => {
+                    ignores.push(x.trim_start_matches("ignore-").to_owned());
+                    seen_rust_tags = !seen_other_tags;
+                }
                 "allow_fail" => { data.allow_fail = true; seen_rust_tags = !seen_other_tags; }
                 "rust" => { data.rust = true; seen_rust_tags = true; }
                 "test_harness" => {
@@ -678,6 +690,16 @@ impl LangString {
                 }
                 _ => { seen_other_tags = true }
             }
+        }
+
+        match data.ignore {
+            Ignore::All => {},
+            Ignore::None => {
+                if !ignores.is_empty() {
+                    data.ignore = Ignore::Some(ignores);
+                }
+            },
+            _ => unreachable!(),
         }
 
         data.rust &= !seen_other_tags || seen_rust_tags;
