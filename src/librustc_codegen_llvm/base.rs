@@ -28,7 +28,7 @@ use rustc::mir::mono::{Linkage, Visibility, Stats};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::TyCtxt;
 use rustc::middle::exported_symbols;
-use rustc::session::config::{self, DebugInfo};
+use rustc::session::config::DebugInfo;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_data_structures::small_c_str::SmallCStr;
 
@@ -42,47 +42,16 @@ use rustc::hir::CodegenFnAttrs;
 
 use crate::value::Value;
 
-
-pub fn write_metadata<'a, 'gcx>(
+pub fn write_compressed_metadata<'a, 'gcx>(
     tcx: TyCtxt<'a, 'gcx, 'gcx>,
+    metadata: &EncodedMetadata,
     llvm_module: &mut ModuleLlvm
-) -> EncodedMetadata {
+) {
     use std::io::Write;
     use flate2::Compression;
     use flate2::write::DeflateEncoder;
 
     let (metadata_llcx, metadata_llmod) = (&*llvm_module.llcx, llvm_module.llmod());
-
-    #[derive(PartialEq, Eq, PartialOrd, Ord)]
-    enum MetadataKind {
-        None,
-        Uncompressed,
-        Compressed
-    }
-
-    let kind = tcx.sess.crate_types.borrow().iter().map(|ty| {
-        match *ty {
-            config::CrateType::Executable |
-            config::CrateType::Staticlib |
-            config::CrateType::Cdylib => MetadataKind::None,
-
-            config::CrateType::Rlib => MetadataKind::Uncompressed,
-
-            config::CrateType::Dylib |
-            config::CrateType::ProcMacro => MetadataKind::Compressed,
-        }
-    }).max().unwrap_or(MetadataKind::None);
-
-    if kind == MetadataKind::None {
-        return EncodedMetadata::new();
-    }
-
-    let metadata = tcx.encode_metadata();
-    if kind == MetadataKind::Uncompressed {
-        return metadata;
-    }
-
-    assert!(kind == MetadataKind::Compressed);
     let mut compressed = tcx.metadata_encoding_version();
     DeflateEncoder::new(&mut compressed, Compression::fast())
         .write_all(&metadata.raw_data).unwrap();
@@ -107,7 +76,6 @@ pub fn write_metadata<'a, 'gcx>(
         let directive = CString::new(directive).unwrap();
         llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return metadata;
 }
 
 pub struct ValueIter<'ll> {

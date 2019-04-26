@@ -33,11 +33,12 @@ impl<'tcx, T> Backend<'tcx> for T where
 
 pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send {
     fn new_metadata(&self, sess: TyCtxt<'_, '_, '_>, mod_name: &str) -> Self::Module;
-    fn write_metadata<'b, 'gcx>(
+    fn write_compressed_metadata<'b, 'gcx>(
         &self,
         tcx: TyCtxt<'b, 'gcx, 'gcx>,
-        metadata: &mut Self::Module,
-    ) -> EncodedMetadata;
+        metadata: &EncodedMetadata,
+        llvm_module: &mut Self::Module,
+    );
     fn codegen_allocator<'b, 'gcx>(
         &self,
         tcx: TyCtxt<'b, 'gcx, 'gcx>,
