@@ -22,7 +22,7 @@ LL |         my_struct.field.push_str("Hello, world!");
 LL | }
    | - first borrow ends here
 
-error[E0499]: cannot borrow `my_struct.field` as mutable more than once at a time (Body)
+error[E0499]: cannot borrow `my_struct.field` as mutable more than once at a time (Mir)
   --> $DIR/return_from_loop.rs:22:9
    |
 LL |     let value = &mut my_struct.field;
