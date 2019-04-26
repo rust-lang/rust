@@ -1,7 +1,8 @@
 hashbrown
 =========
 
-[![Build Status](https://travis-ci.com/Amanieu/hashbrown.svg?branch=master)](https://travis-ci.com/Amanieu/hashbrown) [![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
+[![Build Status](https://travis-ci.com/rust-lang/hashbrown.svg?branch=master)](https://travis-ci.com/rust-lang/hashbrown)
+[![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
 
 This crate is a Rust port of Google's high-performance [SwissTable] hash
 map, adapted to make it a drop-in replacement for Rust's standard `HashMap`

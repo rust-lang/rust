@@ -1,8 +1,8 @@
 language: rust
-sudo: false
 rust: nightly
 
 matrix:
+  fast_finish: true
   include:
     - name: "miri"
       env: TARGET=x86_64-unknown-linux-gnu
