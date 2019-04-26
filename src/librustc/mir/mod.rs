@@ -84,7 +84,7 @@ impl MirPhase {
     }
 }
 
-/// Lowered representation of a single function.
+/// Lowered representation of a single function/constant body.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Body<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
