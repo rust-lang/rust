@@ -436,7 +436,9 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::Err => Promotable,
 
         hir::ExprKind::AddrOf(_, ref expr) |
-        hir::ExprKind::Repeat(ref expr, _) => {
+        hir::ExprKind::Repeat(ref expr, _) |
+        hir::ExprKind::Type(ref expr, _) |
+        hir::ExprKind::Use(ref expr) => {
             v.check_expr(&expr)
         }
 
@@ -483,10 +485,6 @@ fn check_expr_kind<'a, 'tcx>(
             array_result
         }
 
-        hir::ExprKind::Type(ref expr, ref _ty) => {
-            v.check_expr(&expr)
-        }
-
         hir::ExprKind::Tup(ref hirvec) => {
             let mut tup_result = Promotable;
             for index in hirvec.iter() {
@@ -494,7 +492,6 @@ fn check_expr_kind<'a, 'tcx>(
             }
             tup_result
         }
-
 
         // Conditional control flow (possible to implement).
         hir::ExprKind::Match(ref expr, ref hirvec_arm, ref _match_source) => {
