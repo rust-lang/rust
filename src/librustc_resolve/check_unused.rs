@@ -26,7 +26,7 @@
 use std::ops::{Deref, DerefMut};
 
 use crate::Resolver;
-use crate::resolve_imports::ImportDirectiveSubclass;
+use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass};
 
 use rustc::util::nodemap::NodeMap;
 use rustc::{lint, ty};
@@ -283,7 +283,15 @@ pub fn check_crate(resolver: &mut Resolver<'_>, krate: &ast::Crate) {
     };
     visit::walk_crate(&mut visitor, krate);
 
-    for unused in visitor.unused_imports.values() {
+    let mut silencing_spans: Vec<Span> = visitor.privacy_errors
+        .iter()
+        .map(|crate::PrivacyError(span, _, _)| span)
+        .chain(visitor.indeterminate_imports.iter().map(|ImportDirective { span, .. }| span))
+        .chain(visitor.unresolved_imports.iter())
+        .map(|sp| *sp)
+        .collect();
+
+    'unused_imports: for unused in visitor.unused_imports.values() {
         let mut fixes = Vec::new();
         let mut spans = match calc_unused_spans(unused, unused.use_tree, unused.use_tree_id) {
             UnusedSpanResult::Used => continue,
@@ -305,6 +313,20 @@ pub fn check_crate(resolver: &mut Resolver<'_>, krate: &ast::Crate) {
 
         let len = spans.len();
         spans.sort();
+        for sp in &spans {
+            // Do not emit unused warnings about failed use statements (#48244)
+            let mut idx = None;
+            for (i, span) in silencing_spans.iter().enumerate() {
+                if sp.overlaps(*span) {
+                    idx = Some(i);
+                    break;
+                }
+            }
+            if let Some(idx) = idx {
+                silencing_spans.remove(idx);  // we won't be seeing this again
+                continue 'unused_imports;
+            }
+        }
         let ms = MultiSpan::from_spans(spans.clone());
         let mut span_snippets = spans.iter()
             .filter_map(|s| {

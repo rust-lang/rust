@@ -1555,6 +1555,7 @@ pub struct Resolver<'a> {
 
     /// All non-determined imports.
     indeterminate_imports: Vec<&'a ImportDirective<'a>>,
+    unresolved_imports: Vec<Span>,
 
     /// The module that represents the current item scope.
     current_module: Module<'a>,
@@ -1924,6 +1925,7 @@ impl<'a> Resolver<'a> {
 
             determined_imports: Vec::new(),
             indeterminate_imports: Vec::new(),
+            unresolved_imports: Vec::new(),
 
             current_module: graph_root,
             ribs: PerNS {

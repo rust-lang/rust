@@ -635,7 +635,7 @@ impl<'a> Resolver<'a> {
 /// An error that may be transformed into a diagnostic later. Used to combine multiple unresolved
 /// import errors within the same use tree into a single diagnostic.
 #[derive(Debug, Clone)]
-struct UnresolvedImportError {
+pub struct UnresolvedImportError {
     span: Span,
     label: Option<String>,
     note: Vec<String>,
@@ -744,19 +744,23 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // to avoid generating multiple errors on the same import.
         if !has_errors {
             for import in &self.indeterminate_imports {
-                self.throw_unresolved_import_error(errors, Some(MultiSpan::from(import.span)));
+                let sp = Some(MultiSpan::from(import.span));
+                self.throw_unresolved_import_error(errors, sp);
                 break;
             }
         }
     }
 
     fn throw_unresolved_import_error(
-        &self,
+        &mut self,
         errors: Vec<(String, UnresolvedImportError)>,
         span: Option<MultiSpan>,
     ) {
         /// Upper limit on the number of `span_label` messages.
         const MAX_LABEL_COUNT: usize = 10;
+        for (_, error) in &errors {
+            self.unresolved_imports.push(error.span);
+        }
 
         let (span, msg) = if errors.is_empty() {
             (span.unwrap(), "unresolved import".to_string())
