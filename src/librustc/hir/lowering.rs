@@ -260,12 +260,6 @@ enum ParamMode {
     Optional,
 }
 
-#[derive(Debug)]
-struct LoweredNodeId {
-    node_id: NodeId,
-    hir_id: hir::HirId,
-}
-
 enum ParenthesizedGenericArgs {
     Ok,
     Warn,
@@ -429,7 +423,7 @@ impl<'a> LoweringContext<'a> {
                     UseTreeKind::Glob => (),
                     UseTreeKind::Nested(ref trees) => {
                         for &(ref use_tree, id) in trees {
-                            let hir_id = self.lctx.allocate_hir_id_counter(id).hir_id;
+                            let hir_id = self.lctx.allocate_hir_id_counter(id);
                             self.allocate_use_tree_hir_id_counters(use_tree, hir_id.owner);
                         }
                     }
@@ -489,7 +483,7 @@ impl<'a> LoweringContext<'a> {
             }
 
             fn visit_item(&mut self, item: &'lcx Item) {
-                let hir_id = self.lctx.allocate_hir_id_counter(item.id).hir_id;
+                let hir_id = self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.node {
                     ItemKind::Struct(_, ref generics)
@@ -698,24 +692,21 @@ impl<'a> LoweringContext<'a> {
         self.modules.get_mut(&self.current_module).unwrap().items.insert(id);
     }
 
-    fn allocate_hir_id_counter(&mut self, owner: NodeId) -> LoweredNodeId {
+    fn allocate_hir_id_counter(&mut self, owner: NodeId) -> hir::HirId {
         // Setup the counter if needed
         self.item_local_id_counters.entry(owner).or_insert(0);
         // Always allocate the first `HirId` for the owner itself.
         let lowered = self.lower_node_id_with_owner(owner, owner);
-        debug_assert_eq!(lowered.hir_id.local_id.as_u32(), 0);
+        debug_assert_eq!(lowered.local_id.as_u32(), 0);
         lowered
     }
 
-    fn lower_node_id_generic<F>(&mut self, ast_node_id: NodeId, alloc_hir_id: F) -> LoweredNodeId
+    fn lower_node_id_generic<F>(&mut self, ast_node_id: NodeId, alloc_hir_id: F) -> hir::HirId
     where
         F: FnOnce(&mut Self) -> hir::HirId,
     {
         if ast_node_id == DUMMY_NODE_ID {
-            return LoweredNodeId {
-                node_id: DUMMY_NODE_ID,
-                hir_id: hir::DUMMY_HIR_ID,
-            };
+            return hir::DUMMY_HIR_ID;
         }
 
         let min_size = ast_node_id.as_usize() + 1;
@@ -730,15 +721,10 @@ impl<'a> LoweringContext<'a> {
             // Generate a new `HirId`.
             let hir_id = alloc_hir_id(self);
             self.node_id_to_hir_id[ast_node_id] = hir_id;
-            LoweredNodeId {
-                node_id: ast_node_id,
-                hir_id,
-            }
+
+            hir_id
         } else {
-            LoweredNodeId {
-                node_id: ast_node_id,
-                hir_id: existing_hir_id,
-            }
+            existing_hir_id
         }
     }
 
@@ -770,7 +756,7 @@ impl<'a> LoweringContext<'a> {
     /// actually used in the HIR, as that would trigger an assertion in the
     /// `HirIdValidator` later on, which makes sure that all `NodeId`s got mapped
     /// properly. Calling the method twice with the same `NodeId` is fine though.
-    fn lower_node_id(&mut self, ast_node_id: NodeId) -> LoweredNodeId {
+    fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
         self.lower_node_id_generic(ast_node_id, |this| {
             let &mut (def_index, ref mut local_id_counter) =
                 this.current_hir_id_owner.last_mut().unwrap();
@@ -783,7 +769,7 @@ impl<'a> LoweringContext<'a> {
         })
     }
 
-    fn lower_node_id_with_owner(&mut self, ast_node_id: NodeId, owner: NodeId) -> LoweredNodeId {
+    fn lower_node_id_with_owner(&mut self, ast_node_id: NodeId, owner: NodeId) -> hir::HirId {
         self.lower_node_id_generic(ast_node_id, |this| {
             let local_id_counter = this
                 .item_local_id_counters
@@ -822,7 +808,7 @@ impl<'a> LoweringContext<'a> {
         id
     }
 
-    fn next_id(&mut self) -> LoweredNodeId {
+    fn next_id(&mut self) -> hir::HirId {
         self.lower_node_id(self.sess.next_node_id())
     }
 
@@ -830,7 +816,7 @@ impl<'a> LoweringContext<'a> {
         def.map_id(|id| {
             self.lower_node_id_generic(id, |_| {
                 panic!("expected node_id to be lowered already for def {:#?}", def)
-            }).hir_id
+            })
         })
     }
 
@@ -942,7 +928,7 @@ impl<'a> LoweringContext<'a> {
         hir_name: ParamName,
         parent_index: DefIndex,
     ) -> hir::GenericParam {
-        let LoweredNodeId { node_id, hir_id } = self.next_id();
+        let node_id = self.sess.next_node_id();
 
         // Get the name we'll use to make the def-path. Note
         // that collisions are ok here and this shouldn't
@@ -973,7 +959,7 @@ impl<'a> LoweringContext<'a> {
         );
 
         hir::GenericParam {
-            hir_id,
+            hir_id: self.lower_node_id(node_id),
             name: hir_name,
             attrs: hir_vec![],
             bounds: hir_vec![],
@@ -1158,10 +1144,9 @@ impl<'a> LoweringContext<'a> {
         self.is_generator = prev_is_generator;
 
         let capture_clause = self.lower_capture_clause(capture_clause);
-        let closure_hir_id = self.lower_node_id(closure_node_id).hir_id;
         let decl = self.lower_fn_decl(&decl, None, /* impl trait allowed */ false, None);
         let generator = hir::Expr {
-            hir_id: closure_hir_id,
+            hir_id: self.lower_node_id(closure_node_id),
             node: hir::ExprKind::Closure(capture_clause, decl, body_id, span,
                 Some(hir::GeneratorMovability::Static)),
             span,
@@ -1267,7 +1252,7 @@ impl<'a> LoweringContext<'a> {
         let target_id = match destination {
             Some((id, _)) => {
                 if let Def::Label(loop_id) = self.expect_full_def(id) {
-                    Ok(self.lower_node_id(loop_id).hir_id)
+                    Ok(self.lower_node_id(loop_id))
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
                 }
@@ -1276,7 +1261,7 @@ impl<'a> LoweringContext<'a> {
                 self.loop_scopes
                     .last()
                     .cloned()
-                    .map(|id| Ok(self.lower_node_id(id).hir_id))
+                    .map(|id| Ok(self.lower_node_id(id)))
                     .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
                     .into()
             }
@@ -1350,10 +1335,8 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_ty_binding(&mut self, b: &TypeBinding,
                         itctx: ImplTraitContext<'_>) -> hir::TypeBinding {
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(b.id);
-
         hir::TypeBinding {
-            hir_id,
+            hir_id: self.lower_node_id(b.id),
             ident: b.ident,
             ty: self.lower_ty(&b.ty, itctx),
             span: b.span,
@@ -1487,7 +1470,6 @@ impl<'a> LoweringContext<'a> {
                         )
                     }
                     ImplTraitContext::Universal(in_band_ty_params) => {
-                        let LoweredNodeId { node_id: _, hir_id } =  self.lower_node_id(def_node_id);
                         // Add a definition for the in-band `Param`.
                         let def_index = self
                             .resolver
@@ -1502,7 +1484,7 @@ impl<'a> LoweringContext<'a> {
                         // Set the name to `impl Bound1 + Bound2`.
                         let ident = Ident::from_str(&pprust::ty_to_string(t)).with_span_pos(span);
                         in_band_ty_params.push(hir::GenericParam {
-                            hir_id,
+                            hir_id: self.lower_node_id(def_node_id),
                             name: ParamName::Plain(ident),
                             pure_wrt_drop: false,
                             attrs: hir_vec![],
@@ -1557,11 +1539,10 @@ impl<'a> LoweringContext<'a> {
             },
         };
 
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(t.id);
         hir::Ty {
             node: kind,
             span: t.span,
-            hir_id,
+            hir_id: self.lower_node_id(t.id),
         }
     }
 
@@ -1600,12 +1581,11 @@ impl<'a> LoweringContext<'a> {
         );
 
         self.with_hir_id_owner(exist_ty_node_id, |lctx| {
-            let LoweredNodeId { node_id: _, hir_id } = lctx.next_id();
             let exist_ty_item = hir::ExistTy {
                 generics: hir::Generics {
                     params: lifetime_defs,
                     where_clause: hir::WhereClause {
-                        hir_id,
+                        hir_id: lctx.next_id(),
                         predicates: hir_vec![],
                     },
                     span,
@@ -1624,7 +1604,7 @@ impl<'a> LoweringContext<'a> {
             );
 
             // `impl Trait` now just becomes `Foo<'a, 'b, ..>`.
-            hir::TyKind::Def(hir::ItemId { id: exist_ty_id.hir_id }, lifetimes)
+            hir::TyKind::Def(hir::ItemId { id: exist_ty_id }, lifetimes)
         })
     }
 
@@ -1636,13 +1616,13 @@ impl<'a> LoweringContext<'a> {
         exist_ty_item: hir::ExistTy,
         span: Span,
         exist_ty_span: Span,
-    ) -> LoweredNodeId {
+    ) -> hir::HirId {
         let exist_ty_item_kind = hir::ItemKind::Existential(exist_ty_item);
         let exist_ty_id = self.lower_node_id(exist_ty_node_id);
         // Generate an `existential type Foo: Trait;` declaration.
         trace!("registering existential type with id {:#?}", exist_ty_id);
         let exist_ty_item = hir::Item {
-            hir_id: exist_ty_id.hir_id,
+            hir_id: exist_ty_id,
             ident: keywords::Invalid.ident(),
             attrs: Default::default(),
             node: exist_ty_item_kind,
@@ -1757,15 +1737,14 @@ impl<'a> LoweringContext<'a> {
                     && !self.already_defined_lifetimes.contains(&name) {
                     self.already_defined_lifetimes.insert(name);
 
-                    let LoweredNodeId { node_id: _, hir_id } = self.context.next_id();
                     self.output_lifetimes.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        hir_id,
+                        hir_id: self.context.next_id(),
                         span: lifetime.span,
                         name,
                     }));
 
                     let def_node_id = self.context.sess.next_node_id();
-                    let LoweredNodeId { node_id: _, hir_id } =
+                    let hir_id =
                         self.context.lower_node_id_with_owner(def_node_id, self.exist_ty_id);
                     self.context.resolver.definitions().create_def_with_parent(
                         self.parent,
@@ -1840,11 +1819,10 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(v.node.id);
         Spanned {
             node: hir::VariantKind {
                 ident: v.node.ident,
-                id: hir_id,
+                id: self.lower_node_id(v.node.id),
                 attrs: self.lower_attrs(&v.node.attrs),
                 data: self.lower_variant_data(&v.node.data),
                 disr_expr: v.node.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
@@ -2157,7 +2135,7 @@ impl<'a> LoweringContext<'a> {
 
         hir::PathSegment::new(
             segment.ident,
-            Some(id.hir_id),
+            Some(id),
             Some(self.lower_def(def)),
             generic_args,
             infer_types,
@@ -2201,17 +2179,14 @@ impl<'a> LoweringContext<'a> {
                     .map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed()))
                     .collect();
                 let mk_tup = |this: &mut Self, tys, span| {
-                    let LoweredNodeId { node_id: _, hir_id } = this.next_id();
-                    hir::Ty { node: hir::TyKind::Tup(tys), hir_id, span }
+                    hir::Ty { node: hir::TyKind::Tup(tys), hir_id: this.next_id(), span }
                 };
-                let LoweredNodeId { node_id: _, hir_id } = this.next_id();
-
                 (
                     hir::GenericArgs {
                         args: hir_vec![GenericArg::Type(mk_tup(this, inputs, span))],
                         bindings: hir_vec![
                             hir::TypeBinding {
-                                hir_id,
+                                hir_id: this.next_id(),
                                 ident: Ident::from_str(FN_OUTPUT_NAME),
                                 ty: output
                                     .as_ref()
@@ -2229,7 +2204,6 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_local(&mut self, l: &Local) -> (hir::Local, SmallVec<[NodeId; 1]>) {
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(l.id);
         let mut ids = SmallVec::<[NodeId; 1]>::new();
         if self.sess.features_untracked().impl_trait_in_bindings {
             if let Some(ref ty) = l.ty {
@@ -2239,7 +2213,7 @@ impl<'a> LoweringContext<'a> {
         }
         let parent_def_id = DefId::local(self.current_hir_id_owner.last().unwrap().0);
         (hir::Local {
-            hir_id,
+            hir_id: self.lower_node_id(l.id),
             ty: l.ty
                 .as_ref()
                 .map(|t| self.lower_ty(t,
@@ -2276,9 +2250,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_arg(&mut self, arg: &Arg) -> hir::Arg {
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(arg.id);
         hir::Arg {
-            hir_id,
+            hir_id: self.lower_node_id(arg.id),
             pat: self.lower_pat(&arg.pat),
             source: self.lower_arg_source(&arg.source),
         }
@@ -2437,7 +2410,7 @@ impl<'a> LoweringContext<'a> {
 
         self.allocate_hir_id_counter(exist_ty_node_id);
 
-        let (exist_ty_node_id, lifetime_params) = self.with_hir_id_owner(exist_ty_node_id, |this| {
+        let (exist_ty_id, lifetime_params) = self.with_hir_id_owner(exist_ty_node_id, |this| {
             let future_bound = this.with_anonymous_lifetime_mode(
                 AnonymousLifetimeMode::Replace(elided_lt_replacement),
                 |this| this.lower_async_fn_output_type_to_future_bound(
@@ -2468,12 +2441,11 @@ impl<'a> LoweringContext<'a> {
                     })
                     .collect();
 
-            let LoweredNodeId { node_id: _, hir_id } = this.next_id();
             let exist_ty_item = hir::ExistTy {
                 generics: hir::Generics {
                     params: generic_params,
                     where_clause: hir::WhereClause {
-                        hir_id,
+                        hir_id: this.next_id(),
                         predicates: hir_vec![],
                     },
                     span,
@@ -2491,30 +2463,27 @@ impl<'a> LoweringContext<'a> {
                 exist_ty_span,
             );
 
-            (exist_ty_id.node_id, lifetime_params)
+            (exist_ty_id, lifetime_params)
         });
 
         let generic_args =
             lifetime_params
                 .iter().cloned()
                 .map(|(span, hir_name)| {
-                    let LoweredNodeId { node_id: _, hir_id  } = self.next_id();
                     GenericArg::Lifetime(hir::Lifetime {
-                        hir_id,
+                        hir_id: self.next_id(),
                         span,
                         name: hir::LifetimeName::Param(hir_name),
                     })
                 })
                 .collect();
 
-        let exist_ty_hir_id = self.lower_node_id(exist_ty_node_id).hir_id;
-        let exist_ty_ref = hir::TyKind::Def(hir::ItemId { id: exist_ty_hir_id }, generic_args);
+        let exist_ty_ref = hir::TyKind::Def(hir::ItemId { id: exist_ty_id }, generic_args);
 
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         hir::FunctionRetTy::Return(P(hir::Ty {
             node: exist_ty_ref,
             span,
-            hir_id,
+            hir_id: self.next_id(),
         }))
     }
 
@@ -2531,9 +2500,8 @@ impl<'a> LoweringContext<'a> {
                 self.lower_ty(ty, ImplTraitContext::Existential(Some(fn_def_id)))
             }
             FunctionRetTy::Default(ret_ty_span) => {
-                let LoweredNodeId { node_id: _, hir_id } = self.next_id();
                 P(hir::Ty {
-                    hir_id,
+                    hir_id: self.next_id(),
                     node: hir::TyKind::Tup(hir_vec![]),
                     span: *ret_ty_span,
                 })
@@ -2541,13 +2509,12 @@ impl<'a> LoweringContext<'a> {
         };
 
         // "<Output = T>"
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         let future_params = P(hir::GenericArgs {
             args: hir_vec![],
             bindings: hir_vec![hir::TypeBinding {
                 ident: Ident::from_str(FN_OUTPUT_NAME),
                 ty: output_ty,
-                hir_id,
+                hir_id: self.next_id(),
                 span,
             }],
             parenthesized: false,
@@ -2557,12 +2524,11 @@ impl<'a> LoweringContext<'a> {
         let future_path =
             self.std_path(span, &["future", "Future"], Some(future_params), false);
 
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         hir::GenericBound::Trait(
             hir::PolyTraitRef {
                 trait_ref: hir::TraitRef {
                     path: future_path,
-                    hir_ref_id: hir_id,
+                    hir_ref_id: self.next_id(),
                 },
                 bound_generic_params: hir_vec![],
                 span,
@@ -2608,7 +2574,7 @@ impl<'a> LoweringContext<'a> {
                     AnonymousLifetimeMode::ReportError => self.new_error_lifetime(Some(l.id), span),
 
                     AnonymousLifetimeMode::Replace(replacement) => {
-                        let LoweredNodeId { node_id: _, hir_id  } = self.lower_node_id(l.id);
+                        let hir_id = self.lower_node_id(l.id);
                         self.replace_elided_lifetime(hir_id, span, replacement)
                     }
                 },
@@ -2626,10 +2592,8 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         name: hir::LifetimeName,
     ) -> hir::Lifetime {
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
-
         hir::Lifetime {
-            hir_id,
+            hir_id: self.lower_node_id(id),
             span,
             name: name,
         }
@@ -2751,10 +2715,8 @@ impl<'a> LoweringContext<'a> {
             }
         };
 
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(param.id);
-
         hir::GenericParam {
-            hir_id,
+            hir_id: self.lower_node_id(param.id),
             name,
             span: param.ident.span,
             pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
@@ -2834,10 +2796,8 @@ impl<'a> LoweringContext<'a> {
         self.with_anonymous_lifetime_mode(
             AnonymousLifetimeMode::ReportError,
             |this| {
-                let LoweredNodeId { node_id: _, hir_id } = this.lower_node_id(wc.id);
-
                 hir::WhereClause {
-                    hir_id,
+                    hir_id: this.lower_node_id(wc.id),
                     predicates: wc.predicates
                         .iter()
                         .map(|predicate| this.lower_where_predicate(predicate))
@@ -2897,10 +2857,8 @@ impl<'a> LoweringContext<'a> {
                 ref rhs_ty,
                 span,
             }) => {
-                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
-
                 hir::WherePredicate::EqPredicate(hir::WhereEqPredicate {
-                    hir_id,
+                    hir_id: self.lower_node_id(id),
                     lhs_ty: self.lower_ty(lhs_ty, ImplTraitContext::disallowed()),
                     rhs_ty: self.lower_ty(rhs_ty, ImplTraitContext::disallowed()),
                     span,
@@ -2916,20 +2874,17 @@ impl<'a> LoweringContext<'a> {
                 recovered,
             ),
             VariantData::Tuple(ref fields, id) => {
-                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
-
                 hir::VariantData::Tuple(
                     fields
                         .iter()
                         .enumerate()
                         .map(|f| self.lower_struct_field(f))
                         .collect(),
-                    hir_id,
+                    self.lower_node_id(id),
                 )
             },
             VariantData::Unit(id) => {
-                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
-                hir::VariantData::Unit(hir_id)
+                hir::VariantData::Unit(self.lower_node_id(id))
             },
         }
     }
@@ -2939,10 +2894,9 @@ impl<'a> LoweringContext<'a> {
             hir::QPath::Resolved(None, path) => path.and_then(|path| path),
             qpath => bug!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
         };
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(p.ref_id);
         hir::TraitRef {
             path,
-            hir_ref_id: hir_id,
+            hir_ref_id: self.lower_node_id(p.ref_id),
         }
     }
 
@@ -2969,11 +2923,9 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField {
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(f.id);
-
         hir::StructField {
             span: f.span,
-            hir_id,
+            hir_id: self.lower_node_id(f.id),
             ident: match f.ident {
                 Some(ident) => ident,
                 // FIXME(jseyfried): positional field hygiene
@@ -2986,10 +2938,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_field(&mut self, f: &Field) -> hir::Field {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
         hir::Field {
-            hir_id,
+            hir_id: self.next_id(),
             ident: f.ident,
             expr: P(self.lower_expr(&f.expr)),
             span: f.span,
@@ -3026,10 +2976,8 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(b.id);
-
         P(hir::Block {
-            hir_id,
+            hir_id: self.lower_node_id(b.id),
             stmts: stmts.into(),
             expr,
             rules: self.lower_block_check_mode(&b.rules),
@@ -3220,7 +3168,7 @@ impl<'a> LoweringContext<'a> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let lowered_trait_impl_id = self.lower_node_id(id).hir_id;
+                let lowered_trait_impl_id = self.lower_node_id(id);
                 let (generics, (trait_ref, lowered_ty)) = self.add_in_band_defs(
                     ast_generics,
                     def_id,
@@ -3358,11 +3306,10 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
                             hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
-                                let id = this.next_id();
                                 let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
                                     path,
-                                    hir_id: id.hir_id,
+                                    hir_id: this.next_id(),
                                 }
                             }
                         };
@@ -3370,7 +3317,7 @@ impl<'a> LoweringContext<'a> {
 
                         this.insert_item(
                             hir::Item {
-                                hir_id: new_id.hir_id,
+                                hir_id: new_id,
                                 ident,
                                 attrs: attrs.clone(),
                                 node: item,
@@ -3428,10 +3375,7 @@ impl<'a> LoweringContext<'a> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    let LoweredNodeId {
-                        node_id: new_id,
-                        hir_id: new_hir_id,
-                    } = self.lower_node_id(id);
+                    let new_hir_id = self.lower_node_id(id);
 
                     let mut vis = vis.clone();
                     let mut ident = ident.clone();
@@ -3447,10 +3391,10 @@ impl<'a> LoweringContext<'a> {
                     // the current owner, since we want each desugared import to
                     // own its own names, we have to adjust the owner before
                     // lowering the rest of the import.
-                    self.with_hir_id_owner(new_id, |this| {
+                    self.with_hir_id_owner(id, |this| {
                         let item = this.lower_use_tree(use_tree,
                                                        &prefix,
-                                                       new_id,
+                                                       id,
                                                        &mut vis,
                                                        &mut ident,
                                                        attrs);
@@ -3460,11 +3404,10 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
                             hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
-                                let id = this.next_id();
                                 let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
                                     path: path,
-                                    hir_id: id.hir_id,
+                                    hir_id: this.next_id(),
                                 }
                             }
                         };
@@ -3520,15 +3463,14 @@ impl<'a> LoweringContext<'a> {
         let mut path = path.clone();
         for seg in path.segments.iter_mut() {
             if seg.hir_id.is_some() {
-                seg.hir_id = Some(self.next_id().hir_id);
+                seg.hir_id = Some(self.next_id());
             }
         }
         path
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
-        let trait_item_def_id = self.resolver.definitions().local_def_id(node_id);
+        let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, node) = match i.node {
             TraitItemKind::Const(ref ty, ref default) => (
@@ -3578,7 +3520,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         hir::TraitItem {
-            hir_id,
+            hir_id: self.lower_node_id(i.id),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
@@ -3604,7 +3546,7 @@ impl<'a> LoweringContext<'a> {
             TraitItemKind::Macro(..) => unimplemented!(),
         };
         hir::TraitItemRef {
-            id: hir::TraitItemId { hir_id: self.lower_node_id(i.id).hir_id },
+            id: hir::TraitItemId { hir_id: self.lower_node_id(i.id) },
             ident: i.ident,
             span: i.span,
             defaultness: self.lower_defaultness(Defaultness::Default, has_default),
@@ -3613,8 +3555,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
-        let impl_item_def_id = self.resolver.definitions().local_def_id(node_id);
+        let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, node) = match i.node {
             ImplItemKind::Const(ref ty, ref expr) => {
@@ -3671,7 +3612,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         hir::ImplItem {
-            hir_id,
+            hir_id: self.lower_node_id(i.id),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             generics,
@@ -3686,7 +3627,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
         hir::ImplItemRef {
-            id: hir::ImplItemId { hir_id: self.lower_node_id(i.id).hir_id },
+            id: hir::ImplItemId { hir_id: self.lower_node_id(i.id) },
             ident: i.ident,
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
@@ -3742,7 +3683,7 @@ impl<'a> LoweringContext<'a> {
         };
 
         node_ids.into_iter().map(|node_id| hir::ItemId {
-            id: self.allocate_hir_id_counter(node_id).hir_id
+            id: self.allocate_hir_id_counter(node_id)
         }).collect()
     }
 
@@ -3776,7 +3717,7 @@ impl<'a> LoweringContext<'a> {
             if !def.legacy || attr::contains_name(&i.attrs, "macro_export") ||
                               attr::contains_name(&i.attrs, "rustc_doc_only_macro") {
                 let body = self.lower_token_stream(def.stream());
-                let hir_id = self.lower_node_id(i.id).hir_id;
+                let hir_id = self.lower_node_id(i.id);
                 self.exported_macros.push(hir::MacroDef {
                     name: ident.name,
                     vis,
@@ -3792,10 +3733,8 @@ impl<'a> LoweringContext<'a> {
 
         let node = self.lower_item_kind(i.id, &mut ident, &attrs, &mut vis, &i.node);
 
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(i.id);
-
         Some(hir::Item {
-            hir_id,
+            hir_id: self.lower_node_id(i.id),
             ident,
             attrs,
             node,
@@ -3805,10 +3744,9 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem {
-        let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
-        let def_id = self.resolver.definitions().local_def_id(node_id);
+        let def_id = self.resolver.definitions().local_def_id(i.id);
         hir::ForeignItem {
-            hir_id,
+            hir_id: self.lower_node_id(i.id),
             ident: i.ident,
             attrs: self.lower_attrs(&i.attrs),
             node: match i.node {
@@ -3948,7 +3886,7 @@ impl<'a> LoweringContext<'a> {
 
                         hir::PatKind::Binding(
                             self.lower_binding_mode(binding_mode),
-                            self.lower_node_id(canonical_id).hir_id,
+                            self.lower_node_id(canonical_id),
                             ident,
                             sub.as_ref().map(|x| self.lower_pat(x)),
                         )
@@ -4000,12 +3938,10 @@ impl<'a> LoweringContext<'a> {
                 let fs = fields
                     .iter()
                     .map(|f| {
-                        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
                         Spanned {
                             span: f.span,
                             node: hir::FieldPat {
-                                hir_id,
+                                hir_id: self.next_id(),
                                 ident: f.node.ident,
                                 pat: self.lower_pat(&f.node.pat),
                                 is_shorthand: f.node.is_shorthand,
@@ -4036,9 +3972,8 @@ impl<'a> LoweringContext<'a> {
             PatKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(p.id);
         P(hir::Pat {
-            hir_id,
+            hir_id: self.lower_node_id(p.id),
             node,
             span: p.span,
         })
@@ -4053,9 +3988,8 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_anon_const(&mut self, c: &AnonConst) -> hir::AnonConst {
         self.with_new_scopes(|this| {
-            let LoweredNodeId { node_id: _, hir_id } = this.lower_node_id(c.id);
             hir::AnonConst {
-                hir_id,
+                hir_id: this.lower_node_id(c.id),
                 body: this.lower_body(None, |this| this.lower_expr(&c.value)),
             }
         })
@@ -4130,11 +4064,10 @@ impl<'a> LoweringContext<'a> {
                             // Wrap the `if let` expr in a block.
                             let span = els.span;
                             let els = P(self.lower_expr(els));
-                            let LoweredNodeId { node_id: _, hir_id } = self.next_id();
                             let blk = P(hir::Block {
                                 stmts: hir_vec![],
                                 expr: Some(els),
-                                hir_id,
+                                hir_id: self.next_id(),
                                 rules: hir::DefaultBlock,
                                 span,
                                 targeted_by_break: false,
@@ -4176,13 +4109,12 @@ impl<'a> LoweringContext<'a> {
                     let mut block = this.lower_block(body, true).into_inner();
                     let tail = block.expr.take().map_or_else(
                         || {
-                            let LoweredNodeId { node_id: _, hir_id } = this.next_id();
                             let span = this.sess.source_map().end_point(unstable_span);
                             hir::Expr {
                                 span,
                                 node: hir::ExprKind::Tup(hir_vec![]),
                                 attrs: ThinVec::new(),
-                                hir_id,
+                                hir_id: this.next_id(),
                             }
                         },
                         |x: P<hir::Expr>| x.into_inner(),
@@ -4363,10 +4295,8 @@ impl<'a> LoweringContext<'a> {
                 let struct_path = self.std_path(e.span, &struct_path, None, is_unit);
                 let struct_path = hir::QPath::Resolved(None, P(struct_path));
 
-                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(e.id);
-
                 return hir::Expr {
-                    hir_id,
+                    hir_id: self.lower_node_id(e.id),
                     node: if is_unit {
                         hir::ExprKind::Path(struct_path)
                     } else {
@@ -4667,9 +4597,8 @@ impl<'a> LoweringContext<'a> {
                         ThinVec::new(),
                     ))
                 };
-                let LoweredNodeId { node_id: _, hir_id } = self.next_id();
                 let match_stmt = hir::Stmt {
-                    hir_id,
+                    hir_id: self.next_id(),
                     node: hir::StmtKind::Expr(match_expr),
                     span: head_sp,
                 };
@@ -4695,9 +4624,8 @@ impl<'a> LoweringContext<'a> {
 
                 let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body, false));
                 let body_expr = P(self.expr_block(body_block, ThinVec::new()));
-                let LoweredNodeId { node_id: _, hir_id } = self.next_id();
                 let body_stmt = hir::Stmt {
-                    hir_id,
+                    hir_id: self.next_id(),
                     node: hir::StmtKind::Expr(body_expr),
                     span: body.span,
                 };
@@ -4714,9 +4642,8 @@ impl<'a> LoweringContext<'a> {
                     self.lower_label(opt_label),
                     hir::LoopSource::ForLoop,
                 );
-                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(e.id);
                 let loop_expr = P(hir::Expr {
-                    hir_id,
+                    hir_id: self.lower_node_id(e.id),
                     node: loop_expr,
                     span: e.span,
                     attrs: ThinVec::new(),
@@ -4834,7 +4761,7 @@ impl<'a> LoweringContext<'a> {
                     let thin_attrs = ThinVec::from(attrs);
                     let catch_scope = self.catch_scopes.last().map(|x| *x);
                     let ret_expr = if let Some(catch_node) = catch_scope {
-                        let target_id = Ok(self.lower_node_id(catch_node).hir_id);
+                        let target_id = Ok(self.lower_node_id(catch_node));
                         P(self.expr(
                             try_span,
                             hir::ExprKind::Break(
@@ -4864,10 +4791,8 @@ impl<'a> LoweringContext<'a> {
             ExprKind::Mac(_) => panic!("Shouldn't exist here"),
         };
 
-        let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(e.id);
-
         hir::Expr {
-            hir_id,
+            hir_id: self.lower_node_id(e.id),
             node: kind,
             span: e.span,
             attrs: e.attrs.clone(),
@@ -4881,21 +4806,18 @@ impl<'a> LoweringContext<'a> {
                 let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
-                        let item_id = hir::ItemId { id: self.lower_node_id(item_id).hir_id };
-                        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
+                        let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
 
                         hir::Stmt {
-                            hir_id,
+                            hir_id: self.next_id(),
                             node: hir::StmtKind::Item(item_id),
                             span: s.span,
                         }
                     })
                     .collect();
                 ids.push({
-                    let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(s.id);
-
                     hir::Stmt {
-                        hir_id,
+                        hir_id: self.lower_node_id(s.id),
                         node: hir::StmtKind::Local(P(l)),
                         span: s.span,
                     }
@@ -4908,7 +4830,7 @@ impl<'a> LoweringContext<'a> {
                 return self.lower_item_id(it)
                     .into_iter()
                     .map(|item_id| {
-                        let LoweredNodeId { node_id: _, hir_id } = id.take()
+                        let hir_id = id.take()
                           .map(|id| self.lower_node_id(id))
                           .unwrap_or_else(|| self.next_id());
 
@@ -4921,19 +4843,15 @@ impl<'a> LoweringContext<'a> {
                     .collect();
             }
             StmtKind::Expr(ref e) => {
-                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(s.id);
-
                 hir::Stmt {
-                    hir_id,
+                    hir_id: self.lower_node_id(s.id),
                     node: hir::StmtKind::Expr(P(self.lower_expr(e))),
                     span: s.span,
                 }
             },
             StmtKind::Semi(ref e) => {
-                let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(s.id);
-
                 hir::Stmt {
-                    hir_id,
+                    hir_id: self.lower_node_id(s.id),
                     node: hir::StmtKind::Semi(P(self.lower_expr(e))),
                     span: s.span,
                 }
@@ -4978,7 +4896,7 @@ impl<'a> LoweringContext<'a> {
                         ParamMode::Explicit,
                         explicit_owner,
                     )),
-                    hir_id: lowered_id.hir_id,
+                    hir_id: lowered_id,
                 }
             },
             VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
@@ -5047,10 +4965,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn field(&mut self, ident: Ident, expr: P<hir::Expr>, span: Span) -> hir::Field {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
         hir::Field {
-            hir_id,
+            hir_id: self.next_id(),
             ident,
             span,
             expr,
@@ -5144,9 +5060,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr(&mut self, span: Span, node: hir::ExprKind, attrs: ThinVec<Attribute>) -> hir::Expr {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         hir::Expr {
-            hir_id,
+            hir_id: self.next_id(),
             node,
             span,
             attrs,
@@ -5160,21 +5075,18 @@ impl<'a> LoweringContext<'a> {
         pat: P<hir::Pat>,
         source: hir::LocalSource,
     ) -> hir::Stmt {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
         let local = hir::Local {
             pat,
             ty: None,
             init: ex,
-            hir_id,
+            hir_id: self.next_id(),
             span: sp,
             attrs: ThinVec::new(),
             source,
         };
 
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         hir::Stmt {
-            hir_id,
+            hir_id: self.next_id(),
             node: hir::StmtKind::Local(P(local)),
             span: sp
         }
@@ -5190,12 +5102,10 @@ impl<'a> LoweringContext<'a> {
         stmts: hir::HirVec<hir::Stmt>,
         expr: Option<P<hir::Expr>>,
     ) -> hir::Block {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
         hir::Block {
             stmts,
             expr,
-            hir_id,
+            hir_id: self.next_id(),
             rules: hir::DefaultBlock,
             span,
             targeted_by_break: false,
@@ -5244,7 +5154,7 @@ impl<'a> LoweringContext<'a> {
         ident: Ident,
         bm: hir::BindingAnnotation,
     ) -> (P<hir::Pat>, hir::HirId) {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
+        let hir_id = self.next_id();
 
         (
             P(hir::Pat {
@@ -5261,9 +5171,8 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn pat(&mut self, span: Span, pat: hir::PatKind) -> P<hir::Pat> {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
         P(hir::Pat {
-            hir_id,
+            hir_id: self.next_id(),
             node: pat,
             span,
         })
@@ -5286,14 +5195,13 @@ impl<'a> LoweringContext<'a> {
 
         for seg in path.segments.iter_mut() {
             if seg.hir_id.is_some() {
-                seg.hir_id = Some(self.next_id().hir_id);
+                seg.hir_id = Some(self.next_id());
             }
         }
         path
     }
 
-    fn ty_path(&mut self, id: LoweredNodeId, span: Span, qpath: hir::QPath) -> hir::Ty {
-        let mut id = id;
+    fn ty_path(&mut self, mut hir_id: hir::HirId, span: Span, qpath: hir::QPath) -> hir::Ty {
         let node = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
@@ -5303,14 +5211,14 @@ impl<'a> LoweringContext<'a> {
                             bound_generic_params: hir::HirVec::new(),
                             trait_ref: hir::TraitRef {
                                 path: path.and_then(|path| path),
-                                hir_ref_id: id.hir_id,
+                                hir_ref_id: hir_id,
                             },
                             span,
                         };
 
                         // The original ID is taken by the `PolyTraitRef`,
                         // so the `Ty` itself needs a different one.
-                        id = self.next_id();
+                        hir_id = self.next_id();
                         hir::TyKind::TraitObject(hir_vec![principal], self.elided_dyn_bound(span))
                     }
                     _ => hir::TyKind::Path(hir::QPath::Resolved(None, path)),
@@ -5319,7 +5227,7 @@ impl<'a> LoweringContext<'a> {
             _ => hir::TyKind::Path(qpath),
         };
         hir::Ty {
-            hir_id: id.hir_id,
+            hir_id,
             node,
             span,
         }
@@ -5335,9 +5243,8 @@ impl<'a> LoweringContext<'a> {
             // `'f`.
             AnonymousLifetimeMode::CreateParameter => {
                 let fresh_name = self.collect_fresh_in_band_lifetime(span);
-                let LoweredNodeId { node_id: _, hir_id } = self.next_id();
                 hir::Lifetime {
-                    hir_id,
+                    hir_id: self.next_id(),
                     span,
                     name: hir::LifetimeName::Param(fresh_name),
                 }
@@ -5360,7 +5267,7 @@ impl<'a> LoweringContext<'a> {
             Some(id) => (id, "`'_` cannot be used here", "`'_` is a reserved lifetime name"),
 
             None => (
-                self.next_id().node_id,
+                self.sess.next_node_id(),
                 "`&` without an explicit lifetime name cannot be used here",
                 "explicit lifetime name needed here",
             ),
@@ -5451,15 +5358,13 @@ impl<'a> LoweringContext<'a> {
         replacement: LtReplacement,
         span: Span,
     ) -> hir::Lifetime {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
+        let hir_id = self.next_id();
         self.replace_elided_lifetime(hir_id, span, replacement)
     }
 
     fn new_implicit_lifetime(&mut self, span: Span) -> hir::Lifetime {
-        let LoweredNodeId { node_id: _, hir_id } = self.next_id();
-
         hir::Lifetime {
-            hir_id,
+            hir_id: self.next_id(),
             span,
             name: hir::LifetimeName::Implicit,
         }
