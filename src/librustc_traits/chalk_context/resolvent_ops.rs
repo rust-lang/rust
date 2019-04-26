@@ -16,7 +16,7 @@ use rustc::traits::{
     Environment,
     InEnvironment,
 };
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Kind;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
 use syntax_pos::DUMMY_SP;
@@ -169,7 +169,7 @@ impl AnswerSubstitutor<'cx, 'gcx, 'tcx> {
 }
 
 impl TypeRelation<'cx, 'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> ty::TyCtxt<'cx, 'gcx, 'tcx> {
+    fn tcx(&self) -> TyCtxt<'cx, 'gcx, 'tcx> {
         self.infcx.tcx
     }
 

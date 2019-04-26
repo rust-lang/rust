@@ -4,7 +4,7 @@ use rustc::traits::{
     ProgramClause,
     ProgramClauseCategory,
 };
-use rustc::ty;
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, InternalSubsts, Subst};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -15,8 +15,8 @@ use crate::generic_types;
 /// `Implemented(ty: Trait) :- Implemented(nested: Trait)...`
 /// where `Trait` is specified by `trait_def_id`.
 fn builtin_impl_clause(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
-    ty: ty::Ty<'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
+    ty: Ty<'tcx>,
     nested: &[Kind<'tcx>],
     trait_def_id: DefId
 ) -> ProgramClause<'tcx> {
@@ -43,10 +43,10 @@ fn builtin_impl_clause(
 }
 
 crate fn assemble_builtin_unsize_impls<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     unsize_def_id: DefId,
-    source: ty::Ty<'tcx>,
-    target: ty::Ty<'tcx>,
+    source: Ty<'tcx>,
+    target: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>
 ) {
     match (&source.sty, &target.sty) {
@@ -119,12 +119,12 @@ crate fn assemble_builtin_unsize_impls<'tcx>(
 }
 
 crate fn assemble_builtin_sized_impls<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     sized_def_id: DefId,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>
 ) {
-    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[Kind<'tcx>]| {
+    let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[Kind<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, sized_def_id);
         // Bind innermost bound vars that may exist in `ty` and `nested`.
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
@@ -223,12 +223,12 @@ crate fn assemble_builtin_sized_impls<'tcx>(
 }
 
 crate fn assemble_builtin_copy_clone_impls<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     trait_def_id: DefId,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>
 ) {
-    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[Kind<'tcx>]| {
+    let mut push_builtin_impl = |ty: Ty<'tcx>, nested: &[Kind<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, trait_def_id);
         // Bind innermost bound vars that may exist in `ty` and `nested`.
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
