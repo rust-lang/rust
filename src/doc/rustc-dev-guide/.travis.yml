@@ -1,4 +1,6 @@
 language: rust
+rust:
+- nightly
 cache:
 - cargo
 before_install:
