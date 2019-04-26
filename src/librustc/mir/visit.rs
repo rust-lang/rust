@@ -1,4 +1,3 @@
-use crate::hir::def_id::DefId;
 use crate::ty::subst::SubstsRef;
 use crate::ty::{CanonicalUserTypeAnnotation, ClosureSubsts, GeneratorSubsts, Ty};
 use crate::mir::*;
@@ -165,22 +164,10 @@ macro_rules! make_mir_visitor {
                 self.super_projection_elem(place, location);
             }
 
-            fn visit_branch(&mut self,
-                            source: BasicBlock,
-                            target: BasicBlock) {
-                self.super_branch(source, target);
-            }
-
             fn visit_constant(&mut self,
                               constant: & $($mutability)? Constant<'tcx>,
                               location: Location) {
                 self.super_constant(constant, location);
-            }
-
-            fn visit_def_id(&mut self,
-                            def_id: & $($mutability)? DefId,
-                            _: Location) {
-                self.super_def_id(def_id);
             }
 
             fn visit_span(&mut self,
@@ -433,51 +420,44 @@ macro_rules! make_mir_visitor {
             fn super_terminator_kind(&mut self,
                                      kind: & $($mutability)? TerminatorKind<'tcx>,
                                      source_location: Location) {
-                let block = source_location.block;
                 match kind {
-                    TerminatorKind::Goto { target } => {
-                        self.visit_branch(block, *target);
+                    TerminatorKind::Goto { .. } |
+                    TerminatorKind::Resume |
+                    TerminatorKind::Abort |
+                    TerminatorKind::Return |
+                    TerminatorKind::GeneratorDrop |
+                    TerminatorKind::Unreachable |
+                    TerminatorKind::FalseEdges { .. } |
+                    TerminatorKind::FalseUnwind { .. } => {
                     }
 
                     TerminatorKind::SwitchInt {
                         discr,
                         switch_ty,
                         values: _,
-                        targets
+                        targets: _
                     } => {
                         self.visit_operand(discr, source_location);
                         self.visit_ty(switch_ty, TyContext::Location(source_location));
-                        for target in targets {
-                            self.visit_branch(block, *target);
-                        }
-                    }
-
-                    TerminatorKind::Resume |
-                    TerminatorKind::Abort |
-                    TerminatorKind::Return |
-                    TerminatorKind::GeneratorDrop |
-                    TerminatorKind::Unreachable => {
                     }
 
                     TerminatorKind::Drop {
                         location,
-                        target,
-                        unwind,
+                        target: _,
+                        unwind: _,
                     } => {
                         self.visit_place(
                             location,
                             PlaceContext::MutatingUse(MutatingUseContext::Drop),
                             source_location
                         );
-                        self.visit_branch(block, *target);
-                        unwind.map(|t| self.visit_branch(block, t));
                     }
 
                     TerminatorKind::DropAndReplace {
                         location,
                         value,
-                        target,
-                        unwind,
+                        target: _,
+                        unwind: _,
                     } => {
                         self.visit_place(
                             location,
@@ -485,68 +465,47 @@ macro_rules! make_mir_visitor {
                             source_location
                         );
                         self.visit_operand(value, source_location);
-                        self.visit_branch(block, *target);
-                        unwind.map(|t| self.visit_branch(block, t));
                     }
 
                     TerminatorKind::Call {
                         func,
                         args,
                         destination,
-                        cleanup,
+                        cleanup: _,
                         from_hir_call: _,
                     } => {
                         self.visit_operand(func, source_location);
                         for arg in args {
                             self.visit_operand(arg, source_location);
                         }
-                        if let Some((destination, target)) = destination {
+                        if let Some((destination, _)) = destination {
                             self.visit_place(
                                 destination,
                                 PlaceContext::MutatingUse(MutatingUseContext::Call),
                                 source_location
                             );
-                            self.visit_branch(block, *target);
                         }
-                        cleanup.map(|t| self.visit_branch(block, t));
                     }
 
                     TerminatorKind::Assert {
                         cond,
                         expected: _,
                         msg,
-                        target,
-                        cleanup,
+                        target: _,
+                        cleanup: _,
                     } => {
                         self.visit_operand(cond, source_location);
                         self.visit_assert_message(msg, source_location);
-                        self.visit_branch(block, *target);
-                        cleanup.map(|t| self.visit_branch(block, t));
                     }
 
                     TerminatorKind::Yield {
                         value,
-                        resume,
-                        drop,
+                        resume: _,
+                        drop: _,
                     } => {
                         self.visit_operand(value, source_location);
-                        self.visit_branch(block, *resume);
-                        drop.map(|t| self.visit_branch(block, t));
                     }
 
-                    TerminatorKind::FalseEdges { real_target, imaginary_targets } => {
-                        self.visit_branch(block, *real_target);
-                        for target in imaginary_targets {
-                            self.visit_branch(block, *target);
-                        }
-                    }
-
-                    TerminatorKind::FalseUnwind { real_target, unwind } => {
-                        self.visit_branch(block, *real_target);
-                        if let Some(unwind) = unwind {
-                            self.visit_branch(block, *unwind);
-                        }
-                    }
                 }
             }
 
@@ -643,18 +602,16 @@ macro_rules! make_mir_visitor {
                                 self.visit_substs(substs, location);
                             }
                             AggregateKind::Closure(
-                                def_id,
+                                _,
                                 closure_substs
                             ) => {
-                                self.visit_def_id(def_id, location);
                                 self.visit_closure_substs(closure_substs, location);
                             }
                             AggregateKind::Generator(
-                                def_id,
+                                _,
                                 generator_substs,
                                 _movability,
                             ) => {
-                                self.visit_def_id(def_id, location);
                                 self.visit_generator_substs(generator_substs, location);
                             }
                         }
@@ -722,10 +679,7 @@ macro_rules! make_mir_visitor {
                     Place::Base(PlaceBase::Local(local)) => {
                         self.visit_local(local, context, location);
                     }
-                    Place::Base(PlaceBase::Static(box Static { kind, ty })) => {
-                        if let StaticKind::Static(def_id) = kind {
-                            self.visit_def_id(& $($mutability)? *def_id, location)
-                        }
+                    Place::Base(PlaceBase::Static(box Static { kind: _, ty })) => {
                         self.visit_ty(& $($mutability)? *ty, TyContext::Location(location));
                     }
                     Place::Projection(proj) => {
@@ -805,11 +759,6 @@ macro_rules! make_mir_visitor {
                                       _scope: & $($mutability)? SourceScope) {
             }
 
-            fn super_branch(&mut self,
-                            _source: BasicBlock,
-                            _target: BasicBlock) {
-            }
-
             fn super_constant(&mut self,
                               constant: & $($mutability)? Constant<'tcx>,
                               location: Location) {
@@ -824,9 +773,6 @@ macro_rules! make_mir_visitor {
                 self.visit_ty(ty, TyContext::Location(location));
                 drop(user_ty); // no visit method for this
                 self.visit_const(literal, location);
-            }
-
-            fn super_def_id(&mut self, _def_id: & $($mutability)? DefId) {
             }
 
             fn super_span(&mut self, _span: & $($mutability)? Span) {
