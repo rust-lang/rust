@@ -141,7 +141,7 @@ pub enum OutputType {
     Bitcode,
     Assembly,
     LlvmAssembly,
-    Body,
+    Mir,
     Metadata,
     Object,
     Exe,

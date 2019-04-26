@@ -8,7 +8,7 @@ use std::fmt;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Origin {
     Ast,
-    Body,
+    Mir,
 }
 
 impl fmt::Display for Origin {
