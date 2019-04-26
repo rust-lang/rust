@@ -789,7 +789,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
 
-        let repr_options = get_repr_options(&tcx, adt_def_id);
+        let repr_options = get_repr_options(tcx, adt_def_id);
 
         Entry {
             kind: EntryKind::Struct(self.lazy(&data), repr_options),
@@ -1119,7 +1119,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             hir::ItemKind::GlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemKind::Ty(..) => EntryKind::Type,
             hir::ItemKind::Existential(..) => EntryKind::Existential,
-            hir::ItemKind::Enum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
+            hir::ItemKind::Enum(..) => EntryKind::Enum(get_repr_options(tcx, def_id)),
             hir::ItemKind::Struct(ref struct_def, _) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
 
@@ -1129,7 +1129,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
                 let ctor = struct_def.ctor_hir_id()
                     .map(|ctor_hir_id| tcx.hir().local_def_id_from_hir_id(ctor_hir_id).index);
 
-                let repr_options = get_repr_options(&tcx, def_id);
+                let repr_options = get_repr_options(tcx, def_id);
 
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
@@ -1140,7 +1140,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
             }
             hir::ItemKind::Union(..) => {
                 let variant = tcx.adt_def(def_id).non_enum_variant();
-                let repr_options = get_repr_options(&tcx, def_id);
+                let repr_options = get_repr_options(tcx, def_id);
 
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
@@ -1938,7 +1938,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
     EncodedMetadata { raw_data: result }
 }
 
-pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
+pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
     let ty = tcx.type_of(did);
     match ty.sty {
         ty::Adt(ref def, _) => return def.repr,
