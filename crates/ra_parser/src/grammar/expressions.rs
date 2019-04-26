@@ -252,12 +252,12 @@ fn expr_bp(
     // `newly_dollar_open` is a flag indicated that dollar is just closed after lhs, e.g.
     // `$1$ + a`
     // We use this flag to skip handling it.
-    let mut newly_dollar_open = false;
-
-    if p.at_l_dollar() {
+    let mut newly_dollar_open = if p.at_l_dollar() {
         *dollar_lvl += p.eat_l_dollars();
-        newly_dollar_open = true;
-    }
+        true
+    } else {
+        false
+    };
 
     let mut lhs = match lhs(p, r, dollar_lvl) {
         Some((lhs, blocklike)) => {
@@ -535,7 +535,7 @@ fn path_expr(p: &mut Parser, r: Restrictions) -> (CompletedMarker, BlockLike) {
         }
         EXCL => {
             let block_like = items::macro_call_after_excl(p);
-            return (m.complete(p, MACRO_CALL), block_like);
+            (m.complete(p, MACRO_CALL), block_like)
         }
         _ => (m.complete(p, PATH_EXPR), BlockLike::NotBlock),
     }

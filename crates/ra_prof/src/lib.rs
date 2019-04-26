@@ -67,14 +67,11 @@ pub fn profile(desc: &str) -> Profiler {
 
     PROFILE_STACK.with(|stack| {
         let mut stack = stack.borrow_mut();
-        if stack.starts.len() == 0 {
-            match FILTER.try_read() {
-                Ok(f) => {
-                    if f.version > stack.filter_data.version {
-                        stack.filter_data = f.clone();
-                    }
+        if stack.starts.is_empty() {
+            if let Ok(f) = FILTER.try_read() {
+                if f.version > stack.filter_data.version {
+                    stack.filter_data = f.clone();
                 }
-                Err(_) => (),
             };
         }
 
