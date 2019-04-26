@@ -477,6 +477,11 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         // as we're not exposing it as a macro.
         (&Type::Ptr(&Type::M128), "__m128") if intrinsic == "_MM_TRANSPOSE4_PS" => {}
 
+        // The _rdtsc intrinsic uses a __int64 return type, but this is a bug in
+        // the intrinsics guide: https://github.com/rust-lang-nursery/stdsimd/issues/559
+        // We have manually fixed the bug by changing the return type to `u64`.
+        (&Type::PrimUnsigned(64), "__int64") if intrinsic == "_rdtsc" => {}
+
         _ => bail!(
             "failed to equate: `{}` and {:?} for {}",
             intel,
