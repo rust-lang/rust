@@ -26,7 +26,6 @@
 #![feature(test)]
 #![feature(trusted_len)]
 #![feature(try_trait)]
-#![feature(align_offset)]
 #![feature(reverse_bits)]
 #![feature(inner_deref)]
 #![feature(slice_internals)]
