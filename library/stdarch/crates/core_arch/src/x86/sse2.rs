@@ -33,7 +33,7 @@ pub unsafe fn _mm_pause() {
 #[target_feature(enable = "sse2")]
 #[cfg_attr(test, assert_instr(clflush))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm_clflush(p: *mut u8) {
+pub unsafe fn _mm_clflush(p: *const u8) {
     clflush(p)
 }
 
@@ -3014,7 +3014,7 @@ extern "C" {
     #[link_name = "llvm.x86.sse2.pause"]
     fn pause();
     #[link_name = "llvm.x86.sse2.clflush"]
-    fn clflush(p: *mut u8);
+    fn clflush(p: *const u8);
     #[link_name = "llvm.x86.sse2.lfence"]
     fn lfence();
     #[link_name = "llvm.x86.sse2.mfence"]
@@ -3203,7 +3203,7 @@ mod tests {
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_clflush() {
         let x = 0;
-        _mm_clflush(&x as *const _ as *mut u8);
+        _mm_clflush(&x as *const _);
     }
 
     #[simd_test(enable = "sse2")]
