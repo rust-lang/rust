@@ -11,9 +11,7 @@ LL |     fn qux() -> Option<usize> {
    |                               - unclosed delimiter
 LL |         let _ = if true {
 LL |         });
-   |           ^
-   |           |
-   |           help: `}` may belong here
+   |           ^ help: `}` may belong here
 
 error: expected identifier, found `;`
   --> $DIR/issue-60075.rs:6:11

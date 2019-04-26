@@ -75,18 +75,18 @@ fn main() {
 //         _10 = move _8;
 //         Retag(_10);
 //         ...
-//         _15 = &mut (*_10);
-//         Retag(_15);
-//         _14 = move _15 as *mut i32 (Misc);
-//         Retag([raw] _14);
+//         _13 = &mut (*_10);
+//         Retag(_13);
+//         _12 = move _13 as *mut i32 (Misc);
+//         Retag([raw] _12);
 //         ...
-//         _18 = move _19(move _20) -> bb2;
+//         _16 = move _17(move _18) -> bb2;
 //     }
 //
 //     bb2: {
-//         Retag(_18);
+//         Retag(_16);
 //         ...
-//         _22 = const Test::foo_shr(move _23, move _25) -> bb3;
+//         _20 = const Test::foo_shr(move _21, move _23) -> bb3;
 //     }
 //
 //     bb3: {

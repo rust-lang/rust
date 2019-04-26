@@ -866,6 +866,8 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             fcx.check_expr_coercable_to_type(&body.value, revealed_ty);
 
+            fcx.write_ty(id, revealed_ty);
+
             fcx
         };
 

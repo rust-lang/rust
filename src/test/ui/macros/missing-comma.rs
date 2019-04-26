@@ -10,6 +10,10 @@ macro_rules! bar {
     ($lvl:expr, $($arg:tt)+) => {}
 }
 
+macro_rules! check {
+    ($ty:ty, $expected:expr) => {};
+    ($ty_of:expr, $expected:expr) => {};
+}
 
 fn main() {
     println!("{}" a);
@@ -24,4 +28,7 @@ fn main() {
     //~^ ERROR no rules expected the token `d`
     bar!(Level::Error, );
     //~^ ERROR unexpected end of macro invocation
+    check!(<str as Debug>::fmt, "fmt");
+    check!(<str as Debug>::fmt, "fmt",);
+    //~^ ERROR no rules expected the token `,`
 }

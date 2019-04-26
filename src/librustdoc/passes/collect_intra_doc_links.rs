@@ -38,7 +38,7 @@ pub fn collect_intra_doc_links(krate: Crate, cx: &DocContext<'_>) -> Crate {
 
 struct LinkCollector<'a, 'tcx> {
     cx: &'a DocContext<'tcx>,
-    mod_ids: Vec<ast::NodeId>,
+    mod_ids: Vec<hir::HirId>,
 }
 
 impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
@@ -55,7 +55,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                path_str: &str,
                ns: Namespace,
                current_item: &Option<String>,
-               parent_id: Option<ast::NodeId>)
+               parent_id: Option<hir::HirId>)
         -> Result<(Def, Option<String>), ()>
     {
         let cx = self.cx;
@@ -64,8 +64,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         // path.
         if let Some(id) = parent_id.or(self.mod_ids.last().cloned()) {
             // FIXME: `with_scope` requires the `NodeId` of a module.
+            let node_id = cx.tcx.hir().hir_to_node_id(id);
             let result = cx.enter_resolver(|resolver| {
-                resolver.with_scope(id, |resolver| {
+                resolver.with_scope(node_id, |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path_str, ns == ValueNS)
                 })
             });
@@ -127,7 +128,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             }
 
             // FIXME: `with_scope` requires the `NodeId` of a module.
-            let ty = cx.enter_resolver(|resolver| resolver.with_scope(id, |resolver| {
+            let node_id = cx.tcx.hir().hir_to_node_id(id);
+            let ty = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
             }))?;
             match ty.def {
@@ -216,11 +218,11 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         };
 
         // FIXME: get the resolver to work with non-local resolve scopes.
-        let parent_node = self.cx.as_local_node_id(item.def_id).and_then(|node_id| {
+        let parent_node = self.cx.as_local_hir_id(item.def_id).and_then(|hir_id| {
             // FIXME: this fails hard for impls in non-module scope, but is necessary for the
             // current `resolve()` implementation.
-            match self.cx.tcx.hir().get_module_parent_node(node_id) {
-                id if id != node_id => Some(id),
+            match self.cx.tcx.hir().get_module_parent_node(hir_id) {
+                id if id != hir_id => Some(id),
                 _ => None,
             }
         });
@@ -239,9 +241,9 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                 } else {
                     match parent_node.or(self.mod_ids.last().cloned()) {
-                        Some(parent) if parent != ast::CRATE_NODE_ID => {
+                        Some(parent) if parent != hir::CRATE_HIR_ID => {
                             // FIXME: can we pull the parent module's name from elsewhere?
-                            Some(self.cx.tcx.hir().name(parent).to_string())
+                            Some(self.cx.tcx.hir().name_by_hir_id(parent).to_string())
                         }
                         _ => None,
                     }
@@ -258,7 +260,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         };
 
         if item.is_mod() && item.attrs.inner_docs {
-            self.mod_ids.push(self.cx.tcx.hir().hir_to_node_id(item_hir_id.unwrap()));
+            self.mod_ids.push(item_hir_id.unwrap());
         }
 
         let cx = self.cx;
@@ -392,7 +394,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
         }
 
         if item.is_mod() && !item.attrs.inner_docs {
-            self.mod_ids.push(self.cx.tcx.hir().hir_to_node_id(item_hir_id.unwrap()));
+            self.mod_ids.push(item_hir_id.unwrap());
         }
 
         if item.is_mod() {
