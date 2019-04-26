@@ -4178,6 +4178,22 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
             Some(snd)
         }
     }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) {
+        let (end, overflow) = self.v.len().overflowing_sub(n);
+        if end < self.v.len()  || overflow {
+            self.v = &[];
+            None
+        } else {
+            let start = match end.checked_sub(self.chunk_size) {
+                Some(sum) => cmp::min(self.v.len(), sum),
+                None => self.v.len(),
+            };
+            let nth = &self.v[start..end];
+            self.v = &self.v[end..];
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
