@@ -134,25 +134,6 @@ fn test_chunks_nth() {
     assert_eq!(c2.next(), None);
 }
 
-#[test]
-fn test_chunks_nth_back() {
-    let v: &[i32] = &[0, 1, 2, 3, 4, 5];
-    let mut c = v.chunks(2);
-    assert_eq!(c.nth_back(1).unwrap(), &[2, 3]);
-    assert_eq!(c.next().unwrap(), &[0, 1]);
-    assert_eq!(c.next(), None);
-
-    let v2: &[i32] = &[0, 1, 2, 3, 4];
-    let mut c2 = v2.chunks(3);
-    assert_eq!(c2.nth_back(1).unwrap(), &[0, 1]);
-    assert_eq!(c2.next(), None);
-    assert_eq!(c2.next_back(), None);
-
-    let v3: &[i32] = &[0, 1, 2, 3, 4];
-    let mut c3 = v3.chunks(10);
-    assert_eq!(c3.nth_back(0).unwrap(), &[0, 1, 2, 3, 4]);
-    assert_eq!(c3.next(), None);
-}
 
 #[test]
 fn test_chunks_last() {
