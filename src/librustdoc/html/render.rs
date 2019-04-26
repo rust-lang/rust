@@ -951,40 +951,15 @@ themePicker.onblur = handleThemeButtonsBlur;
         key: &str,
         for_search_index: bool,
     ) -> io::Result<(Vec<String>, Vec<String>, Vec<String>)> {
-        use minifier::js;
-
         let mut ret = Vec::new();
         let mut krates = Vec::new();
         let mut variables = Vec::new();
-
-        let mut krate = krate.to_owned();
 
         if path.exists() {
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
                 if for_search_index && line.starts_with("var R") {
                     variables.push(line.clone());
-                    // We need to check if the crate name has been put into a variable as well.
-                    let tokens: js::Tokens<'_> = js::simple_minify(&line)
-                                                    .into_iter()
-                                                    .filter(js::clean_token)
-                                                    .collect::<Vec<_>>()
-                                                    .into();
-                    let mut pos = 0;
-                    while pos < tokens.len() {
-                        if let Some((var_pos, Some(value_pos))) =
-                                js::get_variable_name_and_value_positions(&tokens, pos) {
-                            if let Some(s) = tokens.0[value_pos].get_string() {
-                                if &s[1..s.len() - 1] == krate {
-                                    if let Some(var) = tokens[var_pos].get_other() {
-                                        krate = var.to_owned();
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                        pos += 1;
-                    }
                     continue;
                 }
                 if !line.starts_with(key) {
@@ -1340,10 +1315,20 @@ fn write_minify_replacer<W: Write>(
                         .into();
                     tokens.apply(|f| {
                         // We add a backline after the newly created variables.
-                        minifier::js::aggregate_strings_into_array_with_separation(
+                        minifier::js::aggregate_strings_into_array_with_separation_filter(
                             f,
                             "R",
                             Token::Char(ReservedChar::Backline),
+                            // This closure prevents crates' names from being aggregated.
+                            //
+                            // The point here is to check if the string is preceded by '[' and
+                            // "searchIndex". If so, it means this is a crate name and that it
+                            // shouldn't be aggregated.
+                            |tokens, pos| {
+                                pos < 2 ||
+                                !tokens[pos - 1].is_char(ReservedChar::OpenBracket) ||
+                                tokens[pos - 2].get_other() != Some("searchIndex")
+                            }
                         )
                     })
                     .to_string()
@@ -1358,7 +1343,8 @@ fn write_minify_replacer<W: Write>(
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) where
+fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
+where
     F: FnMut(&OsStr),
 {
     // make it relative, if possible
@@ -1470,11 +1456,11 @@ impl<'a> SourceCollector<'a> {
         let mut href = String::new();
         clean_srcpath(&self.scx.src_root, &p, false, |component| {
             cur.push(component);
-            fs::create_dir_all(&cur).unwrap();
             root_path.push_str("../");
             href.push_str(&component.to_string_lossy());
             href.push('/');
         });
+        fs::create_dir_all(&cur)?;
         let mut fname = p.file_name()
                          .expect("source has no filename")
                          .to_os_string();
@@ -1483,7 +1469,7 @@ impl<'a> SourceCollector<'a> {
         href.push_str(&fname.to_string_lossy());
 
         let mut w = BufWriter::new(File::create(&cur)?);
-        let title = format!("{} -- source", cur.file_name().unwrap()
+        let title = format!("{} -- source", cur.file_name().expect("failed to get file name")
                                                .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
         let page = layout::Page {

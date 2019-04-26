@@ -4738,16 +4738,11 @@ impl<'a> LoweringContext<'a> {
                     hir::MatchSource::ForLoopDesugar,
                 ));
 
-                // `{ let _result = ...; _result }`
-                // Underscore prevents an `unused_variables` lint if the head diverges.
-                let result_ident = self.str_to_ident("_result");
-                let (let_stmt, let_stmt_binding) =
-                    self.stmt_let(e.span, false, result_ident, match_expr);
-
-                let result = P(self.expr_ident(e.span, result_ident, let_stmt_binding));
-                let block = P(self.block_all(e.span, hir_vec![let_stmt], Some(result)));
-                // Add the attributes to the outer returned expr node.
-                return self.expr_block(block, e.attrs.clone());
+                // This is effectively `{ let _result = ...; _result }`.
+                // The construct was introduced in #21984.
+                // FIXME(60253): Is this still necessary?
+                // Also, add the attributes to the outer returned expr node.
+                return self.expr_use(head_sp, match_expr, e.attrs.clone())
             }
 
             // Desugar `ExprKind::Try`
@@ -5117,6 +5112,17 @@ impl<'a> LoweringContext<'a> {
         )
     }
 
+    /// Wrap the given `expr` in `hir::ExprKind::Use`.
+    ///
+    /// In terms of drop order, it has the same effect as
+    /// wrapping `expr` in `{ let _t = $expr; _t }` but
+    /// should provide better compile-time performance.
+    ///
+    /// The drop order can be important in e.g. `if expr { .. }`.
+    fn expr_use(&mut self, span: Span, expr: P<hir::Expr>, attrs: ThinVec<Attribute>) -> hir::Expr {
+        self.expr(span, hir::ExprKind::Use(expr), attrs)
+    }
+
     fn expr_match(
         &mut self,
         span: Span,
@@ -5170,25 +5176,6 @@ impl<'a> LoweringContext<'a> {
             node: hir::StmtKind::Local(P(local)),
             span: sp
         }
-    }
-
-    fn stmt_let(
-        &mut self,
-        sp: Span,
-        mutbl: bool,
-        ident: Ident,
-        ex: P<hir::Expr>,
-    ) -> (hir::Stmt, hir::HirId) {
-        let (pat, pat_hid) = if mutbl {
-            self.pat_ident_binding_mode(sp, ident, hir::BindingAnnotation::Mutable)
-        } else {
-            self.pat_ident(sp, ident)
-        };
-
-        (
-            self.stmt_let_pat(sp, Some(ex), pat, hir::LocalSource::Normal),
-            pat_hid,
-        )
     }
 
     fn block_expr(&mut self, expr: P<hir::Expr>) -> hir::Block {

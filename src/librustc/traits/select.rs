@@ -2505,16 +2505,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::Closure(def_id, substs) => {
-                let trait_id = obligation.predicate.def_id();
-                let is_copy_trait = Some(trait_id) == self.tcx().lang_items().copy_trait();
-                let is_clone_trait = Some(trait_id) == self.tcx().lang_items().clone_trait();
-                if is_copy_trait || is_clone_trait {
-                    Where(ty::Binder::bind(
-                        substs.upvar_tys(def_id, self.tcx()).collect(),
-                    ))
-                } else {
-                    None
-                }
+                // (*) binder moved here
+                Where(ty::Binder::bind(
+                    substs.upvar_tys(def_id, self.tcx()).collect(),
+                ))
             }
 
             ty::Adt(..) | ty::Projection(..) | ty::Param(..) | ty::Opaque(..) => {

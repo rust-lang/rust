@@ -1,0 +1,24 @@
+warning: the feature `const_generics` is incomplete and may cause the compiler to crash
+  --> $DIR/const-param-type-depends-on-type-param.rs:1:12
+   |
+LL | #![feature(const_generics)]
+   |            ^^^^^^^^^^^^^^
+
+error[E0671]: const parameters cannot depend on type parameters
+  --> $DIR/const-param-type-depends-on-type-param.rs:9:34
+   |
+LL | pub struct Dependent<T, const X: T>([(); X]);
+   |                                  ^ const parameter depends on type parameter
+
+error[E0392]: parameter `T` is never used
+  --> $DIR/const-param-type-depends-on-type-param.rs:9:22
+   |
+LL | pub struct Dependent<T, const X: T>([(); X]);
+   |                      ^ unused parameter
+   |
+   = help: consider removing `T` or using a marker such as `std::marker::PhantomData`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0392, E0671.
+For more information about an error, try `rustc --explain E0392`.

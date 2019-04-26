@@ -2156,61 +2156,95 @@ impl<'p, 'tcx> FusedIterator for PlaceProjectionsIter<'p, 'tcx> {}
 
 impl<'tcx> Debug for Place<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use self::Place::*;
+        self.iterate(|_place_base, place_projections| {
+            // FIXME: remove this collect once we have migrated to slices
+            let projs_vec: Vec<_> = place_projections.collect();
+            for projection in projs_vec.iter().rev() {
+                match projection.elem {
+                    ProjectionElem::Downcast(_, _) |
+                    ProjectionElem::Field(_, _) => {
+                        write!(fmt, "(").unwrap();
+                    }
+                    ProjectionElem::Deref => {
+                        write!(fmt, "(*").unwrap();
+                    }
+                    ProjectionElem::Index(_) |
+                    ProjectionElem::ConstantIndex { .. } |
+                    ProjectionElem::Subslice { .. } => {}
+                }
+            }
+        });
 
-        match *self {
-            Base(PlaceBase::Local(id)) => write!(fmt, "{:?}", id),
-            Base(PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) })) => {
-                write!(
-                    fmt,
-                    "({}: {:?})",
-                    ty::tls::with(|tcx| tcx.def_path_str(def_id)),
-                    ty
-                )
-            },
-            Base(PlaceBase::Static(
-                box self::Static { ty, kind: StaticKind::Promoted(promoted) })
-            ) => {
-                write!(
-                    fmt,
-                    "({:?}: {:?})",
-                    promoted,
-                    ty
-                )
-            },
-            Projection(ref data) => match data.elem {
-                ProjectionElem::Downcast(Some(name), _index) => {
-                    write!(fmt, "({:?} as {})", data.base, name)
+        self.iterate(|place_base, place_projections| {
+            match place_base {
+                PlaceBase::Local(id) => {
+                    write!(fmt, "{:?}", id)?;
                 }
-                ProjectionElem::Downcast(None, index) => {
-                    write!(fmt, "({:?} as variant#{:?})", data.base, index)
+                PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static(def_id) }) => {
+                    write!(
+                        fmt,
+                        "({}: {:?})",
+                        ty::tls::with(|tcx| tcx.def_path_str(*def_id)),
+                        ty
+                    )?;
+                },
+                PlaceBase::Static(
+                    box self::Static { ty, kind: StaticKind::Promoted(promoted) }
+                ) => {
+                    write!(
+                        fmt,
+                        "({:?}: {:?})",
+                        promoted,
+                        ty
+                    )?;
+                },
+            }
+
+            for projection in place_projections {
+                match projection.elem {
+                    ProjectionElem::Downcast(Some(name), _index) => {
+                        write!(fmt, " as {})", name)?;
+                    }
+                    ProjectionElem::Downcast(None, index) => {
+                        write!(fmt, " as variant#{:?})", index)?;
+                    }
+                    ProjectionElem::Deref => {
+                        write!(fmt, ")")?;
+                    }
+                    ProjectionElem::Field(field, ty) => {
+                        write!(fmt, ".{:?}: {:?})", field.index(), ty)?;
+                    }
+                    ProjectionElem::Index(ref index) => {
+                        write!(fmt, "[{:?}]", index)?;
+                    }
+                    ProjectionElem::ConstantIndex {
+                        offset,
+                        min_length,
+                        from_end: false,
+                    } => {
+                        write!(fmt, "[{:?} of {:?}]", offset, min_length)?;
+                    }
+                    ProjectionElem::ConstantIndex {
+                        offset,
+                        min_length,
+                        from_end: true,
+                    } => {
+                        write!(fmt, "[-{:?} of {:?}]", offset, min_length)?;
+                    }
+                    ProjectionElem::Subslice { from, to } if to == 0 => {
+                        write!(fmt, "[{:?}:]", from)?;
+                    }
+                    ProjectionElem::Subslice { from, to } if from == 0 => {
+                        write!(fmt, "[:-{:?}]", to)?;
+                    }
+                    ProjectionElem::Subslice { from, to } => {
+                        write!(fmt, "[{:?}:-{:?}]", from, to)?;
+                    }
                 }
-                ProjectionElem::Deref => write!(fmt, "(*{:?})", data.base),
-                ProjectionElem::Field(field, ty) => {
-                    write!(fmt, "({:?}.{:?}: {:?})", data.base, field.index(), ty)
-                }
-                ProjectionElem::Index(ref index) => write!(fmt, "{:?}[{:?}]", data.base, index),
-                ProjectionElem::ConstantIndex {
-                    offset,
-                    min_length,
-                    from_end: false,
-                } => write!(fmt, "{:?}[{:?} of {:?}]", data.base, offset, min_length),
-                ProjectionElem::ConstantIndex {
-                    offset,
-                    min_length,
-                    from_end: true,
-                } => write!(fmt, "{:?}[-{:?} of {:?}]", data.base, offset, min_length),
-                ProjectionElem::Subslice { from, to } if to == 0 => {
-                    write!(fmt, "{:?}[{:?}:]", data.base, from)
-                }
-                ProjectionElem::Subslice { from, to } if from == 0 => {
-                    write!(fmt, "{:?}[:-{:?}]", data.base, to)
-                }
-                ProjectionElem::Subslice { from, to } => {
-                    write!(fmt, "{:?}[{:?}:-{:?}]", data.base, from, to)
-                }
-            },
-        }
+            }
+
+            Ok(())
+        })
     }
 }
 

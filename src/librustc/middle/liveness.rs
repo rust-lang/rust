@@ -521,6 +521,7 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       hir::ExprKind::Binary(..) |
       hir::ExprKind::AddrOf(..) |
       hir::ExprKind::Cast(..) |
+      hir::ExprKind::Use(..) |
       hir::ExprKind::Unary(..) |
       hir::ExprKind::Break(..) |
       hir::ExprKind::Continue(_) |
@@ -1221,6 +1222,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             hir::ExprKind::AddrOf(_, ref e) |
             hir::ExprKind::Cast(ref e, _) |
             hir::ExprKind::Type(ref e, _) |
+            hir::ExprKind::Use(ref e) |
             hir::ExprKind::Unary(_, ref e) |
             hir::ExprKind::Yield(ref e) |
             hir::ExprKind::Repeat(ref e, _) => {
@@ -1524,9 +1526,9 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
         hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
         hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
         hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) |
-        hir::ExprKind::Cast(..) | hir::ExprKind::Unary(..) | hir::ExprKind::Ret(..) |
-        hir::ExprKind::Break(..) | hir::ExprKind::Continue(..) | hir::ExprKind::Lit(_) |
-        hir::ExprKind::Block(..) | hir::ExprKind::AddrOf(..) |
+        hir::ExprKind::Cast(..) | hir::ExprKind::Use(..) | hir::ExprKind::Unary(..) |
+        hir::ExprKind::Ret(..) | hir::ExprKind::Break(..) | hir::ExprKind::Continue(..) |
+        hir::ExprKind::Lit(_) | hir::ExprKind::Block(..) | hir::ExprKind::AddrOf(..) |
         hir::ExprKind::Struct(..) | hir::ExprKind::Repeat(..) |
         hir::ExprKind::Closure(..) | hir::ExprKind::Path(_) | hir::ExprKind::Yield(..) |
         hir::ExprKind::Box(..) | hir::ExprKind::Type(..) | hir::ExprKind::Err => {

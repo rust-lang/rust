@@ -403,6 +403,7 @@ declare_features! (
     (active, cmpxchg16b_target_feature, "1.32.0", Some(44839), None),
     (active, movbe_target_feature, "1.34.0", Some(44839), None),
     (active, rtm_target_feature, "1.35.0", Some(44839), None),
+    (active, f16c_target_feature, "1.36.0", Some(44839), None),
 
     // Allows macro invocations on modules expressions and statements and
     // procedural macros to expand to non-items.
@@ -2258,32 +2259,32 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 continue;
             }
 
-            if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
-                if let Some(allowed) = allow_features.as_ref() {
-                    if allowed.iter().find(|f| *f == name.as_str()).is_none() {
-                        span_err!(span_handler, mi.span(), E0725,
-                                  "the feature `{}` is not in the list of allowed features",
-                                  name);
-                        continue;
-                    }
-                }
-
-                set(&mut features, mi.span());
-                features.declared_lang_features.push((name, mi.span(), None));
-                continue
-            }
-
             let removed = REMOVED_FEATURES.iter().find(|f| name == f.0);
             let stable_removed = STABLE_REMOVED_FEATURES.iter().find(|f| name == f.0);
             if let Some((.., reason)) = removed.or(stable_removed) {
                 feature_removed(span_handler, mi.span(), *reason);
-                continue
+                continue;
             }
 
             if let Some((_, since, ..)) = ACCEPTED_FEATURES.iter().find(|f| name == f.0) {
                 let since = Some(Symbol::intern(since));
                 features.declared_lang_features.push((name, mi.span(), since));
-                continue
+                continue;
+            }
+
+            if let Some(allowed) = allow_features.as_ref() {
+                if allowed.iter().find(|f| *f == name.as_str()).is_none() {
+                    span_err!(span_handler, mi.span(), E0725,
+                              "the feature `{}` is not in the list of allowed features",
+                              name);
+                    continue;
+                }
+            }
+
+            if let Some((.., set)) = ACTIVE_FEATURES.iter().find(|f| name == f.0) {
+                set(&mut features, mi.span());
+                features.declared_lang_features.push((name, mi.span(), None));
+                continue;
             }
 
             features.declared_lib_features.push((name, mi.span()));
