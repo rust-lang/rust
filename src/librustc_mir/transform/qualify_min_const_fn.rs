@@ -1,7 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::*;
-use rustc::ty::{self, Predicate, TyCtxt, adjustment::{PointerCast}};
+use rustc::ty::{self, Predicate, Ty, TyCtxt, adjustment::{PointerCast}};
 use rustc_target::spec::abi;
 use std::borrow::Cow;
 use syntax_pos::Span;
@@ -81,7 +81,7 @@ pub fn is_min_const_fn(
 
 fn check_ty(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
     span: Span,
     fn_def_id: DefId,
 ) -> McfResult {

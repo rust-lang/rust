@@ -1,4 +1,4 @@
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -285,10 +285,10 @@ pub(crate) enum IllegalMoveOriginKind<'tcx> {
     /// implements `Drop`. Rust maintains invariant that all `Drop`
     /// ADT's remain fully-initialized so that user-defined destructor
     /// can safely read from all of the ADT's fields.
-    InteriorOfTypeWithDestructor { container_ty: ty::Ty<'tcx> },
+    InteriorOfTypeWithDestructor { container_ty: Ty<'tcx> },
 
     /// Illegal move due to attempt to move out of a slice or array.
-    InteriorOfSliceOrArray { ty: ty::Ty<'tcx>, is_index: bool, },
+    InteriorOfSliceOrArray { ty: Ty<'tcx>, is_index: bool, },
 }
 
 #[derive(Debug)]

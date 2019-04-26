@@ -8,7 +8,7 @@ use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind, 
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::interpret::{InterpError, Scalar, GlobalId, EvalResult};
-use rustc::ty::{TyCtxt, self, Instance};
+use rustc::ty::{self, Instance, Ty, TyCtxt};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -80,10 +80,10 @@ struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
 }
 
 impl<'a, 'b, 'tcx> LayoutOf for ConstPropagator<'a, 'b, 'tcx> {
-    type Ty = ty::Ty<'tcx>;
+    type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(&self, ty: ty::Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }
@@ -476,7 +476,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
 
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           param_env: ty::ParamEnv<'tcx>,
-                          ty: ty::Ty<'tcx>) -> Option<u64> {
+                          ty: Ty<'tcx>) -> Option<u64> {
     tcx.layout_of(param_env.and(ty)).ok().map(|layout| layout.size.bytes())
 }
 
@@ -555,7 +555,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
     ) {
         trace!("visit_statement: {:?}", statement);
         if let StatementKind::Assign(ref place, ref rval) = statement.kind {
-            let place_ty: ty::Ty<'tcx> = place
+            let place_ty: Ty<'tcx> = place
                 .ty(&self.mir.local_decls, self.tcx)
                 .ty;
             if let Ok(place_layout) = self.tcx.layout_of(self.param_env.and(place_ty)) {

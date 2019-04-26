@@ -101,7 +101,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
     pub fn read_drop_type_from_vtable(
         &self,
         vtable: Pointer<M::PointerTag>,
-    ) -> EvalResult<'tcx, (ty::Instance<'tcx>, ty::Ty<'tcx>)> {
+    ) -> EvalResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
         // we don't care about the pointee type, we just want a pointer
         self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
         let drop_fn = self.memory

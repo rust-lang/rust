@@ -1,5 +1,5 @@
 use rustc::session::config::BorrowckMode;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt};
 use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use syntax_pos::{MultiSpan, Span};
 
@@ -437,7 +437,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn cannot_move_out_of_interior_noncopy(
         self,
         move_from_span: Span,
-        ty: ty::Ty<'_>,
+        ty: Ty<'_>,
         is_index: Option<bool>,
         o: Origin,
     ) -> DiagnosticBuilder<'cx> {
@@ -464,7 +464,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn cannot_move_out_of_interior_of_drop(
         self,
         move_from_span: Span,
-        container_ty: ty::Ty<'_>,
+        container_ty: Ty<'_>,
         o: Origin,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(

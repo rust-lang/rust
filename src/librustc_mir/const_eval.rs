@@ -440,7 +440,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
 
         let span = ecx.frame().span;
         ecx.machine.loop_detector.observe_and_analyze(
-            &ecx.tcx,
+            *ecx.tcx,
             span,
             &ecx.memory,
             &ecx.stack[..],
@@ -513,7 +513,7 @@ pub fn error_to_const_error<'a, 'mir, 'tcx>(
 }
 
 fn validate_and_turn_into_const<'a, 'tcx>(
-    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {

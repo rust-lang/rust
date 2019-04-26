@@ -12,7 +12,7 @@ use rustc_data_structures::graph::dominators::Dominators;
 /// allowed to be split into separate Reservation and
 /// Activation phases.
 pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(
-    _tcx: &TyCtxt<'a, 'gcx, 'tcx>,
+    _tcx: TyCtxt<'a, 'gcx, 'tcx>,
     kind: BorrowKind
 ) -> bool {
     kind.allows_two_phase_borrow()

@@ -5,7 +5,7 @@ use rustc::mir::{
     Mutability, Operand, Place, PlaceBase, Projection, ProjectionElem, Static, StaticKind,
 };
 use rustc::mir::{Terminator, TerminatorKind};
-use rustc::ty::{self, Const, DefIdTree, TyS, TyCtxt};
+use rustc::ty::{self, Const, DefIdTree, Ty, TyS, TyCtxt};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 use syntax_pos::symbol::keywords;
@@ -613,7 +613,7 @@ fn suggest_ampmut<'cx, 'gcx, 'tcx>(
      })
 }
 
-fn is_closure_or_generator(ty: ty::Ty<'_>) -> bool {
+fn is_closure_or_generator(ty: Ty<'_>) -> bool {
     ty.is_closure() || ty.is_generator()
 }
 
@@ -626,7 +626,7 @@ fn is_closure_or_generator(ty: ty::Ty<'_>) -> bool {
 /// ```
 fn annotate_struct_field(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    ty: ty::Ty<'tcx>,
+    ty: Ty<'tcx>,
     field: &mir::Field,
 ) -> Option<(Span, String)> {
     // Expect our local to be a reference to a struct of some kind.
