@@ -107,7 +107,7 @@ pub struct Body<'tcx> {
     pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
 
     /// Rvalues promoted from this function, such as borrows of constants.
-    /// Each of them is the Body of a constant with the fn's type parameters
+    /// Each of them is the mir::Body of a constant with the fn's type parameters
     /// in scope, but a separate set of locals.
     pub promoted: IndexVec<Promoted, Body<'tcx>>,
 

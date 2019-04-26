@@ -14,7 +14,7 @@ fn borrow_local_inline() {
     let mut b = move || {
         let a = &mut 3;
         //~^ ERROR borrow may still be in use when generator yields (Ast)
-        //~| ERROR borrow may still be in use when generator yields (Body)
+        //~| ERROR borrow may still be in use when generator yields (mir::Body)
         yield();
         println!("{}", a);
     };
@@ -42,7 +42,7 @@ fn borrow_local() {
         {
             let b = &a;
             //~^ ERROR borrow may still be in use when generator yields (Ast)
-            //~| ERROR borrow may still be in use when generator yields (Body)
+            //~| ERROR borrow may still be in use when generator yields (mir::Body)
             yield();
             println!("{}", b);
         }

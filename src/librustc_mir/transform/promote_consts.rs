@@ -393,7 +393,7 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Body<'tcx>,
         }
 
 
-        // Declare return place local so that `Body::new` doesn't complain.
+        // Declare return place local so that `mir::Body::new` doesn't complain.
         let initial_locals = iter::once(
             LocalDecl::new_return_place(tcx.types.never, mir.span)
         ).collect();

@@ -6,5 +6,5 @@ fn main() {
     x = Box::new(1);
     drop(x);
     let _ = (1,x); //~ ERROR use of moved value: `x` (Ast)
-    //~^ ERROR use of moved value: `x` (Body)
+    //~^ ERROR use of moved value: `x` (mir::Body)
 }

@@ -13,7 +13,7 @@ fn nll_fail() {
     capitalize(c);
     data.0 = 'e';
     //~^ ERROR (Ast) [E0506]
-    //~| ERROR (Body) [E0506]
+    //~| ERROR (mir::Body) [E0506]
     data.0 = 'f';
     //~^ ERROR (Ast) [E0506]
     data.0 = 'g';

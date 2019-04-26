@@ -12,13 +12,13 @@ fn nll_fail() {
     capitalize(slice);
     data.push('d');
     //~^ ERROR (Ast) [E0499]
-    //~| ERROR (Body) [E0499]
+    //~| ERROR (mir::Body) [E0499]
     data.push('e');
     //~^ ERROR (Ast) [E0499]
-    //~| ERROR (Body) [E0499]
+    //~| ERROR (mir::Body) [E0499]
     data.push('f');
     //~^ ERROR (Ast) [E0499]
-    //~| ERROR (Body) [E0499]
+    //~| ERROR (mir::Body) [E0499]
     capitalize(slice);
 }
 

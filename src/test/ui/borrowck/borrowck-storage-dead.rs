@@ -16,7 +16,7 @@ fn fail() {
     loop {
         let x: i32;
         let _ = x + 1; //~ERROR (Ast) [E0381]
-                       //~^ ERROR (Body) [E0381]
+                       //~^ ERROR (mir::Body) [E0381]
     }
 }
 

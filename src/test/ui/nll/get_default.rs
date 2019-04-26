@@ -22,7 +22,7 @@ fn ok(map: &mut Map) -> &String {
             None => {
                 map.set(String::new()); // Ideally, this would not error.
                 //~^ ERROR borrowed as immutable (Ast)
-                //~| ERROR borrowed as immutable (Body)
+                //~| ERROR borrowed as immutable (mir::Body)
             }
         }
     }
@@ -33,14 +33,14 @@ fn err(map: &mut Map) -> &String {
         match map.get() {
             Some(v) => {
                 map.set(String::new()); // Both AST and MIR error here
-                //~^ ERROR borrowed as immutable (Body)
+                //~^ ERROR borrowed as immutable (mir::Body)
                 //~| ERROR borrowed as immutable (Ast)
                 return v;
             }
             None => {
                 map.set(String::new()); // Ideally, just AST would error here
                 //~^ ERROR borrowed as immutable (Ast)
-                //~| ERROR borrowed as immutable (Body)
+                //~| ERROR borrowed as immutable (mir::Body)
             }
         }
     }

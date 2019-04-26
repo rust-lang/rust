@@ -151,8 +151,8 @@ pub fn change_to_ufcs() {
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody,mir_built,optimized_mir,typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
-// One might think this would be expanded in the HirBody/Body, but it actually
-// results in slightly different Hir/Body.
+// One might think this would be expanded in the {hir,mir}::Body, but it actually
+// results in slightly different {hir,mir}::Body.
 pub fn change_to_ufcs() {
     let s = Struct;
     Struct::method1(&s, 'x', true);

@@ -6,6 +6,6 @@ fn main() {
         &mut z
     };
     //~^^ ERROR `z` does not live long enough (Ast) [E0597]
-    //~| ERROR `z` does not live long enough (Body) [E0597]
+    //~| ERROR `z` does not live long enough (mir::Body) [E0597]
     println!("{}", y);
 }
