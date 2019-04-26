@@ -62,7 +62,8 @@ enum Type {
     PrimFloat(u8),
     PrimSigned(u8),
     PrimUnsigned(u8),
-    Ptr(&'static Type),
+    MutPtr(&'static Type),
+    ConstPtr(&'static Type),
     M64,
     M128,
     M128D,
@@ -413,8 +414,17 @@ fn matches(rust: &Function, intel: &Intrinsic) -> Result<(), String> {
 }
 
 fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), String> {
-    let intel = intel.replace(" *", "*");
-    let intel = intel.replace(" const*", "*");
+    // Make pointer adjacent to the type: float * foo => float* foo
+    let mut intel = intel.replace(" *", "*");
+    // Make mutability modifier adjacent to the pointer:
+    // float const * foo => float const* foo
+    intel = intel.replace("const *", "const*");
+    // Normalize mutability modifier to after the type:
+    // const float* foo => float const*
+    if intel.starts_with("const") && intel.ends_with("*") {
+        intel = intel.replace("const ", "");
+        intel = intel.replace("*", " const*");
+    }
     let require_const = || {
         if is_const {
             return Ok(());
@@ -438,53 +448,83 @@ fn equate(t: &Type, intel: &str, intrinsic: &str, is_const: bool) -> Result<(), 
         (&Type::PrimUnsigned(32), "const unsigned int") => {}
         (&Type::PrimUnsigned(64), "unsigned __int64") => {}
         (&Type::PrimUnsigned(8), "unsigned char") => {}
+        (&Type::M64, "__m64") => {}
+        (&Type::M128, "__m128") => {}
+        (&Type::M128I, "__m128i") => {}
+        (&Type::M128D, "__m128d") => {}
+        (&Type::M256, "__m256") => {}
+        (&Type::M256I, "__m256i") => {}
+        (&Type::M256D, "__m256d") => {}
+        (&Type::M512, "__m512") => {}
+        (&Type::M512I, "__m512i") => {}
+        (&Type::M512D, "__m512d") => {}
 
-        (&Type::Ptr(&Type::PrimFloat(32)), "float*") => {}
-        (&Type::Ptr(&Type::PrimFloat(64)), "double*") => {}
-        (&Type::Ptr(&Type::PrimSigned(32)), "int*") => {}
-        (&Type::Ptr(&Type::PrimSigned(32)), "__int32*") => {}
-        (&Type::Ptr(&Type::PrimSigned(64)), "__int64*") => {}
-        (&Type::Ptr(&Type::PrimSigned(8)), "char*") => {}
-        (&Type::Ptr(&Type::PrimUnsigned(16)), "unsigned short*") => {}
-        (&Type::Ptr(&Type::PrimUnsigned(32)), "unsigned int*") => {}
-        (&Type::Ptr(&Type::PrimUnsigned(64)), "unsigned __int64*") => {}
-        (&Type::Ptr(&Type::PrimUnsigned(8)), "const void*") => {}
-        (&Type::Ptr(&Type::PrimUnsigned(8)), "void*") => {}
+        (&Type::MutPtr(&Type::PrimFloat(32)), "float*") => {}
+        (&Type::MutPtr(&Type::PrimFloat(64)), "double*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(32)), "int*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(32)), "__int32*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(64)), "__int64*") => {}
+        (&Type::MutPtr(&Type::PrimSigned(8)), "char*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(16)), "unsigned short*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(32)), "unsigned int*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(64)), "unsigned __int64*") => {}
+        (&Type::MutPtr(&Type::PrimUnsigned(8)), "void*") => {}
+        (&Type::MutPtr(&Type::M64), "__m64*") => {}
+        (&Type::MutPtr(&Type::M128), "__m128*") => {}
+        (&Type::MutPtr(&Type::M128I), "__m128i*") => {}
+        (&Type::MutPtr(&Type::M128D), "__m128d*") => {}
+        (&Type::MutPtr(&Type::M256), "__m256*") => {}
+        (&Type::MutPtr(&Type::M256I), "__m256i*") => {}
+        (&Type::MutPtr(&Type::M256D), "__m256d*") => {}
+        (&Type::MutPtr(&Type::M512), "__m512*") => {}
+        (&Type::MutPtr(&Type::M512I), "__m512i*") => {}
+        (&Type::MutPtr(&Type::M512D), "__m512d*") => {}
 
-        (&Type::M64, "__m64") | (&Type::Ptr(&Type::M64), "__m64*") => {}
-
-        (&Type::M128I, "__m128i")
-        | (&Type::Ptr(&Type::M128I), "__m128i*")
-        | (&Type::M128D, "__m128d")
-        | (&Type::Ptr(&Type::M128D), "__m128d*")
-        | (&Type::M128, "__m128")
-        | (&Type::Ptr(&Type::M128), "__m128*") => {}
-
-        (&Type::M256I, "__m256i")
-        | (&Type::Ptr(&Type::M256I), "__m256i*")
-        | (&Type::M256D, "__m256d")
-        | (&Type::Ptr(&Type::M256D), "__m256d*")
-        | (&Type::M256, "__m256")
-        | (&Type::Ptr(&Type::M256), "__m256*") => {}
-
-        (&Type::M512I, "__m512i")
-        | (&Type::Ptr(&Type::M512I), "__m512i*")
-        | (&Type::M512D, "__m512d")
-        | (&Type::Ptr(&Type::M512D), "__m512d*")
-        | (&Type::M512, "__m512")
-        | (&Type::Ptr(&Type::M512), "__m512*") => {}
+        (&Type::ConstPtr(&Type::PrimFloat(32)), "float const*") => {}
+        (&Type::ConstPtr(&Type::PrimFloat(64)), "double const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(32)), "int const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32 const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64 const*") => {}
+        (&Type::ConstPtr(&Type::PrimSigned(8)), "char const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(16)), "unsigned short const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(32)), "unsigned int const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(64)), "unsigned __int64 const*") => {}
+        (&Type::ConstPtr(&Type::PrimUnsigned(8)), "void const*") => {}
+        (&Type::ConstPtr(&Type::M64), "__m64 const*") => {}
+        (&Type::ConstPtr(&Type::M128), "__m128 const*") => {}
+        (&Type::ConstPtr(&Type::M128I), "__m128i const*") => {}
+        (&Type::ConstPtr(&Type::M128D), "__m128d const*") => {}
+        (&Type::ConstPtr(&Type::M256), "__m256 const*") => {}
+        (&Type::ConstPtr(&Type::M256I), "__m256i const*") => {}
+        (&Type::ConstPtr(&Type::M256D), "__m256d const*") => {}
+        (&Type::ConstPtr(&Type::M512), "__m512 const*") => {}
+        (&Type::ConstPtr(&Type::M512I), "__m512i const*") => {}
+        (&Type::ConstPtr(&Type::M512D), "__m512d const*") => {}
 
         (&Type::MMASK16, "__mmask16") => {}
 
         // This is a macro (?) in C which seems to mutate its arguments, but
         // that means that we're taking pointers to arguments in rust
         // as we're not exposing it as a macro.
-        (&Type::Ptr(&Type::M128), "__m128") if intrinsic == "_MM_TRANSPOSE4_PS" => {}
+        (&Type::MutPtr(&Type::M128), "__m128") if intrinsic == "_MM_TRANSPOSE4_PS" => {}
 
         // The _rdtsc intrinsic uses a __int64 return type, but this is a bug in
         // the intrinsics guide: https://github.com/rust-lang-nursery/stdsimd/issues/559
         // We have manually fixed the bug by changing the return type to `u64`.
         (&Type::PrimUnsigned(64), "__int64") if intrinsic == "_rdtsc" => {}
+
+        // The _bittest and _bittest64 intrinsics takes a mutable pointer in the
+        // intrinsics guide even though it never writes through the pointer:
+        (&Type::ConstPtr(&Type::PrimSigned(32)), "__int32*") if intrinsic == "_bittest" => {}
+        (&Type::ConstPtr(&Type::PrimSigned(64)), "__int64*") if intrinsic == "_bittest64" => {}
+        // The _xrstor, _fxrstor, _xrstor64, _fxrstor64 intrinsics take a
+        // mutable pointer in the intrinsics guide even though they never write
+        // through the pointer:
+        (&Type::ConstPtr(&Type::PrimUnsigned(8)), "void*")
+            if intrinsic == "_xrstor"
+                || intrinsic == "_xrstor64"
+                || intrinsic == "_fxrstor"
+                || intrinsic == "_fxrstor64" => {}
 
         _ => bail!(
             "failed to equate: `{}` and {:?} for {}",

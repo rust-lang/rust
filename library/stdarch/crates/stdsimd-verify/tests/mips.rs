@@ -51,7 +51,6 @@ enum Type {
     PrimPoly(u8),
     MutPtr(&'static Type),
     ConstPtr(&'static Type),
-    Ptr(&'static Type),
     Tuple,
     I(u8, u8, u8),
     U(u8, u8, u8),
@@ -91,7 +90,7 @@ enum MsaTy {
     i64,
     u64,
     Void,
-    VoidPtr,
+    MutVoidPtr,
 }
 
 impl<'a> From<&'a str> for MsaTy {
@@ -125,7 +124,7 @@ impl<'a> From<&'a str> for MsaTy {
             "i64" => MsaTy::i64,
             "u64" => MsaTy::u64,
             "void" => MsaTy::Void,
-            "void *" => MsaTy::VoidPtr,
+            "void *" => MsaTy::MutVoidPtr,
             v => panic!("unknown ty: \"{}\"", v),
         }
     }
@@ -273,7 +272,7 @@ fn matches(rust: &Function, mips: &MsaIntrinsic) -> Result<(), String> {
             MsaTy::i64 if **rust_arg == I64 => (),
             MsaTy::u32 if **rust_arg == U32 => (),
             MsaTy::u64 if **rust_arg == U64 => (),
-            MsaTy::VoidPtr if **rust_arg == Type::Ptr(&U8) => (),
+            MsaTy::MutVoidPtr if **rust_arg == Type::MutPtr(&U8) => (),
             m => bail!(
                 "mismatched argument \"{}\"= \"{:?}\" != \"{:?}\"",
                 i,

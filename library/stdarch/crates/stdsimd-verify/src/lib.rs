@@ -195,11 +195,27 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
 
             s => panic!("unspported type: \"{}\"", s),
         },
-        syn::Type::Ptr(syn::TypePtr { ref elem, .. })
-        | syn::Type::Reference(syn::TypeReference { ref elem, .. }) => {
-            let tokens = to_type(&elem);
-            quote! { &Type::Ptr(#tokens) }
+        syn::Type::Ptr(syn::TypePtr {
+            ref elem,
+            ref mutability,
+            ..
+        })
+        | syn::Type::Reference(syn::TypeReference {
+            ref elem,
+            ref mutability,
+            ..
+        }) => {
+            // Both pointers and references can have a mut token (*mut and &mut)
+            if mutability.is_some() {
+                let tokens = to_type(&elem);
+                quote! { &Type::MutPtr(#tokens) }
+            } else {
+                // If they don't (*const or &) then they are "const"
+                let tokens = to_type(&elem);
+                quote! { &Type::ConstPtr(#tokens) }
+            }
         }
+
         syn::Type::Slice(_) => panic!("unsupported slice"),
         syn::Type::Array(_) => panic!("unsupported array"),
         syn::Type::Tuple(_) => quote! { &TUPLE },
