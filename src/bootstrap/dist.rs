@@ -906,6 +906,7 @@ impl Step for Src {
             "src/stdsimd",
             "src/libproc_macro",
             "src/tools/rustc-std-workspace-core",
+            "src/tools/rustc-std-workspace-alloc",
             "src/librustc",
             "src/libsyntax",
         ];
