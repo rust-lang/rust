@@ -873,8 +873,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     return PrevailingType::Unknown;
   };
 #if LLVM_VERSION_GE(8, 0)
+  // We don't have a complete picture in our use of ThinLTO, just our immediate
+  // crate, so we need `ImportEnabled = false` to limit internalization.
+  // Otherwise, we sometimes lose `static` values -- see #60184.
   computeDeadSymbolsWithConstProp(Ret->Index, Ret->GUIDPreservedSymbols,
-                                  deadIsPrevailing, /* ImportEnabled = */ true);
+                                  deadIsPrevailing, /* ImportEnabled = */ false);
 #else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
 #endif
