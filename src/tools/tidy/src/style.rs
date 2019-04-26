@@ -3,6 +3,7 @@
 //! Example checks are:
 //!
 //! * No lines over 100 characters.
+//! * No files with over 3000 lines.
 //! * No tabs.
 //! * No trailing whitespace.
 //! * No CR characters.
@@ -17,6 +18,8 @@ use std::io::prelude::*;
 use std::path::Path;
 
 const COLS: usize = 100;
+
+const LINES: usize = 3000;
 
 const UNEXPLAINED_IGNORE_DOCTEST_INFO: &str = r#"unexplained "```ignore" doctest; try one:
 
@@ -139,11 +142,13 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let mut skip_cr = contains_ignore_directive(&contents, "cr");
         let mut skip_tab = contains_ignore_directive(&contents, "tab");
-        let mut skip_length = contains_ignore_directive(&contents, "linelength");
+        let mut skip_line_length = contains_ignore_directive(&contents, "linelength");
+        let mut skip_file_length = contains_ignore_directive(&contents, "filelength");
         let mut skip_end_whitespace = contains_ignore_directive(&contents, "end-whitespace");
         let mut skip_copyright = contains_ignore_directive(&contents, "copyright");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
+        let mut lines = 0;
         for (i, line) in contents.split('\n').enumerate() {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
@@ -151,7 +156,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             if line.chars().count() > COLS && !long_line_is_ok(line) {
                 suppressible_tidy_err!(
                     err,
-                    skip_length,
+                    skip_line_length,
                     &format!("line longer than {} chars", COLS)
                 );
             }
@@ -197,6 +202,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             } else {
                 trailing_new_lines = 0;
             }
+            lines = i;
         }
         if leading_new_lines {
             tidy_error!(bad, "{}: leading newline", file.display());
@@ -206,6 +212,18 @@ pub fn check(path: &Path, bad: &mut bool) {
             1 => {}
             n => tidy_error!(bad, "{}: too many trailing newlines ({})", file.display(), n),
         };
+        if lines > LINES {
+            let mut err = |_| {
+                tidy_error!(
+                    bad,
+                    "{}: too many lines ({}) (add `// \
+                     ignore-tidy-filelength` to the file to suppress this error)",
+                    file.display(),
+                    lines
+                );
+            };
+            suppressible_tidy_err!(err, skip_file_length, "");
+        }
 
         if let Directive::Ignore(false) = skip_cr {
             tidy_error!(bad, "{}: ignoring CR characters unnecessarily", file.display());
@@ -213,8 +231,11 @@ pub fn check(path: &Path, bad: &mut bool) {
         if let Directive::Ignore(false) = skip_tab {
             tidy_error!(bad, "{}: ignoring tab characters unnecessarily", file.display());
         }
-        if let Directive::Ignore(false) = skip_length {
+        if let Directive::Ignore(false) = skip_line_length {
             tidy_error!(bad, "{}: ignoring line length unnecessarily", file.display());
+        }
+        if let Directive::Ignore(false) = skip_file_length {
+            tidy_error!(bad, "{}: ignoring file length unnecessarily", file.display());
         }
         if let Directive::Ignore(false) = skip_end_whitespace {
             tidy_error!(bad, "{}: ignoring trailing whitespace unnecessarily", file.display());

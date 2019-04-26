@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Numeric traits and functions for the built-in numeric types.
 
 #![stable(feature = "rust1", since = "1.0.0")]

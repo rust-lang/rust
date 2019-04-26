@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use crate::common::CompareMode;
 use crate::common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use crate::common::{output_base_dir, output_base_name, output_testname_unique};

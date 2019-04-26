@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! A double-ended queue implemented with a growable ring buffer.
 //!
 //! This queue has `O(1)` amortized inserts and removals from both ends of the

@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Multi-producer, single-consumer FIFO queue communication primitives.
 //!
 //! This module provides message-based communication over channels, concretely

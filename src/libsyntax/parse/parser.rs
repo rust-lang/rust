@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 use crate::ast::{AngleBracketedArgs, AsyncArgument, ParenthesizedArgs, AttrStyle, BareFnTy};
 use crate::ast::{GenericBound, TraitBoundModifier};
 use crate::ast::Unsafety;

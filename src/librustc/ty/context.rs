@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Type context book-keeping.
 
 use crate::arena::Arena;

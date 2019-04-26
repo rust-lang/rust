@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Manually manage memory through raw pointers.
 //!
 //! *[See also the pointer primitive types](../../std/primitive.pointer.html).*

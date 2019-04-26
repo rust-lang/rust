@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Rustdoc's HTML rendering module.
 //!
 //! This modules contains the bulk of the logic necessary for rendering a
