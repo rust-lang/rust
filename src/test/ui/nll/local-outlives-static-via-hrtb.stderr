@@ -1,0 +1,26 @@
+error[E0597]: `local` does not live long enough
+  --> $DIR/local-outlives-static-via-hrtb.rs:24:28
+   |
+LL |     assert_static_via_hrtb(&local);
+   |     -----------------------^^^^^^-
+   |     |                      |
+   |     |                      borrowed value does not live long enough
+   |     argument requires that `local` is borrowed for `'static`
+LL |     assert_static_via_hrtb_with_assoc_type(&&local);
+LL | }
+   | - `local` dropped here while still borrowed
+
+error[E0597]: `local` does not live long enough
+  --> $DIR/local-outlives-static-via-hrtb.rs:25:45
+   |
+LL |     assert_static_via_hrtb_with_assoc_type(&&local);
+   |     ----------------------------------------^^^^^^-
+   |     |                                       |
+   |     |                                       borrowed value does not live long enough
+   |     argument requires that `local` is borrowed for `'static`
+LL | }
+   | - `local` dropped here while still borrowed
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0597`.
