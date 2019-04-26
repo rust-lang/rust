@@ -116,5 +116,4 @@ fn main() {
         val = Cell::new(2);
     }
     println!("{}", val.get());
-
 }
