@@ -67,14 +67,11 @@ pub fn profile(desc: &str) -> Profiler {
 
     PROFILE_STACK.with(|stack| {
         let mut stack = stack.borrow_mut();
-        if stack.starts.len() == 0 {
-            match FILTER.try_read() {
-                Ok(f) => {
-                    if f.version > stack.filter_data.version {
-                        stack.filter_data = f.clone();
-                    }
+        if stack.starts.is_empty() {
+            if let Ok(f) = FILTER.try_read() {
+                if f.version > stack.filter_data.version {
+                    stack.filter_data = f.clone();
                 }
-                Err(_) => (),
             };
         }
 
@@ -107,7 +104,7 @@ impl Filter {
     // env RA_PROFILE=foo|bar|baz   // enabled only selected entries
     // env RA_PROFILE=*@3>10        // dump everything, up to depth 3, if it takes more than 10 ms
     pub fn from_spec(mut spec: &str) -> Filter {
-        let longer_than = if let Some(idx) = spec.rfind(">") {
+        let longer_than = if let Some(idx) = spec.rfind('>') {
             let longer_than = spec[idx + 1..].parse().expect("invalid profile longer_than");
             spec = &spec[..idx];
             Duration::from_millis(longer_than)
@@ -115,7 +112,7 @@ impl Filter {
             Duration::new(0, 0)
         };
 
-        let depth = if let Some(idx) = spec.rfind("@") {
+        let depth = if let Some(idx) = spec.rfind('@') {
             let depth: usize = spec[idx + 1..].parse().expect("invalid profile depth");
             spec = &spec[..idx];
             depth
@@ -123,7 +120,7 @@ impl Filter {
             999
         };
         let allowed =
-            if spec == "*" { Vec::new() } else { spec.split("|").map(String::from).collect() };
+            if spec == "*" { Vec::new() } else { spec.split('|').map(String::from).collect() };
         Filter::new(depth, allowed, longer_than)
     }
 
