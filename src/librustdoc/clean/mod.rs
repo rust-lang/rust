@@ -1136,7 +1136,7 @@ fn external_generic_args(
         Some(did) if cx.tcx.lang_items().fn_trait_kind(did).is_some() => {
             assert!(ty_sty.is_some());
             let inputs = match ty_sty {
-                Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.clean(cx)).collect(),
+                Some(ty::Tuple(ref tys)) => tys.iter().map(|t| t.expect_ty().clean(cx)).collect(),
                 _ => return GenericArgs::AngleBracketed { args, bindings },
             };
             let output = None;
@@ -1181,7 +1181,7 @@ impl<'a, 'tcx> Clean<GenericBound> for (&'a ty::TraitRef<'tcx>, Vec<TypeBinding>
         for ty_s in trait_ref.input_types().skip(1) {
             if let ty::Tuple(ts) = ty_s.sty {
                 for &ty_s in ts {
-                    if let ty::Ref(ref reg, _, _) = ty_s.sty {
+                    if let ty::Ref(ref reg, _, _) = ty_s.expect_ty().sty {
                         if let &ty::RegionKind::ReLateBound(..) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
                             if let Some(Lifetime(name)) = reg.clean(cx) {
@@ -3066,7 +3066,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                     is_generic: false,
                 }
             }
-            ty::Tuple(ref t) => Tuple(t.clean(cx)),
+            ty::Tuple(ref t) => {
+                Tuple(t.iter().map(|t| t.expect_ty()).collect::<Vec<_>>().clean(cx))
+            }
 
             ty::Projection(ref data) => data.clean(cx),
 

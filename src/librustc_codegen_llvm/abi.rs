@@ -426,9 +426,9 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             assert!(!sig.c_variadic && extra_args.is_empty());
 
             match sig.inputs().last().unwrap().sty {
-                ty::Tuple(ref tupled_arguments) => {
+                ty::Tuple(tupled_arguments) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
-                    tupled_arguments
+                    tupled_arguments.iter().map(|k| k.expect_ty()).collect()
                 }
                 _ => {
                     bug!("argument to function with \"rust-call\" ABI \
@@ -437,7 +437,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             }
         } else {
             assert!(sig.c_variadic || extra_args.is_empty());
-            extra_args
+            extra_args.to_vec()
         };
 
         let target = &cx.sess().target.target;
@@ -587,7 +587,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
 
         let mut fn_ty = FnType {
             ret: arg_of(sig.output(), None),
-            args: inputs.iter().chain(extra_args).enumerate().map(|(i, ty)| {
+            args: inputs.iter().cloned().chain(extra_args).enumerate().map(|(i, ty)| {
                 arg_of(ty, Some(i))
             }).collect(),
             c_variadic: sig.c_variadic,

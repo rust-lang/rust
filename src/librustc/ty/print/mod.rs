@@ -264,7 +264,7 @@ pub fn characteristic_def_id_of_type(ty: Ty<'_>) -> Option<DefId> {
         ty::Ref(_, ty, _) => characteristic_def_id_of_type(ty),
 
         ty::Tuple(ref tys) => tys.iter()
-                                   .filter_map(|ty| characteristic_def_id_of_type(ty))
+                                   .filter_map(|ty| characteristic_def_id_of_type(ty.expect_ty()))
                                    .next(),
 
         ty::FnDef(def_id, _) |

@@ -181,7 +181,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
             Tuple(ref tys) => {
                 DefIdForest::union(tcx, tys.iter().map(|ty| {
-                    ty.uninhabited_from(tcx)
+                    ty.expect_ty().uninhabited_from(tcx)
                 }))
             }
 

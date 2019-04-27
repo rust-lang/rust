@@ -131,7 +131,7 @@ crate fn wf_clause_for_tuple<'tcx>(
     let sized_implemented = type_list[0 .. std::cmp::max(arity, 1) - 1].iter()
         .map(|ty| ty::TraitRef {
             def_id: sized_trait,
-            substs: tcx.mk_substs_trait(*ty, ty::List::empty()),
+            substs: tcx.mk_substs_trait(ty.expect_ty(), ty::List::empty()),
         })
         .map(|trait_ref| ty::TraitPredicate { trait_ref })
         .map(|predicate| predicate.lower());

@@ -272,7 +272,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Tuple(component_types) => {
                 output.push('(');
                 for &component_type in component_types {
-                    self.push_type_name(component_type, output, debug);
+                    self.push_type_name(component_type.expect_ty(), output, debug);
                     output.push_str(", ");
                 }
                 if !component_types.is_empty() {

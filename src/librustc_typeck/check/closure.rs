@@ -274,8 +274,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         let input_tys = match arg_param_ty.sty {
-            ty::Tuple(tys) => tys.into_iter(),
-            _ => return None
+            ty::Tuple(tys) => tys.into_iter().map(|k| k.expect_ty()),
+            _ => return None,
         };
 
         let ret_param_ty = projection.skip_binder().ty;
@@ -286,7 +286,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         let sig = self.tcx.mk_fn_sig(
-            input_tys.cloned(),
+            input_tys,
             ret_param_ty,
             false,
             hir::Unsafety::Normal,
