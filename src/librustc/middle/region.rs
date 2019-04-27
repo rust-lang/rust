@@ -12,7 +12,6 @@ use crate::ty;
 
 use std::mem;
 use std::fmt;
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable;
 use syntax::source_map;
 use syntax::ast;
@@ -1329,7 +1328,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 }
 
 fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<ScopeTree>
+    -> &'tcx ScopeTree
 {
     let closure_base_def_id = tcx.closure_base_def_id(def_id);
     if closure_base_def_id != def_id {
@@ -1371,7 +1370,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         ScopeTree::default()
     };
 
-    Lrc::new(scope_tree)
+    tcx.arena.alloc(scope_tree)
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

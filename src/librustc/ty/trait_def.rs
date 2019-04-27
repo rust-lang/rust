@@ -10,7 +10,6 @@ use crate::ty::{Ty, TyCtxt};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable;
 
 /// A trait's definition with type information.
@@ -151,7 +150,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_id: DefId)
-                                                -> Lrc<TraitImpls> {
+                                                -> &'tcx TraitImpls {
     let mut impls = TraitImpls::default();
 
     {
@@ -188,7 +187,7 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    Lrc::new(impls)
+    tcx.arena.alloc(impls)
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {

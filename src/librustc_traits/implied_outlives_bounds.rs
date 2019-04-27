@@ -15,8 +15,6 @@ use smallvec::{SmallVec, smallvec};
 use syntax::source_map::DUMMY_SP;
 use rustc::traits::FulfillmentContext;
 
-use rustc_data_structures::sync::Lrc;
-
 crate fn provide(p: &mut Providers<'_>) {
     *p = Providers {
         implied_outlives_bounds,
@@ -28,7 +26,7 @@ fn implied_outlives_bounds<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     goal: CanonicalTyGoal<'tcx>,
 ) -> Result<
-        Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>>,
+        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
 > {
     tcx.infer_ctxt()

@@ -16,6 +16,48 @@ macro_rules! arena_types {
             )>,
             [few] mir_keys: rustc::util::nodemap::DefIdSet,
             [decode] specialization_graph: rustc::traits::specialization_graph::Graph,
+            [] region_scope_tree: rustc::middle::region::ScopeTree,
+            [] item_local_set: rustc::util::nodemap::ItemLocalSet,
+            [decode] mir_const_qualif: rustc_data_structures::bit_set::BitSet<rustc::mir::Local>,
+            [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
+            [] dropck_outlives:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx,
+                        rustc::traits::query::dropck_outlives::DropckOutlivesResult<'tcx>
+                    >
+                >,
+            [] normalize_projection_ty:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx,
+                        rustc::traits::query::normalize::NormalizationResult<'tcx>
+                    >
+                >,
+            [] implied_outlives_bounds:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx,
+                        Vec<rustc::traits::query::outlives_bounds::OutlivesBound<'tcx>>
+                    >
+                >,
+            [] type_op_subtype:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx, ()>
+                >,
+            [] type_op_normalize_poly_fn_sig:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx, rustc::ty::PolyFnSig<'tcx>>
+                >,
+            [] type_op_normalize_fn_sig:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx, rustc::ty::FnSig<'tcx>>
+                >,
+            [] type_op_normalize_predicate:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx, rustc::ty::Predicate<'tcx>>
+                >,
+            [] type_op_normalize_ty:
+                rustc::infer::canonical::Canonical<'tcx,
+                    rustc::infer::canonical::QueryResponse<'tcx, rustc::ty::Ty<'tcx>>
+                >,
         ], $tcx);
     )
 }

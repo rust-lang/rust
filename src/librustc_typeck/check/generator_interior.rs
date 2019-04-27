@@ -8,7 +8,6 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind, Expr};
 use rustc::middle::region;
 use rustc::ty::{self, Ty};
-use rustc_data_structures::sync::Lrc;
 use syntax_pos::Span;
 use super::FnCtxt;
 use crate::util::nodemap::FxHashMap;
@@ -16,7 +15,7 @@ use crate::util::nodemap::FxHashMap;
 struct InteriorVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
     types: FxHashMap<Ty<'tcx>, usize>,
-    region_scope_tree: Lrc<region::ScopeTree>,
+    region_scope_tree: &'gcx region::ScopeTree,
     expr_count: usize,
 }
 

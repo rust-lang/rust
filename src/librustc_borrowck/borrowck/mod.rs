@@ -228,7 +228,7 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     // Some in `borrowck_fn` and cleared later
     tables: &'a ty::TypeckTables<'tcx>,
 
-    region_scope_tree: Lrc<region::ScopeTree>,
+    region_scope_tree: &'tcx region::ScopeTree,
 
     owner_def_id: DefId,
 

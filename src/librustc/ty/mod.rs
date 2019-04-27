@@ -1120,11 +1120,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
-
-    /// An empty vector, useful for cloning.
-    #[stable_hasher(ignore)]
-    pub empty_predicate: Lrc<Vec<ty::Predicate<'tcx>>>,
+    pub predicates: FxHashMap<DefId, &'tcx [ty::Predicate<'tcx>]>,
 }
 
 impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
