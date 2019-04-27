@@ -182,6 +182,11 @@ nav.sub {
 	display: none !important;
 }
 
+.logo-container {
+	height: 0;
+	padding-bottom: 50%;
+}
+
 .sidebar img {
 	margin: 20px auto;
 	display: block;
