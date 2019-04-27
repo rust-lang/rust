@@ -18,7 +18,7 @@ mod libc {
 use crate::ascii;
 use crate::ffi::OsStr;
 use crate::fmt;
-use crate::io::{self, Initializer, IoVec, IoVecMut};
+use crate::io::{self, Initializer, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{self, Shutdown};
 use crate::os::unix::ffi::OsStrExt;
@@ -551,7 +551,7 @@ impl io::Read for UnixStream {
         io::Read::read(&mut &*self, buf)
     }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         io::Read::read_vectored(&mut &*self, bufs)
     }
 
@@ -567,7 +567,7 @@ impl<'a> io::Read for &'a UnixStream {
         self.0.read(buf)
     }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
@@ -583,7 +583,7 @@ impl io::Write for UnixStream {
         io::Write::write(&mut &*self, buf)
     }
 
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         io::Write::write_vectored(&mut &*self, bufs)
     }
 
@@ -598,7 +598,7 @@ impl<'a> io::Write for &'a UnixStream {
         self.0.write(buf)
     }
 
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
@@ -1531,14 +1531,14 @@ mod test {
         let (mut s1, mut s2) = or_panic!(UnixStream::pair());
 
         let len = or_panic!(s1.write_vectored(
-            &[IoVec::new(b"hello"), IoVec::new(b" "), IoVec::new(b"world!")],
+            &[IoSlice::new(b"hello"), IoSlice::new(b" "), IoSlice::new(b"world!")],
         ));
         assert_eq!(len, 12);
 
         let mut buf1 = [0; 6];
         let mut buf2 = [0; 7];
         let len = or_panic!(s2.read_vectored(
-            &mut [IoVecMut::new(&mut buf1), IoVecMut::new(&mut buf2)],
+            &mut [IoSliceMut::new(&mut buf1), IoSliceMut::new(&mut buf2)],
         ));
         assert_eq!(len, 12);
         assert_eq!(&buf1, b"hello ");

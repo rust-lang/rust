@@ -1,7 +1,7 @@
 use crate::io::prelude::*;
 
 use crate::fmt;
-use crate::io::{self, Initializer, IoVec, IoVecMut};
+use crate::io::{self, Initializer, IoSlice, IoSliceMut};
 use crate::net::{ToSocketAddrs, SocketAddr, Shutdown};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -569,7 +569,7 @@ impl TcpStream {
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
@@ -582,7 +582,7 @@ impl Read for TcpStream {
 impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
 
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
@@ -592,7 +592,7 @@ impl Write for TcpStream {
 impl Read for &TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.0.read_vectored(bufs)
     }
 
@@ -605,7 +605,7 @@ impl Read for &TcpStream {
 impl Write for &TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
 
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.0.write_vectored(bufs)
     }
 
@@ -930,7 +930,7 @@ impl fmt::Debug for TcpListener {
 #[cfg(all(test, not(any(target_os = "cloudabi", target_os = "emscripten"))))]
 mod tests {
     use crate::fmt;
-    use crate::io::{ErrorKind, IoVec, IoVecMut};
+    use crate::io::{ErrorKind, IoSlice, IoSliceMut};
     use crate::io::prelude::*;
     use crate::net::*;
     use crate::net::test::{next_test_ip4, next_test_ip6};
@@ -1216,7 +1216,7 @@ mod tests {
             let mut b = [0];
             let mut c = [0; 3];
             let len = t!(s2.read_vectored(
-                &mut [IoVecMut::new(&mut a), IoVecMut::new(&mut b), IoVecMut::new(&mut c)],
+                &mut [IoSliceMut::new(&mut a), IoSliceMut::new(&mut b), IoSliceMut::new(&mut c)],
             ));
             assert!(len > 0);
             assert_eq!(b, [10]);
@@ -1235,7 +1235,7 @@ mod tests {
             let a = [];
             let b = [10];
             let c = [11, 12];
-            t!(s1.write_vectored(&[IoVec::new(&a), IoVec::new(&b), IoVec::new(&c)]));
+            t!(s1.write_vectored(&[IoSlice::new(&a), IoSlice::new(&b), IoSlice::new(&c)]));
 
             let mut buf = [0; 4];
             let len = t!(s2.read(&mut buf));

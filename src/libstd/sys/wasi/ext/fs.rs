@@ -3,7 +3,7 @@
 #![unstable(feature = "wasi_ext", issue = "0")]
 
 use crate::fs::{self, File, Metadata, OpenOptions};
-use crate::io::{self, IoVec, IoVecMut};
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::os::wasi::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
@@ -25,7 +25,7 @@ pub trait FileExt {
     /// return with a short read.
     ///
     /// [`File::read`]: ../../../../std/fs/struct.File.html#method.read_vectored
-    fn read_at(&self, bufs: &mut [IoVecMut<'_>], offset: u64) -> io::Result<usize>;
+    fn read_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize>;
 
     /// Writes a number of bytes starting from a given offset.
     ///
@@ -43,7 +43,7 @@ pub trait FileExt {
     /// short write.
     ///
     /// [`File::write`]: ../../../../std/fs/struct.File.html#method.write_vectored
-    fn write_at(&self, bufs: &[IoVec<'_>], offset: u64) -> io::Result<usize>;
+    fn write_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize>;
 
     /// Returns the current position within the file.
     ///
@@ -105,11 +105,11 @@ pub trait FileExt {
 // FIXME: bind __wasi_random_get maybe? - on crates.io for unix
 
 impl FileExt for fs::File {
-    fn read_at(&self, bufs: &mut [IoVecMut<'_>], offset: u64) -> io::Result<usize> {
+    fn read_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().fd().pread(bufs, offset)
     }
 
-    fn write_at(&self, bufs: &[IoVec<'_>], offset: u64) -> io::Result<usize> {
+    fn write_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         self.as_inner().fd().pwrite(bufs, offset)
     }
 

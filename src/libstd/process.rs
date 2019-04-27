@@ -111,7 +111,7 @@ use crate::io::prelude::*;
 use crate::ffi::OsStr;
 use crate::fmt;
 use crate::fs;
-use crate::io::{self, Initializer, IoVec, IoVecMut};
+use crate::io::{self, Initializer, IoSlice, IoSliceMut};
 use crate::path::Path;
 use crate::str;
 use crate::sys::pipe::{read2, AnonPipe};
@@ -225,7 +225,7 @@ impl Write for ChildStdin {
         self.inner.write(buf)
     }
 
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
     }
 
@@ -276,7 +276,7 @@ impl Read for ChildStdout {
         self.inner.read(buf)
     }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
 
@@ -328,7 +328,7 @@ impl Read for ChildStderr {
         self.inner.read(buf)
     }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
 

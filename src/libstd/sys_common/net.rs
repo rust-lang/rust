@@ -1,7 +1,7 @@
 use crate::cmp;
 use crate::ffi::CString;
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind, IoVec, IoVecMut};
+use crate::io::{self, Error, ErrorKind, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
 use crate::ptr;
@@ -256,7 +256,7 @@ impl TcpStream {
         self.inner.read(buf)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
 
@@ -271,7 +271,7 @@ impl TcpStream {
         Ok(ret as usize)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.inner.write_vectored(bufs)
     }
 

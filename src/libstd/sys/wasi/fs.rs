@@ -1,6 +1,6 @@
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
-use crate::io::{self, IoVec, IoVecMut, SeekFrom};
+use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
 use crate::mem::{self, ManuallyDrop};
 use crate::os::wasi::ffi::{OsStrExt, OsStringExt};
@@ -414,18 +414,18 @@ impl File {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.read_vectored(&mut [IoVecMut::new(buf)])
+        self.read_vectored(&mut [IoSliceMut::new(buf)])
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.fd.read(bufs)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        self.write_vectored(&[IoVec::new(buf)])
+        self.write_vectored(&[IoSlice::new(buf)])
     }
 
-    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.fd.write(bufs)
     }
 

@@ -1,7 +1,7 @@
 #![unstable(issue = "0", feature = "windows_net")]
 
 use crate::cmp;
-use crate::io::{self, Read, IoVec, IoVecMut};
+use crate::io::{self, Read, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{SocketAddr, Shutdown};
 use crate::ptr;
@@ -208,7 +208,7 @@ impl Socket {
         self.recv_with_flags(buf, 0)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         // On unix when a socket is shut down all further reads return 0, so we
         // do the same on windows to map a shut down socket to returning EOF.
         let len = cmp::min(bufs.len(), c::DWORD::max_value() as usize) as c::DWORD;
@@ -268,7 +268,7 @@ impl Socket {
         self.recv_from_with_flags(buf, c::MSG_PEEK)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let len = cmp::min(bufs.len(), c::DWORD::max_value() as usize) as c::DWORD;
         let mut nwritten = 0;
         unsafe {
