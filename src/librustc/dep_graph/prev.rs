@@ -3,70 +3,28 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::IndexVec;
 use super::dep_node::DepNode;
 use super::graph::DepNodeIndex;
-use super::serialized::SerializedDepGraph;
 
 #[derive(Debug, Default)]
 pub struct PreviousDepGraph {
     /// Maps from dep nodes to their previous index, if any.
-    index: FxHashMap<DepNode, DepNodeIndex>,
+    pub(super) index: FxHashMap<DepNode, DepNodeIndex>,
     /// The set of all DepNodes in the graph
-    nodes: IndexVec<DepNodeIndex, DepNode>,
+    pub(super) nodes: IndexVec<DepNodeIndex, DepNode>,
     /// The set of all Fingerprints in the graph. Each Fingerprint corresponds to
     /// the DepNode at the same index in the nodes vector.
     pub(super) fingerprints: IndexVec<DepNodeIndex, Fingerprint>,
     /// For each DepNode, stores the list of edges originating from that
-    /// DepNode. Encoded as a [start, end) pair indexing into edge_list_data,
-    /// which holds the actual DepNodeIndices of the target nodes.
-    edge_list_indices: IndexVec<DepNodeIndex, (u32, u32)>,
-    /// A flattened list of all edge targets in the graph. Edge sources are
-    /// implicit in edge_list_indices.
-    edge_list_data: Vec<DepNodeIndex>,
+    /// DepNode.
+    pub(super) edges: IndexVec<DepNodeIndex, Option<Box<[DepNodeIndex]>>>,
 }
 
 impl PreviousDepGraph {
-    pub fn new(graph: SerializedDepGraph) -> PreviousDepGraph {
-        let index: FxHashMap<_, _> = graph.nodes
-            .iter_enumerated()
-            .map(|(idx, dep_node)| (dep_node.node, idx))
-            .collect();
-
-        let nodes: IndexVec<DepNodeIndex, _> =
-            graph.nodes.iter().map(|d| d.node).collect();
-
-        let total_edge_count: usize = graph.nodes.iter().map(|d| d.edges.len()).sum();
-
-        let mut edge_list_indices = IndexVec::with_capacity(nodes.len());
-        let mut edge_list_data = Vec::with_capacity(total_edge_count);
-
-        for (current_dep_node_index, edges) in graph.nodes.iter_enumerated()
-                                                                .map(|(i, d)| (i, &d.edges)) {
-            let start = edge_list_data.len() as u32;
-            edge_list_data.extend(edges.iter().cloned());
-            let end = edge_list_data.len() as u32;
-
-            debug_assert_eq!(current_dep_node_index.index(), edge_list_indices.len());
-            edge_list_indices.push((start, end));
-        }
-
-        debug_assert!(edge_list_data.len() <= ::std::u32::MAX as usize);
-        debug_assert_eq!(edge_list_data.len(), total_edge_count);
-
-        PreviousDepGraph {
-            fingerprints: graph.fingerprints,
-            nodes,
-            edge_list_indices,
-            edge_list_data,
-            index,
-        }
-    }
-
     #[inline]
     pub fn edge_targets_from(
         &self,
         dep_node_index: DepNodeIndex
     ) -> &[DepNodeIndex] {
-        let targets = self.edge_list_indices[dep_node_index];
-        &self.edge_list_data[targets.0 as usize..targets.1 as usize]
+        self.edges[dep_node_index].as_ref().unwrap()
     }
 
     #[inline]

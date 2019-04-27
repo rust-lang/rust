@@ -53,8 +53,12 @@ impl DepNodeColor {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DepNodeState {
-    /// The node is invalid since its result is older than the previous session.
+    /// The dep node index is invalid and does not refer to any dep node.
     Invalid,
+
+    /// The node is from the previous session and it is a eval_always node,
+    // but its state is unknown.
+    UnknownEvalAlways,
 
     /// The node is from the previous session, but its state is unknown
     Unknown,
@@ -73,7 +77,8 @@ pub enum DepNodeState {
 impl DepNodeState {
     pub fn color(self) -> Option<DepNodeColor> {
         match self {
-            DepNodeState::Invalid |
+            DepNodeState::Invalid => bug!(),
+            DepNodeState::UnknownEvalAlways |
             DepNodeState::Unknown |
             DepNodeState::WasUnknownWillBeGreen => None,
             DepNodeState::Red => Some(DepNodeColor::Red),
@@ -128,6 +133,7 @@ pub struct DepGraphArgs {
     pub prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
     pub file: File,
     pub state: IndexVec<DepNodeIndex, AtomicCell<DepNodeState>>,
+    pub invalidated: Vec<DepNodeIndex>,
 }
 
 impl DepGraph {
@@ -141,7 +147,7 @@ impl DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: args.prev_work_products,
                 dep_node_debug: Default::default(),
-                current: CurrentDepGraph::new(prev_graph.clone(), args.file),
+                current: CurrentDepGraph::new(prev_graph.clone(), args.file, args.invalidated),
                 emitted_diagnostics: Default::default(),
                 emitted_diagnostics_cond_var: Condvar::new(),
                 colors,
@@ -551,11 +557,28 @@ impl DepGraph {
     pub fn serialize(&self) -> IndexVec<DepNodeIndex, Fingerprint> {
         let data = self.data.as_ref().unwrap();
         // Invalidate dep nodes with unknown state as these cannot safely
-        // be marked green in the next session.
+        // be marked green in the next session. One of the dependencies of the
+        // unknown node may have changed in this session (and is currently marked red),
+        // but might be green again in the next session, which may cause the unknown node
+        // to incorrectly be marked green in the next session, even though one of its dependencies
+        // did actually change.
+
         let invalidate = data.colors.values.indices().filter_map(|prev_index| {
             match data.colors.get(prev_index) {
-                DepNodeState::Unknown => Some(prev_index),
-                _ => None,
+                // In order to this invalidation to be safe, none of the valid nodes can
+                // point to unknown nodes.
+                DepNodeState::Unknown |
+                DepNodeState::UnknownEvalAlways => Some(prev_index),
+
+                DepNodeState::WasUnknownWillBeGreen => bug!(),
+
+                // For green nodes, we either executed the query (which always uses valid nodes)
+                // or we marked it as green because all its dependencies are green and valid.
+                DepNodeState::Green |
+                // Red nodes were always exexuted.
+                DepNodeState::Red |
+                // We don't need to invalidate already invalid nodes
+                DepNodeState::Invalid => None,
             }
         }).collect();
         // FIXME: Can this deadlock?
@@ -606,8 +629,11 @@ impl DepGraph {
         let prev_index = data.previous.node_to_index_opt(dep_node)?;
 
         match data.colors.get(prev_index) {
+            DepNodeState::Invalid => bug!(),
             DepNodeState::Green => Some(prev_index),
-            DepNodeState::Invalid |
+            // We don't need to mark eval_always nodes as green here, since we'll just be executing
+            // the query after anyway.
+            DepNodeState::UnknownEvalAlways |
             DepNodeState::Red => None,
             DepNodeState::Unknown |
             DepNodeState::WasUnknownWillBeGreen => {
@@ -677,6 +703,7 @@ impl DepGraph {
                     false
                 }
                 DepNodeState::Invalid |
+                DepNodeState::UnknownEvalAlways |
                 DepNodeState::Unknown |
                 DepNodeState::WasUnknownWillBeGreen => {
                     bug!("try_force_previous_green() - Forcing the DepNode \
@@ -720,6 +747,7 @@ impl DepGraph {
             let dep_dep_node_color = data.colors.get(dep_dep_node_index);
 
             match dep_dep_node_color {
+                DepNodeState::Invalid => bug!(),
                 DepNodeState::Green => {
                     // This dependency has been marked as green before, we are
                     // still fine and can continue with checking the other
@@ -740,9 +768,8 @@ impl DepGraph {
                             data.previous.index_to_node(dep_dep_node_index));
                     return false
                 }
-                // Either the previous result is too old or
-                // this is a eval_always node. Try to force the node
-                DepNodeState::Invalid => {
+                // This is a eval_always node. Try to force the node
+                DepNodeState::UnknownEvalAlways => {
                     if !self.try_force_previous_green(tcx, data, dep_dep_node_index) {
                         return false;
                     }
@@ -885,8 +912,15 @@ impl DepGraph {
                         }
                     }
                     DepNodeState::WasUnknownWillBeGreen => bug!("no tasks should be in progress"),
+
+                    // There cannot be results stored for invalid indices.
                     DepNodeState::Invalid |
+
+                    // Unknown nodes are unused, so we don't want to promote these and we would
+                    // not to mark their colors in order to do so anyway.
+                    DepNodeState::UnknownEvalAlways |
                     DepNodeState::Unknown |
+
                     DepNodeState::Red => {
                         // We can skip red nodes because a node can only be marked
                         // as red if the query result was recomputed and thus is
@@ -1003,7 +1037,11 @@ pub(super) struct CurrentDepGraph {
 }
 
 impl CurrentDepGraph {
-    fn new(prev_graph: Lrc<PreviousDepGraph>, file: File) -> CurrentDepGraph {
+    fn new(
+        prev_graph: Lrc<PreviousDepGraph>,
+        file: File,
+        invalidated: Vec<DepNodeIndex>,
+    ) -> CurrentDepGraph {
         use std::time::{SystemTime, UNIX_EPOCH};
 
         let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -1040,7 +1078,7 @@ impl CurrentDepGraph {
             forbidden_edge,
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
-            serializer: Lock::new(Serializer::new(file, prev_graph)),
+            serializer: Lock::new(Serializer::new(file, prev_graph, invalidated)),
         }
     }
 

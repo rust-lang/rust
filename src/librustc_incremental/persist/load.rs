@@ -1,7 +1,7 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::dep_graph::{DepGraph, DepGraphArgs, PreviousDepGraph, SerializedDepGraph};
+use rustc::dep_graph::{DepGraph, DepGraphArgs, decode_dep_graph};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::OnDiskCache;
@@ -43,6 +43,7 @@ pub fn dep_graph_from_future(sess: &Session, future: DepGraphFuture) -> DepGraph
                 prev_work_products: Default::default(),
                 file,
                 state: Default::default(),
+                invalidated: Vec::new(),
             }
         })
     });
@@ -246,19 +247,23 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
             let mut decoder = Decoder::new(&bytes, pos);
             let mut results_decoder = Decoder::new(&results_bytes, results_pos);
-            let (dep_graph, state) = SerializedDepGraph::decode(
-                &mut decoder,
-                &mut results_decoder,
-            ).expect("Error reading cached dep-graph");
+            time_ext(time_passes, None, "decode prev dep-graph", || {
+                let (prev_graph, state, invalidated) = decode_dep_graph(
+                    time_passes,
+                    &mut decoder,
+                    &mut results_decoder,
+                ).expect("Error reading cached dep-graph");
 
-            LoadResult::Ok {
-                data: DepGraphArgs {
-                    prev_graph: PreviousDepGraph::new(dep_graph),
-                    prev_work_products,
-                    file,
-                    state,
+                LoadResult::Ok {
+                    data: DepGraphArgs {
+                        prev_graph,
+                        prev_work_products,
+                        file,
+                        state,
+                        invalidated,
+                    }
                 }
-            }
+            })
         })
     }))
 }
