@@ -172,10 +172,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                                     if let Ok(start) = cx.sess().source_map()
                                                         .span_to_snippet(eps[0].span)
                                                     {
+                                                        use ast::{LitKind::*, LitIntType};
+                                                        // We need to preserve the literal's suffix,
+                                                        // as it may determine typing information.
+                                                        let suffix = match lit.node {
+                                                            Int(_, LitIntType::Signed(s)) => {
+                                                                format!("{}", s)
+                                                            }
+                                                            Int(_, LitIntType::Unsigned(s)) => {
+                                                                format!("{}", s)
+                                                            }
+                                                            Int(_, LitIntType::Unsuffixed) => {
+                                                                "".to_owned()
+                                                            }
+                                                            _ => bug!(),
+                                                        };
                                                         let suggestion = format!(
-                                                            "{}..={}",
+                                                            "{}..={}{}",
                                                             start,
                                                             lit_val - 1,
+                                                            suffix,
                                                         );
                                                         err.span_suggestion(
                                                             parent_expr.span,
