@@ -83,10 +83,11 @@ fn list_targets() -> impl Iterator<Item=cargo_metadata::Target> {
         Path::new(&m).canonicalize().unwrap()
     );
 
-    let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(
-        manifest_path.as_ref().map(AsRef::as_ref),
-    )
-    {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    if let Some(ref manifest_path) = manifest_path {
+        cmd.manifest_path(manifest_path);
+    }
+    let mut metadata = if let Ok(metadata) = cmd.exec() {
         metadata
     } else {
         show_error(format!("Could not obtain Cargo metadata"));
