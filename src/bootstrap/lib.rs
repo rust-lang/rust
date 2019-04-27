@@ -1049,7 +1049,7 @@ impl Build {
     }
 
     fn llvm_tools_package_vers(&self) -> String {
-        self.package_vers(&self.rust_version())
+        self.package_vers(channel::CFG_RELEASE_NUM)
     }
 
     fn llvm_tools_vers(&self) -> String {
@@ -1057,7 +1057,7 @@ impl Build {
     }
 
     fn lldb_package_vers(&self) -> String {
-        self.package_vers(&self.rust_version())
+        self.package_vers(channel::CFG_RELEASE_NUM)
     }
 
     fn lldb_vers(&self) -> String {
