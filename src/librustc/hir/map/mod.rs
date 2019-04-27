@@ -190,13 +190,7 @@ impl<'hir> Map<'hir> {
     /// otherwise have had access to those contents, and hence needs a
     /// read recorded). If the function just returns a DefId or
     /// NodeId, no actual content was returned, so no read is needed.
-    pub fn read(&self, id: NodeId) {
-        let hir_id = self.node_to_hir_id(id);
-        self.read_by_hir_id(hir_id);
-    }
-
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn read_by_hir_id(&self, hir_id: HirId) {
+    pub fn read(&self, hir_id: HirId) {
         if let Some(entry) = self.map.get(&hir_id) {
             self.dep_graph.read_index(entry.dep_node);
         } else {
@@ -402,7 +396,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem {
-        self.read_by_hir_id(id.hir_id);
+        self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -410,7 +404,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem {
-        self.read_by_hir_id(id.hir_id);
+        self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -418,7 +412,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body {
-        self.read_by_hir_id(id.hir_id);
+        self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -551,7 +545,7 @@ impl<'hir> Map<'hir> {
     pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId)
     {
         let hir_id = self.as_local_hir_id(module).unwrap();
-        self.read_by_hir_id(hir_id);
+        self.read(hir_id);
         match self.find_entry(hir_id).unwrap().node {
             Node::Item(&Item {
                 span,
@@ -566,13 +560,15 @@ impl<'hir> Map<'hir> {
     pub fn visit_item_likes_in_module<V>(&self, module: DefId, visitor: &mut V)
         where V: ItemLikeVisitor<'hir>
     {
-        let node_id = self.as_local_node_id(module).unwrap();
+        let hir_id = self.as_local_hir_id(module).unwrap();
 
         // Read the module so we'll be re-executed if new items
         // appear immediately under in the module. If some new item appears
         // in some nested item in the module, we'll be re-executed due to reads
         // in the expect_* calls the loops below
-        self.read(node_id);
+        self.read(hir_id);
+
+        let node_id = self.hir_to_node_id[&hir_id];
 
         let module = &self.forest.krate.modules[&node_id];
 
@@ -650,7 +646,7 @@ impl<'hir> Map<'hir> {
             }
         });
         if result.is_some() {
-            self.read_by_hir_id(hir_id);
+            self.read(hir_id);
         }
         result
     }
@@ -884,7 +880,7 @@ impl<'hir> Map<'hir> {
             if let Entry {
                 node: Node::Item(Item { node: ItemKind::ForeignMod(ref nm), .. }), .. } = entry
             {
-                self.read_by_hir_id(hir_id); // reveals some of the content of a node
+                self.read(hir_id); // reveals some of the content of a node
                 return nm.abi;
             }
         }
@@ -992,7 +988,7 @@ impl<'hir> Map<'hir> {
 
     // FIXME(@ljedrz): replace the NodeId variant
     pub fn attrs_by_hir_id(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.read_by_hir_id(id); // reveals attributes on the node
+        self.read(id); // reveals attributes on the node
         let attrs = match self.find_entry(id).map(|entry| entry.node) {
             Some(Node::Local(l)) => Some(&l.attrs[..]),
             Some(Node::Item(i)) => Some(&i.attrs[..]),
@@ -1037,7 +1033,7 @@ impl<'hir> Map<'hir> {
 
     // FIXME(@ljedrz): replace the NodeId variant
     pub fn span_by_hir_id(&self, hir_id: HirId) -> Span {
-        self.read_by_hir_id(hir_id); // reveals span from node
+        self.read(hir_id); // reveals span from node
         match self.find_entry(hir_id).map(|entry| entry.node) {
             Some(Node::Item(item)) => item.span,
             Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
