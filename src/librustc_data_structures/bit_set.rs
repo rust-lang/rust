@@ -607,8 +607,8 @@ impl<T: Idx> GrowableBitSet<T> {
         GrowableBitSet { bit_set: BitSet::new_empty(0) }
     }
 
-    pub fn with_capacity(bits: usize) -> GrowableBitSet<T> {
-        GrowableBitSet { bit_set: BitSet::new_empty(bits) }
+    pub fn with_capacity(capacity: usize) -> GrowableBitSet<T> {
+        GrowableBitSet { bit_set: BitSet::new_empty(capacity) }
     }
 
     /// Returns `true` if the set has changed.
