@@ -122,7 +122,7 @@ pub struct Stability {
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: u32 },
+    Unstable { reason: Option<Symbol>, issue: Option<u32> },
     Stable { since: Symbol },
 }
 
@@ -306,7 +306,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
                         break
                     }
-
+    
                     let mut feature = None;
                     let mut reason = None;
                     let mut issue = None;
@@ -340,37 +340,34 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                             continue 'outer
                         }
                     }
-
-                    match (feature, reason, issue) {
-                        (Some(feature), reason, Some(issue)) => {
-                            stab = Some(Stability {
-                                level: Unstable {
-                                    reason,
-                                    issue: {
-                                        if let Ok(issue) = issue.as_str().parse() {
-                                            issue
+    
+                    if let Some(feature) = feature {
+                        stab = Some(Stability {
+                            level: Unstable {
+                                reason,
+                                issue: {
+                                    if let Some(issue_sym) = issue {
+                                        if let Ok(issue_num) = issue_sym.as_str().parse() {
+                                            Some(issue_num)
                                         } else {
                                             span_err!(diagnostic, attr.span, E0545,
                                                       "incorrect 'issue'");
                                             continue
                                         }
+                                    } else {
+                                        None
                                     }
-                                },
-                                feature,
-                                rustc_depr: None,
-                                const_stability: None,
-                                promotable: false,
-                                allow_const_fn_ptr: false,
-                            })
-                        }
-                        (None, _, _) => {
-                            handle_errors(sess, attr.span, AttrError::MissingFeature);
-                            continue
-                        }
-                        _ => {
-                            span_err!(diagnostic, attr.span, E0547, "missing 'issue'");
-                            continue
-                        }
+                                }
+                            },
+                            feature,
+                            rustc_depr: None,
+                            const_stability: None,
+                            promotable: false,
+                            allow_const_fn_ptr: false,
+                        })
+                    } else {
+                        handle_errors(sess, attr.span, AttrError::MissingFeature);
+                        continue
                     }
                 }
                 sym::stable => {
