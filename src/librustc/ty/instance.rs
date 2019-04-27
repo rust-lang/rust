@@ -459,7 +459,10 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs_trait(self_ty, SubstsRef::from_slice(tcx, &[sig.inputs()[0].into()]));
+    let substs = tcx.mk_substs_trait(
+        self_ty,
+        SubstsRef::from_slice(tcx, &[sig.inputs()[0].into()]),
+    );
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }

@@ -572,7 +572,9 @@ impl<'tcx> TypeckTables<'tcx> {
 
     pub fn node_substs(&self, id: hir::HirId) -> SubstsRef<'tcx> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| InternalSubsts::empty().into())
+        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(
+            || InternalSubsts::empty().into()
+        )
     }
 
     pub fn node_substs_opt(&self, id: hir::HirId) -> Option<SubstsRef<'tcx>> {
@@ -942,7 +944,7 @@ impl<'tcx> CommonTypes<'tcx> {
         };
 
         CommonTypes {
-            unit: mk(Tuple(List::empty())),
+            unit: mk(Tuple(SubstsRef::empty())),
             bool: mk(Bool),
             char: mk(Char),
             never: mk(Never),
@@ -2577,13 +2579,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
         let kinds: Vec<_> = ts.into_iter().map(|&t| Kind::from(t)).collect();
-        self.mk_ty(Tuple(self.intern_substs(&kinds)))
+        self.mk_ty(Tuple(self.intern_substs(&kinds).into()))
     }
 
     pub fn mk_tup<I: InternAs<[Ty<'tcx>], Ty<'tcx>>>(self, iter: I) -> I::Output {
         iter.intern_with(|ts| {
             let kinds: Vec<_> = ts.into_iter().map(|&t| Kind::from(t)).collect();
-            self.mk_ty(Tuple(self.intern_substs(&kinds)))
+            self.mk_ty(Tuple(self.intern_substs(&kinds).into()))
         })
     }
 

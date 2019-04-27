@@ -408,7 +408,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         substs,
                         item_def_id: _,
                     }) => {
-                        for k in substs.iter() {
+                        for k in substs {
                             match k.unpack() {
                                 UnpackedKind::Lifetime(lt) => bound_region(lt),
                                 UnpackedKind::Type(ty) => types.push(ty),

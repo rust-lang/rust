@@ -195,7 +195,7 @@ impl FlagComputation {
                 self.add_ty(ty);
             }
 
-            &ty::Tuple(ref substs) => {
+            &ty::Tuple(substs) => {
                 self.add_substs(substs);
             }
 
@@ -268,7 +268,7 @@ impl FlagComputation {
     }
 
     fn add_substs(&mut self, substs: SubstsRef<'_>) {
-        for kind in substs.iter() {
+        for kind in substs {
             match kind.unpack() {
                 UnpackedKind::Type(ty) => self.add_ty(ty),
                 UnpackedKind::Lifetime(lt) => self.add_region(lt),

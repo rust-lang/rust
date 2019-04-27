@@ -210,6 +210,14 @@ impl<'tcx> From<&'tcx InternalSubsts<'tcx>> for SubstsRef<'tcx> {
     }
 }
 
+impl<'tcx> IntoIterator for SubstsRef<'tcx> {
+    type Item = &'tcx Kind<'tcx>;
+    type IntoIter = <&'tcx InternalSubsts<'tcx> as IntoIterator>::IntoIter;
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.into_iter()
+    }
+}
+
 BraceStructLiftImpl! {
     impl<'tcx> Lift<'tcx> for SubstsRef<'tcx> {
         type Lifted = SubstsRef<'tcx>;

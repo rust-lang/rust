@@ -56,7 +56,8 @@ impl<'a, 'gcx, T> ToStableHashKey<StableHashingContext<'a>> for &'gcx ty::List<T
 
 impl<'a, 'tcx> ToStableHashKey<StableHashingContext<'a>> for ty::subst::SubstsRef<'tcx>
 {
-    type KeyType = <&'tcx ty::List<ty::subst::Kind<'tcx>> as ToStableHashKey<StableHashingContext<'a>>>::KeyType;
+    type KeyType = <&'tcx ty::List<ty::subst::Kind<'tcx>>
+        as ToStableHashKey<StableHashingContext<'a>>>::KeyType;
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &StableHashingContext<'a>) -> Self::KeyType {
