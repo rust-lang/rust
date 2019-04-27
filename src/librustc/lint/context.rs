@@ -25,7 +25,7 @@ use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
 use crate::rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use crate::session::{config, early_error, Session};
-use crate::ty::{self, print::Printer, subst::Kind, TyCtxt, Ty};
+use crate::ty::{self, print::Printer, subst::{Kind, SubstsRef}, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
@@ -822,7 +822,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 ) -> Result<Self::Path, Self::Error> {
                 if trait_ref.is_none() {
                     if let ty::Adt(def, substs) = self_ty.sty {
-                        return self.print_def_path(def.did, &substs);
+                        return self.print_def_path(def.did, substs);
                     }
                 }
 
@@ -880,7 +880,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
         }
 
         AbsolutePathPrinter { tcx: self.tcx }
-            .print_def_path(def_id, &[])
+            .print_def_path(def_id, SubstsRef::empty())
             .unwrap()
     }
 }

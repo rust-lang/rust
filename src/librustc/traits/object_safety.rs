@@ -15,7 +15,7 @@ use crate::hir::def_id::DefId;
 use crate::lint;
 use crate::traits::{self, Obligation, ObligationCause};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
-use crate::ty::subst::{Subst, InternalSubsts};
+use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use std::borrow::Cow;
 use std::iter::{self};
 use syntax::ast::{self, Name};
@@ -415,7 +415,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             }
         });
 
-        let result = receiver_ty.subst(self, &substs);
+        let result = receiver_ty.subst(self, substs);
         debug!("receiver_for_self_ty({:?}, {:?}, {:?}) = {:?}",
                receiver_ty, self_ty, method_def_id, result);
         result
@@ -555,7 +555,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             // Self: Unsize<U>
             let unsize_predicate = ty::TraitRef {
                 def_id: unsize_did,
-                substs: self.mk_substs_trait(self.mk_self_type(), &[unsized_self_ty.into()]),
+                substs: self.mk_substs_trait(
+                    self.mk_self_type(),
+                    SubstsRef::from_slice(self, &[unsized_self_ty.into()]),
+                ),
             }.to_predicate();
 
             // U: Trait<Arg1, ..., ArgN>
@@ -592,7 +595,10 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         let obligation = {
             let predicate = ty::TraitRef {
                 def_id: dispatch_from_dyn_did,
-                substs: self.mk_substs_trait(receiver_ty, &[unsized_receiver_ty.into()]),
+                substs: self.mk_substs_trait(
+                    receiver_ty,
+                    SubstsRef::from_slice(self, &[unsized_receiver_ty.into()]),
+                ),
             }.to_predicate();
 
             Obligation::new(

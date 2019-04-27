@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ) -> impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a {
         let state = tcx.generator_layout(def_id).fields.iter();
-        state.map(move |d| d.ty.subst(tcx, &self.substs))
+        state.map(move |d| d.ty.subst(tcx, self.substs))
     }
 
     /// This is the types of the fields of a generate which
@@ -567,7 +567,7 @@ impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
             ExistentialPredicate::AutoTrait(did) => {
                 let trait_ref = Binder(ty::TraitRef {
                     def_id: did,
-                    substs: tcx.mk_substs_trait(self_ty, &[]),
+                    substs: tcx.mk_substs_trait(self_ty, SubstsRef::empty()),
                 });
                 trait_ref.to_predicate()
             }
@@ -786,7 +786,7 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
 
         ty::TraitRef {
             def_id: self.def_id,
-            substs: tcx.mk_substs_trait(self_ty, &self.substs)
+            substs: tcx.mk_substs_trait(self_ty, self.substs)
         }
     }
 }
@@ -1377,7 +1377,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 item_def_id: self.item_def_id,
-                substs: tcx.mk_substs_trait(self_ty, &self.substs),
+                substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             ty: self.ty,
         }
@@ -1964,7 +1964,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn fn_sig(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PolyFnSig<'tcx> {
         match self.sty {
             FnDef(def_id, substs) => {
-                tcx.fn_sig(def_id).subst(tcx, &substs)
+                tcx.fn_sig(def_id).subst(tcx, substs)
             }
             FnPtr(f) => f,
             Error => {  // ignore errors (#54954)

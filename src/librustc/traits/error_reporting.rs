@@ -28,7 +28,7 @@ use crate::ty::GenericParamDefKind;
 use crate::ty::error::ExpectedFound;
 use crate::ty::fast_reject;
 use crate::ty::fold::TypeFolder;
-use crate::ty::subst::Subst;
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::SubtypePredicate;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
@@ -305,7 +305,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let impl_trait_ref = tcx
                     .impl_trait_ref(def_id)
                     .unwrap()
-                    .subst(tcx, &impl_substs);
+                    .subst(tcx, impl_substs);
 
                 let impl_self_ty = impl_trait_ref.self_ty();
 
@@ -716,7 +716,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             let predicate = trait_predicate.map_bound(|mut trait_pred| {
                                 trait_pred.trait_ref.substs = self.tcx.mk_substs_trait(
                                     self.tcx.mk_unit(),
-                                    &trait_pred.trait_ref.substs[1..],
+                                    SubstsRef::from_slice(self.tcx, &trait_pred.trait_ref.substs[1..]),
                                 );
                                 trait_pred
                             });
@@ -972,7 +972,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if let ty::Ref(_, t_type, _) = trait_type.sty {
                     trait_type = t_type;
 
-                    let substs = self.tcx.mk_substs_trait(trait_type, &[]);
+                    let substs = self.tcx.mk_substs_trait(trait_type, SubstsRef::empty());
                     let new_trait_ref = ty::TraitRef::new(trait_ref.def_id, substs);
                     let new_obligation = Obligation::new(ObligationCause::dummy(),
                                                          obligation.param_env,

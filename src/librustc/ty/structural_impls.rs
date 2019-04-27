@@ -7,6 +7,7 @@ use crate::hir::def::Namespace;
 use crate::mir::ProjectionKind;
 use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt, ConstVid};
+use crate::ty::subst::SubstsRef;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -36,7 +37,7 @@ impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             FmtPrinter::new(tcx, f, Namespace::TypeNS)
-                .print_def_path(self.def_id, &[])?;
+                .print_def_path(self.def_id, SubstsRef::empty())?;
             Ok(())
         })
     }
@@ -46,7 +47,7 @@ impl fmt::Debug for ty::AdtDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
             FmtPrinter::new(tcx, f, Namespace::TypeNS)
-                .print_def_path(self.did, &[])?;
+                .print_def_path(self.did, SubstsRef::empty())?;
             Ok(())
         })
     }

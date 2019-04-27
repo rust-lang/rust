@@ -654,7 +654,7 @@ pub fn type_known_to_meet_bound_modulo_regions<'a, 'gcx, 'tcx>(
 
     let trait_ref = ty::TraitRef {
         def_id,
-        substs: infcx.tcx.mk_substs_trait(ty, &[]),
+        substs: infcx.tcx.mk_substs_trait(ty, SubstsRef::empty()),
     };
     let obligation = Obligation {
         param_env,

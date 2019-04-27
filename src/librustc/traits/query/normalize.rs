@@ -109,7 +109,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         }
 
                         let generic_ty = self.tcx().type_of(def_id);
-                        let concrete_ty = generic_ty.subst(self.tcx(), &substs);
+                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
                             bug!(
@@ -203,7 +203,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
                             let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = tcx.mk_const(evaluated);
-                            let evaluated = evaluated.subst(tcx, &substs);
+                            let evaluated = evaluated.subst(tcx, substs);
                             return evaluated;
                         }
                     }

@@ -112,7 +112,7 @@ impl<'a, 'gcx, 'tcx> OverloadedDeref<'tcx> {
         };
         let method_def_id = tcx.associated_items(trait_def_id.unwrap())
             .find(|m| m.kind == ty::AssociatedKind::Method).unwrap().def_id;
-        (method_def_id, tcx.mk_substs_trait(source, &[]))
+        (method_def_id, tcx.mk_substs_trait(source, SubstsRef::empty()))
     }
 }
 

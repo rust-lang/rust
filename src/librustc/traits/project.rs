@@ -358,7 +358,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                         }
 
                         let generic_ty = self.tcx().type_of(def_id);
-                        let concrete_ty = generic_ty.subst(self.tcx(), &substs);
+                        let concrete_ty = generic_ty.subst(self.tcx(), substs);
                         self.depth += 1;
                         let folded_ty = self.fold_ty(concrete_ty);
                         self.depth -= 1;
@@ -412,7 +412,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
                             let substs = tcx.lift_to_global(&substs).unwrap();
                             let evaluated = tcx.mk_const(evaluated);
-                            let evaluated = evaluated.subst(tcx, &substs);
+                            let evaluated = evaluated.subst(tcx, substs);
                             return evaluated;
                         }
                     }
@@ -1498,7 +1498,7 @@ fn confirm_impl_candidate<'cx, 'gcx, 'tcx>(
         tcx.type_of(assoc_ty.item.def_id)
     };
     Progress {
-        ty: ty.subst(tcx, &substs),
+        ty: ty.subst(tcx, substs),
         obligations: nested,
     }
 }

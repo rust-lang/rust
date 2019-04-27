@@ -2516,7 +2516,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         ty.into()
                     } else {
                         assert!(has_default);
-                        self.type_of(param.def_id).subst(self, substs).into()
+                        self.type_of(param.def_id).subst(
+                            self,
+                            SubstsRef::from_slice(self, substs),
+                        ).into()
                     }
                 }
             }
@@ -2826,13 +2829,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_substs<I: InternAs<[Kind<'tcx>],
-                     &'tcx List<Kind<'tcx>>>>(self, iter: I) -> I::Output {
+                        &'tcx List<Kind<'tcx>>>>(self, iter: I) -> I::Output {
         iter.intern_with(|xs| self.intern_substs(xs))
     }
 
     pub fn mk_substs_trait(self,
                      self_ty: Ty<'tcx>,
-                     rest: &[Kind<'tcx>])
+                     rest: SubstsRef<'tcx>)
                     -> SubstsRef<'tcx>
     {
         self.mk_substs(iter::once(self_ty.into()).chain(rest.iter().cloned())).into()

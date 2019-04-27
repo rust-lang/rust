@@ -3,7 +3,7 @@ use crate::hir::def_id::DefId;
 use crate::traits::specialize::specialization_graph::NodeItem;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use crate::ty::outlives::Component;
-use crate::ty::subst::{Kind, Subst, SubstsRef};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::util::nodemap::FxHashSet;
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
@@ -361,7 +361,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a,
     let impl_trait_ref =
         selcx.tcx().impl_trait_ref(impl_def_id).unwrap();
     let impl_trait_ref =
-        impl_trait_ref.subst(selcx.tcx(), &impl_substs);
+        impl_trait_ref.subst(selcx.tcx(), impl_substs);
     let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
         super::normalize(selcx, param_env, ObligationCause::dummy(), &impl_trait_ref);
 
@@ -421,7 +421,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                    trait_def_id: DefId,
                                    recursion_depth: usize,
                                    self_ty: Ty<'tcx>,
-                                   params: &[Kind<'tcx>])
+                                   params: SubstsRef<'tcx>)
         -> PredicateObligation<'tcx>
     {
         let trait_ref = ty::TraitRef {
@@ -502,7 +502,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
-            substs: self.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
+            substs: self.mk_substs_trait(
+                self_ty,
+                SubstsRef::from_slice(self, &[arguments_tuple.into()]),
+            ),
         };
         ty::Binder::bind((trait_ref, sig.skip_binder().output()))
     }
@@ -515,7 +518,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,
-            substs: self.mk_substs_trait(self_ty, &[]),
+            substs: self.mk_substs_trait(self_ty, SubstsRef::empty()),
         };
         ty::Binder::bind((trait_ref, sig.skip_binder().yield_ty, sig.skip_binder().return_ty))
     }

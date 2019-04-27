@@ -248,7 +248,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         debug!("projection_bounds(projection_ty={:?})", projection_ty);
         let tcx = self.tcx;
         self.region_bounds_declared_on_associated_item(projection_ty.item_def_id)
-            .map(move |r| r.subst(tcx, &projection_ty.substs))
+            .map(move |r| r.subst(tcx, projection_ty.substs))
     }
 
     /// Given the `DefId` of an associated item, returns any region

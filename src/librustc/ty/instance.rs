@@ -177,7 +177,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
         ty::tls::with(|tcx| {
             let substs = tcx.lift(&self.substs).expect("could not lift for printing");
             FmtPrinter::new(tcx, &mut *f, Namespace::ValueNS)
-                .print_def_path(self.def_id(), &substs)?;
+                .print_def_path(self.def_id(), substs)?;
             Ok(())
         })?;
 
@@ -459,7 +459,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     let sig = substs.closure_sig(closure_did, tcx);
     let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
     assert_eq!(sig.inputs().len(), 1);
-    let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
+    let substs = tcx.mk_substs_trait(self_ty, SubstsRef::from_slice(tcx, &[sig.inputs()[0].into()]));
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }

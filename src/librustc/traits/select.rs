@@ -2439,7 +2439,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Where(ty::Binder::bind(
                     sized_crit
                         .iter()
-                        .map(|ty| ty.subst(self.tcx(), &substs))
+                        .map(|ty| ty.subst(self.tcx(), substs))
                         .collect(),
                 ))
             }
@@ -2621,7 +2621,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                vec![self.tcx().type_of(def_id).subst(self.tcx(), &substs)]
+                vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)]
             }
         }
     }
@@ -2674,7 +2674,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         trait_def_id,
                         recursion_depth,
                         normalized_ty,
-                        &[],
+                        SubstsRef::empty(),
                     );
                     obligations.push(skol_obligation);
                     obligations
@@ -3389,7 +3389,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // We can only make objects from sized types.
                 let tr = ty::TraitRef {
                     def_id: tcx.require_lang_item(lang_items::SizedTraitLangItem),
-                    substs: tcx.mk_substs_trait(source, &[]),
+                    substs: tcx.mk_substs_trait(source, SubstsRef::empty()),
                 };
                 nested.push(predicate_to_obligation(tr.to_predicate()));
 
@@ -3447,14 +3447,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 });
                 let substs = tcx.mk_substs(params);
                 for &ty in fields.split_last().unwrap().1 {
-                    if ty.subst(tcx, substs).references_error() {
+                    if ty.subst(tcx, SubstsRef::from_slice(tcx, &substs)).references_error() {
                         return Err(Unimplemented);
                     }
                 }
 
                 // Extract Field<T> and Field<U> from Struct<T> and Struct<U>.
-                let inner_source = field.subst(tcx, &substs_a);
-                let inner_target = field.subst(tcx, &substs_b);
+                let inner_source = field.subst(tcx, substs_a);
+                let inner_target = field.subst(tcx, substs_b);
 
                 // Check that the source struct with the target's
                 // unsized parameters is equal to the target.
@@ -3479,7 +3479,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
                     inner_source,
-                    &[inner_target.into()],
+                    SubstsRef::from_slice(tcx, &[inner_target.into()]),
                 ));
             }
 
@@ -3513,7 +3513,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
                     a_last.expect_ty(),
-                    &[b_last.into()],
+                    SubstsRef::from_slice(tcx, &[b_last.into()]),
                 ));
             }
 
@@ -3573,7 +3573,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let impl_substs = self.infcx
             .fresh_substs_for_item(obligation.cause.span, impl_def_id);
 
-        let impl_trait_ref = impl_trait_ref.subst(self.tcx(), &impl_substs);
+        let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
 
         let Normalized {
             value: impl_trait_ref,
@@ -3791,7 +3791,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     param_env,
                     cause.clone(),
                     recursion_depth,
-                    &predicate.subst(tcx, &substs),
+                    &predicate.subst(tcx, substs),
                 );
                 predicate.obligations.into_iter().chain(Some(Obligation {
                     cause: cause.clone(),

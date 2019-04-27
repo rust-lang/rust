@@ -1031,7 +1031,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     pub fn instantiate_own(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: SubstsRef<'tcx>)
                            -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
-            predicates: self.predicates.iter().map(|(p, _)| p.subst(tcx, &substs)).collect(),
+            predicates: self.predicates.iter().map(|(p, _)| p.subst(tcx, substs)).collect(),
         }
     }
 
@@ -1042,7 +1042,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
             tcx.predicates_of(def_id).instantiate_into(tcx, instantiated, substs);
         }
         instantiated.predicates.extend(
-            self.predicates.iter().map(|(p, _)| p.subst(tcx, &substs)),
+            self.predicates.iter().map(|(p, _)| p.subst(tcx, substs)),
         );
     }
 
@@ -1199,7 +1199,7 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         // from the substitution and the value being substituted into, and
         // this trick achieves that).
 
-        let substs = &trait_ref.skip_binder().substs;
+        let substs = trait_ref.skip_binder().substs;
         match *self {
             Predicate::Trait(ref binder) =>
                 Predicate::Trait(binder.map_bound(|data| data.subst(tcx, substs))),
@@ -2511,7 +2511,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
                        ty, adt_tys);
                 adt_tys.iter()
-                       .map(|ty| ty.subst(tcx, &substs))
+                       .map(|ty| ty.subst(tcx, substs))
                        .flat_map(|ty| self.sized_constraint_for_ty(tcx, ty))
                        .collect()
             }
@@ -2535,7 +2535,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 };
                 let sized_predicate = Binder::dummy(TraitRef {
                     def_id: sized_trait,
-                    substs: tcx.mk_substs_trait(ty, &[])
+                    substs: tcx.mk_substs_trait(ty, SubstsRef::empty())
                 }).to_predicate();
                 let predicates = &tcx.predicates_of(self.did).predicates;
                 if predicates.iter().any(|(p, _)| *p == sized_predicate) {
@@ -2559,7 +2559,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
 impl<'a, 'gcx, 'tcx> FieldDef {
     pub fn ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, subst: SubstsRef<'tcx>) -> Ty<'tcx> {
-        tcx.type_of(self.did).subst(tcx, &subst)
+        tcx.type_of(self.did).subst(tcx, subst)
     }
 }
 

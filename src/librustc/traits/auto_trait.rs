@@ -89,7 +89,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
         let trait_ref = ty::TraitRef {
             def_id: trait_did,
-            substs: tcx.mk_substs_trait(ty, &[]),
+            substs: tcx.mk_substs_trait(ty, SubstsRef::empty()),
         };
 
         let trait_pred = ty::Binder::bind(trait_ref);
@@ -306,7 +306,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         predicates.push_back(ty::Binder::bind(ty::TraitPredicate {
             trait_ref: ty::TraitRef {
                 def_id: trait_did,
-                substs: infcx.tcx.mk_substs_trait(ty, &[]),
+                substs: infcx.tcx.mk_substs_trait(ty, SubstsRef::empty()),
             },
         }));
 

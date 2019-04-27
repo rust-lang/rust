@@ -222,7 +222,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
             let cause = self.cause(cause);
             let trait_ref = ty::TraitRef {
                 def_id: self.infcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
-                substs: self.infcx.tcx.mk_substs_trait(subty, &[]),
+                substs: self.infcx.tcx.mk_substs_trait(subty, SubstsRef::empty()),
             };
             self.out.push(traits::Obligation::new(cause, self.param_env, trait_ref.to_predicate()));
         }

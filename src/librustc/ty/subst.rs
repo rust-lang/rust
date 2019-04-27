@@ -180,9 +180,28 @@ impl<'tcx> Decodable for Kind<'tcx> {
 /// A substitution mapping generic parameters to new values.
 pub type InternalSubsts<'tcx> = List<Kind<'tcx>>;
 
+impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<Kind<'tcx>> {}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable, Hash)]
 pub struct SubstsRef<'tcx> {
     pub inner: &'tcx InternalSubsts<'tcx>,
+}
+
+impl<'a, 'gcx, 'tcx> SubstsRef<'tcx> {
+    pub fn empty() -> Self {
+        Self {
+            inner: InternalSubsts::empty()
+        }
+    }
+
+    pub fn from_slice(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        substs: &[Kind<'tcx>],
+    ) -> Self {
+        Self {
+            inner: tcx.mk_substs(substs.iter())
+        }
+    }
 }
 
 impl<'tcx> From<&'tcx InternalSubsts<'tcx>> for SubstsRef<'tcx> {
@@ -192,7 +211,7 @@ impl<'tcx> From<&'tcx InternalSubsts<'tcx>> for SubstsRef<'tcx> {
 }
 
 BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for SubstsRef<'tcx> {
+    impl<'tcx> Lift<'tcx> for SubstsRef<'tcx> {
         type Lifted = SubstsRef<'tcx>;
         inner,
     }
@@ -440,28 +459,30 @@ impl<'tcx> serialize::UseSpecializedDecodable for SubstsRef<'tcx> {}
 
 pub trait Subst<'tcx>: Sized {
     fn subst<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                       substs: &[Kind<'tcx>]) -> Self {
+                       substs: SubstsRef<'tcx>) -> Self {
         self.subst_spanned(tcx, substs, None)
     }
 
     fn subst_spanned<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                               substs: &[Kind<'tcx>],
+                               substs: SubstsRef<'tcx>,
                                span: Option<Span>)
                                -> Self;
 }
 
 impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
     fn subst_spanned<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                               substs: &[Kind<'tcx>],
+                               substs: SubstsRef<'tcx>,
                                span: Option<Span>)
                                -> T
     {
-        let mut folder = SubstFolder { tcx,
-                                       substs,
-                                       span,
-                                       root_ty: None,
-                                       ty_stack_depth: 0,
-                                       binders_passed: 0 };
+        let mut folder = SubstFolder {
+            tcx,
+            substs,
+            span,
+            root_ty: None,
+            ty_stack_depth: 0,
+            binders_passed: 0,
+        };
         (*self).fold_with(&mut folder)
     }
 }
@@ -471,7 +492,7 @@ impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
 
 struct SubstFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    substs: &'a [Kind<'tcx>],
+    substs: SubstsRef<'tcx>,
 
     /// The location for which the substitution is performed, if available.
     span: Option<Span>,

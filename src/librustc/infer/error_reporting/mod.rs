@@ -535,7 +535,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if !(did1.is_local() || did2.is_local()) && did1.krate != did2.krate {
                 let abs_path = |def_id| {
                     AbsolutePathPrinter { tcx: self.tcx }
-                        .print_def_path(def_id, &[])
+                        .print_def_path(def_id, SubstsRef::empty())
                 };
 
                 // We compare strings because DefPath can be different
@@ -824,7 +824,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if !has_default {
                     break;
                 }
-                if self.tcx.type_of(def_id).subst(self.tcx, &substs) != actual {
+                if self.tcx.type_of(def_id).subst(self.tcx, substs) != actual {
                     break;
                 }
                 num_supplied_defaults += 1;

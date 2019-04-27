@@ -1,5 +1,6 @@
 use crate::infer::InferCtxt;
 use crate::ty::{self, Ty, TyCtxt, ToPredicate};
+use crate::ty::subst::SubstsRef;
 use crate::traits::Obligation;
 use crate::hir::def_id::DefId;
 
@@ -28,7 +29,7 @@ pub trait TraitEngine<'tcx>: 'tcx {
     ) {
         let trait_ref = ty::TraitRef {
             def_id,
-            substs: infcx.tcx.mk_substs_trait(ty, &[]),
+            substs: infcx.tcx.mk_substs_trait(ty, SubstsRef::empty()),
         };
         self.register_predicate_obligation(infcx, Obligation {
             cause,
