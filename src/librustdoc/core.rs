@@ -466,9 +466,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             };
 
             let send_trait = if crate_name == Some("core".to_string()) {
-                clean::path_to_def_local(&tcx, &["marker", "Send"])
+                clean::path_to_def_local(tcx, &["marker", "Send"])
             } else {
-                clean::path_to_def(&tcx, &["core", "marker", "Send"])
+                clean::path_to_def(tcx, &["core", "marker", "Send"])
             };
 
             let mut renderinfo = RenderInfo::default();
