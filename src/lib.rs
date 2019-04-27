@@ -340,13 +340,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 } else {
                     None
                 },
-                metadata_module: CompiledModule {
+                metadata_module: Some(CompiledModule {
                     name: "dummy_metadata".to_string(),
                     kind: ModuleKind::Metadata,
                     object: None,
                     bytecode: None,
                     bytecode_compressed: None,
-                },
+                }),
                 crate_hash: tcx.crate_hash(LOCAL_CRATE),
                 metadata,
                 windows_subsystem: None, // Windows is not yet supported
