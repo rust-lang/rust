@@ -123,6 +123,16 @@ impl<'tcx> Kind<'tcx> {
             }
         }
     }
+
+    /// Unpack the `Kind` as a type when it is known certainly to be a type.
+    /// This is true in cases where `Substs` is used in places where the kinds are known
+    /// to be limited (e.g. in tuples, where the only parameters are type parameters).
+    pub fn expect_ty(self) -> Ty<'tcx> {
+        match self.unpack() {
+            UnpackedKind::Type(ty) => ty,
+            _ => bug!("expected a type, but found another kind"),
+        }
+    }
 }
 
 impl<'a, 'tcx> Lift<'tcx> for Kind<'a> {
@@ -174,8 +184,7 @@ pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;
 
 impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
     /// Creates a `InternalSubsts` that maps each generic parameter to itself.
-    pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
-                             -> SubstsRef<'tcx> {
+    pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
         Self::for_item(tcx, def_id, |param, _| {
             tcx.mk_param_from_def(param)
         })

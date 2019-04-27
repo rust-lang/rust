@@ -2213,7 +2213,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // Closure arguments are wrapped in a tuple, so we need to get the first
                 // from that.
                 if let ty::Tuple(elems) = argument_ty.sty {
-                    let argument_ty = elems.first()?;
+                    let argument_ty = elems.first()?.expect_ty();
                     if let ty::Ref(_, _, _) = argument_ty.sty {
                         return Some(AnnotatedBorrowFnSignature::Closure {
                             argument_ty,

@@ -626,8 +626,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     StructKind::MaybeUnsized
                 };
 
-                univariant(&tys.iter().map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
-                           &ReprOptions::default(), kind)?
+                univariant(&tys.iter().map(|k| {
+                    self.layout_of(k.expect_ty())
+                }).collect::<Result<Vec<_>, _>>()?, &ReprOptions::default(), kind)?
             }
 
             // SIMD vector types.
@@ -1723,7 +1724,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 substs.field_tys(def_id, tcx).nth(i).unwrap()
             }
 
-            ty::Tuple(tys) => tys[i],
+            ty::Tuple(tys) => tys[i].expect_ty(),
 
             // SIMD vector types.
             ty::Adt(def, ..) if def.repr.simd() => {

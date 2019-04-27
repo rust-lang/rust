@@ -1359,7 +1359,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 {
     debug!("constructor_sub_pattern_tys({:#?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::Tuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
+        ty::Tuple(ref fs) => fs.into_iter().map(|t| t.expect_ty()).collect(),
         ty::Slice(ty) | ty::Array(ty, _) => match *ctor {
             Slice(length) => (0..length).map(|_| ty).collect(),
             ConstantValue(_) => vec![],
