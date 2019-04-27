@@ -34,5 +34,11 @@ error: range endpoint is out of range for `u8`
 LL |     let _range_f = 0..256u8;
    |                    ^^^^^^^^ help: use an inclusive range instead: `0..=255u8`
 
-error: aborting due to 5 previous errors
+error: range endpoint is out of range for `i8`
+  --> $DIR/lint-range-endpoint-overflow.rs:10:20
+   |
+LL |     let _range_g = 0..128i8;
+   |                    ^^^^^^^^ help: use an inclusive range instead: `0..=127i8`
+
+error: aborting due to 6 previous errors
 

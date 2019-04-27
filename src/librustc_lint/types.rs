@@ -58,6 +58,61 @@ impl TypeLimits {
     }
 }
 
+/// Attempts to special-case the overflowing literal lint when it occurs as a range endpoint.
+/// Returns `true` iff the lint was overridden.
+fn lint_overflowing_range_endpoint<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    lit: &ast::Lit,
+    lit_val: u128,
+    max: u128,
+    expr: &'tcx hir::Expr,
+    parent_expr: &'tcx hir::Expr,
+    ty: impl std::fmt::Debug,
+) -> bool {
+    // We only want to handle exclusive (`..`) ranges,
+    // which are represented as `ExprKind::Struct`.
+    if let ExprKind::Struct(_, eps, _) = &parent_expr.node {
+        debug_assert_eq!(eps.len(), 2);
+        // We can suggest using an inclusive range
+        // (`..=`) instead only if it is the `end` that is
+        // overflowing and only by 1.
+        if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
+            let mut err = cx.struct_span_lint(
+                OVERFLOWING_LITERALS,
+                parent_expr.span,
+                &format!("range endpoint is out of range for `{:?}`", ty),
+            );
+            if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                use ast::{LitKind, LitIntType};
+                // We need to preserve the literal's suffix,
+                // as it may determine typing information.
+                let suffix = match lit.node {
+                    LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s),
+                    LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s),
+                    LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
+                    _ => bug!(),
+                };
+                let suggestion = format!(
+                    "{}..={}{}",
+                    start,
+                    lit_val - 1,
+                    suffix,
+                );
+                err.span_suggestion(
+                    parent_expr.span,
+                    &"use an inclusive range instead",
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         match e.node {
@@ -103,6 +158,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                         );
                                         return;
                                     }
+
+                                    let par_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
+                                    if let Node::Expr(par_e) = cx.tcx.hir().get_by_hir_id(par_id) {
+                                        if let hir::ExprKind::Struct(..) = par_e.node {
+                                            if is_range_literal(cx.sess(), par_e)
+                                                && lint_overflowing_range_endpoint(
+                                                    cx,
+                                                    lit,
+                                                    v,
+                                                    max,
+                                                    e,
+                                                    par_e,
+                                                    t,
+                                                )
+                                            {
+                                                    // The overflowing literal lint was overridden.
+                                                    return;
+                                            }
+                                        }
+                                    }
+
                                     cx.span_lint(
                                         OVERFLOWING_LITERALS,
                                         e.span,
@@ -150,61 +226,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                     }
                                     hir::ExprKind::Struct(..)
                                         if is_range_literal(cx.sess(), parent_expr) => {
-                                            // We only want to handle exclusive (`..`) ranges,
-                                            // which are represented as `ExprKind::Struct`.
-                                            if let ExprKind::Struct(_, eps, _) = &parent_expr.node {
-                                                debug_assert_eq!(eps.len(), 2);
-                                                // We can suggest using an inclusive range
-                                                // (`..=`) instead only if it is the `end` that is
-                                                // overflowing and only by 1.
-                                                if eps[1].expr.hir_id == e.hir_id
-                                                    && lit_val - 1 == max
-                                                {
-                                                    let mut err = cx.struct_span_lint(
-                                                        OVERFLOWING_LITERALS,
-                                                        parent_expr.span,
-                                                        &format!(
-                                                            "range endpoint is out of range \
-                                                             for `{:?}`",
-                                                            t,
-                                                        ),
-                                                    );
-                                                    if let Ok(start) = cx.sess().source_map()
-                                                        .span_to_snippet(eps[0].span)
-                                                    {
-                                                        use ast::{LitKind::*, LitIntType};
-                                                        // We need to preserve the literal's suffix,
-                                                        // as it may determine typing information.
-                                                        let suffix = match lit.node {
-                                                            Int(_, LitIntType::Signed(s)) => {
-                                                                format!("{}", s)
-                                                            }
-                                                            Int(_, LitIntType::Unsigned(s)) => {
-                                                                format!("{}", s)
-                                                            }
-                                                            Int(_, LitIntType::Unsuffixed) => {
-                                                                "".to_owned()
-                                                            }
-                                                            _ => bug!(),
-                                                        };
-                                                        let suggestion = format!(
-                                                            "{}..={}{}",
-                                                            start,
-                                                            lit_val - 1,
-                                                            suffix,
-                                                        );
-                                                        err.span_suggestion(
-                                                            parent_expr.span,
-                                                            &"use an inclusive range instead",
-                                                            suggestion,
-                                                            Applicability::MachineApplicable,
-                                                        );
-                                                        err.emit();
-                                                        return;
-                                                    }
-                                                }
+                                            if lint_overflowing_range_endpoint(
+                                                cx,
+                                                lit,
+                                                lit_val,
+                                                max,
+                                                e,
+                                                parent_expr,
+                                                t,
+                                            ) {
+                                                // The overflowing literal lint was overridden.
+                                                return;
                                             }
-                                    }
+                                        }
                                     _ => {}
                                 }
                             }
