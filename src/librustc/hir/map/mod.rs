@@ -208,15 +208,10 @@ impl<'hir> Map<'hir> {
         self.definitions.def_key(def_id.index)
     }
 
-    pub fn def_path_from_id(&self, id: NodeId) -> Option<DefPath> {
-        self.opt_local_def_id(id).map(|def_id| {
+    pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
+        self.opt_local_def_id_from_hir_id(id).map(|def_id| {
             self.def_path(def_id)
         })
-    }
-
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn def_path_from_hir_id(&self, id: HirId) -> DefPath {
-        self.def_path(self.local_def_id_from_hir_id(id))
     }
 
     pub fn def_path(&self, def_id: DefId) -> DefPath {
@@ -1075,7 +1070,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn node_to_string(&self, id: NodeId) -> String {
-        node_id_to_string(self, id, true)
+        hir_id_to_string(self, self.node_to_hir_id(id), true)
     }
 
     // FIXME(@ljedrz): replace the NodeId variant
@@ -1084,7 +1079,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn node_to_user_string(&self, id: NodeId) -> String {
-        node_id_to_string(self, id, false)
+        hir_id_to_string(self, self.node_to_hir_id(id), false)
     }
 
     // FIXME(@ljedrz): replace the NodeId variant
@@ -1303,8 +1298,8 @@ impl<'a> print::State<'a> {
     }
 }
 
-fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
-    let id_str = format!(" (id={})", id);
+fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
+    let id_str = format!(" (hir_id={})", id);
     let id_str = if include_id { &id_str[..] } else { "" };
 
     let path_str = || {
@@ -1312,9 +1307,9 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         // the user-friendly path, otherwise fall back to stringifying DefPath.
         crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
-                let def_id = map.local_def_id(id);
+                let def_id = map.local_def_id_from_hir_id(id);
                 tcx.def_path_str(def_id)
-            } else if let Some(path) = map.def_path_from_id(id) {
+            } else if let Some(path) = map.def_path_from_hir_id(id) {
                 path.data.into_iter().map(|elem| {
                     elem.data.to_string()
                 }).collect::<Vec<_>>().join("::")
@@ -1324,7 +1319,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         })
     };
 
-    match map.find(id) {
+    match map.find_by_hir_id(id) {
         Some(Node::Item(item)) => {
             let item_str = match item.node {
                 ItemKind::ExternCrate(..) => "extern crate",
@@ -1385,40 +1380,40 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
                     path_str(), id_str)
         }
         Some(Node::AnonConst(_)) => {
-            format!("const {}{}", map.node_to_pretty_string(id), id_str)
+            format!("const {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Expr(_)) => {
-            format!("expr {}{}", map.node_to_pretty_string(id), id_str)
+            format!("expr {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Stmt(_)) => {
-            format!("stmt {}{}", map.node_to_pretty_string(id), id_str)
+            format!("stmt {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::PathSegment(_)) => {
-            format!("path segment {}{}", map.node_to_pretty_string(id), id_str)
+            format!("path segment {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Ty(_)) => {
-            format!("type {}{}", map.node_to_pretty_string(id), id_str)
+            format!("type {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::TraitRef(_)) => {
-            format!("trait_ref {}{}", map.node_to_pretty_string(id), id_str)
+            format!("trait_ref {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Binding(_)) => {
-            format!("local {}{}", map.node_to_pretty_string(id), id_str)
+            format!("local {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Pat(_)) => {
-            format!("pat {}{}", map.node_to_pretty_string(id), id_str)
+            format!("pat {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Block(_)) => {
-            format!("block {}{}", map.node_to_pretty_string(id), id_str)
+            format!("block {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Local(_)) => {
-            format!("local {}{}", map.node_to_pretty_string(id), id_str)
+            format!("local {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Ctor(..)) => {
             format!("ctor {}{}", path_str(), id_str)
         }
         Some(Node::Lifetime(_)) => {
-            format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)
+            format!("lifetime {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::GenericParam(ref param)) => {
             format!("generic_param {:?}{}", param, id_str)
@@ -1432,12 +1427,6 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         Some(Node::Crate) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
-}
-
-// FIXME(@ljedrz): replace the NodeId variant
-fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
-    let node_id = map.hir_to_node_id(id);
-    node_id_to_string(map, node_id, include_id)
 }
 
 pub fn def_kind(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefKind> {
