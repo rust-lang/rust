@@ -5400,3 +5400,65 @@ fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
     body_ids.sort_by_key(|b| bodies[b].value.span);
     body_ids
 }
+
+/// This function checks if the specified expression is a built-in range literal.
+/// (See: `LoweringContext::lower_expr()`).
+pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
+    use hir::{Path, QPath, ExprKind, TyKind};
+
+    // We support `::std::ops::Range` and `::core::ops::Range` prefixes.
+    let is_range_path = |path: &Path| {
+        let mut segs = path.segments.iter().map(|seg| seg.ident.as_str());
+
+        if let (Some(root), Some(std_core), Some(ops), Some(range), None) =
+            (segs.next(), segs.next(), segs.next(), segs.next(), segs.next())
+        {
+            // "{{root}}" is the equivalent of `::` prefix in `Path`.
+            root == "{{root}}" && (std_core == "std" || std_core == "core")
+                && ops == "ops" && range.starts_with("Range")
+        } else {
+            false
+        }
+    };
+
+    let span_is_range_literal = |span: &Span| {
+        // Check whether a span corresponding to a range expression
+        // is a range literal, rather than an explicit struct or `new()` call.
+        let source_map = sess.source_map();
+        let end_point = source_map.end_point(*span);
+
+        if let Ok(end_string) = source_map.span_to_snippet(end_point) {
+            !(end_string.ends_with("}") || end_string.ends_with(")"))
+        } else {
+            false
+        }
+    };
+
+    match expr.node {
+        // All built-in range literals but `..=` and `..` desugar to `Struct`s.
+        ExprKind::Struct(ref qpath, _, _) => {
+            if let QPath::Resolved(None, ref path) = **qpath {
+                return is_range_path(&path) && span_is_range_literal(&expr.span);
+            }
+        }
+
+        // `..` desugars to its struct path.
+        ExprKind::Path(QPath::Resolved(None, ref path)) => {
+            return is_range_path(&path) && span_is_range_literal(&expr.span);
+        }
+
+        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+        ExprKind::Call(ref func, _) => {
+            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.node {
+                if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
+                    let call_to_new = segment.ident.as_str() == "new";
+                    return is_range_path(&path) && span_is_range_literal(&expr.span) && call_to_new;
+                }
+            }
+        }
+
+        _ => {}
+    }
+
+    false
+}
