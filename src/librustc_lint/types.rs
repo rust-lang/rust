@@ -106,7 +106,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                     cx.span_lint(
                                         OVERFLOWING_LITERALS,
                                         e.span,
-                                        &format!("literal out of range for {:?}", t),
+                                        &format!("literal out of range for `{:?}`", t),
                                     );
                                     return;
                                 }
@@ -136,11 +136,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                             let mut err = cx.struct_span_lint(
                                                 OVERFLOWING_LITERALS,
                                                 parent_expr.span,
-                                                "only u8 can be cast into char",
+                                                "only `u8` can be cast into `char`",
                                             );
                                             err.span_suggestion(
                                                 parent_expr.span,
-                                                &"use a char literal instead",
+                                                &"use a `char` literal instead",
                                                 format!("'\\u{{{:X}}}'", lit_val),
                                                 Applicability::MachineApplicable,
                                             );
@@ -165,7 +165,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                                         parent_expr.span,
                                                         &format!(
                                                             "range endpoint is out of range \
-                                                             for {:?}",
+                                                             for `{:?}`",
                                                             t,
                                                         ),
                                                     );
@@ -206,7 +206,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             cx.span_lint(
                                 OVERFLOWING_LITERALS,
                                 e.span,
-                                &format!("literal out of range for {:?}", t),
+                                &format!("literal out of range for `{:?}`", t),
                             );
                         }
                     }
@@ -224,7 +224,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         if is_infinite == Ok(true) {
                             cx.span_lint(OVERFLOWING_LITERALS,
                                          e.span,
-                                         &format!("literal out of range for {:?}", t));
+                                         &format!("literal out of range for `{:?}`", t));
                         }
                     }
                     _ => (),
