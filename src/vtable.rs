@@ -138,7 +138,12 @@ fn build_vtable<'a, 'tcx: 'a>(
             false,
         )
         .unwrap();
-    fx.module.define_data(data_id, &data_ctx).unwrap();
+
+    match fx.module.define_data(data_id, &data_ctx) {
+        Ok(()) | Err(cranelift_module::ModuleError::DuplicateDefinition(_)) => {}
+        err => err.unwrap(),
+    }
+
     data_id
 }
 
