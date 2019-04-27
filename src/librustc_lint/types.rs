@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
-use rustc::hir::Node;
+use rustc::hir::{ExprKind, Node};
+use rustc::hir::lowering::is_range_literal;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
@@ -129,21 +130,66 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                         if lit_val < min || lit_val > max {
                             let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
                             if let Node::Expr(parent_expr) = cx.tcx.hir().get_by_hir_id(parent_id) {
-                                if let hir::ExprKind::Cast(..) = parent_expr.node {
-                                    if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
-                                        let mut err = cx.struct_span_lint(
-                                                             OVERFLOWING_LITERALS,
-                                                             parent_expr.span,
-                                                             "only u8 can be cast into char");
-                                        err.span_suggestion(
-                                            parent_expr.span,
-                                            &"use a char literal instead",
-                                            format!("'\\u{{{:X}}}'", lit_val),
-                                            Applicability::MachineApplicable
-                                        );
-                                        err.emit();
-                                        return
+                                match parent_expr.node {
+                                    hir::ExprKind::Cast(..) => {
+                                        if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
+                                            let mut err = cx.struct_span_lint(
+                                                OVERFLOWING_LITERALS,
+                                                parent_expr.span,
+                                                "only u8 can be cast into char",
+                                            );
+                                            err.span_suggestion(
+                                                parent_expr.span,
+                                                &"use a char literal instead",
+                                                format!("'\\u{{{:X}}}'", lit_val),
+                                                Applicability::MachineApplicable,
+                                            );
+                                            err.emit();
+                                            return;
+                                        }
                                     }
+                                    hir::ExprKind::Struct(..)
+                                        if is_range_literal(cx.sess(), parent_expr) => {
+                                            // We only want to handle exclusive (`..`) ranges,
+                                            // which are represented as `ExprKind::Struct`.
+                                            if let ExprKind::Struct(_, eps, _) = &parent_expr.node {
+                                                debug_assert_eq!(eps.len(), 2);
+                                                // We can suggest using an inclusive range
+                                                // (`..=`) instead only if it is the `end` that is
+                                                // overflowing and only by 1.
+                                                if eps[1].expr.hir_id == e.hir_id
+                                                    && lit_val - 1 == max
+                                                {
+                                                    let mut err = cx.struct_span_lint(
+                                                        OVERFLOWING_LITERALS,
+                                                        parent_expr.span,
+                                                        &format!(
+                                                            "range endpoint is out of range \
+                                                             for {:?}",
+                                                            t,
+                                                        ),
+                                                    );
+                                                    if let Ok(start) = cx.sess().source_map()
+                                                        .span_to_snippet(eps[0].span)
+                                                    {
+                                                        let suggestion = format!(
+                                                            "{}..={}",
+                                                            start,
+                                                            lit_val - 1,
+                                                        );
+                                                        err.span_suggestion(
+                                                            parent_expr.span,
+                                                            &"use an inclusive range instead",
+                                                            suggestion,
+                                                            Applicability::MachineApplicable,
+                                                        );
+                                                        err.emit();
+                                                        return;
+                                                    }
+                                                }
+                                            }
+                                    }
+                                    _ => {}
                                 }
                             }
                             if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
