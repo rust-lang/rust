@@ -3060,7 +3060,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter<'
         _ => false,
     };
     render_impl(w, cx, implementor, AssocItemLink::Anchor(None), RenderMode::Normal,
-                implementor.impl_item.stable_since(), false, Some(use_absolute))?;
+                implementor.impl_item.stable_since(), false, Some(use_absolute), false)?;
     Ok(())
 }
 
@@ -3071,7 +3071,7 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter<'_>,
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
         render_impl(w, cx, i, assoc_link,
-                    RenderMode::Normal, containing_item.stable_since(), true, None)?;
+                    RenderMode::Normal, containing_item.stable_since(), true, None, false)?;
     }
     Ok(())
 }
@@ -3301,7 +3301,7 @@ fn item_trait(
                 );
                 render_impl(w, cx, &implementor, assoc_link,
                             RenderMode::Normal, implementor.impl_item.stable_since(), false,
-                            None)?;
+                            None, true)?;
             }
             write_loading_content(w, "")?;
         }
@@ -3958,7 +3958,7 @@ fn render_assoc_items(w: &mut fmt::Formatter<'_>,
         };
         for i in &non_trait {
             render_impl(w, cx, i, AssocItemLink::Anchor(None), render_mode,
-                        containing_item.stable_since(), true, None)?;
+                        containing_item.stable_since(), true, None, false)?;
         }
     }
     if let AssocItemRender::DerefFor { .. } = what {
@@ -4138,11 +4138,15 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
 }
 
 fn render_impl(w: &mut fmt::Formatter<'_>, cx: &Context, i: &Impl, link: AssocItemLink<'_>,
-               render_mode: RenderMode, outer_version: Option<&str>,
-               show_def_docs: bool, use_absolute: Option<bool>) -> fmt::Result {
+               render_mode: RenderMode, outer_version: Option<&str>, show_def_docs: bool,
+               use_absolute: Option<bool>, is_on_foreign_type: bool) -> fmt::Result {
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
-            Some(ref t) => format!("impl-{}", small_url_encode(&format!("{:#}", t))),
+            Some(ref t) => if is_on_foreign_type {
+                get_id_for_impl_on_foreign_type(&i.inner_impl().for_, t)
+            } else {
+                format!("impl-{}", small_url_encode(&format!("{:#}", t)))
+            },
             None => "impl".to_string(),
         });
         if let Some(use_absolute) = use_absolute {
@@ -4688,11 +4692,15 @@ fn sidebar_struct(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
     Ok(())
 }
 
+fn get_id_for_impl_on_foreign_type(for_: &clean::Type, trait_: &clean::Type) -> String {
+    small_url_encode(&format!("impl-{:#}-for-{:#}", trait_, for_))
+}
+
 fn extract_for_impl_name(item: &clean::Item) -> Option<(String, String)> {
     match item.inner {
         clean::ItemEnum::ImplItem(ref i) => {
             if let Some(ref trait_) = i.trait_ {
-                Some((format!("{:#}", i.for_), format!("{:#}", trait_)))
+                Some((format!("{:#}", i.for_), get_id_for_impl_on_foreign_type(&i.for_, trait_)))
             } else {
                 None
             }
@@ -4788,9 +4796,9 @@ fn sidebar_trait(fmt: &mut fmt::Formatter<'_>, it: &clean::Item,
                                   .map_or(false, |d| !c.paths.contains_key(&d)))
                                   .filter_map(|i| {
                                       match extract_for_impl_name(&i.impl_item) {
-                                          Some((ref name, ref url)) => {
-                                              Some(format!("<a href=\"#impl-{}\">{}</a>",
-                                                          small_url_encode(url),
+                                          Some((ref name, ref id)) => {
+                                              Some(format!("<a href=\"#{}\">{}</a>",
+                                                          id,
                                                           Escape(name)))
                                           }
                                           _ => None,
