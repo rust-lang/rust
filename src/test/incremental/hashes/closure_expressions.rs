@@ -49,14 +49,14 @@ pub fn add_parameter() {
 // Change parameter pattern ----------------------------------------------------
 #[cfg(cfail1)]
 pub fn change_parameter_pattern() {
-    let _ = |x: &u32| x;
+    let _ = |x: (u32,)| x;
 }
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg="cfail2", except="HirBody, mir_built, typeck_tables_of")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_parameter_pattern() {
-    let _ = |&x: &u32| x;
+    let _ = |(x,): (u32,)| x;
 }
 
 

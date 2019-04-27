@@ -135,7 +135,7 @@ impl<'a, 'tcx: 'a, T: Decodable> Lazy<T> {
     }
 }
 
-impl<'a, 'tcx: 'a, T: Decodable> LazySeq<T> {
+impl<'a, 'tcx: 'a, T: Decodable + 'a> LazySeq<T> {
     pub fn decode<M: Metadata<'a, 'tcx>>(
         self,
         meta: M,

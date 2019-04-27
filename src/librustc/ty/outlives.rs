@@ -65,6 +65,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 for upvar_ty in substs.upvar_tys(def_id, *self) {
                     self.compute_components(upvar_ty, out);
                 }
+                self.compute_components(substs.closure_sig_ty(def_id, *self), out);
             }
 
             ty::Generator(def_id, ref substs, _) => {
@@ -73,6 +74,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     self.compute_components(upvar_ty, out);
                 }
 
+                self.compute_components(substs.return_ty(def_id, *self), out);
+                self.compute_components(substs.yield_ty(def_id, *self), out);
                 // We ignore regions in the generator interior as we don't
                 // want these to affect region inference
             }

@@ -1,13 +1,33 @@
-warning: captured variable cannot escape `FnMut` closure body
-  --> $DIR/issue-40510-1.rs:8:9
+error[E0495]: cannot infer an appropriate lifetime for borrow expression due to conflicting requirements
+  --> $DIR/issue-40510-1.rs:7:9
+   |
+LL |         &mut x
+   |         ^^^^^^
+   |
+note: first, the lifetime cannot outlive the lifetime '_ as defined on the body at 6:5...
+  --> $DIR/issue-40510-1.rs:6:5
    |
 LL |     || {
-   |      - inferred to be a `FnMut` closure
-LL |         &mut x
-   |         ^^^^^^ returns a reference to a captured variable which escapes the closure body
+   |     ^^
+note: ...so that closure can access `x`
+  --> $DIR/issue-40510-1.rs:7:9
    |
-   = note: `FnMut` closures only have access to their captured variables while they are executing...
-   = note: ...therefore, they cannot allow references to captured variables to escape
-   = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
-   = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+LL |         &mut x
+   |         ^^^^^^
+note: but, the lifetime must be valid for the expression at 6:5...
+  --> $DIR/issue-40510-1.rs:6:5
+   |
+LL | /     || {
+LL | |         &mut x
+LL | |     };
+   | |_____^
+note: ...so type `[closure@$DIR/issue-40510-1.rs:6:5: 8:6 x:&mut std::boxed::Box<()>]` of expression is valid during the expression
+  --> $DIR/issue-40510-1.rs:6:5
+   |
+LL | /     || {
+LL | |         &mut x
+LL | |     };
+   | |_____^
+
+error: aborting due to previous error
 

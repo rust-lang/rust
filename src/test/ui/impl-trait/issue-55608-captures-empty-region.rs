@@ -1,9 +1,9 @@
 // This used to ICE because it creates an `impl Trait` that captures a
 // hidden empty region.
 
-#![feature(conservative_impl_trait)]
+// compile-pass
 
-fn server() -> impl FilterBase2 { //~ ERROR [E0700]
+fn server() -> impl FilterBase2 {
     segment2(|| { loop { } }).map2(|| "")
 }
 
