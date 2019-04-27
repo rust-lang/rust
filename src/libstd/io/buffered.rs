@@ -92,10 +92,10 @@ impl<R: Read> BufReader<R> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
+    pub fn with_capacity(capacity: usize, inner: R) -> BufReader<R> {
         unsafe {
-            let mut buffer = Vec::with_capacity(cap);
-            buffer.set_len(cap);
+            let mut buffer = Vec::with_capacity(capacity);
+            buffer.set_len(capacity);
             inner.initializer().initialize(&mut buffer);
             BufReader {
                 inner,
@@ -477,10 +477,10 @@ impl<W: Write> BufWriter<W> {
     /// let mut buffer = BufWriter::with_capacity(100, stream);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(cap: usize, inner: W) -> BufWriter<W> {
+    pub fn with_capacity(capacity: usize, inner: W) -> BufWriter<W> {
         BufWriter {
             inner: Some(inner),
-            buf: Vec::with_capacity(cap),
+            buf: Vec::with_capacity(capacity),
             panicked: false,
         }
     }
@@ -851,9 +851,9 @@ impl<W: Write> LineWriter<W> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(cap: usize, inner: W) -> LineWriter<W> {
+    pub fn with_capacity(capacity: usize, inner: W) -> LineWriter<W> {
         LineWriter {
-            inner: BufWriter::with_capacity(cap, inner),
+            inner: BufWriter::with_capacity(capacity, inner),
             need_flush: false,
         }
     }
