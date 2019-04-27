@@ -10,7 +10,6 @@
 #![feature(fmt_internals)]
 #![feature(hashmap_internals)]
 #![feature(is_sorted)]
-#![feature(iter_copied)]
 #![feature(iter_nth_back)]
 #![feature(iter_once_with)]
 #![feature(pattern)]
