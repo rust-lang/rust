@@ -344,7 +344,7 @@ pub mod fast {
     use crate::fmt;
     use crate::mem;
     use crate::ptr;
-    use crate::sys::fast_thread_local::{register_dtor, requires_move_before_drop};
+    use crate::sys::fast_thread_local::register_dtor;
 
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
@@ -395,17 +395,8 @@ pub mod fast {
         // destructor as running for this thread so calls to `get` will return
         // `None`.
         (*ptr).dtor_running.set(true);
-
-        // Some implementations may require us to move the value before we drop
-        // it as it could get re-initialized in-place during destruction.
-        //
-        // Hence, we use `ptr::read` on those platforms (to move to a "safe"
-        // location) instead of drop_in_place.
-        if requires_move_before_drop() {
-            ptr::read((*ptr).inner.get());
-        } else {
-            ptr::drop_in_place((*ptr).inner.get());
-        }
+        
+        ptr::drop_in_place((*ptr).inner.get());
     }
 }
 

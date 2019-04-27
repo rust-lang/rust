@@ -105,7 +105,3 @@ pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         ptr::drop_in_place((*ptr).inner.get());
     }
 }
-
-pub fn requires_move_before_drop() -> bool {
-    false
-}

@@ -82,7 +82,3 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         }
     }
 }
-
-pub fn requires_move_before_drop() -> bool {
-    false
-}
