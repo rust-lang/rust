@@ -1,6 +1,6 @@
 use crate::cmp;
-use crate::io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoSliceMut,
-         IoSlice};
+use crate::io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind,
+        IoSliceMut, IoSlice};
 use crate::fmt;
 use crate::mem;
 

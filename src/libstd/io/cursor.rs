@@ -455,7 +455,10 @@ mod tests {
         assert_eq!(writer.write_vectored(&[IoSlice::new(&[0])]).unwrap(), 1);
         assert_eq!(writer.position(), 1);
         assert_eq!(
-            writer.write_vectored(&[IoSlice::new(&[1, 2, 3]), IoSlice::new(&[4, 5, 6, 7])]).unwrap(),
+            writer.write_vectored(&[
+                IoSlice::new(&[1, 2, 3]),
+                IoSlice::new(&[4, 5, 6, 7]),
+            ]).unwrap(),
             7,
         );
         assert_eq!(writer.position(), 8);
@@ -582,7 +585,10 @@ mod tests {
         assert_eq!(reader.position(), 0);
         let mut buf = [0];
         assert_eq!(
-            reader.read_vectored(&mut [IoSliceMut::new(&mut []), IoSliceMut::new(&mut buf)]).unwrap(),
+            reader.read_vectored(&mut [
+                IoSliceMut::new(&mut []),
+                IoSliceMut::new(&mut buf),
+            ]).unwrap(),
             1,
         );
         assert_eq!(reader.position(), 1);
@@ -591,9 +597,10 @@ mod tests {
         let mut buf1 = [0; 4];
         let mut buf2 = [0; 4];
         assert_eq!(
-            reader.read_vectored(
-                &mut [IoSliceMut::new(&mut buf1), IoSliceMut::new(&mut buf2)],
-            ).unwrap(),
+            reader.read_vectored(&mut [
+                IoSliceMut::new(&mut buf1),
+                IoSliceMut::new(&mut buf2),
+            ]).unwrap(),
             7,
         );
         let b1: &[_] = &[1, 2, 3, 4];
@@ -633,7 +640,10 @@ mod tests {
         assert_eq!(reader.position(), 0);
         let mut buf = [0];
         assert_eq!(
-            reader.read_vectored(&mut [IoSliceMut::new(&mut []), IoSliceMut::new(&mut buf)]).unwrap(),
+            reader.read_vectored(&mut [
+                IoSliceMut::new(&mut []),
+                IoSliceMut::new(&mut buf),
+            ]).unwrap(),
             1,
         );
         assert_eq!(reader.position(), 1);
@@ -692,7 +702,10 @@ mod tests {
         assert_eq!(reader.read_vectored(&mut [IoSliceMut::new(&mut buf)]).unwrap(), 0);
         let mut buf = [0];
         assert_eq!(
-            reader.read_vectored(&mut [IoSliceMut::new(&mut []), IoSliceMut::new(&mut buf)]).unwrap(),
+            reader.read_vectored(&mut [
+                IoSliceMut::new(&mut []),
+                IoSliceMut::new(&mut buf),
+            ]).unwrap(),
             1,
         );
         assert_eq!(reader.len(), 7);

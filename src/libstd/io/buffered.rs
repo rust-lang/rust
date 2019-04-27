@@ -5,7 +5,8 @@ use crate::io::prelude::*;
 use crate::cmp;
 use crate::error;
 use crate::fmt;
-use crate::io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom, IoSlice, IoSliceMut};
+use crate::io::{self, Initializer, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom, IoSlice,
+        IoSliceMut};
 use crate::memchr;
 
 /// The `BufReader` struct adds buffering to any reader.
