@@ -174,15 +174,6 @@ pub struct Map<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    /// `NodeId`s are sequential integers from 0, so we can be
-    /// super-compact by storing them in a vector. Not everything with
-    /// a `NodeId` is in the map, but empirically the occupancy is about
-    /// 75-80%, so there's not too much overhead (certainly less than
-    /// a hashmap, since they (at the time of writing) have a maximum
-    /// of 75% occupancy).
-    ///
-    /// Also, indexing is pretty quick when you've got a vector and
-    /// plain old integers.
     map: FxHashMap<HirId, Entry<'hir>>,
 
     definitions: &'hir Definitions,
