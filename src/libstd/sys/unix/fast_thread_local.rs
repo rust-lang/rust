@@ -82,3 +82,20 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         }
     }
 }
+
+#[cfg(not(target_os = "macos"))]
+pub unsafe fn lookup_once<T>(ptr: *const &T) -> &T {
+    *ptr
+}
+
+#[cfg(target_os = "macos")]
+pub unsafe fn lookup_once<T>(ptr: *const &T) -> &T {
+    // On macos, thread_local lookups can result in terrible code due to
+    // aggressive rerunning of the macos equivalent of `__tls_get_addr` - four
+    // lookups per actual reference in user code.
+    //
+    // Using a read_volatile on a value holding fast Key's address tricks the
+    // optimizer into only calling the macos get_addr equivalent once per time
+    // requested by the user.
+    crate::ptr::read_volatile(ptr)
+}
