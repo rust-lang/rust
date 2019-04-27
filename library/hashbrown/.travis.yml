@@ -12,7 +12,9 @@ matrix:
       script: sh ci/tools.sh
     - name: "docs"
       env: TARGET=x86_64-unknown-linux-gnu
-      script: cargo -vv doc --features nightly,serde,rayon
+      script:
+        - cargo -vv doc --features nightly,serde,rayon
+        - echo '<meta http-equiv=refresh content=0;url=hashbrown/index.html>' > target/doc/index.html
       deploy:
         provider: pages
         skip-cleanup: true

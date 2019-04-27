@@ -3,6 +3,7 @@ hashbrown
 
 [![Build Status](https://travis-ci.com/rust-lang/hashbrown.svg?branch=master)](https://travis-ci.com/rust-lang/hashbrown)
 [![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
+[![Documentation](https://docs.rs/hashbrown/badge.svg)](https://docs.rs/hashbrown)
 
 This crate is a Rust port of Google's high-performance [SwissTable] hash
 map, adapted to make it a drop-in replacement for Rust's standard `HashMap`
@@ -14,8 +15,6 @@ The original C++ version of SwissTable can be found [here], and this
 [SwissTable]: https://abseil.io/blog/20180927-swisstables
 [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
 [CppCon talk]: https://www.youtube.com/watch?v=ncHmEUmJZf4
-
-## [Documentation](https://docs.rs/hashbrown)
 
 ## [Change log](CHANGELOG.md)
 
