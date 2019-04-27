@@ -1,3 +1,14 @@
+Version 1.34.1 (2019-04-25)
+===========================
+
+* [Fix false positives for the `redundant_closure` Clippy lint][clippy/3821]
+* [Fix false positives for the `missing_const_for_fn` Clippy lint][clippy/3844]
+* [Fix Clippy panic when checking some macros][clippy/3805]
+
+[clippy/3821]: https://github.com/rust-lang/rust-clippy/pull/3821
+[clippy/3844]: https://github.com/rust-lang/rust-clippy/pull/3844
+[clippy/3805]: https://github.com/rust-lang/rust-clippy/pull/3805
+
 Version 1.34.0 (2019-04-11)
 ==========================
 
