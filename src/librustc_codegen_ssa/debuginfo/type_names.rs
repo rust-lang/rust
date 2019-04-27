@@ -46,7 +46,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty::Tuple(component_types) => {
             output.push('(');
             for &component_type in component_types {
-                push_debuginfo_type_name(tcx, component_type, true, output, visited);
+                push_debuginfo_type_name(tcx, component_type.expect_ty(), true, output, visited);
                 output.push_str(", ");
             }
             if !component_types.is_empty() {

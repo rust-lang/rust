@@ -701,7 +701,8 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 if let ty::Tuple(ref args) = principal.substs.type_at(0).sty {
                     let mut projections = predicates.projection_bounds();
                     if let (Some(proj), None) = (projections.next(), projections.next()) {
-                        p!(pretty_fn_sig(args, false, proj.ty));
+                        let tys: Vec<_> = args.iter().map(|k| k.expect_ty()).collect();
+                        p!(pretty_fn_sig(&tys, false, proj.ty));
                         resugared = true;
                     }
                 }

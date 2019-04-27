@@ -331,7 +331,7 @@ fn build_clone_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 substs.upvar_tys(def_id, tcx)
             )
         }
-        ty::Tuple(tys) => builder.tuple_like_shim(dest, src, tys.iter().cloned()),
+        ty::Tuple(tys) => builder.tuple_like_shim(dest, src, tys.iter().map(|k| k.expect_ty())),
         _ => {
             bug!("clone shim for `{:?}` which is not `Copy` and is not an aggregate", self_ty)
         }

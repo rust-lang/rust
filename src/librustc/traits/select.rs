@@ -2429,7 +2429,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
 
-            ty::Tuple(tys) => Where(ty::Binder::bind(tys.last().into_iter().cloned().collect())),
+            ty::Tuple(tys) => {
+                Where(ty::Binder::bind(tys.last().into_iter().map(|k| k.expect_ty()).collect()))
+            }
 
             ty::Adt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
@@ -2503,7 +2505,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::Tuple(tys) => {
                 // (*) binder moved here
-                Where(ty::Binder::bind(tys.to_vec()))
+                Where(ty::Binder::bind(tys.iter().map(|k| k.expect_ty()).collect()))
             }
 
             ty::Closure(def_id, substs) => {
@@ -2590,7 +2592,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::Tuple(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                tys.to_vec()
+                tys.iter().map(|k| k.expect_ty()).collect()
             }
 
             ty::Closure(def_id, ref substs) => substs.upvar_tys(def_id, self.tcx()).collect(),
@@ -3495,7 +3497,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 // Check that the source tuple with the target's
                 // last element is equal to the target.
-                let new_tuple = tcx.mk_tup(a_mid.iter().cloned().chain(iter::once(b_last)));
+                let new_tuple = tcx.mk_tup(
+                    a_mid.iter().map(|k| k.expect_ty()).chain(iter::once(b_last.expect_ty())),
+                );
                 let InferOk { obligations, .. } = self.infcx
                     .at(&obligation.cause, obligation.param_env)
                     .eq(target, new_tuple)
@@ -3508,7 +3512,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     obligation.cause.clone(),
                     obligation.predicate.def_id(),
                     obligation.recursion_depth + 1,
-                    a_last,
+                    a_last.expect_ty(),
                     &[b_last.into()],
                 ));
             }

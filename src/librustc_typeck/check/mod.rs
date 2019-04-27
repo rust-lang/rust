@@ -2859,7 +2859,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             sp: Span,
                             expr_sp: Span,
                             fn_inputs: &[Ty<'tcx>],
-                            mut expected_arg_tys: &[Ty<'tcx>],
+                            expected_arg_tys: &[Ty<'tcx>],
                             args: &'gcx [hir::Expr],
                             c_variadic: bool,
                             tuple_arguments: TupleArgumentsFlag,
@@ -2915,29 +2915,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             err.emit();
         };
 
+        let mut expected_arg_tys = expected_arg_tys.to_vec();
+
         let formal_tys = if tuple_arguments == TupleArguments {
             let tuple_type = self.structurally_resolved_type(sp, fn_inputs[0]);
             match tuple_type.sty {
                 ty::Tuple(arg_types) if arg_types.len() != args.len() => {
                     param_count_error(arg_types.len(), args.len(), "E0057", false, false);
-                    expected_arg_tys = &[];
+                    expected_arg_tys = vec![];
                     self.err_args(args.len())
                 }
                 ty::Tuple(arg_types) => {
                     expected_arg_tys = match expected_arg_tys.get(0) {
                         Some(&ty) => match ty.sty {
-                            ty::Tuple(ref tys) => &tys,
-                            _ => &[]
+                            ty::Tuple(ref tys) => tys.iter().map(|k| k.expect_ty()).collect(),
+                            _ => vec![],
                         },
-                        None => &[]
+                        None => vec![],
                     };
-                    arg_types.to_vec()
+                    arg_types.iter().map(|k| k.expect_ty()).collect()
                 }
                 _ => {
                     span_err!(tcx.sess, sp, E0059,
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit");
-                    expected_arg_tys = &[];
+                    expected_arg_tys = vec![];
                     self.err_args(args.len())
                 }
             }
@@ -2948,7 +2950,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 fn_inputs.to_vec()
             } else {
                 param_count_error(expected_arg_count, supplied_arg_count, "E0060", true, false);
-                expected_arg_tys = &[];
+                expected_arg_tys = vec![];
                 self.err_args(supplied_arg_count)
             }
         } else {
@@ -2962,18 +2964,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
             param_count_error(expected_arg_count, supplied_arg_count, "E0061", false, sugg_unit);
 
-            expected_arg_tys = &[];
+            expected_arg_tys = vec![];
             self.err_args(supplied_arg_count)
-        };
-        // If there is no expectation, expect formal_tys.
-        let expected_arg_tys = if !expected_arg_tys.is_empty() {
-            expected_arg_tys
-        } else {
-            &formal_tys
         };
 
         debug!("check_argument_types: formal_tys={:?}",
                formal_tys.iter().map(|t| self.ty_to_string(*t)).collect::<Vec<String>>());
+
+        // If there is no expectation, expect formal_tys.
+        let expected_arg_tys = if !expected_arg_tys.is_empty() {
+            expected_arg_tys
+        } else {
+            formal_tys.clone()
+        };
 
         // Check the arguments.
         // We do this in a pretty awful way: first we type-check any arguments
@@ -3560,7 +3563,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 autoderef.finalize(self);
 
                                 self.write_field_index(expr.hir_id, index);
-                                return field_ty;
+                                return field_ty.expect_ty();
                             }
                         }
                     }
@@ -4630,7 +4633,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let elt_ts_iter = elts.iter().enumerate().map(|(i, e)| {
                     let t = match flds {
                         Some(ref fs) if i < fs.len() => {
-                            let ety = fs[i];
+                            let ety = fs[i].expect_ty();
                             self.check_expr_coercable_to_type(&e, ety);
                             ety
                         }
