@@ -369,7 +369,7 @@ impl<T> VecDeque<T> {
         VecDeque::with_capacity(INITIAL_CAPACITY)
     }
 
-    /// Creates an empty `VecDeque` with space for at least `n` elements.
+    /// Creates an empty `VecDeque` with space for at least `capacity` elements.
     ///
     /// # Examples
     ///
@@ -379,10 +379,10 @@ impl<T> VecDeque<T> {
     /// let vector: VecDeque<u32> = VecDeque::with_capacity(10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(n: usize) -> VecDeque<T> {
+    pub fn with_capacity(capacity: usize) -> VecDeque<T> {
         // +1 since the ringbuffer always leaves one space empty
-        let cap = cmp::max(n + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
-        assert!(cap > n, "capacity overflow");
+        let cap = cmp::max(capacity + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
+        assert!(cap > capacity, "capacity overflow");
 
         VecDeque {
             tail: 0,
