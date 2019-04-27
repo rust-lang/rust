@@ -5834,12 +5834,11 @@ impl<'a> Parser<'a> {
         lifetimes
     }
 
-    /// Matches `typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?`.
-    fn parse_ty_param(&mut self,
-                      preceding_attrs: Vec<Attribute>)
-                      -> PResult<'a, GenericParam> {
-        let ident = self.parse_ident()?;
-
+    fn parse_ty_param_inner(
+        &mut self,
+        preceding_attrs: Vec<Attribute>,
+        ident: ast::Ident,
+    ) -> PResult<'a, GenericParam> {
         // Parse optional colon and param bounds.
         let bounds = if self.eat(&token::Colon) {
             self.parse_generic_bounds(Some(self.prev_span))?
@@ -5860,6 +5859,47 @@ impl<'a> Parser<'a> {
             bounds,
             kind: GenericParamKind::Type {
                 default,
+            }
+        })
+    }
+
+    /// Matches `typaram = IDENT (`?` unbound)? optbounds ( EQ ty )?`.
+    fn parse_ty_param(
+        &mut self,
+        preceding_attrs: Vec<Attribute>,
+    ) -> PResult<'a, GenericParam> {
+        let ident = self.parse_ident()?;
+        self.parse_ty_param_inner(preceding_attrs, ident)
+    }
+
+    /// Parse an arbitrary path and suggest moving it to the `where` clause (#26271)
+    fn parse_bad_ty_param(
+        &mut self,
+        preceding_attrs: Vec<Attribute>,
+    ) -> PResult<'a, bool /* break */> {
+        let snapshot = self.clone();
+        Ok(match self.parse_qpath(PathStyle::Type)
+            .and_then(|(_qpath, path)| self.parse_ty_param_inner(
+                preceding_attrs,
+                ast::Ident::from_str(&format!("{}", path)),
+            ).map(|_| path.span.to(self.prev_span)))
+        {   // We discard the generated type param, we only want to confirm that it is otherwise
+            // well-formed. If it isn't, we revert back to normal behavior and emit a non-targeted
+            // parse error. If it *is*, we *don't* add to the type param list to avoid having
+            // spurious "unused type param" errors.
+            Ok(span) => {
+                self.struct_span_err(
+                    span,
+                    "qualified paths are not allowed in generic parameters",
+                )
+                    .note("move this constraint to the `where` clause")
+                    .emit();
+                false
+            }
+            Err(mut err) => {
+                err.cancel();
+                mem::replace(self, snapshot);
+                true
             }
         })
     }
@@ -5934,13 +5974,18 @@ impl<'a> Parser<'a> {
             } else if self.check_ident() {
                 // Parse type parameter.
                 params.push(self.parse_ty_param(attrs)?);
+            } else if self.token == token::Lt {
+                self.bump() ; // `<`
+                if self.parse_bad_ty_param(attrs)? {
+                    break
+                }
             } else {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {
                     if !params.is_empty() {
                         self.struct_span_err(
                             attrs[0].span,
-                            &format!("trailing attribute after generic parameter"),
+                            "trailing attribute after generic parameter",
                         )
                         .span_label(attrs[0].span, "attributes must go before parameters")
                         .emit();
