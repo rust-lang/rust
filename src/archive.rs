@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 
@@ -8,12 +7,14 @@ use rustc_codegen_ssa::{METADATA_FILENAME, RLIB_BYTECODE_EXTENSION};
 use rustc_codegen_ssa::back::archive::{ArchiveBuilder, find_library};
 
 struct ArchiveConfig<'a> {
-    pub sess: &'a Session,
-    pub dst: PathBuf,
-    pub src: Option<PathBuf>,
-    pub lib_search_paths: Vec<PathBuf>,
+    sess: &'a Session,
+    dst: PathBuf,
+    src: Option<PathBuf>,
+    lib_search_paths: Vec<PathBuf>,
+    use_gnu_style_archive: bool,
 }
 
+#[derive(Debug)]
 enum ArchiveEntry {
     FromArchive { archive_index: usize, entry_index: usize },
     File(File),
@@ -22,7 +23,9 @@ enum ArchiveEntry {
 pub struct ArArchiveBuilder<'a> {
     config: ArchiveConfig<'a>,
     src_archives: Vec<ar::Archive<File>>,
-    entries: HashMap<String, ArchiveEntry>,
+    // Don't use `HashMap` here, as the order is important. `rust.metadata.bin` must always be at
+    // the end of an archive for linkers to not get confused.
+    entries: Vec<(String, ArchiveEntry)>,
     update_symbols: bool,
 }
 
@@ -34,25 +37,27 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
             dst: output.to_path_buf(),
             src: input.map(|p| p.to_path_buf()),
             lib_search_paths: archive_search_paths(sess),
+            // FIXME test for linux and System V derivatives instead
+            use_gnu_style_archive: !sess.target.target.options.is_like_osx,
         };
 
         let (src_archives, entries) = if let Some(src) = &config.src {
             let mut archive = ar::Archive::new(File::open(src).unwrap());
-            let mut entries = HashMap::new();
+            let mut entries = Vec::new();
 
             let mut i = 0;
             while let Some(entry) = archive.next_entry() {
                 let entry = entry.unwrap();
-                entries.insert(
+                entries.push((
                     String::from_utf8(entry.header().identifier().to_vec()).unwrap(),
                     ArchiveEntry::FromArchive { archive_index: 0, entry_index: i },
-                );
+                ));
                 i += 1;
             }
 
             (vec![archive], entries)
         } else {
-            (vec![], HashMap::new())
+            (vec![], Vec::new())
         };
 
         ArArchiveBuilder {
@@ -64,22 +69,22 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn src_files(&mut self) -> Vec<String> {
-        self.entries.keys().cloned().collect()
+        self.entries.iter().map(|(name, _)| name.clone()).collect()
     }
 
     fn remove_file(&mut self, name: &str) {
-        let file = self.entries.remove(name);
-        assert!(
-            file.is_some(),
-            "Tried to remove file not existing in src archive",
-        );
+        let index = self.entries
+            .iter()
+            .position(|(entry_name, _)| entry_name == name)
+            .expect("Tried to remove file not existing in src archive");
+        self.entries.remove(index);
     }
 
     fn add_file(&mut self, file: &Path) {
-        self.entries.insert(
+        self.entries.push((
             file.file_name().unwrap().to_str().unwrap().to_string(),
             ArchiveEntry::File(File::open(file).unwrap()),
-        );
+        ));
     }
 
     fn add_native_library(&mut self, name: &str) {
@@ -119,7 +124,20 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     }
 
     fn build(mut self) {
-        let mut builder = ar::Builder::new(File::create(&self.config.dst).unwrap());
+        enum BuilderKind {
+            Bsd(ar::Builder<File>),
+            Gnu(ar::GnuBuilder<File>),
+        }
+
+        let archive_file = File::create(&self.config.dst).unwrap();
+        let mut builder = if self.config.use_gnu_style_archive {
+            BuilderKind::Gnu(ar::GnuBuilder::new(
+                archive_file,
+                self.entries.iter().map(|(name, _)| name.as_bytes().to_vec()).collect(),
+            ))
+        } else {
+            BuilderKind::Bsd(ar::Builder::new(archive_file))
+        };
 
         // Add all files
         for (entry_name, entry) in self.entries.into_iter() {
@@ -127,16 +145,23 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
                 ArchiveEntry::FromArchive { archive_index, entry_index } => {
                     let entry = self.src_archives[archive_index].jump_to_entry(entry_index).unwrap();
                     let orig_header = entry.header();
+
                     let mut header =
                         ar::Header::new(orig_header.identifier().to_vec(), orig_header.size());
                     header.set_mtime(orig_header.mtime());
                     header.set_uid(orig_header.uid());
                     header.set_gid(orig_header.gid());
                     header.set_mode(orig_header.mode());
-                    builder.append(&header, entry).unwrap();
+                    match builder {
+                        BuilderKind::Bsd(ref mut builder) => builder.append(&header, entry).unwrap(),
+                        BuilderKind::Gnu(ref mut builder) => builder.append(&header, entry).unwrap(),
+                    }
                 }
                 ArchiveEntry::File(mut file) => {
-                    builder.append_file(entry_name.as_bytes(), &mut file).unwrap();
+                    match builder {
+                        BuilderKind::Bsd(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut file).unwrap(),
+                        BuilderKind::Gnu(ref mut builder) => builder.append_file(entry_name.as_bytes(), &mut file).unwrap(),
+                    }
                 }
             }
         }
@@ -169,10 +194,10 @@ impl<'a> ArArchiveBuilder<'a> {
             let entry = entry.unwrap();
             let file_name = String::from_utf8(entry.header().identifier().to_vec()).unwrap();
             if !skip(&file_name) {
-                self.entries.insert(
+                self.entries.push((
                     file_name,
                     ArchiveEntry::FromArchive { archive_index, entry_index: i },
-                );
+                ));
             }
             i += 1;
         }

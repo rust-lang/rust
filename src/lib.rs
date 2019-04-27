@@ -28,7 +28,6 @@ use rustc::util::common::ErrorReported;
 use rustc_codegen_ssa::back::linker::LinkerInfo;
 use rustc_codegen_ssa::CrateInfo;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_codegen_utils::link::out_filename;
 use rustc_mir::monomorphize::partitioning::CodegenUnitExt;
 
 use cranelift::codegen::settings;
@@ -46,8 +45,6 @@ mod common;
 mod constant;
 mod debuginfo;
 mod intrinsics;
-mod link;
-mod link_copied;
 mod linkage;
 mod main_shim;
 mod metadata;
@@ -343,13 +340,13 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 } else {
                     None
                 },
-                metadata_module: CompiledModule {
+                metadata_module: Some(CompiledModule {
                     name: "dummy_metadata".to_string(),
                     kind: ModuleKind::Metadata,
                     object: None,
                     bytecode: None,
                     bytecode_compressed: None,
-                },
+                }),
                 crate_hash: tcx.crate_hash(LOCAL_CRATE),
                 metadata,
                 windows_subsystem: None, // Windows is not yet supported
@@ -366,20 +363,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), ErrorReported> {
-        let res = *res
+        use rustc_codegen_ssa::back::link::link_binary;
+
+        let codegen_results = *res
             .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
-        for &crate_type in sess.crate_types.borrow().iter() {
-            let output_name = out_filename(sess, crate_type, &outputs, &res.crate_name.as_str());
-            match crate_type {
-                CrateType::Rlib => link::link_rlib(sess, &res, output_name),
-                CrateType::Dylib | CrateType::Executable => {
-                    link::link_natively(sess, crate_type, &res, &output_name);
-                }
-                _ => sess.fatal(&format!("Unsupported crate type: {:?}", crate_type)),
-            }
-        }
+        let target_cpu = ::target_lexicon::HOST.to_string();
+        link_binary::<crate::archive::ArArchiveBuilder<'_>>(
+            sess,
+            &codegen_results,
+            outputs,
+            &codegen_results.crate_name.as_str(),
+            &target_cpu,
+        );
+
         Ok(())
     }
 }
