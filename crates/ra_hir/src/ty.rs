@@ -121,6 +121,10 @@ pub enum Ty {
         name: Name,
     },
 
+    /// A bound type variable. Only used during trait resolution to represent
+    /// Chalk variables.
+    Bound(u32),
+
     /// A type variable used during type checking. Not to be confused with a
     /// type parameter.
     Infer(InferTy),
@@ -260,7 +264,7 @@ impl Ty {
                     t.walk(f);
                 }
             }
-            Ty::Param { .. } | Ty::Infer(_) | Ty::Unknown => {}
+            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
     }
@@ -270,7 +274,7 @@ impl Ty {
             Ty::Apply(a_ty) => {
                 a_ty.parameters.walk_mut(f);
             }
-            Ty::Param { .. } | Ty::Infer(_) | Ty::Unknown => {}
+            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
     }
@@ -472,6 +476,7 @@ impl HirDisplay for Ty {
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Param { name, .. } => write!(f, "{}", name)?,
+            Ty::Bound(idx) => write!(f, "?{}", idx)?,
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
         }
