@@ -146,10 +146,10 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: Vec::new() }
     }
 
-    /// Creates a new, empty WTF-8 string with pre-allocated capacity for `n` bytes.
+    /// Creates a new, empty WTF-8 string with pre-allocated capacity for `capacity` bytes.
     #[inline]
-    pub fn with_capacity(n: usize) -> Wtf8Buf {
-        Wtf8Buf { bytes: Vec::with_capacity(n) }
+    pub fn with_capacity(capacity: usize) -> Wtf8Buf {
+        Wtf8Buf { bytes: Vec::with_capacity(capacity) }
     }
 
     /// Creates a WTF-8 string from a UTF-8 `String`.

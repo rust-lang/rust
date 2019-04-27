@@ -5,7 +5,7 @@ use rustc::traits::{
     ProgramClauseCategory,
 };
 use rustc::ty;
-use rustc::ty::subst::{InternalSubsts, Subst};
+use rustc::ty::subst::{Kind, InternalSubsts, Subst};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use crate::lowering::Lower;
@@ -17,7 +17,7 @@ use crate::generic_types;
 fn builtin_impl_clause(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     ty: ty::Ty<'tcx>,
-    nested: &[ty::Ty<'tcx>],
+    nested: &[Kind<'tcx>],
     trait_def_id: DefId
 ) -> ProgramClause<'tcx> {
     ProgramClause {
@@ -32,7 +32,7 @@ fn builtin_impl_clause(
                 .cloned()
                 .map(|nested_ty| ty::TraitRef {
                     def_id: trait_def_id,
-                    substs: tcx.mk_substs_trait(nested_ty, &[]),
+                    substs: tcx.mk_substs_trait(nested_ty.expect_ty(), &[]),
                 })
                 .map(|trait_ref| ty::TraitPredicate { trait_ref })
                 .map(|pred| GoalKind::DomainGoal(pred.lower()))
@@ -124,7 +124,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
     ty: ty::Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>
 ) {
-    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[ty::Ty<'tcx>]| {
+    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[Kind<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, sized_def_id);
         // Bind innermost bound vars that may exist in `ty` and `nested`.
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
@@ -176,7 +176,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
         // `Sized` if the last type is `Sized` (because else we will get a WF error anyway).
         &ty::Tuple(type_list) => {
             let type_list = generic_types::type_list(tcx, type_list.len());
-            push_builtin_impl(tcx.mk_ty(ty::Tuple(type_list)), &**type_list);
+            push_builtin_impl(tcx.mk_ty(ty::Tuple(type_list)), &type_list);
         }
 
         // Struct def
@@ -185,7 +185,7 @@ crate fn assemble_builtin_sized_impls<'tcx>(
             let adt = tcx.mk_ty(ty::Adt(adt_def, substs));
             let sized_constraint = adt_def.sized_constraint(tcx)
                 .iter()
-                .map(|ty| ty.subst(tcx, substs))
+                .map(|ty| Kind::from(ty.subst(tcx, substs)))
                 .collect::<Vec<_>>();
             push_builtin_impl(adt, &sized_constraint);
         }
@@ -228,7 +228,7 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
     ty: ty::Ty<'tcx>,
     clauses: &mut Vec<Clause<'tcx>>
 ) {
-    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[ty::Ty<'tcx>]| {
+    let mut push_builtin_impl = |ty: ty::Ty<'tcx>, nested: &[Kind<'tcx>]| {
         let clause = builtin_impl_clause(tcx, ty, nested, trait_def_id);
         // Bind innermost bound vars that may exist in `ty` and `nested`.
         clauses.push(Clause::ForAll(ty::Binder::bind(clause)));
@@ -253,7 +253,10 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         // These implement `Copy`/`Clone` if their element types do.
         &ty::Array(_, length) => {
             let element_ty = generic_types::bound(tcx, 0);
-            push_builtin_impl(tcx.mk_ty(ty::Array(element_ty, length)), &[element_ty]);
+            push_builtin_impl(
+                tcx.mk_ty(ty::Array(element_ty, length)),
+                &[Kind::from(element_ty)],
+            );
         }
         &ty::Tuple(type_list) => {
             let type_list = generic_types::type_list(tcx, type_list.len());
@@ -262,7 +265,9 @@ crate fn assemble_builtin_copy_clone_impls<'tcx>(
         &ty::Closure(def_id, ..) => {
             let closure_ty = generic_types::closure(tcx, def_id);
             let upvar_tys: Vec<_> = match &closure_ty.sty {
-                ty::Closure(_, substs) => substs.upvar_tys(def_id, tcx).collect(),
+                ty::Closure(_, substs) => {
+                    substs.upvar_tys(def_id, tcx).map(|ty| Kind::from(ty)).collect()
+                },
                 _ => bug!(),
             };
             push_builtin_impl(closure_ty, &upvar_tys);

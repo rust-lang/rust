@@ -779,7 +779,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 }
                 ty::Tuple(tys) => {
                     return match tys.get(field.index()) {
-                        Some(&ty) => Ok(ty),
+                        Some(&ty) => Ok(ty.expect_ty()),
                         None => Err(FieldAccessError::OutOfRange {
                             field_count: tys.len(),
                         }),

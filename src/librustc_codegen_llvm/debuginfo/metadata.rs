@@ -722,9 +722,10 @@ pub fn type_metadata(
             }
         },
         ty::Tuple(ref elements) => {
+            let tys: Vec<_> = elements.iter().map(|k| k.expect_ty()).collect();
             prepare_tuple_metadata(cx,
                                    t,
-                                   &elements[..],
+                                   &tys,
                                    unique_type_id,
                                    usage_site_span).finalize(cx)
         }

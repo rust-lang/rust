@@ -63,7 +63,7 @@ fn may_have_reference<'a, 'gcx, 'tcx>(ty: Ty<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>)
         ty::Array(ty, ..) | ty::Slice(ty) =>
             may_have_reference(ty, tcx),
         ty::Tuple(tys) =>
-            tys.iter().any(|ty| may_have_reference(ty, tcx)),
+            tys.iter().any(|ty| may_have_reference(ty.expect_ty(), tcx)),
         ty::Adt(adt, substs) =>
             adt.variants.iter().any(|v| v.fields.iter().any(|f|
                 may_have_reference(f.ty(tcx, substs), tcx)

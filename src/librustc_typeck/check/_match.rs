@@ -9,6 +9,7 @@ use rustc::infer;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::ObligationCauseCode;
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::subst::Kind;
 use syntax::ast;
 use syntax::source_map::Spanned;
 use syntax::ptr::P;
@@ -304,11 +305,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 let max_len = cmp::max(expected_len, elements.len());
 
-                let element_tys_iter = (0..max_len).map(|_| self.next_ty_var(
+                let element_tys_iter = (0..max_len).map(|_| {
                     // FIXME: `MiscVariable` for now -- obtaining the span and name information
                     // from all tuple elements isn't trivial.
-                    TypeVariableOrigin::TypeInference(pat.span)));
-                let element_tys = tcx.mk_type_list(element_tys_iter);
+                    Kind::from(self.next_ty_var(TypeVariableOrigin::TypeInference(pat.span)))
+                });
+                let element_tys = tcx.mk_substs(element_tys_iter);
                 let pat_ty = tcx.mk_ty(ty::Tuple(element_tys));
                 if let Some(mut err) = self.demand_eqtype_diag(pat.span, expected, pat_ty) {
                     err.emit();
@@ -321,7 +323,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.mk_tup(element_tys_iter)
                 } else {
                     for (i, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                        self.check_pat_walk(elem, &element_tys[i], def_bm, match_discrim_span);
+                        self.check_pat_walk(
+                            elem,
+                            &element_tys[i].expect_ty(),
+                            def_bm,
+                            match_discrim_span,
+                        );
                     }
                     pat_ty
                 }

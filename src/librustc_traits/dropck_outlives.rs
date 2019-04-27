@@ -190,7 +190,7 @@ fn dtorck_constraint_for_ty<'a, 'gcx, 'tcx>(
         }
 
         ty::Tuple(tys) => tys.iter()
-            .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty))
+            .map(|ty| dtorck_constraint_for_ty(tcx, span, for_ty, depth + 1, ty.expect_ty()))
             .collect(),
 
         ty::Closure(def_id, substs) => substs

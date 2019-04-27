@@ -515,7 +515,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // just worry about trying to match up the rustc type
                 // with the HIR types:
                 (ty::Tuple(elem_tys), hir::TyKind::Tup(elem_hir_tys)) => {
-                    search_stack.extend(elem_tys.iter().cloned().zip(elem_hir_tys));
+                    search_stack.extend(elem_tys.iter().map(|k| k.expect_ty()).zip(elem_hir_tys));
                 }
 
                 (ty::Slice(elem_ty), hir::TyKind::Slice(elem_hir_ty))

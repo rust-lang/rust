@@ -392,7 +392,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 if let ty::Tuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
                     signature.extend(
                         args.iter().map(|argument_type| {
-                            Some(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP))
+                            Some(type_metadata(cx, argument_type.expect_ty(), syntax_pos::DUMMY_SP))
                         })
                     );
                 }

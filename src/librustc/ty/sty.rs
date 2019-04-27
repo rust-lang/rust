@@ -171,7 +171,7 @@ pub enum TyKind<'tcx> {
     Never,
 
     /// A tuple type. For example, `(i32, bool)`.
-    Tuple(&'tcx List<Ty<'tcx>>),
+    Tuple(SubstsRef<'tcx>),
 
     /// The projection of an associated type. For example,
     /// `<T as Trait<..>>::N`.
@@ -1651,7 +1651,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                     })
                 })
             }
-            ty::Tuple(tys) => tys.iter().any(|ty| ty.conservative_is_privately_uninhabited(tcx)),
+            ty::Tuple(tys) => tys.iter().any(|ty| {
+                ty.expect_ty().conservative_is_privately_uninhabited(tcx)
+            }),
             ty::Array(ty, len) => {
                 match len.assert_usize(tcx) {
                     // If the array is definitely non-empty, it's uninhabited if
@@ -2087,8 +2089,9 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) =>
                 false,
 
-            ty::Tuple(tys) =>
-                tys.iter().all(|ty| ty.is_trivially_sized(tcx)),
+            ty::Tuple(tys) => {
+                tys.iter().all(|ty| ty.expect_ty().is_trivially_sized(tcx))
+            }
 
             ty::Adt(def, _substs) =>
                 def.sized_constraint(tcx).is_empty(),

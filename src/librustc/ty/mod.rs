@@ -2501,7 +2501,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             Tuple(ref tys) => {
                 match tys.last() {
                     None => vec![],
-                    Some(ty) => self.sized_constraint_for_ty(tcx, ty)
+                    Some(ty) => self.sized_constraint_for_ty(tcx, ty.expect_ty()),
                 }
             }
 
