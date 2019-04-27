@@ -99,7 +99,7 @@ impl<T> TypedArenaChunk<T> {
                 // A pointer as large as possible for zero-sized elements.
                 !0 as *mut T
             } else {
-                self.start().add(self.storage.cap())
+                self.start().add(self.storage.capacity())
             }
         }
     }
@@ -270,7 +270,7 @@ impl<T> TypedArena<T> {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
-                    new_capacity = last_chunk.storage.cap();
+                    new_capacity = last_chunk.storage.capacity();
                     loop {
                         new_capacity = new_capacity.checked_mul(2).unwrap();
                         if new_capacity >= currently_used_cap + n {
@@ -405,7 +405,7 @@ impl DroplessArena {
                     self.end.set(last_chunk.end());
                     return;
                 } else {
-                    new_capacity = last_chunk.storage.cap();
+                    new_capacity = last_chunk.storage.capacity();
                     loop {
                         new_capacity = new_capacity.checked_mul(2).unwrap();
                         if new_capacity >= used_bytes + needed_bytes {

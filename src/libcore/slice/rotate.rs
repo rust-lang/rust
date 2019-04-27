@@ -16,7 +16,7 @@ union RawArray<T> {
 }
 
 impl<T> RawArray<T> {
-    fn cap() -> usize {
+    fn capacity() -> usize {
         if mem::size_of::<T>() == 0 {
             usize::max_value()
         } else {
@@ -55,7 +55,7 @@ impl<T> RawArray<T> {
 pub unsafe fn ptr_rotate<T>(mut left: usize, mid: *mut T, mut right: usize) {
     loop {
         let delta = cmp::min(left, right);
-        if delta <= RawArray::<T>::cap() {
+        if delta <= RawArray::<T>::capacity() {
             // We will always hit this immediately for ZST.
             break;
         }
