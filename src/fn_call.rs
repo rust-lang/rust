@@ -722,6 +722,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
             // Windows API stubs.
             // HANDLE = isize
             // DWORD = ULONG = u32
+            // BOOL = i32
             "GetProcessHeap" => {
                 // Just fake a HANDLE
                 this.write_scalar(Scalar::from_int(1, this.pointer_size()), dest)?;
@@ -739,6 +740,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                 let _flags = this.read_scalar(args[1])?.to_u32()?;
                 let ptr = this.read_scalar(args[2])?.not_undef()?;
                 this.free(ptr)?;
+                this.write_scalar(Scalar::from_int(1, Size::from_bytes(4)), dest)?;
             }
             "HeapReAlloc" => {
                 let _handle = this.read_scalar(args[0])?.to_isize(this)?;
