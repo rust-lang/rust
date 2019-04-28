@@ -1,7 +1,7 @@
 use ra_db::SourceDatabase;
 use ra_syntax::{
     AstNode, ast,
-    algo::{find_covering_element, find_node_at_offset, find_token_at_offset},
+    algo::{find_covering_element, find_node_at_offset, ancestors_at_offset},
 };
 use hir::HirDisplay;
 
@@ -104,12 +104,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     }
 
     if range.is_none() {
-        let node = find_token_at_offset(file.syntax(), position.offset).find_map(|token| {
-            token
-                .parent()
-                .ancestors()
-                .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())
-        })?;
+        let node = ancestors_at_offset(file.syntax(), position.offset)
+            .find(|n| ast::Expr::cast(*n).is_some() || ast::Pat::cast(*n).is_some())?;
         let frange = FileRange { file_id: position.file_id, range: node.range() };
         res.extend(type_of(db, frange).map(rust_code_markup));
         range = Some(node.range());
@@ -393,6 +389,17 @@ The Some variant
     #[test]
     fn hover_for_local_variable_pat() {
         let (analysis, position) = single_file_with_position("fn func(fo<|>o: i32) {}");
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+    }
+
+    #[test]
+    fn hover_local_var_edge() {
+        let (analysis, position) = single_file_with_position(
+            "
+fn func(foo: i32) { if true { <|>foo; }; }
+",
+        );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
     }

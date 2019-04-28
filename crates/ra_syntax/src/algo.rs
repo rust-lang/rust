@@ -1,5 +1,7 @@
 pub mod visit;
 
+use itertools::Itertools;
+
 use crate::{SyntaxNode, TextRange, TextUnit, AstNode, Direction, SyntaxToken, SyntaxElement};
 
 pub use rowan::TokenAtOffset;
@@ -12,6 +14,20 @@ pub fn find_token_at_offset(node: &SyntaxNode, offset: TextUnit) -> TokenAtOffse
     }
 }
 
+/// Returns ancestors of the node at the offset, sorted by length. This should
+/// do the right thing at an edge, e.g. when searching for expressions at `{
+/// <|>foo }` we will get the name reference instead of the whole block, which
+/// we would get if we just did `find_token_at_offset(...).flat_map(|t|
+/// t.parent().ancestors())`.
+pub fn ancestors_at_offset(
+    node: &SyntaxNode,
+    offset: TextUnit,
+) -> impl Iterator<Item = &SyntaxNode> {
+    find_token_at_offset(node, offset)
+        .map(|token| token.parent().ancestors())
+        .kmerge_by(|node1, node2| node1.range().len() < node2.range().len())
+}
+
 /// Finds a node of specific Ast type at offset. Note that this is slightly
 /// imprecise: if the cursor is strictly between two nodes of the desired type,
 /// as in
@@ -20,10 +36,9 @@ pub fn find_token_at_offset(node: &SyntaxNode, offset: TextUnit) -> TokenAtOffse
 /// struct Foo {}|struct Bar;
 /// ```
 ///
-/// then the left node will be silently preferred.
+/// then the shorter node will be silently preferred.
 pub fn find_node_at_offset<N: AstNode>(syntax: &SyntaxNode, offset: TextUnit) -> Option<&N> {
-    find_token_at_offset(syntax, offset)
-        .find_map(|leaf| leaf.parent().ancestors().find_map(N::cast))
+    ancestors_at_offset(syntax, offset).find_map(N::cast)
 }
 
 /// Finds the first sibling in the given direction which is not `trivia`
