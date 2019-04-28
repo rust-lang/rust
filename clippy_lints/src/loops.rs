@@ -676,7 +676,8 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Field(ref e, _)
         | ExprKind::AddrOf(_, ref e)
         | ExprKind::Struct(_, _, Some(ref e))
-        | ExprKind::Repeat(ref e, _) => never_loop_expr(e, main_loop_id),
+        | ExprKind::Repeat(ref e, _)
+        | ExprKind::Use(ref e) => never_loop_expr(e, main_loop_id),
         ExprKind::Array(ref es) | ExprKind::MethodCall(_, _, ref es) | ExprKind::Tup(ref es) => {
             never_loop_expr_all(&mut es.iter(), main_loop_id)
         },
@@ -1458,54 +1459,46 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
 
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
-    let map = &cx.tcx.hir();
-    let expr_node_id = expr.hir_id;
-    let parent_scope = map
-        .get_enclosing_scope(expr_node_id)
-        .and_then(|id| map.get_enclosing_scope(id));
-    if let Some(parent_id) = parent_scope {
-        if let Node::Block(block) = map.get_by_hir_id(parent_id) {
-            for (id, _) in visitor.states.iter().filter(|&(_, v)| *v == VarState::IncrOnce) {
-                let mut visitor2 = InitializeVisitor {
-                    cx,
-                    end_expr: expr,
-                    var_id: *id,
-                    state: VarState::IncrOnce,
-                    name: None,
-                    depth: 0,
-                    past_loop: false,
-                };
-                walk_block(&mut visitor2, block);
+    if let Some(block) = get_enclosing_block(&cx, expr.hir_id) {
+        for (id, _) in visitor.states.iter().filter(|&(_, v)| *v == VarState::IncrOnce) {
+            let mut visitor2 = InitializeVisitor {
+                cx,
+                end_expr: expr,
+                var_id: *id,
+                state: VarState::IncrOnce,
+                name: None,
+                depth: 0,
+                past_loop: false,
+            };
+            walk_block(&mut visitor2, block);
 
-                if visitor2.state == VarState::Warn {
-                    if let Some(name) = visitor2.name {
-                        let mut applicability = Applicability::MachineApplicable;
-                        span_lint_and_sugg(
-                            cx,
-                            EXPLICIT_COUNTER_LOOP,
-                            expr.span,
-                            &format!("the variable `{}` is used as a loop counter.", name),
-                            "consider using",
-                            format!(
-                                "for ({}, {}) in {}.enumerate()",
-                                name,
-                                snippet_with_applicability(cx, pat.span, "item", &mut applicability),
-                                if higher::range(cx, arg).is_some() {
-                                    format!(
-                                        "({})",
-                                        snippet_with_applicability(cx, arg.span, "_", &mut applicability)
-                                    )
-                                } else {
-                                    format!(
-                                        "{}",
-                                        sugg::Sugg::hir_with_applicability(cx, arg, "_", &mut applicability)
-                                            .maybe_par()
-                                    )
-                                }
-                            ),
-                            applicability,
-                        );
-                    }
+            if visitor2.state == VarState::Warn {
+                if let Some(name) = visitor2.name {
+                    let mut applicability = Applicability::MachineApplicable;
+                    span_lint_and_sugg(
+                        cx,
+                        EXPLICIT_COUNTER_LOOP,
+                        expr.span,
+                        &format!("the variable `{}` is used as a loop counter.", name),
+                        "consider using",
+                        format!(
+                            "for ({}, {}) in {}.enumerate()",
+                            name,
+                            snippet_with_applicability(cx, pat.span, "item", &mut applicability),
+                            if higher::range(cx, arg).is_some() {
+                                format!(
+                                    "({})",
+                                    snippet_with_applicability(cx, arg.span, "_", &mut applicability)
+                                )
+                            } else {
+                                format!(
+                                    "{}",
+                                    sugg::Sugg::hir_with_applicability(cx, arg, "_", &mut applicability).maybe_par()
+                                )
+                            }
+                        ),
+                        applicability,
+                    );
                 }
             }
         }
@@ -2042,7 +2035,7 @@ fn is_simple_break_expr(expr: &Expr) -> bool {
 // To trigger the EXPLICIT_COUNTER_LOOP lint, a variable must be
 // incremented exactly once in the loop body, and initialized to zero
 // at the start of the loop.
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 enum VarState {
     Initial,  // Not examined yet
     IncrOnce, // Incremented exactly once, may be a loop counter

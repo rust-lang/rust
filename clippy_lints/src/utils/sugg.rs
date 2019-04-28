@@ -115,6 +115,7 @@ impl<'a> Sugg<'a> {
             | hir::ExprKind::Struct(..)
             | hir::ExprKind::Tup(..)
             | hir::ExprKind::While(..)
+            | hir::ExprKind::Use(_)
             | hir::ExprKind::Err => Sugg::NonParen(snippet),
             hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
             hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
