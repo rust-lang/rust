@@ -3202,7 +3202,7 @@ mod tests {
 
     #[simd_test(enable = "sse2")]
     unsafe fn test_mm_clflush() {
-        let x = 0;
+        let x = 0_u8;
         _mm_clflush(&x as *const _);
     }
 
