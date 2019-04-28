@@ -7,7 +7,7 @@ use rustc::traits::{
     ProgramClause,
     ProgramClauseCategory,
 };
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi;
@@ -16,7 +16,7 @@ use crate::generic_types;
 use std::iter;
 
 crate fn wf_clause_for_raw_ptr<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     mutbl: hir::Mutability
 ) -> Clauses<'tcx> {
     let ptr_ty = generic_types::raw_ptr(tcx, mutbl);
@@ -33,7 +33,7 @@ crate fn wf_clause_for_raw_ptr<'tcx>(
 }
 
 crate fn wf_clause_for_fn_ptr<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     arity_and_output: usize,
     variadic: bool,
     unsafety: hir::Unsafety,
@@ -53,7 +53,7 @@ crate fn wf_clause_for_fn_ptr<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-crate fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
+crate fn wf_clause_for_slice<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
     let ty = generic_types::bound(tcx, 0);
     let slice_ty = tcx.mk_slice(ty);
 
@@ -83,7 +83,7 @@ crate fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tc
 }
 
 crate fn wf_clause_for_array<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     length: &'tcx ty::Const<'tcx>
 ) -> Clauses<'tcx> {
     let ty = generic_types::bound(tcx, 0);
@@ -115,7 +115,7 @@ crate fn wf_clause_for_array<'tcx>(
 }
 
 crate fn wf_clause_for_tuple<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     arity: usize
 ) -> Clauses<'tcx> {
     let type_list = generic_types::type_list(tcx, arity);
@@ -159,7 +159,7 @@ crate fn wf_clause_for_tuple<'tcx>(
 }
 
 crate fn wf_clause_for_ref<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     mutbl: hir::Mutability
 ) -> Clauses<'tcx> {
     let region = tcx.mk_region(
@@ -186,7 +186,7 @@ crate fn wf_clause_for_ref<'tcx>(
 }
 
 crate fn wf_clause_for_fn_def<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     def_id: DefId
 ) -> Clauses<'tcx> {
     let fn_def = generic_types::fn_def(tcx, def_id);

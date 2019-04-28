@@ -644,7 +644,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
 
     fn tuple_like_shim<I>(&mut self, dest: Place<'tcx>,
                           src: Place<'tcx>, tys: I)
-            where I: Iterator<Item = ty::Ty<'tcx>> {
+            where I: Iterator<Item = Ty<'tcx>> {
         let mut previous_field = None;
         for (i, ity) in tys.enumerate() {
             let field = Field::new(i);

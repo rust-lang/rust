@@ -14,7 +14,7 @@ pub struct AutoTraitFinder<'a, 'tcx> {
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     pub fn new(cx: &'a core::DocContext<'tcx>) -> Self {
-        let f = auto::AutoTraitFinder::new(&cx.tcx);
+        let f = auto::AutoTraitFinder::new(cx.tcx);
 
         AutoTraitFinder { cx, f }
     }
@@ -634,7 +634,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 // that we don't end up with duplicate bounds (e.g., for<'b, 'b>)
                                 for_generics.extend(p.generic_params.clone());
                                 p.generic_params = for_generics.into_iter().collect();
-                                self.is_fn_ty(&tcx, &p.trait_)
+                                self.is_fn_ty(tcx, &p.trait_)
                             }
                             _ => false,
                         };
@@ -681,7 +681,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                 } => {
                                     let mut new_trait_path = trait_path.clone();
 
-                                    if self.is_fn_ty(&tcx, trait_) && left_name == FN_OUTPUT_NAME {
+                                    if self.is_fn_ty(tcx, trait_) && left_name == FN_OUTPUT_NAME {
                                         ty_to_fn
                                             .entry(*ty.clone())
                                             .and_modify(|e| *e = (e.0.clone(), Some(rhs.clone())))
@@ -850,7 +850,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         vec.sort_by_cached_key(|x| format!("{:?}", x))
     }
 
-    fn is_fn_ty(&self, tcx: &TyCtxt<'_, '_, '_>, ty: &Type) -> bool {
+    fn is_fn_ty(&self, tcx: TyCtxt<'_, '_, '_>, ty: &Type) -> bool {
         match &ty {
             &&Type::ResolvedPath { ref did, .. } => {
                 *did == tcx.require_lang_item(lang_items::FnTraitLangItem)

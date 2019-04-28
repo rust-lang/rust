@@ -1,7 +1,7 @@
 //! Some lints that are only useful in the compiler or crates that use compiler internals, such as
 //! Clippy.
 
-use crate::hir::{HirId, Path, PathSegment, QPath, Ty, TyKind};
+use crate::hir::{GenericArg, HirId, MutTy, Mutability, Path, PathSegment, QPath, Ty, TyKind};
 use crate::lint::{
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
@@ -57,12 +57,28 @@ impl EarlyLintPass for DefaultHashTypes {
 declare_lint! {
     pub USAGE_OF_TY_TYKIND,
     Allow,
-    "Usage of `ty::TyKind` outside of the `ty::sty` module"
+    "usage of `ty::TyKind` outside of the `ty::sty` module"
 }
 
-declare_lint_pass!(TyKindUsage => [USAGE_OF_TY_TYKIND]);
+declare_lint! {
+    pub TY_PASS_BY_REFERENCE,
+    Allow,
+    "passing `Ty` or `TyCtxt` by reference"
+}
 
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
+declare_lint! {
+    pub USAGE_OF_QUALIFIED_TY,
+    Allow,
+    "using `ty::{Ty,TyCtxt}` instead of importing it"
+}
+
+declare_lint_pass!(TyTyKind => [
+    USAGE_OF_TY_TYKIND,
+    TY_PASS_BY_REFERENCE,
+    USAGE_OF_QUALIFIED_TY,
+]);
+
+impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyTyKind {
     fn check_path(&mut self, cx: &LateContext<'_, '_>, path: &'tcx Path, _: HirId) {
         let segments = path.segments.iter().rev().skip(1).rev();
 
@@ -82,16 +98,72 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TyKindUsage {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_, '_>, ty: &'tcx Ty) {
-        if let TyKind::Path(qpath) = &ty.node {
-            if let QPath::Resolved(_, path) = qpath {
-                if let Some(last) = path.segments.iter().last() {
-                    if lint_ty_kind_usage(cx, last) {
-                        cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, "usage of `ty::TyKind`")
-                            .help("try using `ty::Ty` instead")
+        match &ty.node {
+            TyKind::Path(qpath) => {
+                if let QPath::Resolved(_, path) = qpath {
+                    if let Some(last) = path.segments.iter().last() {
+                        if lint_ty_kind_usage(cx, last) {
+                            cx.struct_span_lint(
+                                USAGE_OF_TY_TYKIND,
+                                path.span,
+                                "usage of `ty::TyKind`",
+                            )
+                            .help("try using `Ty` instead")
                             .emit();
+                        } else {
+                            if ty.span.ctxt().outer().expn_info().is_some() {
+                                return;
+                            }
+                            if let Some(t) = is_ty_or_ty_ctxt(cx, ty) {
+                                if path.segments.len() > 1 {
+                                    cx.struct_span_lint(
+                                        USAGE_OF_QUALIFIED_TY,
+                                        path.span,
+                                        &format!("usage of qualified `ty::{}`", t),
+                                    )
+                                    .span_suggestion(
+                                        path.span,
+                                        "try using it unqualified",
+                                        t,
+                                        // The import probably needs to be changed
+                                        Applicability::MaybeIncorrect,
+                                    )
+                                    .emit();
+                                }
+                            }
+                        }
                     }
                 }
             }
+            TyKind::Rptr(
+                _,
+                MutTy {
+                    ty: inner_ty,
+                    mutbl: Mutability::MutImmutable,
+                },
+            ) => {
+                if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner_def_id()) {
+                    if cx.tcx.impl_trait_ref(impl_did).is_some() {
+                        return;
+                    }
+                }
+                if let Some(t) = is_ty_or_ty_ctxt(cx, &inner_ty) {
+                    cx.struct_span_lint(
+                        TY_PASS_BY_REFERENCE,
+                        ty.span,
+                        &format!("passing `{}` by reference", t),
+                    )
+                    .span_suggestion(
+                        ty.span,
+                        "try passing by value",
+                        t,
+                        // Changing type of function argument
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+                }
+            }
+            _ => {}
         }
     }
 }
@@ -106,4 +178,44 @@ fn lint_ty_kind_usage(cx: &LateContext<'_, '_>, segment: &PathSegment) -> bool {
     }
 
     false
+}
+
+fn is_ty_or_ty_ctxt(cx: &LateContext<'_, '_>, ty: &Ty) -> Option<String> {
+    match &ty.node {
+        TyKind::Path(qpath) => {
+            if let QPath::Resolved(_, path) = qpath {
+                let did = path.def.opt_def_id()?;
+                if cx.match_def_path(did, &["rustc", "ty", "Ty"]) {
+                    return Some(format!("Ty{}", gen_args(path.segments.last().unwrap())));
+                } else if cx.match_def_path(did, &["rustc", "ty", "context", "TyCtxt"]) {
+                    return Some(format!("TyCtxt{}", gen_args(path.segments.last().unwrap())));
+                }
+            }
+        }
+        _ => {}
+    }
+
+    None
+}
+
+fn gen_args(segment: &PathSegment) -> String {
+    if let Some(args) = &segment.args {
+        let lifetimes = args
+            .args
+            .iter()
+            .filter_map(|arg| {
+                if let GenericArg::Lifetime(lt) = arg {
+                    Some(lt.name.ident().to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if !lifetimes.is_empty() {
+            return format!("<{}>", lifetimes.join(", "));
+        }
+    }
+
+    String::new()
 }

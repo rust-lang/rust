@@ -1451,8 +1451,8 @@ pub fn checked_type_of<'a, 'tcx>(
 fn find_existential_constraints<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> ty::Ty<'tcx> {
-    use rustc::hir::*;
+) -> Ty<'tcx> {
+    use rustc::hir::{ImplItem, Item, TraitItem};
 
     struct ConstraintLocator<'a, 'tcx: 'a> {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -1463,7 +1463,7 @@ fn find_existential_constraints<'a, 'tcx>(
         // The mapping is an index for each use site of a generic parameter in the concrete type
         //
         // The indices index into the generic parameters on the existential type.
-        found: Option<(Span, ty::Ty<'tcx>, Vec<usize>)>,
+        found: Option<(Span, Ty<'tcx>, Vec<usize>)>,
     }
 
     impl<'a, 'tcx> ConstraintLocator<'a, 'tcx> {
@@ -1519,7 +1519,7 @@ fn find_existential_constraints<'a, 'tcx>(
                         ty::Param(p) => Some(*index_map.get(p).unwrap()),
                         _ => None,
                     }).collect();
-                let is_param = |ty: ty::Ty<'_>| match ty.sty {
+                let is_param = |ty: Ty<'_>| match ty.sty {
                     ty::Param(_) => true,
                     _ => false,
                 };

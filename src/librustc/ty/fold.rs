@@ -421,7 +421,7 @@ struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     current_index: ty::DebruijnIndex,
 
     fld_r: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
-    fld_t: &'a mut (dyn FnMut(ty::BoundTy) -> ty::Ty<'tcx> + 'a),
+    fld_t: &'a mut (dyn FnMut(ty::BoundTy) -> Ty<'tcx> + 'a),
 }
 
 impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
@@ -431,7 +431,7 @@ impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
         fld_t: &'a mut G
     ) -> Self
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-              G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>
+              G: FnMut(ty::BoundTy) -> Ty<'tcx>
     {
         BoundVarReplacer {
             tcx,
@@ -533,7 +533,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         mut fld_t: G
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-              G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
+              G: FnMut(ty::BoundTy) -> Ty<'tcx>,
               T: TypeFoldable<'tcx>
     {
         use rustc_data_structures::fx::FxHashMap;
@@ -568,7 +568,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         fld_t: G
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-              G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
+              G: FnMut(ty::BoundTy) -> Ty<'tcx>,
               T: TypeFoldable<'tcx>
     {
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
@@ -710,7 +710,7 @@ impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn fold_ty(&mut self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         match ty.sty {
             ty::Bound(debruijn, bound_ty) => {
                 if self.amount == 0 || debruijn < self.current_index {

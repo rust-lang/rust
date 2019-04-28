@@ -12,7 +12,7 @@ use rustc::mir::{
     Place, PlaceBase, PlaceProjection, ProjectionElem, Rvalue, Statement, StatementKind,
     Static, StaticKind, TerminatorKind, VarBindingForm,
 };
-use rustc::ty::{self, DefIdTree};
+use rustc::ty::{self, DefIdTree, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::print::Print;
 use rustc_data_structures::fx::FxHashSet;
@@ -918,7 +918,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         borrow: &BorrowData<'tcx>,
         (place, drop_span): (&Place<'tcx>, Span),
         kind: Option<WriteKind>,
-        dropped_ty: ty::Ty<'tcx>,
+        dropped_ty: Ty<'tcx>,
     ) {
         debug!(
             "report_borrow_conflicts_with_destructor(\
@@ -1483,7 +1483,7 @@ pub(super) struct IncludingDowncast(bool);
 enum StorageDeadOrDrop<'tcx> {
     LocalStorageDead,
     BoxedStorageDead,
-    Destructor(ty::Ty<'tcx>),
+    Destructor(Ty<'tcx>),
 }
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
@@ -1787,7 +1787,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// End-user visible description of the `field_index`nth field of `ty`
     fn describe_field_from_ty(
         &self,
-        ty: &ty::Ty<'_>,
+        ty: Ty<'_>,
         field: Field,
         variant_index: Option<VariantIdx>
     ) -> String {
@@ -2258,18 +2258,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 #[derive(Debug)]
 enum AnnotatedBorrowFnSignature<'tcx> {
     NamedFunction {
-        arguments: Vec<(ty::Ty<'tcx>, Span)>,
-        return_ty: ty::Ty<'tcx>,
+        arguments: Vec<(Ty<'tcx>, Span)>,
+        return_ty: Ty<'tcx>,
         return_span: Span,
     },
     AnonymousFunction {
-        argument_ty: ty::Ty<'tcx>,
+        argument_ty: Ty<'tcx>,
         argument_span: Span,
-        return_ty: ty::Ty<'tcx>,
+        return_ty: Ty<'tcx>,
         return_span: Span,
     },
     Closure {
-        argument_ty: ty::Ty<'tcx>,
+        argument_ty: Ty<'tcx>,
         argument_span: Span,
     },
 }
@@ -2355,7 +2355,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Return the name of the provided `Ty` (that must be a reference) with a synthesized lifetime
     /// name where required.
-    fn get_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
+    fn get_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
         let mut s = String::new();
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
 
@@ -2378,7 +2378,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
     /// Returns the name of the provided `Ty` (that must be a reference)'s region with a
     /// synthesized lifetime name where required.
-    fn get_region_name_for_ty(&self, ty: ty::Ty<'tcx>, counter: usize) -> String {
+    fn get_region_name_for_ty(&self, ty: Ty<'tcx>, counter: usize) -> String {
         let mut s = String::new();
         let mut printer = ty::print::FmtPrinter::new(self.infcx.tcx, &mut s, Namespace::TypeNS);
 

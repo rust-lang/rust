@@ -193,7 +193,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         );
 
         let mut err = self.tcx().sess.struct_span_err(
-            cause.span(&self.tcx()),
+            cause.span(self.tcx()),
             &format!(
                 "implementation of `{}` is not general enough",
                 self.tcx().def_path_str(trait_def_id),

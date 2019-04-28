@@ -321,7 +321,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if allow_two_phase_borrow(&self.tcx, bk) {
+                        if allow_two_phase_borrow(bk) {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
@@ -439,7 +439,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                         // Reading from mere reservations of mutable-borrows is OK.
                         if !is_active(&this.dominators, borrow, context.loc) {
                             // If the borrow isn't active yet, reads don't invalidate it
-                            assert!(allow_two_phase_borrow(&this.tcx, borrow.kind));
+                            assert!(allow_two_phase_borrow(borrow.kind));
                             return Control::Continue;
                         }
 

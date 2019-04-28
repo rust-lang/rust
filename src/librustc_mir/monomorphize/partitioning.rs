@@ -228,7 +228,7 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // functions and statics defined in the local crate.
     let mut initial_partitioning = place_root_mono_items(tcx, mono_items);
 
-    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(&tcx));
+    initial_partitioning.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
     debug_dump(tcx, "INITIAL PARTITIONING:", initial_partitioning.codegen_units.iter());
 
@@ -247,7 +247,7 @@ pub fn partition<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut post_inlining = place_inlined_mono_items(initial_partitioning,
                                                             inlining_map);
 
-    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(&tcx));
+    post_inlining.codegen_units.iter_mut().for_each(|cgu| cgu.estimate_size(tcx));
 
     debug_dump(tcx, "POST INLINING:", post_inlining.codegen_units.iter());
 

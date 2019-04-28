@@ -315,7 +315,7 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
             start_location, assigned_place, borrow_index,
         );
 
-        if !allow_two_phase_borrow(&self.tcx, kind) {
+        if !allow_two_phase_borrow(kind) {
             debug!("  -> {:?}", start_location);
             return;
         }

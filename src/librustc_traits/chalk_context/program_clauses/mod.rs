@@ -10,7 +10,7 @@ use rustc::traits::{
     ProgramClauseCategory,
     Environment,
 };
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use rustc::hir::def_id::DefId;
 use super::ChalkInferenceContext;
 use std::iter;
@@ -19,7 +19,7 @@ use self::primitive::*;
 use self::builtin::*;
 
 fn assemble_clauses_from_impls<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     trait_def_id: DefId,
     clauses: &mut Vec<Clause<'tcx>>
 ) {
@@ -33,7 +33,7 @@ fn assemble_clauses_from_impls<'tcx>(
 }
 
 fn assemble_clauses_from_assoc_ty_values<'tcx>(
-    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    tcx: TyCtxt<'_, '_, 'tcx>,
     trait_def_id: DefId,
     clauses: &mut Vec<Clause<'tcx>>
 ) {

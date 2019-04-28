@@ -49,11 +49,11 @@ pub struct AutoTraitInfo<'cx> {
 }
 
 pub struct AutoTraitFinder<'a, 'tcx: 'a> {
-    tcx: &'a TyCtxt<'a, 'tcx, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
-    pub fn new(tcx: &'a TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         AutoTraitFinder { tcx }
     }
 
@@ -291,7 +291,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         infcx: &InferCtxt<'b, 'tcx, 'c>,
         ty_did: DefId,
         trait_did: DefId,
-        ty: ty::Ty<'c>,
+        ty: Ty<'c>,
         param_env: ty::ParamEnv<'c>,
         user_env: ty::ParamEnv<'c>,
         fresh_preds: &mut FxHashSet<ty::Predicate<'c>>,
@@ -661,7 +661,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         T: Iterator<Item = Obligation<'cx, ty::Predicate<'cx>>>,
     >(
         &self,
-        ty: ty::Ty<'_>,
+        ty: Ty<'_>,
         nested: T,
         computed_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,
         fresh_preds: &'b mut FxHashSet<ty::Predicate<'cx>>,

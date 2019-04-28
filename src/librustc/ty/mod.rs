@@ -212,7 +212,7 @@ impl AssociatedItem {
         }
     }
 
-    pub fn signature<'a, 'tcx>(&self, tcx: &TyCtxt<'a, 'tcx, 'tcx>) -> String {
+    pub fn signature<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         match self.kind {
             ty::AssociatedKind::Method => {
                 // We skip the binder here because the binder would deanonymize all

@@ -190,7 +190,7 @@ error: usage of `ty::TyKind`
 LL |     fn ty_kind(ty_bad: TyKind<'_>, ty_good: Ty<'_>) {}
    |                        ^^^^^^^^^^
    |
-   = help: try using `ty::Ty` instead
+   = help: try using `Ty` instead
 
 error: aborting due to 31 previous errors
 

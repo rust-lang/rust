@@ -1076,7 +1076,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 (Read(kind), BorrowKind::Unique) | (Read(kind), BorrowKind::Mut { .. }) => {
                     // Reading from mere reservations of mutable-borrows is OK.
                     if !is_active(&this.dominators, borrow, context.loc) {
-                        assert!(allow_two_phase_borrow(&tcx, borrow.kind));
+                        assert!(allow_two_phase_borrow(borrow.kind));
                         return Control::Continue;
                     }
 
@@ -1233,7 +1233,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
-                        if allow_two_phase_borrow(&self.infcx.tcx, bk) {
+                        if allow_two_phase_borrow(bk) {
                             (Deep, Reservation(wk))
                         } else {
                             (Deep, Write(wk))
