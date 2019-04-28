@@ -91,7 +91,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
     fn path_generic_args(
         self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: SubstsRef<'tcx>,
     ) -> Result<Self::Path, Self::Error>;
 
     // Defaults (should not be overriden):
@@ -178,7 +178,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
         &self,
         generics: &'tcx ty::Generics,
         substs: SubstsRef<'tcx>,
-    ) -> &'tcx [Kind<'tcx>] {
+    ) -> SubstsRef<'tcx> {
         let mut own_params = generics.parent_count..generics.count();
 
         // Don't print args for `Self` parameters (of traits).
@@ -199,7 +199,7 @@ pub trait Printer<'gcx: 'tcx, 'tcx>: Sized {
             }
         }).count();
 
-        &substs[own_params]
+        SubstsRef::from_slice(self.tcx(), &substs[own_params])
     }
 
     fn default_print_impl_path(

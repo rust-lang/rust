@@ -187,23 +187,6 @@ pub struct SubstsRef<'tcx> {
     pub inner: &'tcx InternalSubsts<'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> SubstsRef<'tcx> {
-    pub fn empty() -> Self {
-        Self {
-            inner: InternalSubsts::empty()
-        }
-    }
-
-    pub fn from_slice(
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
-        substs: &[Kind<'tcx>],
-    ) -> Self {
-        Self {
-            inner: tcx.mk_substs(substs.iter())
-        }
-    }
-}
-
 impl<'tcx> From<&'tcx InternalSubsts<'tcx>> for SubstsRef<'tcx> {
     fn from(inner: &'tcx InternalSubsts<'tcx>) -> Self {
         Self { inner }
@@ -219,14 +202,14 @@ impl<'tcx> IntoIterator for SubstsRef<'tcx> {
 }
 
 BraceStructLiftImpl! {
-    impl<'tcx> Lift<'tcx> for SubstsRef<'tcx> {
+    impl<'a, 'tcx> Lift<'tcx> for SubstsRef<'a> {
         type Lifted = SubstsRef<'tcx>;
         inner,
     }
 }
 
 impl<'tcx> core::ops::Deref for SubstsRef<'tcx> {
-    type Target = InternalSubsts<'tcx>;
+    type Target = [Kind<'tcx>];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -234,15 +217,31 @@ impl<'tcx> core::ops::Deref for SubstsRef<'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
-    /// Creates a `InternalSubsts` that maps each generic parameter to itself.
+impl<'a, 'gcx, 'tcx> SubstsRef<'tcx> {
+    pub fn empty() -> Self {
+        Self {
+            inner: InternalSubsts::empty()
+        }
+    }
+
+    /// Creates a `SubstsRef` from a slice of `Kind`.
+    pub fn from_slice(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        substs: &[Kind<'tcx>],
+    ) -> Self {
+        Self {
+            inner: tcx.mk_substs(substs.iter())
+        }
+    }
+
+    /// Creates a `SubstsRef` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
         Self::for_item(tcx, def_id, |param, _| {
             tcx.mk_param_from_def(param)
         })
     }
 
-    /// Creates a `InternalSubsts` that maps each generic parameter to a higher-ranked
+    /// Creates a `SubstsRef` that maps each generic parameter to a higher-ranked
     /// var bound at index `0`. For types, we use a `BoundVar` index equal to
     /// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
     /// variant (which has a `DefId`).
@@ -280,7 +279,7 @@ impl<'a, 'gcx, 'tcx> InternalSubsts<'tcx> {
         })
     }
 
-    /// Creates a `InternalSubsts` for generic parameter definitions,
+    /// Creates a `SubstsRef` for generic parameter definitions,
     /// by calling closures to obtain each kind.
     /// The closures get to observe the `InternalSubsts` as they're
     /// being built, which can be used to correctly

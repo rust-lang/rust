@@ -1060,7 +1060,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
     fn path_generic_args(
         mut self,
         print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-        args: &[Kind<'tcx>],
+        args: SubstsRef<'tcx>,
     ) -> Result<Self::Path, Self::Error> {
         self = print_prefix(self)?;
 

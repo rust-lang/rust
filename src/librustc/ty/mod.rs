@@ -26,7 +26,7 @@ use crate::session::CrateDisambiguator;
 use crate::traits::{self, Reveal};
 use crate::ty;
 use crate::ty::layout::VariantIdx;
-use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
+use crate::ty::subst::{Subst, SubstsRef};
 use crate::ty::util::{IntTypeExt, Discr};
 use crate::ty::walk::TypeWalker;
 use crate::util::captures::Captures;
@@ -1422,8 +1422,8 @@ impl<'tcx> Predicate<'tcx> {
     /// cases this is skipping over a binder, so late-bound regions
     /// with depth 0 are bound by the predicate.
     pub fn walk_tys(&'a self) -> impl Iterator<Item = Ty<'tcx>> + 'a {
-        match *self {
-            ty::Predicate::Trait(ref data) => {
+        match self {
+            ty::Predicate::Trait(data) => {
                 WalkTysIter::InputTypes(data.skip_binder().input_types())
             }
             ty::Predicate::Subtype(binder) => {
@@ -1436,7 +1436,7 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::RegionOutlives(..) => {
                 WalkTysIter::None
             }
-            ty::Predicate::Projection(ref data) => {
+            ty::Predicate::Projection(data) => {
                 let inner = data.skip_binder();
                 WalkTysIter::ProjectionTypes(
                     inner.projection_ty.substs.types().chain(Some(inner.ty)))
@@ -2356,7 +2356,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     ) -> Option<Discr<'tcx>> {
         let param_env = ParamEnv::empty();
         let repr_type = self.repr.discr_type();
-        let substs = InternalSubsts::identity_for_item(tcx.global_tcx(), expr_did);
+        let substs = SubstsRef::identity_for_item(tcx.global_tcx(), expr_did);
         let instance = ty::Instance::new(expr_did, substs);
         let cid = GlobalId {
             instance,

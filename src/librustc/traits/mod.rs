@@ -29,7 +29,7 @@ use crate::mir::interpret::ErrorHandled;
 use rustc_macros::HashStable;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
-use crate::ty::subst::{InternalSubsts, SubstsRef};
+use crate::ty::subst::SubstsRef;
 use crate::ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
@@ -1008,7 +1008,7 @@ fn vtable_methods<'a, 'tcx>(
                 // the method may have some early-bound lifetimes, add
                 // regions for those
                 let substs = trait_ref.map_bound(|trait_ref|
-                    InternalSubsts::for_item(tcx, def_id, |param, _|
+                    SubstsRef::for_item(tcx, def_id, |param, _|
                         match param.kind {
                             GenericParamDefKind::Lifetime => tcx.types.re_erased.into(),
                             GenericParamDefKind::Type { .. } |

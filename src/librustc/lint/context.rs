@@ -25,7 +25,7 @@ use crate::lint::levels::{LintLevelSets, LintLevelsBuilder};
 use crate::middle::privacy::AccessLevels;
 use crate::rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use crate::session::{config, early_error, Session};
-use crate::ty::{self, print::Printer, subst::{Kind, SubstsRef}, TyCtxt, Ty};
+use crate::ty::{self, print::Printer, subst::SubstsRef, TyCtxt, Ty};
 use crate::ty::layout::{LayoutError, LayoutOf, TyLayout};
 use crate::util::nodemap::FxHashMap;
 use crate::util::common::time;
@@ -873,7 +873,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             fn path_generic_args(
                 self,
                 print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-                _args: &[Kind<'tcx>],
+                _args: SubstsRef<'tcx>,
                 ) -> Result<Self::Path, Self::Error> {
                 print_prefix(self)
             }

@@ -447,7 +447,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         use hir::def_id::CrateNum;
         use hir::map::DisambiguatedDefPathData;
         use ty::print::Printer;
-        use ty::subst::Kind;
 
         struct AbsolutePathPrinter<'a, 'gcx, 'tcx> {
             tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -523,7 +522,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             fn path_generic_args(
                 self,
                 print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-                _args: &[Kind<'tcx>],
+                _args: SubstsRef<'tcx>,
             ) -> Result<Self::Path, Self::Error> {
                 print_prefix(self)
             }

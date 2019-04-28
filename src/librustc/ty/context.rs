@@ -25,7 +25,6 @@ use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
 use crate::mir::{self, Mir, interpret, ProjectionKind};
 use crate::mir::interpret::{ConstValue, Allocation};
-use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
 use crate::traits;
 use crate::traits::{Clause, Clauses, GoalKind, Goal, Goals};
@@ -41,7 +40,8 @@ use crate::ty::GenericParamDefKind;
 use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use crate::ty::query;
 use crate::ty::steal::Steal;
-use crate::ty::subst::{UserSubsts, UnpackedKind};
+use crate::ty::subst::{UserSubsts, UnpackedKind, SubstsRef, InternalSubsts};
+use crate::ty::subst::{Kind, Subst};
 use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
@@ -573,7 +573,7 @@ impl<'tcx> TypeckTables<'tcx> {
     pub fn node_substs(&self, id: hir::HirId) -> SubstsRef<'tcx> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
         self.node_substs.get(&id.local_id).cloned().unwrap_or_else(
-            || InternalSubsts::empty().into()
+            || SubstsRef::empty().into()
         )
     }
 
@@ -2507,7 +2507,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
         let adt_def = self.adt_def(def_id);
-        let substs = InternalSubsts::for_item(self, def_id, |param, substs| {
+        let substs = SubstsRef::for_item(self, def_id, |param, substs| {
             match param.kind {
                 GenericParamDefKind::Lifetime |
                 GenericParamDefKind::Const => {

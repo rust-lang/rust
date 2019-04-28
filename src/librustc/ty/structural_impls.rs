@@ -487,7 +487,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ProjectionTy<'a> {
         tcx.lift(&self.substs).map(|substs| {
             ty::ProjectionTy {
                 item_def_id: self.item_def_id,
-                substs,
+                substs: substs.clone(),
             }
         })
     }
@@ -511,7 +511,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ExistentialProjection<'a> {
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| {
             ty::ExistentialProjection {
-                substs,
+                substs: substs.clone(),
                 ty: tcx.lift(&self.ty).expect("type must lift when substs do"),
                 item_def_id: self.item_def_id,
             }
@@ -544,7 +544,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::Predicate<'a> {
             ty::Predicate::ClosureKind(closure_def_id, closure_substs, kind) => {
                 tcx.lift(&closure_substs)
                    .map(|closure_substs| ty::Predicate::ClosureKind(closure_def_id,
-                                                                    closure_substs,
+                                                                    closure_substs.clone(),
                                                                     kind))
             }
             ty::Predicate::ObjectSafe(trait_def_id) => {
@@ -597,7 +597,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ClosureSubsts<'a> {
     type Lifted = ty::ClosureSubsts<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| {
-            ty::ClosureSubsts { substs }
+            ty::ClosureSubsts { substs: substs.clone() }
         })
     }
 }
@@ -606,7 +606,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::GeneratorSubsts<'a> {
     type Lifted = ty::GeneratorSubsts<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         tcx.lift(&self.substs).map(|substs| {
-            ty::GeneratorSubsts { substs }
+            ty::GeneratorSubsts { substs: substs.clone() }
         })
     }
 }

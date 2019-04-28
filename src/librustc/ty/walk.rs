@@ -2,6 +2,7 @@
 //! WARNING: this does not keep track of the region depth.
 
 use crate::ty::{self, Ty};
+use crate::ty::subst::SubstsRef;
 use smallvec::{self, SmallVec};
 use crate::mir::interpret::ConstValue;
 
@@ -69,7 +70,7 @@ pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> smallvec::IntoIter<TypeWalkerArray<'t
 // natural order one would expect (basically, the order of the
 // types as they are written).
 fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
-    match parent_ty.sty {
+    match &parent_ty.sty {
         ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) |
         ty::Str | ty::Infer(_) | ty::Param(_) | ty::Never | ty::Error |
         ty::Placeholder(..) | ty::Bound(..) | ty::Foreign(..) => {
@@ -84,24 +85,24 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::Slice(ty) => {
             stack.push(ty);
         }
-        ty::RawPtr(ref mt) => {
+        ty::RawPtr(mt) => {
             stack.push(mt.ty);
         }
         ty::Ref(_, ty, _) => {
             stack.push(ty);
         }
-        ty::Projection(ref data) | ty::UnnormalizedProjection(ref data) => {
+        ty::Projection(data) | ty::UnnormalizedProjection(data) => {
             stack.extend(data.substs.types().rev());
         }
-        ty::Dynamic(ref obj, ..) => {
+        ty::Dynamic(obj, ..) => {
             stack.extend(obj.iter().rev().flat_map(|predicate| {
-                let (substs, opt_ty) = match *predicate.skip_binder() {
+                let (substs, opt_ty) = match predicate.skip_binder() {
                     ty::ExistentialPredicate::Trait(tr) => (tr.substs, None),
                     ty::ExistentialPredicate::Projection(p) =>
                         (p.substs, Some(p.ty)),
                     ty::ExistentialPredicate::AutoTrait(_) =>
                         // Empty iterator
-                        (ty::InternalSubsts::empty().into(), None),
+                        (SubstsRef::empty(), None),
                 };
 
                 substs.types().rev().chain(opt_ty)
@@ -110,10 +111,10 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::Adt(_, substs) | ty::Opaque(_, substs) => {
             stack.extend(substs.types().rev());
         }
-        ty::Closure(_, ref substs) => {
+        ty::Closure(_, substs) => {
             stack.extend(substs.substs.types().rev());
         }
-        ty::Generator(_, ref substs, _) => {
+        ty::Generator(_, substs, _) => {
             stack.extend(substs.substs.types().rev());
         }
         ty::GeneratorWitness(ts) => {
