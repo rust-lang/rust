@@ -87,7 +87,7 @@ fn clif_sig_from_fn_sig<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sig: FnSig<'t
                 _ => bug!("argument to function with \"rust-call\" ABI is not a tuple"),
             };
             let mut inputs: Vec<Ty> = vec![sig.inputs()[0]];
-            inputs.extend(extra_args.into_iter());
+            inputs.extend(extra_args.types());
             (CallConv::SystemV, inputs, sig.output())
         }
         Abi::System => bug!("system abi should be selected elsewhere"),
@@ -434,7 +434,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                 };
 
                 let mut params = Vec::new();
-                for (i, arg_ty) in tupled_arg_tys.iter().enumerate() {
+                for (i, arg_ty) in tupled_arg_tys.types().enumerate() {
                     let param = cvalue_for_param(
                         fx,
                         start_ebb,
