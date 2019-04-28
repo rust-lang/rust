@@ -102,7 +102,8 @@ SOURCE_FILE@[0; 167)
               L_PAREN@[138; 139) "("
               R_PAREN@[139; 140) ")"
             WHITESPACE@[140; 141) " "
-            FAT_ARROW@[141; 143) "=>"
+            EQ@[141; 142) "="
+            R_ANGLE@[142; 143) ">"
             WHITESPACE@[143; 144) " "
             TOKEN_TREE@[144; 146)
               L_CURLY@[144; 145) "{"

@@ -85,8 +85,13 @@ impl<'t> Parser<'t> {
         let mut i = 0;
 
         loop {
-            let kind = self.token_source.token_kind(self.token_pos + i);
-            i += 1;
+            let mut kind = self.token_source.token_kind(self.token_pos + i);
+            if let Some((composited, step)) = self.is_composite(kind, i) {
+                kind = composited;
+                i += step;
+            } else {
+                i += 1;
+            }
 
             match kind {
                 EOF => return EOF,
@@ -121,13 +126,37 @@ impl<'t> Parser<'t> {
         Marker::new(pos)
     }
 
-    /// Advances the parser by one token unconditionally.
+    /// Advances the parser by one token unconditionally
+    /// Mainly use in `token_tree` parsing
+    pub(crate) fn bump_raw(&mut self) {
+        let kind = self.token_source.token_kind(self.token_pos);
+        if kind == EOF {
+            return;
+        }
+        self.do_bump(kind, 1);
+    }
+
+    /// Advances the parser by one token with composite puncts handled
     pub(crate) fn bump(&mut self) {
         let kind = self.nth(0);
         if kind == EOF {
             return;
         }
-        self.do_bump(kind, 1);
+
+        use SyntaxKind::*;
+
+        // Handle parser composites
+        match kind {
+            DOTDOTDOT | DOTDOTEQ => {
+                self.bump_compound(kind, 3);
+            }
+            DOTDOT | COLONCOLON | EQEQ | FAT_ARROW | NEQ | THIN_ARROW => {
+                self.bump_compound(kind, 2);
+            }
+            _ => {
+                self.do_bump(kind, 1);
+            }
+        }
     }
 
     /// Advances the parser by one token, remapping its kind.
@@ -204,6 +233,33 @@ impl<'t> Parser<'t> {
 
     fn push_event(&mut self, event: Event) {
         self.events.push(event)
+    }
+
+    /// helper function for check if it is composite.
+    fn is_composite(&self, kind: SyntaxKind, n: usize) -> Option<(SyntaxKind, usize)> {
+        // We assume the dollars will not occuried between
+        // mult-byte tokens
+
+        let jn1 = self.token_source.is_token_joint_to_next(self.token_pos + n);
+        let la2 = self.token_source.token_kind(self.token_pos + n + 1);
+        let jn2 = self.token_source.is_token_joint_to_next(self.token_pos + n + 1);
+        let la3 = self.token_source.token_kind(self.token_pos + n + 2);
+
+        use SyntaxKind::*;
+
+        match kind {
+            DOT if jn1 && la2 == DOT && jn2 && la3 == DOT => Some((DOTDOTDOT, 3)),
+            DOT if jn1 && la2 == DOT && la3 == EQ => Some((DOTDOTEQ, 3)),
+            DOT if jn1 && la2 == DOT => Some((DOTDOT, 2)),
+
+            COLON if jn1 && la2 == COLON => Some((COLONCOLON, 2)),
+            EQ if jn1 && la2 == EQ => Some((EQEQ, 2)),
+            EQ if jn1 && la2 == R_ANGLE => Some((FAT_ARROW, 2)),
+
+            EXCL if la2 == EQ => Some((NEQ, 2)),
+            MINUS if la2 == R_ANGLE => Some((THIN_ARROW, 2)),
+            _ => None,
+        }
     }
 
     fn eat_dollars(&mut self) {
