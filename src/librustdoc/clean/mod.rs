@@ -2945,6 +2945,7 @@ impl Clean<Type> for hir::Ty {
 
 impl<'tcx> Clean<Type> for Ty<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
+        debug!("cleaning type: {:?}", self);
         match self.sty {
             ty::Never => Never,
             ty::Bool => Primitive(PrimitiveType::Bool),

@@ -712,7 +712,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // Additionally, we check if we've seen this predicate before,
                     // to avoid rendering duplicate bounds to the user.
                     if self.is_param_no_infer(p.skip_binder().projection_ty.substs)
-                        && !p.ty().skip_binder().is_ty_infer()
+                        && !p.ty().skip_binder().has_infer_types()
                         && is_new_pred {
                             debug!("evaluate_nested_obligations: adding projection predicate\
                             to computed_preds: {:?}", predicate);
