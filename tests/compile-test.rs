@@ -61,10 +61,13 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
             let name = path.file_name()?.to_string_lossy();
             // NOTE: This only handles a single dep
             // https://github.com/laumann/compiletest-rs/issues/101
-            needs_disambiguation
-                .iter()
-                .find(|dep| name.starts_with(&format!("lib{}-", dep)))
-                .map(|dep| format!("--extern {}={}", dep, path.display()))
+            needs_disambiguation.iter().find_map(|dep| {
+                if name.starts_with(&format!("lib{}-", dep)) {
+                    Some(format!("--extern {}={}", dep, path.display()))
+                } else {
+                    None
+                }
+            })
         })
         .collect::<Vec<_>>();
 
