@@ -50,10 +50,10 @@ pub fn decode_dep_graph(
                     nodes[i] = node;
                     edges[i] = Some(Box::<[DepNodeIndex]>::decode(d)?);
 
-                    if likely!(node.kind.is_eval_always()) {
-                        state[i] = AtomicCell::new(DepNodeState::Unknown);
-                    } else {
+                    if unlikely!(node.kind.is_eval_always()) {
                         state[i] = AtomicCell::new(DepNodeState::UnknownEvalAlways);
+                    } else {
+                        state[i] = AtomicCell::new(DepNodeState::Unknown);
                     }
                 }
             }

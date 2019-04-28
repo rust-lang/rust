@@ -362,8 +362,8 @@ impl DepGraph {
                 };
 
                 debug_assert_eq!(
-                    data.colors.get(prev_index),
-                    DepNodeState::Unknown,
+                    data.colors.get(prev_index).color(),
+                    None,
                     "DepGraph::with_task() - Duplicate DepNodeState insertion for {:?}",
                     key
                 );
@@ -807,7 +807,7 @@ impl DepGraph {
         // There may be multiple threads trying to mark the same dep node green concurrently
 
         #[cfg(not(parallel_compiler))]
-        debug_assert_eq!(data.colors.get(dep_node_index), DepNodeState::Unknown,
+        debug_assert_eq!(data.colors.get(dep_node_index).color(), None,
                       "DepGraph::try_mark_previous_green() - Duplicate DepNodeState \
                       insertion for {:?}", dep_node);
 
