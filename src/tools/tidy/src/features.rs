@@ -173,18 +173,25 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
     let contents = t!(fs::read_to_string(base_src_path.join("libsyntax/feature_gate.rs")));
 
     // We allow rustc-internal features to omit a tracking issue.
-    // These features must be marked with a `// rustc internal` in its own group.
-    let mut next_feature_is_rustc_internal = false;
+    // To make tidy accept omitting a tracking issue, group the list of features
+    // without one inside `// no tracking issue START` and `// no tracking issue END`.
+    let mut next_feature_omits_tracking_issue = false;
 
     contents.lines().zip(1..)
         .filter_map(|(line, line_number)| {
             let line = line.trim();
-            if line.starts_with("// rustc internal") {
-                next_feature_is_rustc_internal = true;
-                return None;
-            } else if line.is_empty() {
-                next_feature_is_rustc_internal = false;
-                return None;
+
+            // Within START and END, the tracking issue can be omitted.
+            match line {
+                "// no tracking issue START" => {
+                    next_feature_omits_tracking_issue = true;
+                    return None;
+                }
+                "// no tracking issue END" => {
+                    next_feature_omits_tracking_issue = false;
+                    return None;
+                }
+                _ => {}
             }
 
             let mut parts = line.split(',');
@@ -198,7 +205,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
             let since = parts.next().unwrap().trim().trim_matches('"');
             let issue_str = parts.next().unwrap().trim();
             let tracking_issue = if issue_str.starts_with("None") {
-                if level == Status::Unstable && !next_feature_is_rustc_internal {
+                if level == Status::Unstable && !next_feature_omits_tracking_issue {
                     *bad = true;
                     tidy_error!(
                         bad,
@@ -209,7 +216,6 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 }
                 None
             } else {
-                next_feature_is_rustc_internal = false;
                 let s = issue_str.split('(').nth(1).unwrap().split(')').nth(0).unwrap();
                 Some(s.parse().unwrap())
             };
