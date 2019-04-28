@@ -133,10 +133,85 @@ extern "C" {
     fn vmulouh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.ppc.altivec.vmulosh"]
     fn vmulosh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vmaxsb"]
+    fn vmaxsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.vmaxsh"]
+    fn vmaxsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vmaxsw"]
+    fn vmaxsw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vmaxub"]
+    fn vmaxub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.ppc.altivec.vmaxuh"]
+    fn vmaxuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.ppc.altivec.vmaxuw"]
+    fn vmaxuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
 mod sealed {
     use super::*;
+
+    macro_rules! test_impl {
+        ($fun:ident ($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $instr:ident]) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(test, assert_instr($instr))]
+            unsafe fn $fun ($($v : $ty),*) -> $r {
+                $call ($($v),*)
+            }
+        }
+    }
+
+    test_impl! { vec_vmaxsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vmaxsb, vmaxsb] }
+    test_impl! { vec_vmaxsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vmaxsh, vmaxsh] }
+    test_impl! { vec_vmaxsw (a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [vmaxsw, vmaxsw] }
+
+    test_impl! { vec_vmaxub (a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [vmaxub, vmaxub] }
+    test_impl! { vec_vmaxuh (a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [vmaxuh, vmaxuh] }
+    test_impl! { vec_vmaxuw (a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vmaxuw, vmaxuw] }
+
+    pub trait VectorMax<Other> {
+        type Result;
+        unsafe fn vec_max(self, b: Other) -> Self::Result;
+    }
+
+    macro_rules! impl_vec_max {
+        ($fun:ident ($a:ty, $b:ty) -> $r:ty) => {
+            impl VectorMax<$b> for $a {
+                type Result = $r;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_max(self, b: $b) -> Self::Result {
+                    $fun(transmute(self), transmute(b))
+                }
+            }
+        }
+    }
+
+    impl_vec_max!{ vmaxub (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+    impl_vec_max!{ vmaxub (vector_unsigned_char, vector_bool_char) -> vector_unsigned_char }
+    impl_vec_max!{ vmaxub (vector_bool_char, vector_unsigned_char) -> vector_unsigned_char }
+
+    impl_vec_max!{ vmaxsb (vector_signed_char, vector_signed_char) -> vector_signed_char }
+    impl_vec_max!{ vmaxsb (vector_signed_char, vector_bool_char) -> vector_signed_char }
+    impl_vec_max!{ vmaxsb (vector_bool_char, vector_signed_char) -> vector_signed_char }
+
+    impl_vec_max!{ vmaxuh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+    impl_vec_max!{ vmaxuh (vector_unsigned_short, vector_bool_short) -> vector_unsigned_short }
+    impl_vec_max!{ vmaxuh (vector_bool_short, vector_unsigned_short) -> vector_unsigned_short }
+
+    impl_vec_max!{ vmaxsh (vector_signed_short, vector_signed_short) -> vector_signed_short }
+    impl_vec_max!{ vmaxsh (vector_signed_short, vector_bool_short) -> vector_signed_short }
+    impl_vec_max!{ vmaxsh (vector_bool_short, vector_signed_short) -> vector_signed_short }
+
+    impl_vec_max!{ vmaxuw (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+    impl_vec_max!{ vmaxuw (vector_unsigned_int, vector_bool_int) -> vector_unsigned_int }
+    impl_vec_max!{ vmaxuw (vector_bool_int, vector_unsigned_int) -> vector_unsigned_int }
+
+    impl_vec_max!{ vmaxsw (vector_signed_int, vector_signed_int) -> vector_signed_int }
+    impl_vec_max!{ vmaxsw (vector_signed_int, vector_bool_int) -> vector_signed_int }
+    impl_vec_max!{ vmaxsw (vector_bool_int, vector_signed_int) -> vector_signed_int }
 
     #[inline]
     #[target_feature(enable = "altivec")]
@@ -833,6 +908,17 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+
+/// Vector max.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_max<T, U>(a: T, b: U) -> <T as sealed::VectorMax<U>>::Result
+where
+    T: sealed::VectorMax<U>,
+{
+    a.vec_max(b)
+}
+
 /// Vector add.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1035,6 +1121,62 @@ mod tests {
 
     use crate::core_arch::simd::*;
     use stdsimd_test::simd_test;
+
+    macro_rules! s_t_l {
+        (i32x4) => ( vector_signed_int );
+        (i16x8) => ( vector_signed_short );
+        (i8x16) => ( vector_signed_char );
+
+        (u32x4) => ( vector_unsigned_int );
+        (u16x8) => ( vector_unsigned_short );
+        (u8x16) => ( vector_unsigned_char );
+
+        (f32x4) => ( vector_float );
+    }
+
+    macro_rules! test_vec_max {
+        { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
+                let b: s_t_l!($ty) = transmute($ty::new($($b),+));
+
+                let d = $ty::new($($d),+);
+                let r : $ty = transmute(vec_max(a, b));
+                assert_eq!(d, r);
+            }
+         }
+    }
+
+    test_vec_max!{ test_vec_max_i32x4, i32x4,
+                  [-1, 0, 1, 2],
+                  [2, 1, -1, -2],
+                  [2, 1, 1, 2] }
+
+    test_vec_max!{ test_vec_max_u32x4, u32x4,
+                  [0, 0, 1, 2],
+                  [2, 1, 0, 0],
+                  [2, 1, 1, 2] }
+
+    test_vec_max!{ test_vec_max_i16x8, i16x8,
+                  [-1, 0, 1, 2, -1, 0, 1, 2],
+                  [2, 1, -1, -2, 2, 1, -1, -2],
+                  [2, 1, 1, 2, 2, 1, 1, 2] }
+
+    test_vec_max!{ test_vec_max_u16x8, u16x8,
+                  [0, 0, 1, 2, 0, 0, 1, 2],
+                  [2, 1, 0, 0, 2, 1, 0, 0],
+                  [2, 1, 1, 2, 2, 1, 1, 2] }
+
+    test_vec_max!{ test_vec_max_i8x16, i8x16,
+                  [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
+                  [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
+                  [2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2] }
+
+    test_vec_max!{ test_vec_max_u8x16, u8x16,
+                  [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
+                  [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
+                  [2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2] }
 
     macro_rules! test_vec_perm {
         {$name:ident,
