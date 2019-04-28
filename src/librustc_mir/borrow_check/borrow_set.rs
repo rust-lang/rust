@@ -1,5 +1,6 @@
 use crate::borrow_check::place_ext::PlaceExt;
 use crate::borrow_check::nll::ToRegionVid;
+use crate::borrow_check::path_utils::allow_two_phase_borrow;
 use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
@@ -299,13 +300,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
-    /// Returns `true` if the borrow represented by `kind` is
-    /// allowed to be split into separate Reservation and
-    /// Activation phases.
-    fn allow_two_phase_borrow(&self, kind: mir::BorrowKind) -> bool {
-        kind.allows_two_phase_borrow()
-            || self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref
-    }
 
     /// If this is a two-phase borrow, then we will record it
     /// as "pending" until we find the activating use.
@@ -321,7 +315,7 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
             start_location, assigned_place, borrow_index,
         );
 
-        if !self.allow_two_phase_borrow(kind) {
+        if !allow_two_phase_borrow(&self.tcx, kind) {
             debug!("  -> {:?}", start_location);
             return;
         }
