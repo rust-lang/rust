@@ -2105,7 +2105,7 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     var toggle = createSimpleToggle(false);
-    var hideMethodDocs = getCurrentValue("rustdoc-method-docs") !== "false";
+    var hideMethodDocs = getCurrentValue("rustdoc-method-docs") === "true";
     var pageId = getPageId();
 
     var func = function(e) {
