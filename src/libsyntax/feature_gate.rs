@@ -477,6 +477,14 @@ declare_features! (
     (active, c_variadic, "1.34.0", Some(44930), None),
 );
 
+// Some features are known to be incomplete and using them is likely to have
+// unanticipated results, such as compiler crashes. We warn the user about these
+// to alert them.
+const INCOMPLETE_FEATURES: &[&str] = &[
+    "generic_associated_types",
+    "const_generics"
+];
+
 declare_features! (
     (removed, import_shadowing, "1.0.0", None, None, None),
     (removed, managed_boxes, "1.0.0", None, None, None),
@@ -2150,11 +2158,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         err.emit();
     }
 
-    // Some features are known to be incomplete and using them is likely to have
-    // unanticipated results, such as compiler crashes. We warn the user about these
-    // to alert them.
-    let incomplete_features = ["generic_associated_types", "const_generics"];
-
     let mut features = Features::new();
     let mut edition_enabled_features = FxHashMap::default();
 
@@ -2193,7 +2196,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             let name = mi.name_or_empty();
-            if incomplete_features.iter().any(|f| name == *f) {
+            if INCOMPLETE_FEATURES.iter().any(|f| name == *f) {
                 span_handler.struct_span_warn(
                     mi.span(),
                     &format!(
