@@ -1137,6 +1137,7 @@ pub enum ExprKind {
     Lit(Lit),
     /// A cast (e.g., `foo as f64`).
     Cast(P<Expr>, P<Ty>),
+    /// A type ascription (e.g., `42: usize`).
     Type(P<Expr>, P<Ty>),
     /// An `if` block, with an optional `else` block.
     ///
