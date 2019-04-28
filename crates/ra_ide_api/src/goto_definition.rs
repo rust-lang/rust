@@ -25,6 +25,7 @@ pub(crate) fn goto_definition(
     None
 }
 
+#[derive(Debug)]
 pub(crate) enum ReferenceResult {
     Exact(NavigationTarget),
     Approximate(Vec<NavigationTarget>),
