@@ -352,7 +352,7 @@ pub use self::adapters::Cloned;
 pub use self::adapters::StepBy;
 #[stable(feature = "iterator_flatten", since = "1.29.0")]
 pub use self::adapters::Flatten;
-#[unstable(feature = "iter_copied", issue = "57127")]
+#[stable(feature = "iter_copied", since = "1.36.0")]
 pub use self::adapters::Copied;
 
 pub(crate) use self::adapters::TrustedRandomAccess;
