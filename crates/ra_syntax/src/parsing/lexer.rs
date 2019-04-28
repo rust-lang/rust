@@ -88,65 +88,18 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
     }
 
     match c {
-        // Multi-byte tokens.
-        '.' => {
-            return match (ptr.current(), ptr.nth(1)) {
-                (Some('.'), Some('.')) => {
-                    ptr.bump();
-                    ptr.bump();
-                    DOTDOTDOT
-                }
-                (Some('.'), Some('=')) => {
-                    ptr.bump();
-                    ptr.bump();
-                    DOTDOTEQ
-                }
-                (Some('.'), _) => {
-                    ptr.bump();
-                    DOTDOT
-                }
-                _ => DOT,
-            };
-        }
-        ':' => {
-            return match ptr.current() {
-                Some(':') => {
-                    ptr.bump();
-                    COLONCOLON
-                }
-                _ => COLON,
-            };
-        }
-        '=' => {
-            return match ptr.current() {
-                Some('=') => {
-                    ptr.bump();
-                    EQEQ
-                }
-                Some('>') => {
-                    ptr.bump();
-                    FAT_ARROW
-                }
-                _ => EQ,
-            };
-        }
-        '!' => {
-            return match ptr.current() {
-                Some('=') => {
-                    ptr.bump();
-                    NEQ
-                }
-                _ => EXCL,
-            };
-        }
-        '-' => {
-            return if ptr.at('>') {
-                ptr.bump();
-                THIN_ARROW
-            } else {
-                MINUS
-            };
-        }
+        // Possiblily multi-byte tokens,
+        // but we only produce single byte token now
+        // DOTDOTDOT, DOTDOT, DOTDOTEQ, DOT
+        '.' => return DOT,
+        // COLONCOLON COLON
+        ':' => return COLON,
+        // EQEQ FATARROW EQ
+        '=' => return EQ,
+        // NEQ EXCL
+        '!' => return EXCL,
+        // THIN_ARROW MINUS
+        '-' => return MINUS,
 
         // If the character is an ident start not followed by another single
         // quote, then this is a lifetime name:

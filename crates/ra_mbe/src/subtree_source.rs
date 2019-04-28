@@ -388,6 +388,7 @@ where
     }
 }
 
+// FIXME: Remove this function
 fn convert_multi_char_punct<'b, I>(
     p: &tt::Punct,
     iter: &mut TokenPeek<'b, I>,
@@ -397,8 +398,6 @@ where
 {
     if let Some((m, is_joint_to_next)) = iter.current_punct3(p) {
         if let Some((kind, text)) = match m {
-            ('.', '.', '.') => Some((DOTDOTDOT, "...")),
-            ('.', '.', '=') => Some((DOTDOTEQ, "..=")),
             _ => None,
         } {
             return Some((kind, is_joint_to_next, text, 3));
@@ -407,13 +406,6 @@ where
 
     if let Some((m, is_joint_to_next)) = iter.current_punct2(p) {
         if let Some((kind, text)) = match m {
-            ('-', '>') => Some((THIN_ARROW, "->")),
-            ('!', '=') => Some((NEQ, "!=")),
-            ('=', '>') => Some((FAT_ARROW, "=>")),
-            ('=', '=') => Some((EQEQ, "==")),
-            ('.', '.') => Some((DOTDOT, "..")),
-            (':', ':') => Some((COLONCOLON, "::")),
-
             _ => None,
         } {
             return Some((kind, is_joint_to_next, text, 2));

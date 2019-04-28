@@ -383,7 +383,7 @@ pub(crate) fn token_tree(p: &mut Parser) {
                 return;
             }
             R_PAREN | R_BRACK => p.err_and_bump("unmatched brace"),
-            _ => p.bump(),
+            _ => p.bump_raw(),
         }
     }
     p.expect(closing_paren_kind);
