@@ -155,13 +155,12 @@ impl_stable_hash_via_hash!(OutputType);
 impl OutputType {
     fn is_compatible_with_codegen_units_and_single_output_file(&self) -> bool {
         match *self {
-            OutputType::Exe | OutputType::DepInfo => true,
+            OutputType::Exe | OutputType::DepInfo | OutputType::Metadata => true,
             OutputType::Bitcode
             | OutputType::Assembly
             | OutputType::LlvmAssembly
             | OutputType::Mir
-            | OutputType::Object
-            | OutputType::Metadata => false,
+            | OutputType::Object => false,
         }
     }
 
@@ -1216,10 +1215,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "make unnamed regions display as '# (where # is some non-ident unique id)"),
     borrowck: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "select which borrowck is used (`ast`, `mir`, `migrate`, or `compare`)"),
-    two_phase_borrows: bool = (false, parse_bool, [UNTRACKED],
-        "use two-phase reserved/active distinction for `&mut` borrows in MIR borrowck"),
-    two_phase_beyond_autoref: bool = (false, parse_bool, [UNTRACKED],
-        "when using two-phase-borrows, allow two phases even for non-autoref `&mut` borrows"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass"),
     time: bool = (false, parse_bool, [UNTRACKED],
