@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![allow(non_snake_case)]
 
 // Error messages for EXXXX errors.

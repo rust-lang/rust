@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 // ignore-tidy-filelength
 
 #![allow(non_snake_case)]
