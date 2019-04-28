@@ -627,6 +627,8 @@ impl<'a> Resolver<'a> {
             let dummy_binding = self.import(dummy_binding, directive);
             self.per_ns(|this, ns| {
                 let _ = this.try_define(directive.parent_scope.module, target, ns, dummy_binding);
+                // Consider erroneous imports used to avoid duplicate diagnostics.
+                this.record_use(target, ns, dummy_binding, false);
             });
         }
     }
