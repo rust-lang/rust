@@ -330,6 +330,10 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
         hir::ExprKind::Err => {
             println!("{}Err", ind);
         },
+        hir::ExprKind::Use(ref e) => {
+            println!("{}Use", ind);
+            print_expr(cx, e, indent + 1);
+        },
     }
 }
 
