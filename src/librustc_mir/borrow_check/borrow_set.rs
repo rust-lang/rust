@@ -304,7 +304,6 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
     /// Activation phases.
     fn allow_two_phase_borrow(&self, kind: mir::BorrowKind) -> bool {
         kind.allows_two_phase_borrow()
-            || self.tcx.sess.opts.debugging_opts.two_phase_beyond_autoref
     }
 
     /// If this is a two-phase borrow, then we will record it
