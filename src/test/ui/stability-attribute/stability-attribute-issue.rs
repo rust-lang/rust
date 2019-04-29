@@ -9,4 +9,6 @@ fn main() {
     //~^ ERROR use of unstable library feature 'unstable_test_feature'
     unstable_msg();
     //~^ ERROR use of unstable library feature 'unstable_test_feature': message
+    unstable_without_issue();
+    //~^ ERROR use of unstable library feature 'unstable_test_feature'
 }

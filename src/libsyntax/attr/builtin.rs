@@ -122,7 +122,7 @@ pub struct Stability {
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: Option<u32> },
+    Unstable { reason: Option<Symbol>, issue: u32 },
     Stable { since: Symbol },
 }
 
@@ -341,6 +341,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         }
                     }
     
+                    // `feature` is required, `reason` and `issue` are optional
                     if let Some(feature) = feature {
                         stab = Some(Stability {
                             level: Unstable {
@@ -348,14 +349,14 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                 issue: {
                                     if let Some(issue_sym) = issue {
                                         if let Ok(issue_num) = issue_sym.as_str().parse() {
-                                            Some(issue_num)
+                                            issue_num
                                         } else {
                                             span_err!(diagnostic, attr.span, E0545,
                                                       "incorrect 'issue'");
                                             continue
                                         }
                                     } else {
-                                        None
+                                        0
                                     }
                                 }
                             },

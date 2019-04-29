@@ -16,6 +16,14 @@ LL |     unstable_msg();
    = note: for more information, see https://github.com/rust-lang/rust/issues/2
    = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/stability-attribute-issue.rs:12:5
+   |
+LL |     unstable_without_issue();
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(unstable_test_feature)] to the crate attributes to enable
+
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

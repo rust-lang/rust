@@ -25,9 +25,6 @@ mod missing_feature_names {
     #[unstable(issue = "0")] //~ ERROR missing 'feature' [E0546]
     fn f1() { }
 
-    #[unstable(feature = "b")] //~ ERROR missing 'issue' [E0547]
-    fn f2() { }
-
     #[stable(since = "a")] //~ ERROR missing 'feature' [E0546]
     fn f3() { }
 }

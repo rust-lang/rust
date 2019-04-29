@@ -7,3 +7,6 @@ pub fn unstable() {}
 
 #[unstable(feature = "unstable_test_feature", reason = "message", issue = "2")]
 pub fn unstable_msg() {}
+
+#[unstable(feature = "unstable_test_feature")]
+pub fn unstable_without_issue() {}
