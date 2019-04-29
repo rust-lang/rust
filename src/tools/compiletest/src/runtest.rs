@@ -2695,6 +2695,10 @@ impl<'test> TestCx<'test> {
             cmd.env("LLVM_FILECHECK", filecheck);
         }
 
+        if let Some(ref llvm_bin_dir) = self.config.llvm_bin_dir {
+            cmd.env("LLVM_BIN_DIR", llvm_bin_dir);
+        }
+
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");

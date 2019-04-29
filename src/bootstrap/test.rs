@@ -1231,6 +1231,13 @@ impl Step for Compiletest {
                 if let Some(ar) = builder.ar(target) {
                     cmd.arg("--ar").arg(ar);
                 }
+
+                // The llvm/bin directory contains many useful cross-platform
+                // tools. Pass the path to run-make tests so they can use them.
+                let llvm_bin_path = llvm_config.parent()
+                    .expect("Expected llvm-config to be contained in directory");
+                assert!(llvm_bin_path.is_dir());
+                cmd.arg("--llvm-bin-dir").arg(llvm_bin_path);
             }
         }
 

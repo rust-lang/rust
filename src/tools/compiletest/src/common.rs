@@ -144,6 +144,9 @@ pub struct Config {
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
 
+    /// Path to LLVM's bin directory.
+    pub llvm_bin_dir: Option<PathBuf>,
+
     /// The valgrind path.
     pub valgrind_path: Option<String>,
 
