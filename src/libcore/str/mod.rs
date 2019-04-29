@@ -4061,7 +4061,7 @@ impl str {
     /// Both are equivalent to:
     ///
     /// ```
-    /// println!("\\u{{2764}}\n!");
+    /// println!("\\u{{2764}}\\n!");
     /// ```
     ///
     /// Using `to_string`:
