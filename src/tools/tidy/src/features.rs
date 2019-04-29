@@ -14,6 +14,8 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::path::Path;
 
+use regex::{Regex, escape};
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
     Stable,
@@ -151,10 +153,19 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 }
 
 fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
-    line.find(attr)
-        .and_then(|i| line[i..].find('"').map(|j| i + j + 1))
-        .and_then(|i| line[i..].find('"').map(|j| (i, i + j)))
-        .map(|(i, j)| &line[i..j])
+    let r = Regex::new(&format!(r#"{} *= *"([^"]*)""#, escape(attr)))
+        .expect("malformed regex for find_attr_val");
+    r.captures(line)
+        .and_then(|c| c.get(1))
+        .map(|m| m.as_str())
+}
+
+#[test]
+fn test_find_attr_val() {
+    let s = r#"#[unstable(feature = "checked_duration_since", issue = "58402")]"#;
+    assert_eq!(find_attr_val(s, "feature"), Some("checked_duration_since"));
+    assert_eq!(find_attr_val(s, "issue"), Some("58402"));
+    assert_eq!(find_attr_val(s, "since"), None);
 }
 
 fn test_filen_gate(filen_underscore: &str, features: &mut Features) -> bool {
