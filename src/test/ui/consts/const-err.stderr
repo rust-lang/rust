@@ -13,11 +13,17 @@ LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
 error[E0080]: erroneous constant used
-  --> $DIR/const-err.rs:14:15
+  --> $DIR/const-err.rs:14:16
    |
 LL |     black_box((FOO, FOO));
-   |               ^^^^^^^^^^ referenced constant has errors
+   |                ^^^ referenced constant has errors
 
-error: aborting due to previous error
+error[E0080]: erroneous constant used
+  --> $DIR/const-err.rs:14:21
+   |
+LL |     black_box((FOO, FOO));
+   |                     ^^^ referenced constant has errors
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
