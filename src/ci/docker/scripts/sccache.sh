@@ -1,5 +1,3 @@
-# ignore-tidy-linelength
-
 set -ex
 
 curl -fo /usr/local/bin/sccache \

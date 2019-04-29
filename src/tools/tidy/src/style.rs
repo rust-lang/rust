@@ -38,7 +38,7 @@ when executed when assertions are disabled.
 Use llvm::report_fatal_error for increased robustness.";
 
 /// Parser states for `line_is_url`.
-#[derive(PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 #[allow(non_camel_case_types)]
 enum LIUState {
     EXP_COMMENT_START,
@@ -56,11 +56,12 @@ enum LIUState {
 fn line_is_url(line: &str) -> bool {
     use self::LIUState::*;
     let mut state: LIUState = EXP_COMMENT_START;
+    let is_url = |w: &str| w.starts_with("http://") || w.starts_with("https://");
 
     for tok in line.split_whitespace() {
         match (state, tok) {
-            (EXP_COMMENT_START, "//") => state = EXP_LINK_LABEL_OR_URL,
-            (EXP_COMMENT_START, "///") => state = EXP_LINK_LABEL_OR_URL,
+            (EXP_COMMENT_START, "//") |
+            (EXP_COMMENT_START, "///") |
             (EXP_COMMENT_START, "//!") => state = EXP_LINK_LABEL_OR_URL,
 
             (EXP_LINK_LABEL_OR_URL, w)
@@ -68,14 +69,18 @@ fn line_is_url(line: &str) -> bool {
                 => state = EXP_URL,
 
             (EXP_LINK_LABEL_OR_URL, w)
-                if w.starts_with("http://") || w.starts_with("https://")
+                if is_url(w)
                 => state = EXP_END,
 
             (EXP_URL, w)
-                if w.starts_with("http://") || w.starts_with("https://") || w.starts_with("../")
+                if is_url(w) || w.starts_with("../")
                 => state = EXP_END,
 
-            (_, _) => return false,
+            (_, w)
+                if w.len() > COLS && is_url(w)
+                => state = EXP_END,
+
+            (_, _) => {}
         }
     }
 
