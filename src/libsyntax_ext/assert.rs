@@ -1,10 +1,11 @@
-use errors::DiagnosticBuilder;
+use errors::{Applicability, DiagnosticBuilder};
 
 use syntax::ast::{self, *};
 use syntax::source_map::Spanned;
 use syntax::ext::base::*;
 use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
+use syntax::parse::parser::Parser;
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -74,17 +75,69 @@ fn parse_assert<'a>(
         return Err(err);
     }
 
-    Ok(Assert {
-        cond_expr: parser.parse_expr()?,
-        custom_message: if parser.eat(&token::Comma) {
-            let ts = parser.parse_tokens();
-            if !ts.is_empty() {
-                Some(ts)
-            } else {
-                None
-            }
-        } else {
-            None
-        },
-    })
+    let cond_expr = parser.parse_expr()?;
+
+    // Some crates use the `assert!` macro in the following form (note extra semicolon):
+    //
+    // assert!(
+    //     my_function();
+    // );
+    //
+    // Warn about semicolon and suggest removing it. Eventually, this should be turned into an
+    // error.
+    if parser.token == token::Semi {
+        let mut err = cx.struct_span_warn(sp, "macro requires an expression as an argument");
+        err.span_suggestion(
+            parser.span,
+            "try removing semicolon",
+            String::new(),
+            Applicability::MaybeIncorrect
+        );
+        err.note("this is going to be an error in the future");
+        err.emit();
+
+        parser.bump();
+    }
+
+    // Some crates use the `assert!` macro in the following form (note missing comma before
+    // message):
+    //
+    // assert!(true "error message");
+    //
+    // Parse this as an actual message, and suggest inserting a comma. Eventually, this should be
+    // turned into an error.
+    let custom_message = if let token::Literal(token::Lit::Str_(_), _) = parser.token {
+        let mut err = cx.struct_span_warn(parser.span, "unexpected string literal");
+        let comma_span = cx.source_map().next_point(parser.prev_span);
+        err.span_suggestion_short(
+            comma_span,
+            "try adding a comma",
+            ", ".to_string(),
+            Applicability::MaybeIncorrect
+        );
+        err.note("this is going to be an error in the future");
+        err.emit();
+
+        parse_custom_message(&mut parser)
+    } else if parser.eat(&token::Comma) {
+        parse_custom_message(&mut parser)
+    } else {
+        None
+    };
+
+    if parser.token != token::Eof {
+        parser.expect_one_of(&[], &[])?;
+        unreachable!();
+    }
+
+    Ok(Assert { cond_expr, custom_message })
+}
+
+fn parse_custom_message<'a>(parser: &mut Parser<'a>) -> Option<TokenStream> {
+    let ts = parser.parse_tokens();
+    if !ts.is_empty() {
+        Some(ts)
+    } else {
+        None
+    }
 }
