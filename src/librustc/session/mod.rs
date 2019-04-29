@@ -1078,8 +1078,7 @@ fn default_emitter(
 
 pub enum DiagnosticOutput {
     Default,
-    Raw(Box<dyn Write + Send>),
-    Emitter(Box<dyn Emitter + Send + sync::Send>)
+    Raw(Box<dyn Write + Send>)
 }
 
 pub fn build_session_with_source_map(
@@ -1115,7 +1114,6 @@ pub fn build_session_with_source_map(
         DiagnosticOutput::Raw(write) => {
             default_emitter(&sopts, registry, &source_map, Some(write))
         }
-        DiagnosticOutput::Emitter(emitter) => emitter,
     };
 
     let diagnostic_handler = errors::Handler::with_emitter_and_flags(

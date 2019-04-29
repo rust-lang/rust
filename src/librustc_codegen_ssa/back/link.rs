@@ -46,11 +46,10 @@ pub fn remove(sess: &Session, path: &Path) {
 /// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
-                          codegen_results: &CodegenResults,
-                          outputs: &OutputFilenames,
-                          crate_name: &str,
-                          target_cpu: &str) -> Vec<PathBuf> {
-    let mut out_filenames = Vec::new();
+                                              codegen_results: &CodegenResults,
+                                              outputs: &OutputFilenames,
+                                              crate_name: &str,
+                                              target_cpu: &str) {
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
         let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
@@ -64,13 +63,12 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        let out_files = link_binary_output::<B>(sess,
-                                           codegen_results,
-                                           crate_type,
-                                           outputs,
-                                           crate_name,
-                                           target_cpu);
-        out_filenames.extend(out_files);
+        link_binary_output::<B>(sess,
+                                codegen_results,
+                                crate_type,
+                                outputs,
+                                crate_name,
+                                target_cpu);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
@@ -97,21 +95,17 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             }
         }
     }
-
-    out_filenames
 }
 
 fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
-                      codegen_results: &CodegenResults,
-                      crate_type: config::CrateType,
-                      outputs: &OutputFilenames,
-                      crate_name: &str,
-                      target_cpu: &str) -> Vec<PathBuf> {
+                                                 codegen_results: &CodegenResults,
+                                                 crate_type: config::CrateType,
+                                                 outputs: &OutputFilenames,
+                                                 crate_name: &str,
+                                                 target_cpu: &str) {
     for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
         check_file_is_writeable(obj, sess);
     }
-
-    let mut out_filenames = vec![];
 
     if outputs.outputs.contains_key(&OutputType::Metadata) {
         let out_filename = filename_for_metadata(sess, crate_name, outputs);
@@ -125,10 +119,15 @@ fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             .tempdir_in(out_filename.parent().unwrap())
             .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata = emit_metadata(sess, codegen_results, &metadata_tmpdir);
-        if let Err(e) = fs::rename(metadata, &out_filename) {
-            sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+        match fs::rename(&metadata, &out_filename) {
+            Ok(_) => {
+                if sess.opts.debugging_opts.emit_directives {
+                    sess.parse_sess.span_diagnostic.maybe_emit_json_directive(
+                        format!("metadata file written: {}", out_filename.display()));
+                }
+            }
+            Err(e) => sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e)),
         }
-        out_filenames.push(out_filename);
     }
 
     let tmpdir = TempFileBuilder::new().prefix("rustc").tempdir().unwrap_or_else(|err|
@@ -158,14 +157,11 @@ fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                 );
             }
         }
-        out_filenames.push(out_filename);
     }
 
     if sess.opts.cg.save_temps {
         let _ = tmpdir.into_path();
     }
-
-    out_filenames
 }
 
 // The third parameter is for env vars, used on windows to set up the

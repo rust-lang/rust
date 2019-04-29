@@ -1465,6 +1465,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          the same values as the target option of the same name"),
     allow_features: Option<Vec<String>> = (None, parse_opt_comma_list, [TRACKED],
         "only allow the listed language features to be enabled in code (space separated)"),
+    emit_directives: bool = (false, parse_bool, [UNTRACKED],
+        "emit build directives if producing JSON output"),
 }
 
 pub fn default_lib_output() -> CrateType {

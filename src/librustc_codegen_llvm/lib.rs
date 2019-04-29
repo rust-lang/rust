@@ -300,7 +300,7 @@ impl CodegenBackend for LlvmCodegenBackend {
         sess: &Session,
         dep_graph: &DepGraph,
         outputs: &OutputFilenames,
-    ) -> Result<(), ErrorReported>{
+    ) -> Result<(), ErrorReported> {
         use rustc::util::common::time;
         let (codegen_results, work_products) =
             ongoing_codegen.downcast::
