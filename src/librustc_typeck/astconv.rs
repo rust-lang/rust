@@ -11,7 +11,7 @@ use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::namespace::Namespace;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
-use rustc::traits;
+use rustc::traits::{self, TraitAliasExpansionInfoDignosticBuilder};
 use rustc::ty::{self, DefIdTree, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
@@ -965,30 +965,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
 
-    fn expand_trait_refs(&self,
-        trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
-    ) -> Vec<DefId> {
-        let tcx = self.tcx();
-
-        // Expand trait aliases recursively and check that only one regular (non-auto) trait
-        // is used.
-        let expanded_traits = traits::expand_trait_refs(tcx, trait_refs);
-        let (auto_traits, regular_traits): (Vec<_>, Vec<_>) =
-            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref.def_id()));
-        if regular_traits.len() > 1 {
-            let extra_trait = &regular_traits[1];
-            let mut err = struct_span_err!(tcx.sess, extra_trait.top_level_span, E0225,
-                "only auto traits can be used as additional traits in a trait object");
-            err.span_label(extra_trait.span, "non-auto additional trait");
-            if extra_trait.span != extra_trait.top_level_span {
-                err.span_label(extra_trait.top_level_span, "expanded from this trait alias");
-            }
-            err.emit();
-        }
-
-        auto_traits.into_iter().map(|i| i.trait_ref.def_id()).collect()
-    }
-
     fn conv_object_ty_poly_trait_ref(&self,
         span: Span,
         trait_bounds: &[hir::PolyTraitRef],
@@ -997,52 +973,69 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     {
         let tcx = self.tcx();
 
-        if trait_bounds.is_empty() {
+        let mut projection_bounds = Vec::new();
+        let mut potential_assoc_types = Vec::new();
+        let dummy_self = self.tcx().types.trait_object_dummy_self;
+        let bound_trait_refs: Vec<_> = trait_bounds
+            .iter()
+            .rev()
+            .map(|trait_bound| {
+                let (trait_ref, cur_potential_assoc_types) = self.instantiate_poly_trait_ref(
+                    trait_bound,
+                    dummy_self,
+                    &mut projection_bounds
+                );
+                potential_assoc_types.extend(cur_potential_assoc_types.into_iter().flatten());
+                (trait_ref, trait_bound.span)
+            }).collect();
+
+        // Expand trait aliases recursively and check that only one regular (non-auto) trait
+        // is used and no 'maybe' bounds are used.
+        let expanded_traits = traits::expand_trait_aliases(tcx, bound_trait_refs.clone());
+        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
+            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
+        if regular_traits.len() > 1 {
+            let extra_trait = &regular_traits[1];
+            let mut err = struct_span_err!(tcx.sess, extra_trait.bottom().1, E0225,
+                "only auto traits can be used as additional traits in a trait object");
+            err.label_with_exp_info(extra_trait, "additional non-auto trait");
+            err.span_label(regular_traits[0].top().1, "first non-auto trait");
+            err.emit();
+        }
+
+        if regular_traits.is_empty() && auto_traits.is_empty() {
             span_err!(tcx.sess, span, E0224,
                 "at least one non-builtin trait is required for an object type");
             return tcx.types.err;
         }
 
-        let mut projection_bounds = Vec::new();
-        let dummy_self = self.tcx().types.trait_object_dummy_self;
-        let (principal, potential_assoc_types) = self.instantiate_poly_trait_ref(
-            &trait_bounds[0],
-            dummy_self,
-            &mut projection_bounds,
-        );
-        debug!("principal: {:?}", principal);
-
-        let mut bound_trait_refs = Vec::with_capacity(trait_bounds.len());
-        for trait_bound in trait_bounds[1..].iter().rev() {
-            // Sanity check for non-principal trait bounds.
-            let (tr, _) = self.instantiate_poly_trait_ref(
-                trait_bound,
-                dummy_self,
-                &mut Vec::new()
-            );
-            bound_trait_refs.push((tr, trait_bound.span));
-        }
-        bound_trait_refs.push((principal, trait_bounds[0].span));
-
-        let mut auto_traits = self.expand_trait_refs(bound_trait_refs);
-
         // Check that there are no gross object safety violations;
         // most importantly, that the supertraits don't contain `Self`,
         // to avoid ICEs.
-        let object_safety_violations =
-            tcx.global_tcx().astconv_object_safety_violations(principal.def_id());
-        if !object_safety_violations.is_empty() {
-            tcx.report_object_safety_error(span, principal.def_id(), object_safety_violations)
-                .map(|mut err| err.emit());
-            return tcx.types.err;
+        for item in &regular_traits {
+            let object_safety_violations =
+                tcx.global_tcx().astconv_object_safety_violations(item.trait_ref().def_id());
+            if !object_safety_violations.is_empty() {
+                tcx.report_object_safety_error(
+                    span,
+                    item.trait_ref().def_id(),
+                    object_safety_violations
+                )
+                    .map(|mut err| err.emit());
+                return tcx.types.err;
+            }
         }
 
         // Use a `BTreeSet` to keep output in a more consistent order.
         let mut associated_types = BTreeSet::default();
 
-        for tr in traits::elaborate_trait_ref(tcx, principal) {
-            debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", tr);
-            match tr {
+        let regular_traits_refs = bound_trait_refs
+            .into_iter()
+            .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()))
+            .map(|(trait_ref, _)| trait_ref);
+        for trait_ref in traits::elaborate_trait_refs(tcx, regular_traits_refs) {
+            debug!("conv_object_ty_poly_trait_ref: observing object predicate `{:?}`", trait_ref);
+            match trait_ref {
                 ty::Predicate::Trait(pred) => {
                     associated_types
                         .extend(tcx.associated_items(pred.def_id())
@@ -1102,20 +1095,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 if associated_types.len() == 1 { "" } else { "s" },
                 names,
             );
-            let mut suggest = false;
-            let mut potential_assoc_types_spans = vec![];
-            if let Some(potential_assoc_types) = potential_assoc_types {
+            let (suggest, potential_assoc_types_spans) =
                 if potential_assoc_types.len() == associated_types.len() {
-                    // Only suggest when the amount of missing associated types is equals to the
+                    // Only suggest when the amount of missing associated types equals the number of
                     // extra type arguments present, as that gives us a relatively high confidence
                     // that the user forgot to give the associtated type's name. The canonical
                     // example would be trying to use `Iterator<isize>` instead of
-                    // `Iterator<Item=isize>`.
-                    suggest = true;
-                    potential_assoc_types_spans = potential_assoc_types;
-                }
-            }
-            let mut suggestions = vec![];
+                    // `Iterator<Item = isize>`.
+                    (true, potential_assoc_types)
+                } else {
+                    (false, Vec::new())
+                };
+            let mut suggestions = Vec::new();
             for (i, item_def_id) in associated_types.iter().enumerate() {
                 let assoc_item = tcx.associated_item(*item_def_id);
                 err.span_label(
@@ -1151,9 +1142,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             err.emit();
         }
 
+        // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
+        // `dyn Trait + Send`.
+        auto_traits.sort_by_key(|i| i.trait_ref().def_id());
+        auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
+        debug!("regular_traits: {:?}", regular_traits);
+        debug!("auto_traits: {:?}", auto_traits);
+
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
-        let existential_principal = principal.map_bound(|trait_ref| {
-            self.trait_ref_to_existential(trait_ref)
+        let existential_trait_refs = regular_traits.iter().map(|i| {
+            i.trait_ref().map_bound(|trait_ref| self.trait_ref_to_existential(trait_ref))
         });
         let existential_projections = projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|b| {
@@ -1166,21 +1164,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             })
         });
 
-        // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
-        // `dyn Trait + Send`.
-        auto_traits.sort();
-        auto_traits.dedup();
-        debug!("auto_traits: {:?}", auto_traits);
-
         // Calling `skip_binder` is okay because the predicates are re-bound.
-        let principal = if tcx.trait_is_auto(existential_principal.def_id()) {
-            ty::ExistentialPredicate::AutoTrait(existential_principal.def_id())
-        } else {
-            ty::ExistentialPredicate::Trait(*existential_principal.skip_binder())
-        };
+        let regular_trait_predicates = existential_trait_refs.map(
+            |trait_ref| ty::ExistentialPredicate::Trait(*trait_ref.skip_binder()));
+        let auto_trait_predicates = auto_traits.into_iter().map(
+            |trait_ref| ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()));
         let mut v =
-            iter::once(principal)
-            .chain(auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait))
+            regular_trait_predicates
+            .chain(auto_trait_predicates)
             .chain(existential_projections
                 .map(|x| ty::ExistentialPredicate::Projection(*x.skip_binder())))
             .collect::<SmallVec<[_; 8]>>();

@@ -1,3 +1,5 @@
+use errors::DiagnosticBuilder;
+use smallvec::SmallVec;
 use syntax_pos::Span;
 
 use crate::hir;
@@ -43,7 +45,7 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     }
 }
 
-struct PredicateSet<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+struct PredicateSet<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     set: FxHashSet<ty::Predicate<'tcx>>,
 }
@@ -51,6 +53,10 @@ struct PredicateSet<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PredicateSet<'a, 'gcx, 'tcx> {
         PredicateSet { tcx: tcx, set: Default::default() }
+    }
+
+    fn contains(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
+        self.set.contains(&anonymize_predicate(self.tcx, pred))
     }
 
     fn insert(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
@@ -65,6 +71,18 @@ impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
         // to be considered equivalent. So normalize all late-bound
         // regions before we throw things into the underlying set.
         self.set.insert(anonymize_predicate(self.tcx, pred))
+    }
+
+    fn remove(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
+        self.set.remove(&anonymize_predicate(self.tcx, pred))
+    }
+}
+
+impl<'a, 'gcx, 'tcx, T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'a, 'gcx, 'tcx> {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for pred in iter.into_iter() {
+            self.insert(pred.as_ref());
+        }
     }
 }
 
@@ -230,10 +248,16 @@ impl<'cx, 'gcx, 'tcx> Iterator for Elaborator<'cx, 'gcx, 'tcx> {
     }
 
     fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
-        self.stack.pop().map(|item| {
-            self.push(&item);
-            item
-        })
+        // Extract next item from top-most stack frame, if any.
+        let next_predicate = match self.stack.pop() {
+            Some(predicate) => predicate,
+            None => {
+                // No more stack frames. Done.
+                return None;
+            }
+        };
+        self.push(&next_predicate);
+        return Some(next_predicate);
     }
 }
 
@@ -256,96 +280,140 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// `TraitRefExpander` iterator
+// `TraitAliasExpander` iterator
 ///////////////////////////////////////////////////////////////////////////
 
-/// "Trait reference expansion" is the process of expanding a sequence of trait
+/// "Trait alias expansion" is the process of expanding a sequence of trait
 /// references into another sequence by transitively following all trait
 /// aliases. e.g. If you have bounds like `Foo + Send`, a trait alias
 /// `trait Foo = Bar + Sync;`, and another trait alias
 /// `trait Bar = Read + Write`, then the bounds would expand to
 /// `Read + Write + Sync + Send`.
-pub struct TraitRefExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
-    stack: Vec<TraitRefExpansionInfo<'tcx>>,
+pub struct TraitAliasExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    stack: Vec<TraitAliasExpansionInfo<'tcx>>,
+    /// The set of predicates visited from the root directly to the current point in the
+    /// expansion tree.
     visited: PredicateSet<'a, 'gcx, 'tcx>,
 }
 
 #[derive(Debug, Clone)]
-pub struct TraitRefExpansionInfo<'tcx> {
-    pub top_level_trait_ref: ty::PolyTraitRef<'tcx>,
-    pub top_level_span: Span,
-    pub trait_ref: ty::PolyTraitRef<'tcx>,
-    pub span: Span,
+pub struct TraitAliasExpansionInfo<'tcx> {
+    pub items: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
 }
 
-pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
+impl<'tcx> TraitAliasExpansionInfo<'tcx> {
+    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitAliasExpansionInfo<'tcx> {
+        TraitAliasExpansionInfo {
+            items: smallvec![(trait_ref, span)]
+        }
+    }
+
+    fn push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitAliasExpansionInfo<'tcx> {
+        let mut items = self.items.clone();
+        items.push((trait_ref, span));
+
+        TraitAliasExpansionInfo {
+            items
+        }
+    }
+
+    pub fn trait_ref(&self) -> &ty::PolyTraitRef<'tcx> {
+        &self.top().0
+    }
+
+    pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+        self.items.last().unwrap()
+    }
+
+    pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+        self.items.first().unwrap()
+    }
+}
+
+pub trait TraitAliasExpansionInfoDignosticBuilder {
+    fn label_with_exp_info<'tcx>(&mut self,
+        info: &TraitAliasExpansionInfo<'tcx>,
+        top_label: &str
+    ) -> &mut Self;
+}
+
+impl<'a> TraitAliasExpansionInfoDignosticBuilder for DiagnosticBuilder<'a> {
+    fn label_with_exp_info<'tcx>(&mut self,
+        info: &TraitAliasExpansionInfo<'tcx>,
+        top_label: &str
+    ) -> &mut Self {
+        self.span_label(info.top().1, top_label);
+        if info.items.len() > 1 {
+            for (_, sp) in info.items[1..(info.items.len() - 1)].iter().rev() {
+                self.span_label(*sp, "referenced here");
+            }
+        }
+        self
+    }
+}
+
+pub fn expand_trait_aliases<'cx, 'gcx, 'tcx>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
-) -> TraitRefExpander<'cx, 'gcx, 'tcx> {
-    let mut visited = PredicateSet::new(tcx);
-    let mut items: Vec<_> =
-        trait_refs
-            .into_iter()
-            .map(|(trait_ref, span)| TraitRefExpansionInfo {
-                top_level_trait_ref: trait_ref.clone(),
-                top_level_span: span,
-                trait_ref,
-                span,
-            })
-            .collect();
-    items.retain(|item| visited.insert(&item.trait_ref.to_predicate()));
-    TraitRefExpander { stack: items, visited }
+) -> TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    let items: Vec<_> = trait_refs
+        .into_iter()
+        .map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span))
+        .collect();
+    TraitAliasExpander { stack: items, visited: PredicateSet::new(tcx) }
 }
 
-impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
-    /// If `item` refers to a trait alias, adds the components of the trait alias to the stack,
-    /// and returns `false`.
-    /// If `item` refers to an ordinary trait, simply returns `true`.
-    fn push(&mut self, item: &TraitRefExpansionInfo<'tcx>) -> bool {
+impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    /// If `item` is a trait alias and its predicate has not yet been visited, then expands `item`
+    /// to the definition and pushes the resulting expansion onto `self.stack`, and returns `false`.
+    /// Otherwise, immediately returns `true` if `item` is a regular trait and `false` if it is a
+    /// trait alias.
+    /// The return value indicates whether `item` should not be yielded to the user.
+    fn push(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.visited.tcx;
+        let trait_ref = item.trait_ref();
+        let pred = trait_ref.to_predicate();
 
-        if !tcx.is_trait_alias(item.trait_ref.def_id()) {
-            return true;
+        debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
+
+        self.visited.remove(&pred);
+
+        let is_alias = tcx.is_trait_alias(trait_ref.def_id());
+        if !is_alias || self.visited.contains(&pred) {
+            return !is_alias;
         }
 
-        // Get components of the trait alias.
-        let predicates = tcx.super_predicates_of(item.trait_ref.def_id());
+        // Get components of trait alias.
+        let predicates = tcx.super_predicates_of(trait_ref.def_id());
 
-        let mut items: Vec<_> = predicates.predicates
+        let items: Vec<_> = predicates.predicates
             .iter()
             .rev()
             .filter_map(|(pred, span)| {
-                pred.subst_supertrait(tcx, &item.trait_ref)
+                pred.subst_supertrait(tcx, &trait_ref)
                     .to_opt_poly_trait_ref()
-                    .map(|trait_ref|
-                        TraitRefExpansionInfo {
-                            trait_ref,
-                            span: *span,
-                            ..*item
-                        }
-                    )
+                    .map(|trait_ref| item.push(trait_ref, *span))
             })
             .collect();
-
-        debug!("trait_ref_expander: trait_ref={:?} items={:?}",
-               item.trait_ref, items);
-
-        // Only keep those items that we haven't already seen.
-        items.retain(|i| self.visited.insert(&i.trait_ref.to_predicate()));
+        debug!("expand_trait_aliases: items={:?}", items);
 
         self.stack.extend(items);
+
+        // Record predicate into set of already-visited.
+        self.visited.insert(&pred);
+
         false
     }
 }
 
-impl<'cx, 'gcx, 'tcx> Iterator for TraitRefExpander<'cx, 'gcx, 'tcx> {
-    type Item = TraitRefExpansionInfo<'tcx>;
+impl<'cx, 'gcx, 'tcx> Iterator for TraitAliasExpander<'cx, 'gcx, 'tcx> {
+    type Item = TraitAliasExpansionInfo<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.stack.len(), None)
     }
 
-    fn next(&mut self) -> Option<TraitRefExpansionInfo<'tcx>> {
+    fn next(&mut self) -> Option<TraitAliasExpansionInfo<'tcx>> {
         while let Some(item) = self.stack.pop() {
             if self.push(&item) {
                 return Some(item);
@@ -386,8 +454,8 @@ impl<'cx, 'gcx, 'tcx> Iterator for SupertraitDefIds<'cx, 'gcx, 'tcx> {
         self.stack.extend(
             predicates.predicates
                       .iter()
-                      .filter_map(|(p, _)| p.to_opt_poly_trait_ref())
-                      .map(|t| t.def_id())
+                      .filter_map(|(pred, _)| pred.to_opt_poly_trait_ref())
+                      .map(|trait_ref| trait_ref.def_id())
                       .filter(|&super_def_id| visited.insert(super_def_id)));
         Some(def_id)
     }
@@ -413,17 +481,12 @@ impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
-        loop {
-            match self.base_iterator.next() {
-                None => {
-                    return None;
-                }
-                Some(ty::Predicate::Trait(data)) => {
-                    return Some(data.to_poly_trait_ref());
-                }
-                Some(_) => {}
+        while let Some(pred) = self.base_iterator.next() {
+            if let ty::Predicate::Trait(data) = pred {
+                return Some(data.to_poly_trait_ref());
             }
         }
+        None
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
