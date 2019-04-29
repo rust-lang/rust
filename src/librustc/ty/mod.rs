@@ -1075,25 +1075,25 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub enum Predicate<'tcx> {
-    /// Corresponds to `where Foo: Bar<A,B,C>`. `Foo` here would be
+    /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
     Trait(PolyTraitPredicate<'tcx>),
 
-    /// where `'a: 'b`
+    /// `where 'a: 'b`
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
 
-    /// where `T: 'a`
+    /// `where T: 'a`
     TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
 
-    /// where `<T as TraitRef>::Name == X`, approximately.
+    /// `where <T as TraitRef>::Name == X`, approximately.
     /// See the `ProjectionPredicate` struct for details.
     Projection(PolyProjectionPredicate<'tcx>),
 
     /// no syntax: `T` well-formed
     WellFormed(Ty<'tcx>),
 
-    /// trait must be object-safe
+    /// Trait must be object-safe.
     ObjectSafe(DefId),
 
     /// No direct syntax. May be thought of as `where T: FnFoo<...>`

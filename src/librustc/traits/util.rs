@@ -123,12 +123,10 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // Predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let mut predicates: Vec<_> =
-                    predicates.predicates
-                              .iter()
-                              .map(|(p, _)| p.subst_supertrait(tcx, &data.to_poly_trait_ref()))
-                              .collect();
-
+                let mut predicates: Vec<_> = predicates.predicates
+                    .iter()
+                    .map(|(pred, _)| pred.subst_supertrait(tcx, &data.to_poly_trait_ref()))
+                    .collect();
                 debug!("super_predicates: data={:?} predicates={:?}",
                        data, predicates);
 
@@ -150,8 +148,8 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // predicates.
             }
             ty::Predicate::Subtype(..) => {
-                // Currently, we do not "elaborate" predicates like `X
-                // <: Y`, though conceivably we might.
+                // Currently, we do not "elaborate" predicates like `X <: Y`,
+                // though conceivably we might.
             }
             ty::Predicate::Projection(..) => {
                 // Nothing to elaborate in a projection predicate.

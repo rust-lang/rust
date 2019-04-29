@@ -702,7 +702,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     /// Instantiates the path for the given trait reference, assuming that it's
-    /// bound to a valid trait type. Returns the def_id for the defining trait.
+    /// bound to a valid trait type. Returns the def-ID for the defining trait.
     /// The type _cannot_ be a type other than a trait type.
     ///
     /// If the `projections` argument is `None`, then assoc type bindings like `Foo<T = X>`
@@ -1035,7 +1035,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                         pred.skip_binder().ty.walk().any(|t| t == dummy_self);
 
                     // If the projection output contains `Self`, force the user to
-                    // elaborate it explicitly to avoid a bunch of complexity.
+                    // elaborate it explicitly to avoid a lot of complexity.
                     //
                     // The "classicaly useful" case is the following:
                     // ```
@@ -1044,14 +1044,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     //     }
                     // ```
                     //
-                    // Here, the user could theoretically write `dyn MyTrait<Output=X>`,
+                    // Here, the user could theoretically write `dyn MyTrait<Output = X>`,
                     // but actually supporting that would "expand" to an infinitely-long type
-                    // `fix $ τ → dyn MyTrait<MyOutput=X, Output=<τ as MyTrait>::MyOutput`.
+                    // `fix $ τ → dyn MyTrait<MyOutput = X, Output = <τ as MyTrait>::MyOutput`.
                     //
-                    // Instead, we force the user to write `dyn MyTrait<MyOutput=X, Output=X>`,
+                    // Instead, we force the user to write `dyn MyTrait<MyOutput = X, Output = X>`,
                     // which is uglier but works. See the discussion in #56288 for alternatives.
                     if !references_self {
-                        // Include projections defined on supertraits,
+                        // Include projections defined on supertraits.
                         projection_bounds.push((pred, DUMMY_SP))
                     }
                 }
@@ -2138,7 +2138,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
     pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, param_ty: Ty<'tcx>)
                       -> Vec<(ty::Predicate<'tcx>, Span)>
     {
-        // If it could be sized, and is, add the sized predicate.
+        // If it could be sized, and is, add the `Sized` predicate.
         let sized_predicate = self.implicitly_sized.and_then(|span| {
             tcx.lang_items().sized_trait().map(|sized| {
                 let trait_ref = ty::TraitRef {
