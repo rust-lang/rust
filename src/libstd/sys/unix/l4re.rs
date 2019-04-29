@@ -5,7 +5,7 @@ macro_rules! unimpl {
 pub mod net {
     #![allow(warnings)]
     use crate::fmt;
-    use crate::io::{self, IoVec, IoVecMut};
+    use crate::io::{self, IoSlice, IoSliceMut};
     use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
     use crate::sys_common::{AsInner, FromInner, IntoInner};
     use crate::sys::fd::FileDesc;
@@ -46,7 +46,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -66,7 +66,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
+        pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -152,7 +152,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+        pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 
@@ -160,7 +160,7 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
+        pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
             unimpl!();
         }
 

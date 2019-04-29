@@ -1,9 +1,9 @@
-pub struct IoVec<'a>(&'a [u8]);
+pub struct IoSlice<'a>(&'a [u8]);
 
-impl<'a> IoVec<'a> {
+impl<'a> IoSlice<'a> {
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoVec<'a> {
-        IoVec(buf)
+    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+        IoSlice(buf)
     }
 
     #[inline]
@@ -12,12 +12,12 @@ impl<'a> IoVec<'a> {
     }
 }
 
-pub struct IoVecMut<'a>(&'a mut [u8]);
+pub struct IoSliceMut<'a>(&'a mut [u8]);
 
-impl<'a> IoVecMut<'a> {
+impl<'a> IoSliceMut<'a> {
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoVecMut<'a> {
-        IoVecMut(buf)
+    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+        IoSliceMut(buf)
     }
 
     #[inline]

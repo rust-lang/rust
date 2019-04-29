@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::io::{self, IoVec, IoVecMut, SeekFrom};
+use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem;
 use crate::net::Shutdown;
 use crate::sys::cvt_wasi;
@@ -24,25 +24,25 @@ pub type RiFlags = u16;
 pub type RoFlags = u16;
 pub type SiFlags = u16;
 
-fn iovec(a: &mut [IoVecMut<'_>]) -> (*const libc::__wasi_iovec_t, usize) {
+fn iovec(a: &mut [IoSliceMut<'_>]) -> (*const libc::__wasi_iovec_t, usize) {
     assert_eq!(
-        mem::size_of::<IoVecMut<'_>>(),
+        mem::size_of::<IoSliceMut<'_>>(),
         mem::size_of::<libc::__wasi_iovec_t>()
     );
     assert_eq!(
-        mem::align_of::<IoVecMut<'_>>(),
+        mem::align_of::<IoSliceMut<'_>>(),
         mem::align_of::<libc::__wasi_iovec_t>()
     );
     (a.as_ptr() as *const libc::__wasi_iovec_t, a.len())
 }
 
-fn ciovec(a: &[IoVec<'_>]) -> (*const libc::__wasi_ciovec_t, usize) {
+fn ciovec(a: &[IoSlice<'_>]) -> (*const libc::__wasi_ciovec_t, usize) {
     assert_eq!(
-        mem::size_of::<IoVec<'_>>(),
+        mem::size_of::<IoSlice<'_>>(),
         mem::size_of::<libc::__wasi_ciovec_t>()
     );
     assert_eq!(
-        mem::align_of::<IoVec<'_>>(),
+        mem::align_of::<IoSlice<'_>>(),
         mem::align_of::<libc::__wasi_ciovec_t>()
     );
     (a.as_ptr() as *const libc::__wasi_ciovec_t, a.len())
@@ -67,28 +67,28 @@ impl WasiFd {
         cvt_wasi(unsafe { libc::__wasi_fd_datasync(self.fd) })
     }
 
-    pub fn pread(&self, bufs: &mut [IoVecMut<'_>], offset: u64) -> io::Result<usize> {
+    pub fn pread(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         let mut read = 0;
         let (ptr, len) = iovec(bufs);
         cvt_wasi(unsafe { libc::__wasi_fd_pread(self.fd, ptr, len, offset, &mut read) })?;
         Ok(read)
     }
 
-    pub fn pwrite(&self, bufs: &[IoVec<'_>], offset: u64) -> io::Result<usize> {
+    pub fn pwrite(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         let mut read = 0;
         let (ptr, len) = ciovec(bufs);
         cvt_wasi(unsafe { libc::__wasi_fd_pwrite(self.fd, ptr, len, offset, &mut read) })?;
         Ok(read)
     }
 
-    pub fn read(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let mut read = 0;
         let (ptr, len) = iovec(bufs);
         cvt_wasi(unsafe { libc::__wasi_fd_read(self.fd, ptr, len, &mut read) })?;
         Ok(read)
     }
 
-    pub fn write(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let mut read = 0;
         let (ptr, len) = ciovec(bufs);
         cvt_wasi(unsafe { libc::__wasi_fd_write(self.fd, ptr, len, &mut read) })?;
@@ -309,7 +309,7 @@ impl WasiFd {
 
     pub fn sock_recv(
         &self,
-        ri_data: &mut [IoVecMut<'_>],
+        ri_data: &mut [IoSliceMut<'_>],
         ri_flags: RiFlags,
     ) -> io::Result<(usize, RoFlags)> {
         let mut ro_datalen = 0;
@@ -321,7 +321,7 @@ impl WasiFd {
         Ok((ro_datalen, ro_flags))
     }
 
-    pub fn sock_send(&self, si_data: &[IoVec<'_>], si_flags: SiFlags) -> io::Result<usize> {
+    pub fn sock_send(&self, si_data: &[IoSlice<'_>], si_flags: SiFlags) -> io::Result<usize> {
         let mut so_datalen = 0;
         let (ptr, len) = ciovec(si_data);
         cvt_wasi(unsafe { libc::__wasi_sock_send(self.fd, ptr, len, si_flags, &mut so_datalen) })?;

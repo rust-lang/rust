@@ -1,6 +1,6 @@
 use crate::cmp;
-use crate::io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind, IoVecMut,
-         IoVec};
+use crate::io::{self, SeekFrom, Read, Initializer, Write, Seek, BufRead, Error, ErrorKind,
+        IoSliceMut, IoSlice};
 use crate::fmt;
 use crate::mem;
 
@@ -15,7 +15,7 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         (**self).read_vectored(bufs)
     }
 
@@ -45,7 +45,7 @@ impl<W: Write + ?Sized> Write for &mut W {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
 
     #[inline]
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         (**self).write_vectored(bufs)
     }
 
@@ -94,7 +94,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         (**self).read_vectored(bufs)
     }
 
@@ -124,7 +124,7 @@ impl<W: Write + ?Sized> Write for Box<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
 
     #[inline]
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         (**self).write_vectored(bufs)
     }
 
@@ -207,7 +207,7 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let mut nread = 0;
         for buf in bufs {
             nread += self.read(buf)?;
@@ -280,7 +280,7 @@ impl Write for &mut [u8] {
     }
 
     #[inline]
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let mut nwritten = 0;
         for buf in bufs {
             nwritten += self.write(buf)?;
@@ -316,7 +316,7 @@ impl Write for Vec<u8> {
     }
 
     #[inline]
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let len = bufs.iter().map(|b| b.len()).sum();
         self.reserve(len);
         for buf in bufs {

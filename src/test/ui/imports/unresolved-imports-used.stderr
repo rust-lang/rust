@@ -1,0 +1,22 @@
+error[E0432]: unresolved import `qux::bar`
+  --> $DIR/unresolved-imports-used.rs:9:5
+   |
+LL | use qux::bar;
+   |     ^^^^^^^^ no `bar` in `qux`
+
+error[E0432]: unresolved import `foo`
+  --> $DIR/unresolved-imports-used.rs:10:5
+   |
+LL | use foo::bar;
+   |     ^^^ maybe a missing `extern crate foo;`?
+
+error[E0603]: function `quz` is private
+  --> $DIR/unresolved-imports-used.rs:8:10
+   |
+LL | use qux::quz;
+   |          ^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0432, E0603.
+For more information about an error, try `rustc --explain E0432`.

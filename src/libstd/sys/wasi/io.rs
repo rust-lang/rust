@@ -4,15 +4,15 @@ use crate::slice;
 use libc::{__wasi_ciovec_t, __wasi_iovec_t, c_void};
 
 #[repr(transparent)]
-pub struct IoVec<'a> {
+pub struct IoSlice<'a> {
     vec: __wasi_ciovec_t,
     _p: PhantomData<&'a [u8]>,
 }
 
-impl<'a> IoVec<'a> {
+impl<'a> IoSlice<'a> {
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoVec<'a> {
-        IoVec {
+    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+        IoSlice {
             vec: __wasi_ciovec_t {
                 buf: buf.as_ptr() as *const c_void,
                 buf_len: buf.len(),
@@ -29,15 +29,15 @@ impl<'a> IoVec<'a> {
     }
 }
 
-pub struct IoVecMut<'a> {
+pub struct IoSliceMut<'a> {
     vec: __wasi_iovec_t,
     _p: PhantomData<&'a mut [u8]>,
 }
 
-impl<'a> IoVecMut<'a> {
+impl<'a> IoSliceMut<'a> {
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoVecMut<'a> {
-        IoVecMut {
+    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+        IoSliceMut {
             vec: __wasi_iovec_t {
                 buf: buf.as_mut_ptr() as *mut c_void,
                 buf_len: buf.len()

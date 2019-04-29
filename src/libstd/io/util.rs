@@ -1,7 +1,7 @@
 #![allow(missing_copy_implementations)]
 
 use crate::fmt;
-use crate::io::{self, Read, Initializer, Write, ErrorKind, BufRead, IoVec, IoVecMut};
+use crate::io::{self, Read, Initializer, Write, ErrorKind, BufRead, IoSlice, IoSliceMut};
 use crate::mem;
 
 /// Copies the entire contents of a reader into a writer.
@@ -153,7 +153,7 @@ impl Read for Repeat {
     }
 
     #[inline]
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let mut nwritten = 0;
         for buf in bufs {
             nwritten += self.read(buf)?;
@@ -206,7 +206,7 @@ impl Write for Sink {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { Ok(buf.len()) }
 
     #[inline]
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let total_len = bufs.iter().map(|b| b.len()).sum();
         Ok(total_len)
     }

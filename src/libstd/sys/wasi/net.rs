@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::io::{self, IoVec, IoVecMut};
+use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
 use crate::time::Duration;
 use crate::sys::{unsupported, Void};
@@ -44,7 +44,7 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn read_vectored(&self, _: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, _: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         unsupported()
     }
 
@@ -52,7 +52,7 @@ impl TcpStream {
         unsupported()
     }
 
-    pub fn write_vectored(&self, _: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, _: &[IoSlice<'_>]) -> io::Result<usize> {
         unsupported()
     }
 
