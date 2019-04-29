@@ -2,7 +2,7 @@ use crate::os::windows::prelude::*;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, Error, SeekFrom, IoVec, IoVecMut};
+use crate::io::{self, Error, SeekFrom, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::path::{Path, PathBuf};
 use crate::ptr;
@@ -314,7 +314,7 @@ impl File {
         self.handle.read(buf)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.handle.read_vectored(bufs)
     }
 
@@ -326,7 +326,7 @@ impl File {
         self.handle.write(buf)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         self.handle.write_vectored(bufs)
     }
 

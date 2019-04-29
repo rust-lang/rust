@@ -390,7 +390,7 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
     ret
 }
 
-pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoVecMut<'_>]) -> Result<usize>
+pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
 where
     F: FnOnce(&mut [u8]) -> Result<usize>
 {
@@ -401,7 +401,7 @@ where
     read(buf)
 }
 
-pub(crate) fn default_write_vectored<F>(write: F, bufs: &[IoVec<'_>]) -> Result<usize>
+pub(crate) fn default_write_vectored<F>(write: F, bufs: &[IoSlice<'_>]) -> Result<usize>
 where
     F: FnOnce(&[u8]) -> Result<usize>
 {
@@ -554,8 +554,8 @@ pub trait Read {
     ///
     /// The default implementation calls `read` with either the first nonempty
     /// buffer provided, or an empty one if none exists.
-    #[unstable(feature = "iovec", issue = "58452")]
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
+    #[stable(feature = "iovec", since = "1.36.0")]
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
         default_read_vectored(|b| self.read(b), bufs)
     }
 
@@ -911,32 +911,32 @@ pub trait Read {
 /// It is semantically a wrapper around an `&mut [u8]`, but is guaranteed to be
 /// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
 /// Windows.
-#[unstable(feature = "iovec", issue = "58452")]
+#[stable(feature = "iovec", since = "1.36.0")]
 #[repr(transparent)]
-pub struct IoVecMut<'a>(sys::io::IoVecMut<'a>);
+pub struct IoSliceMut<'a>(sys::io::IoSliceMut<'a>);
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> fmt::Debug for IoVecMut<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> fmt::Debug for IoSliceMut<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
 
-impl<'a> IoVecMut<'a> {
-    /// Creates a new `IoVecMut` wrapping a byte slice.
+impl<'a> IoSliceMut<'a> {
+    /// Creates a new `IoSliceMut` wrapping a byte slice.
     ///
     /// # Panics
     ///
     /// Panics on Windows if the slice is larger than 4GB.
-    #[unstable(feature = "iovec", issue = "58452")]
+    #[stable(feature = "iovec", since = "1.36.0")]
     #[inline]
-    pub fn new(buf: &'a mut [u8]) -> IoVecMut<'a> {
-        IoVecMut(sys::io::IoVecMut::new(buf))
+    pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
+        IoSliceMut(sys::io::IoSliceMut::new(buf))
     }
 }
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> Deref for IoVecMut<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> Deref for IoSliceMut<'a> {
     type Target = [u8];
 
     #[inline]
@@ -945,8 +945,8 @@ impl<'a> Deref for IoVecMut<'a> {
     }
 }
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> DerefMut for IoVecMut<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> DerefMut for IoSliceMut<'a> {
     #[inline]
     fn deref_mut(&mut self) -> &mut [u8] {
         self.0.as_mut_slice()
@@ -958,32 +958,32 @@ impl<'a> DerefMut for IoVecMut<'a> {
 /// It is semantically a wrapper around an `&[u8]`, but is guaranteed to be
 /// ABI compatible with the `iovec` type on Unix platforms and `WSABUF` on
 /// Windows.
-#[unstable(feature = "iovec", issue = "58452")]
+#[stable(feature = "iovec", since = "1.36.0")]
 #[repr(transparent)]
-pub struct IoVec<'a>(sys::io::IoVec<'a>);
+pub struct IoSlice<'a>(sys::io::IoSlice<'a>);
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> fmt::Debug for IoVec<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> fmt::Debug for IoSlice<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.0.as_slice(), fmt)
     }
 }
 
-impl<'a> IoVec<'a> {
-    /// Creates a new `IoVec` wrapping a byte slice.
+impl<'a> IoSlice<'a> {
+    /// Creates a new `IoSlice` wrapping a byte slice.
     ///
     /// # Panics
     ///
     /// Panics on Windows if the slice is larger than 4GB.
-    #[unstable(feature = "iovec", issue = "58452")]
+    #[stable(feature = "iovec", since = "1.36.0")]
     #[inline]
-    pub fn new(buf: &'a [u8]) -> IoVec<'a> {
-        IoVec(sys::io::IoVec::new(buf))
+    pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
+        IoSlice(sys::io::IoSlice::new(buf))
     }
 }
 
-#[unstable(feature = "iovec", issue = "58452")]
-impl<'a> Deref for IoVec<'a> {
+#[stable(feature = "iovec", since = "1.36.0")]
+impl<'a> Deref for IoSlice<'a> {
     type Target = [u8];
 
     #[inline]
@@ -1141,8 +1141,8 @@ pub trait Write {
     ///
     /// The default implementation calls `write` with either the first nonempty
     /// buffer provided, or an empty one if none exists.
-    #[unstable(feature = "iovec", issue = "58452")]
-    fn write_vectored(&mut self, bufs: &[IoVec<'_>]) -> Result<usize> {
+    #[stable(feature = "iovec", since = "1.36.0")]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> {
         default_write_vectored(|b| self.write(b), bufs)
     }
 
@@ -1926,7 +1926,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
         self.second.read(buf)
     }
 
-    fn read_vectored(&mut self, bufs: &mut [IoVecMut<'_>]) -> Result<usize> {
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> Result<usize> {
         if !self.done_first {
             match self.first.read_vectored(bufs)? {
                 0 if bufs.iter().any(|b| !b.is_empty()) => self.done_first = true,

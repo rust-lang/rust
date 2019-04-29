@@ -1,7 +1,7 @@
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::io::{self, SeekFrom, IoVec, IoVecMut};
+use crate::io::{self, SeekFrom, IoSlice, IoSliceMut};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, Void};
@@ -200,7 +200,7 @@ impl File {
         match self.0 {}
     }
 
-    pub fn read_vectored(&self, _bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         match self.0 {}
     }
 
@@ -208,7 +208,7 @@ impl File {
         match self.0 {}
     }
 
-    pub fn write_vectored(&self, _bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         match self.0 {}
     }
 

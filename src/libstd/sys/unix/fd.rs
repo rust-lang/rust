@@ -1,7 +1,7 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use crate::cmp;
-use crate::io::{self, Read, Initializer, IoVec, IoVecMut};
+use crate::io::{self, Read, Initializer, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::cvt;
@@ -53,7 +53,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoVecMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::readv(self.fd,
                         bufs.as_ptr() as *const libc::iovec,
@@ -115,7 +115,7 @@ impl FileDesc {
         Ok(ret as usize)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoVec<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
             libc::writev(self.fd,
                          bufs.as_ptr() as *const libc::iovec,
