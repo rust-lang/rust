@@ -1,5 +1,3 @@
-#![feature(const_needs_drop)]
-
 use std::mem;
 
 struct Trivial(u8, f32);
