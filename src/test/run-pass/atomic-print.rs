@@ -31,13 +31,9 @@ fn main(){
         do_print(2);
         t.join();
     } else {
-        println!("{:?}", env::args());
         let this = env::args().next().unwrap();
-        println!("b");
         let output = process::Command::new(this).arg("-").output().unwrap();
-        println!("c");
         for line in String::from_utf8(output.stdout).unwrap().lines() {
-            println!("{}", &line);
             match line.chars().next().unwrap() {
                 '1' => assert_eq!(line, "11111"),
                 '2' => assert_eq!(line, "22222"),
