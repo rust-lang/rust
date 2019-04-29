@@ -1,8 +1,8 @@
 error: qualified paths are not allowed in generic parameters
   --> $DIR/qpath-in-type-args.rs:5:26
    |
-LL | struct Bar<'a, Item: Tr, <Item as Tr>::TrSubtype: 'a> {
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | struct Bar<'a, Item: Tr, <Item as Tr>::TrAssoc: 'a> {
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: move this constraint to the `where` clause
 
