@@ -6,21 +6,19 @@ fn main() {
 
 // START rustc.ptr-real_drop_in_place.[std__string__String].AddMovesForPackedDrops.before.mir
 // let mut _2: usize;
-// let mut _3: bool;
+// let mut _3: usize;
 // let mut _4: usize;
-// let mut _5: usize;
-// let mut _6: &mut std::string::String;
-// let mut _7: bool;
-// let mut _8: &mut std::string::String;
-// let mut _9: bool;
+// let mut _5: &mut std::string::String;
+// let mut _6: bool;
+// let mut _7: &mut std::string::String;
+// let mut _8: bool;
+// let mut _9: *mut std::string::String;
 // let mut _10: *mut std::string::String;
-// let mut _11: usize;
-// let mut _12: *mut std::string::String;
+// let mut _11: &mut std::string::String;
+// let mut _12: bool;
 // let mut _13: &mut std::string::String;
 // let mut _14: bool;
-// let mut _15: &mut std::string::String;
-// let mut _16: bool;
-// let mut _17: *mut [std::string::String];
+// let mut _15: *mut [std::string::String];
 // bb0: {
 //     goto -> bb15;
 // }
@@ -31,25 +29,24 @@ fn main() {
 //     resume;
 // }
 // bb3 (cleanup): {
-//     _6 = &mut (*_1)[_4];
-//     _4 = Add(_4, const 1usize);
-//     drop((*_6)) -> bb4;
+//     _5 = &mut (*_1)[_4];
+//     _4 = Add(move _4, const 1usize);
+//     drop((*_5)) -> bb4;
 // }
 // bb4 (cleanup): {
-//     _7 = Eq(_4, _5);
-//     switchInt(move _7) -> [false: bb3, otherwise: bb2];
+//     _6 = Eq(_4, _3);
+//     switchInt(move _6) -> [false: bb3, otherwise: bb2];
 // }
 // bb5: {
-//     _8 = &mut (*_1)[_4];
-//     _4 = Add(_4, const 1usize);
-//     drop((*_8)) -> [return: bb6, unwind: bb4];
+//     _7 = &mut (*_1)[_4];
+//     _4 = Add(move _4, const 1usize);
+//     drop((*_7)) -> [return: bb6, unwind: bb4];
 // }
 // bb6: {
-//     _9 = Eq(_4, _5);
-//     switchInt(move _9) -> [false: bb5, otherwise: bb1];
+//     _8 = Eq(_4, _3);
+//     switchInt(move _8) -> [false: bb5, otherwise: bb1];
 // }
 // bb7: {
-//     _5 = Len((*_1));
 //     _4 = const 0usize;
 //     goto -> bb6;
 // }
@@ -57,28 +54,27 @@ fn main() {
 //     goto -> bb7;
 // }
 // bb9 (cleanup): {
-//     _13 = &mut (*_10);
-//     _10 = Offset(_10, const 1usize);
-//     drop((*_13)) -> bb10;
+//     _11 = &mut (*_9);
+//     _9 = Offset(move _9, const 1usize);
+//     drop((*_11)) -> bb10;
 // }
 // bb10 (cleanup): {
-//     _14 = Eq(_10, _12);
-//     switchInt(move _14) -> [false: bb9, otherwise: bb2];
+//     _12 = Eq(_9, _10);
+//     switchInt(move _12) -> [false: bb9, otherwise: bb2];
 // }
 // bb11: {
-//     _15 = &mut (*_10);
-//     _10 = Offset(_10, const 1usize);
-//     drop((*_15)) -> [return: bb12, unwind: bb10];
+//     _13 = &mut (*_9);
+//     _9 = Offset(move _9, const 1usize);
+//     drop((*_13)) -> [return: bb12, unwind: bb10];
 // }
 // bb12: {
-//     _16 = Eq(_10, _12);
-//     switchInt(move _16) -> [false: bb11, otherwise: bb1];
+//     _14 = Eq(_9, _10);
+//     switchInt(move _14) -> [false: bb11, otherwise: bb1];
 // }
 // bb13: {
-//     _11 = Len((*_1));
-//     _17 = &mut (*_1);
-//     _10 = move _17 as *mut std::string::String (Misc);
-//     _12 = Offset(_10, move _11);
+//     _15 = &mut (*_1);
+//     _9 = move _15 as *mut std::string::String (Misc);
+//     _10 = Offset(_9, move _3);
 //     goto -> bb12;
 // }
 // bb14: {
@@ -86,7 +82,7 @@ fn main() {
 // }
 // bb15: {
 //     _2 = SizeOf(std::string::String);
-//     _3 = Eq(move _2, const 0usize);
-//     switchInt(move _3) -> [false: bb14, otherwise: bb8];
+//     _3 = Len((*_1));
+//     switchInt(move _2) -> [0usize: bb8, otherwise: bb14];
 // }
 // END rustc.ptr-real_drop_in_place.[std__string__String].AddMovesForPackedDrops.before.mir

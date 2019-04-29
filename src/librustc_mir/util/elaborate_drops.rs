@@ -10,7 +10,7 @@ use rustc::ty::util::IntTypeExt;
 use rustc_data_structures::indexed_vec::Idx;
 use crate::util::patch::MirPatch;
 
-use std::u32;
+use std::convert::TryInto;
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
@@ -545,10 +545,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.elaborator.patch().new_block(result)
     }
 
-    /// create a loop that drops an array:
+    /// Create a loop that drops an array:
     ///
-
-    ///
+    /// ```text
     /// loop-block:
     ///    can_go = cur == length_or_end
     ///    if can_go then succ else drop-block
@@ -561,15 +560,16 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///        cur = cur + 1
     ///    }
     ///    drop(ptr)
-    fn drop_loop(&mut self,
-                 succ: BasicBlock,
-                 cur: Local,
-                 length_or_end: &Place<'tcx>,
-                 ety: Ty<'tcx>,
-                 unwind: Unwind,
-                 ptr_based: bool)
-                 -> BasicBlock
-    {
+    /// ```
+    fn drop_loop(
+        &mut self,
+        succ: BasicBlock,
+        cur: Local,
+        length_or_end: &Place<'tcx>,
+        ety: Ty<'tcx>,
+        unwind: Unwind,
+        ptr_based: bool,
+    ) -> BasicBlock {
         let copy = |place: &Place<'tcx>| Operand::Copy(place.clone());
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
         let tcx = self.tcx();
@@ -591,13 +591,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     elem: ProjectionElem::Deref,
                 }))
              ),
-             Rvalue::BinaryOp(BinOp::Offset, copy(&Place::Base(PlaceBase::Local(cur))), one))
+             Rvalue::BinaryOp(BinOp::Offset, move_(&Place::Base(PlaceBase::Local(cur))), one))
         } else {
             (Rvalue::Ref(
                  tcx.lifetimes.re_erased,
                  BorrowKind::Mut { allow_two_phase_borrow: false },
                  self.place.clone().index(cur)),
-             Rvalue::BinaryOp(BinOp::Add, copy(&Place::Base(PlaceBase::Local(cur))), one))
+             Rvalue::BinaryOp(BinOp::Add, move_(&Place::Base(PlaceBase::Local(cur))), one))
         };
 
         let drop_block = BasicBlockData {
@@ -647,9 +647,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         // }
 
         if let Some(size) = opt_size {
-            assert!(size <= (u32::MAX as u64),
-                    "move out check doesn't implemented for array bigger then u32");
-            let size = size as u32;
+            let size: u32 = size.try_into().unwrap_or_else(|_| {
+                bug!("move out check isn't implemented for array sizes bigger than u32::MAX");
+            });
             let fields: Vec<(Place<'tcx>, Option<D::Path>)> = (0..size).map(|i| {
                 (self.place.clone().elem(ProjectionElem::ConstantIndex{
                     offset: i,
@@ -667,33 +667,42 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let move_ = |place: &Place<'tcx>| Operand::Move(place.clone());
         let tcx = self.tcx();
-        let size = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
-        let size_is_zero = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.bool)));
+        let elem_size = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
+        let len = &Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
+
+        static USIZE_SWITCH_ZERO: &[u128] = &[0];
+
         let base_block = BasicBlockData {
             statements: vec![
-                self.assign(size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
-                self.assign(size_is_zero, Rvalue::BinaryOp(BinOp::Eq,
-                                                           move_(size),
-                                                           self.constant_usize(0)))
+                self.assign(elem_size, Rvalue::NullaryOp(NullOp::SizeOf, ety)),
+                self.assign(len, Rvalue::Len(self.place.clone())),
             ],
             is_cleanup: self.unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::if_(
-                    tcx,
-                    move_(size_is_zero),
-                    self.drop_loop_pair(ety, false),
-                    self.drop_loop_pair(ety, true)
-                )
+                kind: TerminatorKind::SwitchInt {
+                    discr: move_(elem_size),
+                    switch_ty: tcx.types.usize,
+                    values: From::from(USIZE_SWITCH_ZERO),
+                    targets: vec![
+                        self.drop_loop_pair(ety, false, len.clone()),
+                        self.drop_loop_pair(ety, true, len.clone()),
+                    ],
+                },
             })
         };
         self.elaborator.patch().new_block(base_block)
     }
 
-    // create a pair of drop-loops of `place`, which drops its contents
-    // even in the case of 1 panic. If `ptr_based`, create a pointer loop,
-    // otherwise create an index loop.
-    fn drop_loop_pair(&mut self, ety: Ty<'tcx>, ptr_based: bool) -> BasicBlock {
+    /// Ceates a pair of drop-loops of `place`, which drops its contents, even
+    /// in the case of 1 panic. If `ptr_based`, creates a pointer loop,
+    /// otherwise create an index loop.
+    fn drop_loop_pair(
+        &mut self,
+        ety: Ty<'tcx>,
+        ptr_based: bool,
+        length: Place<'tcx>,
+    ) -> BasicBlock {
         debug!("drop_loop_pair({:?}, {:?})", ety, ptr_based);
         let tcx = self.tcx();
         let iter_ty = if ptr_based {
@@ -703,7 +712,6 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         };
 
         let cur = self.new_temp(iter_ty);
-        let length = Place::Base(PlaceBase::Local(self.new_temp(tcx.types.usize)));
         let length_or_end = if ptr_based {
             // FIXME check if we want to make it return a `Place` directly
             // if all use sites want a `Place::Base` anyway.
@@ -722,9 +730,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                            ptr_based)
         });
 
-        let succ = self.succ; // FIXME(#43234)
         let loop_block = self.drop_loop(
-            succ,
+            self.succ,
             cur,
             &length_or_end,
             ety,
@@ -732,31 +739,32 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             ptr_based);
 
         let cur = Place::Base(PlaceBase::Local(cur));
-        let zero = self.constant_usize(0);
-        let mut drop_block_stmts = vec![];
-        drop_block_stmts.push(self.assign(&length, Rvalue::Len(self.place.clone())));
-        if ptr_based {
+        let drop_block_stmts = if ptr_based {
             let tmp_ty = tcx.mk_mut_ptr(self.place_ty(self.place));
             let tmp = Place::Base(PlaceBase::Local(self.new_temp(tmp_ty)));
             // tmp = &mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
-            drop_block_stmts.push(self.assign(&tmp, Rvalue::Ref(
-                tcx.lifetimes.re_erased,
-                BorrowKind::Mut { allow_two_phase_borrow: false },
-                self.place.clone()
-            )));
-            drop_block_stmts.push(self.assign(&cur, Rvalue::Cast(
-                CastKind::Misc, Operand::Move(tmp), iter_ty
-            )));
-            drop_block_stmts.push(self.assign(&length_or_end,
-                Rvalue::BinaryOp(BinOp::Offset,
-                     Operand::Copy(cur), Operand::Move(length)
-            )));
+            vec![
+                self.assign(&tmp, Rvalue::Ref(
+                    tcx.lifetimes.re_erased,
+                    BorrowKind::Mut { allow_two_phase_borrow: false },
+                    self.place.clone()
+                )),
+                self.assign(
+                    &cur,
+                    Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty),
+                ),
+                self.assign(
+                    &length_or_end,
+                    Rvalue::BinaryOp(BinOp::Offset, Operand::Copy(cur), Operand::Move(length)
+                )),
+            ]
         } else {
-            // index = 0 (length already pushed)
-            drop_block_stmts.push(self.assign(&cur, Rvalue::Use(zero)));
-        }
+            // cur = 0 (length already pushed)
+            let zero = self.constant_usize(0);
+            vec![self.assign(&cur, Rvalue::Use(zero))]
+        };
         let drop_block = self.elaborator.patch().new_block(BasicBlockData {
             statements: drop_block_stmts,
             is_cleanup: unwind.is_cleanup(),
@@ -768,7 +776,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         // FIXME(#34708): handle partially-dropped array/slice elements.
         let reset_block = self.drop_flag_reset_block(DropFlagMode::Deep, drop_block, unwind);
-        self.drop_flag_test_block(reset_block, succ, unwind)
+        self.drop_flag_test_block(reset_block, self.succ, unwind)
     }
 
     /// The slow-path - create an "open", elaborated drop for a type
