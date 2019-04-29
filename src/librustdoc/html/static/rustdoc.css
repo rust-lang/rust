@@ -1232,6 +1232,39 @@ h4 > .important-traits {
 	margin: 5px 0;
 }
 
+#sidebar-toggle {
+	position: fixed;
+	top: 30px;
+	left: 300px;
+	z-index: 10;
+	padding: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
+	cursor: pointer;
+	font-weight: bold;
+	transition: left .5s;
+	font-size: 1.2em;
+	border: 1px solid;
+	border-left: 0;
+}
+#source-sidebar {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	width: 300px;
+	z-index: 1;
+	overflow: auto;
+	transition: left .5s;
+	border-right: 1px solid;
+}
+#source-sidebar > .title {
+	font-size: 1.5em;
+	text-align: center;
+	border-bottom: 1px solid;
+	margin-bottom: 6px;
+}
+
 @media (max-width: 700px) {
 	h4 > .important-traits {
 		position: absolute;
@@ -1306,6 +1339,18 @@ h4 > .important-traits {
 
 	#all-types {
 		margin: 10px;
+	}
+
+	#sidebar-toggle {
+		top: 100px;
+		width: 30px;
+		font-size: 1.5rem;
+		text-align: center;
+		padding: 0;
+	}
+
+	#source-sidebar {
+		z-index: 11;
 	}
 }
 
@@ -1514,39 +1559,6 @@ kbd {
 
 .non-exhaustive {
 	margin-bottom: 1em;
-}
-
-#sidebar-toggle {
-	position: fixed;
-	top: 30px;
-	left: 300px;
-	z-index: 10;
-	padding: 3px;
-	border-top-right-radius: 3px;
-	border-bottom-right-radius: 3px;
-	cursor: pointer;
-	font-weight: bold;
-	transition: left .5s;
-	font-size: 1.2em;
-	border: 1px solid;
-	border-left: 0;
-}
-#source-sidebar {
-	position: fixed;
-	top: 0;
-	bottom: 0;
-	left: 0;
-	width: 300px;
-	z-index: 1;
-	overflow: auto;
-	transition: left .5s;
-	border-right: 1px solid;
-}
-#source-sidebar > .title {
-	font-size: 1.5em;
-	text-align: center;
-	border-bottom: 1px solid;
-	margin-bottom: 6px;
 }
 
 div.children {
