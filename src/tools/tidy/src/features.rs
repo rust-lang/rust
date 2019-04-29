@@ -7,6 +7,7 @@
 //! * Library features have at most one stability level.
 //! * Library features have at most one `since` value.
 //! * All unstable lang features have tests to ensure they are actually unstable.
+//! * Language features in a group are sorted by `since` value.
 
 use std::collections::HashMap;
 use std::fmt;
@@ -198,6 +199,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
     let mut next_feature_omits_tracking_issue = false;
 
     let mut next_feature_group = None;
+    let mut prev_since = None;
 
     contents.lines().zip(1..)
         .filter_map(|(line, line_number)| {
@@ -219,9 +221,11 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
             if line.starts_with(FEATURE_GROUP_START_PREFIX) {
                 let group = line.trim_start_matches(FEATURE_GROUP_START_PREFIX).trim();
                 next_feature_group = Some(group.to_owned());
+                prev_since = None;
                 return None;
             } else if line.starts_with(FEATURE_GROUP_END_PREFIX) {
                 next_feature_group = None;
+                prev_since = None;
                 return None;
             }
 
@@ -233,6 +237,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 _ => return None,
             };
             let name = parts.next().unwrap().trim();
+
             let since_str = parts.next().unwrap().trim().trim_matches('"');
             let since = match since_str.parse() {
                 Ok(since) => Some(since),
@@ -247,6 +252,18 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                     None
                 }
             };
+            if next_feature_group.is_some() {
+                if prev_since > since {
+                    tidy_error!(
+                        bad,
+                        "libsyntax/feature_gate.rs:{}: feature {} is not sorted by since",
+                        line_number,
+                        name,
+                    );
+                }
+                prev_since = since.clone();
+            }
+
             let issue_str = parts.next().unwrap().trim();
             let tracking_issue = if issue_str.starts_with("None") {
                 if level == Status::Unstable && !next_feature_omits_tracking_issue {
