@@ -305,6 +305,9 @@ pub struct TestProps {
     pub extern_private: Vec<String>,
     // Environment settings to use for compiling
     pub rustc_env: Vec<(String, String)>,
+    // Environment variables to unset prior to compiling.
+    // Variables are unset before applying 'rustc_env'.
+    pub unset_rustc_env: Vec<String>,
     // Environment settings to use during execution
     pub exec_env: Vec<(String, String)>,
     // Lines to check if they appear in the expected debugger output
@@ -373,6 +376,7 @@ impl TestProps {
             extern_private: vec![],
             revisions: vec![],
             rustc_env: vec![],
+            unset_rustc_env: vec![],
             exec_env: vec![],
             check_lines: vec![],
             build_aux_docs: false,
@@ -497,6 +501,10 @@ impl TestProps {
 
             if let Some(ee) = config.parse_env(ln, "rustc-env") {
                 self.rustc_env.push(ee);
+            }
+
+            if let Some(ev) = config.parse_name_value_directive(ln, "unset-rustc-env") {
+                self.unset_rustc_env.push(ev);
             }
 
             if let Some(cl) = config.parse_check_line(ln) {
