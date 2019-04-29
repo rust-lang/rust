@@ -10,8 +10,8 @@ ifndef IS_WINDOWS
 # -Clinker-plugin-lto.
 
 # this only succeeds for bitcode files
-ASSERT_IS_BITCODE_OBJ=($(LD_LIB_PATH_ENVVAR)=$(REAL_LD_LIBRARY_PATH) llvm-bcanalyzer $(1))
-EXTRACT_OBJS=(cd $(TMPDIR); rm -f ./*.o; $(LD_LIB_PATH_ENVVAR)=$(REAL_LD_LIBRARY_PATH) llvm-ar x $(1))
+ASSERT_IS_BITCODE_OBJ=("$(LLVM_BIN_DIR)"/llvm-bcanalyzer $(1))
+EXTRACT_OBJS=(cd $(TMPDIR); rm -f ./*.o; "$(LLVM_BIN_DIR)"/llvm-ar x $(1))
 
 BUILD_LIB=$(RUSTC) lib.rs -Copt-level=2 -Clinker-plugin-lto -Ccodegen-units=1
 BUILD_EXE=$(RUSTC) main.rs -Copt-level=2 -Clinker-plugin-lto -Ccodegen-units=1 --emit=obj

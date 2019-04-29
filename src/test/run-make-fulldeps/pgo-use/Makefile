@@ -29,7 +29,7 @@ all:
 	# Run it in order to generate some profiling data
 	$(call RUN,main some-argument) || exit 1
 	# Postprocess the profiling data so it can be used by the compiler
-	$(LD_LIB_PATH_ENVVAR)=$(REAL_LD_LIBRARY_PATH) llvm-profdata merge \
+	"$(LLVM_BIN_DIR)"/llvm-profdata merge \
 		-o "$(TMPDIR)"/merged.profdata \
 		"$(TMPDIR)"/default_*.profraw
 	# Compile the test program again, making use of the profiling data
