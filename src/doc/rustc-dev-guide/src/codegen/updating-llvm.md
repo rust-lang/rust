@@ -36,24 +36,25 @@ For updates of LLVM that typically just update a bug, we cherry-pick the bugfix
 to the branch we're already using. The steps for this are:
 
 1. Make sure the bugfix is in upstream LLVM.
-2. Identify the branch that rustc is currently using. The `src/llvm` submodule
-   is always pinned to a branch of the
-   [rust-lang/llvm](https://github.com/rust-lang/llvm) repository.
-3. Fork the rust-lang/llvm repository
-4. Check out the appropriate branch (typically named `rust-llvm-release-*`)
+2. Identify the branch that rustc is currently using. The `src/llvm-project`
+   submodule is always pinned to a branch of the
+   [rust-lang/llvm-project](https://github.com/rust-lang/llvm-project) repository.
+3. Fork the rust-lang/llvm-project repository
+4. Check out the appropriate branch (typically named `rustc/a.b-yyyy-mm-dd`)
 5. Cherry-pick the upstream commit onto the branch
 6. Push this branch to your fork
-7. Send a Pull Request to rust-lang/llvm to the same branch as before
+7. Send a Pull Request to rust-lang/llvm-project to the same branch as before
 8. Wait for the PR to be merged
-9. Send a PR to rust-lang/rust updating the `src/llvm` submodule with your bugfix
+9. Send a PR to rust-lang/rust updating the `src/llvm-project` submodule with
+   your bugfix
 10. Wait for PR to be merged
 
 The tl;dr; is that we can cherry-pick bugfixes at any time and pull them back
-into the rust-lang/llvm branch that we're using, and getting it into the
+into the rust-lang/llvm-project branch that we're using, and getting it into the
 compiler is just updating the submodule via a PR!
 
 Example PRs look like:
-[#56313](https://github.com/rust-lang/rust/pull/56313)
+[#59089](https://github.com/rust-lang/rust/pull/59089)
 
 ## Feature updates
 
@@ -66,37 +67,28 @@ lot more work. This is where we can't reasonably cherry-pick commits backwards
 so we need to do a full update. There's a lot of stuff to do here, so let's go
 through each in detail.
 
-1. Create new branches in all repositories for this update. Branches should be
-   named `rust-llvm-release-X-Y-Z-vA` where `X.Y.Z` is the LLVM version and `A`
-   is just increasing based on if there's previous branches of this name. All
-   repositories here should be branched at the same time from the upstream LLVM
-   projects, we currently use https://github.com/llvm-mirror repositories. The
-   list of repositories that need a new branch are:
+1. Create a new branch in the rust-lang/llvm-project repository. This branch
+   should be named `rustc/a.b-yyyy-mm-dd` where `a.b` is the current version
+   number of LLVM in-tree at the time of the branch and the remaining part is
+   today's date.
 
-   * rust-lang/llvm
-   * rust-lang/compiler-rt
-   * rust-lang/lld
-   * rust-lang-nursery/lldb
-   * rust-lang-nursery/clang
-
-2. Apply Rust-specific patches to LLVM repositories. All features and bugfixes
-   are upstream, but there's often some weird build-related patches that don't
-   make sense to upstream which we have on our repositories. These patches are
-   typically the latest patches on the branch. All repositories, except `clang`,
-   currently have Rust-specific patches.
+2. Apply Rust-specific patches to the llvm-project repository. All features and
+   bugfixes are upstream, but there's often some weird build-related patches
+   that don't make sense to upstream which we have on our repositories. These
+   patches are around the latest patches in the rust-lang/llvm-project branch
+   that rustc is currently using.
 
 3. Update the `compiler-rt` submodule in the
-   `rust-lang-nursery/compiler-builtins` repository. Push this update to a
-   `rust-llvm-release-*` branch of the `compiler-builtins` repository.
+   `rust-lang-nursery/compiler-builtins` repository. Push this update to the
+   same branch name of the `llvm-project` submodule to the
+   of the `rust-lang/compiler-rt` repository. Then push this update to a branch
+   of `compiler-builtins` with the same-named branch. Note that this step is
+   frequently optional since we may not need to update `compiler-rt`.
 
 4. Prepare a commit to rust-lang/rust
 
-  * Update `src/llvm`
-  * Update `src/tools/lld`
-  * Update `src/tools/lldb`
-  * Update `src/tools/clang`
-  * Update `src/libcompiler_builtins
-  * Edit `src/rustllvm/llvm-rebuild-trigger` to update its contents
+  * Update `src/llvm-project`
+  * Update `compiler-builtins` crate in `Cargo.lock` (if necessary)
 
 5. Build your commit. Make sure you've committed the previous changes to ensure
    submodule updates aren't reverted. Some commands you should execute are:
