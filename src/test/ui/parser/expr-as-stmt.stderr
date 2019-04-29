@@ -30,6 +30,18 @@ LL |     if let Some(x) = a { true } else { false }
 LL |     &&
    |     ^^
 
+error: ambiguous parse
+  --> $DIR/expr-as-stmt.rs:37:7
+   |
+LL |     } > 0
+   |       ^
+help: parenthesis are required to parse this as an expression
+   |
+LL |     (match x {
+LL |         _ => 1,
+LL |     }) > 0
+   |
+
 error[E0308]: mismatched types
   --> $DIR/expr-as-stmt.rs:7:6
    |
@@ -74,7 +86,7 @@ LL |     { 3 } * 3
    |     |
    |     help: parenthesis are required to parse this as an expression: `({ 3 })`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0308, E0614.
 For more information about an error, try `rustc --explain E0308`.
