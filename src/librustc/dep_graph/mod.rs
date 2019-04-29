@@ -16,4 +16,4 @@ pub use self::prev::PreviousDepGraph;
 pub use self::query::DepGraphQuery;
 pub use self::safe::AssertDepGraphSafe;
 pub use self::safe::DepGraphSafe;
-pub use self::serialized::decode_dep_graph;
+pub use self::serialized::{DecodedDepGraph, decode_dep_graph, gc_dep_graph};

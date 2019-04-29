@@ -1,7 +1,7 @@
 use rustc_data_structures::sync::worker::{Worker, WorkerExecutor};
 use rustc_data_structures::sync::{Lrc, AtomicCell};
 use rustc_data_structures::{unlikely, cold_path};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decodable, Encodable, Encoder, Decoder, opaque};
@@ -14,15 +14,158 @@ use crate::dep_graph::dep_node::{DepKind, DepNode};
 use super::prev::PreviousDepGraph;
 use super::graph::{DepNodeData, DepNodeIndex, DepNodeState};
 
+// calcutale a list of bytes to copy from the previous graph
+
+fn decode_bounds(
+    d: &mut opaque::Decoder<'_>,
+    f: impl FnOnce(&mut opaque::Decoder<'_>) -> Result<(), String>
+) -> Result<(usize, usize), String> {
+    let start = d.position();
+    f(d)?;
+    Ok((start, d.position()))
+}
+
+type NodePoisitions = Vec<Option<(usize, usize)>>;
+
+fn read_dep_graph_positions(
+    d: &mut opaque::Decoder<'_>,
+    result: &DecodedDepGraph,
+) -> Result<(NodePoisitions, NodePoisitions), String> {
+    let node_count = result.prev_graph.nodes.len();
+    let mut nodes: NodePoisitions = repeat(None).take(node_count).collect();
+    let mut edges: NodePoisitions = repeat(None).take(node_count).collect();
+
+    loop {
+        if d.position() == d.data.len() {
+            break;
+        }
+        match SerializedAction::decode(d)? {
+            SerializedAction::AllocateNodes => {
+                let len = d.read_u32()?;
+                let start = DepNodeIndex::decode(d)?.as_u32();
+                for i in 0..len {
+                    let i = (start + i) as usize;
+                    nodes[i] = Some(decode_bounds(d, |d| DepNode::decode(d).map(|_| ()))?);
+                    edges[i] = Some(decode_bounds(d, |d| {
+                        let len = d.read_u32()?;
+                        for _ in 0..len {
+                            DepNodeIndex::decode(d)?;
+                        }
+                        Ok(())
+                    })?);
+                }
+            }
+            SerializedAction::UpdateEdges => {
+                let len = d.read_u32()?;
+                for _ in 0..len {
+                    let i = DepNodeIndex::decode(d)?.as_u32() as usize;
+                    edges[i] = Some(decode_bounds(d, |d| {
+                        let len = d.read_u32()?;
+                        for _ in 0..len {
+                            DepNodeIndex::decode(d)?;
+                        }
+                        Ok(())
+                    })?);
+                }
+            }
+            SerializedAction::InvalidateNodes => {
+                let len = d.read_u32()?;
+                for _ in 0..len {
+                    let i = DepNodeIndex::decode(d)?.as_u32() as usize;
+                    nodes[i] = None;
+                    edges[i] = None;
+                }
+            }
+        }
+    }
+
+    Ok((nodes, edges))
+}
+
+pub fn gc_dep_graph(
+    time_passes: bool,
+    d: &mut opaque::Decoder<'_>,
+    result: &DecodedDepGraph,
+    file: &mut File,
+) {
+    let (nodes, edges) = time_ext(time_passes, None, "read dep-graph positions", || { 
+        read_dep_graph_positions(d, result).unwrap()
+    });
+
+    let mut i = 0;
+
+    loop {
+        // Skip empty nodes
+        while i < nodes.len() && nodes[i].is_none() {
+            i += 1;
+        }
+
+        // Break if we are done
+        if i >= nodes.len() {
+            break;
+        }
+
+        // Find out how many consecutive nodes we will emit
+        let mut len = 1;
+        while i + len < nodes.len() && nodes[i + len].is_some() {
+            len += 1;
+        }
+
+        let mut encoder = opaque::Encoder::new(Vec::with_capacity(11));
+        SerializedAction::AllocateNodes.encode(&mut encoder).ok();
+        // Emit the number of nodes we're emitting
+        encoder.emit_u32(len as u32).ok();
+
+        // Emit the dep node index of the first node
+        DepNodeIndex::new(i).encode(&mut encoder).ok();
+
+        file.write_all(&encoder.into_inner()).unwrap();
+
+        let mut buffers = Vec::with_capacity(nodes.len() * 2);
+
+        let push_buffer = |buffers: &mut Vec<(usize, usize)>, range: (usize, usize)| {
+            if let Some(last) = buffers.last_mut() {
+                if last.1 == range.0 {
+                    // Extend the last range
+                    last.1 = range.1;
+                    return;
+                }
+            }
+            buffers.push(range);
+        };
+
+        for i in i..(i + len) {
+            // Encode the node
+            push_buffer(&mut buffers, nodes[i].unwrap());
+
+            // Encode dependencies
+            push_buffer(&mut buffers, edges[i].unwrap());
+        }
+
+        for buffer in buffers {
+            file.write_all(&d.data[buffer.0..buffer.1]).unwrap();
+        }
+
+        i += len;
+    }
+}
+
+pub struct DecodedDepGraph {
+    pub prev_graph: PreviousDepGraph,
+    pub state: IndexVec<DepNodeIndex, AtomicCell<DepNodeState>>,
+    pub invalidated: Vec<DepNodeIndex>,
+    pub needs_gc: bool,
+}
+
 pub fn decode_dep_graph(
     time_passes: bool,
     d: &mut opaque::Decoder<'_>,
     results_d: &mut opaque::Decoder<'_>,
-) -> Result<(
-        PreviousDepGraph,
-        IndexVec<DepNodeIndex, AtomicCell<DepNodeState>>,
-        Vec<DepNodeIndex>,
-    ), String> {
+) -> Result<DecodedDepGraph, String> {
+    // Metrics used to decided when to GC
+    let mut valid_data = 0;
+    let mut total_data = 0;
+
     let fingerprints: IndexVec<DepNodeIndex, Fingerprint> = 
         time_ext(time_passes, None, "decode prev result fingerprints", || {
             IndexVec::decode(results_d)
@@ -35,7 +178,6 @@ pub fn decode_dep_graph(
     let mut state: IndexVec<_, _> = (0..fingerprints.len()).map(|_| {
             AtomicCell::new(DepNodeState::Invalid)
         }).collect();
-    let mut invalid = Vec::new();
     loop {
         if d.position() == d.data.len() {
             break;
@@ -48,7 +190,10 @@ pub fn decode_dep_graph(
                     let i = DepNodeIndex::from_u32(start + i);
                     let node = DepNode::decode(d)?;
                     nodes[i] = node;
-                    edges[i] = Some(Box::<[DepNodeIndex]>::decode(d)?);
+                    let node_edges = Box::<[DepNodeIndex]>::decode(d)?;
+                    valid_data += node_edges.len();
+                    total_data += node_edges.len();
+                    edges[i] = Some(node_edges);
 
                     if unlikely!(node.kind.is_eval_always()) {
                         state[i] = AtomicCell::new(DepNodeState::UnknownEvalAlways);
@@ -56,21 +201,28 @@ pub fn decode_dep_graph(
                         state[i] = AtomicCell::new(DepNodeState::Unknown);
                     }
                 }
+                valid_data += len as usize * 8;
+                total_data += len as usize * 8;
             }
             SerializedAction::UpdateEdges => {
                 let len = d.read_u32()?;
                 for _ in 0..len {
                     let i = DepNodeIndex::decode(d)?;
-                    edges[i] = Some(Box::<[DepNodeIndex]>::decode(d)?);
+                    valid_data -= edges[i].as_ref().map_or(0, |edges| edges.len());
+                    let node_edges = Box::<[DepNodeIndex]>::decode(d)?;
+                    valid_data += node_edges.len();
+                    total_data += node_edges.len();
+                    edges[i] = Some(node_edges);
                 }
             }
             SerializedAction::InvalidateNodes => {
                 let len = d.read_u32()?;
                 for _ in 0..len {
                     let i = DepNodeIndex::decode(d)?;
+                    valid_data -= edges[i].as_ref().map_or(0, |edges| edges.len());
                     state[i] = AtomicCell::new(DepNodeState::Invalid);
-                    invalid.push(i);
                 }
+                valid_data -= len as usize * 8;
             }
         }
     }
@@ -81,12 +233,27 @@ pub fn decode_dep_graph(
             .map(|(idx, dep_node)| (*dep_node, idx))
             .collect()
     });
-    Ok((PreviousDepGraph {
-        index,
-        nodes,
-        fingerprints,
-        edges,
-    }, state, invalid))
+
+    debug!(
+        "valid bytes {} total bytes {} ratio {}",
+        valid_data,
+        total_data,
+        valid_data as f32 / total_data as f32
+    );
+
+    Ok(DecodedDepGraph {
+        prev_graph: PreviousDepGraph {
+            index,
+            nodes,
+            fingerprints,
+            edges,
+        },
+        invalidated: state.indices()
+            .filter(|&i| *state[i].get_mut() == DepNodeState::Invalid)
+            .collect(),
+        state,
+        needs_gc: valid_data + valid_data / 3 < total_data,
+    })
 }
 
 #[derive(Debug, RustcDecodable, RustcEncodable)]

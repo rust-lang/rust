@@ -1,7 +1,7 @@
 //! Code to save/load the dep-graph from files.
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc::dep_graph::{DepGraph, DepGraphArgs, decode_dep_graph};
+use rustc::dep_graph::{DepGraph, DepGraphArgs, decode_dep_graph, gc_dep_graph};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::OnDiskCache;
@@ -11,6 +11,7 @@ use rustc_serialize::opaque::Decoder;
 use rustc_serialize::Encodable;
 use std::path::Path;
 use std::fs::{self, File};
+use std::io::{Seek, SeekFrom};
 
 use super::data::*;
 use super::fs::*;
@@ -225,7 +226,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     MaybeAsync::Async(std::thread::spawn(move || {
         time_ext(time_passes, None, "background load prev dep-graph", move || {
-            let (bytes, pos, file) = match load_graph_file(
+            let (bytes, pos, mut file) = match load_graph_file(
                 report_incremental_info,
                 &path,
                 expected_hash
@@ -247,23 +248,35 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
             let mut decoder = Decoder::new(&bytes, pos);
             let mut results_decoder = Decoder::new(&results_bytes, results_pos);
-            time_ext(time_passes, None, "decode prev dep-graph", || {
-                let (prev_graph, state, invalidated) = decode_dep_graph(
+        
+            let result = time_ext(time_passes, None, "decode prev dep-graph", || { 
+                decode_dep_graph(
                     time_passes,
                     &mut decoder,
                     &mut results_decoder,
-                ).expect("Error reading cached dep-graph");
+                ).expect("Error reading cached dep-graph")
+            });
 
-                LoadResult::Ok {
-                    data: DepGraphArgs {
-                        prev_graph,
-                        prev_work_products,
-                        file,
-                        state,
-                        invalidated,
-                    }
+            if result.needs_gc {
+                // Reset the file to just the header
+                file.seek(SeekFrom::Start(pos as u64)).unwrap();
+                file.set_len(pos as u64).unwrap();
+
+                time_ext(time_passes, None, "garbage collect prev dep-graph", || { 
+                    let mut decoder = Decoder::new(&bytes, pos);
+                    gc_dep_graph(time_passes, &mut decoder, &result, &mut file);
+                });
+            }
+
+            LoadResult::Ok {
+                data: DepGraphArgs {
+                    prev_graph: result.prev_graph,
+                    prev_work_products,
+                    file,
+                    state: result.state,
+                    invalidated: result.invalidated,
                 }
-            })
+            }
         })
     }))
 }
