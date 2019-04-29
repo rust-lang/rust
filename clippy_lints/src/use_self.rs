@@ -1,10 +1,11 @@
 use if_chain::if_chain;
+use rustc::hir;
 use rustc::hir::def::{CtorKind, Def};
 use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::ty::DefIdTree;
+use rustc::ty::{DefIdTree, Ty};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax_pos::symbol::keywords::SelfUpper;
@@ -68,14 +69,14 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
 }
 
 struct TraitImplTyVisitor<'a, 'tcx: 'a> {
-    item_type: ty::Ty<'tcx>,
+    item_type: Ty<'tcx>,
     cx: &'a LateContext<'a, 'tcx>,
     trait_type_walker: ty::walk::TypeWalker<'tcx>,
     impl_type_walker: ty::walk::TypeWalker<'tcx>,
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
-    fn visit_ty(&mut self, t: &'tcx Ty) {
+    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
         let trait_ty = self.trait_type_walker.next();
         let impl_ty = self.impl_type_walker.next();
 
@@ -109,7 +110,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
 
 fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     cx: &'a LateContext<'a, 'tcx>,
-    item_type: ty::Ty<'tcx>,
+    item_type: Ty<'tcx>,
     impl_item: &ImplItem,
     impl_decl: &'tcx FnDecl,
     impl_trait_ref: &ty::TraitRef<'_>,
