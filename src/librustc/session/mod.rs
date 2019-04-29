@@ -199,7 +199,7 @@ enum DiagnosticBuilderMethod {
 pub enum DiagnosticMessageId {
     ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
-    StabilityId(u32), // issue number
+    StabilityId(Option<u32>), // issue number
 }
 
 impl From<&'static lint::Lint> for DiagnosticMessageId {

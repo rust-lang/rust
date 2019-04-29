@@ -715,7 +715,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                           allow_internal_unsafe,
                                           local_inner_macros,
                                           // can't infer this type
-                                          unstable_feature: Option<(Symbol, u32)>,
+                                          unstable_feature: Option<(Symbol, Option<u32>)>,
                                           edition| {
 
             // feature-gate the macro invocation
@@ -731,7 +731,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }) {
                     let explain = format!("macro {}! is unstable", path);
                     emit_feature_err(this.cx.parse_sess, feature, span,
-                                     GateIssue::Library(Some(issue)), &explain);
+                                     GateIssue::Library(issue), &explain);
                     this.cx.trace_macros_diag();
                 }
             }

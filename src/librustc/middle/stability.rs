@@ -435,7 +435,7 @@ impl<'a, 'tcx> Index<'tcx> {
                 let stability = tcx.intern_stability(Stability {
                     level: attr::StabilityLevel::Unstable {
                         reason: Some(Symbol::intern(reason)),
-                        issue: 27812,
+                        issue: Some(27812),
                     },
                     feature: Symbol::intern("rustc_private"),
                     rustc_depr: None,
@@ -515,7 +515,7 @@ pub enum EvalResult {
     Deny {
         feature: Symbol,
         reason: Option<Symbol>,
-        issue: u32,
+        issue: Option<u32>,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
     Unmarked,
@@ -686,7 +686,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if feature == sym::rustc_private && issue == 27812 {
+                if feature == sym::rustc_private && issue == Some(27812) {
                     if self.sess.opts.debugging_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }
@@ -740,7 +740,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(error_id);
                 if fresh {
                     emit_feature_err(&self.sess.parse_sess, feature, span,
-                                     GateIssue::Library(Some(issue)), &msg);
+                                     GateIssue::Library(issue), &msg);
                 }
             }
             EvalResult::Unmarked => {

@@ -432,7 +432,6 @@ register_diagnostics! {
     E0544, // multiple stability levels
     E0545, // incorrect 'issue'
     E0546, // missing 'feature'
-    E0547, // missing 'issue'
 //  E0548, // replaced with a generic attribute input check
     E0549, // rustc_deprecated attribute must be paired with either stable or unstable attribute
     E0550, // multiple deprecated attributes

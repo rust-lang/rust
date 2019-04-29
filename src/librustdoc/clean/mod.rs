@@ -4314,7 +4314,7 @@ impl Clean<Stability> for attr::Stability {
                 _ => None,
             },
             issue: match self.level {
-                attr::Unstable {issue, ..} => Some(issue),
+                attr::Unstable {issue, ..} => issue,
                 _ => None,
             }
         }

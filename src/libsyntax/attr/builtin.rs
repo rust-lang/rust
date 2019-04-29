@@ -122,7 +122,7 @@ pub struct Stability {
 #[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Debug, Eq, Hash)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: u32 },
+    Unstable { reason: Option<Symbol>, issue: Option<u32> },
     Stable { since: Symbol },
 }
 
@@ -349,14 +349,19 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                                 issue: {
                                     if let Some(issue_sym) = issue {
                                         if let Ok(issue_num) = issue_sym.as_str().parse() {
-                                            issue_num
+                                            if issue_num == 0 {
+                                                span_err!(diagnostic, attr.span, E0545,
+                                                           "Issue #0 should not be used. The issue item can be omited");
+                                                //TODO how to add a NOTE ?
+                                            }
+                                            Some(issue_num)
                                         } else {
                                             span_err!(diagnostic, attr.span, E0545,
                                                       "incorrect 'issue'");
                                             continue
                                         }
                                     } else {
-                                        0
+                                        None
                                     }
                                 }
                             },

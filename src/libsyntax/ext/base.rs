@@ -649,8 +649,8 @@ pub enum SyntaxExtension {
         /// Enables the macro helper hack (`ident!(...)` -> `$crate::ident!(...)`)
         /// for a given macro.
         local_inner_macros: bool,
-        /// The macro's feature name if it is unstable, and the stability feature
-        unstable_feature: Option<(Symbol, u32)>,
+        /// The macro's feature name if it is unstable, and the tracking issue
+        unstable_feature: Option<(Symbol, Option<u32>)>,
         /// Edition of the crate in which the macro is defined
         edition: Edition,
     },
