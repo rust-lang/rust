@@ -98,6 +98,30 @@ fn test_redundant_closures_containing_method_calls() {
         t.iter().filter(|x| x.trait_foo_ref());
         t.iter().map(|x| x.trait_foo_ref());
     }
+
+    let mut some = Some(|x| x * x);
+    let arr = [Ok(1), Err(2)];
+    let _: Vec<_> = arr.iter().map(|x| x.map_err(|e| some.take().unwrap()(e))).collect();
+}
+
+struct Thunk<T>(Box<FnMut() -> T>);
+
+impl<T> Thunk<T> {
+    fn new<F: 'static + FnOnce() -> T>(f: F) -> Thunk<T> {
+        let mut option = Some(f);
+        // This should not trigger redundant_closure (#1439)
+        Thunk(Box::new(move || option.take().unwrap()()))
+    }
+
+    fn unwrap(self) -> T {
+        let Thunk(mut f) = self;
+        f()
+    }
+}
+
+fn foobar() {
+    let thunk = Thunk::new(|| println!("Hello, world!"));
+    thunk.unwrap()
 }
 
 fn meta<F>(f: F)
