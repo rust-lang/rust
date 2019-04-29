@@ -16,6 +16,12 @@ use std::path::Path;
 
 use regex::{Regex, escape};
 
+mod version;
+use self::version::Version;
+
+const FEATURE_GROUP_START_PREFIX: &str = "// feature group start:";
+const FEATURE_GROUP_END_PREFIX: &str = "// feature group end";
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
     Stable,
@@ -37,9 +43,10 @@ impl fmt::Display for Status {
 #[derive(Debug, Clone)]
 pub struct Feature {
     pub level: Status,
-    pub since: String,
+    pub since: Option<Version>,
     pub has_gate_test: bool,
     pub tracking_issue: Option<u32>,
+    pub group: Option<String>,
 }
 
 pub type Features = HashMap<String, Feature>;
@@ -136,14 +143,16 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
                            name,
                            "lang",
                            feature.level,
-                           feature.since));
+                           feature.since.as_ref().map_or("None".to_owned(),
+                                                         |since| since.to_string())));
     }
     for (name, feature) in lib_features {
         lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
                            name,
                            "lib",
                            feature.level,
-                           feature.since));
+                           feature.since.as_ref().map_or("None".to_owned(),
+                                                         |since| since.to_string())));
     }
 
     lines.sort();
@@ -188,6 +197,8 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
     // without one inside `// no tracking issue START` and `// no tracking issue END`.
     let mut next_feature_omits_tracking_issue = false;
 
+    let mut next_feature_group = None;
+
     contents.lines().zip(1..)
         .filter_map(|(line, line_number)| {
             let line = line.trim();
@@ -205,6 +216,15 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 _ => {}
             }
 
+            if line.starts_with(FEATURE_GROUP_START_PREFIX) {
+                let group = line.trim_start_matches(FEATURE_GROUP_START_PREFIX).trim();
+                next_feature_group = Some(group.to_owned());
+                return None;
+            } else if line.starts_with(FEATURE_GROUP_END_PREFIX) {
+                next_feature_group = None;
+                return None;
+            }
+
             let mut parts = line.split(',');
             let level = match parts.next().map(|l| l.trim().trim_start_matches('(')) {
                 Some("active") => Status::Unstable,
@@ -213,7 +233,20 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 _ => return None,
             };
             let name = parts.next().unwrap().trim();
-            let since = parts.next().unwrap().trim().trim_matches('"');
+            let since_str = parts.next().unwrap().trim().trim_matches('"');
+            let since = match since_str.parse() {
+                Ok(since) => Some(since),
+                Err(err) => {
+                    tidy_error!(
+                        bad,
+                        "libsyntax/feature_gate.rs:{}: failed to parse since: {} ({})",
+                        line_number,
+                        since_str,
+                        err,
+                    );
+                    None
+                }
+            };
             let issue_str = parts.next().unwrap().trim();
             let tracking_issue = if issue_str.starts_with("None") {
                 if level == Status::Unstable && !next_feature_omits_tracking_issue {
@@ -233,9 +266,10 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
             Some((name.to_owned(),
                 Feature {
                     level,
-                    since: since.to_owned(),
+                    since,
                     has_gate_test: false,
                     tracking_issue,
+                    group: next_feature_group.clone(),
                 }))
         })
         .collect()
@@ -250,9 +284,10 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
     // add it to the set of known library features so we can still generate docs.
     lib_features.insert("compiler_builtins_lib".to_owned(), Feature {
         level: Status::Unstable,
-        since: String::new(),
+        since: None,
         has_gate_test: false,
         tracking_issue: None,
+        group: None,
     });
 
     map_lib_features(base_src_path,
@@ -351,12 +386,13 @@ fn map_lib_features(base_src_path: &Path,
                 };
                 let feature = Feature {
                     level: Status::Unstable,
-                    since: "None".to_owned(),
+                    since: None,
                     has_gate_test: false,
                     // FIXME(#57563): #57563 is now used as a common tracking issue,
                     // although we would like to have specific tracking issues for each
                     // `rustc_const_unstable` in the future.
                     tracking_issue: Some(57563),
+                    group: None,
                 };
                 mf(Ok((feature_name, feature)), file, i + 1);
                 continue;
@@ -372,20 +408,24 @@ fn map_lib_features(base_src_path: &Path,
                 Some(name) => name,
                 None => err!("malformed stability attribute"),
             };
-            let since = match find_attr_val(line, "since") {
-                Some(name) => name,
+            let since = match find_attr_val(line, "since").map(|x| x.parse()) {
+                Some(Ok(since)) => Some(since),
+                Some(Err(_err)) => {
+                    err!("malformed since attribute");
+                },
                 None if level == Status::Stable => {
                     err!("malformed stability attribute");
                 }
-                None => "None",
+                None => None,
             };
             let tracking_issue = find_attr_val(line, "issue").map(|s| s.parse().unwrap());
 
             let feature = Feature {
                 level,
-                since: since.to_owned(),
+                since,
                 has_gate_test: false,
                 tracking_issue,
+                group: None,
             };
             if line.contains(']') {
                 mf(Ok((feature_name, feature)), file, i + 1);
