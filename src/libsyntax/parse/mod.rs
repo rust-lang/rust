@@ -366,7 +366,7 @@ fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
 }
 
 /// Parses a string representing a string literal into its final form. Does unescaping.
-pub fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
+fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
     debug!("str_lit: given {}", lit.escape_default());
     let mut res = String::with_capacity(lit.len());
 

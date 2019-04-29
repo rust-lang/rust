@@ -446,9 +446,7 @@ impl<'a> StringReader<'a> {
         self.with_str_from_to(start, self.pos, f)
     }
 
-    /// Creates a Name from a given offset to the current offset, each
-    /// adjusted 1 towards each other (assumes that on either side there is a
-    /// single-byte delimiter).
+    /// Creates a Name from a given offset to the current offset.
     fn name_from(&self, start: BytePos) -> ast::Name {
         debug!("taking an ident from {:?} to {:?}", start, self.pos);
         self.with_str_from(start, Symbol::intern)
@@ -1420,8 +1418,8 @@ impl<'a> StringReader<'a> {
                     // Include the leading `'` in the real identifier, for macro
                     // expansion purposes. See #12512 for the gory details of why
                     // this is necessary.
-                    let ident = self.with_str_from(start, |lifetime_name| {
-                        self.mk_ident(&format!("'{}", lifetime_name))
+                    let ident = self.with_str_from(start_with_quote, |lifetime_name| {
+                        self.mk_ident(lifetime_name)
                     });
 
                     if c2.is_numeric() {
