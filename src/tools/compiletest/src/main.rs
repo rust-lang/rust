@@ -221,6 +221,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "LIST",
         )
         .reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS")
+        .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
         .optopt("", "nodejs", "the name of nodejs", "PATH")
         .optopt(
             "",
@@ -306,7 +307,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
-        llvm_filecheck: matches.opt_str("llvm-filecheck").map(|s| PathBuf::from(&s)),
+        llvm_filecheck: matches.opt_str("llvm-filecheck").map(PathBuf::from),
+        llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
         src_base,
         build_base: opt_path(matches, "build-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),

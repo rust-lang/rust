@@ -9,7 +9,6 @@ use crate::Compiler;
 use crate::builder::{Step, RunConfig, ShouldRun, Builder};
 use crate::util::{exe, add_lib_path};
 use crate::compile;
-use crate::native;
 use crate::channel::GitInfo;
 use crate::channel;
 use crate::cache::Interned;
@@ -698,56 +697,6 @@ impl<'a> Builder<'a> {
             }
         }
 
-        // Add the llvm/bin directory to PATH since it contains lots of
-        // useful, platform-independent tools
-        if tool.uses_llvm_tools() && !self.config.dry_run {
-            let mut additional_paths = vec![];
-
-            if let Some(llvm_bin_path) = self.llvm_bin_path() {
-                additional_paths.push(llvm_bin_path);
-            }
-
-            // If LLD is available, add that too.
-            if self.config.lld_enabled {
-                let lld_install_root = self.ensure(native::Lld {
-                    target: self.config.build,
-                });
-
-                let lld_bin_path = lld_install_root.join("bin");
-                additional_paths.push(lld_bin_path);
-            }
-
-            if host.contains("windows") {
-                // On Windows, PATH and the dynamic library path are the same,
-                // so we just add the LLVM bin path to lib_path
-                lib_paths.extend(additional_paths);
-            } else {
-                let old_path = env::var_os("PATH").unwrap_or_default();
-                let new_path = env::join_paths(additional_paths.into_iter()
-                        .chain(env::split_paths(&old_path)))
-                    .expect("Could not add LLVM bin path to PATH");
-                cmd.env("PATH", new_path);
-            }
-        }
-
         add_lib_path(lib_paths, cmd);
-    }
-
-    fn llvm_bin_path(&self) -> Option<PathBuf> {
-        if self.config.llvm_enabled() {
-            let llvm_config = self.ensure(native::Llvm {
-                target: self.config.build,
-                emscripten: false,
-            });
-
-            // Add the llvm/bin directory to PATH since it contains lots of
-            // useful, platform-independent tools
-            let llvm_bin_path = llvm_config.parent()
-                .expect("Expected llvm-config to be contained in directory");
-            assert!(llvm_bin_path.is_dir());
-            Some(llvm_bin_path.to_path_buf())
-        } else {
-            None
-        }
     }
 }

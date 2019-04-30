@@ -12,7 +12,7 @@ all: staticlib.rs upstream.rs
 
 	# Check No LTO
 	$(RUSTC) staticlib.rs -C linker-plugin-lto -Ccodegen-units=1 -L. -o $(TMPDIR)/staticlib.a
-	(cd $(TMPDIR); $(LD_LIB_PATH_ENVVAR)=$(REAL_LD_LIBRARY_PATH) llvm-ar x ./staticlib.a)
+	(cd $(TMPDIR); "$(LLVM_BIN_DIR)"/llvm-ar x ./staticlib.a)
 	# Make sure the upstream object file was included
 	ls $(TMPDIR)/upstream.*.rcgu.o
 
@@ -22,7 +22,7 @@ all: staticlib.rs upstream.rs
 	# Check ThinLTO
 	$(RUSTC) upstream.rs -C linker-plugin-lto -Ccodegen-units=1 -Clto=thin
 	$(RUSTC) staticlib.rs -C linker-plugin-lto -Ccodegen-units=1 -Clto=thin -L. -o $(TMPDIR)/staticlib.a
-	(cd $(TMPDIR); $(LD_LIB_PATH_ENVVAR)=$(REAL_LD_LIBRARY_PATH) llvm-ar x ./staticlib.a)
+	(cd $(TMPDIR); "$(LLVM_BIN_DIR)"/llvm-ar x ./staticlib.a)
 	ls $(TMPDIR)/upstream.*.rcgu.o
 
 else

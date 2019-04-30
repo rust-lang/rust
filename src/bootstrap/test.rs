@@ -1231,6 +1231,28 @@ impl Step for Compiletest {
                 if let Some(ar) = builder.ar(target) {
                     cmd.arg("--ar").arg(ar);
                 }
+
+                // The llvm/bin directory contains many useful cross-platform
+                // tools. Pass the path to run-make tests so they can use them.
+                let llvm_bin_path = llvm_config.parent()
+                    .expect("Expected llvm-config to be contained in directory");
+                assert!(llvm_bin_path.is_dir());
+                cmd.arg("--llvm-bin-dir").arg(llvm_bin_path);
+
+                // If LLD is available, add it to the PATH
+                if builder.config.lld_enabled {
+                    let lld_install_root = builder.ensure(native::Lld {
+                        target: builder.config.build,
+                    });
+
+                    let lld_bin_path = lld_install_root.join("bin");
+
+                    let old_path = env::var_os("PATH").unwrap_or_default();
+                    let new_path = env::join_paths(std::iter::once(lld_bin_path)
+                        .chain(env::split_paths(&old_path)))
+                        .expect("Could not add LLD bin path to PATH");
+                    cmd.env("PATH", new_path);
+                }
             }
         }
 

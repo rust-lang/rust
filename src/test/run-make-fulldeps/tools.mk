@@ -47,6 +47,7 @@ DYLIB = $(TMPDIR)/$(1).dll
 STATICLIB = $(TMPDIR)/$(1).lib
 STATICLIB_GLOB = $(1)*.lib
 BIN = $(1).exe
+LLVM_FILECHECK := $(shell cygpath -u "$(LLVM_FILECHECK)")
 else
 RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
 FAIL = $(TARGET_RPATH_ENV) $(RUN_BINFILE) && exit 1 || exit 0
