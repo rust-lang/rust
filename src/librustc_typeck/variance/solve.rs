@@ -8,7 +8,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 
 use super::constraints::*;
 use super::terms::*;
@@ -23,7 +22,9 @@ struct SolveContext<'a, 'tcx: 'a> {
     solutions: Vec<ty::Variance>,
 }
 
-pub fn solve_constraints(constraints_cx: ConstraintContext<'_, '_>) -> ty::CrateVariancesMap {
+pub fn solve_constraints<'tcx>(
+    constraints_cx: ConstraintContext<'_, 'tcx>
+) -> ty::CrateVariancesMap<'tcx> {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
 
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
@@ -41,9 +42,8 @@ pub fn solve_constraints(constraints_cx: ConstraintContext<'_, '_>) -> ty::Crate
     };
     solutions_cx.solve();
     let variances = solutions_cx.create_map();
-    let empty_variance = Lrc::new(Vec::new());
 
-    ty::CrateVariancesMap { variances, empty_variance }
+    ty::CrateVariancesMap { variances }
 }
 
 impl<'a, 'tcx> SolveContext<'a, 'tcx> {
@@ -78,7 +78,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
-    fn enforce_const_invariance(&self, generics: &ty::Generics, variances: &mut Vec<ty::Variance>) {
+    fn enforce_const_invariance(&self, generics: &ty::Generics, variances: &mut [ty::Variance]) {
         let tcx = self.terms_cx.tcx;
 
         // Make all const parameters invariant.
@@ -94,7 +94,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
-    fn create_map(&self) -> FxHashMap<DefId, Lrc<Vec<ty::Variance>>> {
+    fn create_map(&self) -> FxHashMap<DefId, &'tcx [ty::Variance]> {
         let tcx = self.terms_cx.tcx;
 
         let solutions = &self.solutions;
@@ -103,22 +103,21 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             let generics = tcx.generics_of(def_id);
             let count = generics.count();
 
-            let mut variances = solutions[start..(start + count)].to_vec();
-            debug!("id={} variances={:?}", id, variances);
+            let variances = tcx.arena.alloc_slice(&solutions[start..(start + count)]);
 
             // Const parameters are always invariant.
-            self.enforce_const_invariance(generics, &mut variances);
+            self.enforce_const_invariance(generics, variances);
 
             // Functions are permitted to have unused generic parameters: make those invariant.
             if let ty::FnDef(..) = tcx.type_of(def_id).sty {
-                for variance in &mut variances {
+                for variance in variances.iter_mut() {
                     if *variance == ty::Bivariant {
                         *variance = ty::Invariant;
                     }
                 }
             }
 
-            (def_id, Lrc::new(variances))
+            (def_id, &*variances)
         }).collect()
     }
 
