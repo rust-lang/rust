@@ -1976,18 +1976,17 @@ fn lint_search_is_some<'a, 'tcx>(
         let search_snippet = snippet(cx, search_args[1].span, "..");
         if search_snippet.lines().count() <= 1 {
             // suggest `any(|x| ..)` instead of `any(|&x| ..)` for `find(|&x| ..).is_some()`
-            let any_search_snippet =
-                if_chain! {
-                    if search_method == "find";
-                    if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
-                    let closure_body = cx.tcx.hir().body(body_id);
-                    if let hir::PatKind::Ref(..) = closure_body.arguments[0].pat.node;
-                    then {
-                        Some(search_snippet.replacen('&', "", 1))
-                    } else {
-                        None
-                    }
-                };
+            let any_search_snippet = if_chain! {
+                if search_method == "find";
+                if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
+                let closure_body = cx.tcx.hir().body(body_id);
+                if let hir::PatKind::Ref(..) = closure_body.arguments[0].pat.node;
+                then {
+                    Some(search_snippet.replacen('&', "", 1))
+                } else {
+                    None
+                }
+            };
             // add note if not multi-line
             span_note_and_lint(
                 cx,
@@ -1997,7 +1996,8 @@ fn lint_search_is_some<'a, 'tcx>(
                 expr.span,
                 &format!(
                     "replace `{0}({1}).is_some()` with `any({2})`",
-                    search_method, search_snippet,
+                    search_method,
+                    search_snippet,
                     any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
                 ),
             );
