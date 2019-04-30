@@ -2332,7 +2332,7 @@ pub unsafe fn _mm256_mullo_epi16(a: __m256i, b: __m256i) -> __m256i {
 }
 
 /// Multiplies the packed 32-bit integers in `a` and `b`, producing
-/// intermediate 64-bit integers, and returns the low 16 bits of the
+/// intermediate 64-bit integers, and returns the low 32 bits of the
 /// intermediate integers
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_mullo_epi32)
