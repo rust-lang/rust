@@ -1,3 +1,15 @@
+error: at least one trait must be specified
+  --> $DIR/generic_underconstrained2.rs:5:56
+   |
+LL | existential type Underconstrained<T: std::fmt::Debug>: 'static;
+   |                                                        ^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/generic_underconstrained2.rs:14:57
+   |
+LL | existential type Underconstrained2<T: std::fmt::Debug>: 'static;
+   |                                                         ^^^^^^^
+
 error[E0277]: `U` doesn't implement `std::fmt::Debug`
   --> $DIR/generic_underconstrained2.rs:5:1
    |
@@ -9,7 +21,7 @@ LL | existential type Underconstrained<T: std::fmt::Debug>: 'static;
    = note: the return type of a function must have a statically known size
 
 error[E0277]: `V` doesn't implement `std::fmt::Debug`
-  --> $DIR/generic_underconstrained2.rs:13:1
+  --> $DIR/generic_underconstrained2.rs:14:1
    |
 LL | existential type Underconstrained2<T: std::fmt::Debug>: 'static;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `V` cannot be formatted using `{:?}` because it doesn't implement `std::fmt::Debug`
@@ -18,6 +30,6 @@ LL | existential type Underconstrained2<T: std::fmt::Debug>: 'static;
    = help: consider adding a `where V: std::fmt::Debug` bound
    = note: the return type of a function must have a statically known size
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
