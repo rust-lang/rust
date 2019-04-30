@@ -92,12 +92,7 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
                     LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
                     _ => bug!(),
                 };
-                let suggestion = format!(
-                    "{}..={}{}",
-                    start,
-                    lit_val - 1,
-                    suffix,
-                );
+                let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
                 err.span_suggestion(
                     parent_expr.span,
                     &"use an inclusive range instead",
