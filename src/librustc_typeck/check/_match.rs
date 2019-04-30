@@ -380,23 +380,59 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 if let PatKind::Binding(..) = inner.node {
                                     let parent_id = tcx.hir().get_parent_node_by_hir_id(pat.hir_id);
                                     let parent = tcx.hir().get_by_hir_id(parent_id);
+                                    debug!("inner {:?} pat {:?} parent {:?}", inner, pat, parent);
                                     match parent {
-                                        hir::Node::Item(_) |
-                                        hir::Node::ForeignItem(_) |
-                                        hir::Node::TraitItem(_) |
-                                        hir::Node::ImplItem(_)  => { // this pat is an argument
+                                        hir::Node::Item(hir::Item {
+                                            node: hir::ItemKind::Fn(..), ..
+                                        }) |
+                                        hir::Node::ForeignItem(hir::ForeignItem {
+                                            node: hir::ForeignItemKind::Fn(..), ..
+                                        }) |
+                                        hir::Node::TraitItem(hir::TraitItem {
+                                            node: hir::TraitItemKind::Method(..), ..
+                                        }) |
+                                        hir::Node::ImplItem(hir::ImplItem {
+                                            node: hir::ImplItemKind::Method(..), ..
+                                        }) => { // this pat is likely an argument
                                             if let Ok(snippet) = tcx.sess.source_map()
-                                                .span_to_snippet(pat.span)
+                                                .span_to_snippet(inner.span)
                                             { // FIXME: turn into structured suggestion, will need
-                                              // a span that also includes the the type.
+                                              // a span that also includes the the arg's type.
                                                 err.help(&format!(
                                                     "did you mean `{}: &{}`?",
-                                                    &snippet[1..],
+                                                    snippet,
                                                     expected,
                                                 ));
                                             }
                                         }
-                                        _ => {} // don't provide the suggestion from above #55175
+                                        hir::Node::Expr(hir::Expr {
+                                            node: hir::ExprKind::Match(..), ..
+                                        }) => { // rely on match ergonomics
+                                            if let Ok(snippet) = tcx.sess.source_map()
+                                                .span_to_snippet(inner.span)
+                                            {
+                                                err.span_suggestion(
+                                                    pat.span,
+                                                    "you can rely on match ergonomics and remove \
+                                                     the explicit borrow",
+                                                    snippet,
+                                                    Applicability::MaybeIncorrect,
+                                                );
+                                            }
+                                        }
+                                        hir::Node::Pat(_) => {  // nested `&&pat`
+                                            if let Ok(snippet) = tcx.sess.source_map()
+                                                .span_to_snippet(inner.span)
+                                            {
+                                                err.span_suggestion(
+                                                    pat.span,
+                                                    "you can probaly remove the explicit borrow",
+                                                    snippet,
+                                                    Applicability::MaybeIncorrect,
+                                                );
+                                            }
+                                        }
+                                        _ => {} // don't provide suggestions in other cases #55175
                                     }
                                 }
                                 err.emit();
