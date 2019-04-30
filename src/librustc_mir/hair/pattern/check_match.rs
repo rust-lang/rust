@@ -147,7 +147,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Second, if there is a guard on each arm, make sure it isn't
             // assigning or borrowing anything mutably.
             if let Some(ref guard) = arm.guard {
-                if self.tcx.check_for_mutation_in_guard_via_ast_walk() {
+                if !self.tcx.features().bind_by_move_pattern_guards {
                     check_for_mutation_in_guard(self, &guard);
                 }
             }
@@ -562,7 +562,7 @@ fn check_legality_of_move_bindings(
                              "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
-        } else if has_guard && !cx.tcx.allow_bind_by_move_patterns_with_guards() {
+        } else if has_guard && !cx.tcx.features().bind_by_move_pattern_guards {
             let mut err = struct_span_err!(cx.tcx.sess, p.span, E0008,
                                            "cannot bind by-move into a pattern guard");
             err.span_label(p.span, "moves value into pattern guard");
