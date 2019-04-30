@@ -1200,8 +1200,8 @@ impl String {
     /// Retains only the characters specified by the predicate.
     ///
     /// In other words, remove all characters `c` such that `f(c)` returns `false`.
-    /// This method operates in place and preserves the order of the retained
-    /// characters.
+    /// This method operates in place, visiting each character exactly once in the
+    /// original order, and preserves the order of the retained characters.
     ///
     /// # Examples
     ///
