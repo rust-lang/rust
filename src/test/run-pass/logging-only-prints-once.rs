@@ -1,6 +1,6 @@
 // ignore-windows
 // ignore-emscripten no threads support
-// exec-env:RUST_LOG=debug
+// exec-env:RUSTC_LOG=debug
 
 use std::cell::Cell;
 use std::fmt;

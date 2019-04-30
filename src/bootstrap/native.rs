@@ -436,7 +436,7 @@ fn configure_cmake(builder: &Builder<'_>,
     }
 
     if env::var_os("SCCACHE_ERROR_LOG").is_some() {
-        cfg.env("RUST_LOG", "sccache=warn");
+        cfg.env("RUSTC_LOG", "sccache=warn");
     }
 }
 

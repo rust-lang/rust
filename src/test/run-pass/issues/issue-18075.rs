@@ -1,5 +1,5 @@
 // run-pass
-// exec-env:RUST_LOG=rustc::middle=debug
+// exec-env:RUSTC_LOG=rustc::middle=debug
 
 fn main() {
     let b = 1isize;
