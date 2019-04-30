@@ -305,7 +305,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
     fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
         let statements = &data.statements;
         for (statement_index, statement) in statements.iter().enumerate() {
-            self.visit_statement(block, statement, mir::Location { block, statement_index });
+            self.visit_statement(statement, mir::Location { block, statement_index });
 
             // Once flagged, skip remaining statements
             if self.used_other_than_drop {
@@ -314,7 +314,6 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
         }
 
         self.visit_terminator(
-            block,
             data.terminator(),
             mir::Location {
                 block,
@@ -323,7 +322,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
         );
     }
 
-    fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext<'tcx>, _: mir::Location) {
+    fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext, _: mir::Location) {
         match ctx {
             PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(_) => return,
             _ => {},
