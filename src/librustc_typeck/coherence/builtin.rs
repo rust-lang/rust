@@ -227,8 +227,8 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
                         let ty_b = field.ty(tcx, substs_b);
 
                         if let Ok(layout) = tcx.layout_of(param_env.and(ty_a)) {
-                            if layout.is_zst() {
-                                // ignore ZST fields
+                            if layout.is_zst() && layout.details.align.abi.bytes() == 1 {
+                                // ignore ZST fields with alignment of 1 byte
                                 return None;
                             }
                         }
@@ -238,7 +238,7 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
                                 create_err(
                                     "the trait `DispatchFromDyn` may only be implemented \
                                      for structs containing the field being coerced, \
-                                     ZST fields, and nothing else"
+                                     ZST fields with 1 byte alignment, and nothing else"
                                 ).note(
                                     &format!(
                                         "extra field `{}` of type `{}` is not allowed",
