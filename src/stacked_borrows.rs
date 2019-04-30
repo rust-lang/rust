@@ -400,6 +400,9 @@ impl<'tcx> Stack {
         // Either way, we ensure that we insert the new item in a way that between
         // `derived_from` and the new one, there are only items *compatible with* `derived_from`.
         let new_idx = if weak {
+            // A weak ShareadReadOnly reborrow might be added below other items, violating the
+            // invariant that only SharedReadOnly can sit on top of SharedReadOnly.
+            assert!(new.perm != Permission::SharedReadOnly, "Weak ShareadReadOnly reborrows don't work");
             // A very liberal reborrow because the new pointer does not expect any kind of aliasing guarantee.
             // Just insert new permission as child of old permission, and maintain everything else.
             // This inserts "as far down as possible", which is good because it makes this pointer as
@@ -581,8 +584,8 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 // We need a frozen-sensitive reborrow.
                 return this.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                     // We are only ever `SharedReadOnly` inside the frozen bits.
-                    let weak = !frozen || kind != RefKind::Shared; // `RefKind::Raw` is always weak, as is `SharedReadWrite`.
                     let perm = if frozen { Permission::SharedReadOnly } else { Permission::SharedReadWrite };
+                    let weak = perm == Permission::SharedReadWrite;
                     let item = Item { perm, tag: new_tag, protector };
                     alloc.extra.for_each(cur_ptr, size, |stack, global| {
                         stack.reborrow(cur_ptr.tag, force_weak || weak, item, global)
