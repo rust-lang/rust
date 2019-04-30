@@ -4538,7 +4538,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.check_expr_eq_type(&e, ty);
                 ty
             }
-            ExprKind::Use(ref e) => {
+            ExprKind::DropTemps(ref e) => {
                 self.check_expr_with_expectation(e, expected)
             }
             ExprKind::Array(ref args) => {

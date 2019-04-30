@@ -520,7 +520,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_expr(&base);
             }
 
-            hir::ExprKind::Use(ref expr) => {
+            hir::ExprKind::DropTemps(ref expr) => {
                 self.consume_expr(&expr);
             }
 

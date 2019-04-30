@@ -908,8 +908,8 @@ fn resolve_expr<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>, expr:
                 visitor.cx.var_parent = visitor.cx.parent;
             }
 
-            hir::ExprKind::Use(ref expr) => {
-                // `Use(expr)` does not denote a conditional scope.
+            hir::ExprKind::DropTemps(ref expr) => {
+                // `DropTemps(expr)` does not denote a conditional scope.
                 // Rather, we want to achieve the same behavior as `{ let _t = expr; _t }`.
                 terminating(expr.hir_id.local_id);
             }

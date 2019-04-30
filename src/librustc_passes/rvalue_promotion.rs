@@ -437,7 +437,7 @@ fn check_expr_kind<'a, 'tcx>(
         hir::ExprKind::AddrOf(_, ref expr) |
         hir::ExprKind::Repeat(ref expr, _) |
         hir::ExprKind::Type(ref expr, _) |
-        hir::ExprKind::Use(ref expr) => {
+        hir::ExprKind::DropTemps(ref expr) => {
             v.check_expr(&expr)
         }
 
