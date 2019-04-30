@@ -7,7 +7,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::Node;
-use rustc::hir::{Item, ItemKind, print};
+use rustc::hir::print;
 use rustc::ty::{self, Ty, AssociatedItem};
 use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{Applicability, DiagnosticBuilder};
@@ -550,14 +550,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
-        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
+        if self.tcx.hir().is_const_scope(expr.hir_id) {
             // Shouldn't suggest `.into()` on `const`s.
-            if let Node::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
-                // FIXME(estebank): modify once we decide to suggest `as` casts
-                return false;
-            }
-        };
+            // FIXME(estebank): modify once we decide to suggest `as` casts
+            return false;
+        }
 
         // If casting this expression to a given numeric type would be appropriate in case of a type
         // mismatch.
