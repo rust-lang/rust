@@ -1486,26 +1486,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.queries.on_disk_cache.serialize(self.global_tcx(), encoder)
     }
 
-    /// This checks whether one is allowed to have pattern bindings
-    /// that bind-by-move on a match arm that has a guard, e.g.:
-    ///
-    /// ```rust
-    /// match foo { A(inner) if { /* something */ } => ..., ... }
-    /// ```
-    ///
-    /// It is separate from check_for_mutation_in_guard_via_ast_walk,
-    /// because that method has a narrower effect that can be toggled
-    /// off via a separate `-Z` flag, at least for the short term.
-    pub fn allow_bind_by_move_patterns_with_guards(self) -> bool {
-        self.features().bind_by_move_pattern_guards
-    }
-
-    /// If true, we should use a naive AST walk to determine if match
-    /// guard could perform bad mutations (or mutable-borrows).
-    pub fn check_for_mutation_in_guard_via_ast_walk(self) -> bool {
-        !self.allow_bind_by_move_patterns_with_guards()
-    }
-
     /// If true, we should use the AST-based borrowck (we may *also* use
     /// the MIR-based borrowck).
     pub fn use_ast_borrowck(self) -> bool {
