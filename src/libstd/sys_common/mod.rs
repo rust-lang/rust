@@ -30,10 +30,12 @@ macro_rules! rtassert {
 
 #[allow(unused_macros)] // not used on all platforms
 macro_rules! rtunwrap {
-    ($ok:ident, $e:expr) => (if let $ok(v) = $e {
-        v
-    } else {
-        rtabort!(concat!("unwrap failed: ", stringify!($e)));
+    ($ok:ident, $e:expr) => (match $e {
+        $ok(v) => v,
+        ref err => {
+            let err = err.as_ref().map(|_|()); // map Ok/Some which might not be Debug
+            rtabort!(concat!("unwrap failed: ", stringify!($e), " = {:?}"), err)
+        },
     })
 }
 
