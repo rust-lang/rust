@@ -344,7 +344,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 }
                 ret
             },
-            // FIXME: cover all useable cases.
+            // FIXME: cover all usable cases.
             _ => None,
         }
     }

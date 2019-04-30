@@ -10,12 +10,10 @@ extern crate rustc_interface;
 extern crate rustc_plugin;
 
 use rustc_interface::interface;
+use rustc_tools_util::*;
+
 use std::path::Path;
 use std::process::{exit, Command};
-
-fn show_version() {
-    println!(env!("CARGO_PKG_VERSION"));
-}
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
@@ -117,7 +115,8 @@ pub fn main() {
             use std::env;
 
             if std::env::args().any(|a| a == "--version" || a == "-V") {
-                show_version();
+                let version_info = rustc_tools_util::get_version_info!();
+                println!("{}", version_info);
                 exit(0);
             }
 
