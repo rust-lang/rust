@@ -5423,7 +5423,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
 
     // Check whether a span corresponding to a range expression is a
     // range literal, rather than an explicit struct or `new()` call.
-    fn is_range_literal(sess: &Session, span: &Span) -> bool {
+    fn is_lit(sess: &Session, span: &Span) -> bool {
         let source_map = sess.source_map();
         let end_point = source_map.end_point(*span);
 
@@ -5438,13 +5438,13 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
         // All built-in range literals but `..=` and `..` desugar to `Struct`s.
         ExprKind::Struct(ref qpath, _, _) => {
             if let QPath::Resolved(None, ref path) = **qpath {
-                return is_range_path(&path) && is_range_literal(sess, &expr.span);
+                return is_range_path(&path) && is_lit(sess, &expr.span);
             }
         }
 
         // `..` desugars to its struct path.
         ExprKind::Path(QPath::Resolved(None, ref path)) => {
-            return is_range_path(&path) && is_range_literal(sess, &expr.span);
+            return is_range_path(&path) && is_lit(sess, &expr.span);
         }
 
         // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
@@ -5452,7 +5452,7 @@ pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
             if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.node {
                 if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
                     let new_call = segment.ident.as_str() == "new";
-                    return is_range_path(&path) && is_range_literal(sess, &expr.span) && new_call;
+                    return is_range_path(&path) && is_lit(sess, &expr.span) && new_call;
                 }
             }
         }
