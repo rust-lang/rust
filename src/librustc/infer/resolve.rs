@@ -8,7 +8,7 @@ use crate::ty::fold::{TypeFolder, TypeVisitor};
 
 /// The opportunistic type resolver can be used at any time. It simply replaces
 /// type variables that have been unified with the things they have
-/// been unified with (similar to `shallow_resolve_type`, but deep). This is
+/// been unified with (similar to `shallow_resolve`, but deep). This is
 /// useful for printing messages etc but also required at various
 /// points for correctness.
 pub struct OpportunisticTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
@@ -31,7 +31,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeResolver<'a, 'g
         if !t.has_infer_types() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
-            let t0 = self.infcx.shallow_resolve_type(t);
+            let t0 = self.infcx.shallow_resolve(t);
             t0.super_fold_with(self)
         }
     }
@@ -59,7 +59,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
         if !t.needs_infer() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
-            let t0 = self.infcx.shallow_resolve_type(t);
+            let t0 = self.infcx.shallow_resolve(t);
             t0.super_fold_with(self)
         }
     }
@@ -78,7 +78,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
         if !ct.needs_infer() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
-            let c0 = self.infcx.shallow_resolve_const(ct);
+            let c0 = self.infcx.shallow_resolve(ct);
             c0.super_fold_with(self)
         }
     }
@@ -106,7 +106,7 @@ impl<'a, 'gcx, 'tcx> UnresolvedTypeFinder<'a, 'gcx, 'tcx> {
 
 impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-        let t = self.infcx.shallow_resolve_type(t);
+        let t = self.infcx.shallow_resolve(t);
         if t.has_infer_types() {
             if let ty::Infer(infer_ty) = t.sty {
                 // Since we called `shallow_resolve` above, this must
@@ -175,7 +175,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
               // ^ we need to have the `keep_local` check to un-default
               // defaulted tuples.
         } else {
-            let t = self.infcx.shallow_resolve_type(t);
+            let t = self.infcx.shallow_resolve(t);
             match t.sty {
                 ty::Infer(ty::TyVar(vid)) => {
                     self.err = Some(FixupError::UnresolvedTy(vid));
@@ -216,7 +216,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
               // ^ we need to have the `keep_local` check to un-default
               // defaulted tuples.
         } else {
-            let c = self.infcx.shallow_resolve_const(c);
+            let c = self.infcx.shallow_resolve(c);
             match c.val {
                 ConstValue::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));

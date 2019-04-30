@@ -538,10 +538,10 @@ where
     }
 
     fn tys(&mut self, a: Ty<'tcx>, mut b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        let a = self.infcx.shallow_resolve_type(a);
+        let a = self.infcx.shallow_resolve(a);
 
         if !D::forbid_inference_vars() {
-            b = self.infcx.shallow_resolve_type(b);
+            b = self.infcx.shallow_resolve(b);
         }
 
         match (&a.sty, &b.sty) {

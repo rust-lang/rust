@@ -684,7 +684,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// `ty_var`.
     fn canonicalize_ty_var(&mut self, info: CanonicalVarInfo, ty_var: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.infcx.expect("encountered ty-var without infcx");
-        let bound_to = infcx.shallow_resolve_type(ty_var);
+        let bound_to = infcx.shallow_resolve(ty_var);
         if bound_to != ty_var {
             self.fold_ty(bound_to)
         } else {

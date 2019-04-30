@@ -18,7 +18,7 @@ use crate::mir::interpret::ConstValue;
 use crate::session::config::BorrowckMode;
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
-use crate::ty::fold::TypeFoldable;
+use crate::ty::fold::{TypeFolder, TypeFoldable};
 use crate::ty::relate::RelateResult;
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef};
 use crate::ty::{self, GenericParamDefKind, Ty, TyCtxt, CtxtInterners, InferConst};
@@ -919,17 +919,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         predicate: &ty::PolySubtypePredicate<'tcx>,
     ) -> Option<InferResult<'tcx, ()>> {
         // Subtle: it's ok to skip the binder here and resolve because
-        // `shallow_resolve_type` just ignores anything that is not a type
+        // `shallow_resolve` just ignores anything that is not a type
         // variable, and because type variable's can't (at present, at
         // least) capture any of the things bound by this binder.
         //
         // Really, there is no *particular* reason to do this
-        // `shallow_resolve_type` here except as a
+        // `shallow_resolve` here except as a
         // micro-optimization. Naturally I could not
         // resist. -nmatsakis
         let two_unbound_type_vars = {
-            let a = self.shallow_resolve_type(predicate.skip_binder().a);
-            let b = self.shallow_resolve_type(predicate.skip_binder().b);
+            let a = self.shallow_resolve(predicate.skip_binder().a);
+            let b = self.shallow_resolve(predicate.skip_binder().b);
             a.is_ty_var() && b.is_ty_var()
         };
 
@@ -1274,46 +1274,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.resolve_type_vars_if_possible(t).to_string()
     }
 
-    // We have this force-inlined variant of `shallow_resolve_type` for the one
-    // callsite that is extremely hot. All other callsites use the normal
-    // variant.
-    #[inline(always)]
-    pub fn inlined_shallow_resolve_type(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        match typ.sty {
-            ty::Infer(ty::TyVar(v)) => {
-                // Not entirely obvious: if `typ` is a type variable,
-                // it can be resolved to an int/float variable, which
-                // can then be recursively resolved, hence the
-                // recursion. Note though that we prevent type
-                // variables from unifyxing to other type variables
-                // directly (though they may be embedded
-                // structurally), and we prevent cycles in any case,
-                // so this recursion should always be of very limited
-                // depth.
-                self.type_variables
-                    .borrow_mut()
-                    .probe(v)
-                    .known()
-                    .map(|t| self.shallow_resolve_type(t))
-                    .unwrap_or(typ)
-            }
-
-            ty::Infer(ty::IntVar(v)) => self.int_unification_table
-                .borrow_mut()
-                .probe_value(v)
-                .map(|v| v.to_type(self.tcx))
-                .unwrap_or(typ),
-
-            ty::Infer(ty::FloatVar(v)) => self.float_unification_table
-                .borrow_mut()
-                .probe_value(v)
-                .map(|v| v.to_type(self.tcx))
-                .unwrap_or(typ),
-
-            _ => typ,
-        }
-    }
-
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
     /// universe index of `TyVar(vid)`.
     pub fn probe_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
@@ -1325,8 +1285,12 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn shallow_resolve_type(&self, typ: Ty<'tcx>) -> Ty<'tcx> {
-        self.inlined_shallow_resolve_type(typ)
+    pub fn shallow_resolve<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        let mut r = ShallowResolver::new(self);
+        value.fold_with(&mut r)
     }
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
@@ -1388,24 +1352,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 .unwrap_or(ct)
         } else {
             ct
-        }
-    }
-
-    pub fn shallow_resolve_const(
-        &self,
-        ct: &'tcx ty::Const<'tcx>
-    ) -> &'tcx ty::Const<'tcx> {
-        match ct {
-            ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } => {
-                self.const_unification_table
-                    .borrow_mut()
-                    .probe_value(*vid)
-                    .val
-                    .known()
-                    .map(|c| self.shallow_resolve_const(c))
-                    .unwrap_or(ct)
-            }
-            _ => ct,
         }
     }
 
@@ -1528,7 +1474,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         closure_substs: ty::ClosureSubsts<'tcx>,
     ) -> Option<ty::ClosureKind> {
         let closure_kind_ty = closure_substs.closure_kind_ty(closure_def_id, self.tcx);
-        let closure_kind_ty = self.shallow_resolve_type(&closure_kind_ty);
+        let closure_kind_ty = self.shallow_resolve(closure_kind_ty);
         closure_kind_ty.to_opt_closure_kind()
     }
 
@@ -1542,7 +1488,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         substs: ty::ClosureSubsts<'tcx>,
     ) -> ty::PolyFnSig<'tcx> {
         let closure_sig_ty = substs.closure_sig_ty(def_id, self.tcx);
-        let closure_sig_ty = self.shallow_resolve_type(&closure_sig_ty);
+        let closure_sig_ty = self.shallow_resolve(closure_sig_ty);
         closure_sig_ty.fn_sig(self.tcx)
     }
 
@@ -1595,6 +1541,82 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let u = self.universe.get().next_universe();
         self.universe.set(u);
         u
+    }
+}
+
+pub struct ShallowResolver<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+}
+
+impl<'a, 'gcx, 'tcx> ShallowResolver<'a, 'gcx, 'tcx> {
+    #[inline(always)]
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+        ShallowResolver { infcx }
+    }
+
+    // We have this force-inlined variant of `shallow_resolve` for the one
+    // callsite that is extremely hot. All other callsites use the normal
+    // variant.
+    #[inline(always)]
+    pub fn inlined_shallow_resolve(&mut self, typ: Ty<'tcx>) -> Ty<'tcx> {
+        match typ.sty {
+            ty::Infer(ty::TyVar(v)) => {
+                // Not entirely obvious: if `typ` is a type variable,
+                // it can be resolved to an int/float variable, which
+                // can then be recursively resolved, hence the
+                // recursion. Note though that we prevent type
+                // variables from unifyxing to other type variables
+                // directly (though they may be embedded
+                // structurally), and we prevent cycles in any case,
+                // so this recursion should always be of very limited
+                // depth.
+                self.infcx.type_variables
+                    .borrow_mut()
+                    .probe(v)
+                    .known()
+                    .map(|t| self.fold_ty(t))
+                    .unwrap_or(typ)
+            }
+
+            ty::Infer(ty::IntVar(v)) => self.infcx.int_unification_table
+                .borrow_mut()
+                .probe_value(v)
+                .map(|v| v.to_type(self.infcx.tcx))
+                .unwrap_or(typ),
+
+            ty::Infer(ty::FloatVar(v)) => self.infcx.float_unification_table
+                .borrow_mut()
+                .probe_value(v)
+                .map(|v| v.to_type(self.infcx.tcx))
+                .unwrap_or(typ),
+
+            _ => typ,
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ShallowResolver<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
+        self.infcx.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.inlined_shallow_resolve(ty)
+    }
+
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        match ct {
+            ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } => {
+                self.infcx.const_unification_table
+                    .borrow_mut()
+                    .probe_value(*vid)
+                    .val
+                    .known()
+                    .map(|c| self.fold_const(c))
+                    .unwrap_or(ct)
+            }
+            _ => ct,
+        }
     }
 }
 

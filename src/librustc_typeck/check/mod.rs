@@ -281,7 +281,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
     fn adjust_for_branches(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Expectation<'tcx> {
         match *self {
             ExpectHasType(ety) => {
-                let ety = fcx.shallow_resolve_type(ety);
+                let ety = fcx.shallow_resolve(ety);
                 if !ety.is_ty_var() {
                     ExpectHasType(ety)
                 } else {
@@ -2792,7 +2792,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         expected_vid: ty::TyVid,
     ) -> bool {
-        let self_ty = self.shallow_resolve_type(trait_ref.self_ty());
+        let self_ty = self.shallow_resolve(trait_ref.self_ty());
         debug!(
             "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
             trait_ref, self_ty, expected_vid
