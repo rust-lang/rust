@@ -58,10 +58,16 @@ pub fn get_attr<'a>(
     attrs.iter().filter(move |attr| {
         let attr_segments = &attr.path.segments;
         if attr_segments.len() == 2 && attr_segments[0].ident.to_string() == "clippy" {
-            if let Some(deprecation_status) = BUILTIN_ATTRIBUTES
-                .iter()
-                .find(|(builtin_name, _)| *builtin_name == attr_segments[1].ident.to_string())
-                .map(|(_, deprecation_status)| deprecation_status)
+            if let Some(deprecation_status) =
+                BUILTIN_ATTRIBUTES
+                    .iter()
+                    .find_map(|(builtin_name, deprecation_status)| {
+                        if *builtin_name == attr_segments[1].ident.to_string() {
+                            Some(deprecation_status)
+                        } else {
+                            None
+                        }
+                    })
             {
                 let mut db = sess.struct_span_err(attr_segments[1].ident.span, "Usage of deprecated attribute");
                 match deprecation_status {

@@ -289,6 +289,50 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.filter_map(_).next()`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely as a
+    /// single method call.
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```rust
+    ///  (0..3).filter_map(|x| if x == 2 { Some(x) } else { None }).next();
+    /// ```
+    /// Can be written as
+    ///
+    /// ```rust
+    ///  (0..3).find_map(|x| if x == 2 { Some(x) } else { None });
+    /// ```
+    pub FILTER_MAP_NEXT,
+    pedantic,
+    "using combination of `filter_map` and `next` which can usually be written as a single method call"
+}
+
+declare_clippy_lint! {
+    /// **What it does:** Checks for usage of `_.find(_).map(_)`.
+    ///
+    /// **Why is this bad?** Readability, this can be written more concisely as a
+    /// single method call.
+    ///
+    /// **Known problems:** Often requires a condition + Option/Iterator creation
+    /// inside the closure.
+    ///
+    /// **Example:**
+    /// ```rust
+    ///  (0..3).find(|x| x == 2).map(|x| x * 2);
+    /// ```
+    /// Can be written as
+    /// ```rust
+    ///  (0..3).find_map(|x| if x == 2 { Some(x * 2) } else { None });
+    /// ```
+    pub FIND_MAP,
+    pedantic,
+    "using a combination of `find` and `map` can usually be written as a single method call"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for an iterator search (such as `find()`,
     /// `position()`, or `rposition()`) followed by a call to `is_some()`.
     ///
@@ -798,6 +842,8 @@ declare_lint_pass!(Methods => [
     TEMPORARY_CSTRING_AS_PTR,
     FILTER_NEXT,
     FILTER_MAP,
+    FILTER_MAP_NEXT,
+    FIND_MAP,
     MAP_FLATTEN,
     ITER_NTH,
     ITER_SKIP_NEXT,
@@ -833,6 +879,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["next", "filter_map"] => lint_filter_map_next(cx, expr, arg_lists[1]),
+            ["map", "find"] => lint_find_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
@@ -1908,6 +1956,42 @@ fn lint_filter_map<'a, 'tcx>(
         let msg = "called `filter(p).map(q)` on an `Iterator`. \
                    This is more succinctly expressed by calling `.filter_map(..)` instead.";
         span_lint(cx, FILTER_MAP, expr.span, msg);
+    }
+}
+
+/// lint use of `filter_map().next()` for `Iterators`
+fn lint_filter_map_next<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr, filter_args: &'tcx [hir::Expr]) {
+    if match_trait_method(cx, expr, &paths::ITERATOR) {
+        let msg = "called `filter_map(p).next()` on an `Iterator`. This is more succinctly expressed by calling \
+                   `.find_map(p)` instead.";
+        let filter_snippet = snippet(cx, filter_args[1].span, "..");
+        if filter_snippet.lines().count() <= 1 {
+            span_note_and_lint(
+                cx,
+                FILTER_MAP_NEXT,
+                expr.span,
+                msg,
+                expr.span,
+                &format!("replace `filter_map({0}).next()` with `find_map({0})`", filter_snippet),
+            );
+        } else {
+            span_lint(cx, FILTER_MAP_NEXT, expr.span, msg);
+        }
+    }
+}
+
+/// lint use of `find().map()` for `Iterators`
+fn lint_find_map<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &'tcx hir::Expr,
+    _find_args: &'tcx [hir::Expr],
+    map_args: &'tcx [hir::Expr],
+) {
+    // lint if caller of `.filter().map()` is an Iterator
+    if match_trait_method(cx, &map_args[0], &paths::ITERATOR) {
+        let msg = "called `find(p).map(q)` on an `Iterator`. \
+                   This is more succinctly expressed by calling `.find_map(..)` instead.";
+        span_lint(cx, FIND_MAP, expr.span, msg);
     }
 }
 
