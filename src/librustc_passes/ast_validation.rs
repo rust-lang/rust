@@ -679,6 +679,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                                                 "unions cannot have zero fields");
                 }
             }
+            ItemKind::Existential(ref bounds, _) => {
+                if !bounds.iter()
+                          .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
+                    self.err_handler().span_err(item.span, "at least one trait must be specified");
+                }
+            }
             _ => {}
         }
 
