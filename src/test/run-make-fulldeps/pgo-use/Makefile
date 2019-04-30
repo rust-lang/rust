@@ -23,6 +23,14 @@ ifdef IS_MSVC
 COMMON_FLAGS+= -Cpanic=abort
 endif
 
+ifeq ($(UNAME),Darwin)
+# macOS does not have the `tac` command, but `tail -r` does the same thing
+TAC := tail -r
+else
+# some other platforms don't support the `-r` flag for `tail`, so use `tac`
+TAC := tac
+endif
+
 all:
 	# Compile the test program with instrumentation
 	$(RUSTC) $(COMMON_FLAGS) -Z pgo-gen="$(TMPDIR)" main.rs
@@ -40,4 +48,4 @@ all:
 	# line with the function name before the line with the function attributes.
 	# FileCheck only supports checking that something matches on the next line,
 	# but not if something matches on the previous line.
-	tac "$(TMPDIR)"/main.ll | "$(LLVM_FILECHECK)" filecheck-patterns.txt
+	$(TAC) "$(TMPDIR)"/main.ll | "$(LLVM_FILECHECK)" filecheck-patterns.txt
