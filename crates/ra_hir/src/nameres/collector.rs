@@ -522,9 +522,10 @@ where
         if let Some(macro_id) =
             mac.path.as_ident().and_then(|name| self.def_collector.global_macro_scope.get(&name))
         {
-            let macro_call_id = MacroCallLoc { def: *macro_id, ast_id }.id(self.def_collector.db);
+            let def = *macro_id;
+            let macro_call_id = MacroCallLoc { def, ast_id }.id(self.def_collector.db);
 
-            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, *macro_id);
+            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, def);
             return;
         }
 
