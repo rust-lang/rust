@@ -2450,6 +2450,7 @@ fn from_target_feature(
                 Some("adx_target_feature") => rust_features.adx_target_feature,
                 Some("movbe_target_feature") => rust_features.movbe_target_feature,
                 Some("rtm_target_feature") => rust_features.rtm_target_feature,
+                Some("f16c_target_feature") => rust_features.f16c_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
