@@ -41,10 +41,9 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     }
 
     fn visit_statement(&mut self,
-                       block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
-        self.super_statement(block, statement, location);
+        self.super_statement(statement, location);
     }
 }
 

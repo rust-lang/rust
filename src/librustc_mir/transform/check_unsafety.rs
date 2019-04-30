@@ -65,7 +65,6 @@ impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
     fn visit_terminator(&mut self,
-                        block: BasicBlock,
                         terminator: &Terminator<'tcx>,
                         location: Location)
     {
@@ -97,11 +96,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 }
             }
         }
-        self.super_terminator(block, terminator, location);
+        self.super_terminator(terminator, location);
     }
 
     fn visit_statement(&mut self,
-                       block: BasicBlock,
                        statement: &Statement<'tcx>,
                        location: Location)
     {
@@ -124,7 +122,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     UnsafetyViolationKind::General)
             },
         }
-        self.super_statement(block, statement, location);
+        self.super_statement(statement, location);
     }
 
     fn visit_rvalue(&mut self,
@@ -201,7 +199,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 
     fn visit_place(&mut self,
                     place: &Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         match place {
             &Place::Projection(box Projection {

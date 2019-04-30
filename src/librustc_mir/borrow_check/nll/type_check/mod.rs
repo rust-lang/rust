@@ -269,7 +269,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext<'_>, location: Location) {
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
         self.sanitize_place(place, location, context);
     }
 
@@ -447,7 +447,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         &mut self,
         place: &Place<'tcx>,
         location: Location,
-        context: PlaceContext<'_>,
+        context: PlaceContext,
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
         let place_ty = match place {

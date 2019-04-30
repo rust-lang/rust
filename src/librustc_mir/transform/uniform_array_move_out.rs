@@ -58,7 +58,6 @@ struct UniformArrayMoveOutVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
     fn visit_assign(&mut self,
-                    block: BasicBlock,
                     dst_place: &Place<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
@@ -82,7 +81,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                 }
             }
         }
-        self.super_assign(block, dst_place, rvalue, location)
+        self.super_assign(dst_place, rvalue, location)
     }
 }
 
@@ -294,19 +293,18 @@ struct RestoreDataCollector {
 
 impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
     fn visit_assign(&mut self,
-                    block: BasicBlock,
                     place: &Place<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Aggregate(box AggregateKind::Array(_), _) = *rvalue {
             self.candidates.push(location);
         }
-        self.super_assign(block, place, rvalue, location)
+        self.super_assign(place, rvalue, location)
     }
 
     fn visit_local(&mut self,
                    local: &Local,
-                   context: PlaceContext<'tcx>,
+                   context: PlaceContext,
                    location: Location) {
         let local_use = &mut self.locals_use[*local];
         match context {

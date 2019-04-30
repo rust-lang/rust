@@ -134,9 +134,9 @@ impl MirPass for CopyPropagation {
     }
 }
 
-fn eliminate_self_assignments<'tcx>(
-    mir: &mut Mir<'tcx>,
-    def_use_analysis: &DefUseAnalysis<'tcx>,
+fn eliminate_self_assignments(
+    mir: &mut Mir<'_>,
+    def_use_analysis: &DefUseAnalysis,
 ) -> bool {
     let mut changed = false;
 
@@ -177,7 +177,7 @@ enum Action<'tcx> {
 }
 
 impl<'tcx> Action<'tcx> {
-    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis<'_>, src_place: &Place<'tcx>)
+    fn local_copy(mir: &Mir<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
         let src_local = if let Place::Base(PlaceBase::Local(local)) = *src_place {
@@ -233,7 +233,7 @@ impl<'tcx> Action<'tcx> {
 
     fn perform(self,
                mir: &mut Mir<'tcx>,
-               def_use_analysis: &DefUseAnalysis<'tcx>,
+               def_use_analysis: &DefUseAnalysis,
                dest_local: Local,
                location: Location)
                -> bool {

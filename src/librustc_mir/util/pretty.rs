@@ -337,7 +337,7 @@ where
         )?;
 
         write_extra(tcx, w, |visitor| {
-            visitor.visit_statement(current_location.block, statement, current_location);
+            visitor.visit_statement(statement, current_location);
         })?;
 
         extra_data(PassWhere::AfterLocation(current_location), w)?;
@@ -358,7 +358,7 @@ where
     )?;
 
     write_extra(tcx, w, |visitor| {
-        visitor.visit_terminator(current_location.block, data.terminator(), current_location);
+        visitor.visit_terminator(data.terminator(), current_location);
     })?;
 
     extra_data(PassWhere::AfterLocation(current_location), w)?;

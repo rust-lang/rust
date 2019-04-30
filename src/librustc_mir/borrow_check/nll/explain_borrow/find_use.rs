@@ -113,7 +113,7 @@ enum DefUseResult {
 }
 
 impl<'cx, 'gcx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'gcx, 'tcx> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
         let local_ty = self.mir.local_decls[local].ty;
 
         let mut found_it = false;
