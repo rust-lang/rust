@@ -2288,6 +2288,15 @@ pub struct FnHeader {
     pub abi: Abi,
 }
 
+impl FnHeader {
+    pub fn is_const(&self) -> bool {
+        match &self.constness {
+            Constness::Const => true,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum ItemKind {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.

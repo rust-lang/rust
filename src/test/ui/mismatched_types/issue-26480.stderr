@@ -6,6 +6,10 @@ LL |                   $arr.len() * size_of($arr[0]));
 ...
 LL |     write!(hello);
    |     -------------- in this macro invocation
+help: you can convert an `usize` to `u64` or panic if it the converted value wouldn't fit
+   |
+LL |                   ($arr.len() * size_of($arr[0])).try_into().unwrap());
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0605]: non-primitive cast: `{integer}` as `()`
   --> $DIR/issue-26480.rs:22:19

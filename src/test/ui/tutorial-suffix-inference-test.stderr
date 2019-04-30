@@ -2,23 +2,30 @@ error[E0308]: mismatched types
   --> $DIR/tutorial-suffix-inference-test.rs:9:18
    |
 LL |     identity_u16(x);
-   |                  ^ expected u16, found u8
-help: you can cast an `u8` to `u16`, which will zero-extend the source value
-   |
-LL |     identity_u16(x.into());
-   |                  ^^^^^^^^
+   |                  ^
+   |                  |
+   |                  expected u16, found u8
+   |                  help: you can convert an `u8` to `u16`: `x.into()`
 
 error[E0308]: mismatched types
   --> $DIR/tutorial-suffix-inference-test.rs:12:18
    |
 LL |     identity_u16(y);
    |                  ^ expected u16, found i32
+help: you can convert an `i32` to `u16` or panic if it the converted value wouldn't fit
+   |
+LL |     identity_u16(y.try_into().unwrap());
+   |                  ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/tutorial-suffix-inference-test.rs:21:18
    |
 LL |     identity_u16(a);
    |                  ^ expected u16, found isize
+help: you can convert an `isize` to `u16` or panic if it the converted value wouldn't fit
+   |
+LL |     identity_u16(a.try_into().unwrap());
+   |                  ^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors
 

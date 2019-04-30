@@ -734,6 +734,14 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn is_const_scope(&self, hir_id: HirId) -> bool {
+        self.walk_parent_nodes(hir_id, |node| match *node {
+            Node::Item(Item { node: ItemKind::Const(_, _), .. }) => true,
+            Node::Item(Item { node: ItemKind::Fn(_, header, _, _), .. }) => header.is_const(),
+            _ => false,
+        }, |_| false).map(|id| id != CRATE_HIR_ID).unwrap_or(false)
+    }
+
     /// If there is some error when walking the parents (e.g., a node does not
     /// have a parent in the map or a node can't be found), then we return the
     /// last good `NodeId` we found. Note that reaching the crate root (`id == 0`),

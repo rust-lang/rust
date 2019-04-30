@@ -3,6 +3,10 @@ error[E0308]: mismatched types
    |
 LL |     f1(2i32, 4i32);
    |              ^^^^ expected u32, found i32
+help: change the type of the numeric literal from `i32` to `u32`
+   |
+LL |     f1(2i32, 4u32);
+   |              ^^^^
 
 error[E0277]: the trait bound `u32: Foo` is not satisfied
   --> $DIR/associated-types-path-2.rs:29:5
@@ -45,6 +49,10 @@ error[E0308]: mismatched types
    |
 LL |     let _: i32 = f2(2i32);
    |                  ^^^^^^^^ expected i32, found u32
+help: you can convert an `u32` to `i32` or panic if it the converted value wouldn't fit
+   |
+LL |     let _: i32 = f2(2i32).try_into().unwrap();
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 

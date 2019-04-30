@@ -20,274 +20,274 @@ fn main() {
     let x_f32: f32 = 12.0;
 
     foo::<usize>(x_usize);
-    foo::<usize>(x_u64);
+    foo::<usize>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_u32);
+    foo::<usize>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_u16);
+    foo::<usize>(x_u16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_u8);
+    foo::<usize>(x_u8.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_isize);
+    foo::<usize>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_i64);
+    foo::<usize>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_i32);
+    foo::<usize>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_i16);
+    foo::<usize>(x_i16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<usize>(x_i8);
+    foo::<usize>(x_i8.try_into().unwrap());
     //~^ ERROR mismatched types
     // foo::<usize>(x_f64);
     // foo::<usize>(x_f32);
 
-    foo::<isize>(x_usize);
+    foo::<isize>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_u64);
+    foo::<isize>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_u32);
+    foo::<isize>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_u16);
+    foo::<isize>(x_u16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_u8);
+    foo::<isize>(x_u8.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<isize>(x_isize);
-    foo::<isize>(x_i64);
+    foo::<isize>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_i32);
+    foo::<isize>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_i16);
+    foo::<isize>(x_i16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<isize>(x_i8);
+    foo::<isize>(x_i8.try_into().unwrap());
     //~^ ERROR mismatched types
     // foo::<isize>(x_f64);
     // foo::<isize>(x_f32);
 
-    foo::<u64>(x_usize);
+    foo::<u64>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<u64>(x_u64);
-    foo::<u64>(x_u32);
+    foo::<u64>(x_u32.into());
     //~^ ERROR mismatched types
-    foo::<u64>(x_u16);
+    foo::<u64>(x_u16.into());
     //~^ ERROR mismatched types
-    foo::<u64>(x_u8);
+    foo::<u64>(x_u8.into());
     //~^ ERROR mismatched types
-    foo::<u64>(x_isize);
+    foo::<u64>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u64>(x_i64);
+    foo::<u64>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u64>(x_i32);
+    foo::<u64>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u64>(x_i16);
+    foo::<u64>(x_i16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u64>(x_i8);
+    foo::<u64>(x_i8.try_into().unwrap());
     //~^ ERROR mismatched types
     // foo::<u64>(x_f64);
     // foo::<u64>(x_f32);
 
-    foo::<i64>(x_usize);
+    foo::<i64>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i64>(x_u64);
+    foo::<i64>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i64>(x_u32);
+    foo::<i64>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i64>(x_u16);
+    foo::<i64>(x_u16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i64>(x_u8);
+    foo::<i64>(x_u8.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i64>(x_isize);
+    foo::<i64>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<i64>(x_i64);
-    foo::<i64>(x_i32);
+    foo::<i64>(x_i32.into());
     //~^ ERROR mismatched types
-    foo::<i64>(x_i16);
+    foo::<i64>(x_i16.into());
     //~^ ERROR mismatched types
-    foo::<i64>(x_i8);
+    foo::<i64>(x_i8.into());
     //~^ ERROR mismatched types
     // foo::<i64>(x_f64);
     // foo::<i64>(x_f32);
 
-    foo::<u32>(x_usize);
+    foo::<u32>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u32>(x_u64);
+    foo::<u32>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<u32>(x_u32);
-    foo::<u32>(x_u16);
+    foo::<u32>(x_u16.into());
     //~^ ERROR mismatched types
-    foo::<u32>(x_u8);
+    foo::<u32>(x_u8.into());
     //~^ ERROR mismatched types
-    foo::<u32>(x_isize);
+    foo::<u32>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u32>(x_i64);
+    foo::<u32>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u32>(x_i32);
+    foo::<u32>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u32>(x_i16);
+    foo::<u32>(x_i16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u32>(x_i8);
+    foo::<u32>(x_i8.try_into().unwrap());
     //~^ ERROR mismatched types
     // foo::<u32>(x_f64);
     // foo::<u32>(x_f32);
 
-    foo::<i32>(x_usize);
+    foo::<i32>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i32>(x_u64);
+    foo::<i32>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i32>(x_u32);
+    foo::<i32>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i32>(x_u16);
+    foo::<i32>(x_u16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i32>(x_u8);
+    foo::<i32>(x_u8.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i32>(x_isize);
+    foo::<i32>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i32>(x_i64);
+    foo::<i32>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<i32>(x_i32);
-    foo::<i32>(x_i16);
+    foo::<i32>(x_i16.into());
     //~^ ERROR mismatched types
-    foo::<i32>(x_i8);
+    foo::<i32>(x_i8.into());
     //~^ ERROR mismatched types
     // foo::<i32>(x_f64);
     // foo::<i32>(x_f32);
 
-    foo::<u16>(x_usize);
+    foo::<u16>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u16>(x_u64);
+    foo::<u16>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u16>(x_u32);
+    foo::<u16>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<u16>(x_u16);
-    foo::<u16>(x_u8);
+    foo::<u16>(x_u8.into());
     //~^ ERROR mismatched types
-    foo::<u16>(x_isize);
+    foo::<u16>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u16>(x_i64);
+    foo::<u16>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u16>(x_i32);
+    foo::<u16>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u16>(x_i16);
+    foo::<u16>(x_i16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u16>(x_i8);
+    foo::<u16>(x_i8.try_into().unwrap());
     //~^ ERROR mismatched types
     // foo::<u16>(x_f64);
     // foo::<u16>(x_f32);
 
-    foo::<i16>(x_usize);
+    foo::<i16>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i16>(x_u64);
+    foo::<i16>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i16>(x_u32);
+    foo::<i16>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i16>(x_u16);
+    foo::<i16>(x_u16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i16>(x_u8);
+    foo::<i16>(x_u8.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i16>(x_isize);
+    foo::<i16>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i16>(x_i64);
+    foo::<i16>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i16>(x_i32);
+    foo::<i16>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<i16>(x_i16);
-    foo::<i16>(x_i8);
+    foo::<i16>(x_i8.into());
     //~^ ERROR mismatched types
     // foo::<i16>(x_f64);
     // foo::<i16>(x_f32);
 
-    foo::<u8>(x_usize);
+    foo::<u8>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u8>(x_u64);
+    foo::<u8>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u8>(x_u32);
+    foo::<u8>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u8>(x_u16);
+    foo::<u8>(x_u16.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<u8>(x_u8);
-    foo::<u8>(x_isize);
+    foo::<u8>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u8>(x_i64);
+    foo::<u8>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u8>(x_i32);
+    foo::<u8>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u8>(x_i16);
+    foo::<u8>(x_i16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<u8>(x_i8);
+    foo::<u8>(x_i8.try_into().unwrap());
     //~^ ERROR mismatched types
     // foo::<u8>(x_f64);
     // foo::<u8>(x_f32);
 
-    foo::<i8>(x_usize);
+    foo::<i8>(x_usize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_u64);
+    foo::<i8>(x_u64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_u32);
+    foo::<i8>(x_u32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_u16);
+    foo::<i8>(x_u16.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_u8);
+    foo::<i8>(x_u8.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_isize);
+    foo::<i8>(x_isize.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_i64);
+    foo::<i8>(x_i64.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_i32);
+    foo::<i8>(x_i32.try_into().unwrap());
     //~^ ERROR mismatched types
-    foo::<i8>(x_i16);
+    foo::<i8>(x_i16.try_into().unwrap());
     //~^ ERROR mismatched types
     foo::<i8>(x_i8);
     // foo::<i8>(x_f64);
     // foo::<i8>(x_f32);
 
-    foo::<f64>(x_usize);
+    foo::<f64>(x_usize as f64);
     //~^ ERROR mismatched types
-    foo::<f64>(x_u64);
+    foo::<f64>(x_u64 as f64);
     //~^ ERROR mismatched types
-    foo::<f64>(x_u32);
+    foo::<f64>(x_u32.into());
     //~^ ERROR mismatched types
-    foo::<f64>(x_u16);
+    foo::<f64>(x_u16.into());
     //~^ ERROR mismatched types
-    foo::<f64>(x_u8);
+    foo::<f64>(x_u8.into());
     //~^ ERROR mismatched types
-    foo::<f64>(x_isize);
+    foo::<f64>(x_isize as f64);
     //~^ ERROR mismatched types
-    foo::<f64>(x_i64);
+    foo::<f64>(x_i64 as f64);
     //~^ ERROR mismatched types
-    foo::<f64>(x_i32);
+    foo::<f64>(x_i32.into());
     //~^ ERROR mismatched types
-    foo::<f64>(x_i16);
+    foo::<f64>(x_i16.into());
     //~^ ERROR mismatched types
-    foo::<f64>(x_i8);
+    foo::<f64>(x_i8.into());
     //~^ ERROR mismatched types
     foo::<f64>(x_f64);
-    foo::<f64>(x_f32);
+    foo::<f64>(x_f32.into());
     //~^ ERROR mismatched types
 
-    foo::<f32>(x_usize);
+    foo::<f32>(x_usize as f32);
     //~^ ERROR mismatched types
-    foo::<f32>(x_u64);
+    foo::<f32>(x_u64 as f32);
     //~^ ERROR mismatched types
-    foo::<f32>(x_u32);
+    foo::<f32>(x_u32 as f32);
     //~^ ERROR mismatched types
-    foo::<f32>(x_u16);
+    foo::<f32>(x_u16.into());
     //~^ ERROR mismatched types
-    foo::<f32>(x_u8);
+    foo::<f32>(x_u8.into());
     //~^ ERROR mismatched types
-    foo::<f32>(x_isize);
+    foo::<f32>(x_isize as f32);
     //~^ ERROR mismatched types
-    foo::<f32>(x_i64);
+    foo::<f32>(x_i64 as f32);
     //~^ ERROR mismatched types
-    foo::<f32>(x_i32);
+    foo::<f32>(x_i32 as f32);
     //~^ ERROR mismatched types
-    foo::<f32>(x_i16);
+    foo::<f32>(x_i16.into());
     //~^ ERROR mismatched types
-    foo::<f32>(x_i8);
+    foo::<f32>(x_i8.into());
     //~^ ERROR mismatched types
     // foo::<f32>(x_f64);
     foo::<f32>(x_f32);
 
-    foo::<u32>(x_u8 as u16);
+    foo::<u32>((x_u8 as u16).into());
     //~^ ERROR mismatched types
-    foo::<i32>(-x_i8);
+    foo::<i32>((-x_i8).into());
     //~^ ERROR mismatched types
 }

@@ -7,7 +7,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::def::Def;
 use rustc::hir::Node;
-use rustc::hir::{Item, ItemKind, print};
+use rustc::hir::print;
 use rustc::ty::{self, Ty, AssociatedItem};
 use rustc::ty::adjustment::AllowTwoPhase;
 use errors::{Applicability, DiagnosticBuilder};
@@ -550,22 +550,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
-        let parent_id = self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id);
-        if let Some(parent) = self.tcx.hir().find_by_hir_id(parent_id) {
+        if self.tcx.hir().is_const_scope(expr.hir_id) {
             // Shouldn't suggest `.into()` on `const`s.
-            if let Node::Item(Item { node: ItemKind::Const(_, _), .. }) = parent {
-                // FIXME(estebank): modify once we decide to suggest `as` casts
-                return false;
-            }
-        };
-
-        let will_truncate = "will truncate the source value";
-        let depending_on_isize = "will truncate or zero-extend depending on the bit width of \
-                                  `isize`";
-        let depending_on_usize = "will truncate or zero-extend depending on the bit width of \
-                                  `usize`";
-        let will_sign_extend = "will sign-extend the source value";
-        let will_zero_extend = "will zero-extend the source value";
+            // FIXME(estebank): modify once we decide to suggest `as` casts
+            return false;
+        }
 
         // If casting this expression to a given numeric type would be appropriate in case of a type
         // mismatch.
@@ -596,10 +585,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
+        let msg = format!("you can convert an `{}` to `{}`", checked_ty, expected_ty);
+        let cast_msg = format!("you can cast an `{} to `{}`", checked_ty, expected_ty);
+        let try_msg = format!("{} or panic if it the converted value wouldn't fit", msg);
+        let lit_msg = format!(
+            "change the type of the numeric literal from `{}` to `{}`",
+            checked_ty,
+            expected_ty,
+        );
+
         let needs_paren = expr.precedence().order() < (PREC_POSTFIX as i8);
 
         if let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
-            let msg = format!("you can cast an `{}` to `{}`", checked_ty, expected_ty);
             let cast_suggestion = format!(
                 "{}{}{}{} as {}",
                 prefix,
@@ -608,11 +605,34 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if needs_paren { ")" } else { "" },
                 expected_ty,
             );
+            let try_into_suggestion = format!(
+                "{}{}{}{}.try_into().unwrap()",
+                prefix,
+                if needs_paren { "(" } else { "" },
+                src,
+                if needs_paren { ")" } else { "" },
+            );
             let into_suggestion = format!(
                 "{}{}{}{}.into()",
                 prefix,
                 if needs_paren { "(" } else { "" },
                 src,
+                if needs_paren { ")" } else { "" },
+            );
+            let suffix_suggestion = format!(
+                "{}{}{}{}",
+                if needs_paren { "(" } else { "" },
+                if let (ty::Int(_), ty::Float(_)) | (ty::Uint(_), ty::Float(_)) = (
+                    &expected_ty.sty,
+                    &checked_ty.sty,
+                ) {
+                    // Remove fractional part from literal, for example `42.0f32` into `42`
+                    let src = src.trim_end_matches(&checked_ty.to_string());
+                    src.split(".").next().unwrap()
+                } else {
+                    src.trim_end_matches(&checked_ty.to_string())
+                },
+                expected_ty,
                 if needs_paren { ")" } else { "" },
             );
             let literal_is_ty_suffixed = |expr: &hir::Expr| {
@@ -623,35 +643,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
 
-            let into_sugg = into_suggestion.clone();
-            let suggest_to_change_suffix_or_into = |err: &mut DiagnosticBuilder<'_>,
-                                                    note: Option<&str>| {
-                let suggest_msg = if literal_is_ty_suffixed(expr) {
-                    format!(
-                        "change the type of the numeric literal from `{}` to `{}`",
-                        checked_ty,
-                        expected_ty,
-                    )
-                } else {
-                    match note {
-                        Some(note) => format!("{}, which {}", msg, note),
-                        _ => format!("{} in a lossless way", msg),
-                    }
-                };
-
-                let suffix_suggestion = format!(
-                    "{}{}{}{}",
-                    if needs_paren { "(" } else { "" },
-                    src.trim_end_matches(&checked_ty.to_string()),
-                    expected_ty,
-                    if needs_paren { ")" } else { "" },
-                );
-
+            let suggest_to_change_suffix_or_into = |
+                err: &mut DiagnosticBuilder<'_>,
+                is_fallible: bool,
+            | {
+                let into_sugg = into_suggestion.clone();
                 err.span_suggestion(
                     expr.span,
-                    &suggest_msg,
                     if literal_is_ty_suffixed(expr) {
-                        suffix_suggestion
+                        &lit_msg
+                    } else if is_fallible {
+                        &try_msg
+                    } else {
+                        &msg
+                    },
+                    if literal_is_ty_suffixed(expr) {
+                        suffix_suggestion.clone()
+                    } else if is_fallible {
+                        try_into_suggestion
                     } else {
                         into_sugg
                     },
@@ -661,188 +670,67 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             match (&expected_ty.sty, &checked_ty.sty) {
                 (&ty::Int(ref exp), &ty::Int(ref found)) => {
-                    match (found.bit_width(), exp.bit_width()) {
-                        (Some(found), Some(exp)) if found > exp => {
-                            if can_cast {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_truncate),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect // lossy conversion
-                                );
-                            }
-                        }
-                        (None, _) | (_, None) => {
-                            if can_cast {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, depending_on_isize),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect // lossy conversion
-                                );
-                            }
-                        }
-                        _ => {
-                            suggest_to_change_suffix_or_into(
-                                err,
-                                Some(will_sign_extend),
-                            );
-                        }
-                    }
+                    let is_fallible = match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found > exp => true,
+                        (None, _) | (_, None) => true,
+                        _ => false,
+                    };
+                    suggest_to_change_suffix_or_into(err, is_fallible);
                     true
                 }
                 (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
-                    match (found.bit_width(), exp.bit_width()) {
-                        (Some(found), Some(exp)) if found > exp => {
-                            if can_cast {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_truncate),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                        }
-                        (None, _) | (_, None) => {
-                            if can_cast {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, depending_on_usize),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                        }
-                        _ => {
-                           suggest_to_change_suffix_or_into(
-                               err,
-                               Some(will_zero_extend),
-                           );
-                        }
-                    }
+                    let is_fallible = match (found.bit_width(), exp.bit_width()) {
+                        (Some(found), Some(exp)) if found > exp => true,
+                        (None, _) | (_, None) => true,
+                        _ => false,
+                    };
+                    suggest_to_change_suffix_or_into(err, is_fallible);
                     true
                 }
-                (&ty::Int(ref exp), &ty::Uint(ref found)) => {
-                    if can_cast {
-                        match (found.bit_width(), exp.bit_width()) {
-                            (Some(found), Some(exp)) if found > exp - 1 => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_truncate),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                            (None, None) => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_truncate),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                            (None, _) => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, depending_on_isize),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                            (_, None) => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, depending_on_usize),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                            _ => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_zero_extend),
-                                    cast_suggestion,
-                                    Applicability::MachineApplicable
-                                );
-                            }
-                        }
-                    }
-                    true
-                }
-                (&ty::Uint(ref exp), &ty::Int(ref found)) => {
-                    if can_cast {
-                        match (found.bit_width(), exp.bit_width()) {
-                            (Some(found), Some(exp)) if found - 1 > exp => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_truncate),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                            (None, None) => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_sign_extend),
-                                    cast_suggestion,
-                                    Applicability::MachineApplicable  // lossy conversion
-                                );
-                            }
-                            (None, _) => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, depending_on_usize),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                            (_, None) => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, depending_on_isize),
-                                    cast_suggestion,
-                                    Applicability::MaybeIncorrect  // lossy conversion
-                                );
-                            }
-                            _ => {
-                                err.span_suggestion(
-                                    expr.span,
-                                    &format!("{}, which {}", msg, will_sign_extend),
-                                    cast_suggestion,
-                                    Applicability::MachineApplicable
-                                );
-                            }
-                        }
-                    }
+                (&ty::Int(_), &ty::Uint(_)) | (&ty::Uint(_), &ty::Int(_)) => {
+                    suggest_to_change_suffix_or_into(err, true);
                     true
                 }
                 (&ty::Float(ref exp), &ty::Float(ref found)) => {
                     if found.bit_width() < exp.bit_width() {
-                       suggest_to_change_suffix_or_into(
-                           err,
-                           None,
-                       );
-                    } else if can_cast {
+                        suggest_to_change_suffix_or_into(err, false);
+                    } else if literal_is_ty_suffixed(expr) {
                         err.span_suggestion(
                             expr.span,
-                            &format!("{}, producing the closest possible value", msg),
+                            &lit_msg,
+                            suffix_suggestion,
+                            Applicability::MachineApplicable,
+                        );
+                    } else if can_cast { // Missing try_into implementation for `f64` to `f32`
+                        err.span_suggestion(
+                            expr.span,
+                            &format!("{}, producing the closest possible value", cast_msg),
                             cast_suggestion,
-                            Applicability::MaybeIncorrect  // lossy conversion
+                            Applicability::MaybeIncorrect,  // lossy conversion
                         );
                     }
                     true
                 }
                 (&ty::Uint(_), &ty::Float(_)) | (&ty::Int(_), &ty::Float(_)) => {
-                    if can_cast {
+                    if literal_is_ty_suffixed(expr) {
+                        err.span_suggestion(
+                            expr.span,
+                            &lit_msg,
+                            suffix_suggestion,
+                            Applicability::MachineApplicable,
+                        );
+                    } else if can_cast {
+                        // Missing try_into implementation for `{float}` to `{integer}`
                         err.span_suggestion(
                             expr.span,
                             &format!("{}, rounding the float towards zero", msg),
                             cast_suggestion,
                             Applicability::MaybeIncorrect  // lossy conversion
                         );
-                        err.warn("casting here will cause undefined behavior if the rounded value \
-                                  cannot be represented by the target integer type, including \
-                                  `Inf` and `NaN` (this is a bug and will be fixed)");
+                        err.warn("if the rounded value cannot be represented by the target \
+                                  integer type, including `Inf` and `NaN`, casting will cause \
+                                  undefined behavior \
+                                  (https://github.com/rust-lang/rust/issues/10184)");
                     }
                     true
                 }
@@ -851,18 +739,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if exp.bit_width() > found.bit_width().unwrap_or(256) {
                         err.span_suggestion(
                             expr.span,
-                            &format!("{}, producing the floating point representation of the \
-                                      integer",
-                                     msg),
+                            &format!(
+                                "{}, producing the floating point representation of the integer",
+                                msg,
+                            ),
                             into_suggestion,
                             Applicability::MachineApplicable
                         );
-                    } else if can_cast {
+                    } else if literal_is_ty_suffixed(expr) {
                         err.span_suggestion(
                             expr.span,
-                            &format!("{}, producing the floating point representation of the \
-                                      integer, rounded if necessary",
-                                     msg),
+                            &lit_msg,
+                            suffix_suggestion,
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        // Missing try_into implementation for `{integer}` to `{float}`
+                        err.span_suggestion(
+                            expr.span,
+                            &format!(
+                                "{}, producing the floating point representation of the integer,
+                                 rounded if necessary",
+                                cast_msg,
+                            ),
                             cast_suggestion,
                             Applicability::MaybeIncorrect  // lossy conversion
                         );
@@ -874,18 +773,29 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if exp.bit_width() > found.bit_width().unwrap_or(256) {
                         err.span_suggestion(
                             expr.span,
-                            &format!("{}, producing the floating point representation of the \
-                                      integer",
-                                     msg),
+                            &format!(
+                                "{}, producing the floating point representation of the integer",
+                                &msg,
+                            ),
                             into_suggestion,
                             Applicability::MachineApplicable
                         );
-                    } else if can_cast {
+                    } else if literal_is_ty_suffixed(expr) {
                         err.span_suggestion(
                             expr.span,
-                            &format!("{}, producing the floating point representation of the \
-                                      integer, rounded if necessary",
-                                     msg),
+                            &lit_msg,
+                            suffix_suggestion,
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        // Missing try_into implementation for `{integer}` to `{float}`
+                        err.span_suggestion(
+                            expr.span,
+                            &format!(
+                                "{}, producing the floating point representation of the integer, \
+                                 rounded if necessary",
+                                &msg,
+                            ),
                             cast_suggestion,
                             Applicability::MaybeIncorrect  // lossy conversion
                         );
