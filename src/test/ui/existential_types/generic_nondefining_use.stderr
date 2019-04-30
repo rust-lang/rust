@@ -1,8 +1,8 @@
 error: at least one trait must be specified
-  --> $DIR/generic_nondefining_use.rs:5:1
+  --> $DIR/generic_nondefining_use.rs:5:26
    |
 LL | existential type Cmp<T>: 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                          ^^^^^^^
 
 error: defining existential type use does not fully define existential type
   --> $DIR/generic_nondefining_use.rs:11:1

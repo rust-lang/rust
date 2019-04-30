@@ -1,14 +1,14 @@
 error: at least one trait must be specified
-  --> $DIR/generic_underconstrained2.rs:5:1
+  --> $DIR/generic_underconstrained2.rs:5:56
    |
 LL | existential type Underconstrained<T: std::fmt::Debug>: 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                        ^^^^^^^
 
 error: at least one trait must be specified
-  --> $DIR/generic_underconstrained2.rs:14:1
+  --> $DIR/generic_underconstrained2.rs:14:57
    |
 LL | existential type Underconstrained2<T: std::fmt::Debug>: 'static;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                                         ^^^^^^^
 
 error[E0277]: `U` doesn't implement `std::fmt::Debug`
   --> $DIR/generic_underconstrained2.rs:5:1
