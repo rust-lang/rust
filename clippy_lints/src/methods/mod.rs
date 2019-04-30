@@ -1980,7 +1980,8 @@ fn lint_search_is_some<'a, 'tcx>(
                 if search_method == "find";
                 if let hir::ExprKind::Closure(_, _, body_id, ..) = search_args[1].node;
                 let closure_body = cx.tcx.hir().body(body_id);
-                if let hir::PatKind::Ref(..) = closure_body.arguments[0].pat.node;
+                if let Some(closure_arg) = closure_body.arguments.get(0);
+                if let hir::PatKind::Ref(..) = closure_arg.pat.node;
                 then {
                     Some(search_snippet.replacen('&', "", 1))
                 } else {
