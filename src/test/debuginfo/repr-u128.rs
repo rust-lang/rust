@@ -1,4 +1,5 @@
 // ignore-windows
+// ignore-tidy-linelength
 //min-system-llvm-version 8.0
 
 //compile-flags: -g -C no-prepopulate-passes
