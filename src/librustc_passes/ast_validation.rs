@@ -20,7 +20,7 @@ use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
 use syntax_ext::proc_macro_decls::is_proc_macro_attr;
-use syntax_pos::Span;
+use syntax_pos::{Span, MultiSpan};
 use errors::Applicability;
 use log::debug;
 
@@ -677,6 +677,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span,
                                                 "unions cannot have zero fields");
+                }
+            }
+            ItemKind::Existential(ref bounds, _) => {
+                if !bounds.iter()
+                          .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
+                    let msp = MultiSpan::from_spans(bounds.iter()
+                        .map(|bound| bound.span()).collect());
+                    self.err_handler().span_err(msp, "at least one trait must be specified");
                 }
             }
             _ => {}

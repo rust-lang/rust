@@ -1,3 +1,9 @@
+error: at least one trait must be specified
+  --> $DIR/generic_type_does_not_live_long_enough.rs:9:35
+   |
+LL | existential type WrongGeneric<T>: 'static;
+   |                                   ^^^^^^^
+
 error[E0308]: mismatched types
   --> $DIR/generic_type_does_not_live_long_enough.rs:6:18
    |
@@ -22,7 +28,7 @@ note: ...so that the type `T` will meet its required lifetime bounds
 LL | existential type WrongGeneric<T>: 'static;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0308, E0310.
 For more information about an error, try `rustc --explain E0308`.
