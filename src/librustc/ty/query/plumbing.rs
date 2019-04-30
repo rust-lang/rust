@@ -534,14 +534,14 @@ impl<'tcx> TyCtxt<'tcx> {
         //    in DepGraph::try_mark_green()
         // 2. Two distinct query keys get mapped to the same DepNode
         //    (see for example #48923)
-        /*debug_assert!(
+        debug_assert!(
             !self.dep_graph.dep_node_exists(&dep_node),
             "Forcing query with already existing DepNode.\n\
                 - query-key: {:?}\n\
                 - dep-node: {:?}",
             key,
             dep_node,
-        );*/
+        );
 
         profq_msg!(self, ProfileQueriesMsg::ProviderBegin);
         self.sess.profiler(|p| p.start_query(Q::NAME));

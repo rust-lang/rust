@@ -11,18 +11,19 @@ pub struct DepGraphQuery {
 }
 
 impl DepGraphQuery {
-    pub fn new(nodes: &[DepNode],
-               edges: &[(DepNode, DepNode)])
-               -> DepGraphQuery {
-        let mut graph = Graph::with_capacity(nodes.len(), edges.len());
+    pub fn new(
+        nodes: impl Iterator<Item = DepNode>,
+        edges: impl Iterator<Item = (DepNode, DepNode)>,
+    ) -> DepGraphQuery {
+        let mut graph = Graph::with_capacity(nodes.size_hint().0, edges.size_hint().0);
         let mut indices = FxHashMap::default();
         for node in nodes {
             indices.insert(node.clone(), graph.add_node(node.clone()));
         }
 
-        for &(ref source, ref target) in edges {
-            let source = indices[source];
-            let target = indices[target];
+        for (source, target) in edges {
+            let source = indices[&source];
+            let target = indices[&target];
             graph.add_edge(source, target, ());
         }
 

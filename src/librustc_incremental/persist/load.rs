@@ -39,12 +39,20 @@ pub fn dep_graph_from_future(sess: &Session, future: DepGraphFuture) -> DepGraph
                 sess.opts.dep_tracking_hash().encode(encoder).unwrap();
             }).unwrap();
 
+            let use_model = sess.reconstruct_dep_graph() ||
+                cfg!(debug_assertions);
+
             DepGraphArgs {
                 prev_graph: Default::default(),
                 prev_work_products: Default::default(),
                 file,
                 state: Default::default(),
                 invalidated: Vec::new(),
+                model: if use_model {
+                    Some(Default::default())
+                } else {
+                    None
+                },
             }
         })
     });
@@ -179,6 +187,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     let report_incremental_info = sess.opts.debugging_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash();
+    let use_model = sess.reconstruct_dep_graph() || cfg!(debug_assertions);
 
     let mut prev_work_products = FxHashMap::default();
 
@@ -248,8 +257,8 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
             let mut decoder = Decoder::new(&bytes, pos);
             let mut results_decoder = Decoder::new(&results_bytes, results_pos);
-        
-            let result = time_ext(time_passes, None, "decode prev dep-graph", || { 
+
+            let mut result = time_ext(time_passes, None, "decode prev dep-graph", || {
                 decode_dep_graph(
                     time_passes,
                     &mut decoder,
@@ -262,10 +271,14 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 file.seek(SeekFrom::Start(pos as u64)).unwrap();
                 file.set_len(pos as u64).unwrap();
 
-                time_ext(time_passes, None, "garbage collect prev dep-graph", || { 
+                time_ext(time_passes, None, "garbage collect prev dep-graph", || {
                     let mut decoder = Decoder::new(&bytes, pos);
                     gc_dep_graph(time_passes, &mut decoder, &result, &mut file);
                 });
+            }
+
+            if use_model && result.model.is_none() {
+                result.model = Some(Default::default());
             }
 
             LoadResult::Ok {
@@ -275,6 +288,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                     file,
                     state: result.state,
                     invalidated: result.invalidated,
+                    model: result.model,
                 }
             }
         })

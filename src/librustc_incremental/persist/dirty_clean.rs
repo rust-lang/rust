@@ -234,7 +234,7 @@ pub fn check_dirty_clean_annotations<'tcx>(tcx: TyCtxt<'tcx>) {
     })
 }
 
-pub struct DirtyCleanVisitor<'tcx> {
+struct DirtyCleanVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
     checked_attrs: FxHashSet<ast::AttrId>,
 }
@@ -589,7 +589,7 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> ast::Name 
 // A visitor that collects all #[rustc_dirty]/#[rustc_clean] attributes from
 // the HIR. It is used to verfiy that we really ran checks for all annotated
 // nodes.
-pub struct FindAllAttrs<'tcx> {
+struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
     attr_names: Vec<Symbol>,
     found_attrs: Vec<&'tcx Attribute>,

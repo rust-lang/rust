@@ -88,7 +88,7 @@ pub fn gc_dep_graph(
     result: &DecodedDepGraph,
     file: &mut File,
 ) {
-    let (nodes, edges) = time_ext(time_passes, None, "read dep-graph positions", || { 
+    let (nodes, edges) = time_ext(time_passes, None, "read dep-graph positions", || {
         read_dep_graph_positions(d, result).unwrap()
     });
 
@@ -150,11 +150,78 @@ pub fn gc_dep_graph(
     }
 }
 
+/// A simpler dep graph used for debugging and testing purposes.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, Default)]
+pub struct DepGraphModel {
+    pub data: FxHashMap<DepNodeIndex, DepNodeData>,
+}
+
+impl DepGraphModel {
+    fn apply(&mut self, action: &Action) {
+        match action {
+            Action::UpdateNodes(nodes) => {
+                for n in nodes {
+                    self.data
+                        .entry(n.0)
+                        .or_insert_with(|| panic!()).edges = n.1.edges.clone();
+                }
+            }
+            Action::NewNodes(nodes) => {
+                for n in nodes {
+                    assert!(self.data.insert(n.0, n.1.clone()).is_none());
+                }
+            }
+            Action::InvalidateNodes(nodes) => {
+                for n in nodes {
+                    assert!(self.data.remove(&n).is_some());
+                }
+            },
+        }
+    }
+}
+
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, Default)]
+pub struct CompletedDepGraph {
+    /// Hashes of the results of dep nodes
+    pub(super) results: IndexVec<DepNodeIndex, Fingerprint>,
+    /// A simpler dep graph stored alongside the result for debugging purposes.
+    /// This is also constructed when we want to query the dep graph.
+    pub model: Option<DepGraphModel>,
+}
+
 pub struct DecodedDepGraph {
     pub prev_graph: PreviousDepGraph,
     pub state: IndexVec<DepNodeIndex, AtomicCell<DepNodeState>>,
     pub invalidated: Vec<DepNodeIndex>,
     pub needs_gc: bool,
+    pub model: Option<DepGraphModel>,
+}
+
+impl DecodedDepGraph {
+    /// Asserts that the model matches the real dep graph we decoded
+    fn validate_model(&mut self) {
+        let model = if let Some(ref model) = self.model {
+            model
+        } else {
+            return
+        };
+
+        for i in self.state.indices() {
+            if *self.state[i].get_mut() == DepNodeState::Invalid {
+                assert!(!model.data.contains_key(&i));
+                assert_eq!(self.prev_graph.edges[i], None);
+            } else {
+                let data = model.data.get(&i).unwrap();
+                assert_eq!(self.prev_graph.nodes[i], data.node);
+                assert_eq!(&self.prev_graph.edges[i].as_ref().unwrap()[..], &data.edges[..]);
+            }
+        }
+
+        for k in model.data.keys() {
+            assert!((k.as_u32() as usize) < self.state.len());
+        }
+
+    }
 }
 
 pub fn decode_dep_graph(
@@ -162,20 +229,21 @@ pub fn decode_dep_graph(
     d: &mut opaque::Decoder<'_>,
     results_d: &mut opaque::Decoder<'_>,
 ) -> Result<DecodedDepGraph, String> {
-    // Metrics used to decided when to GC
+    // Metrics used to decide when to GC
     let mut valid_data = 0;
     let mut total_data = 0;
 
-    let fingerprints: IndexVec<DepNodeIndex, Fingerprint> = 
-        time_ext(time_passes, None, "decode prev result fingerprints", || {
-            IndexVec::decode(results_d)
-        })?;
+    let result_format = time_ext(time_passes, None, "decode prev result fingerprints", || {
+        CompletedDepGraph::decode(results_d)
+    })?;
+
+    let node_count = result_format.results.len();
     let mut nodes: IndexVec<_, _> = repeat(DepNode {
             kind: DepKind::Null,
             hash: Fingerprint::ZERO,
-    }).take(fingerprints.len()).collect();
-    let mut edges: IndexVec<_, _> = repeat(None).take(fingerprints.len()).collect();
-    let mut state: IndexVec<_, _> = (0..fingerprints.len()).map(|_| {
+    }).take(node_count).collect();
+    let mut edges: IndexVec<_, _> = repeat(None).take(node_count).collect();
+    let mut state: IndexVec<_, _> = (0..node_count).map(|_| {
             AtomicCell::new(DepNodeState::Invalid)
         }).collect();
     loop {
@@ -221,6 +289,7 @@ pub fn decode_dep_graph(
                     let i = DepNodeIndex::decode(d)?;
                     valid_data -= edges[i].as_ref().map_or(0, |edges| edges.len());
                     state[i] = AtomicCell::new(DepNodeState::Invalid);
+                    edges[i] = None;
                 }
                 valid_data -= len as usize * 8;
             }
@@ -241,11 +310,11 @@ pub fn decode_dep_graph(
         valid_data as f32 / total_data as f32
     );
 
-    Ok(DecodedDepGraph {
+    let mut graph = DecodedDepGraph {
         prev_graph: PreviousDepGraph {
             index,
             nodes,
-            fingerprints,
+            fingerprints: result_format.results,
             edges,
         },
         invalidated: state.indices()
@@ -253,7 +322,12 @@ pub fn decode_dep_graph(
             .collect(),
         state,
         needs_gc: valid_data + valid_data / 3 < total_data,
-    })
+        model: result_format.model,
+    };
+
+    graph.validate_model();
+
+    Ok(graph)
 }
 
 #[derive(Debug, RustcDecodable, RustcEncodable)]
@@ -279,6 +353,7 @@ struct SerializerWorker {
     fingerprints: IndexVec<DepNodeIndex, Fingerprint>,
     previous: Lrc<PreviousDepGraph>,
     file: File,
+    model: Option<DepGraphModel>,
 }
 
 impl SerializerWorker {
@@ -397,9 +472,12 @@ impl SerializerWorker {
 
 impl Worker for SerializerWorker {
     type Message = (usize, Action);
-    type Result = IndexVec<DepNodeIndex, Fingerprint>;
+    type Result = CompletedDepGraph;
 
     fn message(&mut self, (buffer_size_est, action): (usize, Action)) {
+        // Apply the action to the model if present
+        self.model.as_mut().map(|model| model.apply(&action));
+
         let mut encoder = opaque::Encoder::new(Vec::with_capacity(buffer_size_est * 5));
         let action = match action {
             Action::UpdateNodes(nodes) => {
@@ -420,8 +498,11 @@ impl Worker for SerializerWorker {
         self.file.write_all(&encoder.into_inner()).expect("unable to write to temp dep graph");
     }
 
-    fn complete(self) -> IndexVec<DepNodeIndex, Fingerprint> {
-        self.fingerprints
+    fn complete(self) -> CompletedDepGraph {
+        CompletedDepGraph {
+            results: self.fingerprints,
+            model: self.model
+        }
     }
 }
 
@@ -430,7 +511,7 @@ const BUFFER_SIZE: usize = 800000;
 pub struct Serializer {
     worker: Lrc<WorkerExecutor<SerializerWorker>>,
     node_count: u32,
-    invalids: Vec<DepNodeIndex>,
+    invalidated: Vec<DepNodeIndex>,
     new_buffer: Vec<(DepNodeIndex, DepNodeData)>,
     new_buffer_size: usize,
     updated_buffer: Vec<(DepNodeIndex, DepNodeData)>,
@@ -441,15 +522,17 @@ impl Serializer {
     pub fn new(
         file: File,
         previous: Lrc<PreviousDepGraph>,
-        invalids: Vec<DepNodeIndex>,
+        invalidated: Vec<DepNodeIndex>,
+        model: Option<DepGraphModel>,
     ) -> Self {
         Serializer {
-            invalids,
-            node_count: previous.node_count() as u32,
+            invalidated,
+            node_count: previous.nodes.len() as u32,
             worker: Lrc::new(WorkerExecutor::new(SerializerWorker {
                 fingerprints: previous.fingerprints.clone(),
                 previous,
                 file,
+                model,
             })),
             new_buffer: Vec::with_capacity(BUFFER_SIZE),
             new_buffer_size: 0,
@@ -467,9 +550,9 @@ impl Serializer {
 
     #[inline]
     fn alloc_index(&mut self) -> DepNodeIndex {
-        if let Some(invalid) = self.invalids.pop() {
+        if let Some(invalidated) = self.invalidated.pop() {
             // Reuse an invalided index
-            invalid
+            invalidated
         } else {
             // Create a new index
             let index = self.node_count;
@@ -511,10 +594,10 @@ impl Serializer {
         }
     }
 
-    pub fn complete(
+    pub(super) fn complete(
         &mut self,
         invalidate: Vec<DepNodeIndex>,
-    ) -> IndexVec<DepNodeIndex, Fingerprint> {
+    ) -> CompletedDepGraph {
         if self.new_buffer.len() > 0 {
             self.flush_new();
         }

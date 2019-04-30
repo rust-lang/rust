@@ -1,4 +1,4 @@
-use rustc::dep_graph::{DepGraph, /*DepKind,*/ WorkProduct, WorkProductId};
+use rustc::dep_graph::{DepGraph, DepKind, WorkProduct, WorkProductId};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::util::common::time;
@@ -10,6 +10,7 @@ use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::Path;
 
+use crate::assert_dep_graph::assert_dep_graph;
 use super::data::*;
 use super::fs::*;
 use super::dirty_clean;
@@ -133,23 +134,17 @@ where
 fn finish_dep_graph(tcx: TyCtxt<'_>, results_path: &Path) {
     let sess = tcx.sess;
     // Encode the graph data.
-    let results = time(tcx.sess, "finish graph serialization", || {
-        tcx.dep_graph.serialize()
+    let mut results = time(tcx.sess, "finish graph serialization", || {
+        tcx.dep_graph.complete()
     });
 
-    time(sess, "save dep-graph results", || {
-        save_in(sess, results_path, |e| {
-            // First encode the commandline arguments hash
-            sess.opts.dep_tracking_hash().encode(e).unwrap();
-            time(sess, "encode dep-graph results", || {
-                // Save the result vector
-                results.encode(e).unwrap();
-            });
-        }).unwrap();
-    });
+    time(tcx.sess,
+         "assert dep graph",
+         || assert_dep_graph(tcx, &results));
 
-/*
     if tcx.sess.opts.debugging_opts.incremental_info {
+        let data = &results.model.as_ref().unwrap().data;
+
         #[derive(Clone)]
         struct Stat {
             kind: DepKind,
@@ -157,12 +152,12 @@ fn finish_dep_graph(tcx: TyCtxt<'_>, results_path: &Path) {
             edge_counter: u64,
         }
 
-        let total_node_count = serialized_graph.nodes.len();
-        let total_edge_count: usize = serialized_graph.nodes.iter().map(|d| d.deps.len()).sum();
+        let total_node_count = data.len();
+        let total_edge_count: usize = data.values().map(|d| d.edges.len()).sum();
 
         let mut counts: FxHashMap<_, Stat> = FxHashMap::default();
 
-        for node in serialized_graph.nodes.iter() {
+        for node in data.values() {
             let stat = counts.entry(node.node.kind).or_insert(Stat {
                 kind: node.node.kind,
                 node_counter: 0,
@@ -170,7 +165,7 @@ fn finish_dep_graph(tcx: TyCtxt<'_>, results_path: &Path) {
             });
 
             stat.node_counter += 1;
-            stat.edge_counter += node.deps.len() as u64;
+            stat.edge_counter += node.edges.len() as u64;
         }
 
         let mut counts: Vec<_> = counts.values().cloned().collect();
@@ -222,7 +217,22 @@ fn finish_dep_graph(tcx: TyCtxt<'_>, results_path: &Path) {
         println!("{}", SEPARATOR);
         println!("[incremental]");
     }
-*/
+
+    if !cfg!(debug_assertions) {
+        // Only save the model in debug builds
+        results.model = None;
+    }
+
+    time(sess, "save dep-graph results", || {
+        save_in(sess, results_path, |e| {
+            // First encode the commandline arguments hash
+            sess.opts.dep_tracking_hash().encode(e).unwrap();
+            time(sess, "encode dep-graph results", || {
+                // Save the result vector
+                results.encode(e).unwrap();
+            });
+        }).unwrap();
+    });
 }
 
 fn encode_work_product_index(work_products: &FxHashMap<WorkProductId, WorkProduct>,

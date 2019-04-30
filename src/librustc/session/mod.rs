@@ -726,6 +726,11 @@ impl Session {
         )
     }
 
+    pub fn reconstruct_dep_graph(&self) -> bool {
+        self.opts.debugging_opts.dump_dep_graph ||
+            self.opts.debugging_opts.query_dep_graph
+    }
+
     pub fn set_incr_session_load_dep_graph(&self, load: bool) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
