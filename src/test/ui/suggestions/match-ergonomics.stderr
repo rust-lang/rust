@@ -5,7 +5,7 @@ LL |         [&v] => {},
    |          ^^
    |          |
    |          expected i32, found reference
-   |          help: you can probaly remove the explicit borrow: `v`
+   |          help: you can probably remove the explicit borrow: `v`
    |
    = note: expected type `i32`
               found type `&_`

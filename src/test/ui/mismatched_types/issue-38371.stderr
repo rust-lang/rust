@@ -15,7 +15,7 @@ LL | fn agh(&&bar: &u32) {
    |         ^^^^
    |         |
    |         expected u32, found reference
-   |         help: you can probaly remove the explicit borrow: `bar`
+   |         help: you can probably remove the explicit borrow: `bar`
    |
    = note: expected type `u32`
               found type `&_`
