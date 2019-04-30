@@ -7,6 +7,17 @@
 
 // gdb-command: run
 
+// gdb-command:print vals
+// gdbg-check:$1 = (Some(Foo::Lo), None::<Foo>)
+// gdbr-check:$1 = repr_u128::Foo::(std::option::Option<Foo>, std::option::Option<Foo>)
+
+// === LLDB TESTS ==================================================================================
+
+// lldb-command:run
+
+// lldb-command:print vals
+// lldbg-check:[...]$0 = (Some(Foo::Lo), None::<Foo>)
+// lldbr-check:(repr_u128::Foo) vals = repr_u128::Foo::(std::option::Option<Foo>, std::option::Option<Foo>)
 
 #![feature(repr128)]
 
