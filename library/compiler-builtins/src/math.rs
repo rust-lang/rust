@@ -64,6 +64,7 @@ no_mangle! {
     fn cbrtf(n: f32) -> f32;
     fn coshf(n: f32) -> f32;
     fn expm1f(n: f32) -> f32;
+    fn fdim(a: f64, b: f64) -> f64;
     fn fdimf(a: f32, b: f32) -> f32;
     fn hypotf(x: f32, y: f32) -> f32;
     fn log1pf(n: f32) -> f32;
