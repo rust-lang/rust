@@ -1,0 +1,14 @@
+error: at least one trait must be specified
+  --> $DIR/unused_generic_param.rs:6:39
+   |
+LL | existential type PartiallyDefined<T>: 'static;
+   |                                       ^^^^^^^
+
+error: at least one trait must be specified
+  --> $DIR/unused_generic_param.rs:13:40
+   |
+LL | existential type PartiallyDefined2<T>: 'static;
+   |                                        ^^^^^^^
+
+error: aborting due to 2 previous errors
+
