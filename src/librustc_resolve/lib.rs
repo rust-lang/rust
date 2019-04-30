@@ -17,6 +17,7 @@ pub use rustc::hir::def::{Namespace, PerNS};
 
 use GenericParameters::*;
 use RibKind::*;
+use smallvec::smallvec;
 
 use rustc::hir::map::{Definitions, DefCollector};
 use rustc::hir::{self, PrimTy, Bool, Char, Float, Int, Uint, Str};
@@ -28,7 +29,7 @@ use rustc::hir::def::{
 };
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
+use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap, SmallNodeIdVec};
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::{bug, span_bug};
@@ -4582,7 +4583,7 @@ impl<'a> Resolver<'a> {
                 module.span,
             ).is_ok() {
                 let def_id = module.def_id().unwrap();
-                found_traits.push(TraitCandidate { def_id: def_id, import_id: None });
+                found_traits.push(TraitCandidate { def_id: def_id, import_ids: smallvec![] });
             }
         }
 
@@ -4641,35 +4642,33 @@ impl<'a> Resolver<'a> {
                     false,
                     module.span,
                 ).is_ok() {
-                    let import_id = match binding.kind {
-                        NameBindingKind::Import { directive, .. } => {
-                            self.maybe_unused_trait_imports.insert(directive.id);
-                            self.add_to_glob_map(&directive, trait_name);
-                            Some(directive.id)
-                        }
-                        _ => None,
-                    };
+                    let import_ids = self.find_transitive_imports(&binding.kind, &trait_name);
                     let trait_def_id = module.def_id().unwrap();
-                    found_traits.push(TraitCandidate { def_id: trait_def_id, import_id });
+                    found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
                 }
             } else if let Res::Def(DefKind::TraitAlias, _) = binding.res() {
                 // For now, just treat all trait aliases as possible candidates, since we don't
                 // know if the ident is somewhere in the transitive bounds.
-
-                let import_id = match binding.kind {
-                    NameBindingKind::Import { directive, .. } => {
-                        self.maybe_unused_trait_imports.insert(directive.id);
-                        self.add_to_glob_map(&directive, trait_name);
-                        Some(directive.id)
-                    }
-                    _ => None,
-                };
+                let import_ids = self.find_transitive_imports(&binding.kind, &trait_name);
                 let trait_def_id = binding.res().def_id();
-                found_traits.push(TraitCandidate { def_id: trait_def_id, import_id });
+                found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
             } else {
                 bug!("candidate is not trait or trait alias?")
             }
         }
+    }
+
+    fn find_transitive_imports(&mut self, kind: &NameBindingKind<'_>,
+                               trait_name: &Ident) -> SmallNodeIdVec {
+        let mut import_ids = smallvec![];
+        let mut kind = kind;
+        while let NameBindingKind::Import { directive, binding, .. } = *kind {
+            self.maybe_unused_trait_imports.insert(directive.id);
+            self.add_to_glob_map(&directive, *trait_name);
+            import_ids.push(directive.id);
+            kind = &binding.kind;
+        };
+        import_ids
     }
 
     fn lookup_import_candidates_from_module<FilterFn>(&mut self,

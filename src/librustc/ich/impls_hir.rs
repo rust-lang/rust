@@ -391,13 +391,14 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitCandidate {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let hir::TraitCandidate {
+            let &hir::TraitCandidate {
                 def_id,
-                import_id,
-            } = *self;
+                import_ids,
+            } = &self;
 
             def_id.hash_stable(hcx, hasher);
-            import_id.hash_stable(hcx, hasher);
+            // We only use the outermost import NodeId as key
+            import_ids.first().hash_stable(hcx, hasher);
         });
     }
 }
@@ -410,13 +411,13 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
                           -> Self::KeyType {
         let hir::TraitCandidate {
             def_id,
-            import_id,
-        } = *self;
+            import_ids,
+        } = self;
 
-        let import_id = import_id.map(|node_id| hcx.node_to_hir_id(node_id))
-                                 .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
-                                                hir_id.local_id));
-        (hcx.def_path_hash(def_id), import_id)
+        let import_ids = import_ids.first().map(|node_id| hcx.node_to_hir_id(*node_id))
+                                           .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
+                                                          hir_id.local_id));
+        (hcx.def_path_hash(*def_id), import_ids)
     }
 }
 

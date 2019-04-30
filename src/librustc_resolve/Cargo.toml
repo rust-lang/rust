@@ -20,3 +20,4 @@ errors = { path = "../librustc_errors", package = "rustc_errors" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_metadata = { path = "../librustc_metadata" }
+smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
