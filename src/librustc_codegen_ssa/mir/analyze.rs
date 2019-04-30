@@ -103,7 +103,10 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                     location: Location) {
         debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);
 
-        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
+        if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *place {
             self.assign(index, location);
             if !self.fx.rvalue_creates_operand(rvalue) {
                 self.not_ssa(index);
@@ -157,7 +160,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
         debug!("visit_place(place={:?}, context={:?})", place, context);
         let cx = self.fx.cx;
 
-        if let mir::Place::Projection(ref proj) = *place {
+        if let Some(proj) = &place.projection {
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
                 PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
@@ -165,7 +168,7 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                 _ => false
             };
             if is_consume {
-                let base_ty = proj.base.ty(self.fx.mir, cx.tcx());
+                let base_ty = mir::Place::ty_from(&place.base, &proj.base, self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
@@ -183,7 +186,15 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
                         // Recurse with the same context, instead of `Projection`,
                         // potentially stopping at non-operand projections,
                         // which would trigger `not_ssa` on locals.
-                        self.visit_place(&proj.base, context, location);
+                        self.visit_place(
+                            // FIXME do not clone
+                            &mir::Place {
+                                base: place.base.clone(),
+                                projection: proj.base.clone(),
+                            },
+                            context,
+                            location,
+                        );
                         return;
                     }
                 }
@@ -192,7 +203,11 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             // A deref projection only reads the pointer, never needs the place.
             if let mir::ProjectionElem::Deref = proj.elem {
                 return self.visit_place(
-                    &proj.base,
+                    // FIXME do not clone
+                    &mir::Place {
+                        base: place.base.clone(),
+                        projection: proj.base.clone(),
+                    },
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location
                 );

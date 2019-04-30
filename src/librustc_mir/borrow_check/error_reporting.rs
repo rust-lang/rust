@@ -150,16 +150,36 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         including_downcast: &IncludingDowncast,
     ) -> Result<(), ()> {
         match *place {
-            Place::Base(PlaceBase::Local(local)) => {
+            Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } => {
                 self.append_local_to_string(local, buf)?;
             }
-            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_), .. })) => {
+            Place {
+                base:
+                    PlaceBase::Static(box Static {
+                        kind: StaticKind::Promoted(_),
+                        ..
+                    }),
+                projection: None,
+            } => {
                 buf.push_str("promoted");
             }
-            Place::Base(PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })) => {
+            Place {
+                base:
+                    PlaceBase::Static(box Static {
+                        kind: StaticKind::Static(def_id),
+                        ..
+                    }),
+                projection: None,
+            } => {
                 buf.push_str(&self.infcx.tcx.item_name(def_id).to_string());
             }
-            Place::Projection(ref proj) => {
+            Place {
+                ref base,
+                projection: Some(ref proj),
+            } => {
                 match proj.elem {
                     ProjectionElem::Deref => {
                         let upvar_field_projection =
@@ -174,43 +194,66 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             }
                         } else {
                             if autoderef {
+                                // FIXME turn this recursion into iteration
                                 self.append_place_to_string(
-                                    &proj.base,
+                                    &Place {
+                                        base: base.clone(),
+                                        projection: proj.base.clone(),
+                                    },
                                     buf,
                                     autoderef,
                                     &including_downcast,
                                 )?;
-                            } else if let Place::Base(PlaceBase::Local(local)) = proj.base {
-                                if self.body.local_decls[local].is_ref_for_guard() {
-                                    self.append_place_to_string(
-                                        &proj.base,
-                                        buf,
-                                        autoderef,
-                                        &including_downcast,
-                                    )?;
-                                } else {
-                                    buf.push_str(&"*");
-                                    self.append_place_to_string(
-                                        &proj.base,
-                                        buf,
-                                        autoderef,
-                                        &including_downcast,
-                                    )?;
-                                }
                             } else {
-                                buf.push_str(&"*");
-                                self.append_place_to_string(
-                                    &proj.base,
-                                    buf,
-                                    autoderef,
-                                    &including_downcast,
-                                )?;
+                                match (&proj.base, base) {
+                                    (None, PlaceBase::Local(local)) => {
+                                        if self.body.local_decls[*local].is_ref_for_guard() {
+                                            self.append_place_to_string(
+                                                &Place {
+                                                    base: base.clone(),
+                                                    projection: proj.base.clone(),
+                                                },
+                                                buf,
+                                                autoderef,
+                                                &including_downcast,
+                                            )?;
+                                        } else {
+                                            // FIXME deduplicate this and the _ => body below
+                                            buf.push_str(&"*");
+                                            self.append_place_to_string(
+                                                &Place {
+                                                    base: base.clone(),
+                                                    projection: proj.base.clone(),
+                                                },
+                                                buf,
+                                                autoderef,
+                                                &including_downcast,
+                                            )?;
+                                        }
+                                    }
+
+                                    _ => {
+                                        buf.push_str(&"*");
+                                        self.append_place_to_string(
+                                            &Place {
+                                                base: base.clone(),
+                                                projection: proj.base.clone(),
+                                            },
+                                            buf,
+                                            autoderef,
+                                            &including_downcast,
+                                        )?;
+                                    }
+                                }
                             }
                         }
                     }
                     ProjectionElem::Downcast(..) => {
                         self.append_place_to_string(
-                            &proj.base,
+                            &Place {
+                                base: base.clone(),
+                                projection: proj.base.clone(),
+                            },
                             buf,
                             autoderef,
                             &including_downcast,
@@ -229,9 +272,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             let name = self.upvars[var_index].name.to_string();
                             buf.push_str(&name);
                         } else {
-                            let field_name = self.describe_field(&proj.base, field);
+                            let field_name = self.describe_field(&Place {
+                                base: base.clone(),
+                                projection: proj.base.clone(),
+                            }, field);
                             self.append_place_to_string(
-                                &proj.base,
+                                &Place {
+                                    base: base.clone(),
+                                    projection: proj.base.clone(),
+                                },
                                 buf,
                                 autoderef,
                                 &including_downcast,
@@ -243,7 +292,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         autoderef = true;
 
                         self.append_place_to_string(
-                            &proj.base,
+                            &Place {
+                                base: base.clone(),
+                                projection: proj.base.clone(),
+                            },
                             buf,
                             autoderef,
                             &including_downcast,
@@ -260,7 +312,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         // then use another while the borrow is held, don't output indices details
                         // to avoid confusing the end-user
                         self.append_place_to_string(
-                            &proj.base,
+                            &Place {
+                                base: base.clone(),
+                                projection: proj.base.clone(),
+                            },
                             buf,
                             autoderef,
                             &including_downcast,
@@ -288,18 +343,31 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     }
 
     /// End-user visible description of the `field`nth field of `base`
-    fn describe_field(&self, base: &Place<'tcx>, field: Field) -> String {
-        match *base {
-            Place::Base(PlaceBase::Local(local)) => {
-                let local = &self.body.local_decls[local];
+    fn describe_field(&self, place: &Place<'tcx>, field: Field) -> String {
+        // FIXME Place2 Make this work iteratively
+        match place {
+            Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            } => {
+                let local = &self.body.local_decls[*local];
                 self.describe_field_from_ty(&local.ty, field, None)
             }
-            Place::Base(PlaceBase::Static(ref static_)) =>
+            Place {
+                base: PlaceBase::Static(static_),
+                projection: None,
+            } =>
                 self.describe_field_from_ty(&static_.ty, field, None),
-            Place::Projection(ref proj) => match proj.elem {
-                ProjectionElem::Deref => self.describe_field(&proj.base, field),
+            Place {
+                base,
+                projection: Some(proj),
+            } => match proj.elem {
+                ProjectionElem::Deref => self.describe_field(&Place {
+                    base: base.clone(),
+                    projection: proj.base.clone(),
+                }, field),
                 ProjectionElem::Downcast(_, variant_index) => {
-                    let base_ty = base.ty(self.body, self.infcx.tcx).ty;
+                    let base_ty = place.ty(self.body, self.infcx.tcx).ty;
                     self.describe_field_from_ty(&base_ty, field, Some(variant_index))
                 }
                 ProjectionElem::Field(_, field_type) => {
@@ -308,7 +376,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    self.describe_field(&proj.base, field)
+                    self.describe_field(&Place {
+                        base: base.clone(),
+                        projection: proj.base.clone(),
+                    }, field)
                 }
             },
         }
@@ -366,9 +437,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
     /// Checks if a place is a thread-local static.
     pub fn is_place_thread_local(&self, place: &Place<'tcx>) -> bool {
-        if let Place::Base(
-            PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })
-        ) = place {
+        if let Place {
+            base: PlaceBase::Static(box Static {
+                kind: StaticKind::Static(def_id),
+                ..
+            }),
+            projection: None,
+        } = place {
             let attrs = self.infcx.tcx.get_attrs(*def_id);
             let is_thread_local = attrs.iter().any(|attr| attr.check_name(sym::thread_local));
 
@@ -750,7 +825,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .get(location.statement_index)
         {
             Some(&Statement {
-                kind: StatementKind::Assign(Place::Base(PlaceBase::Local(local)), _),
+                kind: StatementKind::Assign(Place {
+                    base: PlaceBase::Local(local),
+                    projection: None,
+                }, _),
                 ..
             }) => local,
             _ => return OtherUse(use_span),

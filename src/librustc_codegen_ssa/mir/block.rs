@@ -607,18 +607,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but specified directly in the code. This means it gets promoted
                         // and we can then extract the value by evaluating the promoted.
                         mir::Operand::Copy(
-                            Place::Base(
-                                PlaceBase::Static(
-                                    box Static { kind: StaticKind::Promoted(promoted), ty }
-                                )
-                            )
+                            Place {
+                                base: PlaceBase::Static(box Static {
+                                    kind: StaticKind::Promoted(promoted),
+                                    ty,
+                                }),
+                                projection: None,
+                            }
                         ) |
                         mir::Operand::Move(
-                            Place::Base(
-                                PlaceBase::Static(
-                                    box Static { kind: StaticKind::Promoted(promoted), ty }
-                                )
-                            )
+                            Place {
+                                base: PlaceBase::Static(box Static {
+                                    kind: StaticKind::Promoted(promoted),
+                                    ty,
+                                }),
+                                projection: None,
+                            }
                         ) => {
                             let param_env = ty::ParamEnv::reveal_all();
                             let cid = mir::interpret::GlobalId {
@@ -1098,7 +1102,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if fn_ret.is_ignore() {
             return ReturnDest::Nothing;
         }
-        let dest = if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dest {
+        let dest = if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *dest {
             match self.locals[index] {
                 LocalRef::Place(dest) => dest,
                 LocalRef::UnsizedPlace(_) => bug!("return type must be sized"),
@@ -1153,7 +1160,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         src: &mir::Operand<'tcx>,
         dst: &mir::Place<'tcx>
     ) {
-        if let mir::Place::Base(mir::PlaceBase::Local(index)) = *dst {
+        if let mir::Place {
+            base: mir::PlaceBase::Local(index),
+            projection: None,
+        } = *dst {
             match self.locals[index] {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),

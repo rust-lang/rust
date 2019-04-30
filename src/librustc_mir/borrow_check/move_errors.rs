@@ -91,7 +91,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
                 if let Some(StatementKind::Assign(
-                    Place::Base(PlaceBase::Local(local)),
+                    Place {
+                        base: PlaceBase::Local(local),
+                        projection: None,
+                    },
                     box Rvalue::Use(Operand::Move(move_from)),
                 )) = self.body.basic_blocks()[location.block]
                     .statements
@@ -273,21 +276,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         place: &Place<'tcx>,
         span: Span
     ) -> DiagnosticBuilder<'a> {
-        let mut base_static = place;
-        loop {
-            match base_static {
-                Place::Base(_) => break,
-                Place::Projection(box Projection { base, .. }) => base_static = base,
-            }
-        }
-
-        let description = if let Place::Base(_) = place {
+        let description = if place.projection.is_none() {
             format!("static item `{}`", self.describe_place(place).unwrap())
         } else {
+            let mut base_static = &place.projection;
+            while let Some(box Projection { base: Some(ref proj), .. }) = base_static {
+                base_static = &proj.base;
+            }
+            let base_static = Place {
+                base: place.base.clone(),
+                projection: base_static.clone(),
+            };
+
             format!(
                 "`{:?}` as `{:?}` is a static item",
                 self.describe_place(place).unwrap(),
-                self.describe_place(base_static).unwrap(),
+                self.describe_place(&base_static).unwrap(),
             )
         };
 
@@ -304,15 +308,24 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // borrow to provide feedback about why this
         // was a move rather than a copy.
         let ty = deref_target_place.ty(self.body, self.infcx.tcx).ty;
-        let upvar_field = self.prefixes(&move_place, PrefixSet::All)
-            .find_map(|p| self.is_upvar_field_projection(p));
+        let upvar_field = self.prefixes(&move_place.base, &move_place.projection, PrefixSet::All)
+            .find_map(|p| self.is_upvar_field_projection(&Place {
+                base: p.0.clone(),
+                projection: p.1.clone(),
+            }));
 
-        let deref_base = match deref_target_place {
-            Place::Projection(box Projection { base, elem: ProjectionElem::Deref }) => base,
+        let deref_base = match deref_target_place.projection {
+            Some(box Projection { ref base, elem: ProjectionElem::Deref }) => Place {
+                base: deref_target_place.base.clone(),
+                projection: base.clone(),
+            },
             _ => bug!("deref_target_place is not a deref projection"),
         };
 
-        if let Place::Base(PlaceBase::Local(local)) = *deref_base {
+        if let Place {
+            base: PlaceBase::Local(local),
+            projection: None,
+        } = deref_base {
             let decl = &self.body.local_decls[local];
             if decl.is_ref_for_guard() {
                 let mut err = self.cannot_move_out_of(
@@ -378,7 +391,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 diag
             }
             _ => {
-                let source = self.borrowed_content_source(deref_base);
+                let source = self.borrowed_content_source(&deref_base);
                 match (self.describe_place(move_place), source.describe_for_named_place()) {
                     (Some(place_desc), Some(source_desc)) => {
                         self.cannot_move_out_of(

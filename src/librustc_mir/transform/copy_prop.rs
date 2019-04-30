@@ -94,7 +94,10 @@ impl MirPass for CopyPropagation {
                     // That use of the source must be an assignment.
                     match statement.kind {
                         StatementKind::Assign(
-                            Place::Base(PlaceBase::Local(local)),
+                            Place {
+                                base: PlaceBase::Local(local),
+                                projection: None,
+                            },
                             box Rvalue::Use(ref operand)
                         ) if local == dest_local => {
                             let maybe_action = match *operand {
@@ -145,12 +148,24 @@ fn eliminate_self_assignments(
             if let Some(stmt) = body[location.block].statements.get(location.statement_index) {
                 match stmt.kind {
                     StatementKind::Assign(
-                        Place::Base(PlaceBase::Local(local)),
-                        box Rvalue::Use(Operand::Copy(Place::Base(PlaceBase::Local(src_local)))),
+                        Place {
+                            base: PlaceBase::Local(local),
+                            projection: None,
+                        },
+                        box Rvalue::Use(Operand::Copy(Place {
+                            base: PlaceBase::Local(src_local),
+                            projection: None,
+                        })),
                     ) |
                     StatementKind::Assign(
-                        Place::Base(PlaceBase::Local(local)),
-                        box Rvalue::Use(Operand::Move(Place::Base(PlaceBase::Local(src_local)))),
+                        Place {
+                            base: PlaceBase::Local(local),
+                            projection: None,
+                        },
+                        box Rvalue::Use(Operand::Move(Place {
+                            base: PlaceBase::Local(src_local),
+                            projection: None,
+                        })),
                     ) if local == dest_local && dest_local == src_local => {}
                     _ => {
                         continue;
@@ -177,7 +192,10 @@ impl<'tcx> Action<'tcx> {
     fn local_copy(body: &Body<'tcx>, def_use_analysis: &DefUseAnalysis, src_place: &Place<'tcx>)
                   -> Option<Action<'tcx>> {
         // The source must be a local.
-        let src_local = if let Place::Base(PlaceBase::Local(local)) = *src_place {
+        let src_local = if let Place {
+            base: PlaceBase::Local(local),
+            projection: None,
+        } = *src_place {
             local
         } else {
             debug!("  Can't copy-propagate local: source is not a local");
@@ -331,8 +349,14 @@ impl<'tcx> MutVisitor<'tcx> for ConstantPropagationVisitor<'tcx> {
         self.super_operand(operand, location);
 
         match *operand {
-            Operand::Copy(Place::Base(PlaceBase::Local(local))) |
-            Operand::Move(Place::Base(PlaceBase::Local(local))) if local == self.dest_local => {}
+            Operand::Copy(Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            }) |
+            Operand::Move(Place {
+                base: PlaceBase::Local(local),
+                projection: None,
+            }) if local == self.dest_local => {}
             _ => return,
         }
 

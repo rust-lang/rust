@@ -851,8 +851,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // If constants and statics, we don't generate StorageLive for this
             // temporary, so don't try to generate StorageDead for it either.
             _ if self.local_scope().is_none() => (),
-            Operand::Copy(Place::Base(PlaceBase::Local(cond_temp)))
-            | Operand::Move(Place::Base(PlaceBase::Local(cond_temp))) => {
+            Operand::Copy(Place {
+                base: PlaceBase::Local(cond_temp),
+                projection: None,
+            })
+            | Operand::Move(Place {
+                base: PlaceBase::Local(cond_temp),
+                projection: None,
+            }) => {
                 // Manually drop the condition on both branches.
                 let top_scope = self.scopes.scopes.last_mut().unwrap();
                 let top_drop_data = top_scope.drops.pop().unwrap();

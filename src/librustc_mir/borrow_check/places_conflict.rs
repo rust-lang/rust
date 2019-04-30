@@ -62,8 +62,14 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
 
     // This Local/Local case is handled by the more general code below, but
     // it's so common that it's a speed win to check for it first.
-    if let Place::Base(PlaceBase::Local(l1)) = borrow_place {
-        if let Place::Base(PlaceBase::Local(l2)) = access_place {
+    if let Place {
+        base: PlaceBase::Local(l1),
+        projection: None,
+    } = borrow_place {
+        if let Place {
+            base: PlaceBase::Local(l2),
+            projection: None,
+        } = access_place {
             return l1 == l2;
         }
     }
@@ -175,7 +181,7 @@ fn place_components_conflict<'tcx>(
                 // check whether the components being borrowed vs
                 // accessed are disjoint (as in the second example,
                 // but not the first).
-                match place_projection_conflict(tcx, body, borrow_c, access_c, bias) {
+                match place_projection_conflict(tcx, body, borrow_base, borrow_c, access_c, bias) {
                     Overlap::Arbitrary => {
                         // We have encountered different fields of potentially
                         // the same union - the borrow now partially overlaps.
@@ -214,7 +220,7 @@ fn place_components_conflict<'tcx>(
 
                 let base = &borrow_c.base;
                 let elem = &borrow_c.elem;
-                let base_ty = base.ty(body, tcx).ty;
+                let base_ty = Place::ty_from(borrow_base, base, body, tcx).ty;
 
                 match (elem, &base_ty.sty, access) {
                     (_, _, Shallow(Some(ArtificialField::ArrayLength)))
@@ -368,6 +374,7 @@ fn place_base_conflict<'tcx>(
 fn place_projection_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
+    pi1_base: &PlaceBase<'tcx>,
     pi1: &Projection<'tcx>,
     pi2: &Projection<'tcx>,
     bias: PlaceConflictBias,
@@ -384,7 +391,7 @@ fn place_projection_conflict<'tcx>(
                 debug!("place_element_conflict: DISJOINT-OR-EQ-FIELD");
                 Overlap::EqualOrDisjoint
             } else {
-                let ty = pi1.base.ty(body, tcx).ty;
+                let ty = Place::ty_from(pi1_base, &pi1.base, body, tcx).ty;
                 match ty.sty {
                     ty::Adt(def, _) if def.is_union() => {
                         // Different fields of a union, we are basically stuck.

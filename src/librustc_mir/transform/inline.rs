@@ -603,7 +603,10 @@ impl Inliner<'tcx> {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
 
-        if let Operand::Move(Place::Base(PlaceBase::Local(local))) = arg {
+        if let Operand::Move(Place {
+            base: PlaceBase::Local(local),
+            projection: None,
+        }) = arg {
             if caller_body.local_kind(local) == LocalKind::Temp {
                 // Reuse the operand if it's a temporary already
                 return local;
@@ -671,7 +674,10 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                    _location: Location) {
         if *local == RETURN_PLACE {
             match self.destination {
-                Place::Base(PlaceBase::Local(l)) => {
+                Place {
+                    base: PlaceBase::Local(l),
+                    projection: None,
+                } => {
                     *local = l;
                     return;
                 },
@@ -692,13 +698,20 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     _location: Location) {
 
         match place {
-            Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
+            Place {
+                base: PlaceBase::Local(RETURN_PLACE),
+                projection: None,
+            } => {
                 // Return pointer; update the place itself
                 *place = self.destination.clone();
             },
-            Place::Base(
-                PlaceBase::Static(box Static { kind: StaticKind::Promoted(promoted), .. })
-            ) => {
+            Place {
+                base: PlaceBase::Static(box Static {
+                    kind: StaticKind::Promoted(promoted),
+                    ..
+                }),
+                projection: None,
+            } => {
                 if let Some(p) = self.promoted_map.get(*promoted).cloned() {
                     *promoted = p;
                 }

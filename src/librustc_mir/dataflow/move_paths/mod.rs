@@ -318,7 +318,10 @@ impl<'tcx> MoveData<'tcx> {
     pub fn base_local(&self, mut mpi: MovePathIndex) -> Option<Local> {
         loop {
             let path = &self.move_paths[mpi];
-            if let Place::Base(PlaceBase::Local(l)) = path.place { return Some(l); }
+            if let Place {
+                base: PlaceBase::Local(l),
+                projection: None,
+            } = path.place { return Some(l); }
             if let Some(parent) = path.parent { mpi = parent; continue } else { return None }
         }
     }

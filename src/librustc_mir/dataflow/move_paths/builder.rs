@@ -106,13 +106,16 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             for proj in place_projection {
                 let body = self.builder.body;
                 let tcx = self.builder.tcx;
-                let place_ty = proj.base.ty(body, tcx).ty;
+                let place_ty = Place::ty_from(place_base, &proj.base, body, tcx).ty;
                 match place_ty.sty {
                     ty::Ref(..) | ty::RawPtr(..) =>
                         return Err(MoveError::cannot_move_out_of(
                             self.loc,
                             BorrowedContent {
-                                target_place: Place::Projection(Box::new(proj.clone())),
+                                target_place: Place {
+                                    base: place_base.clone(),
+                                    projection: Some(Box::new(proj.clone())),
+                                }
                             })),
                     ty::Adt(adt, _) if adt.has_dtor(tcx) && !adt.is_box() =>
                         return Err(MoveError::cannot_move_out_of(self.loc,
@@ -159,7 +162,10 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                             &mut self.builder.data.path_map,
                             &mut self.builder.data.init_path_map,
                             Some(base),
-                            Place::Projection(Box::new(proj.clone())),
+                            Place {
+                                base: place_base.clone(),
+                                projection: Some(Box::new(proj.clone())),
+                            },
                         );
                         ent.insert(path);
                         path
@@ -423,21 +429,32 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_init(&mut self, place: &Place<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
 
-        let place = match place {
+        let place = match place.projection {
             // Check if we are assigning into a field of a union, if so, lookup the place
             // of the union so it is marked as initialized again.
-            Place::Projection(box Projection {
-                base,
+            Some(box Projection {
+                base: ref proj_base,
                 elem: ProjectionElem::Field(_, _),
-            }) if match base.ty(self.builder.body, self.builder.tcx).ty.sty {
-                    ty::Adt(def, _) if def.is_union() => true,
-                    _ => false,
-            } => base,
-            // Otherwise, lookup the place.
-            _ => place,
+            }) => {
+                if let ty::Adt(def, _) =
+                    Place::ty_from(&place.base, proj_base, self.builder.body, self.builder.tcx)
+                        .ty
+                        .sty
+                {
+                    if def.is_union() {
+                        Place { base: place.base.clone(), projection: proj_base.clone() }
+                    } else {
+                        place.clone()
+                    }
+                } else {
+                    place.clone()
+                }
+            }
+
+            _ => place.clone()
         };
 
-        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(place) {
+        if let LookupResult::Exact(path) = self.builder.data.rev_lookup.find(&place) {
             let init = self.builder.data.inits.push(Init {
                 location: InitLocation::Statement(self.loc),
                 path,

@@ -118,8 +118,14 @@ fn each_block<'tcx, O>(
     };
     assert!(args.len() == 1);
     let peek_arg_place = match args[0] {
-        mir::Operand::Copy(ref place @ mir::Place::Base(mir::PlaceBase::Local(_))) |
-        mir::Operand::Move(ref place @ mir::Place::Base(mir::PlaceBase::Local(_))) => Some(place),
+        mir::Operand::Copy(ref place @ mir::Place {
+            base: mir::PlaceBase::Local(_),
+            projection: None,
+        }) |
+        mir::Operand::Move(ref place @ mir::Place {
+            base: mir::PlaceBase::Local(_),
+            projection: None,
+        }) => Some(place),
         _ => None,
     };
 

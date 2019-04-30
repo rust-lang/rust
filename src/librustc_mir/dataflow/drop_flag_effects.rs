@@ -14,8 +14,8 @@ pub fn move_path_children_matching<'tcx, F>(move_data: &MoveData<'tcx>,
 {
     let mut next_child = move_data.move_paths[path].first_child;
     while let Some(child_index) = next_child {
-        match move_data.move_paths[child_index].place {
-            mir::Place::Projection(ref proj) => {
+        match move_data.move_paths[child_index].place.projection {
+            Some(ref proj) => {
                 if cond(proj) {
                     return Some(child_index)
                 }

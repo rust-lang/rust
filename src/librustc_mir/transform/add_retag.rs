@@ -17,32 +17,28 @@ pub struct AddRetag;
 fn is_stable(
     place: &Place<'_>,
 ) -> bool {
-    use rustc::mir::Place::*;
-
-    match *place {
-        // Locals and statics have stable addresses, for sure
-        Base(PlaceBase::Local { .. }) |
-        Base(PlaceBase::Static { .. }) =>
-            true,
-        // Recurse for projections
-        Projection(ref proj) => {
-            match proj.elem {
-                // Which place this evaluates to can change with any memory write,
-                // so cannot assume this to be stable.
-                ProjectionElem::Deref =>
-                    false,
-                // Array indices are intersting, but MIR building generates a *fresh*
-                // temporary for every array access, so the index cannot be changed as
-                // a side-effect.
-                ProjectionElem::Index { .. } |
-                // The rest is completely boring, they just offset by a constant.
-                ProjectionElem::Field { .. } |
-                ProjectionElem::ConstantIndex { .. } |
-                ProjectionElem::Subslice { .. } |
-                ProjectionElem::Downcast { .. } =>
-                    is_stable(&proj.base),
-            }
+    if let Some(proj) = &place.projection {
+        match proj.elem {
+            // Which place this evaluates to can change with any memory write,
+            // so cannot assume this to be stable.
+            ProjectionElem::Deref =>
+                false,
+            // Array indices are intersting, but MIR building generates a *fresh*
+            // temporary for every array access, so the index cannot be changed as
+            // a side-effect.
+            ProjectionElem::Index { .. } |
+            // The rest is completely boring, they just offset by a constant.
+            ProjectionElem::Field { .. } |
+            ProjectionElem::ConstantIndex { .. } |
+            ProjectionElem::Subslice { .. } |
+            ProjectionElem::Downcast { .. } =>
+                is_stable(&Place {
+                    base: place.base.clone(),
+                    projection: proj.base.clone(),
+                }),
         }
+    } else {
+        true
     }
 }
 

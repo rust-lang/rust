@@ -11,7 +11,7 @@ use super::MirBorrowckCtxt;
 
 use rustc::hir;
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::{Body, Place, PlaceBase, ProjectionElem};
+use rustc::mir::{Body, Place, PlaceBase, Projection, ProjectionElem};
 
 pub trait IsPrefixOf<'tcx> {
     fn is_prefix_of(&self, other: &Place<'tcx>) -> bool;
@@ -19,18 +19,15 @@ pub trait IsPrefixOf<'tcx> {
 
 impl<'tcx> IsPrefixOf<'tcx> for Place<'tcx> {
     fn is_prefix_of(&self, other: &Place<'tcx>) -> bool {
-        let mut cursor = other;
+        let mut cursor = &other.projection;
         loop {
-            if self == cursor {
-                return true;
+            if self.projection == *cursor {
+                return self.base == other.base;
             }
 
-            match *cursor {
-                Place::Base(PlaceBase::Local(_)) |
-                Place::Base(PlaceBase::Static(_)) => return false,
-                Place::Projection(ref proj) => {
-                    cursor = &proj.base;
-                }
+            match cursor {
+                None => return false,
+                Some(proj) => cursor = &proj.base,
             }
         }
     }
@@ -40,7 +37,7 @@ pub(super) struct Prefixes<'cx, 'tcx> {
     body: &'cx Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: PrefixSet,
-    next: Option<&'cx Place<'tcx>>,
+    next: Option<(&'cx PlaceBase<'tcx>, &'cx Option<Box<Projection<'tcx>>>)>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -59,9 +56,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// Returns an iterator over the prefixes of `place`
     /// (inclusive) from longest to smallest, potentially
     /// terminating the iteration early based on `kind`.
-    pub(super) fn prefixes(&self, place: &'cx Place<'tcx>, kind: PrefixSet) -> Prefixes<'cx, 'tcx> {
+    pub(super) fn prefixes(
+        &self,
+        place_base: &'cx PlaceBase<'tcx>,
+        place_projection: &'cx Option<Box<Projection<'tcx>>>,
+        kind: PrefixSet,
+    ) -> Prefixes<'cx, 'tcx> {
         Prefixes {
-            next: Some(place),
+            next: Some((place_base, place_projection)),
             kind,
             body: self.body,
             tcx: self.infcx.tcx,
@@ -70,7 +72,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
-    type Item = &'cx Place<'tcx>;
+    type Item = (&'cx PlaceBase<'tcx>, &'cx Option<Box<Projection<'tcx>>>);
     fn next(&mut self) -> Option<Self::Item> {
         let mut cursor = self.next?;
 
@@ -80,27 +82,27 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
         // downcasts here, but may return a base of a downcast).
 
         'cursor: loop {
-            let proj = match *cursor {
-                Place::Base(PlaceBase::Local(_)) | // search yielded this leaf
-                Place::Base(PlaceBase::Static(_)) => {
+            let proj = match cursor {
+                (&PlaceBase::Local(_), &None)
+                | // search yielded this leaf
+                (&PlaceBase::Static(_), &None) => {
                     self.next = None;
                     return Some(cursor);
                 }
-
-                Place::Projection(ref proj) => proj,
+                (_, &Some(ref proj))  => proj,
             };
 
             match proj.elem {
                 ProjectionElem::Field(_ /*field*/, _ /*ty*/) => {
-                        // FIXME: add union handling
-                    self.next = Some(&proj.base);
+                    // FIXME: add union handling
+                    self.next = Some((cursor.0, &proj.base));
                     return Some(cursor);
                 }
                 ProjectionElem::Downcast(..) |
                 ProjectionElem::Subslice { .. } |
                 ProjectionElem::ConstantIndex { .. } |
                 ProjectionElem::Index(_) => {
-                    cursor = &proj.base;
+                    cursor = (cursor.0, &proj.base);
                     continue 'cursor;
                 }
                 ProjectionElem::Deref => {
@@ -121,7 +123,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                 PrefixSet::All => {
                     // all prefixes: just blindly enqueue the base
                     // of the projection
-                    self.next = Some(&proj.base);
+                    self.next = Some((cursor.0, &proj.base));
                     return Some(cursor);
                 }
                 PrefixSet::Supporting => {
@@ -134,7 +136,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
             // derefs, except we stop at the deref of a shared
             // reference.
 
-            let ty = proj.base.ty(self.body, self.tcx).ty;
+            let ty = Place::ty_from(cursor.0, &proj.base, self.body, self.tcx).ty;
             match ty.sty {
                 ty::RawPtr(_) |
                 ty::Ref(
@@ -152,12 +154,12 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                     _, /*ty*/
                     hir::MutMutable,
                     ) => {
-                    self.next = Some(&proj.base);
+                    self.next = Some((cursor.0, &proj.base));
                     return Some(cursor);
                 }
 
                 ty::Adt(..) if ty.is_box() => {
-                    self.next = Some(&proj.base);
+                    self.next = Some((cursor.0, &proj.base));
                     return Some(cursor);
                 }
 
