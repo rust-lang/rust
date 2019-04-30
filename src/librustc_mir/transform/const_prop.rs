@@ -301,7 +301,8 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 // cannot use `const_eval` here, because that would require having the MIR
                 // for the current function available, but we're producing said MIR right now
                 let res = self.use_ecx(source_info, |this| {
-                    eval_promoted(this.tcx, cid, this.mir, this.param_env)
+                    let mir = &this.mir.promoted[promoted];
+                    eval_promoted(this.tcx, cid, mir, this.param_env)
                 })?;
                 trace!("evaluated promoted {:?} to {:?}", promoted, res);
                 Some((res.into(), source_info.span))
