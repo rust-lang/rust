@@ -103,7 +103,7 @@ pub mod source_code_pro {
     pub static SEMIBOLD: &'static [u8] = include_bytes!("static/SourceCodePro-Semibold.woff");
 
     /// The file `SourceCodePro-LICENSE.txt`, the license text of the Source Code Pro font.
-    pub static LICENSE: &'static [u8] = include_bytes!("static/SourceCodePro-LICENSE.md");
+    pub static LICENSE: &'static [u8] = include_bytes!("static/SourceCodePro-LICENSE.txt");
 }
 
 /// Files related to the sidebar in rustdoc sources.
