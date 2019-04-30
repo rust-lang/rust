@@ -8,7 +8,7 @@ macro_rules! get_version_info {
         let patch = env!("CARGO_PKG_VERSION_PATCH").parse::<u16>().unwrap();
         let crate_name = String::from(env!("CARGO_PKG_NAME"));
 
-        let host_compiler = $crate::get_channel();
+        let host_compiler = option_env!("RUSTC_RELEASE_CHANNEL").map(str::to_string);
         let commit_hash = option_env!("GIT_HASH").map(str::to_string);
         let commit_date = option_env!("COMMIT_DATE").map(str::to_string);
 
@@ -79,15 +79,6 @@ impl std::fmt::Debug for VersionInfo {
     }
 }
 
-pub fn get_channel() -> Option<String> {
-    if let Ok(channel) = env::var("CFG_RELEASE_CHANNEL") {
-        Some(channel)
-    } else {
-        // we could ask ${RUSTC} -Vv and do some parsing and find out
-        Some(String::from("nightly"))
-    }
-}
-
 pub fn get_commit_hash() -> Option<String> {
     std::process::Command::new("git")
         .args(&["rev-parse", "--short", "HEAD"])
@@ -102,6 +93,34 @@ pub fn get_commit_date() -> Option<String> {
         .output()
         .ok()
         .and_then(|r| String::from_utf8(r.stdout).ok())
+}
+
+pub fn get_channel() -> Option<String> {
+    match env::var("CFG_RELEASE_CHANNEL") {
+        Ok(channel) => Some(channel),
+        Err(_) => {
+            // if that failed, try to ask rustc -V, do some parsing and find out
+            match std::process::Command::new("rustc")
+                .arg("-V")
+                .output()
+                .ok()
+                .and_then(|r| String::from_utf8(r.stdout).ok())
+            {
+                Some(rustc_output) => {
+                    if rustc_output.contains("beta") {
+                        Some(String::from("beta"))
+                    } else if rustc_output.contains("stable") {
+                        Some(String::from("stable"))
+                    } else {
+                        // default to nightly if we fail to parse
+                        Some(String::from("nightly"))
+                    }
+                },
+                // default to nightly
+                None => Some(String::from("nightly")),
+            }
+        },
+    }
 }
 
 #[cfg(test)]
