@@ -31,10 +31,12 @@
 #![feature(slice_partition_dedup)]
 #![feature(copy_within)]
 #![feature(int_error_matching)]
+#![feature(const_fn)]
 #![warn(rust_2018_idioms)]
 
 extern crate test;
 
+mod alloc;
 mod any;
 mod array;
 mod ascii;
