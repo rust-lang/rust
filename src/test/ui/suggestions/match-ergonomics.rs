@@ -37,4 +37,5 @@ fn main() {
         v => {},
         _ => {},
     }
+    if let [&v] = &x[..] {} //~ ERROR mismatched types
 }
