@@ -514,7 +514,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'_>,
         pat: &Pat,
         inner: &Pat,
-        expected: &Ty<'tcx>,
+        expected: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
         if let PatKind::Binding(..) = inner.node {
