@@ -5,7 +5,6 @@ use syntax::ast::{self, Ident, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
 
-// use std::convert::From;
 use std::cmp;
 use std::fmt;
 use std::i128;
@@ -1545,37 +1544,31 @@ impl<'gcx, 'tcx, T: HasTyCtxt<'gcx>> HasTyCtxt<'gcx> for LayoutCx<'tcx, T> {
 }
 
 pub trait MaybeResult<T> {
-    type Item;
+    type Error;
 
-    fn from_ok(x: T) -> Self;
-    fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self;
-    fn to_result(self) -> Result<T, Self::Item>;
+    fn from(x: Result<T, Self::Error>) -> Self;
+    fn to_result(self) -> Result<T, Self::Error>;
 }
 
 impl<T> MaybeResult<T> for T {
-    type Item = !;
+    type Error = !;
 
-    fn from_ok(x: T) -> Self {
+    fn from(x: Result<T, Self::Error>) -> Self {
+        let Ok(x) = x;
         x
     }
-    fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
-        f(self)
-    }
-    fn to_result(self) -> Result<T, !> {
+    fn to_result(self) -> Result<T, Self::Error> {
         Ok(self)
     }
 }
 
 impl<T, E> MaybeResult<T> for Result<T, E> {
-    type Item = E;
+    type Error = E;
 
-    fn from_ok(x: T) -> Self {
-        Ok(x)
+    fn from(x: Result<T, Self::Error>) -> Self {
+        x
     }
-    fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
-        self.map(f)
-    }
-    fn to_result(self) -> Result<T, E> {
+    fn to_result(self) -> Result<T, Self::Error> {
         self
     }
 }
@@ -1681,10 +1674,9 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 
             Variants::Single { index } => {
                 // Deny calling for_variant more than once for non-Single enums.
-                cx.layout_of(this.ty).map_same(|layout| {
+                if let Ok(layout) = cx.layout_of(this.ty).to_result() {
                     assert_eq!(layout.variants, Variants::Single { index });
-                    layout
-                });
+                }
 
                 let fields = match this.ty.sty {
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
@@ -1754,10 +1746,12 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     } else {
                         tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
                     };
-                    return cx.layout_of(ptr_ty).map_same(|mut ptr_layout| {
-                        ptr_layout.ty = this.ty;
-                        ptr_layout
-                    });
+                    return MaybeResult::from(
+                        cx.layout_of(ptr_ty).to_result().map(|mut ptr_layout| {
+                            ptr_layout.ty = this.ty;
+                            ptr_layout
+                        })
+                    );
                 }
 
                 match tcx.struct_tail(pointee).sty {
