@@ -1,5 +1,5 @@
 error: must have type `*const T` or `*mut T`
-  --> $DIR/linkage2.rs:8:32
+  --> $DIR/linkage2.rs:9:32
    |
 LL |     #[linkage = "extern_weak"] static foo: i32;
    |                                ^^^^^^^^^^^^^^^^
