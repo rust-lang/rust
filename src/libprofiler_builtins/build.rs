@@ -44,6 +44,19 @@ fn main() {
         cfg.define("COMPILER_RT_HAS_UNAME", Some("1"));
     }
 
+    // Assume that the Unixes we are building this for have fnctl() available
+    if env::var_os("CARGO_CFG_UNIX").is_some() {
+        cfg.define("COMPILER_RT_HAS_FCNTL_LCK", Some("1"));
+    }
+
+    // This should be a pretty good heuristic for when to set
+    // COMPILER_RT_HAS_ATOMICS
+    if env::var_os("CARGO_CFG_TARGET_HAS_ATOMIC").map(|features| {
+        features.to_string_lossy().to_lowercase().contains("cas")
+    }).unwrap_or(false) {
+        cfg.define("COMPILER_RT_HAS_ATOMICS", Some("1"));
+    }
+
     // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
     // load our env var set by cargo to find the source code.
     let root = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
