@@ -400,9 +400,9 @@ impl<'tcx> Stack {
         // Either way, we ensure that we insert the new item in a way that between
         // `derived_from` and the new one, there are only items *compatible with* `derived_from`.
         let new_idx = if weak {
-            // A weak ShareadReadOnly reborrow might be added below other items, violating the
+            // A weak SharedReadOnly reborrow might be added below other items, violating the
             // invariant that only SharedReadOnly can sit on top of SharedReadOnly.
-            assert!(new.perm != Permission::SharedReadOnly, "Weak ShareadReadOnly reborrows don't work");
+            assert!(new.perm != Permission::SharedReadOnly, "Weak SharedReadOnly reborrows don't work");
             // A very liberal reborrow because the new pointer does not expect any kind of aliasing guarantee.
             // Just insert new permission as child of old permission, and maintain everything else.
             // This inserts "as far down as possible", which is good because it makes this pointer as
