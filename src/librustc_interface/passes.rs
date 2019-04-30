@@ -20,7 +20,9 @@ use rustc::session::config::{self, CrateType, Input, OutputFilenames, OutputType
 use rustc::session::search_paths::PathKind;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
+use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -50,6 +52,7 @@ use syntax_pos::{FileName, hygiene};
 use syntax_ext;
 
 use serialize::json;
+use tempfile::Builder as TempFileBuilder;
 
 use std::any::Any;
 use std::env;
@@ -999,7 +1002,10 @@ fn analysis<'tcx>(
     Ok(())
 }
 
-fn encode_metadata<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> (middle::cstore::EncodedMetadata, bool) {
+fn encode_and_write_metadata<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    outputs: &OutputFilenames,
+) -> (middle::cstore::EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
         None,
@@ -1020,13 +1026,40 @@ fn encode_metadata<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> (middle::cstore::Encode
         }
     }).max().unwrap_or(MetadataKind::None);
 
-    let need_metadata_module = metadata_kind == MetadataKind::Compressed;
-
     let metadata = match metadata_kind {
         MetadataKind::None => middle::cstore::EncodedMetadata::new(),
         MetadataKind::Uncompressed |
         MetadataKind::Compressed => tcx.encode_metadata(),
     };
+
+    let need_metadata_file = tcx.sess.opts.output_types.contains_key(&OutputType::Metadata);
+    if need_metadata_file {
+        let crate_name = &tcx.crate_name(LOCAL_CRATE).as_str();
+        let out_filename = filename_for_metadata(tcx.sess, crate_name, outputs);
+        // To avoid races with another rustc process scanning the output directory,
+        // we need to write the file somewhere else and atomically move it to its
+        // final destination, with an `fs::rename` call. In order for the rename to
+        // always succeed, the temporary file needs to be on the same filesystem,
+        // which is why we create it inside the output directory specifically.
+        let metadata_tmpdir = TempFileBuilder::new()
+            .prefix("rmeta")
+            .tempdir_in(out_filename.parent().unwrap())
+            .unwrap_or_else(|err| {
+                tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err))
+            });
+        let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
+        match std::fs::rename(&metadata_filename, &out_filename) {
+            Ok(_) => {
+                if tcx.sess.opts.debugging_opts.emit_directives {
+                    tcx.sess.parse_sess.span_diagnostic.maybe_emit_json_directive(
+                        format!("metadata file written: {}", out_filename.display()));
+                }
+            }
+            Err(e) => tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e)),
+        }
+    }
+
+    let need_metadata_module = metadata_kind == MetadataKind::Compressed;
 
     (metadata, need_metadata_module)
 }
@@ -1048,8 +1081,8 @@ pub fn start_codegen<'tcx>(
         middle::dependency_format::calculate(tcx)
     });
 
-    let (metadata, need_metadata_module) = time(tcx.sess, "metadata encoding", || {
-        encode_metadata(tcx)
+    let (metadata, need_metadata_module) = time(tcx.sess, "metadata encoding and writing", || {
+        encode_and_write_metadata(tcx, outputs)
     });
 
     tcx.sess.profiler(|p| p.start_activity("codegen crate"));

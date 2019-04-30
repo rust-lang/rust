@@ -7,7 +7,7 @@ use rustc::session::config::{
 };
 use rustc::session::search_paths::PathKind;
 use rustc::middle::dependency_format::Linkage;
-use rustc::middle::cstore::{LibSource, NativeLibrary, NativeLibraryKind};
+use rustc::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
 use rustc::util::common::{time, time_ext};
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::fx::FxHashSet;
@@ -50,9 +50,9 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                                               outputs: &OutputFilenames,
                                               crate_name: &str,
                                               target_cpu: &str) {
+    let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
-        let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
         if (sess.opts.debugging_opts.no_codegen || !sess.opts.output_types.should_codegen()) &&
            !output_metadata &&
            crate_type == config::CrateType::Executable {
@@ -66,29 +66,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
 
         for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
             check_file_is_writeable(obj, sess);
-        }
-
-        if outputs.outputs.contains_key(&OutputType::Metadata) {
-            let out_filename = filename_for_metadata(sess, crate_name, outputs);
-            // To avoid races with another rustc process scanning the output directory,
-            // we need to write the file somewhere else and atomically move it to its
-            // final destination, with a `fs::rename` call. In order for the rename to
-            // always succeed, the temporary file needs to be on the same filesystem,
-            // which is why we create it inside the output directory specifically.
-            let metadata_tmpdir = TempFileBuilder::new()
-                .prefix("rmeta")
-                .tempdir_in(out_filename.parent().unwrap())
-                .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
-            let metadata = emit_metadata(sess, codegen_results, &metadata_tmpdir);
-            match fs::rename(&metadata, &out_filename) {
-                Ok(_) => {
-                    if sess.opts.debugging_opts.emit_directives {
-                        sess.parse_sess.span_diagnostic.maybe_emit_json_directive(
-                            format!("metadata file written: {}", out_filename.display()));
-                    }
-                }
-                Err(e) => sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e)),
-            }
         }
 
         let tmpdir = TempFileBuilder::new().prefix("rustc").tempdir().unwrap_or_else(|err|
@@ -248,13 +225,13 @@ pub fn each_linked_rlib(sess: &Session,
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-fn emit_metadata<'a>(
+pub fn emit_metadata<'a>(
     sess: &'a Session,
-    codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     tmpdir: &TempDir
 ) -> PathBuf {
     let out_filename = tmpdir.path().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, &codegen_results.metadata.raw_data);
+    let result = fs::write(&out_filename, &metadata.raw_data);
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
@@ -338,7 +315,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
             // contain the metadata in a separate file.
-            ab.add_file(&emit_metadata(sess, codegen_results, tmpdir));
+            ab.add_file(&emit_metadata(sess, &codegen_results.metadata, tmpdir));
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
