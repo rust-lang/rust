@@ -378,12 +378,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             // `fn foo(foo: &u32)`
                             if let Some(mut err) = err {
                                 if let PatKind::Binding(..) = inner.node {
-                                    if let Ok(snippet) = tcx.sess.source_map()
-                                                                    .span_to_snippet(pat.span)
-                                    {
-                                        err.help(&format!("did you mean `{}: &{}`?",
-                                                            &snippet[1..],
-                                                            expected));
+                                    let parent_id = tcx.hir().get_parent_node_by_hir_id(pat.hir_id);
+                                    let parent = tcx.hir().get_by_hir_id(parent_id);
+                                    match parent {
+                                        hir::Node::Item(_) |
+                                        hir::Node::ForeignItem(_) |
+                                        hir::Node::TraitItem(_) |
+                                        hir::Node::ImplItem(_)  => { // this pat is an argument
+                                            if let Ok(snippet) = tcx.sess.source_map()
+                                                .span_to_snippet(pat.span)
+                                            { // FIXME: turn into structured suggestion, will need
+                                              // a span that also includes the the type.
+                                                err.help(&format!(
+                                                    "did you mean `{}: &{}`?",
+                                                    &snippet[1..],
+                                                    expected,
+                                                ));
+                                            }
+                                        }
+                                        _ => {} // don't provide the suggestion from above #55175
                                     }
                                 }
                                 err.emit();
