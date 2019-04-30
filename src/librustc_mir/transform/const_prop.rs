@@ -4,7 +4,7 @@
 
 use rustc::hir::def::Def;
 use rustc::mir::{Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local};
-use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind, Static, StaticKind};
+use rustc::mir::{NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::interpret::{InterpError, Scalar, GlobalId, EvalResult};
@@ -510,7 +510,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     fn visit_local(
         &mut self,
         &local: &Local,
-        context: PlaceContext<'tcx>,
+        context: PlaceContext,
         _: Location,
     ) {
         use rustc::mir::visit::PlaceContext::*;
@@ -549,7 +549,6 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
 
     fn visit_statement(
         &mut self,
-        block: BasicBlock,
         statement: &Statement<'tcx>,
         location: Location,
     ) {
@@ -571,16 +570,15 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                 }
             }
         }
-        self.super_statement(block, statement, location);
+        self.super_statement(statement, location);
     }
 
     fn visit_terminator_kind(
         &mut self,
-        block: BasicBlock,
         kind: &TerminatorKind<'tcx>,
         location: Location,
     ) {
-        self.super_terminator_kind(block, kind, location);
+        self.super_terminator_kind(kind, location);
         let source_info = *self.mir.source_info(location);
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond, source_info) {
@@ -601,7 +599,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                         },
                         Operand::Constant(_) => {}
                     }
-                    let span = self.mir[block]
+                    let span = self.mir[location.block]
                         .terminator
                         .as_ref()
                         .unwrap()

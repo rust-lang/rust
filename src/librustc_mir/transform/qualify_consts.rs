@@ -926,7 +926,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     fn visit_place(&mut self,
                     place: &Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         debug!("visit_place: place={:?} context={:?} location={:?}", place, context, location);
         self.super_place(place, context, location);
@@ -1063,7 +1063,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         debug!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
         // Check nested operands and places.
-        if let Rvalue::Ref(region, kind, ref place) = *rvalue {
+        if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut is_reborrow = false;
             if let Place::Projection(ref proj) = *place {
@@ -1078,16 +1078,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             if is_reborrow {
                 let ctx = match kind {
                     BorrowKind::Shared => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::SharedBorrow(region),
+                        NonMutatingUseContext::SharedBorrow,
                     ),
                     BorrowKind::Shallow => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::ShallowBorrow(region),
+                        NonMutatingUseContext::ShallowBorrow,
                     ),
                     BorrowKind::Unique => PlaceContext::NonMutatingUse(
-                        NonMutatingUseContext::UniqueBorrow(region),
+                        NonMutatingUseContext::UniqueBorrow,
                     ),
                     BorrowKind::Mut { .. } => PlaceContext::MutatingUse(
-                        MutatingUseContext::Borrow(region),
+                        MutatingUseContext::Borrow,
                     ),
                 };
                 self.super_place(place, ctx, location);
@@ -1179,10 +1179,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self,
-                             bb: BasicBlock,
                              kind: &TerminatorKind<'tcx>,
                              location: Location) {
-        debug!("visit_terminator_kind: bb={:?} kind={:?} location={:?}", bb, kind, location);
+        debug!("visit_terminator_kind: kind={:?} location={:?}", kind, location);
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
             if let Some((ref dest, _)) = *destination {
                 self.assign(dest, ValueSource::Call {
@@ -1310,7 +1309,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         continue;
                     }
 
-                    let candidate = Candidate::Argument { bb, index: i };
+                    let candidate = Candidate::Argument { bb: location.block, index: i };
                     // Since the argument is required to be constant,
                     // we care about constness, not promotability.
                     // If we checked for promotability, we'd miss out on
@@ -1343,7 +1342,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 self.visit_operand(arg, location);
             }
         } else if let TerminatorKind::Drop { location: ref place, .. } = *kind {
-            self.super_terminator_kind(bb, kind, location);
+            self.super_terminator_kind(kind, location);
 
             // Deny *any* live drops anywhere other than functions.
             if self.mode != Mode::Fn {
@@ -1374,12 +1373,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             }
         } else {
             // Qualify any operands inside other terminators.
-            self.super_terminator_kind(bb, kind, location);
+            self.super_terminator_kind(kind, location);
         }
     }
 
     fn visit_assign(&mut self,
-                    _: BasicBlock,
                     dest: &Place<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
@@ -1394,11 +1392,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         self.span = source_info.span;
     }
 
-    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
-        debug!("visit_statement: bb={:?} statement={:?} location={:?}", bb, statement, location);
+    fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
+        debug!("visit_statement: statement={:?} location={:?}", statement, location);
         match statement.kind {
             StatementKind::Assign(..) => {
-                self.super_statement(bb, statement, location);
+                self.super_statement(statement, location);
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
@@ -1410,14 +1408,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             StatementKind::AscribeUserType(..) |
             StatementKind::Nop => {}
         }
-    }
-
-    fn visit_terminator(&mut self,
-                        bb: BasicBlock,
-                        terminator: &Terminator<'tcx>,
-                        location: Location) {
-        debug!("visit_terminator: bb={:?} terminator={:?} location={:?}", bb, terminator, location);
-        self.super_terminator(bb, terminator, location);
     }
 }
 

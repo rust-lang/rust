@@ -44,7 +44,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
 
         BorrowedLocalsVisitor {
             sets,
-        }.visit_statement(loc.block, stmt, loc);
+        }.visit_statement(stmt, loc);
 
         // StorageDead invalidates all borrows and raw pointers to a local
         match stmt.kind {
@@ -58,7 +58,7 @@ impl<'a, 'tcx> BitDenotation<'tcx> for HaveBeenBorrowedLocals<'a, 'tcx> {
                          loc: Location) {
         BorrowedLocalsVisitor {
             sets,
-        }.visit_terminator(loc.block, self.mir[loc.block].terminator(), loc);
+        }.visit_terminator(self.mir[loc.block].terminator(), loc);
     }
 
     fn propagate_call_return(

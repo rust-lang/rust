@@ -97,11 +97,10 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
 impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     for LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
     fn visit_assign(&mut self,
-                    block: mir::BasicBlock,
                     place: &mir::Place<'tcx>,
                     rvalue: &mir::Rvalue<'tcx>,
                     location: Location) {
-        debug!("visit_assign(block={:?}, place={:?}, rvalue={:?})", block, place, rvalue);
+        debug!("visit_assign(place={:?}, rvalue={:?})", place, rvalue);
 
         if let mir::Place::Base(mir::PlaceBase::Local(index)) = *place {
             self.assign(index, location);
@@ -120,7 +119,6 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
     }
 
     fn visit_terminator_kind(&mut self,
-                             block: mir::BasicBlock,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
         let check = match *kind {
@@ -148,12 +146,12 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             }
         }
 
-        self.super_terminator_kind(block, kind, location);
+        self.super_terminator_kind(kind, location);
     }
 
     fn visit_place(&mut self,
                    place: &mir::Place<'tcx>,
-                   context: PlaceContext<'tcx>,
+                   context: PlaceContext,
                    location: Location) {
         debug!("visit_place(place={:?}, context={:?})", place, context);
         let cx = self.fx.cx;
@@ -205,7 +203,7 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
     fn visit_local(&mut self,
                    &local: &mir::Local,
-                   context: PlaceContext<'tcx>,
+                   context: PlaceContext,
                    location: Location) {
         match context {
             PlaceContext::MutatingUse(MutatingUseContext::Call) => {
@@ -235,11 +233,11 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
             PlaceContext::MutatingUse(MutatingUseContext::Store) |
             PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
-            PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) |
+            PlaceContext::MutatingUse(MutatingUseContext::Borrow) |
             PlaceContext::MutatingUse(MutatingUseContext::Projection) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
-            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow) |
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
                 self.not_ssa(local);
             }

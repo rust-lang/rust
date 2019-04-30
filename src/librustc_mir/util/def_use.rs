@@ -3,34 +3,31 @@
 use rustc::mir::{Local, Location, Mir};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc_data_structures::indexed_vec::IndexVec;
-use std::marker::PhantomData;
 use std::mem;
-use std::slice;
-use std::iter;
 
-pub struct DefUseAnalysis<'tcx> {
-    info: IndexVec<Local, Info<'tcx>>,
+pub struct DefUseAnalysis {
+    info: IndexVec<Local, Info>,
 }
 
 #[derive(Clone)]
-pub struct Info<'tcx> {
-    pub defs_and_uses: Vec<Use<'tcx>>,
+pub struct Info {
+    pub defs_and_uses: Vec<Use>,
 }
 
 #[derive(Clone)]
-pub struct Use<'tcx> {
-    pub context: PlaceContext<'tcx>,
+pub struct Use {
+    pub context: PlaceContext,
     pub location: Location,
 }
 
-impl<'tcx> DefUseAnalysis<'tcx> {
-    pub fn new(mir: &Mir<'tcx>) -> DefUseAnalysis<'tcx> {
+impl DefUseAnalysis {
+    pub fn new(mir: &Mir<'_>) -> DefUseAnalysis {
         DefUseAnalysis {
             info: IndexVec::from_elem_n(Info::new(), mir.local_decls.len()),
         }
     }
 
-    pub fn analyze(&mut self, mir: &Mir<'tcx>) {
+    pub fn analyze(&mut self, mir: &Mir<'_>) {
         self.clear();
 
         let mut finder = DefUseFinder {
@@ -46,13 +43,13 @@ impl<'tcx> DefUseAnalysis<'tcx> {
         }
     }
 
-    pub fn local_info(&self, local: Local) -> &Info<'tcx> {
+    pub fn local_info(&self, local: Local) -> &Info {
         &self.info[local]
     }
 
-    fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'tcx>, mut callback: F)
+    fn mutate_defs_and_uses<F>(&self, local: Local, mir: &mut Mir<'_>, mut callback: F)
                                where F: for<'a> FnMut(&'a mut Local,
-                                                      PlaceContext<'tcx>,
+                                                      PlaceContext,
                                                       Location) {
         for place_use in &self.info[local].defs_and_uses {
             MutateUseVisitor::new(local,
@@ -64,20 +61,20 @@ impl<'tcx> DefUseAnalysis<'tcx> {
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          mir: &mut Mir<'tcx>,
+                                          mir: &mut Mir<'_>,
                                           new_local: Local) {
         self.mutate_defs_and_uses(local, mir, |local, _, _| *local = new_local)
     }
 }
 
-struct DefUseFinder<'tcx> {
-    info: IndexVec<Local, Info<'tcx>>,
+struct DefUseFinder {
+    info: IndexVec<Local, Info>,
 }
 
-impl<'tcx> Visitor<'tcx> for DefUseFinder<'tcx> {
+impl Visitor<'_> for DefUseFinder {
     fn visit_local(&mut self,
                    &local: &Local,
-                   context: PlaceContext<'tcx>,
+                   context: PlaceContext,
                    location: Location) {
         self.info[local].defs_and_uses.push(Use {
             context,
@@ -86,8 +83,8 @@ impl<'tcx> Visitor<'tcx> for DefUseFinder<'tcx> {
     }
 }
 
-impl<'tcx> Info<'tcx> {
-    fn new() -> Info<'tcx> {
+impl Info {
+    fn new() -> Info {
         Info {
             defs_and_uses: vec![],
         }
@@ -107,7 +104,7 @@ impl<'tcx> Info<'tcx> {
 
     pub fn defs_not_including_drop(
         &self,
-    ) -> iter::Filter<slice::Iter<'_, Use<'tcx>>, fn(&&Use<'tcx>) -> bool> {
+    ) -> impl Iterator<Item=&Use> {
         self.defs_and_uses.iter().filter(|place_use| {
             place_use.context.is_mutating_use() && !place_use.context.is_drop()
         })
@@ -120,29 +117,27 @@ impl<'tcx> Info<'tcx> {
     }
 }
 
-struct MutateUseVisitor<'tcx, F> {
+struct MutateUseVisitor<F> {
     query: Local,
     callback: F,
-    phantom: PhantomData<&'tcx ()>,
 }
 
-impl<'tcx, F> MutateUseVisitor<'tcx, F> {
-    fn new(query: Local, callback: F, _: &Mir<'tcx>)
-           -> MutateUseVisitor<'tcx, F>
-           where F: for<'a> FnMut(&'a mut Local, PlaceContext<'tcx>, Location) {
+impl<F> MutateUseVisitor<F> {
+    fn new(query: Local, callback: F, _: &Mir<'_>)
+           -> MutateUseVisitor<F>
+           where F: for<'a> FnMut(&'a mut Local, PlaceContext, Location) {
         MutateUseVisitor {
             query,
             callback,
-            phantom: PhantomData,
         }
     }
 }
 
-impl<'tcx, F> MutVisitor<'tcx> for MutateUseVisitor<'tcx, F>
-              where F: for<'a> FnMut(&'a mut Local, PlaceContext<'tcx>, Location) {
+impl<F> MutVisitor<'_> for MutateUseVisitor<F>
+              where F: for<'a> FnMut(&'a mut Local, PlaceContext, Location) {
     fn visit_local(&mut self,
                     local: &mut Local,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         if *local == self.query {
             (self.callback)(local, context, location)

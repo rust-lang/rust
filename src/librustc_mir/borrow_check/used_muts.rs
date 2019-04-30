@@ -1,6 +1,6 @@
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::{
-    BasicBlock, Local, Location, Place, PlaceBase, Statement, StatementKind, TerminatorKind
+    Local, Location, Place, PlaceBase, Statement, StatementKind, TerminatorKind
 };
 
 use rustc_data_structures::fx::FxHashSet;
@@ -55,7 +55,6 @@ struct GatherUsedMutsVisitor<'visit, 'cx: 'visit, 'gcx: 'tcx, 'tcx: 'cx> {
 impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'cx, 'gcx, 'tcx> {
     fn visit_terminator_kind(
         &mut self,
-        _block: BasicBlock,
         kind: &TerminatorKind<'tcx>,
         _location: Location,
     ) {
@@ -77,7 +76,6 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
 
     fn visit_statement(
         &mut self,
-        _block: BasicBlock,
         statement: &Statement<'tcx>,
         _location: Location,
     ) {
@@ -104,7 +102,7 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
     fn visit_local(
         &mut self,
         local: &Local,
-        place_context: PlaceContext<'tcx>,
+        place_context: PlaceContext,
         location: Location,
     ) {
         if place_context.is_place_assignment() && self.temporary_used_locals.contains(local) {

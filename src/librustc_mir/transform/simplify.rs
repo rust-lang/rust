@@ -345,7 +345,7 @@ struct DeclMarker {
 }
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
-    fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _: Location) {
         // Ignore storage markers altogether, they get removed along with their otherwise unused
         // decls.
         // FIXME: Extend this to all non-uses.
@@ -372,7 +372,7 @@ impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
         });
         self.super_basic_block_data(block, data);
     }
-    fn visit_local(&mut self, l: &mut Local, _: PlaceContext<'tcx>, _: Location) {
+    fn visit_local(&mut self, l: &mut Local, _: PlaceContext, _: Location) {
         *l = self.map[*l].unwrap();
     }
 }

@@ -523,7 +523,11 @@ impl<T, I: SliceIndex<[T]>> Index<I> for UserRef<[T]> where [T]: UserSafe, I::Ou
     #[inline]
     fn index(&self, index: I) -> &UserRef<I::Output> {
         unsafe {
-            UserRef::from_ptr(index.index(&*self.as_raw_ptr()))
+            if let Some(slice) = index.get(&*self.as_raw_ptr()) {
+                UserRef::from_ptr(slice)
+            } else {
+                rtabort!("index out of range for user slice");
+            }
         }
     }
 }
@@ -533,7 +537,11 @@ impl<T, I: SliceIndex<[T]>> IndexMut<I> for UserRef<[T]> where [T]: UserSafe, I:
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut UserRef<I::Output> {
         unsafe {
-            UserRef::from_mut_ptr(index.index_mut(&mut*self.as_raw_mut_ptr()))
+            if let Some(slice) = index.get_mut(&mut*self.as_raw_mut_ptr()) {
+                UserRef::from_mut_ptr(slice)
+            } else {
+                rtabort!("index out of range for user slice");
+            }
         }
     }
 }

@@ -137,7 +137,7 @@ impl TcpStream {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        io::default_read_vectored(|b| self.read(b), bufs)
+        self.inner.inner.read_vectored(bufs)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
@@ -145,7 +145,7 @@ impl TcpStream {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        io::default_write_vectored(|b| self.write(b), bufs)
+        self.inner.inner.write_vectored(bufs)
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {

@@ -80,7 +80,7 @@ struct RenameLocalVisitor {
 impl<'tcx> MutVisitor<'tcx> for RenameLocalVisitor {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: PlaceContext<'tcx>,
+                   _: PlaceContext,
                    _: Location) {
         if *local == self.from {
             *local = self.to;
@@ -93,14 +93,14 @@ struct DerefArgVisitor;
 impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: PlaceContext<'tcx>,
+                   _: PlaceContext,
                    _: Location) {
         assert_ne!(*local, self_arg());
     }
 
     fn visit_place(&mut self,
                     place: &mut Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         if *place == Place::Base(PlaceBase::Local(self_arg())) {
             *place = Place::Projection(Box::new(Projection {
@@ -120,14 +120,14 @@ struct PinArgVisitor<'tcx> {
 impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: PlaceContext<'tcx>,
+                   _: PlaceContext,
                    _: Location) {
         assert_ne!(*local, self_arg());
     }
 
     fn visit_place(&mut self,
                     place: &mut Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         if *place == Place::Base(PlaceBase::Local(self_arg())) {
             *place = Place::Projection(Box::new(Projection {
@@ -221,14 +221,14 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
 impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
     fn visit_local(&mut self,
                    local: &mut Local,
-                   _: PlaceContext<'tcx>,
+                   _: PlaceContext,
                    _: Location) {
         assert_eq!(self.remap.get(local), None);
     }
 
     fn visit_place(&mut self,
                     place: &mut Place<'tcx>,
-                    context: PlaceContext<'tcx>,
+                    context: PlaceContext,
                     location: Location) {
         if let Place::Base(PlaceBase::Local(l)) = *place {
             // Replace an Local in the remap with a generator struct access
@@ -369,7 +369,6 @@ struct StorageIgnored(liveness::LiveVarSet);
 
 impl<'tcx> Visitor<'tcx> for StorageIgnored {
     fn visit_statement(&mut self,
-                       _block: BasicBlock,
                        statement: &Statement<'tcx>,
                        _location: Location) {
         match statement.kind {

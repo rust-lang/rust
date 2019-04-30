@@ -1113,6 +1113,10 @@ span.since {
 	h1.fqn {
 		overflow: initial;
 	}
+
+	#main > .line-numbers {
+		margin-top: 0;
+	}
 }
 
 @media print {
