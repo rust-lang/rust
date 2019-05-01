@@ -10,6 +10,7 @@ use crate::{
     code_model_api::Crate,
     MacroCallId,
     MacroCallLoc,
+    AstId,
     db::HirDatabase,
     name::{Name, KnownName},
     nameres::{PerNs, CrateDefMap, CrateModuleId},
@@ -17,7 +18,7 @@ use crate::{
     expr::{scope::{ExprScopes, ScopeId}, PatId},
     impl_block::ImplBlock,
     path::Path,
-    Trait
+    Trait,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -138,25 +139,12 @@ impl Resolver {
         &self,
         db: &impl HirDatabase,
         path: Option<Path>,
-        call: &ast::MacroCall,
+        ast_id: AstId<ast::MacroCall>,
     ) -> Option<MacroCallId> {
         let name = path.and_then(|path| path.expand_macro_expr()).unwrap_or_else(Name::missing);
-        let macro_def_id = self.module().and_then(|(module, _)| module.find_macro(&name));
-        if let Some(def_id) = macro_def_id {
-            self.module().and_then(|(module, _)| {
-                // we do this to get the ast_id for the macro call
-                // if we used the ast_id from the def_id variable
-                // it gives us the ast_id of the defenition site
-                let module = module.mk_module(module.root());
-                let hir_file_id = module.definition_source(db).0;
-                let ast_id = db.ast_id_map(hir_file_id).ast_id(call).with_file_id(hir_file_id);
-                let call_loc = MacroCallLoc { def: *def_id, ast_id }.id(db);
-
-                Some(call_loc)
-            })
-        } else {
-            None
-        }
+        let def_id = self.module().and_then(|(module, _)| module.find_macro(&name))?;
+        let call_loc = MacroCallLoc { def: *def_id, ast_id }.id(db);
+        Some(call_loc)
     }
 
     /// Returns the resolved path segments

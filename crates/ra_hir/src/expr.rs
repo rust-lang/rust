@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Path, Name, HirDatabase, Resolver,DefWithBody, Either,
+    Path, Name, HirDatabase, Resolver,DefWithBody, Either, HirFileId,
     name::AsName,
     ids::{MacroCallId},
     type_ref::{Mutability, TypeRef},
@@ -488,15 +488,19 @@ pub(crate) struct ExprCollector<DB> {
     params: Vec<PatId>,
     body_expr: Option<ExprId>,
     resolver: Resolver,
-    // FIXEME: Its a quick hack,see issue #1196
-    is_in_macro: bool,
+    // Expr collector expands macros along the way. original points to the file
+    // we started with, current points to the current macro expansion. source
+    // maps don't support macros yet, so we only record info into source map if
+    // current == original (see #1196)
+    original_file_id: HirFileId,
+    current_file_id: HirFileId,
 }
 
 impl<'a, DB> ExprCollector<&'a DB>
 where
     DB: HirDatabase,
 {
-    fn new(owner: DefWithBody, resolver: Resolver, db: &'a DB) -> Self {
+    fn new(owner: DefWithBody, file_id: HirFileId, resolver: Resolver, db: &'a DB) -> Self {
         ExprCollector {
             owner,
             resolver,
@@ -506,23 +510,23 @@ where
             source_map: BodySourceMap::default(),
             params: Vec::new(),
             body_expr: None,
-            is_in_macro: false,
+            original_file_id: file_id,
+            current_file_id: file_id,
         }
     }
     fn alloc_expr(&mut self, expr: Expr, syntax_ptr: SyntaxNodePtr) -> ExprId {
         let id = self.exprs.alloc(expr);
-        if !self.is_in_macro {
+        if self.current_file_id == self.original_file_id {
             self.source_map.expr_map.insert(syntax_ptr, id);
             self.source_map.expr_map_back.insert(id, syntax_ptr);
         }
-
         id
     }
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.pats.alloc(pat);
 
-        if !self.is_in_macro {
+        if self.current_file_id == self.original_file_id {
             self.source_map.pat_map.insert(ptr, id);
             self.source_map.pat_map_back.insert(id, ptr);
         }
@@ -815,12 +819,19 @@ where
                 // very hacky.FIXME change to use the macro resolution
                 let path = e.path().and_then(Path::from_ast);
 
-                if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, e) {
+                let ast_id = self
+                    .db
+                    .ast_id_map(self.current_file_id)
+                    .ast_id(e)
+                    .with_file_id(self.current_file_id);
+
+                if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, ast_id) {
                     if let Some(expr) = expand_macro_to_expr(self.db, call_id, e.token_tree()) {
                         log::debug!("macro expansion {}", expr.syntax().debug_dump());
-                        let old = std::mem::replace(&mut self.is_in_macro, true);
+                        let old_file_id =
+                            std::mem::replace(&mut self.current_file_id, call_id.into());
                         let id = self.collect_expr(&expr);
-                        self.is_in_macro = old;
+                        self.current_file_id = old_file_id;
                         id
                     } else {
                         // FIXME: Instead of just dropping the error from expansion
@@ -1006,12 +1017,24 @@ pub(crate) fn body_with_source_map_query(
     db: &impl HirDatabase,
     def: DefWithBody,
 ) -> (Arc<Body>, Arc<BodySourceMap>) {
-    let mut collector = ExprCollector::new(def, def.resolver(db), db);
+    let mut collector;
 
     match def {
-        DefWithBody::Const(ref c) => collector.collect_const_body(&c.source(db).1),
-        DefWithBody::Function(ref f) => collector.collect_fn_body(&f.source(db).1),
-        DefWithBody::Static(ref s) => collector.collect_static_body(&s.source(db).1),
+        DefWithBody::Const(ref c) => {
+            let (file_id, src) = c.source(db);
+            collector = ExprCollector::new(def, file_id, def.resolver(db), db);
+            collector.collect_const_body(&src)
+        }
+        DefWithBody::Function(ref f) => {
+            let (file_id, src) = f.source(db);
+            collector = ExprCollector::new(def, file_id, def.resolver(db), db);
+            collector.collect_fn_body(&src)
+        }
+        DefWithBody::Static(ref s) => {
+            let (file_id, src) = s.source(db);
+            collector = ExprCollector::new(def, file_id, def.resolver(db), db);
+            collector.collect_static_body(&src)
+        }
     }
 
     let (body, source_map) = collector.finish();
