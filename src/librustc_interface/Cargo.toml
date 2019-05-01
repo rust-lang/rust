@@ -24,6 +24,7 @@ rustc_borrowck = { path = "../librustc_borrowck" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_traits = { path = "../librustc_traits" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
@@ -34,3 +35,4 @@ rustc_errors = { path = "../librustc_errors" }
 rustc_plugin = { path = "../librustc_plugin" }
 rustc_privacy = { path = "../librustc_privacy" }
 rustc_resolve = { path = "../librustc_resolve" }
+tempfile = "3.0.5"

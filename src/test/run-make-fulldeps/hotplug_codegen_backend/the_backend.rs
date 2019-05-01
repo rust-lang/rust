@@ -15,7 +15,7 @@ use rustc::session::Session;
 use rustc::session::config::OutputFilenames;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
-use rustc::middle::cstore::MetadataLoader;
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::dep_graph::DepGraph;
 use rustc::util::common::ErrorReported;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -61,6 +61,8 @@ impl CodegenBackend for TheBackend {
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        _metadata: EncodedMetadata,
+        _need_metadata_module: bool,
         _rx: mpsc::Receiver<Box<Any + Send>>
     ) -> Box<Any> {
         use rustc::hir::def_id::LOCAL_CRATE;
