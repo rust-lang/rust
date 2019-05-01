@@ -12,7 +12,7 @@ fn dogfood() {
     let output = std::process::Command::new(clippy_cmd)
         .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
-        .arg("clippy")
+        .arg("clippy-preview")
         .arg("--all-targets")
         .arg("--all-features")
         .arg("--")
