@@ -35,13 +35,12 @@ mod test2 {
         test3::inner_func();
     }
     mod test3 {
-    use super::*;
-    pub fn inner_func() {
-        let _ = <()>::a();
-        let _ = ().b();
+        use super::*;
+        pub fn inner_func() {
+            let _ = <()>::a();
+            let _ = ().b();
+        }
     }
-}
-
 }
 
 fn main() {
