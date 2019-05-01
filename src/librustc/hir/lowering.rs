@@ -4671,7 +4671,7 @@ impl<'a> LoweringContext<'a> {
                 // The construct was introduced in #21984.
                 // FIXME(60253): Is this still necessary?
                 // Also, add the attributes to the outer returned expr node.
-                return self.expr_use(head_sp, match_expr, e.attrs.clone())
+                return self.expr_drop_temps(head_sp, match_expr, e.attrs.clone())
             }
 
             // Desugar `ExprKind::Try`
@@ -5030,15 +5030,19 @@ impl<'a> LoweringContext<'a> {
         )
     }
 
-    /// Wrap the given `expr` in `hir::ExprKind::Use`.
+    /// Wrap the given `expr` in a terminating scope using `hir::ExprKind::DropTemps`.
     ///
-    /// In terms of drop order, it has the same effect as
-    /// wrapping `expr` in `{ let _t = $expr; _t }` but
-    /// should provide better compile-time performance.
+    /// In terms of drop order, it has the same effect as wrapping `expr` in
+    /// `{ let _t = $expr; _t }` but should provide better compile-time performance.
     ///
     /// The drop order can be important in e.g. `if expr { .. }`.
-    fn expr_use(&mut self, span: Span, expr: P<hir::Expr>, attrs: ThinVec<Attribute>) -> hir::Expr {
-        self.expr(span, hir::ExprKind::Use(expr), attrs)
+    fn expr_drop_temps(
+        &mut self,
+        span: Span,
+        expr: P<hir::Expr>,
+        attrs: ThinVec<Attribute>
+    ) -> hir::Expr {
+        self.expr(span, hir::ExprKind::DropTemps(expr), attrs)
     }
 
     fn expr_match(
