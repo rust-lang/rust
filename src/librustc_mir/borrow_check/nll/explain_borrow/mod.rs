@@ -4,7 +4,7 @@ use crate::borrow_check::borrow_set::BorrowData;
 use crate::borrow_check::error_reporting::UseSpans;
 use crate::borrow_check::nll::region_infer::{Cause, RegionName};
 use crate::borrow_check::nll::ConstraintDescription;
-use crate::borrow_check::{Context, MirBorrowckCtxt, WriteKind};
+use crate::borrow_check::{MirBorrowckCtxt, WriteKind};
 use rustc::mir::{
     CastKind, ConstraintCategory, FakeReadCause, Local, Location, Mir, Operand, Place, PlaceBase,
     Projection, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind,
@@ -209,13 +209,13 @@ impl BorrowExplanation {
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Returns structured explanation for *why* the borrow contains the
-    /// point from `context`. This is key for the "3-point errors"
+    /// point from `location`. This is key for the "3-point errors"
     /// [described in the NLL RFC][d].
     ///
     /// # Parameters
     ///
     /// - `borrow`: the borrow in question
-    /// - `context`: where the borrow occurs
+    /// - `location`: where the borrow occurs
     /// - `kind_place`: if Some, this describes the statement that triggered the error.
     ///   - first half is the kind of write, if any, being performed
     ///   - second half is the place being accessed
@@ -223,13 +223,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// [d]: https://rust-lang.github.io/rfcs/2094-nll.html#leveraging-intuition-framing-errors-in-terms-of-points
     pub(in crate::borrow_check) fn explain_why_borrow_contains_point(
         &self,
-        context: Context,
+        location: Location,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, &Place<'tcx>)>,
     ) -> BorrowExplanation {
         debug!(
-            "explain_why_borrow_contains_point(context={:?}, borrow={:?}, kind_place={:?})",
-            context, borrow, kind_place
+            "explain_why_borrow_contains_point(location={:?}, borrow={:?}, kind_place={:?})",
+            location, borrow, kind_place
         );
 
         let regioncx = &self.nonlexical_regioncx;
@@ -242,20 +242,20 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             borrow_region_vid
         );
 
-        let region_sub = regioncx.find_sub_region_live_at(borrow_region_vid, context.loc);
+        let region_sub = regioncx.find_sub_region_live_at(borrow_region_vid, location);
         debug!(
             "explain_why_borrow_contains_point: region_sub={:?}",
             region_sub
         );
 
-        match find_use::find(mir, regioncx, tcx, region_sub, context.loc) {
+        match find_use::find(mir, regioncx, tcx, region_sub, location) {
             Some(Cause::LiveVar(local, location)) => {
                 let span = mir.source_info(location).span;
                 let spans = self
                     .move_spans(&Place::Base(PlaceBase::Local(local)), location)
                     .or_else(|| self.borrow_spans(span, location));
 
-                let borrow_location = context.loc;
+                let borrow_location = location;
                 if self.is_use_in_later_iteration_of_loop(borrow_location, location) {
                     let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
