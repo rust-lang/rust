@@ -862,7 +862,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         // Walk the generated async arguments if this is an `async fn`, otherwise walk the
         // normal arguments.
         if let IsAsync::Async { ref arguments, .. } = asyncness {
-            for a in arguments { add_argument(&a.arg); }
+            for (i, a) in arguments.iter().enumerate() {
+                if let Some(arg) = &a.arg {
+                    add_argument(&arg);
+                } else {
+                    add_argument(&declaration.inputs[i]);
+                }
+            }
         } else {
             for a in &declaration.inputs { add_argument(a); }
         }
@@ -882,8 +888,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                     let mut body = body.clone();
                     // Insert the generated statements into the body before attempting to
                     // resolve names.
-                    for a in arguments {
-                        body.stmts.insert(0, a.stmt.clone());
+                    for a in arguments.iter().rev() {
+                        if let Some(pat_stmt) = a.pat_stmt.clone() {
+                            body.stmts.insert(0, pat_stmt);
+                        }
+                        body.stmts.insert(0, a.move_stmt.clone());
                     }
                     self.visit_block(&body);
                 } else {

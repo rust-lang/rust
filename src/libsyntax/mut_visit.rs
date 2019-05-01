@@ -694,12 +694,20 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T)
         IsAsync::Async { closure_id, return_impl_trait_id, ref mut arguments } => {
             vis.visit_id(closure_id);
             vis.visit_id(return_impl_trait_id);
-            for AsyncArgument { ident, arg, stmt } in arguments.iter_mut() {
+            for AsyncArgument { ident, arg, pat_stmt, move_stmt } in arguments.iter_mut() {
                 vis.visit_ident(ident);
-                vis.visit_arg(arg);
-                visit_clobber(stmt, |stmt| {
+                if let Some(arg) = arg {
+                    vis.visit_arg(arg);
+                }
+                visit_clobber(move_stmt, |stmt| {
                     vis.flat_map_stmt(stmt)
                         .expect_one("expected visitor to produce exactly one item")
+                });
+                visit_opt(pat_stmt, |stmt| {
+                    visit_clobber(stmt, |stmt| {
+                        vis.flat_map_stmt(stmt)
+                            .expect_one("expected visitor to produce exactly one item")
+                    })
                 });
             }
         }

@@ -1865,10 +1865,14 @@ pub enum Unsafety {
 pub struct AsyncArgument {
     /// `__arg0`
     pub ident: Ident,
-    /// `__arg0: <ty>` argument to replace existing function argument `<pat>: <ty>`.
-    pub arg: Arg,
-    /// `let <pat>: <ty> = __arg0;` statement to be inserted at the start of the block.
-    pub stmt: Stmt,
+    /// `__arg0: <ty>` argument to replace existing function argument `<pat>: <ty>`. Only if
+    /// argument is not a simple binding.
+    pub arg: Option<Arg>,
+    /// `let __arg0 = __arg0;` statement to be inserted at the start of the block.
+    pub move_stmt: Stmt,
+    /// `let <pat> = __arg0;` statement to be inserted at the start of the block, after matching
+    /// move statement. Only if argument is not a simple binding.
+    pub pat_stmt: Option<Stmt>,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

@@ -8880,11 +8880,37 @@ impl<'a> Parser<'a> {
                 let name = format!("__arg{}", index);
                 let ident = Ident::from_str(&name);
 
+                // Check if this is a ident pattern, if so, we can optimize and avoid adding a
+                // `let <pat> = __argN;` statement, instead just adding a `let <pat> = <pat>;`
+                // statement.
+                let (ident, is_simple_pattern) = match input.pat.node {
+                    PatKind::Ident(_, ident, _) => (ident, true),
+                    _ => (ident, false),
+                };
+
                 // Construct an argument representing `__argN: <ty>` to replace the argument of the
-                // async function.
-                let arg = Arg {
-                    ty: input.ty.clone(),
-                    id,
+                // async function if it isn't a simple pattern.
+                let arg = if is_simple_pattern {
+                    None
+                } else {
+                    Some(Arg {
+                        ty: input.ty.clone(),
+                        id,
+                        pat: P(Pat {
+                            id,
+                            node: PatKind::Ident(
+                                BindingMode::ByValue(Mutability::Immutable), ident, None,
+                            ),
+                            span,
+                        }),
+                        source: ArgSource::AsyncFn(input.pat.clone()),
+                    })
+                };
+
+                // Construct a `let __argN = __argN;` statement to insert at the top of the
+                // async closure. This makes sure that the argument is captured by the closure and
+                // that the drop order is correct.
+                let move_local = Local {
                     pat: P(Pat {
                         id,
                         node: PatKind::Ident(
@@ -8892,13 +8918,6 @@ impl<'a> Parser<'a> {
                         ),
                         span,
                     }),
-                    source: ArgSource::AsyncFn(input.pat.clone()),
-                };
-
-                // Construct a `let <pat> = __argN;` statement to insert at the top of the
-                // async closure.
-                let local = P(Local {
-                    pat: input.pat.clone(),
                     // We explicitly do not specify the type for this statement. When the user's
                     // argument type is `impl Trait` then this would require the
                     // `impl_trait_in_bindings` feature to also be present for that same type to
@@ -8918,10 +8937,25 @@ impl<'a> Parser<'a> {
                     span,
                     attrs: ThinVec::new(),
                     source: LocalSource::AsyncFn,
-                });
-                let stmt = Stmt { id, node: StmtKind::Local(local), span, };
+                };
 
-                arguments.push(AsyncArgument { ident, arg, stmt });
+                // Construct a `let <pat> = __argN;` statement to insert at the top of the
+                // async closure if this isn't a simple pattern.
+                let pat_stmt = if is_simple_pattern {
+                    None
+                } else {
+                    Some(Stmt {
+                        id,
+                        node: StmtKind::Local(P(Local {
+                            pat: input.pat.clone(),
+                            ..move_local.clone()
+                        })),
+                        span,
+                    })
+                };
+
+                let move_stmt = Stmt { id, node: StmtKind::Local(P(move_local)), span };
+                arguments.push(AsyncArgument { ident, arg, pat_stmt, move_stmt });
             }
         }
     }
