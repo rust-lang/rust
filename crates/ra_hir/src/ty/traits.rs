@@ -348,13 +348,13 @@ pub(crate) fn implements(
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
     let solution = solve(db, krate, &u_canonical);
-    solution_from_chalk(db, solution)
+    solution.map(|solution| solution_from_chalk(db, solution))
 }
 
 fn solution_from_chalk(
     db: &impl HirDatabase,
-    solution: Option<chalk_solve::Solution>,
-) -> Option<Solution> {
+    solution: chalk_solve::Solution,
+) -> Solution {
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution>| {
         let value = subst
             .value
@@ -372,23 +372,22 @@ fn solution_from_chalk(
         SolutionVariables(result)
     };
     match solution {
-        Some(chalk_solve::Solution::Unique(constr_subst)) => {
+        chalk_solve::Solution::Unique(constr_subst) => {
             let subst = chalk_ir::Canonical {
                 value: constr_subst.value.subst,
                 binders: constr_subst.binders,
             };
-            Some(Solution::Unique(convert_subst(subst)))
+            Solution::Unique(convert_subst(subst))
         }
-        Some(chalk_solve::Solution::Ambig(chalk_solve::Guidance::Definite(subst))) => {
-            Some(Solution::Ambig(Guidance::Definite(convert_subst(subst))))
+        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Definite(subst)) => {
+            Solution::Ambig(Guidance::Definite(convert_subst(subst)))
         }
-        Some(chalk_solve::Solution::Ambig(chalk_solve::Guidance::Suggested(subst))) => {
-            Some(Solution::Ambig(Guidance::Suggested(convert_subst(subst))))
+        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Suggested(subst)) => {
+            Solution::Ambig(Guidance::Suggested(convert_subst(subst)))
         }
-        Some(chalk_solve::Solution::Ambig(chalk_solve::Guidance::Unknown)) => {
-            Some(Solution::Ambig(Guidance::Unknown))
+        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Unknown) => {
+            Solution::Ambig(Guidance::Unknown)
         }
-        None => None,
     }
 }
 
