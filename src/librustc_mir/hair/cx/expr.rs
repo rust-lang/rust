@@ -759,7 +759,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 }
             }
         }
-        hir::ExprKind::Use(ref source) => {
+        hir::ExprKind::DropTemps(ref source) => {
             ExprKind::Use { source: source.to_ref() }
         }
         hir::ExprKind::Box(ref value) => {

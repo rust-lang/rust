@@ -4671,7 +4671,7 @@ impl<'a> LoweringContext<'a> {
                 // The construct was introduced in #21984.
                 // FIXME(60253): Is this still necessary?
                 // Also, add the attributes to the outer returned expr node.
-                return self.expr_use(head_sp, match_expr, e.attrs.clone())
+                return self.expr_drop_temps(head_sp, match_expr, e.attrs.clone())
             }
 
             // Desugar `ExprKind::Try`
@@ -5030,15 +5030,19 @@ impl<'a> LoweringContext<'a> {
         )
     }
 
-    /// Wrap the given `expr` in `hir::ExprKind::Use`.
+    /// Wrap the given `expr` in a terminating scope using `hir::ExprKind::DropTemps`.
     ///
-    /// In terms of drop order, it has the same effect as
-    /// wrapping `expr` in `{ let _t = $expr; _t }` but
-    /// should provide better compile-time performance.
+    /// In terms of drop order, it has the same effect as wrapping `expr` in
+    /// `{ let _t = $expr; _t }` but should provide better compile-time performance.
     ///
     /// The drop order can be important in e.g. `if expr { .. }`.
-    fn expr_use(&mut self, span: Span, expr: P<hir::Expr>, attrs: ThinVec<Attribute>) -> hir::Expr {
-        self.expr(span, hir::ExprKind::Use(expr), attrs)
+    fn expr_drop_temps(
+        &mut self,
+        span: Span,
+        expr: P<hir::Expr>,
+        attrs: ThinVec<Attribute>
+    ) -> hir::Expr {
+        self.expr(span, hir::ExprKind::DropTemps(expr), attrs)
     }
 
     fn expr_match(
@@ -5399,4 +5403,66 @@ fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
     body_ids.sort_by_key(|b| bodies[b].value.span);
     body_ids
+}
+
+/// Checks if the specified expression is a built-in range literal.
+/// (See: `LoweringContext::lower_expr()`).
+pub fn is_range_literal(sess: &Session, expr: &hir::Expr) -> bool {
+    use hir::{Path, QPath, ExprKind, TyKind};
+
+    // Returns whether the given path represents a (desugared) range,
+    // either in std or core, i.e. has either a `::std::ops::Range` or
+    // `::core::ops::Range` prefix.
+    fn is_range_path(path: &Path) -> bool {
+        let segs: Vec<_> = path.segments.iter().map(|seg| seg.ident.as_str().to_string()).collect();
+        let segs: Vec<_> = segs.iter().map(|seg| &**seg).collect();
+
+        // "{{root}}" is the equivalent of `::` prefix in `Path`.
+        if let ["{{root}}", std_core, "ops", range] = segs.as_slice() {
+            (*std_core == "std" || *std_core == "core") && range.starts_with("Range")
+        } else {
+            false
+        }
+    };
+
+    // Check whether a span corresponding to a range expression is a
+    // range literal, rather than an explicit struct or `new()` call.
+    fn is_lit(sess: &Session, span: &Span) -> bool {
+        let source_map = sess.source_map();
+        let end_point = source_map.end_point(*span);
+
+        if let Ok(end_string) = source_map.span_to_snippet(end_point) {
+            !(end_string.ends_with("}") || end_string.ends_with(")"))
+        } else {
+            false
+        }
+    };
+
+    match expr.node {
+        // All built-in range literals but `..=` and `..` desugar to `Struct`s.
+        ExprKind::Struct(ref qpath, _, _) => {
+            if let QPath::Resolved(None, ref path) = **qpath {
+                return is_range_path(&path) && is_lit(sess, &expr.span);
+            }
+        }
+
+        // `..` desugars to its struct path.
+        ExprKind::Path(QPath::Resolved(None, ref path)) => {
+            return is_range_path(&path) && is_lit(sess, &expr.span);
+        }
+
+        // `..=` desugars into `::std::ops::RangeInclusive::new(...)`.
+        ExprKind::Call(ref func, _) => {
+            if let ExprKind::Path(QPath::TypeRelative(ref ty, ref segment)) = func.node {
+                if let TyKind::Path(QPath::Resolved(None, ref path)) = ty.node {
+                    let new_call = segment.ident.as_str() == "new";
+                    return is_range_path(&path) && is_lit(sess, &expr.span) && new_call;
+                }
+            }
+        }
+
+        _ => {}
+    }
+
+    false
 }

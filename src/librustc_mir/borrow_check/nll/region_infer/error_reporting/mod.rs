@@ -674,8 +674,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         borrow_region: RegionVid,
         outlived_region: RegionVid,
     ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
-        let (category, from_closure, span) =
-            self.best_blame_constraint(mir, borrow_region, |r| r == outlived_region);
+        let (category, from_closure, span) = self.best_blame_constraint(
+            mir,
+            borrow_region,
+            |r| self.provides_universal_region(r, borrow_region, outlived_region)
+        );
         let outlived_fr_name =
             self.give_region_a_name(infcx, mir, upvars, mir_def_id, outlived_region, &mut 1);
         (category, from_closure, span, outlived_fr_name)

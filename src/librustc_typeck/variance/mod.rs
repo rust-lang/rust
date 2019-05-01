@@ -36,7 +36,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 }
 
 fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
-                             -> Lrc<CrateVariancesMap> {
+                             -> Lrc<CrateVariancesMap<'tcx>> {
     assert_eq!(crate_num, LOCAL_CRATE);
     let mut arena = arena::TypedArena::default();
     let terms_cx = terms::determine_parameters_to_be_inferred(tcx, &mut arena);
@@ -45,7 +45,7 @@ fn crate_variances<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
 }
 
 fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
-                          -> Lrc<Vec<ty::Variance>> {
+                          -> &'tcx [ty::Variance] {
     let id = tcx.hir().as_local_hir_id(item_def_id).expect("expected local def-id");
     let unsupported = || {
         // Variance not relevant.
@@ -88,6 +88,6 @@ fn variances_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_def_id: DefId)
 
     let crate_map = tcx.crate_variances(LOCAL_CRATE);
     crate_map.variances.get(&item_def_id)
-                       .unwrap_or(&crate_map.empty_variance)
-                       .clone()
+                       .map(|p| *p)
+                       .unwrap_or(&[])
 }

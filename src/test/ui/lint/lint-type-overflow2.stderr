@@ -1,4 +1,4 @@
-warning: literal out of range for i8
+warning: literal out of range for `i8`
   --> $DIR/lint-type-overflow2.rs:9:20
    |
 LL |     let x2: i8 = --128;
@@ -10,25 +10,25 @@ note: lint level defined here
 LL | #![warn(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-warning: literal out of range for f32
+warning: literal out of range for `f32`
   --> $DIR/lint-type-overflow2.rs:11:14
    |
 LL |     let x = -3.40282357e+38_f32;
    |              ^^^^^^^^^^^^^^^^^^
 
-warning: literal out of range for f32
+warning: literal out of range for `f32`
   --> $DIR/lint-type-overflow2.rs:12:14
    |
 LL |     let x =  3.40282357e+38_f32;
    |              ^^^^^^^^^^^^^^^^^^
 
-warning: literal out of range for f64
+warning: literal out of range for `f64`
   --> $DIR/lint-type-overflow2.rs:13:14
    |
 LL |     let x = -1.7976931348623159e+308_f64;
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: literal out of range for f64
+warning: literal out of range for `f64`
   --> $DIR/lint-type-overflow2.rs:14:14
    |
 LL |     let x =  1.7976931348623159e+308_f64;

@@ -1,4 +1,4 @@
-error: literal out of range for u8
+error: literal out of range for `u8`
   --> $DIR/deny-overflowing-literals.rs:2:17
    |
 LL |     let x: u8 = 256;

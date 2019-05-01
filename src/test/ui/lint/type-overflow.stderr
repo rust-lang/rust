@@ -1,4 +1,4 @@
-warning: literal out of range for i8
+warning: literal out of range for `i8`
   --> $DIR/type-overflow.rs:5:17
    |
 LL |     let error = 255i8;

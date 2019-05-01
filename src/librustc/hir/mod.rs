@@ -1366,7 +1366,7 @@ impl Expr {
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
-            ExprKind::Use(ref expr, ..) => expr.precedence(),
+            ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
             ExprKind::If(..) => ExprPrecedence::If,
             ExprKind::While(..) => ExprPrecedence::While,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
@@ -1438,7 +1438,7 @@ impl Expr {
             ExprKind::Binary(..) |
             ExprKind::Yield(..) |
             ExprKind::Cast(..) |
-            ExprKind::Use(..) |
+            ExprKind::DropTemps(..) |
             ExprKind::Err => {
                 false
             }
@@ -1488,10 +1488,12 @@ pub enum ExprKind {
     Cast(P<Expr>, P<Ty>),
     /// A type reference (e.g., `Foo`).
     Type(P<Expr>, P<Ty>),
-    /// Semantically equivalent to `{ let _t = expr; _t }`.
-    /// Maps directly to `hair::ExprKind::Use`.
-    /// Only exists to tweak the drop order in HIR.
-    Use(P<Expr>),
+    /// Wraps the expression in a terminating scope.
+    /// This makes it semantically equivalent to `{ let _t = expr; _t }`.
+    ///
+    /// This construct only exists to tweak the drop order in HIR lowering.
+    /// An example of that is the desugaring of `for` loops.
+    DropTemps(P<Expr>),
     /// An `if` block, with an optional else block.
     ///
     /// I.e., `if <expr> { <expr> } else { <expr> }`.
