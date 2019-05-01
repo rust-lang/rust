@@ -202,7 +202,6 @@ fn iterate_trait_method_candidates<T>(
                             }
                         }
                         known_implemented = true;
-                        // TODO the self type is now canonicalized...
                         if let Some(result) = callback(&ty.value, m) {
                             return Some(result);
                         }

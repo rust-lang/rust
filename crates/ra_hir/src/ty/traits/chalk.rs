@@ -40,9 +40,7 @@ impl ToChalk for Ty {
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             // FIXME this is clearly incorrect, but probably not too incorrect
             // and I'm not sure what to actually do with Ty::Unknown
-            Ty::Unknown => {
-                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: 0 }.to_ty()
-            },
+            Ty::Unknown => PlaceholderIndex { ui: UniverseIndex::ROOT, idx: 0 }.to_ty(),
         }
     }
     fn from_chalk(db: &impl HirDatabase, chalk: chalk_ir::Ty) -> Self {
@@ -189,7 +187,9 @@ where
             fundamental: false,
         };
         let where_clauses = Vec::new(); // FIXME add where clauses
-        let trait_datum_bound = chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags };
+        let associated_ty_ids = Vec::new(); // FIXME add associated tys
+        let trait_datum_bound =
+            chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
         let trait_datum = TraitDatum { binders: make_binders(trait_datum_bound, bound_vars.len()) };
         Arc::new(trait_datum)
     }
@@ -288,6 +288,15 @@ where
     ) -> (Arc<AssociatedTyDatum>, &'p [Parameter], &'p [Parameter]) {
         debug!("split_projection {:?}", projection);
         unimplemented!()
+    }
+    fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause> {
+        debug!("custom_clauses");
+        vec![]
+    }
+    fn all_structs(&self) -> Vec<chalk_ir::StructId> {
+        debug!("all_structs");
+        // FIXME
+        vec![]
     }
 }
 
