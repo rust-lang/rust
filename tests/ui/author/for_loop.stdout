@@ -1,5 +1,5 @@
 if_chain! {
-    if let ExprKind::Use(ref expr) = expr.node;
+    if let ExprKind::DropTemps(ref expr) = expr.node;
     if let ExprKind::Match(ref expr1, ref arms, MatchSource::ForLoopDesugar) = expr.node;
     if let ExprKind::Call(ref func, ref args) = expr1.node;
     if let ExprKind::Path(ref path) = func.node;

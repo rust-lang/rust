@@ -495,9 +495,9 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
             ExprKind::Err => {
                 println!("Err = {}", current);
             },
-            ExprKind::Use(ref expr) => {
+            ExprKind::DropTemps(ref expr) => {
                 let expr_pat = self.next("expr");
-                println!("Use(ref {}) = {};", expr_pat, current);
+                println!("DropTemps(ref {}) = {};", expr_pat, current);
                 self.current = expr_pat;
                 self.visit_expr(expr);
             },
