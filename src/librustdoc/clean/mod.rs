@@ -8,7 +8,6 @@ pub mod cfg;
 mod simplify;
 mod auto_trait;
 mod blanket_impl;
-pub mod def_ctor;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::sync::Lrc;
@@ -22,8 +21,7 @@ use rustc::mir::interpret::{GlobalId, ConstValue};
 use rustc::hir::{self, HirVec};
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::map::DisambiguatedDefPathData;
-use rustc::ty::subst::{Kind, InternalSubsts, SubstsRef, UnpackedKind};
+use rustc::ty::subst::{InternalSubsts, SubstsRef, UnpackedKind};
 use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::ty::layout::VariantIdx;
@@ -35,7 +33,7 @@ use syntax::source_map::{dummy_spanned, Spanned};
 use syntax::ptr::P;
 use syntax::symbol::keywords::{self, Keyword};
 use syntax::symbol::InternedString;
-use syntax_pos::{self, DUMMY_SP, Pos, FileName};
+use syntax_pos::{self, Pos, FileName};
 
 use std::collections::hash_map::Entry;
 use std::fmt;
@@ -3777,40 +3775,13 @@ pub struct Impl {
     pub blanket_impl: Option<Type>,
 }
 
-pub fn get_auto_traits_with_hir_id(
-    cx: &DocContext<'_>,
-    id: hir::HirId,
-    name: String
-) -> Vec<Item> {
-    let finder = AutoTraitFinder::new(cx);
-    finder.get_with_hir_id(id, name)
-}
-
-pub fn get_auto_traits_with_def_id(
-    cx: &DocContext<'_>,
-    id: DefId
-) -> Vec<Item> {
-    let finder = AutoTraitFinder::new(cx);
-
-    finder.get_with_def_id(id)
-}
-
-pub fn get_blanket_impls_with_hir_id(
-    cx: &DocContext<'_>,
-    id: hir::HirId,
-    name: String
-) -> Vec<Item> {
-    let finder = BlanketImplFinder::new(cx);
-    finder.get_with_hir_id(id, name)
-}
-
-pub fn get_blanket_impls_with_def_id(
-    cx: &DocContext<'_>,
-    id: DefId
-) -> Vec<Item> {
-    let finder = BlanketImplFinder::new(cx);
-
-    finder.get_with_def_id(id)
+pub fn get_auto_trait_and_blanket_impls(
+    cx: &DocContext<'tcx>,
+    ty: Ty<'tcx>,
+    param_env_def_id: DefId,
+) -> impl Iterator<Item = Item> {
+    AutoTraitFinder::new(cx).get_auto_trait_impls(ty, param_env_def_id).into_iter()
+        .chain(BlanketImplFinder::new(cx).get_blanket_impls(ty, param_env_def_id))
 }
 
 impl Clean<Vec<Item>> for doctree::Impl {
@@ -4462,124 +4433,7 @@ pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
     }
 }
 
-pub fn get_path_for_type(
-    tcx: TyCtxt<'_, '_, '_>,
-    def_id: DefId,
-    def_ctor: impl Fn(DefId) -> Def,
-) -> hir::Path {
-    use rustc::ty::print::Printer;
-
-    struct AbsolutePathPrinter<'a, 'tcx> {
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    }
-
-    impl Printer<'tcx, 'tcx> for AbsolutePathPrinter<'_, 'tcx> {
-        type Error = !;
-
-        type Path = Vec<String>;
-        type Region = ();
-        type Type = ();
-        type DynExistential = ();
-
-        fn tcx(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
-            self.tcx
-        }
-
-        fn print_region(
-            self,
-            _region: ty::Region<'_>,
-        ) -> Result<Self::Region, Self::Error> {
-            Ok(())
-        }
-
-        fn print_type(
-            self,
-            _ty: Ty<'tcx>,
-        ) -> Result<Self::Type, Self::Error> {
-            Ok(())
-        }
-
-        fn print_dyn_existential(
-            self,
-            _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
-        ) -> Result<Self::DynExistential, Self::Error> {
-            Ok(())
-        }
-
-        fn path_crate(
-            self,
-            cnum: CrateNum,
-        ) -> Result<Self::Path, Self::Error> {
-            Ok(vec![self.tcx.original_crate_name(cnum).to_string()])
-        }
-        fn path_qualified(
-            self,
-            self_ty: Ty<'tcx>,
-            trait_ref: Option<ty::TraitRef<'tcx>>,
-        ) -> Result<Self::Path, Self::Error> {
-            // This shouldn't ever be needed, but just in case:
-            Ok(vec![match trait_ref {
-                Some(trait_ref) => format!("{:?}", trait_ref),
-                None => format!("<{}>", self_ty),
-            }])
-        }
-
-        fn path_append_impl(
-            self,
-            print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-            _disambiguated_data: &DisambiguatedDefPathData,
-            self_ty: Ty<'tcx>,
-            trait_ref: Option<ty::TraitRef<'tcx>>,
-        ) -> Result<Self::Path, Self::Error> {
-            let mut path = print_prefix(self)?;
-
-            // This shouldn't ever be needed, but just in case:
-            path.push(match trait_ref {
-                Some(trait_ref) => {
-                    format!("<impl {} for {}>", trait_ref, self_ty)
-                }
-                None => format!("<impl {}>", self_ty),
-            });
-
-            Ok(path)
-        }
-        fn path_append(
-            self,
-            print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-            disambiguated_data: &DisambiguatedDefPathData,
-        ) -> Result<Self::Path, Self::Error> {
-            let mut path = print_prefix(self)?;
-            path.push(disambiguated_data.data.as_interned_str().to_string());
-            Ok(path)
-        }
-        fn path_generic_args(
-            self,
-            print_prefix: impl FnOnce(Self) -> Result<Self::Path, Self::Error>,
-            _args: &[Kind<'tcx>],
-        ) -> Result<Self::Path, Self::Error> {
-            print_prefix(self)
-        }
-    }
-
-    let names = AbsolutePathPrinter { tcx: tcx.global_tcx() }
-        .print_def_path(def_id, &[])
-        .unwrap();
-
-    hir::Path {
-        span: DUMMY_SP,
-        def: def_ctor(def_id),
-        segments: hir::HirVec::from_vec(names.iter().map(|s| hir::PathSegment {
-            ident: ast::Ident::from_str(&s),
-            hir_id: None,
-            def: None,
-            args: None,
-            infer_types: false,
-        }).collect())
-    }
-}
-
 // End of code copied from rust-clippy
-
 
 #[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
 enum RegionTarget<'tcx> {
@@ -4597,21 +4451,6 @@ struct RegionDeps<'tcx> {
 enum SimpleBound {
     TraitBound(Vec<PathSegment>, Vec<SimpleBound>, Vec<GenericParamDef>, hir::TraitBoundModifier),
     Outlives(Lifetime),
-}
-
-enum AutoTraitResult {
-    ExplicitImpl,
-    PositiveImpl(Generics),
-    NegativeImpl,
-}
-
-impl AutoTraitResult {
-    fn is_auto(&self) -> bool {
-        match *self {
-            AutoTraitResult::PositiveImpl(_) | AutoTraitResult::NegativeImpl => true,
-            _ => false,
-        }
-    }
 }
 
 impl From<GenericBound> for SimpleBound {

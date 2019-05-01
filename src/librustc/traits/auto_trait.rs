@@ -44,7 +44,6 @@ impl<A> AutoTraitResult<A> {
 pub struct AutoTraitInfo<'cx> {
     pub full_user_env: ty::ParamEnv<'cx>,
     pub region_data: RegionConstraintData<'cx>,
-    pub names_map: FxHashSet<String>,
     pub vid_to_region: FxHashMap<ty::RegionVid, ty::Region<'cx>>,
 }
 
@@ -77,15 +76,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     /// in the future.
     pub fn find_auto_trait_generics<A>(
         &self,
-        did: DefId,
+        ty: Ty<'tcx>,
+        orig_env: ty::ParamEnv<'tcx>,
         trait_did: DefId,
-        generics: &ty::Generics,
         auto_trait_callback: impl for<'i> Fn(&InferCtxt<'_, 'tcx, 'i>, AutoTraitInfo<'i>) -> A,
     ) -> AutoTraitResult<A> {
         let tcx = self.tcx;
-        let ty = self.tcx.type_of(did);
-
-        let orig_params = tcx.param_env(did);
 
         let trait_ref = ty::TraitRef {
             def_id: trait_did,
@@ -98,16 +94,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             let mut selcx = SelectionContext::with_negative(&infcx, true);
             let result = selcx.select(&Obligation::new(
                 ObligationCause::dummy(),
-                orig_params,
+                orig_env,
                 trait_pred.to_poly_trait_predicate(),
             ));
 
             match result {
                 Ok(Some(Vtable::VtableImpl(_))) => {
                     debug!(
-                        "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): \
+                        "find_auto_trait_generics({:?}): \
                          manual impl found, bailing out",
-                        did, trait_did, generics
+                        trait_ref
                     );
                     true
                 }
@@ -158,11 +154,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
             let (new_env, user_env) = match self.evaluate_predicates(
                 &mut infcx,
-                did,
                 trait_did,
                 ty,
-                orig_params.clone(),
-                orig_params,
+                orig_env,
+                orig_env,
                 &mut fresh_preds,
                 false,
             ) {
@@ -172,24 +167,23 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
             let (full_env, full_user_env) = self.evaluate_predicates(
                 &mut infcx,
-                did,
                 trait_did,
                 ty,
-                new_env.clone(),
+                new_env,
                 user_env,
                 &mut fresh_preds,
                 true,
             ).unwrap_or_else(|| {
                 panic!(
                     "Failed to fully process: {:?} {:?} {:?}",
-                    ty, trait_did, orig_params
+                    ty, trait_did, orig_env
                 )
             });
 
             debug!(
-                "find_auto_trait_generics(did={:?}, trait_did={:?}, generics={:?}): fulfilling \
+                "find_auto_trait_generics({:?}): fulfilling \
                  with {:?}",
-                did, trait_did, generics, full_env
+                trait_ref, full_env
             );
             infcx.clear_caches();
 
@@ -211,15 +205,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 )
             });
 
-            let names_map: FxHashSet<String> = generics
-                .params
-                .iter()
-                .filter_map(|param| match param.kind {
-                    ty::GenericParamDefKind::Lifetime => Some(param.name.to_string()),
-                    _ => None,
-                })
-                .collect();
-
             let body_id_map: FxHashMap<_, _> = infcx
                 .region_obligations
                 .borrow()
@@ -227,7 +212,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 .map(|&(id, _)| (id, vec![]))
                 .collect();
 
-            infcx.process_registered_region_obligations(&body_id_map, None, full_env.clone());
+            infcx.process_registered_region_obligations(&body_id_map, None, full_env);
 
             let region_data = infcx
                 .borrow_region_constraints()
@@ -239,7 +224,6 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             let info = AutoTraitInfo {
                 full_user_env,
                 region_data,
-                names_map,
                 vid_to_region,
             };
 
@@ -286,10 +270,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     // the final synthesized generics: we don't want our generated docs page to contain something
     // like 'T: Copy + Clone', as that's redundant. Therefore, we keep track of a separate
     // 'user_env', which only holds the predicates that will actually be displayed to the user.
-    pub fn evaluate_predicates<'b, 'gcx, 'c>(
+    fn evaluate_predicates<'b, 'gcx, 'c>(
         &self,
         infcx: &InferCtxt<'b, 'tcx, 'c>,
-        ty_did: DefId,
         trait_did: DefId,
         ty: Ty<'c>,
         param_env: ty::ParamEnv<'c>,
@@ -314,13 +297,13 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let mut user_computed_preds: FxHashSet<_> =
             user_env.caller_bounds.iter().cloned().collect();
 
-        let mut new_env = param_env.clone();
+        let mut new_env = param_env;
         let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
 
         while let Some(pred) = predicates.pop_front() {
             infcx.clear_caches();
 
-            if !already_visited.insert(pred.clone()) {
+            if !already_visited.insert(pred) {
                 continue;
             }
 
@@ -368,7 +351,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
-                            ty::Predicate::Trait(pred.clone()),
+                            ty::Predicate::Trait(pred),
                         );
                         predicates.push_back(pred);
                     } else {
@@ -387,7 +370,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
 
             computed_preds.extend(user_computed_preds.iter().cloned());
             let normalized_preds =
-                elaborate_predicates(tcx, computed_preds.clone().into_iter().collect());
+                elaborate_predicates(tcx, computed_preds.iter().cloned().collect());
             new_env = ty::ParamEnv::new(
                 tcx.mk_predicates(normalized_preds),
                 param_env.reveal,
@@ -401,9 +384,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             None
         );
         debug!(
-            "evaluate_nested_obligations(ty_did={:?}, trait_did={:?}): succeeded with '{:?}' \
+            "evaluate_nested_obligations(ty={:?}, trait_did={:?}): succeeded with '{:?}' \
              '{:?}'",
-            ty_did, trait_did, new_env, final_user_env
+            ty, trait_did, new_env, final_user_env
         );
 
         return Some((new_env, final_user_env));
@@ -522,28 +505,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
     }
 
-    pub fn region_name(&self, region: Region<'_>) -> Option<String> {
-        match region {
-            &ty::ReEarlyBound(r) => Some(r.name.to_string()),
-            _ => None,
-        }
-    }
-
-    pub fn get_lifetime(&self, region: Region<'_>,
-                        names_map: &FxHashMap<String, String>) -> String {
-        self.region_name(region)
-            .map(|name|
-                names_map.get(&name).unwrap_or_else(||
-                    panic!("Missing lifetime with name {:?} for {:?}", name, region)
-                )
-            )
-            .cloned()
-            .unwrap_or_else(|| "'static".to_owned())
-    }
-
     // This is very similar to handle_lifetimes. However, instead of matching ty::Region's
     // to each other, we match ty::RegionVid's to ty::Region's
-    pub fn map_vid_to_region<'cx>(
+    fn map_vid_to_region<'cx>(
         &self,
         regions: &RegionConstraintData<'cx>,
     ) -> FxHashMap<ty::RegionVid, ty::Region<'cx>> {
@@ -653,7 +617,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         }
     }
 
-    pub fn evaluate_nested_obligations<
+    fn evaluate_nested_obligations<
         'b,
         'c,
         'd,
@@ -672,10 +636,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         let dummy_cause = ObligationCause::misc(DUMMY_SP, hir::DUMMY_HIR_ID);
 
         for (obligation, mut predicate) in nested
-            .map(|o| (o.clone(), o.predicate.clone()))
+            .map(|o| (o.clone(), o.predicate))
         {
             let is_new_pred =
-                fresh_preds.insert(self.clean_pred(select.infcx(), predicate.clone()));
+                fresh_preds.insert(self.clean_pred(select.infcx(), predicate));
 
             // Resolve any inference variables that we can, to help selection succeed
             predicate = select.infcx().resolve_type_vars_if_possible(&predicate);
@@ -693,14 +657,14 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             // We check this by calling is_of_param on the relevant types
             // from the various possible predicates
             match &predicate {
-                &ty::Predicate::Trait(ref p) => {
+                &ty::Predicate::Trait(p) => {
                     if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
                         && is_new_pred {
 
                         self.add_user_pred(computed_preds, predicate);
                     }
-                    predicates.push_back(p.clone());
+                    predicates.push_back(p);
                 }
                 &ty::Predicate::Projection(p) => {
                     debug!("evaluate_nested_obligations: examining projection predicate {:?}",
@@ -742,7 +706,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     if p.ty().skip_binder().has_infer_types() {
                         debug!("Projecting and unifying projection predicate {:?}",
                                predicate);
-                        match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
+                        match poly_project_and_unify_type(select, &obligation.with(p)) {
                             Err(e) => {
                                 debug!(
                                     "evaluate_nested_obligations: Unable to unify predicate \

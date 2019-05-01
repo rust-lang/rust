@@ -2,10 +2,10 @@ use rustc_lint;
 use rustc::session::{self, config};
 use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
 use rustc::hir::def::Def;
-use rustc::hir::{self, HirId, HirVec};
+use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 use rustc::lint::{self, LintPass};
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
@@ -16,13 +16,9 @@ use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
 use rustc_target::spec::TargetTriple;
 
-use syntax::ast::{self, Ident};
 use syntax::source_map;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
-use syntax::ptr::P;
-use syntax::symbol::keywords;
-use syntax_pos::DUMMY_SP;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 use parking_lot::ReentrantMutex;
@@ -36,7 +32,7 @@ use std::rc::Rc;
 use crate::visit_ast::RustdocVisitor;
 use crate::config::{Options as RustdocOptions, RenderOptions};
 use crate::clean;
-use crate::clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
+use crate::clean::{Clean, MAX_DEF_ID, AttributesExt};
 use crate::html::render::RenderInfo;
 
 use crate::passes;
@@ -74,8 +70,9 @@ pub struct DocContext<'tcx> {
     pub send_trait: Option<DefId>,
     pub fake_def_ids: RefCell<FxHashMap<CrateNum, DefId>>,
     pub all_fake_def_ids: RefCell<FxHashSet<DefId>>,
-    /// Maps (type_id, trait_id) -> auto trait impl
-    pub generated_synthetics: RefCell<FxHashSet<(DefId, DefId)>>,
+    /// Auto-trait or blanket impls processed so far, as `(self_ty, trait_def_id)`.
+    // FIXME(eddyb) make this a `ty::TraitRef<'tcx>` set.
+    pub generated_synthetics: RefCell<FxHashSet<(Ty<'tcx>, DefId)>>,
     pub all_traits: Vec<DefId>,
 }
 
@@ -171,98 +168,6 @@ impl<'tcx> DocContext<'tcx> {
             None
         } else {
             self.tcx.hir().as_local_hir_id(def_id)
-        }
-    }
-
-    pub fn get_real_ty<F>(&self,
-                          def_id: DefId,
-                          def_ctor: &F,
-                          real_name: &Option<Ident>,
-                          generics: &ty::Generics,
-    ) -> hir::Ty
-    where F: Fn(DefId) -> Def {
-        let path = get_path_for_type(self.tcx, def_id, def_ctor);
-        let mut segments = path.segments.into_vec();
-        let last = segments.pop().expect("segments were empty");
-
-        segments.push(hir::PathSegment::new(
-            real_name.unwrap_or(last.ident),
-            None,
-            None,
-            self.generics_to_path_params(generics.clone()),
-            false,
-        ));
-
-        let new_path = hir::Path {
-            span: path.span,
-            def: path.def,
-            segments: HirVec::from_vec(segments),
-        };
-
-        hir::Ty {
-            node: hir::TyKind::Path(hir::QPath::Resolved(None, P(new_path))),
-            span: DUMMY_SP,
-            hir_id: hir::DUMMY_HIR_ID,
-        }
-    }
-
-    pub fn generics_to_path_params(&self, generics: ty::Generics) -> hir::GenericArgs {
-        let mut args = vec![];
-
-        for param in generics.params.iter() {
-            match param.kind {
-                ty::GenericParamDefKind::Lifetime => {
-                    let name = if param.name == "" {
-                        hir::ParamName::Plain(keywords::StaticLifetime.ident())
-                    } else {
-                        hir::ParamName::Plain(ast::Ident::from_interned_str(param.name))
-                    };
-
-                    args.push(hir::GenericArg::Lifetime(hir::Lifetime {
-                        hir_id: hir::DUMMY_HIR_ID,
-                        span: DUMMY_SP,
-                        name: hir::LifetimeName::Param(name),
-                    }));
-                }
-                ty::GenericParamDefKind::Type { .. } => {
-                    args.push(hir::GenericArg::Type(self.ty_param_to_ty(param.clone())));
-                }
-                ty::GenericParamDefKind::Const => {
-                    args.push(hir::GenericArg::Const(hir::ConstArg {
-                        value: hir::AnonConst {
-                            hir_id: hir::DUMMY_HIR_ID,
-                            body: hir::BodyId {
-                                hir_id: hir::DUMMY_HIR_ID,
-                            }
-                        },
-                        span: DUMMY_SP,
-                    }))
-                }
-            }
-        }
-
-        hir::GenericArgs {
-            args: HirVec::from_vec(args),
-            bindings: HirVec::new(),
-            parenthesized: false,
-        }
-    }
-
-    pub fn ty_param_to_ty(&self, param: ty::GenericParamDef) -> hir::Ty {
-        debug!("ty_param_to_ty({:?}) {:?}", param, param.def_id);
-        hir::Ty {
-            node: hir::TyKind::Path(hir::QPath::Resolved(
-                None,
-                P(hir::Path {
-                    span: DUMMY_SP,
-                    def: Def::TyParam(param.def_id),
-                    segments: HirVec::from_vec(vec![
-                        hir::PathSegment::from_ident(Ident::from_interned_str(param.name))
-                    ]),
-                }),
-            )),
-            span: DUMMY_SP,
-            hir_id: hir::DUMMY_HIR_ID,
         }
     }
 }
