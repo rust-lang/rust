@@ -153,9 +153,14 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::traits::impls_for_trait)]
     fn impls_for_trait(&self, krate: Crate, trait_: Trait) -> Arc<[ImplBlock]>;
 
+    /// This provides the Chalk trait solver instance. Because Chalk always
+    /// works from a specific crate, this query is keyed on the crate; and
+    /// because Chalk does its own internal caching, the solver is wrapped in a
+    /// Mutex and the query is marked volatile, to make sure the cached state is
+    /// thrown away when input facts change.
     #[salsa::invoke(crate::ty::traits::solver)]
     #[salsa::volatile]
-    fn chalk_solver(&self, krate: Crate) -> Arc<Mutex<chalk_solve::Solver>>;
+    fn solver(&self, krate: Crate) -> Arc<Mutex<crate::ty::traits::Solver>>;
 }
 
 #[test]

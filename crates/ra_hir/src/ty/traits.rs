@@ -10,13 +10,15 @@ use self::chalk::{ToChalk, from_chalk};
 
 mod chalk;
 
+pub(crate) type Solver = chalk_solve::Solver;
+
 #[derive(Debug, Copy, Clone)]
 struct ChalkContext<'a, DB> {
     db: &'a DB,
     krate: Crate,
 }
 
-pub(crate) fn solver(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<chalk_solve::Solver>> {
+pub(crate) fn solver(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
     // krate parameter is just so we cache a unique solver per crate
     let solver_choice = chalk_solve::SolverChoice::SLG { max_size: 10 };
     Arc::new(Mutex::new(solver_choice.into_solver()))
@@ -48,7 +50,7 @@ fn solve(
     goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal>>,
 ) -> Option<chalk_solve::Solution> {
     let context = ChalkContext { db, krate };
-    let solver = db.chalk_solver(krate);
+    let solver = db.solver(krate);
     let solution = solver.lock().unwrap().solve(&context, goal);
     eprintln!("solve({:?}) => {:?}", goal, solution);
     solution
