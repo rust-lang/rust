@@ -61,7 +61,6 @@ where
     pub fn canonicalize_trait_ref(&mut self, trait_ref: TraitRef) -> Canonical<TraitRef> {
         let substs = trait_ref
             .substs
-            .0
             .iter()
             .map(|ty| self.canonicalize_ty(ty.clone()).value)
             .collect::<Vec<_>>();

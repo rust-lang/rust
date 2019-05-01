@@ -13,6 +13,7 @@ mod infer;
 pub(crate) mod display;
 
 use std::sync::Arc;
+use std::ops::Deref;
 use std::{fmt, mem};
 
 use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams};
@@ -155,14 +156,6 @@ impl Substs {
         Substs(self.0.iter().cloned().take(n).collect::<Vec<_>>().into())
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Ty> {
-        self.0.iter()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         // Without an Arc::make_mut_slice, we can't avoid the clone here:
         let mut v: Vec<_> = self.0.iter().cloned().collect();
@@ -210,6 +203,14 @@ impl From<Vec<Ty>> for Substs {
     }
 }
 
+impl Deref for Substs {
+    type Target = [Ty];
+
+    fn deref(&self) -> &[Ty] {
+        &self.0
+    }
+}
+
 /// A trait with type parameters. This includes the `Self`, so this represents a concrete type implementing the trait.
 /// Name to be bikeshedded: TraitBound? TraitImplements?
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -221,7 +222,7 @@ pub struct TraitRef {
 
 impl TraitRef {
     pub fn self_ty(&self) -> &Ty {
-        &self.substs.0[0]
+        &self.substs[0]
     }
 
     pub fn subst(mut self, substs: &Substs) -> TraitRef {
@@ -399,8 +400,8 @@ impl Ty {
     pub fn subst(self, substs: &Substs) -> Ty {
         self.fold(&mut |ty| match ty {
             Ty::Param { idx, name } => {
-                if (idx as usize) < substs.0.len() {
-                    substs.0[idx as usize].clone()
+                if (idx as usize) < substs.len() {
+                    substs[idx as usize].clone()
                 } else {
                     Ty::Param { idx, name }
                 }
@@ -413,8 +414,8 @@ impl Ty {
     pub fn subst_bound_vars(self, substs: &Substs) -> Ty {
         self.fold(&mut |ty| match ty {
             Ty::Bound(idx) => {
-                if (idx as usize) < substs.0.len() {
-                    substs.0[idx as usize].clone()
+                if (idx as usize) < substs.len() {
+                    substs[idx as usize].clone()
                 } else {
                     Ty::Bound(idx)
                 }
@@ -466,8 +467,8 @@ impl HirDisplay for ApplicationTy {
             TypeCtor::Never => write!(f, "!")?,
             TypeCtor::Tuple => {
                 let ts = &self.parameters;
-                if ts.0.len() == 1 {
-                    write!(f, "({},)", ts.0[0].display(f.db))?;
+                if ts.len() == 1 {
+                    write!(f, "({},)", ts[0].display(f.db))?;
                 } else {
                     write!(f, "(")?;
                     f.write_joined(&*ts.0, ", ")?;
@@ -491,7 +492,7 @@ impl HirDisplay for ApplicationTy {
                     CallableDef::Function(_) => write!(f, "fn {}", name)?,
                     CallableDef::Struct(_) | CallableDef::EnumVariant(_) => write!(f, "{}", name)?,
                 }
-                if self.parameters.0.len() > 0 {
+                if self.parameters.len() > 0 {
                     write!(f, "<")?;
                     f.write_joined(&*self.parameters.0, ", ")?;
                     write!(f, ">")?;
@@ -507,7 +508,7 @@ impl HirDisplay for ApplicationTy {
                 }
                 .unwrap_or_else(Name::missing);
                 write!(f, "{}", name)?;
-                if self.parameters.0.len() > 0 {
+                if self.parameters.len() > 0 {
                     write!(f, "<")?;
                     f.write_joined(&*self.parameters.0, ", ")?;
                     write!(f, ">")?;
