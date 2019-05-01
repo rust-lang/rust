@@ -249,7 +249,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                 Err(err) => {
                     tidy_error!(
                         bad,
-                        "libsyntax/feature_gate.rs:{}: failed to parse since: {} ({})",
+                        "libsyntax/feature_gate.rs:{}: failed to parse since: {} ({:?})",
                         line_number,
                         since_str,
                         err,
