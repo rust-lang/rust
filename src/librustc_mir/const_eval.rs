@@ -59,7 +59,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     let span = tcx.def_span(cid.instance.def_id());
     let mut ecx = mk_eval_cx(tcx, span, param_env);
-    eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
+    eval_body_using_ecx(&mut ecx, cid, mir, param_env)
 }
 
 fn mplace_to_const<'tcx>(
@@ -107,37 +107,15 @@ fn op_to_const<'tcx>(
     ty::Const { val, ty: op.layout.ty }
 }
 
-fn eval_body_and_ecx<'a, 'mir, 'tcx>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    cid: GlobalId<'tcx>,
-    mir: Option<&'mir mir::Mir<'tcx>>,
-    param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, MPlaceTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
-    // we start out with the best span we have
-    // and try improving it down the road when more information is available
-    let span = tcx.def_span(cid.instance.def_id());
-    let span = mir.map(|mir| mir.span).unwrap_or(span);
-    let mut ecx = InterpretCx::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
-    let r = eval_body_using_ecx(&mut ecx, cid, mir, param_env);
-    (r, ecx)
-}
-
 // Returns a pointer to where the result lives
 fn eval_body_using_ecx<'mir, 'tcx>(
     ecx: &mut CompileTimeEvalContext<'_, 'mir, 'tcx>,
     cid: GlobalId<'tcx>,
-    mir: Option<&'mir mir::Mir<'tcx>>,
+    mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
-    let mut mir = match mir {
-        Some(mir) => mir,
-        None => ecx.load_mir(cid.instance.def)?,
-    };
-    if let Some(index) = cid.promoted {
-        mir = &mir.promoted[index];
-    }
     let layout = ecx.layout_of(mir.return_ty().subst(tcx, cid.instance.substs))?;
     assert!(!layout.is_unsized());
     let ret = ecx.allocate(layout, MemoryKind::Stack);
@@ -618,8 +596,19 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         return Err(ErrorHandled::Reported);
     }
 
-    let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.and_then(|place| {
+    let span = tcx.def_span(cid.instance.def_id());
+    let mut ecx = InterpretCx::new(tcx.at(span), key.param_env, CompileTimeInterpreter::new());
+
+    let res = ecx.load_mir(cid.instance.def);
+    res.map(|mir| {
+        if let Some(index) = cid.promoted {
+            &mir.promoted[index]
+        } else {
+            mir
+        }
+    }).and_then(
+        |mir| eval_body_using_ecx(&mut ecx, cid, mir, key.param_env)
+    ).and_then(|place| {
         Ok(RawConst {
             alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
             ty: place.layout.ty
