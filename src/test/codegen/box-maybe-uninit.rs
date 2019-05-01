@@ -1,6 +1,5 @@
 // compile-flags: -O
 #![crate_type="lib"]
-#![feature(maybe_uninit)]
 
 use std::mem::MaybeUninit;
 
