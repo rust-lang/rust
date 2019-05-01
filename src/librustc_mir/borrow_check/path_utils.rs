@@ -1,6 +1,5 @@
 use crate::borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation};
 use crate::borrow_check::places_conflict;
-use crate::borrow_check::Context;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
 use rustc::mir::{BasicBlock, Location, Mir, Place, PlaceBase};
@@ -27,7 +26,7 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     s: &mut S,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    _context: Context,
+    _location: Location,
     access_place: (AccessDepth, &Place<'tcx>),
     borrow_set: &BorrowSet<'tcx>,
     candidates: I,
