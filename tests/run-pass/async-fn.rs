@@ -1,7 +1,6 @@
 #![feature(
     async_await,
     await_macro,
-    futures_api,
 )]
 
 use std::{future::Future, pin::Pin, task::Poll, ptr};
