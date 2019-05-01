@@ -332,15 +332,11 @@ pub enum Variance {
 /// `tcx.variances_of()` to get the variance for a *particular*
 /// item.
 #[derive(HashStable)]
-pub struct CrateVariancesMap {
+pub struct CrateVariancesMap<'tcx> {
     /// For each item with generics, maps to a vector of the variance
     /// of its generics. If an item has no generics, it will have no
     /// entry.
-    pub variances: FxHashMap<DefId, Lrc<Vec<ty::Variance>>>,
-
-    /// An empty vector, useful for cloning.
-    #[stable_hasher(ignore)]
-    pub empty_variance: Lrc<Vec<ty::Variance>>,
+    pub variances: FxHashMap<DefId, &'tcx [ty::Variance]>,
 }
 
 impl Variance {
