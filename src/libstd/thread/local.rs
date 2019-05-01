@@ -344,7 +344,7 @@ pub mod fast {
     use crate::fmt;
     use crate::mem;
     use crate::ptr;
-    use crate::sys::fast_thread_local::{lookup_once, register_dtor};
+    use crate::sys::fast_thread_local::register_dtor;
 
     pub struct Key<T> {
         inner: UnsafeCell<Option<T>>,
@@ -371,12 +371,11 @@ pub mod fast {
         }
 
         pub unsafe fn get(&self) -> Option<&'static UnsafeCell<Option<T>>> {
-            let this = lookup_once(&self);
-            if mem::needs_drop::<T>() && this.dtor_running.get() {
+            if mem::needs_drop::<T>() && self.dtor_running.get() {
                 return None
             }
-            this.register_dtor();
-            Some(&*(&this.inner as *const _))
+            self.register_dtor();
+            Some(&*(&self.inner as *const _))
         }
 
         unsafe fn register_dtor(&self) {
@@ -396,7 +395,7 @@ pub mod fast {
         // destructor as running for this thread so calls to `get` will return
         // `None`.
         (*ptr).dtor_running.set(true);
-
+        
         ptr::drop_in_place((*ptr).inner.get());
     }
 }
