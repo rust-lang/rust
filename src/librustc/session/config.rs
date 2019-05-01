@@ -2181,6 +2181,12 @@ pub fn build_session_options_and_crate_config(
         TargetTriple::from_triple(host_triple())
     };
     let opt_level = {
+        // The `-O` and `-C opt-level` flags specify the same setting, so we want to be able
+        // to use them interchangeably. However, because they're technically different flags,
+        // we need to work out manually which should take precedence if both are supplied (i.e.
+        // the rightmost flag). We do this by finding the (rightmost) position of both flags and
+        // comparing them. Note that if a flag is not found, its position will be `None`, which
+        // always compared less than `Some(_)`.
         let max_o = matches.opt_positions("O").into_iter().max();
         let max_c = matches.opt_strs_pos("C").into_iter().flat_map(|(i, s)| {
             if let Some("opt-level") = s.splitn(2, '=').next() {
@@ -2213,6 +2219,9 @@ pub fn build_session_options_and_crate_config(
             }
         }
     };
+    // The `-g` and `-C debuginfo` flags specify the same setting, so we want to be able
+    // to use them interchangeably. See the note above (regarding `-O` and `-C opt-level`)
+    // for more details.
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let max_g = matches.opt_positions("g").into_iter().max();
     let max_c = matches.opt_strs_pos("C").into_iter().flat_map(|(i, s)| {
