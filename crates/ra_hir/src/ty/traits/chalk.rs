@@ -36,7 +36,11 @@ impl ToChalk for Ty {
             }
             Ty::Bound(idx) => chalk_ir::Ty::BoundVar(idx as usize),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
-            Ty::Unknown => unimplemented!(), // TODO turn into placeholder?
+            // FIXME this is clearly incorrect, but probably not too incorrect
+            // and I'm not sure what to actually do with Ty::Unknown
+            Ty::Unknown => {
+                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: 0 }.to_ty()
+            },
         }
     }
     fn from_chalk(db: &impl HirDatabase, chalk: chalk_ir::Ty) -> Self {
