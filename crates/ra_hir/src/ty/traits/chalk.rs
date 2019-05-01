@@ -32,8 +32,7 @@ impl ToChalk for Ty {
         match self {
             Ty::Apply(apply_ty) => chalk_ir::Ty::Apply(apply_ty.to_chalk(db)),
             Ty::Param { idx, .. } => {
-                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }
-                    .to_ty()
+                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }.to_ty()
             }
             Ty::Bound(idx) => chalk_ir::Ty::BoundVar(idx as usize),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
@@ -74,9 +73,7 @@ impl ToChalk for ApplicationTy {
 
     fn from_chalk(db: &impl HirDatabase, apply_ty: chalk_ir::ApplicationTy) -> ApplicationTy {
         let ctor = match apply_ty.name {
-            TypeName::TypeKindId(TypeKindId::StructId(struct_id)) => {
-                from_chalk(db, struct_id)
-            }
+            TypeName::TypeKindId(TypeKindId::StructId(struct_id)) => from_chalk(db, struct_id),
             TypeName::TypeKindId(_) => unimplemented!(),
             TypeName::Placeholder(_) => unimplemented!(),
             TypeName::AssociatedType(_) => unimplemented!(),
@@ -267,7 +264,11 @@ where
             .map(|impl_block| impl_block.to_chalk(self.db))
             .collect()
     }
-    fn impl_provided_for(&self, auto_trait_id: chalk_ir::TraitId, struct_id: chalk_ir::StructId) -> bool {
+    fn impl_provided_for(
+        &self,
+        auto_trait_id: chalk_ir::TraitId,
+        struct_id: chalk_ir::StructId,
+    ) -> bool {
         eprintln!("impl_provided_for {:?}, {:?}", auto_trait_id, struct_id);
         false // FIXME
     }

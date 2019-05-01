@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use chalk_ir::cast::Cast;
 
 use crate::{Crate, Trait, db::HirDatabase, ImplBlock};
-use super::{TraitRef, Ty, infer::Canonical};
+use super::{TraitRef, Ty, Canonical};
 
 use self::chalk::{ToChalk, from_chalk};
 
@@ -86,10 +86,7 @@ pub(crate) fn implements(
     solution.map(|solution| solution_from_chalk(db, solution))
 }
 
-fn solution_from_chalk(
-    db: &impl HirDatabase,
-    solution: chalk_solve::Solution,
-) -> Solution {
+fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -> Solution {
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution>| {
         let value = subst
             .value

@@ -234,6 +234,17 @@ impl TraitRef {
     }
 }
 
+/// Basically a claim (currently not validated / checked) that the contained
+/// type / trait ref contains no inference variables; any inference variables it
+/// contained have been replaced by bound variables, and `num_vars` tells us how
+/// many there are. This is used to erase irrelevant differences between types
+/// before using them in queries.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Canonical<T> {
+    pub value: T,
+    pub num_vars: usize,
+}
+
 /// A function signature as seen by type inference: Several parameter types and
 /// one return type.
 #[derive(Clone, PartialEq, Eq, Debug)]

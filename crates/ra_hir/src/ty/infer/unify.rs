@@ -1,6 +1,8 @@
 //! Unification and canonicalization logic.
 
-use super::{InferenceContext, Ty, TraitRef, InferTy, HirDatabase};
+use crate::db::HirDatabase;
+use crate::ty::{Ty, Canonical, TraitRef, InferTy};
+use super::InferenceContext;
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>
@@ -12,13 +14,6 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 }
 
 // TODO improve the interface of this
-
-// TODO move further up?
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Canonical<T> {
-    pub value: T,
-    pub num_vars: usize,
-}
 
 pub(super) struct Canonicalizer<'a, 'b, D: HirDatabase>
 where
@@ -66,6 +61,19 @@ where
             .collect::<Vec<_>>();
         let value = TraitRef { trait_: trait_ref.trait_, substs: substs.into() };
         Canonical { value, num_vars: self.free_vars.len() }
+    }
+
+    pub fn decanonicalize_ty(&self, ty: Ty) -> Ty {
+        ty.fold(&mut |ty| match ty {
+            Ty::Bound(idx) => {
+                if (idx as usize) < self.free_vars.len() {
+                    Ty::Infer(self.free_vars[idx as usize].clone())
+                } else {
+                    Ty::Bound(idx)
+                }
+            }
+            ty => ty,
+        })
     }
 
     pub fn apply_solution(&mut self, solution: Canonical<Vec<Ty>>) {

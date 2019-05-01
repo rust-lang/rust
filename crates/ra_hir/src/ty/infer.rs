@@ -45,11 +45,10 @@ use crate::{
 use super::{
     Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
     traits::{Solution, Obligation, Guidance},
+    method_resolution,
 };
 
 mod unify;
-
-pub(super) use unify::Canonical;
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
@@ -878,9 +877,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         generic_args: Option<&GenericArgs>,
     ) -> Ty {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
-        let resolved = receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
+        let mut canonicalizer = self.canonicalizer();
+        let canonical_receiver = canonicalizer.canonicalize_ty(receiver_ty.clone());
+        let resolved = method_resolution::lookup_method(
+            &canonical_receiver,
+            canonicalizer.ctx.db,
+            method_name,
+            &canonicalizer.ctx.resolver,
+        );
         let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
             Some((ty, func)) => {
+                let ty = canonicalizer.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
                 (
                     ty,
