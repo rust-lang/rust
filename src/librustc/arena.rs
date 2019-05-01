@@ -144,6 +144,14 @@ impl<'tcx> Arena<'tcx> {
         }
     }
 
+    #[inline]
+    pub fn alloc_slice<T: Copy>(&self, value: &[T]) -> &mut [T] {
+        if value.len() == 0 {
+            return &mut []
+        }
+        self.dropless.alloc_slice(value)
+    }
+
     pub fn alloc_from_iter<
         T: ArenaAllocatable,
         I: IntoIterator<Item = T>
