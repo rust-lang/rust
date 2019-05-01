@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
-use rustc::hir::Node;
+use rustc::hir::{ExprKind, Node};
+use rustc::hir::lowering::is_range_literal;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
 use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
@@ -57,6 +58,347 @@ impl TypeLimits {
     }
 }
 
+/// Attempts to special-case the overflowing literal lint when it occurs as a range endpoint.
+/// Returns `true` iff the lint was overridden.
+fn lint_overflowing_range_endpoint<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    lit: &ast::Lit,
+    lit_val: u128,
+    max: u128,
+    expr: &'tcx hir::Expr,
+    parent_expr: &'tcx hir::Expr,
+    ty: impl std::fmt::Debug,
+) -> bool {
+    // We only want to handle exclusive (`..`) ranges,
+    // which are represented as `ExprKind::Struct`.
+    if let ExprKind::Struct(_, eps, _) = &parent_expr.node {
+        debug_assert_eq!(eps.len(), 2);
+        // We can suggest using an inclusive range
+        // (`..=`) instead only if it is the `end` that is
+        // overflowing and only by 1.
+        if eps[1].expr.hir_id == expr.hir_id && lit_val - 1 == max {
+            let mut err = cx.struct_span_lint(
+                OVERFLOWING_LITERALS,
+                parent_expr.span,
+                &format!("range endpoint is out of range for `{:?}`", ty),
+            );
+            if let Ok(start) = cx.sess().source_map().span_to_snippet(eps[0].span) {
+                use ast::{LitKind, LitIntType};
+                // We need to preserve the literal's suffix,
+                // as it may determine typing information.
+                let suffix = match lit.node {
+                    LitKind::Int(_, LitIntType::Signed(s)) => format!("{}", s),
+                    LitKind::Int(_, LitIntType::Unsigned(s)) => format!("{}", s),
+                    LitKind::Int(_, LitIntType::Unsuffixed) => "".to_owned(),
+                    _ => bug!(),
+                };
+                let suggestion = format!("{}..={}{}", start, lit_val - 1, suffix);
+                err.span_suggestion(
+                    parent_expr.span,
+                    &"use an inclusive range instead",
+                    suggestion,
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+// For `isize` & `usize`, be conservative with the warnings, so that the
+// warnings are consistent between 32- and 64-bit platforms.
+fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
+    match int_ty {
+        ast::IntTy::Isize => (i64::min_value() as i128, i64::max_value() as i128),
+        ast::IntTy::I8 => (i8::min_value() as i64 as i128, i8::max_value() as i128),
+        ast::IntTy::I16 => (i16::min_value() as i64 as i128, i16::max_value() as i128),
+        ast::IntTy::I32 => (i32::min_value() as i64 as i128, i32::max_value() as i128),
+        ast::IntTy::I64 => (i64::min_value() as i128, i64::max_value() as i128),
+        ast::IntTy::I128 =>(i128::min_value() as i128, i128::max_value()),
+    }
+}
+
+fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
+    match uint_ty {
+        ast::UintTy::Usize => (u64::min_value() as u128, u64::max_value() as u128),
+        ast::UintTy::U8 => (u8::min_value() as u128, u8::max_value() as u128),
+        ast::UintTy::U16 => (u16::min_value() as u128, u16::max_value() as u128),
+        ast::UintTy::U32 => (u32::min_value() as u128, u32::max_value() as u128),
+        ast::UintTy::U64 => (u64::min_value() as u128, u64::max_value() as u128),
+        ast::UintTy::U128 => (u128::min_value(), u128::max_value()),
+    }
+}
+
+fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &ast::Lit) -> Option<String> {
+    let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
+    let firstch = src.chars().next()?;
+
+    if firstch == '0' {
+        match src.chars().nth(1) {
+            Some('x') | Some('b') => return Some(src),
+            _ => return None,
+        }
+    }
+
+    None
+}
+
+fn report_bin_hex_error(
+    cx: &LateContext<'_, '_>,
+    expr: &hir::Expr,
+    ty: attr::IntType,
+    repr_str: String,
+    val: u128,
+    negative: bool,
+) {
+    let size = layout::Integer::from_attr(&cx.tcx, ty).size();
+    let (t, actually) = match ty {
+        attr::IntType::SignedInt(t) => {
+            let actually = sign_extend(val, size) as i128;
+            (format!("{:?}", t), actually.to_string())
+        }
+        attr::IntType::UnsignedInt(t) => {
+            let actually = truncate(val, size);
+            (format!("{:?}", t), actually.to_string())
+        }
+    };
+    let mut err = cx.struct_span_lint(
+        OVERFLOWING_LITERALS,
+        expr.span,
+        &format!("literal out of range for {}", t),
+    );
+    err.note(&format!(
+        "the literal `{}` (decimal `{}`) does not fit into \
+            an `{}` and will become `{}{}`",
+        repr_str, val, t, actually, t
+    ));
+    if let Some(sugg_ty) =
+        get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative)
+    {
+        if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
+            let (sans_suffix, _) = repr_str.split_at(pos);
+            err.span_suggestion(
+                expr.span,
+                &format!("consider using `{}` instead", sugg_ty),
+                format!("{}{}", sans_suffix, sugg_ty),
+                Applicability::MachineApplicable
+            );
+        } else {
+            err.help(&format!("consider using `{}` instead", sugg_ty));
+        }
+    }
+
+    err.emit();
+}
+
+// This function finds the next fitting type and generates a suggestion string.
+// It searches for fitting types in the following way (`X < Y`):
+//  - `iX`: if literal fits in `uX` => `uX`, else => `iY`
+//  - `-iX` => `iY`
+//  - `uX` => `uY`
+//
+// No suggestion for: `isize`, `usize`.
+fn get_type_suggestion<'a>(
+    t: Ty<'_>,
+    val: u128,
+    negative: bool,
+) -> Option<String> {
+    use syntax::ast::IntTy::*;
+    use syntax::ast::UintTy::*;
+    macro_rules! find_fit {
+        ($ty:expr, $val:expr, $negative:expr,
+         $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {
+            {
+                let _neg = if negative { 1 } else { 0 };
+                match $ty {
+                    $($type => {
+                        $(if !negative && val <= uint_ty_range($utypes).1 {
+                            return Some(format!("{:?}", $utypes))
+                        })*
+                        $(if val <= int_ty_range($itypes).1 as u128 + _neg {
+                            return Some(format!("{:?}", $itypes))
+                        })*
+                        None
+                    },)*
+                    _ => None
+                }
+            }
+        }
+    }
+    match t.sty {
+        ty::Int(i) => find_fit!(i, val, negative,
+                      I8 => [U8] => [I16, I32, I64, I128],
+                      I16 => [U16] => [I32, I64, I128],
+                      I32 => [U32] => [I64, I128],
+                      I64 => [U64] => [I128],
+                      I128 => [U128] => []),
+        ty::Uint(u) => find_fit!(u, val, negative,
+                      U8 => [U8, U16, U32, U64, U128] => [],
+                      U16 => [U16, U32, U64, U128] => [],
+                      U32 => [U32, U64, U128] => [],
+                      U64 => [U64, U128] => [],
+                      U128 => [U128] => []),
+        _ => None,
+    }
+}
+
+fn lint_int_literal<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    type_limits: &TypeLimits,
+    e: &'tcx hir::Expr,
+    lit: &ast::Lit,
+    t: ast::IntTy,
+    v: u128,
+) {
+    let int_type = if let ast::IntTy::Isize = t {
+        cx.sess().target.isize_ty
+    } else {
+        t
+    };
+
+    let (_, max) = int_ty_range(int_type);
+    let max = max as u128;
+    let negative = type_limits.negated_expr_id == e.hir_id;
+
+    // Detect literal value out of range [min, max] inclusive
+    // avoiding use of -min to prevent overflow/panic
+    if (negative && v > max + 1) || (!negative && v > max) {
+        if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
+            report_bin_hex_error(
+                cx,
+                e,
+                attr::IntType::SignedInt(t),
+                repr_str,
+                v,
+                negative,
+            );
+            return;
+        }
+
+        let par_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
+        if let Node::Expr(par_e) = cx.tcx.hir().get_by_hir_id(par_id) {
+            if let hir::ExprKind::Struct(..) = par_e.node {
+                if is_range_literal(cx.sess(), par_e)
+                    && lint_overflowing_range_endpoint(cx, lit, v, max, e, par_e, t)
+                {
+                    // The overflowing literal lint was overridden.
+                    return;
+                }
+            }
+        }
+
+        cx.span_lint(
+            OVERFLOWING_LITERALS,
+            e.span,
+            &format!("literal out of range for `{:?}`", t),
+        );
+    }
+}
+
+fn lint_uint_literal<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    e: &'tcx hir::Expr,
+    lit: &ast::Lit,
+    t: ast::UintTy,
+) {
+    let uint_type = if let ast::UintTy::Usize = t {
+        cx.sess().target.usize_ty
+    } else {
+        t
+    };
+    let (min, max) = uint_ty_range(uint_type);
+    let lit_val: u128 = match lit.node {
+        // _v is u8, within range by definition
+        ast::LitKind::Byte(_v) => return,
+        ast::LitKind::Int(v, _) => v,
+        _ => bug!(),
+    };
+    if lit_val < min || lit_val > max {
+        let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
+        if let Node::Expr(par_e) = cx.tcx.hir().get_by_hir_id(parent_id) {
+            match par_e.node {
+                hir::ExprKind::Cast(..) => {
+                    if let ty::Char = cx.tables.expr_ty(par_e).sty {
+                        let mut err = cx.struct_span_lint(
+                            OVERFLOWING_LITERALS,
+                            par_e.span,
+                            "only `u8` can be cast into `char`",
+                        );
+                        err.span_suggestion(
+                            par_e.span,
+                            &"use a `char` literal instead",
+                            format!("'\\u{{{:X}}}'", lit_val),
+                            Applicability::MachineApplicable,
+                        );
+                        err.emit();
+                        return;
+                    }
+                }
+                hir::ExprKind::Struct(..)
+                    if is_range_literal(cx.sess(), par_e) => {
+                        if lint_overflowing_range_endpoint(cx, lit, lit_val, max, e, par_e, t) {
+                            // The overflowing literal lint was overridden.
+                            return;
+                        }
+                    }
+                _ => {}
+            }
+        }
+        if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
+            report_bin_hex_error(cx, e, attr::IntType::UnsignedInt(t), repr_str, lit_val, false);
+            return;
+        }
+        cx.span_lint(
+            OVERFLOWING_LITERALS,
+            e.span,
+            &format!("literal out of range for `{:?}`", t),
+        );
+    }
+}
+
+fn lint_literal<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    type_limits: &TypeLimits,
+    e: &'tcx hir::Expr,
+    lit: &ast::Lit,
+) {
+    match cx.tables.node_type(e.hir_id).sty {
+        ty::Int(t) => {
+            match lit.node {
+                ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
+                ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
+                    lint_int_literal(cx, type_limits, e, lit, t, v)
+                }
+                _ => bug!(),
+            };
+        }
+        ty::Uint(t) => {
+            lint_uint_literal(cx, e, lit, t)
+        }
+        ty::Float(t) => {
+            let is_infinite = match lit.node {
+                ast::LitKind::Float(v, _) |
+                ast::LitKind::FloatUnsuffixed(v) => {
+                    match t {
+                        ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
+                        ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
+                    }
+                }
+                _ => bug!(),
+            };
+            if is_infinite == Ok(true) {
+                cx.span_lint(OVERFLOWING_LITERALS,
+                             e.span,
+                             &format!("literal out of range for `{:?}`", t));
+            }
+        }
+        _ => {}
+    }
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
         match e.node {
@@ -73,118 +415,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                  "comparison is useless due to type limits");
                 }
             }
-            hir::ExprKind::Lit(ref lit) => {
-                match cx.tables.node_type(e.hir_id).sty {
-                    ty::Int(t) => {
-                        match lit.node {
-                            ast::LitKind::Int(v, ast::LitIntType::Signed(_)) |
-                            ast::LitKind::Int(v, ast::LitIntType::Unsuffixed) => {
-                                let int_type = if let ast::IntTy::Isize = t {
-                                    cx.sess().target.isize_ty
-                                } else {
-                                    t
-                                };
-                                let (_, max) = int_ty_range(int_type);
-                                let max = max as u128;
-                                let negative = self.negated_expr_id == e.hir_id;
-
-                                // Detect literal value out of range [min, max] inclusive
-                                // avoiding use of -min to prevent overflow/panic
-                                if (negative && v > max + 1) || (!negative && v > max) {
-                                    if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-                                        report_bin_hex_error(
-                                            cx,
-                                            e,
-                                            attr::IntType::SignedInt(t),
-                                            repr_str,
-                                            v,
-                                            negative,
-                                        );
-                                        return;
-                                    }
-                                    cx.span_lint(
-                                        OVERFLOWING_LITERALS,
-                                        e.span,
-                                        &format!("literal out of range for {:?}", t),
-                                    );
-                                    return;
-                                }
-                            }
-                            _ => bug!(),
-                        };
-                    }
-                    ty::Uint(t) => {
-                        let uint_type = if let ast::UintTy::Usize = t {
-                            cx.sess().target.usize_ty
-                        } else {
-                            t
-                        };
-                        let (min, max) = uint_ty_range(uint_type);
-                        let lit_val: u128 = match lit.node {
-                            // _v is u8, within range by definition
-                            ast::LitKind::Byte(_v) => return,
-                            ast::LitKind::Int(v, _) => v,
-                            _ => bug!(),
-                        };
-                        if lit_val < min || lit_val > max {
-                            let parent_id = cx.tcx.hir().get_parent_node_by_hir_id(e.hir_id);
-                            if let Node::Expr(parent_expr) = cx.tcx.hir().get_by_hir_id(parent_id) {
-                                if let hir::ExprKind::Cast(..) = parent_expr.node {
-                                    if let ty::Char = cx.tables.expr_ty(parent_expr).sty {
-                                        let mut err = cx.struct_span_lint(
-                                                             OVERFLOWING_LITERALS,
-                                                             parent_expr.span,
-                                                             "only u8 can be cast into char");
-                                        err.span_suggestion(
-                                            parent_expr.span,
-                                            &"use a char literal instead",
-                                            format!("'\\u{{{:X}}}'", lit_val),
-                                            Applicability::MachineApplicable
-                                        );
-                                        err.emit();
-                                        return
-                                    }
-                                }
-                            }
-                            if let Some(repr_str) = get_bin_hex_repr(cx, lit) {
-                                report_bin_hex_error(
-                                    cx,
-                                    e,
-                                    attr::IntType::UnsignedInt(t),
-                                    repr_str,
-                                    lit_val,
-                                    false,
-                                );
-                                return;
-                            }
-                            cx.span_lint(
-                                OVERFLOWING_LITERALS,
-                                e.span,
-                                &format!("literal out of range for {:?}", t),
-                            );
-                        }
-                    }
-                    ty::Float(t) => {
-                        let is_infinite = match lit.node {
-                            ast::LitKind::Float(v, _) |
-                            ast::LitKind::FloatUnsuffixed(v) => {
-                                match t {
-                                    ast::FloatTy::F32 => v.as_str().parse().map(f32::is_infinite),
-                                    ast::FloatTy::F64 => v.as_str().parse().map(f64::is_infinite),
-                                }
-                            }
-                            _ => bug!(),
-                        };
-                        if is_infinite == Ok(true) {
-                            cx.span_lint(OVERFLOWING_LITERALS,
-                                         e.span,
-                                         &format!("literal out of range for {:?}", t));
-                        }
-                    }
-                    _ => (),
-                };
-            }
-            _ => (),
+            hir::ExprKind::Lit(ref lit) => lint_literal(cx, self, e, lit),
+            _ => {}
         };
 
         fn is_valid<T: cmp::PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
@@ -207,30 +439,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                                 hir::BinOpKind::Ge => hir::BinOpKind::Le,
                                 _ => return binop,
                             })
-        }
-
-        // for isize & usize, be conservative with the warnings, so that the
-        // warnings are consistent between 32- and 64-bit platforms
-        fn int_ty_range(int_ty: ast::IntTy) -> (i128, i128) {
-            match int_ty {
-                ast::IntTy::Isize => (i64::min_value() as i128, i64::max_value() as i128),
-                ast::IntTy::I8 => (i8::min_value() as i64 as i128, i8::max_value() as i128),
-                ast::IntTy::I16 => (i16::min_value() as i64 as i128, i16::max_value() as i128),
-                ast::IntTy::I32 => (i32::min_value() as i64 as i128, i32::max_value() as i128),
-                ast::IntTy::I64 => (i64::min_value() as i128, i64::max_value() as i128),
-                ast::IntTy::I128 =>(i128::min_value() as i128, i128::max_value()),
-            }
-        }
-
-        fn uint_ty_range(uint_ty: ast::UintTy) -> (u128, u128) {
-            match uint_ty {
-                ast::UintTy::Usize => (u64::min_value() as u128, u64::max_value() as u128),
-                ast::UintTy::U8 => (u8::min_value() as u128, u8::max_value() as u128),
-                ast::UintTy::U16 => (u16::min_value() as u128, u16::max_value() as u128),
-                ast::UintTy::U32 => (u32::min_value() as u128, u32::max_value() as u128),
-                ast::UintTy::U64 => (u64::min_value() as u128, u64::max_value() as u128),
-                ast::UintTy::U128 => (u128::min_value(), u128::max_value()),
-            }
         }
 
         fn check_limits(cx: &LateContext<'_, '_>,
@@ -288,119 +496,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                 hir::BinOpKind::Gt => true,
                 _ => false,
             }
-        }
-
-        fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &ast::Lit) -> Option<String> {
-            let src = cx.sess().source_map().span_to_snippet(lit.span).ok()?;
-            let firstch = src.chars().next()?;
-
-            if firstch == '0' {
-                match src.chars().nth(1) {
-                    Some('x') | Some('b') => return Some(src),
-                    _ => return None,
-                }
-            }
-
-            None
-        }
-
-        // This function finds the next fitting type and generates a suggestion string.
-        // It searches for fitting types in the following way (`X < Y`):
-        //  - `iX`: if literal fits in `uX` => `uX`, else => `iY`
-        //  - `-iX` => `iY`
-        //  - `uX` => `uY`
-        //
-        // No suggestion for: `isize`, `usize`.
-        fn get_type_suggestion<'a>(
-            t: Ty<'_>,
-            val: u128,
-            negative: bool,
-        ) -> Option<String> {
-            use syntax::ast::IntTy::*;
-            use syntax::ast::UintTy::*;
-            macro_rules! find_fit {
-                ($ty:expr, $val:expr, $negative:expr,
-                 $($type:ident => [$($utypes:expr),*] => [$($itypes:expr),*]),+) => {
-                    {
-                        let _neg = if negative { 1 } else { 0 };
-                        match $ty {
-                            $($type => {
-                                $(if !negative && val <= uint_ty_range($utypes).1 {
-                                    return Some(format!("{:?}", $utypes))
-                                })*
-                                $(if val <= int_ty_range($itypes).1 as u128 + _neg {
-                                    return Some(format!("{:?}", $itypes))
-                                })*
-                                None
-                            },)*
-                            _ => None
-                        }
-                    }
-                }
-            }
-            match t.sty {
-                ty::Int(i) => find_fit!(i, val, negative,
-                              I8 => [U8] => [I16, I32, I64, I128],
-                              I16 => [U16] => [I32, I64, I128],
-                              I32 => [U32] => [I64, I128],
-                              I64 => [U64] => [I128],
-                              I128 => [U128] => []),
-                ty::Uint(u) => find_fit!(u, val, negative,
-                              U8 => [U8, U16, U32, U64, U128] => [],
-                              U16 => [U16, U32, U64, U128] => [],
-                              U32 => [U32, U64, U128] => [],
-                              U64 => [U64, U128] => [],
-                              U128 => [U128] => []),
-                _ => None,
-            }
-        }
-
-        fn report_bin_hex_error(
-            cx: &LateContext<'_, '_>,
-            expr: &hir::Expr,
-            ty: attr::IntType,
-            repr_str: String,
-            val: u128,
-            negative: bool,
-        ) {
-            let size = layout::Integer::from_attr(&cx.tcx, ty).size();
-            let (t, actually) = match ty {
-                attr::IntType::SignedInt(t) => {
-                    let actually = sign_extend(val, size) as i128;
-                    (format!("{:?}", t), actually.to_string())
-                }
-                attr::IntType::UnsignedInt(t) => {
-                    let actually = truncate(val, size);
-                    (format!("{:?}", t), actually.to_string())
-                }
-            };
-            let mut err = cx.struct_span_lint(
-                OVERFLOWING_LITERALS,
-                expr.span,
-                &format!("literal out of range for {}", t),
-            );
-            err.note(&format!(
-                "the literal `{}` (decimal `{}`) does not fit into \
-                 an `{}` and will become `{}{}`",
-                repr_str, val, t, actually, t
-            ));
-            if let Some(sugg_ty) =
-                get_type_suggestion(&cx.tables.node_type(expr.hir_id), val, negative)
-            {
-                if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
-                    let (sans_suffix, _) = repr_str.split_at(pos);
-                    err.span_suggestion(
-                        expr.span,
-                        &format!("consider using `{}` instead", sugg_ty),
-                        format!("{}{}", sans_suffix, sugg_ty),
-                        Applicability::MachineApplicable
-                    );
-                } else {
-                    err.help(&format!("consider using `{}` instead", sugg_ty));
-                }
-            }
-
-            err.emit();
         }
     }
 }
