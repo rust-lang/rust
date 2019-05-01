@@ -2996,8 +2996,33 @@ impl<'a> LoweringContext<'a> {
             if let IsAsync::Async { closure_id, ref arguments, .. } = asyncness {
                 let mut body = body.clone();
 
+                // Async function arguments are lowered into the closure body so that they are
+                // captured and so that the drop order matches the equivalent non-async functions.
+                //
+                //     async fn foo(<pattern>: <ty>, <pattern>: <ty>, <pattern>: <ty>) {
+                //       async move {
+                //       }
+                //     }
+                //
+                //     // ...becomes...
+                //     fn foo(__arg0: <ty>, __arg1: <ty>, __arg2: <ty>) {
+                //       async move {
+                //         let __arg2 = __arg2;
+                //         let <pattern> = __arg2;
+                //         let __arg1 = __arg1;
+                //         let <pattern> = __arg1;
+                //         let __arg0 = __arg0;
+                //         let <pattern> = __arg0;
+                //       }
+                //     }
+                //
+                // If `<pattern>` is a simple ident, then it is lowered to a single
+                // `let <pattern> = <pattern>;` statement as an optimization.
                 for a in arguments.iter().rev() {
-                    body.stmts.insert(0, a.stmt.clone());
+                    if let Some(pat_stmt) = a.pat_stmt.clone() {
+                        body.stmts.insert(0, pat_stmt);
+                    }
+                    body.stmts.insert(0, a.move_stmt.clone());
                 }
 
                 let async_expr = this.make_async_expr(
@@ -3093,7 +3118,11 @@ impl<'a> LoweringContext<'a> {
                         let mut decl = decl.clone();
                         // Replace the arguments of this async function with the generated
                         // arguments that will be moved into the closure.
-                        decl.inputs = arguments.clone().drain(..).map(|a| a.arg).collect();
+                        for (i, a) in arguments.clone().drain(..).enumerate() {
+                            if let Some(arg) = a.arg {
+                                decl.inputs[i] = arg;
+                            }
+                        }
                         lower_fn(&decl)
                     } else {
                         lower_fn(decl)
@@ -3590,7 +3619,11 @@ impl<'a> LoweringContext<'a> {
                     let mut sig = sig.clone();
                     // Replace the arguments of this async function with the generated
                     // arguments that will be moved into the closure.
-                    sig.decl.inputs = arguments.clone().drain(..).map(|a| a.arg).collect();
+                    for (i, a) in arguments.clone().drain(..).enumerate() {
+                        if let Some(arg) = a.arg {
+                            sig.decl.inputs[i] = arg;
+                        }
+                    }
                     lower_method(&sig)
                 } else {
                     lower_method(sig)

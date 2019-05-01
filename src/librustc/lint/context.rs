@@ -1334,14 +1334,19 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         if let ast::IsAsync::Async { ref arguments, .. } = header.asyncness.node {
             for a in arguments {
                 // Visit the argument..
-                self.visit_pat(&a.arg.pat);
-                if let ast::ArgSource::AsyncFn(pat) = &a.arg.source {
-                    self.visit_pat(pat);
+                if let Some(arg) = &a.arg {
+                    self.visit_pat(&arg.pat);
+                    if let ast::ArgSource::AsyncFn(pat) = &arg.source {
+                        self.visit_pat(pat);
+                    }
+                    self.visit_ty(&arg.ty);
                 }
-                self.visit_ty(&a.arg.ty);
 
                 // ..and the statement.
-                self.visit_stmt(&a.stmt);
+                self.visit_stmt(&a.move_stmt);
+                if let Some(pat_stmt) = &a.pat_stmt {
+                    self.visit_stmt(&pat_stmt);
+                }
             }
         }
     }

@@ -1,0 +1,15 @@
+error[E0425]: cannot find value `__arg1` in this scope
+  --> $DIR/drop-order-locals-are-hidden.rs:7:16
+   |
+LL |     assert_eq!(__arg1, (1, 2, 3));
+   |                ^^^^^^ not found in this scope
+
+error[E0425]: cannot find value `__arg2` in this scope
+  --> $DIR/drop-order-locals-are-hidden.rs:8:16
+   |
+LL |     assert_eq!(__arg2, 4);
+   |                ^^^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
