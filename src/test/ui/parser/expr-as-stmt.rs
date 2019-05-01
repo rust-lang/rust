@@ -27,14 +27,14 @@ fn baz() -> i32 {
 
 fn qux(a: Option<u32>, b: Option<u32>) -> bool {
     if let Some(x) = a { true } else { false }
-    && //~ ERROR ambiguous parse
+    && //~ ERROR expected expression
     if let Some(y) = a { true } else { false }
 }
 
 fn moo(x: u32) -> bool {
     match x {
         _ => 1,
-    } > 0 //~ ERROR ambiguous parse
+    } > 0 //~ ERROR expected expression
 }
 
 fn main() {}

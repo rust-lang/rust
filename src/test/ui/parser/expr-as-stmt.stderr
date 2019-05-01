@@ -22,19 +22,19 @@ LL |     { 42 } + foo;
    |     |
    |     help: parenthesis are required to parse this as an expression: `({ 42 })`
 
-error: ambiguous parse
+error: expected expression, found `&&`
   --> $DIR/expr-as-stmt.rs:30:5
    |
 LL |     if let Some(x) = a { true } else { false }
    |     ------------------------------------------ help: parenthesis are required to parse this as an expression: `(if let Some(x) = a { true } else { false })`
 LL |     &&
-   |     ^^
+   |     ^^ expected expression
 
-error: ambiguous parse
+error: expected expression, found `>`
   --> $DIR/expr-as-stmt.rs:37:7
    |
 LL |     } > 0
-   |       ^
+   |       ^ expected expression
 help: parenthesis are required to parse this as an expression
    |
 LL |     (match x {

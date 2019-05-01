@@ -3649,13 +3649,14 @@ impl<'a> Parser<'a> {
                 return Ok(lhs);
             }
             (true, Some(_)) => {
-                // #54186, #54482, #59975
                 // We've found an expression that would be parsed as a statement, but the next
                 // token implies this should be parsed as an expression.
-                let mut err = self.sess.span_diagnostic.struct_span_err(
-                    self.span,
-                    "ambiguous parse",
-                );
+                // For example: `if let Some(x) = x { x } else { 0 } / 2`
+                let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &format!(
+                    "expected expression, found `{}`",
+                    pprust::token_to_string(&self.token),
+                ));
+                err.span_label(self.span, "expected expression");
                 let snippet = self.sess.source_map().span_to_snippet(lhs.span)
                     .unwrap_or_else(|_| pprust::expr_to_string(&lhs));
                 err.span_suggestion(
