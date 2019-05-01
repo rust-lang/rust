@@ -22,7 +22,7 @@ faerie = "0.10.0"
 ar = "0.6.1"
 bitflags = "1.0.3"
 byteorder = "1.2.7"
-libc = "0.2.50"
+libc = "0.2.53"
 tempfile = "3.0.7"
 env_logger = "0.6"
 gimli = { git = "https://github.com/gimli-rs/gimli.git" }
