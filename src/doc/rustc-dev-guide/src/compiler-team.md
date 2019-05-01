@@ -9,12 +9,9 @@ contributions to rustc and its design.
 
 ## Discussion
 
-Currently the compiler team chats in a number of places. There is an
-ongoing [thread] on the internals board about trying to find a permanent
-home. In any case, you can find people in one of three places at the moment:
+Currently the compiler team chats in 2 places:
 
-- The `#rustc` channel on mozilla's IRC (`irc.mozilla.org`)
-- The `t-compiler` stream on [the Zulip instance](https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler)
+- The `t-compiler` stream on [the Zulip instance][zulip]
 - The `compiler` channel on the [rust-lang discord](https://discord.gg/rust-lang)
 
 ## Expert map
@@ -50,14 +47,11 @@ The meeting currently takes place on Thursdays at 10am Boston time
 (UTC-4 typically, but daylight savings time sometimes makes things
 complicated).
 
-The meeting is held over a "chat medium" — it used to be IRC, but we
-are currently in the process of evaluating other alternatives. Check
-the [etherpad] to find the current home (and see
-[this internals thread][thread] for some ongoing discussion).
+The meeting is held over a "chat medium", currently on [zulip].
 
 [etherpad]: https://public.etherpad-mozilla.org/p/rust-compiler-meeting
-[thread]: https://internals.rust-lang.org/t/where-should-the-compiler-team-and-perhaps-working-groups-chat/7894
 [procedure]: https://forge.rust-lang.org/rustc-bug-fix-procedure.html
+[zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 ## Team membership
 
