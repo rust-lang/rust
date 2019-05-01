@@ -8878,7 +8878,7 @@ impl<'a> Parser<'a> {
 
                 // Construct a name for our temporary argument.
                 let name = format!("__arg{}", index);
-                let ident = Ident::from_str(&name);
+                let ident = Ident::from_str(&name).gensym();
 
                 // Check if this is a ident pattern, if so, we can optimize and avoid adding a
                 // `let <pat> = __argN;` statement, instead just adding a `let <pat> = <pat>;`

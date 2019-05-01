@@ -4183,7 +4183,7 @@ impl<'a> Resolver<'a> {
         let add_module_candidates = |module: Module<'_>, names: &mut Vec<TypoSuggestion>| {
             for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
                 if let Some(binding) = resolution.borrow().binding {
-                    if filter_fn(binding.def()) {
+                    if !ident.name.is_gensymed() && filter_fn(binding.def()) {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: binding.def().article(),
@@ -4201,7 +4201,7 @@ impl<'a> Resolver<'a> {
             for rib in self.ribs[ns].iter().rev() {
                 // Locals and type parameters
                 for (ident, def) in &rib.bindings {
-                    if filter_fn(*def) {
+                    if !ident.name.is_gensymed() && filter_fn(*def) {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: def.article(),
@@ -4228,7 +4228,7 @@ impl<'a> Resolver<'a> {
                                             index: CRATE_DEF_INDEX,
                                         });
 
-                                        if filter_fn(crate_mod) {
+                                        if !ident.name.is_gensymed() && filter_fn(crate_mod) {
                                             Some(TypoSuggestion {
                                                 candidate: ident.name,
                                                 article: "a",
@@ -4251,13 +4251,16 @@ impl<'a> Resolver<'a> {
             // Add primitive types to the mix
             if filter_fn(Def::PrimTy(Bool)) {
                 names.extend(
-                    self.primitive_type_table.primitive_types.iter().map(|(name, _)| {
-                        TypoSuggestion {
-                            candidate: *name,
-                            article: "a",
-                            kind: "primitive type",
-                        }
-                    })
+                    self.primitive_type_table.primitive_types
+                        .iter()
+                        .filter(|(name, _)| !name.is_gensymed())
+                        .map(|(name, _)| {
+                            TypoSuggestion {
+                                candidate: *name,
+                                article: "a",
+                                kind: "primitive type",
+                            }
+                        })
                 )
             }
         } else {
