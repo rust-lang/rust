@@ -371,7 +371,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 (bx, OperandRef {
                     val,
                     layout: self.cx.layout_of(self.cx.tcx().mk_ref(
-                        self.cx.tcx().types.re_erased,
+                        self.cx.tcx().lifetimes.re_erased,
                         ty::TypeAndMut { ty, mutbl: bk.to_mutbl_lossy() }
                     )),
                 })

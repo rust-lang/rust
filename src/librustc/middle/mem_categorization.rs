@@ -965,7 +965,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
         let re = if promotable {
-            self.tcx.types.re_static
+            self.tcx.lifetimes.re_static
         } else {
             self.temporary_scope(hir_id.local_id)
         };

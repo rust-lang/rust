@@ -370,7 +370,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        let least_region = least_region.unwrap_or(self.tcx.types.re_static);
+        let least_region = least_region.unwrap_or(self.tcx.lifetimes.re_static);
         debug!("constrain_opaque_types: least_region={:?}", least_region);
 
         // Require that the type `concrete_ty` outlives
@@ -608,7 +608,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                         err.emit();
                     }
                 }
-                self.tcx.types.re_empty
+                self.tcx.lifetimes.re_empty
             },
         }
     }

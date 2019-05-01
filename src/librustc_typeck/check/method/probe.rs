@@ -1079,7 +1079,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.
-        let region = tcx.types.re_erased;
+        let region = tcx.lifetimes.re_erased;
 
         let autoref_ty = tcx.mk_ref(region,
                                     ty::TypeAndMut {
@@ -1545,7 +1545,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                         GenericParamDefKind::Lifetime => {
                             // In general, during probe we erase regions. See
                             // `impl_self_ty()` for an explanation.
-                            self.tcx.types.re_erased.into()
+                            self.tcx.lifetimes.re_erased.into()
                         }
                         GenericParamDefKind::Type { .. }
                         | GenericParamDefKind::Const => {
@@ -1566,7 +1566,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn fresh_item_substs(&self, def_id: DefId) -> SubstsRef<'tcx> {
         InternalSubsts::for_item(self.tcx, def_id, |param, _| {
             match param.kind {
-                GenericParamDefKind::Lifetime => self.tcx.types.re_erased.into(),
+                GenericParamDefKind::Lifetime => self.tcx.lifetimes.re_erased.into(),
                 GenericParamDefKind::Type { .. } => {
                     self.next_ty_var(TypeVariableOrigin::SubstitutionPlaceholder(
                         self.tcx.def_span(def_id))).into()

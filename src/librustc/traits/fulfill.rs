@@ -359,7 +359,7 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                             // `for<'a> T: 'a where 'a not in T`, which we can treat as
                             // `T: 'static`.
                             Some(t_a) => {
-                                let r_static = self.selcx.tcx().types.re_static;
+                                let r_static = self.selcx.tcx().lifetimes.re_static;
                                 if self.register_region_obligations {
                                     self.selcx.infcx().register_region_obligation_with_cause(
                                         t_a,

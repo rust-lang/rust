@@ -138,8 +138,8 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
     /// empty region. The `expansion` phase will grow this larger.
     fn construct_var_data(&self, tcx: TyCtxt<'_, '_, 'tcx>) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
-            error_region: tcx.types.re_static,
-            values: IndexVec::from_elem_n(VarValue::Value(tcx.types.re_empty), self.num_vars())
+            error_region: tcx.lifetimes.re_static,
+            values: IndexVec::from_elem_n(VarValue::Value(tcx.lifetimes.re_empty), self.num_vars())
         }
     }
 
@@ -266,7 +266,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                 let b_universe = self.var_infos[b_vid].universe;
                 if let ty::RePlaceholder(p) = lub {
                     if b_universe.cannot_name(p.universe) {
-                        lub = self.tcx().types.re_static;
+                        lub = self.tcx().lifetimes.re_static;
                     }
                 }
 
@@ -348,7 +348,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
 
                 // otherwise, we don't know what the free region is,
                 // so we must conservatively say the LUB is static:
-                tcx.types.re_static
+                tcx.lifetimes.re_static
             }
 
             (&ReScope(a_id), &ReScope(b_id)) => {
@@ -371,7 +371,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             (&RePlaceholder(..), _) | (_, &RePlaceholder(..)) => if a == b {
                 a
             } else {
-                tcx.types.re_static
+                tcx.lifetimes.re_static
             },
         }
     }
@@ -598,7 +598,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
         for lower_bound in &lower_bounds {
             let effective_lower_bound = if let ty::RePlaceholder(p) = lower_bound.region {
                 if node_universe.cannot_name(p.universe) {
-                    self.tcx().types.re_static
+                    self.tcx().lifetimes.re_static
                 } else {
                     lower_bound.region
                 }

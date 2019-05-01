@@ -71,7 +71,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
             let origin = NLLRegionVariableOrigin::Existential;
             self.infcx.next_nll_region_var(origin)
         } else {
-            self.infcx.tcx.types.re_erased
+            self.infcx.tcx.lifetimes.re_erased
         }
     }
 
@@ -82,7 +82,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
         if let Some(borrowck_context) = &mut self.borrowck_context {
             borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
         } else {
-            self.infcx.tcx.types.re_erased
+            self.infcx.tcx.lifetimes.re_erased
         }
     }
 

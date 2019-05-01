@@ -1676,7 +1676,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     let ptr_ty = if this.ty.is_unsafe_ptr() {
                         tcx.mk_mut_ptr(nil)
                     } else {
-                        tcx.mk_mut_ref(tcx.types.re_static, nil)
+                        tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
                     };
                     return cx.layout_of(ptr_ty).map_same(|mut ptr_layout| {
                         ptr_layout.ty = this.ty;
@@ -1689,7 +1689,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     ty::Str => tcx.types.usize,
                     ty::Dynamic(_, _) => {
                         tcx.mk_imm_ref(
-                            tcx.types.re_static,
+                            tcx.lifetimes.re_static,
                             tcx.mk_array(tcx.types.usize, 3),
                         )
                         /* FIXME: use actual fn pointers
