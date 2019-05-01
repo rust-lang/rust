@@ -40,6 +40,15 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
             atom_pat(p, recovery_set);
             m.complete(p, RANGE_PAT);
         }
+        // test marco_pat
+        // fn main() {
+        //     let m!(x) = 0;
+        // }
+        else if lhs.kind() == PATH_PAT && p.at(EXCL) {
+            let m = lhs.precede(p);
+            items::macro_call_after_excl(p);
+            m.complete(p, MACRO_CALL);
+        }
     }
 }
 
@@ -51,7 +60,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let la1 = p.nth(1);
     if la0 == REF_KW
         || la0 == MUT_KW
-        || (la0 == IDENT && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY))
+        || (la0 == IDENT && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY || la1 == EXCL))
     {
         return Some(bind_pat(p, true));
     }
