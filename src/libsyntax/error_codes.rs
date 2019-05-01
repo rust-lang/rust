@@ -363,6 +363,35 @@ and likely to change in the future.
 
 "##,
 
+E0704: r##"
+This error indicates that a incorrect visibility restriction was specified.
+
+Example of erroneous code:
+
+```compile_fail,E0704
+mod foo {
+    pub(foo) struct Bar {
+        x: i32
+    }
+}
+```
+
+To make struct `Bar` only visible in module `foo` the `in` keyword should be
+used:
+```
+mod foo {
+    pub(in crate::foo) struct Bar {
+        x: i32
+    }
+}
+# fn main() {}
+```
+
+For more information see the Rust Reference on [Visibility].
+
+[Visibility]: https://doc.rust-lang.org/reference/visibility-and-privacy.html
+"##,
+
 E0705: r##"
 A `#![feature]` attribute was declared for a feature that is stable in
 the current edition, but not in all editions.
@@ -417,6 +446,5 @@ register_diagnostics! {
     E0693, // incorrect `repr(align)` attribute format
     E0694, // an unknown tool name found in scoped attributes
     E0703, // invalid ABI
-    E0704, // incorrect visibility restriction
     E0717, // rustc_promotable without stability attribute
 }
