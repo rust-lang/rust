@@ -129,7 +129,15 @@ impl<'t> Parser<'t> {
     /// Advances the parser by one token unconditionally
     /// Mainly use in `token_tree` parsing
     pub(crate) fn bump_raw(&mut self) {
-        let kind = self.token_source.token_kind(self.token_pos);
+        let mut kind = self.token_source.token_kind(self.token_pos);
+
+        // Skip dollars, do_bump will eat these later
+        let mut i = 0;
+        while kind == SyntaxKind::L_DOLLAR || kind == SyntaxKind::R_DOLLAR {
+            kind = self.token_source.token_kind(self.token_pos + i);
+            i += 1;
+        }
+
         if kind == EOF {
             return;
         }
