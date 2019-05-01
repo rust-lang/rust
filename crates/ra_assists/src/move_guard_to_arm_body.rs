@@ -1,6 +1,4 @@
-use hir::{
-    db::HirDatabase,
-};
+use hir::db::HirDatabase;
 use ra_syntax::{
     TextUnit,
     SyntaxElement,
@@ -17,9 +15,7 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
 
     let guard_conditions = guard.expr()?;
     let arm_expr = match_arm.expr()?;
-    let buf = format!("if {} {{ {} }}",
-                          guard_conditions.syntax().text(),
-                          arm_expr.syntax().text());
+    let buf = format!("if {} {{ {} }}", guard_conditions.syntax().text(), arm_expr.syntax().text());
 
     ctx.add_action(AssistId("move_guard_to_arm_body"), "move guard to arm body", |edit| {
         edit.target(guard.syntax().range());
@@ -32,16 +28,13 @@ pub(crate) fn move_guard_to_arm_body(mut ctx: AssistCtx<impl HirDatabase>) -> Op
                 } else {
                     TextUnit::from(0)
                 }
-            },
-            _ => TextUnit::from(0)
+            }
+            _ => TextUnit::from(0),
         };
 
         edit.delete(guard.syntax().range());
         edit.replace_node_and_indent(arm_expr.syntax(), buf);
-        edit.set_cursor(
-            arm_expr.syntax().range().start() +
-            TextUnit::from(3) -
-            offseting_amount);
+        edit.set_cursor(arm_expr.syntax().range().start() + TextUnit::from(3) - offseting_amount);
     });
     ctx.build()
 }
@@ -93,7 +86,30 @@ mod tests {
                     _ => true
                 }
             }
-            "#
+            "#,
+        );
+    }
+
+    #[test]
+    fn move_guard_to_arm_body_works_complex_match() {
+        check_assist(
+            move_guard_to_arm_body,
+            r#"
+            fn f() {
+                match x {
+                    <|>y @ 4 | y @ 5    if y > 5 => true,
+                    _ => false
+                }
+            }
+            "#,
+            r#"
+            fn f() {
+                match x {
+                    y @ 4 | y @ 5 => if y > 5 { <|>true },
+                    _ => false
+                }
+            }
+            "#,
         );
     }
 }
