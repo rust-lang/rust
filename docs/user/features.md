@@ -388,6 +388,24 @@ fn foo() {
 }
 ```
 
+- Move guard expression to match arm body
+```rust
+//before:
+fn f() {
+    match x {
+        <|>y @ 4 | y @ 5    if y > 5 => true,
+        _ => false
+    }
+}
+//after:
+fn f() {
+    match x {
+        y @ 4 | y @ 5 => if y > 5 { <|>true },
+        _ => false
+    }
+}
+```
+
 ### Magic Completions
 
 In addition to usual reference completion, rust-analyzer provides some ✨magic✨
