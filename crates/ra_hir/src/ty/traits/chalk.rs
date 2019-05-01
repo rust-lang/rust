@@ -1,6 +1,8 @@
 //! Conversion code from/to Chalk.
 use std::sync::Arc;
 
+use log::debug;
+
 use chalk_ir::{TypeId, ImplId, TypeKindId, ProjectionTy, Parameter, Identifier, cast::Cast, PlaceholderIndex, UniverseIndex, TypeName};
 use chalk_rust_ir::{AssociatedTyDatum, TraitDatum, StructDatum, ImplDatum};
 
@@ -65,6 +67,7 @@ impl ToChalk for Ty {
     }
 }
 
+// TODO merge this into the ToChalk implementation for Ty
 impl ToChalk for ApplicationTy {
     type Chalk = chalk_ir::ApplicationTy;
 
@@ -173,7 +176,7 @@ where
         unimplemented!()
     }
     fn trait_datum(&self, trait_id: chalk_ir::TraitId) -> Arc<TraitDatum> {
-        eprintln!("trait_datum {:?}", trait_id);
+        debug!("trait_datum {:?}", trait_id);
         let trait_: Trait = from_chalk(self.db, trait_id);
         let generic_params = trait_.generic_params(self.db);
         let bound_vars = Substs::bound_vars(&generic_params);
@@ -191,7 +194,7 @@ where
         Arc::new(trait_datum)
     }
     fn struct_datum(&self, struct_id: chalk_ir::StructId) -> Arc<StructDatum> {
-        eprintln!("struct_datum {:?}", struct_id);
+        debug!("struct_datum {:?}", struct_id);
         let type_ctor = from_chalk(self.db, struct_id);
         // TODO might be nicer if we can create a fake GenericParams for the TypeCtor
         let (num_params, upstream) = match type_ctor {
@@ -232,7 +235,7 @@ where
         Arc::new(struct_datum)
     }
     fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum> {
-        eprintln!("impl_datum {:?}", impl_id);
+        debug!("impl_datum {:?}", impl_id);
         let impl_block: ImplBlock = from_chalk(self.db, impl_id);
         let generic_params = impl_block.generic_params(self.db);
         let bound_vars = Substs::bound_vars(&generic_params);
@@ -256,7 +259,7 @@ where
         Arc::new(impl_datum)
     }
     fn impls_for_trait(&self, trait_id: chalk_ir::TraitId) -> Vec<ImplId> {
-        eprintln!("impls_for_trait {:?}", trait_id);
+        debug!("impls_for_trait {:?}", trait_id);
         let trait_ = from_chalk(self.db, trait_id);
         self.db
             .impls_for_trait(self.krate, trait_)
@@ -273,7 +276,7 @@ where
         auto_trait_id: chalk_ir::TraitId,
         struct_id: chalk_ir::StructId,
     ) -> bool {
-        eprintln!("impl_provided_for {:?}, {:?}", auto_trait_id, struct_id);
+        debug!("impl_provided_for {:?}, {:?}", auto_trait_id, struct_id);
         false // FIXME
     }
     fn type_name(&self, _id: TypeKindId) -> Identifier {
@@ -283,7 +286,7 @@ where
         &self,
         projection: &'p ProjectionTy,
     ) -> (Arc<AssociatedTyDatum>, &'p [Parameter], &'p [Parameter]) {
-        eprintln!("split_projection {:?}", projection);
+        debug!("split_projection {:?}", projection);
         unimplemented!()
     }
 }

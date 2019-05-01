@@ -1,6 +1,7 @@
 //! Trait solving using Chalk.
 use std::sync::{Arc, Mutex};
 
+use log::debug;
 use chalk_ir::cast::Cast;
 
 use crate::{Crate, Trait, db::HirDatabase, ImplBlock};
@@ -52,7 +53,7 @@ fn solve(
     let context = ChalkContext { db, krate };
     let solver = db.solver(krate);
     let solution = solver.lock().unwrap().solve(&context, goal);
-    eprintln!("solve({:?}) => {:?}", goal, solution);
+    debug!("solve({:?}) => {:?}", goal, solution);
     solution
 }
 
@@ -73,7 +74,7 @@ pub(crate) fn implements(
     trait_ref: Canonical<TraitRef>,
 ) -> Option<Solution> {
     let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
-    eprintln!("goal: {:?}", goal);
+    debug!("goal: {:?}", goal);
     let env = chalk_ir::Environment::new();
     let in_env = chalk_ir::InEnvironment::new(&env, goal);
     let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
