@@ -1388,7 +1388,7 @@ impl<'a> State<'a> {
                 self.word_space(":")?;
                 self.print_type(&ty)?;
             }
-            hir::ExprKind::Use(ref init) => {
+            hir::ExprKind::DropTemps(ref init) => {
                 // Print `{`:
                 self.cbox(indent_unit)?;
                 self.ibox(0)?;
