@@ -156,7 +156,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     && self.eq_block(lb, rb)
                     && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
             },
-            (&ExprKind::Use(ref le), &ExprKind::Use(ref re)) => self.eq_expr(le, re),
+            (&ExprKind::DropTemps(ref le), &ExprKind::DropTemps(ref re)) => self.eq_expr(le, re),
             _ => false,
         }
     }
@@ -607,8 +607,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 }
             },
             ExprKind::Err => {},
-            ExprKind::Use(ref e) => {
-                let c: fn(_) -> _ = ExprKind::Use;
+            ExprKind::DropTemps(ref e) => {
+                let c: fn(_) -> _ = ExprKind::DropTemps;
                 c.hash(&mut self.s);
                 self.hash_expr(e);
             },
