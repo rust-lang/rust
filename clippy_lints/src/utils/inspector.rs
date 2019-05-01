@@ -331,7 +331,7 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
             println!("{}Err", ind);
         },
         hir::ExprKind::DropTemps(ref e) => {
-            println!("{}Use", ind);
+            println!("{}DropTemps", ind);
             print_expr(cx, e, indent + 1);
         },
     }
