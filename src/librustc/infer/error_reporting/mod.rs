@@ -644,7 +644,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         for sp in prior_arms {
                             err.span_label(*sp, format!(
                                 "this is found to be of type `{}`",
-                                last_ty,
+                                self.resolve_type_vars_if_possible(&last_ty),
                             ));
                         }
                     } else if let Some(sp) = prior_arms.last() {
