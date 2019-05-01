@@ -220,7 +220,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
             match c.val {
                 ConstValue::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
-                    return self.tcx().types.ct_err;
+                    return self.tcx().consts.err;
                 }
                 ConstValue::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);

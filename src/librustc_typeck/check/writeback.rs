@@ -594,7 +594,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                                     ),
                                 )
                                 .emit();
-                            return self.tcx().types.ct_err;
+                            return self.tcx().consts.err;
                         }
                         ct
                     }
@@ -864,7 +864,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
                 );
                 // FIXME: we'd like to use `self.report_error`, but it doesn't yet
                 // accept a &'tcx ty::Const.
-                self.tcx().types.ct_err
+                self.tcx().consts.err
             }
         }
     }
