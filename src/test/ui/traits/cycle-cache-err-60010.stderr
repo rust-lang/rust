@@ -1,0 +1,20 @@
+error[E0275]: overflow evaluating the requirement `RootDatabase: SourceDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:27:5
+   |
+LL |     _parse: <ParseQuery as Query<RootDatabase>>::Data,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
+
+error[E0275]: overflow evaluating the requirement `RootDatabase: SourceDatabase`
+  --> $DIR/cycle-cache-err-60010.rs:30:6
+   |
+LL | impl Database for RootDatabase {
+   |      ^^^^^^^^
+   |
+   = note: required because of the requirements on the impl of `Query<RootDatabase>` for `ParseQuery`
+   = note: required because it appears within the type `SalsaStorage`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0275`.
