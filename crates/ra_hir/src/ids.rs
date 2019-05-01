@@ -323,25 +323,6 @@ impl AstItemDef<ast::TraitDef> for TraitId {
     }
 }
 
-fn from_chalk<T: salsa::InternKey>(chalk_id: chalk_ir::RawId) -> T {
-    T::from_intern_id(salsa::InternId::from(chalk_id.index))
-}
-fn to_chalk<T: salsa::InternKey>(salsa_id: T) -> chalk_ir::RawId {
-    chalk_ir::RawId { index: salsa_id.as_intern_id().as_u32() }
-}
-
-impl From<chalk_ir::TraitId> for TraitId {
-    fn from(trait_id: chalk_ir::TraitId) -> Self {
-        from_chalk(trait_id.0)
-    }
-}
-
-impl From<TraitId> for chalk_ir::TraitId {
-    fn from(trait_id: TraitId) -> Self {
-        chalk_ir::TraitId(to_chalk(trait_id))
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
 impl_intern_key!(TypeAliasId);
@@ -374,37 +355,14 @@ impl MacroCallId {
     }
 }
 
-/// This exists just for chalk, because chalk doesn't differentiate between
-/// enums and structs.
+/// This exists just for Chalk, because Chalk just has a single `StructId` where
+/// we have different kinds of ADTs, primitive types and special type
+/// constructors like tuples and function pointers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeCtorId(salsa::InternId);
 impl_intern_key!(TypeCtorId);
 
-impl From<chalk_ir::StructId> for TypeCtorId {
-    fn from(struct_id: chalk_ir::StructId) -> Self {
-        from_chalk(struct_id.0)
-    }
-}
-
-impl From<TypeCtorId> for chalk_ir::StructId {
-    fn from(adt_id: TypeCtorId) -> Self {
-        chalk_ir::StructId(to_chalk(adt_id))
-    }
-}
-
-/// This exists just for chalk, because our ImplIds are only unique per module.
+/// This exists just for Chalk, because our ImplIds are only unique per module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GlobalImplId(salsa::InternId);
 impl_intern_key!(GlobalImplId);
-
-impl From<chalk_ir::ImplId> for GlobalImplId {
-    fn from(impl_id: chalk_ir::ImplId) -> Self {
-        from_chalk(impl_id.0)
-    }
-}
-
-impl From<GlobalImplId> for chalk_ir::ImplId {
-    fn from(impl_id: GlobalImplId) -> Self {
-        chalk_ir::ImplId(to_chalk(impl_id))
-    }
-}
