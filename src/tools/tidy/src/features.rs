@@ -20,8 +20,8 @@ use regex::{Regex, escape};
 mod version;
 use self::version::Version;
 
-const FEATURE_GROUP_START_PREFIX: &str = "// feature group start:";
-const FEATURE_GROUP_END_PREFIX: &str = "// feature group end";
+const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start:";
+const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Status {
@@ -47,7 +47,6 @@ pub struct Feature {
     pub since: Option<Version>,
     pub has_gate_test: bool,
     pub tracking_issue: Option<u32>,
-    pub group: Option<String>,
 }
 
 pub type Features = HashMap<String, Feature>;
@@ -139,22 +138,8 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
     }
 
     let mut lines = Vec::new();
-    for (name, feature) in features.iter() {
-        lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
-                           name,
-                           "lang",
-                           feature.level,
-                           feature.since.as_ref().map_or("None".to_owned(),
-                                                         |since| since.to_string())));
-    }
-    for (name, feature) in lib_features {
-        lines.push(format!("{:<32} {:<8} {:<12} {:<8}",
-                           name,
-                           "lib",
-                           feature.level,
-                           feature.since.as_ref().map_or("None".to_owned(),
-                                                         |since| since.to_string())));
-    }
+    lines.extend(format_features(&features, "lang"));
+    lines.extend(format_features(&lib_features, "lib"));
 
     lines.sort();
     for line in lines {
@@ -162,8 +147,19 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
     }
 }
 
+fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator<Item=String> + 'a {
+    features.iter().map(move |(name, feature)| {
+        format!("{:<32} {:<8} {:<12} {:<8}",
+                name,
+                family,
+                feature.level,
+                feature.since.as_ref().map_or("None".to_owned(),
+                                              |since| since.to_string()))
+    })
+}
+
 fn find_attr_val<'a>(line: &'a str, attr: &str) -> Option<&'a str> {
-    let r = Regex::new(&format!(r#"{} *= *"([^"]*)""#, escape(attr)))
+    let r = Regex::new(&format!(r#"{}\s*=\s*"([^"]*)""#, escape(attr)))
         .expect("malformed regex for find_attr_val");
     r.captures(line)
         .and_then(|c| c.get(1))
@@ -219,6 +215,15 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
             }
 
             if line.starts_with(FEATURE_GROUP_START_PREFIX) {
+                if next_feature_group.is_some() {
+                    tidy_error!(
+                        bad,
+                        // ignore-tidy-linelength
+                        "libsyntax/feature_gate.rs:{}: new feature group is started without ending the previous one",
+                        line_number,
+                    );
+                }
+
                 let group = line.trim_start_matches(FEATURE_GROUP_START_PREFIX).trim();
                 next_feature_group = Some(group.to_owned());
                 prev_since = None;
@@ -286,7 +291,6 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                     since,
                     has_gate_test: false,
                     tracking_issue,
-                    group: next_feature_group.clone(),
                 }))
         })
         .collect()
@@ -304,7 +308,6 @@ pub fn collect_lib_features(base_src_path: &Path) -> Features {
         since: None,
         has_gate_test: false,
         tracking_issue: None,
-        group: None,
     });
 
     map_lib_features(base_src_path,
@@ -399,7 +402,7 @@ fn map_lib_features(base_src_path: &Path,
                 // `const fn` features are handled specially.
                 let feature_name = match find_attr_val(line, "feature") {
                     Some(name) => name,
-                    None => err!("malformed stability attribute"),
+                    None => err!("malformed stability attribute: missing `feature` key"),
                 };
                 let feature = Feature {
                     level: Status::Unstable,
@@ -409,7 +412,6 @@ fn map_lib_features(base_src_path: &Path,
                     // although we would like to have specific tracking issues for each
                     // `rustc_const_unstable` in the future.
                     tracking_issue: Some(57563),
-                    group: None,
                 };
                 mf(Ok((feature_name, feature)), file, i + 1);
                 continue;
@@ -423,15 +425,15 @@ fn map_lib_features(base_src_path: &Path,
             };
             let feature_name = match find_attr_val(line, "feature") {
                 Some(name) => name,
-                None => err!("malformed stability attribute"),
+                None => err!("malformed stability attribute: missing `feature` key"),
             };
             let since = match find_attr_val(line, "since").map(|x| x.parse()) {
                 Some(Ok(since)) => Some(since),
                 Some(Err(_err)) => {
-                    err!("malformed since attribute");
+                    err!("malformed stability attribute: can't parse `since` key");
                 },
                 None if level == Status::Stable => {
-                    err!("malformed stability attribute");
+                    err!("malformed stability attribute: missing the `since` key");
                 }
                 None => None,
             };
@@ -442,7 +444,6 @@ fn map_lib_features(base_src_path: &Path,
                 since,
                 has_gate_test: false,
                 tracking_issue,
-                group: None,
             };
             if line.contains(']') {
                 mf(Ok((feature_name, feature)), file, i + 1);
