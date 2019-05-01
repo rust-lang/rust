@@ -147,7 +147,7 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
     }
 }
 
-fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator<Item=String> + 'a {
+fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator<Item = String> + 'a {
     features.iter().map(move |(name, feature)| {
         format!("{:<32} {:<8} {:<12} {:<8}",
                 name,

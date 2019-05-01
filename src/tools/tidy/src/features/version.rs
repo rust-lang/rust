@@ -1,7 +1,6 @@
 use std::str::FromStr;
 use std::num::ParseIntError;
 use std::fmt;
-use std::convert::TryInto;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Version {
@@ -10,16 +9,14 @@ pub struct Version {
 
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let x = self.parts.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(".");
-        f.pad(&x)
+        f.pad(&format!("{}.{}.{}", self.parts[0], self.parts[1], self.parts[2]))
     }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseVersionError {
     ParseIntError(ParseIntError),
-    // core::array::TryFromSlice is not exported from std, so we invent our own variant
-    WrongNumberOfParts
+    WrongNumberOfParts,
 }
 
 impl From<ParseIntError> for ParseVersionError {
@@ -32,10 +29,23 @@ impl FromStr for Version {
     type Err = ParseVersionError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<_> = s.split('.').map(|part| part.parse()).collect::<Result<_, _>>()?;
-        Ok(Self {
-            parts: parts.as_slice().try_into() .or(Err(ParseVersionError::WrongNumberOfParts))?,
-        })
+        let mut iter = s.split('.').map(|part| Ok(part.parse()?));
+
+        let parts = {
+            let mut part = || {
+                iter.next()
+                    .unwrap_or(Err(ParseVersionError::WrongNumberOfParts))
+            };
+
+            [part()?, part()?, part()?]
+        };
+
+        if let Some(_) = iter.next() {
+            // Ensure we don't have more than 3 parts.
+            return Err(ParseVersionError::WrongNumberOfParts);
+        }
+
+        Ok(Self { parts })
     }
 }
 
