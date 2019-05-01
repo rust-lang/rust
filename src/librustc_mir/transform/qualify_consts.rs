@@ -161,7 +161,7 @@ trait Qualif {
 
     fn in_projection_structurally(
         cx: &ConstCx<'_, 'tcx>,
-        proj: &PlaceProjection<'tcx>,
+        proj: &Projection<'tcx>,
     ) -> bool {
         let base_qualif = Self::in_place(cx, &proj.base);
         let qualif = base_qualif && Self::mask_for_ty(
@@ -181,7 +181,7 @@ trait Qualif {
         }
     }
 
-    fn in_projection(cx: &ConstCx<'_, 'tcx>, proj: &PlaceProjection<'tcx>) -> bool {
+    fn in_projection(cx: &ConstCx<'_, 'tcx>, proj: &Projection<'tcx>) -> bool {
         Self::in_projection_structurally(cx, proj)
     }
 
@@ -387,7 +387,7 @@ impl Qualif for IsNotPromotable {
         }
     }
 
-    fn in_projection(cx: &ConstCx<'_, 'tcx>, proj: &PlaceProjection<'tcx>) -> bool {
+    fn in_projection(cx: &ConstCx<'_, 'tcx>, proj: &Projection<'tcx>) -> bool {
         match proj.elem {
             ProjectionElem::Deref |
             ProjectionElem::Downcast(..) => return true,

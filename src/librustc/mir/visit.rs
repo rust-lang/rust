@@ -152,7 +152,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_projection(&mut self,
-                                place: & $($mutability)? PlaceProjection<'tcx>,
+                                place: & $($mutability)? Projection<'tcx>,
                                 context: PlaceContext,
                                 location: Location) {
                 self.super_projection(place, context, location);
@@ -689,7 +689,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_projection(&mut self,
-                                proj: & $($mutability)? PlaceProjection<'tcx>,
+                                proj: & $($mutability)? Projection<'tcx>,
                                 context: PlaceContext,
                                 location: Location) {
                 let Projection { base, elem } = proj;

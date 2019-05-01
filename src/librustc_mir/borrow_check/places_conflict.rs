@@ -3,7 +3,7 @@ use crate::borrow_check::Overlap;
 use crate::borrow_check::{Deep, Shallow, AccessDepth};
 use rustc::hir;
 use rustc::mir::{
-    BorrowKind, Mir, Place, PlaceBase, PlaceProjection, ProjectionElem, PlaceProjectionsIter,
+    BorrowKind, Mir, Place, PlaceBase, Projection, ProjectionElem, ProjectionsIter,
     StaticKind
 };
 use rustc::ty::{self, TyCtxt};
@@ -86,9 +86,9 @@ pub(super) fn borrow_conflicts_with_place<'gcx, 'tcx>(
 fn place_components_conflict<'gcx, 'tcx>(
     tcx: TyCtxt<'_, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    borrow_projections: (&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>),
+    borrow_projections: (&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>),
     borrow_kind: BorrowKind,
-    access_projections: (&PlaceBase<'tcx>, PlaceProjectionsIter<'_, 'tcx>),
+    access_projections: (&PlaceBase<'tcx>, ProjectionsIter<'_, 'tcx>),
     access: AccessDepth,
     bias: PlaceConflictBias,
 ) -> bool {
@@ -368,8 +368,8 @@ fn place_base_conflict<'a, 'gcx: 'tcx, 'tcx>(
 fn place_projection_conflict<'a, 'gcx: 'tcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
-    pi1: &PlaceProjection<'tcx>,
-    pi2: &PlaceProjection<'tcx>,
+    pi1: &Projection<'tcx>,
+    pi2: &Projection<'tcx>,
     bias: PlaceConflictBias,
 ) -> Overlap {
     match (&pi1.elem, &pi2.elem) {
