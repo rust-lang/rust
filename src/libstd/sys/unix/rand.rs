@@ -47,7 +47,12 @@ mod imp {
                 let err = errno() as libc::c_int;
                 if err == libc::EINTR {
                     continue;
-                } else if err == libc::ENOSYS {
+                } else if err == libc::ENOSYS || err == libc::EPERM {
+                    // Fall back to reading /dev/urandom if `getrandom` is not
+                    // supported on the current kernel.
+                    //
+                    // Also fall back in case it is disabled by something like
+                    // seccomp or inside of virtual machines.
                     GETRANDOM_UNAVAILABLE.store(true, Ordering::Relaxed);
                     return false;
                 } else if err == libc::EAGAIN {
