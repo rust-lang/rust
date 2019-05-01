@@ -4,6 +4,8 @@ mod a {}
 
 pub (a) fn afn() {} //~ incorrect visibility restriction
 pub (b) fn bfn() {} //~ incorrect visibility restriction
+pub (crate::a) fn cfn() {} //~ incorrect visibility restriction
+
 pub fn privfn() {}
 mod x {
     mod y {
