@@ -1,6 +1,7 @@
 //! Configuration options related to rewriting a list.
 
-use crate::config::config_type::ConfigType;
+use config_proc_macro::config_type;
+
 use crate::config::IndentStyle;
 
 /// The definitive formatting tactic for lists.
@@ -25,30 +26,26 @@ impl DefinitiveListTactic {
 /// Formatting tactic for lists. This will be cast down to a
 /// `DefinitiveListTactic` depending on the number and length of the items and
 /// their comments.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[config_type]
 pub enum ListTactic {
-    // One item per row.
+    /// One item per row.
     Vertical,
-    // All items on one row.
+    /// All items on one row.
     Horizontal,
-    // Try Horizontal layout, if that fails then vertical.
+    /// Try Horizontal layout, if that fails then vertical.
     HorizontalVertical,
-    // HorizontalVertical with a soft limit of n characters.
+    /// HorizontalVertical with a soft limit of n characters.
     LimitedHorizontalVertical(usize),
-    // Pack as many items as possible per row over (possibly) many rows.
+    /// Pack as many items as possible per row over (possibly) many rows.
     Mixed,
 }
 
-impl_enum_serialize_and_deserialize!(ListTactic, Vertical, Horizontal, HorizontalVertical, Mixed);
-
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[config_type]
 pub enum SeparatorTactic {
     Always,
     Never,
     Vertical,
 }
-
-impl_enum_serialize_and_deserialize!(SeparatorTactic, Always, Never, Vertical);
 
 impl SeparatorTactic {
     pub fn from_bool(b: bool) -> SeparatorTactic {
@@ -61,13 +58,11 @@ impl SeparatorTactic {
 }
 
 /// Where to put separator.
-#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+#[config_type]
 pub enum SeparatorPlace {
     Front,
     Back,
 }
-
-impl_enum_serialize_and_deserialize!(SeparatorPlace, Front, Back);
 
 impl SeparatorPlace {
     pub fn is_front(self) -> bool {
