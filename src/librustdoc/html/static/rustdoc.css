@@ -658,18 +658,18 @@ a {
 	transition: border-color 300ms ease;
 	transition: border-radius 300ms ease-in-out;
 	transition: box-shadow 300ms ease-in-out;
-	width: calc(100% - 32px);
+	width: 100%;
 }
 
 #crate-search + .search-input {
 	border-radius: 0 1px 1px 0;
+	width: calc(100% - 32px);
 }
 
 .search-input:focus {
 	border-radius: 2px;
 	border: 0;
 	outline: 0;
-	box-shadow: 0 0 8px #078dd8;
 }
 
 .search-results .desc {
