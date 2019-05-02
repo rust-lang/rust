@@ -71,6 +71,8 @@ no_mangle! {
     fn sinhf(n: f32) -> f32;
     fn tanf(n: f32) -> f32;
     fn tanhf(n: f32) -> f32;
+    fn ldexp(f: f64, n: i32) -> f64;
+    fn ldexpf(f: f32, n: i32) -> f32;
 }
 
 #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))]
