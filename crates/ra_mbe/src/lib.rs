@@ -1288,6 +1288,6 @@ cfg_if !   {
      } 
  }        
 "#,         
-        "__cfg_if_items ! {() ;  (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
+        "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
     }
 }
