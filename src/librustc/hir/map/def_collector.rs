@@ -94,7 +94,9 @@ impl<'a> DefCollector<'a> {
             // Walk the generated arguments for the `async fn`.
             for a in arguments {
                 use visit::Visitor;
-                this.visit_ty(&a.arg.ty);
+                if let Some(arg) = &a.arg {
+                    this.visit_ty(&arg.ty);
+                }
             }
 
             // We do not invoke `walk_fn_decl` as this will walk the arguments that are being
@@ -105,10 +107,13 @@ impl<'a> DefCollector<'a> {
                 *closure_id, DefPathData::ClosureExpr, REGULAR_SPACE, span,
             );
             this.with_parent(closure_def, |this| {
+                use visit::Visitor;
+                // Walk each of the generated statements before the regular block body.
                 for a in arguments {
-                    use visit::Visitor;
-                    // Walk each of the generated statements before the regular block body.
-                    this.visit_stmt(&a.stmt);
+                    this.visit_stmt(&a.move_stmt);
+                    if let Some(pat_stmt) = &a.pat_stmt {
+                        this.visit_stmt(&pat_stmt);
+                    }
                 }
 
                 visit::walk_block(this, &body);

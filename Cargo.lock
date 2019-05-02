@@ -2802,6 +2802,7 @@ dependencies = [
  "rustc-rayon 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_allocator 0.0.0",
  "rustc_borrowck 0.0.0",
+ "rustc_codegen_ssa 0.0.0",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -2821,6 +2822,7 @@ dependencies = [
  "syntax 0.0.0",
  "syntax_ext 0.0.0",
  "syntax_pos 0.0.0",
+ "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

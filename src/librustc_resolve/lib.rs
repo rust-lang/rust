@@ -862,7 +862,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
         // Walk the generated async arguments if this is an `async fn`, otherwise walk the
         // normal arguments.
         if let IsAsync::Async { ref arguments, .. } = asyncness {
-            for a in arguments { add_argument(&a.arg); }
+            for (i, a) in arguments.iter().enumerate() {
+                if let Some(arg) = &a.arg {
+                    add_argument(&arg);
+                } else {
+                    add_argument(&declaration.inputs[i]);
+                }
+            }
         } else {
             for a in &declaration.inputs { add_argument(a); }
         }
@@ -882,8 +888,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                     let mut body = body.clone();
                     // Insert the generated statements into the body before attempting to
                     // resolve names.
-                    for a in arguments {
-                        body.stmts.insert(0, a.stmt.clone());
+                    for a in arguments.iter().rev() {
+                        if let Some(pat_stmt) = a.pat_stmt.clone() {
+                            body.stmts.insert(0, pat_stmt);
+                        }
+                        body.stmts.insert(0, a.move_stmt.clone());
                     }
                     self.visit_block(&body);
                 } else {
@@ -4174,7 +4183,7 @@ impl<'a> Resolver<'a> {
         let add_module_candidates = |module: Module<'_>, names: &mut Vec<TypoSuggestion>| {
             for (&(ident, _), resolution) in module.resolutions.borrow().iter() {
                 if let Some(binding) = resolution.borrow().binding {
-                    if filter_fn(binding.def()) {
+                    if !ident.name.is_gensymed() && filter_fn(binding.def()) {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: binding.def().article(),
@@ -4192,7 +4201,7 @@ impl<'a> Resolver<'a> {
             for rib in self.ribs[ns].iter().rev() {
                 // Locals and type parameters
                 for (ident, def) in &rib.bindings {
-                    if filter_fn(*def) {
+                    if !ident.name.is_gensymed() && filter_fn(*def) {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: def.article(),
@@ -4219,7 +4228,7 @@ impl<'a> Resolver<'a> {
                                             index: CRATE_DEF_INDEX,
                                         });
 
-                                        if filter_fn(crate_mod) {
+                                        if !ident.name.is_gensymed() && filter_fn(crate_mod) {
                                             Some(TypoSuggestion {
                                                 candidate: ident.name,
                                                 article: "a",
@@ -4242,13 +4251,16 @@ impl<'a> Resolver<'a> {
             // Add primitive types to the mix
             if filter_fn(Def::PrimTy(Bool)) {
                 names.extend(
-                    self.primitive_type_table.primitive_types.iter().map(|(name, _)| {
-                        TypoSuggestion {
-                            candidate: *name,
-                            article: "a",
-                            kind: "primitive type",
-                        }
-                    })
+                    self.primitive_type_table.primitive_types
+                        .iter()
+                        .filter(|(name, _)| !name.is_gensymed())
+                        .map(|(name, _)| {
+                            TypoSuggestion {
+                                candidate: *name,
+                                article: "a",
+                                kind: "primitive type",
+                            }
+                        })
                 )
             }
         } else {

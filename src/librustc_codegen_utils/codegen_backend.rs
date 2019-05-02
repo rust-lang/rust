@@ -18,7 +18,7 @@ use rustc::util::common::ErrorReported;
 use rustc::session::config::{OutputFilenames, PrintRequest};
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
-use rustc::middle::cstore::MetadataLoader;
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::dep_graph::DepGraph;
 
 pub use rustc_data_structures::sync::MetadataRef;
@@ -37,6 +37,8 @@ pub trait CodegenBackend {
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        metadata: EncodedMetadata,
+        need_metadata_module: bool,
         rx: mpsc::Receiver<Box<dyn Any + Send>>
     ) -> Box<dyn Any>;
 

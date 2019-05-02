@@ -199,7 +199,10 @@ impl<'a, 'b> MutVisitor for PlaceholderExpander<'a, 'b> {
 
         if let ast::IsAsync::Async { ref mut arguments, .. } = a {
             for argument in arguments.iter_mut() {
-                self.next_id(&mut argument.stmt.id);
+                self.next_id(&mut argument.move_stmt.id);
+                if let Some(ref mut pat_stmt) = &mut argument.pat_stmt {
+                    self.next_id(&mut pat_stmt.id);
+                }
             }
         }
     }

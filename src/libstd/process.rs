@@ -134,6 +134,18 @@ use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// the parent process wait until the child has actually exited before
 /// continuing.
 ///
+/// # Warning
+///
+/// On some system, calling [`wait`] or similar is necessary for the OS to
+/// release resources. A process that terminated but has not been waited on is
+/// still around as a "zombie". Leaving too many zombies around may exhaust
+/// global resources (for example process IDs).
+///
+/// The standard library does *not* automatically wait on child processes (not
+/// even if the `Child` is dropped), it is up to the application developer to do
+/// so. As a consequence, dropping `Child` handles without waiting on them first
+/// is not recommended in long-running applications.
+///
 /// # Examples
 ///
 /// ```should_panic

@@ -7,7 +7,7 @@ use rustc::session::config::{
 };
 use rustc::session::search_paths::PathKind;
 use rustc::middle::dependency_format::Linkage;
-use rustc::middle::cstore::{LibSource, NativeLibrary, NativeLibraryKind};
+use rustc::middle::cstore::{EncodedMetadata, LibSource, NativeLibrary, NativeLibraryKind};
 use rustc::util::common::{time, time_ext};
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::fx::FxHashSet;
@@ -50,9 +50,9 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                                               outputs: &OutputFilenames,
                                               crate_name: &str,
                                               target_cpu: &str) {
+    let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
     for &crate_type in sess.crate_types.borrow().iter() {
         // Ignore executable crates if we have -Z no-codegen, as they will error.
-        let output_metadata = sess.opts.output_types.contains_key(&OutputType::Metadata);
         if (sess.opts.debugging_opts.no_codegen || !sess.opts.output_types.should_codegen()) &&
            !output_metadata &&
            crate_type == config::CrateType::Executable {
@@ -63,12 +63,43 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
            bug!("invalid output type `{:?}` for target os `{}`",
                 crate_type, sess.opts.target_triple);
         }
-        link_binary_output::<B>(sess,
-                                codegen_results,
-                                crate_type,
-                                outputs,
-                                crate_name,
-                                target_cpu);
+
+        for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
+            check_file_is_writeable(obj, sess);
+        }
+
+        let tmpdir = TempFileBuilder::new().prefix("rustc").tempdir().unwrap_or_else(|err|
+            sess.fatal(&format!("couldn't create a temp dir: {}", err)));
+
+        if outputs.outputs.should_codegen() {
+            let out_filename = out_filename(sess, crate_type, outputs, crate_name);
+            match crate_type {
+                config::CrateType::Rlib => {
+                    link_rlib::<B>(sess,
+                              codegen_results,
+                              RlibFlavor::Normal,
+                              &out_filename,
+                              &tmpdir).build();
+                }
+                config::CrateType::Staticlib => {
+                    link_staticlib::<B>(sess, codegen_results, &out_filename, &tmpdir);
+                }
+                _ => {
+                    link_natively::<B>(
+                        sess,
+                        crate_type,
+                        &out_filename,
+                        codegen_results,
+                        tmpdir.path(),
+                        target_cpu,
+                    );
+                }
+            }
+        }
+
+        if sess.opts.cg.save_temps {
+            let _ = tmpdir.into_path();
+        }
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps
@@ -85,7 +116,7 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
             if let Some(ref obj) = metadata_module.object {
                 remove(sess, obj);
             }
-         }
+        }
         if let Some(ref allocator_module) = codegen_results.allocator_module {
             if let Some(ref obj) = allocator_module.object {
                 remove(sess, obj);
@@ -94,73 +125,6 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                 remove(sess, bc);
             }
         }
-    }
-}
-
-fn link_binary_output<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
-                                                 codegen_results: &CodegenResults,
-                                                 crate_type: config::CrateType,
-                                                 outputs: &OutputFilenames,
-                                                 crate_name: &str,
-                                                 target_cpu: &str) {
-    for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
-        check_file_is_writeable(obj, sess);
-    }
-
-    if outputs.outputs.contains_key(&OutputType::Metadata) {
-        let out_filename = filename_for_metadata(sess, crate_name, outputs);
-        // To avoid races with another rustc process scanning the output directory,
-        // we need to write the file somewhere else and atomically move it to its
-        // final destination, with a `fs::rename` call. In order for the rename to
-        // always succeed, the temporary file needs to be on the same filesystem,
-        // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = TempFileBuilder::new()
-            .prefix("rmeta")
-            .tempdir_in(out_filename.parent().unwrap())
-            .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
-        let metadata = emit_metadata(sess, codegen_results, &metadata_tmpdir);
-        match fs::rename(&metadata, &out_filename) {
-            Ok(_) => {
-                if sess.opts.debugging_opts.emit_directives {
-                    sess.parse_sess.span_diagnostic.maybe_emit_json_directive(
-                        format!("metadata file written: {}", out_filename.display()));
-                }
-            }
-            Err(e) => sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e)),
-        }
-    }
-
-    let tmpdir = TempFileBuilder::new().prefix("rustc").tempdir().unwrap_or_else(|err|
-        sess.fatal(&format!("couldn't create a temp dir: {}", err)));
-
-    if outputs.outputs.should_codegen() {
-        let out_filename = out_filename(sess, crate_type, outputs, crate_name);
-        match crate_type {
-            config::CrateType::Rlib => {
-                link_rlib::<B>(sess,
-                          codegen_results,
-                          RlibFlavor::Normal,
-                          &out_filename,
-                          &tmpdir).build();
-            }
-            config::CrateType::Staticlib => {
-                link_staticlib::<B>(sess, codegen_results, &out_filename, &tmpdir);
-            }
-            _ => {
-                link_natively::<B>(
-                    sess,
-                    crate_type,
-                    &out_filename,
-                    codegen_results,
-                    tmpdir.path(),
-                    target_cpu,
-                );
-            }
-        }
-    }
-
-    if sess.opts.cg.save_temps {
-        let _ = tmpdir.into_path();
     }
 }
 
@@ -261,13 +225,13 @@ pub fn each_linked_rlib(sess: &Session,
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-fn emit_metadata<'a>(
+pub fn emit_metadata<'a>(
     sess: &'a Session,
-    codegen_results: &CodegenResults,
+    metadata: &EncodedMetadata,
     tmpdir: &TempDir
 ) -> PathBuf {
     let out_filename = tmpdir.path().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, &codegen_results.metadata.raw_data);
+    let result = fs::write(&out_filename, &metadata.raw_data);
 
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
@@ -351,7 +315,7 @@ fn link_rlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
         RlibFlavor::Normal => {
             // Instead of putting the metadata in an object file section, rlibs
             // contain the metadata in a separate file.
-            ab.add_file(&emit_metadata(sess, codegen_results, tmpdir));
+            ab.add_file(&emit_metadata(sess, &codegen_results.metadata, tmpdir));
 
             // For LTO purposes, the bytecode of this library is also inserted
             // into the archive.
