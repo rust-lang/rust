@@ -45,6 +45,13 @@ cd -
 ln -s $OUTPUT/$TARGET/lib/libc.so /lib/ld-musl-$ARCH.so.1
 echo $OUTPUT/$TARGET/lib >> /etc/ld-musl-$ARCH.path
 
+# Now when musl bootstraps itself create proper toolchain symlinks to make build and tests easier
+for exec in cc gcc; do
+    ln -s $TARGET-gcc /usr/local/bin/$exec
+done
+for exec in cpp c++ g++; do
+    ln -s $TARGET-g++ /usr/local/bin/$exec
+done
 
 export CC=$TARGET-gcc
 export CXX=$TARGET-g++

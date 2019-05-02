@@ -20,4 +20,4 @@ all:
 	$(RUSTC) library.rs
 	mkdir $(bad_dir)
 	mv $(TMPDIR)/liblibrary.a $(bad_dir)
-	LIBRARY_PATH=$(bad_dir) $(RUSTC) exec.rs 2>&1 | $(CGREP) this_symbol_not_defined
+	$(RUSTC) -L $(bad_dir) exec.rs 2>&1 | $(CGREP) this_symbol_not_defined
