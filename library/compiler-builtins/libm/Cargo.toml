@@ -20,7 +20,6 @@ members = [
   "crates/compiler-builtins-smoke-test",
   "crates/input-generator",
   "crates/musl-generator",
-  "crates/newlib-generator",
   "crates/shared",
 ]
 
