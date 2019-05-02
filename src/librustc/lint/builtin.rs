@@ -376,7 +376,7 @@ declare_lint! {
 
 declare_lint! {
     pub AMBIGUOUS_ASSOCIATED_ITEMS,
-    Warn,
+    Deny,
     "ambiguous associated items"
 }
 
