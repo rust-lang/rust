@@ -471,14 +471,12 @@ pub const fn needs_drop<T>() -> bool {
 /// There is no guarantee that an all-zero byte-pattern represents a valid value of
 /// some type `T`. For example, the all-zero byte-pattern is not a valid value
 /// for reference types (`&T` and `&mut T`). Using `zeroed` on such types
-/// causes immediate [undefined behavior][ub].
-///
-/// See the documentation of [`MaybeUninit<T>`] and [`MaybeUninit::zeroed()`][zeroed]
-/// for more discussion on how to initialize values.
+/// causes immediate [undefined behavior][ub] because [the Rust compiler assumes][inv]
+/// that there always is a valid value in a variable it considers initialized.
 ///
 /// [zeroed]: union.MaybeUninit.html#method.zeroed
-/// [`MaybeUninit<T>`]: union.MaybeUninit.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
+/// [inv]: union.MaybeUninit.html#initialization-invariant
 ///
 /// # Examples
 ///
@@ -508,11 +506,21 @@ pub unsafe fn zeroed<T>() -> T {
 /// Bypasses Rust's normal memory-initialization checks by pretending to
 /// produce a value of type `T`, while doing nothing at all.
 ///
-/// **This functon is deprecated because it basically cannot be used correctly.**
+/// **This functon is deprecated.** Use [`MaybeUninit<T>`] instead.
 ///
-/// Use [`MaybeUninit<T>`] instead.
+/// The reason for deprecation is that the function basically cannot be used
+/// correctly: [the Rust compiler assumes][inv] that values are properly initialized.
+/// As a consequence, calling e.g. `mem::uninitialized::<bool>()` causes immediate
+/// undefined behavior for returning a `bool` that is not definitely either `true`
+/// or `false`. Worse, truly uninitialized memory like what gets returned here
+/// is special in that the compiler knows that it does not have a fixed value.
+/// This makes it undefined behavior to have uninitialized data in a variable even
+/// if that variable has an integer type.
+/// (Notice that the rules around uninitialized integers are not finalized yet, but
+/// until they are, it is advisable to avoid them.)
 ///
 /// [`MaybeUninit<T>`]: union.MaybeUninit.html
+/// [inv]: union.MaybeUninit.html#initialization-invariant
 #[inline]
 #[rustc_deprecated(since = "1.40.0", reason = "use `mem::MaybeUninit` instead")]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1022,21 +1030,23 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::{self, MaybeUninit};
 /// use std::ptr;
 ///
-/// let data = unsafe {
+/// let data = {
 ///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
 ///     // safe because the type we are claiming to have initialized here is a
 ///     // bunch of `MaybeUninit`s, which do not require initialization.
-///     let mut data: [MaybeUninit<Vec<u32>>; 1000] = MaybeUninit::uninit().assume_init();
+///     let mut data: [MaybeUninit<Vec<u32>>; 1000] = unsafe {
+///         MaybeUninit::uninit().assume_init()
+///     };
 ///
 ///     // Dropping a `MaybeUninit` does nothing, so if there is a panic during this loop,
 ///     // we have a memory leak, but there is no memory safety issue.
 ///     for elem in &mut data[..] {
-///         ptr::write(elem.as_mut_ptr(), vec![42]);
+///         unsafe { ptr::write(elem.as_mut_ptr(), vec![42]); }
 ///     }
 ///
 ///     // Everything is initialized. Transmute the array to the
 ///     // initialized type.
-///     mem::transmute::<_, [Vec<u32>; 1000]>(data)
+///     unsafe { mem::transmute::<_, [Vec<u32>; 1000]>(data) }
 /// };
 ///
 /// println!("{:?}", &data[0]);
@@ -1049,29 +1059,27 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// use std::mem::MaybeUninit;
 /// use std::ptr;
 ///
-/// unsafe {
-///     // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
-///     // safe because the type we are claiming to have initialized here is a
-///     // bunch of `MaybeUninit`s, which do not require initialization.
-///     let mut data: [MaybeUninit<String>; 1000] = MaybeUninit::uninit().assume_init();
-///     // Count the number of elements we have assigned.
-///     let mut data_len: usize = 0;
+/// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
+/// // safe because the type we are claiming to have initialized here is a
+/// // bunch of `MaybeUninit`s, which do not require initialization.
+/// let mut data: [MaybeUninit<String>; 1000] = unsafe { MaybeUninit::uninit().assume_init() };
+/// // Count the number of elements we have assigned.
+/// let mut data_len: usize = 0;
 ///
-///     for elem in &mut data[0..500] {
-///         ptr::write(elem.as_mut_ptr(), String::from("hello"));
-///         data_len += 1;
-///     }
+/// for elem in &mut data[0..500] {
+///     unsafe { ptr::write(elem.as_mut_ptr(), String::from("hello")); }
+///     data_len += 1;
+/// }
 ///
-///     // For each item in the array, drop if we allocated it.
-///     for elem in &mut data[0..data_len] {
-///         ptr::drop_in_place(elem.as_mut_ptr());
-///     }
+/// // For each item in the array, drop if we allocated it.
+/// for elem in &mut data[0..data_len] {
+///     unsafe { ptr::drop_in_place(elem.as_mut_ptr()); }
 /// }
 /// ```
 ///
 /// ## Initializing a struct field-by-field
 ///
-/// There is unfortunately currently no supported way to create a raw pointer or reference
+/// There is currently no supported way to create a raw pointer or reference
 /// to a field of a struct inside `MaybeUninit<Struct>`. That means it is not possible
 /// to create a struct by calling `MaybeUninit::uninit::<Struct>()` and then writing
 /// to its fields.
@@ -1183,7 +1191,7 @@ impl<T> MaybeUninit<T> {
     /// Gets a pointer to the contained value. Reading from this pointer or turning it
     /// into a reference is undefined behavior unless the `MaybeUninit<T>` is initialized.
     /// Writing to memory that this pointer (non-transitively) points to is undefined behavior
-    /// (except inside an `UnsafeCell`).
+    /// (except inside an `UnsafeCell<T>`).
     ///
     /// # Examples
     ///
