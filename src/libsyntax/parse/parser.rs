@@ -2931,14 +2931,7 @@ impl<'a> Parser<'a> {
                             if let Some(sp) = self.sess.abiguous_block_expr_parse.borrow()
                                 .get(&sp)
                             {
-                                if let Ok(snippet) = self.sess.source_map().span_to_snippet(*sp) {
-                                    err.span_suggestion(
-                                        *sp,
-                                        "parentheses are required to parse this as an expression",
-                                        format!("({})", snippet),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
+                                self.sess.expr_parentheses_needed(&mut err, *sp, None);
                             }
                             err.span_label(self.span, "expected expression");
                             return Err(err);
@@ -3657,14 +3650,11 @@ impl<'a> Parser<'a> {
                     pprust::token_to_string(&self.token),
                 ));
                 err.span_label(self.span, "expected expression");
-                let snippet = self.sess.source_map().span_to_snippet(lhs.span)
-                    .unwrap_or_else(|_| pprust::expr_to_string(&lhs));
-                err.span_suggestion(
+                self.sess.expr_parentheses_needed(
+                    &mut err,
                     lhs.span,
-                    "parentheses are required to parse this as an expression",
-                    format!("({})", snippet),
-                    Applicability::MachineApplicable,
-                );
+                    Some(pprust::expr_to_string(&lhs),
+                ));
                 err.emit();
             }
         }
@@ -4979,14 +4969,7 @@ impl<'a> Parser<'a> {
                         err.span_label(self.span, format!("expected {}", expected));
                         let sp = self.sess.source_map().start_point(self.span);
                         if let Some(sp) = self.sess.abiguous_block_expr_parse.borrow().get(&sp) {
-                            if let Ok(snippet) = self.sess.source_map().span_to_snippet(*sp) {
-                                err.span_suggestion(
-                                    *sp,
-                                    "parentheses are required to parse this as an expression",
-                                    format!("({})", snippet),
-                                    Applicability::MachineApplicable,
-                                );
-                            }
+                            self.sess.expr_parentheses_needed(&mut err, *sp, None);
                         }
                         return Err(err);
                     }

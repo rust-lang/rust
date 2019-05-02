@@ -4177,17 +4177,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 if let Some(sp) = tcx.sess.parse_sess.abiguous_block_expr_parse
                                     .borrow().get(&sp)
                                 {
-                                    if let Ok(snippet) = tcx.sess.source_map()
-                                        .span_to_snippet(*sp)
-                                    {
-                                        err.span_suggestion(
-                                            *sp,
-                                            "parentheses are required to parse this \
-                                             as an expression",
-                                            format!("({})", snippet),
-                                            Applicability::MachineApplicable,
-                                        );
-                                    }
+                                    tcx.sess.parse_sess.expr_parentheses_needed(
+                                        &mut err,
+                                        *sp,
+                                        None,
+                                    );
                                 }
                                 err.emit();
                                 oprnd_t = tcx.types.err;
