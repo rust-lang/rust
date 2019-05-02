@@ -4182,7 +4182,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     {
                                         err.span_suggestion(
                                             *sp,
-                                            "parenthesis are required to parse this \
+                                            "parentheses are required to parse this \
                                              as an expression",
                                             format!("({})", snippet),
                                             Applicability::MachineApplicable,

@@ -2934,7 +2934,7 @@ impl<'a> Parser<'a> {
                                 if let Ok(snippet) = self.sess.source_map().span_to_snippet(*sp) {
                                     err.span_suggestion(
                                         *sp,
-                                        "parenthesis are required to parse this as an expression",
+                                        "parentheses are required to parse this as an expression",
                                         format!("({})", snippet),
                                         Applicability::MachineApplicable,
                                     );
@@ -2979,7 +2979,7 @@ impl<'a> Parser<'a> {
                     "struct literals are not allowed here",
                 );
                 err.multipart_suggestion(
-                    "surround the struct literal with parenthesis",
+                    "surround the struct literal with parentheses",
                     vec![
                         (lo.shrink_to_lo(), "(".to_string()),
                         (expr.span.shrink_to_hi(), ")".to_string()),
@@ -3661,7 +3661,7 @@ impl<'a> Parser<'a> {
                     .unwrap_or_else(|_| pprust::expr_to_string(&lhs));
                 err.span_suggestion(
                     lhs.span,
-                    "parenthesis are required to parse this as an expression",
+                    "parentheses are required to parse this as an expression",
                     format!("({})", snippet),
                     Applicability::MachineApplicable,
                 );
@@ -4982,7 +4982,7 @@ impl<'a> Parser<'a> {
                             if let Ok(snippet) = self.sess.source_map().span_to_snippet(*sp) {
                                 err.span_suggestion(
                                     *sp,
-                                    "parenthesis are required to parse this as an expression",
+                                    "parentheses are required to parse this as an expression",
                                     format!("({})", snippet),
                                     Applicability::MachineApplicable,
                                 );

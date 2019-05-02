@@ -4,7 +4,7 @@ error: expected expression, found `+`
 LL |     {2} + {2}
    |     --- ^ expected expression
    |     |
-   |     help: parenthesis are required to parse this as an expression: `({2})`
+   |     help: parentheses are required to parse this as an expression: `({2})`
 
 error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:12:9
@@ -12,7 +12,7 @@ error: expected expression, found `+`
 LL |     {2} + 2
    |     --- ^ expected expression
    |     |
-   |     help: parenthesis are required to parse this as an expression: `({2})`
+   |     help: parentheses are required to parse this as an expression: `({2})`
 
 error: expected expression, found `+`
   --> $DIR/expr-as-stmt.rs:18:12
@@ -20,13 +20,13 @@ error: expected expression, found `+`
 LL |     { 42 } + foo;
    |     ------ ^ expected expression
    |     |
-   |     help: parenthesis are required to parse this as an expression: `({ 42 })`
+   |     help: parentheses are required to parse this as an expression: `({ 42 })`
 
 error: expected expression, found `&&`
   --> $DIR/expr-as-stmt.rs:30:5
    |
 LL |     if let Some(x) = a { true } else { false }
-   |     ------------------------------------------ help: parenthesis are required to parse this as an expression: `(if let Some(x) = a { true } else { false })`
+   |     ------------------------------------------ help: parentheses are required to parse this as an expression: `(if let Some(x) = a { true } else { false })`
 LL |     &&
    |     ^^ expected expression
 
@@ -35,7 +35,7 @@ error: expected expression, found `>`
    |
 LL |     } > 0
    |       ^ expected expression
-help: parenthesis are required to parse this as an expression
+help: parentheses are required to parse this as an expression
    |
 LL |     (match x {
 LL |         _ => 1,
@@ -84,7 +84,7 @@ error[E0614]: type `{integer}` cannot be dereferenced
 LL |     { 3 } * 3
    |     ----- ^^^
    |     |
-   |     help: parenthesis are required to parse this as an expression: `({ 3 })`
+   |     help: parentheses are required to parse this as an expression: `({ 3 })`
 
 error: aborting due to 10 previous errors
 

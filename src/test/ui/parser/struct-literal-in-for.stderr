@@ -6,7 +6,7 @@ LL |       for x in Foo {
 LL | |         x: 3
 LL | |     }.hi() {
    | |_____^
-help: surround the struct literal with parenthesis
+help: surround the struct literal with parentheses
    |
 LL |     for x in (Foo {
 LL |         x: 3
