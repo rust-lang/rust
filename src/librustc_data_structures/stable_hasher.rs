@@ -1,6 +1,7 @@
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
+use smallvec::SmallVec;
 use crate::sip128::SipHasher128;
 use crate::indexed_vec;
 use crate::bit_set;
@@ -315,6 +316,17 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
         (&self[..]).hash_stable(ctx, hasher);
+    }
+}
+
+impl<A, CTX> HashStable<CTX> for SmallVec<[A; 1]> where A: HashStable<CTX> {
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        for item in self {
+            item.hash_stable(ctx, hasher);
+        }
     }
 }
 
