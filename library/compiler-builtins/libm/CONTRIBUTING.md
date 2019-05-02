@@ -2,25 +2,25 @@
 
 - Pick your favorite math function from the [issue tracker].
 - Look for the C implementation of the function in the [MUSL source code][src].
-- Copy paste the C code into a Rust file in the `src/math` directory and adjust `src/math/mod.rs`
-  accordingly. Also, uncomment the corresponding trait method in `src/lib.rs`.
-- Run `cargo watch check` and fix the compiler errors.
-- Tweak the bottom of `test-generator/src/main.rs` to add your function to the test suite.
-- If you can, run the full test suite locally (see the [testing](#testing) section below). If you
-  can't, no problem! Your PR will be fully tested automatically. Though you may still want to add
-  and run some unit tests. See the bottom of [`src/math/truncf.rs`] for an example of such tests;
-  you can run unit tests with the `cargo test --lib` command.
-- Send us a pull request! Make sure to run `cargo fmt` on your code before sending the PR. Also
-  include "closes #42" in the PR description to close the corresponding issue.
+- Copy paste the C code into a Rust file in the `src/math` directory and adjust
+  `src/math/mod.rs` accordingly. Also, uncomment the corresponding trait method
+  in `src/lib.rs`.
+- Write some simple tests in your module (using `#[test]`)
+- Run `cargo test` to make sure it works
+- Run `cargo test --features musl-reference-tests` to compare your
+  implementation against musl's
+- Send us a pull request! Make sure to run `cargo fmt` on your code before
+  sending the PR. Also include "closes #42" in the PR description to close the
+  corresponding issue.
 - :tada:
 
-[issue tracker]: https://github.com/japaric/libm/issues
+[issue tracker]: https://github.com/rust-lang-nursery/libm/issues
 [src]: https://git.musl-libc.org/cgit/musl/tree/src/math
-[`src/math/truncf.rs`]: https://github.com/japaric/libm/blob/master/src/math/truncf.rs
+[`src/math/truncf.rs`]: https://github.com/rust-lang-nursery/libm/blob/master/src/math/truncf.rs
 
 Check [PR #65] for an example.
 
-[PR #65]: https://github.com/japaric/libm/pull/65
+[PR #65]: https://github.com/rust-lang-nursery/libm/pull/65
 
 ## Tips and tricks
 
@@ -78,18 +78,18 @@ let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 12
 
 ## Testing
 
-The test suite of this crate can only be run on x86_64 Linux systems using the following commands:
+Normal tests can be executed with:
 
-``` console
-$ # The test suite depends on the `cross` tool so install it if you don't have it
-$ cargo install cross
-
-$ # and the `cross` tool requires docker to be running
-$ systemctl start docker
-
-$ # execute the test suite for the x86_64 target
-$ TARGET=x86_64-unknown-linux-gnu bash ci/script.sh
-
-$ # execute the test suite for the ARMv7 target
-$ TARGET=armv7-unknown-linux-gnueabihf bash ci/script.sh
 ```
+cargo test
+```
+
+If you'd like to run tests with randomized inputs that get compared against musl
+itself, you'll need to be on a Linux system and then you can execute:
+
+```
+cargo test --features musl-reference-tests
+```
+
+Note that you may need to pass `--release` to Cargo if there are errors related
+to integer overflow.
