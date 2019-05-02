@@ -12,7 +12,7 @@ pub fn floorf(x: f32) -> f32 {
         }
     }
     let mut ui = x.to_bits();
-    let e = (((ui >> 23) & 0xff) - 0x7f) as i32;
+    let e = (((ui >> 23) as i32) & 0xff) - 0x7f;
 
     if e >= 23 {
         return x;
@@ -36,4 +36,12 @@ pub fn floorf(x: f32) -> f32 {
         }
     }
     return f32::from_bits(ui);
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn no_overflow() {
+        assert_eq!(super::floorf(0.5), 0.0);
+    }
 }
