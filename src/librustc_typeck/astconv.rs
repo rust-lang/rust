@@ -648,14 +648,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                             // careful!
                             if default_needs_object_self(param) {
                                 struct_span_err!(tcx.sess, span, E0393,
-                                                    "the type parameter `{}` must be explicitly \
-                                                     specified",
-                                                    param.name)
-                                    .span_label(span,
-                                                format!("missing reference to `{}`", param.name))
-                                    .note(&format!("because of the default `Self` reference, \
-                                                    type parameters must be specified on object \
-                                                    types"))
+                                    "the type parameter `{}` must be explicitly specified",
+                                    param.name
+                                )
+                                    .span_label(span, format!(
+                                        "missing reference to `{}`", param.name))
+                                    .note(&format!(
+                                        "because of the default `Self` reference, type parameters \
+                                         must be specified on object types"))
                                     .emit();
                                 tcx.types.err.into()
                             } else {
@@ -987,7 +987,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 );
                 potential_assoc_types.extend(cur_potential_assoc_types.into_iter().flatten());
                 (trait_ref, trait_bound.span)
-            }).collect();
+            })
+            .collect();
 
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
@@ -995,12 +996,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
-            let extra_trait = &regular_traits[1];
-            struct_span_err!(tcx.sess, extra_trait.bottom().1, E0225,
+            let first_trait = &regular_traits[0];
+            let additional_trait = &regular_traits[1];
+            struct_span_err!(tcx.sess, additional_trait.bottom().1, E0225,
                 "only auto traits can be used as additional traits in a trait object"
             )
-                .label_with_exp_info(extra_trait, "additional non-auto trait")
-                .span_label(regular_traits[0].top().1, "first non-auto trait")
+                .label_with_exp_info(additional_trait, "additional non-auto trait",
+                    "additional use")
+                .label_with_exp_info(first_trait, "first non-auto trait",
+                    "first use")
                 .emit();
         }
 

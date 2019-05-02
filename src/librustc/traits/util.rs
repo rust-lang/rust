@@ -51,13 +51,8 @@ struct PredicateSet<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
-    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> PredicateSet<'a, 'gcx, 'tcx> {
-        PredicateSet { tcx: tcx, set: Default::default() }
-    }
-
-    fn contains(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
-        // See the `insert` method for why we use `anonymize_predicate` here.
-        self.set.contains(&anonymize_predicate(self.tcx, pred))
+    fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
+        Self { tcx: tcx, set: Default::default() }
     }
 
     fn insert(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
@@ -72,11 +67,6 @@ impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
         // to be considered equivalent. So normalize all late-bound
         // regions before we throw things into the underlying set.
         self.set.insert(anonymize_predicate(self.tcx, pred))
-    }
-
-    fn remove(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
-        // See the `insert` method for why we use `anonymize_predicate` here.
-        self.set.remove(&anonymize_predicate(self.tcx, pred))
     }
 }
 
@@ -135,7 +125,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
         FilterToTraits::new(self)
     }
 
-    fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
+    fn elaborate(&mut self, predicate: &ty::Predicate<'tcx>) {
         let tcx = self.visited.tcx;
         match *predicate {
             ty::Predicate::Trait(ref data) => {
@@ -153,7 +143,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // This is necessary to prevent infinite recursion in some
                 // cases. One common case is when people define
                 // `trait Sized: Sized { }` rather than `trait Sized { }`.
-                predicates.retain(|p| self.visited.insert(p));
+                predicates.retain(|pred| self.visited.insert(pred));
 
                 self.stack.extend(predicates);
             }
@@ -251,15 +241,12 @@ impl<'cx, 'gcx, 'tcx> Iterator for Elaborator<'cx, 'gcx, 'tcx> {
 
     fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
         // Extract next item from top-most stack frame, if any.
-        let next_predicate = match self.stack.pop() {
-            Some(predicate) => predicate,
-            None => {
-                // No more stack frames. Done.
-                return None;
-            }
-        };
-        self.push(&next_predicate);
-        return Some(next_predicate);
+        if let Some(pred) = self.stack.pop() {
+            self.elaborate(&pred);
+            Some(pred)
+        } else {
+            None
+        }
     }
 }
 
@@ -294,31 +281,29 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 /// Expansion is done via a DFS (depth-first search), and the `visited` field
 /// is used to avoid cycles.
 pub struct TraitAliasExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
     stack: Vec<TraitAliasExpansionInfo<'tcx>>,
-    /// The set of predicates visited from the root directly to the current point in the
-    /// expansion tree (only containing trait aliases).
-    visited: PredicateSet<'a, 'gcx, 'tcx>,
 }
 
 /// Stores information about the expansion of a trait via a path of zero or more trait aliases.
 #[derive(Debug, Clone)]
 pub struct TraitAliasExpansionInfo<'tcx> {
-    pub items: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
+    pub path: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
 }
 
 impl<'tcx> TraitAliasExpansionInfo<'tcx> {
     fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
         Self {
-            items: smallvec![(trait_ref, span)]
+            path: smallvec![(trait_ref, span)]
         }
     }
 
-    fn push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
-        let mut items = self.items.clone();
-        items.push((trait_ref, span));
+    fn clone_and_push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
+        let mut path = self.path.clone();
+        path.push((trait_ref, span));
 
         Self {
-            items
+            path
         }
     }
 
@@ -327,11 +312,11 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
     }
 
     pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
-        self.items.last().unwrap()
+        self.path.last().unwrap()
     }
 
     pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
-        self.items.first().unwrap()
+        self.path.first().unwrap()
     }
 }
 
@@ -340,21 +325,25 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
 pub trait TraitAliasExpansionInfoDignosticBuilder {
     fn label_with_exp_info<'tcx>(&mut self,
         info: &TraitAliasExpansionInfo<'tcx>,
-        top_label: &str
+        top_label: &str,
+        use_desc: &str
     ) -> &mut Self;
 }
 
 impl<'a> TraitAliasExpansionInfoDignosticBuilder for DiagnosticBuilder<'a> {
     fn label_with_exp_info<'tcx>(&mut self,
         info: &TraitAliasExpansionInfo<'tcx>,
-        top_label: &str
+        top_label: &str,
+        use_desc: &str
     ) -> &mut Self {
         self.span_label(info.top().1, top_label);
-        if info.items.len() > 1 {
-            for (_, sp) in info.items[1..(info.items.len() - 1)].iter().rev() {
-                self.span_label(*sp, "referenced here");
+        if info.path.len() > 1 {
+            for (_, sp) in info.path.iter().rev().skip(1).take(info.path.len() - 2) {
+                self.span_label(*sp, format!("referenced here ({})", use_desc));
             }
         }
+        self.span_label(info.bottom().1,
+            format!("trait alias used in trait object type ({})", use_desc));
         self
     }
 }
@@ -367,7 +356,7 @@ pub fn expand_trait_aliases<'cx, 'gcx, 'tcx>(
         .into_iter()
         .map(|(trait_ref, span)| TraitAliasExpansionInfo::new(trait_ref, span))
         .collect();
-    TraitAliasExpander { stack: items, visited: PredicateSet::new(tcx) }
+    TraitAliasExpander { tcx, stack: items }
 }
 
 impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
@@ -376,23 +365,25 @@ impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
     /// Otherwise, immediately returns `true` if `item` is a regular trait, or `false` if it is a
     /// trait alias.
     /// The return value indicates whether `item` should be yielded to the user.
-    fn push(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
-        let tcx = self.visited.tcx;
+    fn expand(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
+        let tcx = self.tcx;
         let trait_ref = item.trait_ref();
         let pred = trait_ref.to_predicate();
 
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
-        // Don't recurse unless this bound is a trait alias and isn't currently in the DFS stack of
-        // already-visited predicates.
+        // Don't recurse if this bound is not a trait alias.
         let is_alias = tcx.is_trait_alias(trait_ref.def_id());
-        if !is_alias || self.visited.contains(&pred) {
-            return !is_alias;
+        if !is_alias {
+            return true;
         }
 
-        // Remove the current predicate from the stack of already-visited ones, since we're doing
-        // a DFS.
-        self.visited.remove(&pred);
+        // Don't recurse if this trait alias is already on the stack for the DFS search.
+        let anon_pred = anonymize_predicate(tcx, &pred);
+        if item.path.iter().rev().skip(1)
+                .any(|(tr, _)| anonymize_predicate(tcx, &tr.to_predicate()) == anon_pred) {
+            return false;
+        }
 
         // Get components of trait alias.
         let predicates = tcx.super_predicates_of(trait_ref.def_id());
@@ -403,15 +394,12 @@ impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
             .filter_map(|(pred, span)| {
                 pred.subst_supertrait(tcx, &trait_ref)
                     .to_opt_poly_trait_ref()
-                    .map(|trait_ref| item.push(trait_ref, *span))
+                    .map(|trait_ref| item.clone_and_push(trait_ref, *span))
             })
             .collect();
         debug!("expand_trait_aliases: items={:?}", items);
 
         self.stack.extend(items);
-
-        // Record predicate into set of already-visited.
-        self.visited.insert(&pred);
 
         false
     }
@@ -426,7 +414,7 @@ impl<'cx, 'gcx, 'tcx> Iterator for TraitAliasExpander<'cx, 'gcx, 'tcx> {
 
     fn next(&mut self) -> Option<TraitAliasExpansionInfo<'tcx>> {
         while let Some(item) = self.stack.pop() {
-            if self.push(&item) {
+            if self.expand(&item) {
                 return Some(item);
             }
         }

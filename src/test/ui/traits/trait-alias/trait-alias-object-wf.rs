@@ -1,6 +1,6 @@
 // run-pass
 
-// This test hecks that trait objects involving trait aliases are well-formed.
+// This test checks that trait objects involving trait aliases are well-formed.
 
 #![feature(trait_alias)]
 
