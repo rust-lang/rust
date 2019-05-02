@@ -1,7 +1,7 @@
 // The purpose of this test is to demonstrate that duplicating object safe traits
 // that are not auto-traits is rejected even though one could reasonably accept this.
 
-// Some arbitray object-safe trait:
+// Some arbitrary object-safe trait:
 trait Obj {}
 
 // Demonstrate that recursive expansion of trait aliases doesn't affect stable behavior:

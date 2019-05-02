@@ -1,13 +1,15 @@
-// The purpose of this test is to demonstrate that `?Sized` is allowed in trait objects
-// (thought it has no effect).
+// compile-pass
 
-type _0 = dyn ?Sized;
-//~^ ERROR at least one non-builtin trait is required for an object type [E0224]
+// Test that `dyn ... + ?Sized + ...` is okay (though `?Sized` has no effect in trait objects).
 
-type _1 = dyn Clone + ?Sized;
+trait Foo {}
 
-type _2 = dyn Clone + ?Sized + ?Sized;
+type _0 = dyn ?Sized + Foo;
 
-type _3 = dyn ?Sized + Clone;
+type _1 = dyn Foo + ?Sized;
+
+type _2 = dyn Foo + ?Sized + ?Sized;
+
+type _3 = dyn ?Sized + Foo;
 
 fn main() {}

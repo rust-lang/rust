@@ -5,7 +5,7 @@
 
 use std::marker::Unpin;
 
-// Some arbitray object-safe traits:
+// Some arbitrary object-safe traits:
 trait ObjA {}
 trait ObjB {}
 

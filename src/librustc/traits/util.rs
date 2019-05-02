@@ -56,6 +56,7 @@ impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
     }
 
     fn contains(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
+        // See the `insert` method for why we use `anonymize_predicate` here.
         self.set.contains(&anonymize_predicate(self.tcx, pred))
     }
 
@@ -74,13 +75,14 @@ impl<'a, 'gcx, 'tcx> PredicateSet<'a, 'gcx, 'tcx> {
     }
 
     fn remove(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
+        // See the `insert` method for why we use `anonymize_predicate` here.
         self.set.remove(&anonymize_predicate(self.tcx, pred))
     }
 }
 
 impl<'a, 'gcx, 'tcx, T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'a, 'gcx, 'tcx> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        for pred in iter.into_iter() {
+        for pred in iter {
             self.insert(pred.as_ref());
         }
     }
@@ -289,30 +291,33 @@ pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 /// `trait Foo = Bar + Sync;`, and another trait alias
 /// `trait Bar = Read + Write`, then the bounds would expand to
 /// `Read + Write + Sync + Send`.
+/// Expansion is done via a DFS (depth-first search), and the `visited` field
+/// is used to avoid cycles.
 pub struct TraitAliasExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     stack: Vec<TraitAliasExpansionInfo<'tcx>>,
     /// The set of predicates visited from the root directly to the current point in the
-    /// expansion tree.
+    /// expansion tree (only containing trait aliases).
     visited: PredicateSet<'a, 'gcx, 'tcx>,
 }
 
+/// Stores information about the expansion of a trait via a path of zero or more trait aliases.
 #[derive(Debug, Clone)]
 pub struct TraitAliasExpansionInfo<'tcx> {
     pub items: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
 }
 
 impl<'tcx> TraitAliasExpansionInfo<'tcx> {
-    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitAliasExpansionInfo<'tcx> {
-        TraitAliasExpansionInfo {
+    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
+        Self {
             items: smallvec![(trait_ref, span)]
         }
     }
 
-    fn push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitAliasExpansionInfo<'tcx> {
+    fn push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
         let mut items = self.items.clone();
         items.push((trait_ref, span));
 
-        TraitAliasExpansionInfo {
+        Self {
             items
         }
     }
@@ -330,6 +335,8 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
     }
 }
 
+/// Emits diagnostic information relating to the expansion of a trait via trait aliases
+/// (see [`TraitAliasExpansionInfo`]).
 pub trait TraitAliasExpansionInfoDignosticBuilder {
     fn label_with_exp_info<'tcx>(&mut self,
         info: &TraitAliasExpansionInfo<'tcx>,
@@ -365,10 +372,10 @@ pub fn expand_trait_aliases<'cx, 'gcx, 'tcx>(
 
 impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
     /// If `item` is a trait alias and its predicate has not yet been visited, then expands `item`
-    /// to the definition and pushes the resulting expansion onto `self.stack`, and returns `false`.
-    /// Otherwise, immediately returns `true` if `item` is a regular trait and `false` if it is a
+    /// to the definition, pushes the resulting expansion onto `self.stack`, and returns `false`.
+    /// Otherwise, immediately returns `true` if `item` is a regular trait, or `false` if it is a
     /// trait alias.
-    /// The return value indicates whether `item` should not be yielded to the user.
+    /// The return value indicates whether `item` should be yielded to the user.
     fn push(&mut self, item: &TraitAliasExpansionInfo<'tcx>) -> bool {
         let tcx = self.visited.tcx;
         let trait_ref = item.trait_ref();
@@ -376,12 +383,16 @@ impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
 
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
-        self.visited.remove(&pred);
-
+        // Don't recurse unless this bound is a trait alias and isn't currently in the DFS stack of
+        // already-visited predicates.
         let is_alias = tcx.is_trait_alias(trait_ref.def_id());
         if !is_alias || self.visited.contains(&pred) {
             return !is_alias;
         }
+
+        // Remove the current predicate from the stack of already-visited ones, since we're doing
+        // a DFS.
+        self.visited.remove(&pred);
 
         // Get components of trait alias.
         let predicates = tcx.super_predicates_of(trait_ref.def_id());

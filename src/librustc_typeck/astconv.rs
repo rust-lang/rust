@@ -996,11 +996,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
             let extra_trait = &regular_traits[1];
-            let mut err = struct_span_err!(tcx.sess, extra_trait.bottom().1, E0225,
-                "only auto traits can be used as additional traits in a trait object");
-            err.label_with_exp_info(extra_trait, "additional non-auto trait");
-            err.span_label(regular_traits[0].top().1, "first non-auto trait");
-            err.emit();
+            struct_span_err!(tcx.sess, extra_trait.bottom().1, E0225,
+                "only auto traits can be used as additional traits in a trait object"
+            )
+                .label_with_exp_info(extra_trait, "additional non-auto trait")
+                .span_label(regular_traits[0].top().1, "first non-auto trait")
+                .emit();
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {

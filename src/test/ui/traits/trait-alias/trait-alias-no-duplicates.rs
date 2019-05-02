@@ -6,7 +6,7 @@
 
 use std::marker::Unpin;
 
-// Some arbitray object-safe trait:
+// Some arbitrary object-safe trait:
 trait Obj {}
 
 // Nest a few levels deep:
