@@ -262,6 +262,7 @@ fn main() {
             // The flags here should be kept in sync with `add_miri_default_args`
             // in miri's `src/lib.rs`.
             cmd.arg("-Zalways-encode-mir");
+            cmd.arg("--cfg=miri");
             // These options are preferred by miri, to be able to perform better validation,
             // but the bootstrap compiler might not understand them.
             if stage != "0" {
