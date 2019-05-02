@@ -30,6 +30,8 @@ fn main() {
         println!("cargo:rustc-link-lib=resolv");
     } else if target.contains("apple-darwin") {
         println!("cargo:rustc-link-lib=System");
+        #[cfg(miri)]
+        println!("cargo:rustc-link-lib=framework=Security");
 
         // res_init and friends require -lresolv on macOS/iOS.
         // See #41582 and http://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
