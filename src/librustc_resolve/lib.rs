@@ -4643,14 +4643,14 @@ impl<'a> Resolver<'a> {
                     false,
                     module.span,
                 ).is_ok() {
-                    let import_ids = self.find_transitive_imports(&binding.kind, &trait_name);
+                    let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
                     let trait_def_id = module.def_id().unwrap();
                     found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
                 }
             } else if let Res::Def(DefKind::TraitAlias, _) = binding.res() {
                 // For now, just treat all trait aliases as possible candidates, since we don't
                 // know if the ident is somewhere in the transitive bounds.
-                let import_ids = self.find_transitive_imports(&binding.kind, &trait_name);
+                let import_ids = self.find_transitive_imports(&binding.kind, trait_name);
                 let trait_def_id = binding.res().def_id();
                 found_traits.push(TraitCandidate { def_id: trait_def_id, import_ids });
             } else {
@@ -4660,11 +4660,11 @@ impl<'a> Resolver<'a> {
     }
 
     fn find_transitive_imports(&mut self, mut kind: &NameBindingKind<'_>,
-                               trait_name: &Ident) -> SmallVec<[NodeId; 1]> {
+                               trait_name: Ident) -> SmallVec<[NodeId; 1]> {
         let mut import_ids = smallvec![];
         while let NameBindingKind::Import { directive, binding, .. } = kind {
             self.maybe_unused_trait_imports.insert(directive.id);
-            self.add_to_glob_map(&directive, *trait_name);
+            self.add_to_glob_map(&directive, trait_name);
             import_ids.push(directive.id);
             kind = &binding.kind;
         };
