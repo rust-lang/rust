@@ -83,6 +83,7 @@ intrinsics! {
     #[use_c_shim_if(any(
         all(target_arch = "x86", not(target_env = "msvc")),
         all(target_arch = "x86_64", not(windows)),
+        all(target_arch = "x86_64", target_env = "msvc"),
     ))]
     #[arm_aeabi_alias = __aeabi_l2f]
     pub extern "C" fn __floatdisf(i: i64) -> f32 {
