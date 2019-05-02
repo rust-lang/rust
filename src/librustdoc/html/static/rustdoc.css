@@ -1052,6 +1052,10 @@ span.since {
 		height: 45px;
 	}
 
+	.rustdoc.source > .sidebar > .sidebar-menu {
+		display: none;
+	}
+
 	.sidebar-elems {
 		position: fixed;
 		z-index: 1;
