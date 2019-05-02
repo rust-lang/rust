@@ -1,6 +1,5 @@
 use crate::ParseError;
 use crate::subtree_parser::Parser;
-use crate::subtree_source::TokenPeek;
 use smallvec::{SmallVec, smallvec};
 
 #[derive(Debug, Clone)]
@@ -153,7 +152,7 @@ impl<'a> TtCursor<'a> {
     pub(crate) fn eat_vis(&mut self) -> Option<tt::TokenTree> {
         let parser = Parser::new(&mut self.pos, self.subtree);
         parser.parse_vis()
-    }
+        }
 
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {
         if self.at_char(char) {
@@ -260,5 +259,50 @@ impl<'a> TtCursor<'a> {
 
     pub(crate) fn rollback(&mut self, memento: TtCursorMemento) {
         self.pos = memento.pos;
+    }
+}
+
+pub(crate) struct TokenPeek<'a, I>
+where
+    I: Iterator<Item = &'a tt::TokenTree>,
+{
+    iter: itertools::MultiPeek<I>,
+}
+
+// helper function
+fn to_punct(tt: &tt::TokenTree) -> Option<&tt::Punct> {
+    if let tt::TokenTree::Leaf(tt::Leaf::Punct(pp)) = tt {
+        return Some(pp);
+    }
+    None
+}
+
+impl<'a, I> TokenPeek<'a, I>
+where
+    I: Iterator<Item = &'a tt::TokenTree>,
+{
+    pub fn new(iter: I) -> Self {
+        TokenPeek { iter: itertools::multipeek(iter) }
+    }
+
+    pub fn current_punct2(&mut self, p: &tt::Punct) -> Option<((char, char), bool)> {
+        if p.spacing != tt::Spacing::Joint {
+            return None;
+        }
+
+        self.iter.reset_peek();
+        let p1 = to_punct(self.iter.peek()?)?;
+        Some(((p.char, p1.char), p1.spacing == tt::Spacing::Joint))
+    }
+
+    pub fn current_punct3(&mut self, p: &tt::Punct) -> Option<((char, char, char), bool)> {
+        self.current_punct2(p).and_then(|((p0, p1), last_joint)| {
+            if !last_joint {
+                None
+            } else {
+                let p2 = to_punct(*self.iter.peek()?)?;
+                Some(((p0, p1, p2.char), p2.spacing == tt::Spacing::Joint))
+            }
+        })
     }
 }

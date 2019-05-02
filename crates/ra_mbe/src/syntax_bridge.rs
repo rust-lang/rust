@@ -148,30 +148,21 @@ fn convert_tt(
         match child {
             SyntaxElement::Token(token) => {
                 if token.kind().is_punct() {
-                    let mut prev = None;
-                    for char in token.text().chars() {
-                        if let Some(char) = prev {
-                            token_trees.push(
-                                tt::Leaf::from(tt::Punct { char, spacing: tt::Spacing::Joint })
-                                    .into(),
-                            );
-                        }
-                        prev = Some(char)
-                    }
-                    if let Some(char) = prev {
-                        let spacing = match child_iter.peek() {
-                            Some(SyntaxElement::Token(token)) => {
-                                if token.kind().is_punct() {
-                                    tt::Spacing::Joint
-                                } else {
-                                    tt::Spacing::Alone
-                                }
-                            }
-                            _ => tt::Spacing::Alone,
-                        };
+                    assert!(token.text().len() == 1, "Input ast::token punct must be single char.");
+                    let char = token.text().chars().next().unwrap();
 
-                        token_trees.push(tt::Leaf::from(tt::Punct { char, spacing }).into());
-                    }
+                    let spacing = match child_iter.peek() {
+                        Some(SyntaxElement::Token(token)) => {
+                            if token.kind().is_punct() {
+                                tt::Spacing::Joint
+                            } else {
+                                tt::Spacing::Alone
+                            }
+                        }
+                        _ => tt::Spacing::Alone,
+                    };
+
+                    token_trees.push(tt::Leaf::from(tt::Punct { char, spacing }).into());
                 } else {
                     let child: tt::TokenTree = if token.kind() == SyntaxKind::TRUE_KW
                         || token.kind() == SyntaxKind::FALSE_KW
@@ -224,6 +215,15 @@ impl<'a, Q: Querier> TtTreeSink<'a, Q> {
     }
 }
 
+fn is_delimiter(kind: SyntaxKind) -> bool {
+    use SyntaxKind::*;
+
+    match kind {
+        L_PAREN | L_BRACK | L_CURLY | R_PAREN | R_BRACK | R_CURLY => true,
+        _ => false,
+    }
+}
+
 impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
     fn token(&mut self, kind: SyntaxKind, n_tokens: u8) {
         if kind == L_DOLLAR || kind == R_DOLLAR {
@@ -240,14 +240,18 @@ impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
         self.buf.clear();
         self.inner.token(kind, text);
 
-        // // Add a white space to token
-        // let (last_kind, _, last_joint_to_next ) = self.src_querier.token(self.token_pos-n_tokens as usize);
-        // if !last_joint_to_next && last_kind.is_punct() {
-        //     let (cur_kind, _, _ ) = self.src_querier.token(self.token_pos);
-        //     if cur_kind.is_punct() {
-        //         self.inner.token(WHITESPACE, " ".into());
-        //     }
-        // }
+        // Add a white space between tokens, only if both are not delimiters
+        if !is_delimiter(kind) {
+            let (last_kind, _, last_joint_to_next) = self.src_querier.token(self.token_pos - 1);
+            if !last_joint_to_next && last_kind.is_punct() {
+                let (cur_kind, _, _) = self.src_querier.token(self.token_pos);
+                if !is_delimiter(cur_kind) {
+                    if cur_kind.is_punct() {
+                        self.inner.token(WHITESPACE, " ".into());
+                    }
+                }
+            }
+        }
     }
 
     fn start_node(&mut self, kind: SyntaxKind) {
