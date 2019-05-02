@@ -112,8 +112,8 @@ impl PartialEq for crate::Separator {
         use crate::Separator::*;
 
         match (self, other) {
-            (Ident(ref a), Ident(ref b)) => a == b,
-            (Literal(ref a), Literal(ref b)) => a == b,
+            (Ident(ref a), Ident(ref b)) => a.text == b.text,
+            (Literal(ref a), Literal(ref b)) => a.text == b.text,
             (Puncts(ref a), Puncts(ref b)) if a.len() == b.len() => {
                 let a_iter = a.iter().map(|a| a.char);
                 let b_iter = b.iter().map(|b| b.char);
