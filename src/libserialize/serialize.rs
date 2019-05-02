@@ -764,9 +764,15 @@ macro_rules! tuple {
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
-impl Encodable for path::PathBuf {
+impl Encodable for path::Path {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         self.to_str().unwrap().encode(e)
+    }
+}
+
+impl Encodable for path::PathBuf {
+    fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
+        path::Path::encode(self, e)
     }
 }
 
