@@ -17,7 +17,7 @@ pub struct TypeVariableTable<'tcx> {
     /// the known value.
     eq_relations: ut::UnificationTable<ut::InPlace<TyVidEqKey<'tcx>>>,
 
-    /// Two variables are unified in `eq_relations` when we have a
+    /// Two variables are unified in `sub_relations` when we have a
     /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
     /// table exists only to help with the occurs check. In particular,
     /// we want to report constraints like these as an occurs check
@@ -365,7 +365,7 @@ impl sv::SnapshotVecDelegate for Delegate {
 
     fn reverse(_values: &mut Vec<TypeVariableData>, _action: Instantiate) {
         // We don't actually have to *do* anything to reverse an
-        // instanation; the value for a variable is stored in the
+        // instantiation; the value for a variable is stored in the
         // `eq_relations` and hence its rollback code will handle
         // it. In fact, we could *almost* just remove the
         // `SnapshotVec` entirely, except that we would have to

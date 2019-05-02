@@ -8,7 +8,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
-use crate::mir::interpret::{GlobalId, ConstValue};
+use crate::mir::interpret::{GlobalId, ConstValue, Scalar};
 use crate::util::common::ErrorReported;
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
@@ -76,11 +76,19 @@ pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
     // additional hooks for other types in the future if needed
     // without making older code, which called `relate`, obsolete.
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>)
-           -> RelateResult<'tcx, Ty<'tcx>>;
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>>;
 
-    fn regions(&mut self, a: ty::Region<'tcx>, b: ty::Region<'tcx>)
-               -> RelateResult<'tcx, ty::Region<'tcx>>;
+    fn regions(
+        &mut self,
+        a: ty::Region<'tcx>,
+        b: ty::Region<'tcx>
+    ) -> RelateResult<'tcx, ty::Region<'tcx>>;
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>;
 
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
@@ -116,7 +124,7 @@ impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
                 ast::Mutability::MutMutable => ty::Invariant,
             };
             let ty = relation.relate_with_variance(variance, &a.ty, &b.ty)?;
-            Ok(ty::TypeAndMut {ty: ty, mutbl: mutbl})
+            Ok(ty::TypeAndMut { ty, mutbl })
         }
     }
 }
@@ -468,6 +476,8 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             let t = relation.relate(&a_t, &b_t)?;
             let to_u64 = |x: ty::Const<'tcx>| -> Result<u64, ErrorReported> {
                 match x.val {
+                    // FIXME(const_generics): this doesn't work right now,
+                    // because it tries to relate an `Infer` to a `Param`.
                     ConstValue::Unevaluated(def_id, substs) => {
                         // FIXME(eddyb) get the right param_env.
                         let param_env = ty::ParamEnv::empty();
@@ -481,7 +491,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                             if let Some(instance) = instance {
                                 let cid = GlobalId {
                                     instance,
-                                    promoted: None
+                                    promoted: None,
                                 };
                                 if let Some(s) = tcx.const_eval(param_env.and(cid))
                                                     .ok()
@@ -575,6 +585,62 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
     }
 }
 
+/// The main "const relation" routine. Note that this does not handle
+/// inference artifacts, so you should filter those out before calling
+/// it.
+pub fn super_relate_consts<'a, 'gcx, 'tcx, R>(
+    relation: &mut R,
+    a: &'tcx ty::Const<'tcx>,
+    b: &'tcx ty::Const<'tcx>
+) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
+where
+    R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+{
+    let tcx = relation.tcx();
+
+    // Currently, the values that can be unified are those that
+    // implement both `PartialEq` and `Eq`, corresponding to
+    // `structural_match` types.
+    // FIXME(const_generics): check for `structural_match` synthetic attribute.
+    match (a.val, b.val) {
+        (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
+            // The caller should handle these cases!
+            bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
+        }
+        (ConstValue::Param(a_p), ConstValue::Param(b_p)) if a_p.index == b_p.index => {
+            Ok(a)
+        }
+        (ConstValue::Placeholder(p1), ConstValue::Placeholder(p2)) if p1 == p2 => {
+            Ok(a)
+        }
+        (ConstValue::Scalar(Scalar::Bits { .. }), _) if a == b => {
+            Ok(a)
+        }
+        (ConstValue::ByRef(..), _) => {
+            bug!(
+                "non-Scalar ConstValue encountered in super_relate_consts {:?} {:?}",
+                a,
+                b,
+            );
+        }
+
+        // FIXME(const_generics): this is wrong, as it is a projection
+        (ConstValue::Unevaluated(a_def_id, a_substs),
+            ConstValue::Unevaluated(b_def_id, b_substs)) if a_def_id == b_def_id => {
+                let substs =
+                    relation.relate_with_variance(ty::Variance::Invariant, &a_substs, &b_substs)?;
+                Ok(tcx.mk_const(ty::Const {
+                    val: ConstValue::Unevaluated(a_def_id, &substs),
+                    ty: a.ty,
+                }))
+            }
+
+            _ => {
+            Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+        }
+    }
+}
+
 impl<'tcx> Relate<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &Self,
@@ -646,6 +712,17 @@ impl<'tcx> Relate<'tcx> for ty::Region<'tcx> {
     }
 }
 
+impl<'tcx> Relate<'tcx> for &'tcx ty::Const<'tcx> {
+    fn relate<'a, 'gcx, R>(relation: &mut R,
+                           a: &&'tcx ty::Const<'tcx>,
+                           b: &&'tcx ty::Const<'tcx>)
+                           -> RelateResult<'tcx, &'tcx ty::Const<'tcx>>
+        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
+    {
+        relation.consts(*a, *b)
+    }
+}
+
 impl<'tcx, T: Relate<'tcx>> Relate<'tcx> for ty::Binder<T> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &ty::Binder<T>,
@@ -699,14 +776,17 @@ impl<'tcx> Relate<'tcx> for Kind<'tcx> {
             (UnpackedKind::Type(a_ty), UnpackedKind::Type(b_ty)) => {
                 Ok(relation.relate(&a_ty, &b_ty)?.into())
             }
+            (UnpackedKind::Const(a_ct), UnpackedKind::Const(b_ct)) => {
+                Ok(relation.relate(&a_ct, &b_ct)?.into())
+            }
             (UnpackedKind::Lifetime(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
             (UnpackedKind::Type(unpacked), x) => {
                 bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
-            (UnpackedKind::Const(_), _) => {
-                unimplemented!() // FIXME(const_generics)
+            (UnpackedKind::Const(unpacked), x) => {
+                bug!("impossible case reached: can't relate: {:?} with {:?}", unpacked, x)
             }
         }
     }

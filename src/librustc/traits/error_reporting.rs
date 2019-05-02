@@ -1248,7 +1248,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let sig = if let ty::Tuple(inputs) = inputs.sty {
                 tcx.mk_fn_sig(
                     inputs.iter().map(|k| k.expect_ty()),
-                    tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
+                    tcx.mk_ty_infer(ty::TyVar(ty::TyVid { index: 0 })),
                     false,
                     hir::Unsafety::Normal,
                     ::rustc_target::spec::abi::Abi::Rust
@@ -1256,7 +1256,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             } else {
                 tcx.mk_fn_sig(
                     ::std::iter::once(inputs),
-                    tcx.mk_infer(ty::TyVar(ty::TyVid { index: 0 })),
+                    tcx.mk_ty_infer(ty::TyVar(ty::TyVid { index: 0 })),
                     false,
                     hir::Unsafety::Normal,
                     ::rustc_target::spec::abi::Abi::Rust

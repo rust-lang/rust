@@ -16,9 +16,10 @@ use rustc::traits::{
     Environment,
     InEnvironment,
 };
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Ty, TyCtxt, InferConst};
 use rustc::ty::subst::Kind;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
+use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
 
 use super::{ChalkInferenceContext, ChalkArenas, ChalkExClause, ConstrainedSubst};
@@ -274,5 +275,45 @@ impl TypeRelation<'cx, 'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
         }
 
         Ok(a)
+    }
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        if let ty::Const {
+            val: ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)),
+            ..
+        } = a {
+            if *debruijn == self.binder_index {
+                self.unify_free_answer_var(*bound_ct, b.into())?;
+                return Ok(b);
+            }
+        }
+
+        match (a, b) {
+            (
+                ty::Const {
+                    val: ConstValue::Infer(InferConst::Canonical(a_debruijn, a_bound)),
+                    ..
+                },
+                ty::Const {
+                    val: ConstValue::Infer(InferConst::Canonical(b_debruijn, b_bound)),
+                    ..
+                },
+            ) => {
+                assert_eq!(a_debruijn, b_debruijn);
+                assert_eq!(a_bound, b_bound);
+                Ok(a)
+            }
+
+            // Everything else should just be a perfect match as well,
+            // and we forbid inference variables.
+            _ => match ty::relate::super_relate_consts(self, a, b) {
+                Ok(ct) => Ok(ct),
+                Err(err) => bug!("const mismatch in `AnswerSubstitutor`: {}", err),
+            }
+        }
     }
 }

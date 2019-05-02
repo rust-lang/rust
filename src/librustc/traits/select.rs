@@ -3124,8 +3124,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // OK to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        let self_ty = self.infcx
-            .shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (generator_def_id, substs) = match self_ty.sty {
             ty::Generator(id, substs, _) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),
@@ -3182,8 +3181,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // OK to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
-        let self_ty = self.infcx
-            .shallow_resolve(obligation.self_ty().skip_binder());
+        let self_ty = self.infcx.shallow_resolve(*obligation.self_ty().skip_binder());
         let (closure_def_id, substs) = match self_ty.sty {
             ty::Closure(id, substs) => (id, substs),
             _ => bug!("closure candidate for non-closure {:?}", obligation),

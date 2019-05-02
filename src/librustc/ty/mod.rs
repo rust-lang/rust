@@ -96,6 +96,7 @@ mod constness;
 pub mod error;
 mod erase_regions;
 pub mod fast_reject;
+pub mod flags;
 pub mod fold;
 pub mod inhabitedness;
 pub mod layout;
@@ -112,7 +113,6 @@ pub mod wf;
 pub mod util;
 
 mod context;
-mod flags;
 mod instance;
 mod structural_impls;
 mod sty;
@@ -455,6 +455,7 @@ bitflags! {
         const HAS_TY_PLACEHOLDER = 1 << 14;
 
         const HAS_CT_INFER = 1 << 15;
+        const HAS_CT_PLACEHOLDER = 1 << 16;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
@@ -477,7 +478,8 @@ bitflags! {
                                   TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
                                   TypeFlags::HAS_RE_LATE_BOUND.bits |
-                                  TypeFlags::HAS_TY_PLACEHOLDER.bits;
+                                  TypeFlags::HAS_TY_PLACEHOLDER.bits |
+                                  TypeFlags::HAS_CT_PLACEHOLDER.bits;
     }
 }
 
@@ -1629,6 +1631,8 @@ impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
 pub type PlaceholderType = Placeholder<BoundVar>;
+
+pub type PlaceholderConst = Placeholder<BoundVar>;
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this

@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use crate::astconv::{AstConv, Bounds};
-use crate::constrained_generic_params as ctp;
+use crate::constrained_generic_params as cgp;
 use crate::check::intrinsic::intrisic_operation_unsafety;
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
@@ -2202,11 +2202,11 @@ fn explicit_predicates_of<'a, 'tcx>(
     {
         let self_ty = tcx.type_of(def_id);
         let trait_ref = tcx.impl_trait_ref(def_id);
-        ctp::setup_constraining_predicates(
+        cgp::setup_constraining_predicates(
             tcx,
             &mut predicates,
             trait_ref,
-            &mut ctp::parameters_for_impl(self_ty, trait_ref),
+            &mut cgp::parameters_for_impl(self_ty, trait_ref),
         );
     }
 

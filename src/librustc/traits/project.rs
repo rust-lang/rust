@@ -1371,7 +1371,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
     let tcx = selcx.tcx();
     let infcx = selcx.infcx();
     let closure_sig_ty = vtable.substs.closure_sig_ty(vtable.closure_def_id, tcx);
-    let closure_sig = infcx.shallow_resolve(&closure_sig_ty).fn_sig(tcx);
+    let closure_sig = infcx.shallow_resolve(closure_sig_ty).fn_sig(tcx);
     let Normalized {
         value: closure_sig,
         obligations

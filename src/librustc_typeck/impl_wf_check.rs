@@ -8,7 +8,7 @@
 //! specialization errors. These things can (and probably should) be
 //! fixed, but for the moment it's easier to do these checks early.
 
-use crate::constrained_generic_params as ctp;
+use crate::constrained_generic_params as cgp;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
@@ -102,8 +102,8 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let impl_predicates = tcx.predicates_of(impl_def_id);
     let impl_trait_ref = tcx.impl_trait_ref(impl_def_id);
 
-    let mut input_parameters = ctp::parameters_for_impl(impl_self_ty, impl_trait_ref);
-    ctp::identify_constrained_generic_params(
+    let mut input_parameters = cgp::parameters_for_impl(impl_self_ty, impl_trait_ref);
+    cgp::identify_constrained_generic_params(
         tcx, &impl_predicates, impl_trait_ref, &mut input_parameters);
 
     // Disallow unconstrained lifetimes, but only if they appear in assoc types.
@@ -114,7 +114,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             item.kind == ty::AssociatedKind::Type && item.defaultness.has_value()
         })
         .flat_map(|def_id| {
-            ctp::parameters_for(&tcx.type_of(def_id), true)
+            cgp::parameters_for(&tcx.type_of(def_id), true)
         }).collect();
 
     for param in &impl_generics.params {
@@ -122,7 +122,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Disallow ANY unconstrained type parameters.
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
-                if !input_parameters.contains(&ctp::Parameter::from(param_ty)) {
+                if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
                     report_unused_parameter(tcx,
                                             tcx.def_span(param.def_id),
                                             "type",
@@ -130,7 +130,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
             ty::GenericParamDefKind::Lifetime => {
-                let param_lt = ctp::Parameter::from(param.to_early_bound_region_data());
+                let param_lt = cgp::Parameter::from(param.to_early_bound_region_data());
                 if lifetimes_in_associated_types.contains(&param_lt) && // (*)
                     !input_parameters.contains(&param_lt) {
                     report_unused_parameter(tcx,
@@ -141,7 +141,7 @@ fn enforce_impl_params_are_constrained<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             ty::GenericParamDefKind::Const => {
                 let param_ct = ty::ParamConst::for_def(param);
-                if !input_parameters.contains(&ctp::Parameter::from(param_ct)) {
+                if !input_parameters.contains(&cgp::Parameter::from(param_ct)) {
                     report_unused_parameter(tcx,
                                            tcx.def_span(param.def_id),
                                            "const",

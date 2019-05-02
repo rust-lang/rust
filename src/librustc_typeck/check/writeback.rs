@@ -12,6 +12,7 @@ use rustc::ty::adjustment::{Adjust, Adjustment, PointerCast};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
 use rustc::ty::subst::UnpackedKind;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::mir::interpret::ConstValue;
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
@@ -488,7 +489,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 // figures out the concrete type with `U`, but the stored type is with `T`
                 instantiated_ty.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx().global_tcx(),
-                    fldop: |ty| {
+                    ty_op: |ty| {
                         trace!("checking type {:?}", ty);
                         // find a type parameter
                         if let ty::Param(..) = ty.sty {
@@ -520,7 +521,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                         }
                         ty
                     },
-                    reg_op: |region| {
+                    lt_op: |region| {
                         match region {
                             // ignore static regions
                             ty::ReStatic => region,
@@ -564,6 +565,39 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                             }
                         }
                     },
+                    ct_op: |ct| {
+                        trace!("checking const {:?}", ct);
+                        // Find a const parameter
+                        if let ConstValue::Param(..) = ct.val {
+                            // look it up in the substitution list
+                            assert_eq!(opaque_defn.substs.len(), generics.params.len());
+                            for (subst, param) in opaque_defn.substs.iter()
+                                                                    .zip(&generics.params) {
+                                if let UnpackedKind::Const(subst) = subst.unpack() {
+                                    if subst == ct {
+                                        // found it in the substitution list, replace with the
+                                        // parameter from the existential type
+                                        return self.tcx()
+                                            .global_tcx()
+                                            .mk_const_param(param.index, param.name, ct.ty);
+                                    }
+                                }
+                            }
+                            self.tcx()
+                                .sess
+                                .struct_span_err(
+                                    span,
+                                    &format!(
+                                        "const parameter `{}` is part of concrete type but not \
+                                            used in parameter list for existential type",
+                                        ct,
+                                    ),
+                                )
+                                .emit();
+                            return self.tcx().consts.err;
+                        }
+                        ct
+                    }
                 })
             };
 
@@ -818,6 +852,21 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
     // We could use `self.report_error` but it doesn't accept a ty::Region, right now.
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         self.infcx.fully_resolve(&r).unwrap_or(self.tcx.lifetimes.re_static)
+    }
+
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        match self.infcx.fully_resolve(&ct) {
+            Ok(ct) => ct,
+            Err(_) => {
+                debug!(
+                    "Resolver::fold_const: input const `{:?}` not fully resolvable",
+                    ct
+                );
+                // FIXME: we'd like to use `self.report_error`, but it doesn't yet
+                // accept a &'tcx ty::Const.
+                self.tcx().consts.err
+            }
+        }
     }
 }
 

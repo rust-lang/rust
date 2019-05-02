@@ -616,7 +616,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
     let mut substituted_predicates = Vec::new();
     ty.fold_with(&mut ty::fold::BottomUpFolder {
         tcx: fcx.tcx,
-        fldop: |ty| {
+        ty_op: |ty| {
             if let ty::Opaque(def_id, substs) = ty.sty {
                 trace!("check_existential_types: opaque_ty, {:?}, {:?}", def_id, substs);
                 let generics = tcx.generics_of(def_id);
@@ -739,7 +739,8 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
             } // if let Opaque
             ty
         },
-        reg_op: |reg| reg,
+        lt_op: |lt| lt,
+        ct_op: |ct| ct,
     });
     substituted_predicates
 }

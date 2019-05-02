@@ -1,5 +1,6 @@
 use super::{InferCtxt, FixupError, FixupResult, Span, type_variable::TypeVariableOrigin};
-use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
+use crate::mir::interpret::ConstValue;
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, InferConst};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -72,6 +73,15 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
                 r,
         }
     }
+
+    fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if !ct.needs_infer() {
+            ct // micro-optimize -- if there is nothing in this const that this fold affects...
+        } else {
+            let c0 = self.infcx.shallow_resolve(ct);
+            c0.super_fold_with(self)
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -136,7 +146,7 @@ impl<'a, 'gcx, 'tcx> TypeVisitor<'tcx> for UnresolvedTypeFinder<'a, 'gcx, 'tcx> 
 /// their concrete results. If any variable cannot be replaced (never unified, etc)
 /// then an `Err` result is returned.
 pub fn fully_resolve<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                        value: &T) -> FixupResult<T>
+                                        value: &T) -> FixupResult<'tcx, T>
     where T : TypeFoldable<'tcx>
 {
     let mut full_resolver = FullTypeResolver { infcx: infcx, err: None };
@@ -151,7 +161,7 @@ pub fn fully_resolve<'a, 'gcx, 'tcx, T>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 // `err` field is not enforcable otherwise.
 struct FullTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-    err: Option<FixupError>,
+    err: Option<FixupError<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx> {
@@ -197,6 +207,27 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
                                         .expect("region resolution not performed")
                                         .resolve_var(rid),
             _ => r,
+        }
+    }
+
+    fn fold_const(&mut self, c: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
+        if !c.needs_infer() && !ty::keep_local(&c) {
+            c // micro-optimize -- if there is nothing in this const that this fold affects...
+              // ^ we need to have the `keep_local` check to un-default
+              // defaulted tuples.
+        } else {
+            let c = self.infcx.shallow_resolve(c);
+            match c.val {
+                ConstValue::Infer(InferConst::Var(vid)) => {
+                    self.err = Some(FixupError::UnresolvedConst(vid));
+                    return self.tcx().consts.err;
+                }
+                ConstValue::Infer(InferConst::Fresh(_)) => {
+                    bug!("Unexpected const in full const resolver: {:?}", c);
+                }
+                _ => {}
+            }
+            c.super_fold_with(self)
         }
     }
 }

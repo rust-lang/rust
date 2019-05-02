@@ -70,6 +70,13 @@ where
             }
         };
 
-        tcx.replace_escaping_bound_vars(value, fld_r, fld_t).0
+        let fld_c = |bound_ct: ty::BoundVar, _| {
+            match var_values.var_values[bound_ct].unpack() {
+                UnpackedKind::Const(ct) => ct,
+                c => bug!("{:?} is a const but value is {:?}", bound_ct, c),
+            }
+        };
+
+        tcx.replace_escaping_bound_vars(value, fld_r, fld_t, fld_c).0
     }
 }

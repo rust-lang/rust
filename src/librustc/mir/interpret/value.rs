@@ -2,6 +2,7 @@ use std::fmt;
 use rustc_macros::HashStable;
 
 use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
+use crate::ty::PlaceholderConst;
 use crate::hir::def_id::DefId;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
@@ -25,6 +26,9 @@ pub enum ConstValue<'tcx> {
 
     /// Infer the value of the const.
     Infer(InferConst<'tcx>),
+
+    /// A placeholder const - universally quantified higher-ranked const.
+    Placeholder(PlaceholderConst),
 
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
@@ -58,6 +62,7 @@ impl<'tcx> ConstValue<'tcx> {
         match *self {
             ConstValue::Param(_) |
             ConstValue::Infer(_) |
+            ConstValue::Placeholder(_) |
             ConstValue::ByRef(..) |
             ConstValue::Unevaluated(..) |
             ConstValue::Slice(..) => None,

@@ -1,11 +1,13 @@
 use super::SubregionOrigin;
-use super::combine::{CombineFields, RelationDir};
+use super::combine::{CombineFields, RelationDir, const_unification_error};
 
 use crate::traits::Obligation;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::ty::TyVar;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::relate::{Cause, Relate, RelateResult, TypeRelation};
+use crate::infer::unify_key::replace_if_possible;
+use crate::mir::interpret::ConstValue;
 use std::mem;
 
 /// Ensures `a` is made a subtype of `b`. Returns `a` on success.
@@ -130,6 +132,48 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         self.fields.infcx.borrow_region_constraints()
                          .make_subregion(origin, a, b);
 
+        Ok(a)
+    }
+
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
+        if a == b { return Ok(a); }
+
+        let infcx = self.fields.infcx;
+        let a = replace_if_possible(infcx.const_unification_table.borrow_mut(), a);
+        let b = replace_if_possible(infcx.const_unification_table.borrow_mut(), b);
+
+        // Consts can only be equal or unequal to each other: there's no subtyping
+        // relation, so we're just going to perform equating here instead.
+        let a_is_expected = self.a_is_expected();
+        match (a.val, b.val) {
+            (ConstValue::Infer(InferConst::Var(a_vid)),
+                ConstValue::Infer(InferConst::Var(b_vid))) => {
+                infcx.const_unification_table
+                    .borrow_mut()
+                    .unify_var_var(a_vid, b_vid)
+                    .map_err(|e| const_unification_error(a_is_expected, e))?;
+                return Ok(a);
+            }
+
+            (ConstValue::Infer(InferConst::Var(a_id)), _) => {
+                self.fields.infcx.unify_const_variable(a_is_expected, a_id, b)?;
+                return Ok(a);
+            }
+
+            (_, ConstValue::Infer(InferConst::Var(b_id))) => {
+                self.fields.infcx.unify_const_variable(!a_is_expected, b_id, a)?;
+                return Ok(a);
+            }
+
+            _ => {}
+        }
+
+        self.fields.infcx.super_combine_consts(self, a, b)?;
         Ok(a)
     }
 

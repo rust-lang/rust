@@ -60,6 +60,19 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         Ok(self.fields.infcx.borrow_region_constraints().lub_regions(self.tcx(), origin, a, b))
     }
 
+    fn consts(
+        &mut self,
+        a: &'tcx ty::Const<'tcx>,
+        b: &'tcx ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        debug!("{}.consts({:?}, {:?})", self.tag(), a, b);
+        if a == b {
+            return Ok(a);
+        }
+
+        self.fields.infcx.super_combine_consts(self, a, b)
+    }
+
     fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
                   -> RelateResult<'tcx, ty::Binder<T>>
         where T: Relate<'tcx>

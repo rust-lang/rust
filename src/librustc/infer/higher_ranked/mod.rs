@@ -7,6 +7,7 @@ use super::{HigherRankedType, InferCtxt, PlaceholderMap};
 use crate::infer::CombinedSnapshot;
 use crate::ty::relate::{Relate, RelateResult, TypeRelation};
 use crate::ty::{self, Binder, TypeFoldable};
+use crate::mir::interpret::ConstValue;
 
 impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
     pub fn higher_ranked_sub<T>(
@@ -99,7 +100,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }))
         };
 
-        let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t);
+        let fld_c = |bound_var: ty::BoundVar, ty| {
+            self.tcx.mk_const(
+                ty::Const {
+                    val: ConstValue::Placeholder(ty::PlaceholderConst {
+                        universe: next_universe,
+                        name: bound_var,
+                    }),
+                    ty,
+                }
+            )
+        };
+
+        let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t, fld_c);
 
         debug!(
             "replace_bound_vars_with_placeholders(\
