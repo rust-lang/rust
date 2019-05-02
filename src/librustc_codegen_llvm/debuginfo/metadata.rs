@@ -784,26 +784,30 @@ pub fn file_metadata(cx: &CodegenCx<'ll, '_>,
            file_name,
            defining_crate);
 
-    let directory = if defining_crate == LOCAL_CRATE {
-        &cx.sess().working_dir.0
+    let file_name = &file_name.to_string();
+    let file_name_symbol = Symbol::intern(file_name);
+    if defining_crate == LOCAL_CRATE {
+        let directory = &cx.sess().working_dir.0.to_string_lossy();
+        file_metadata_raw(cx, file_name, Some(file_name_symbol),
+                          directory, Some(Symbol::intern(directory)))
     } else {
         // If the path comes from an upstream crate we assume it has been made
         // independent of the compiler's working directory one way or another.
-        Path::new("")
-    };
-
-    file_metadata_raw(cx, &file_name.to_string(), &directory.to_string_lossy())
+        file_metadata_raw(cx, file_name, Some(file_name_symbol), "", None)
+    }
 }
 
 pub fn unknown_file_metadata(cx: &CodegenCx<'ll, '_>) -> &'ll DIFile {
-    file_metadata_raw(cx, "<unknown>", "")
+    file_metadata_raw(cx, "<unknown>", None, "", None)
 }
 
 fn file_metadata_raw(cx: &CodegenCx<'ll, '_>,
                      file_name: &str,
-                     directory: &str)
+                     file_name_symbol: Option<Symbol>,
+                     directory: &str,
+                     directory_symbol: Option<Symbol>)
                      -> &'ll DIFile {
-    let key = (Symbol::intern(file_name), Symbol::intern(directory));
+    let key = (file_name_symbol, directory_symbol);
 
     if let Some(file_metadata) = debug_context(cx).created_files.borrow().get(&key) {
         return *file_metadata;
