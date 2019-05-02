@@ -42,6 +42,10 @@ else
     $run --release
     $run --features c
     $run --features c --release
+    cargo build --target $1
+    cargo build --target $1 --release
+    cargo build --target $1 --features c
+    cargo build --target $1 --release --features c
 fi
 
 PREFIX=$(echo $1 | sed -e 's/unknown-//')-
@@ -68,6 +72,10 @@ fi
 # Look out for duplicated symbols when we include the compiler-rt (C) implementation
 for rlib in $(echo $path); do
     set +x
+    echo "================================================================"
+    echo checking $rlib for duplicate symbols
+    echo "================================================================"
+
     stdout=$($PREFIX$NM -g --defined-only $rlib 2>&1)
 
     # NOTE On i586, It's normal that the get_pc_thunk symbol appears several
@@ -86,6 +94,7 @@ for rlib in $(echo $path); do
     if test $? = 0; then
         exit 1
     fi
+
     set -ex
 done
 
