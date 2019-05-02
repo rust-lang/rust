@@ -155,7 +155,7 @@ LL |     let _ = v.iter().find(|&x| *x < 0).is_some();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::search-is-some` implied by `-D warnings`
-   = note: replace `find(|&x| *x < 0).is_some()` with `any(|&x| *x < 0)`
+   = note: replace `find(|&x| *x < 0).is_some()` with `any(|x| *x < 0)`
 
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
   --> $DIR/methods.rs:236:13
