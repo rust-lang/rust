@@ -68,14 +68,14 @@ fn my_other_iter<U>(u: U) -> MyOtherIter<U> {
 }
 
 trait Trait {}
-existential type GenericBound<'a, T: Trait>: 'a;
+existential type GenericBound<'a, T: Trait>: Sized + 'a;
 
 fn generic_bound<'a, T: Trait + 'a>(t: T) -> GenericBound<'a, T> {
     t
 }
 
 mod pass_through {
-    pub existential type Passthrough<T>: 'static;
+    pub existential type Passthrough<T>: Sized + 'static;
 
     fn define_passthrough<T: 'static>(t: T) -> Passthrough<T> {
         t

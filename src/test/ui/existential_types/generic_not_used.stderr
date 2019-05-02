@@ -1,5 +1,11 @@
+error: at least one trait must be specified
+  --> $DIR/generic_not_used.rs:5:44
+   |
+LL | existential type WrongGeneric<T: 'static>: 'static;
+   |                                            ^^^^^^^
+
 error: type parameter `V` is part of concrete type but not used in parameter list for existential type
-  --> $DIR/generic_not_used.rs:7:73
+  --> $DIR/generic_not_used.rs:8:73
    |
 LL |   fn wrong_generic<U: 'static, V: 'static>(_: U, v: V) -> WrongGeneric<U> {
    |  _________________________________________________________________________^
@@ -8,5 +14,5 @@ LL | |     v
 LL | | }
    | |_^
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
