@@ -677,9 +677,15 @@ class RustBuild(object):
 
         run(["git", "submodule", "-q", "sync", module],
             cwd=self.rust_root, verbose=self.verbose)
-        run(["git", "submodule", "update",
-            "--init", "--recursive", "--progress", module],
-            cwd=self.rust_root, verbose=self.verbose)
+        try:
+            run(["git", "submodule", "update",
+                 "--init", "--recursive", "--progress", module],
+                cwd=self.rust_root, verbose=self.verbose, exception=True)
+        except RuntimeError:
+            # Some versions of git don't support --progress.
+            run(["git", "submodule", "update",
+                 "--init", "--recursive", module],
+                cwd=self.rust_root, verbose=self.verbose)
         run(["git", "reset", "-q", "--hard"],
             cwd=module_path, verbose=self.verbose)
         run(["git", "clean", "-qdfx"],
