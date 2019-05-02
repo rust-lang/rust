@@ -1,4 +1,5 @@
 // rustfmt-normalize_comments: true
+// rustfmt-format_doc_comments: true
 
 // Do not unindent macro calls in comment with unformattable syntax.
 //! ```rust

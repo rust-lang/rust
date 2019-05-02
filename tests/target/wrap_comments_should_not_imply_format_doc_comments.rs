@@ -8,7 +8,6 @@
 /// # #![cfg_attr(not(dox), no_std)]
 /// fn foo() {  }
 /// ```
-///
 fn foo() {}
 
 /// A long commment for wrapping
