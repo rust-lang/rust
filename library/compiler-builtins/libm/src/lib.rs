@@ -625,3 +625,6 @@ mod private {
     impl Sealed for f32 {}
     impl Sealed for f64 {}
 }
+
+#[cfg(test)]
+include!(concat!(env!("OUT_DIR"), "/tests.rs"));

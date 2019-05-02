@@ -8,20 +8,19 @@ license = "MIT OR Apache-2.0"
 name = "libm"
 repository = "https://github.com/japaric/libm"
 version = "0.1.2"
+edition = "2018"
 
 [features]
 # only used to run our test suite
 checked = []
 default = ['stable']
 stable = []
+musl-reference-tests = ['rand']
 
 [workspace]
 members = [
   "crates/compiler-builtins-smoke-test",
-  "crates/input-generator",
-  "crates/musl-generator",
-  "crates/shared",
 ]
 
-[dev-dependencies]
-shared = { path = "shared" }
+[build-dependencies]
+rand = { version = "0.6.5", optional = true }
