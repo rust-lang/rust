@@ -289,6 +289,7 @@ mod c {
                     "arm/clzdi2.S",
                     "arm/clzsi2.S",
                     "arm/divmodsi4.S",
+                    "arm/divsi3.S",
                     "arm/modsi3.S",
                     "arm/switch16.S",
                     "arm/switch32.S",
@@ -296,20 +297,8 @@ mod c {
                     "arm/switchu8.S",
                     "arm/sync_synchronize.S",
                     "arm/udivmodsi4.S",
+                    "arm/udivsi3.S",
                     "arm/umodsi3.S",
-
-                    // Exclude these two files for now even though we haven't
-                    // translated their implementation into Rust yet (#173).
-                    // They appear... buggy? The `udivsi3` implementation was
-                    // the one that seemed buggy, but the `divsi3` file
-                    // references a symbol from `udivsi3` so we compile them
-                    // both with the Rust versions.
-                    //
-                    // Note that if these are added back they should be removed
-                    // from thumbv6m below.
-                    //
-                    // "arm/divsi3.S",
-                    // "arm/udivsi3.S",
                 ],
             );
 
@@ -427,12 +416,14 @@ mod c {
                     "clzdi2",
                     "clzsi2",
                     "divmodsi4",
+                    "divsi3",
                     "modsi3",
                     "switch16",
                     "switch32",
                     "switch8",
                     "switchu8",
                     "udivmodsi4",
+                    "udivsi3",
                     "umodsi3",
                 ],
             );

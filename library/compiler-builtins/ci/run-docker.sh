@@ -24,6 +24,7 @@ run() {
            -v `pwd`:/checkout:ro \
            -v `rustc --print sysroot`:/rust:ro \
            -w /checkout \
+           --init \
            $target \
            sh -c "HOME=/tmp PATH=\$PATH:/rust/bin ci/run.sh $target"
 }
