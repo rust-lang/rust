@@ -5,5 +5,5 @@
 #![allow(dead_code)]
 #![no_std]
 
-#[path = "../../src/math/mod.rs"]
+#[path = "../../../src/math/mod.rs"]
 mod libm;

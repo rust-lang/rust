@@ -16,7 +16,7 @@ macro_rules! f32 {
                     $fun(*x)
                 };
 
-                $fun.write_all(&y.to_bits().to_bytes())?;
+                $fun.write_all(&y.to_bits().to_le_bytes())?;
             )+
         }
     }};
@@ -40,7 +40,7 @@ macro_rules! f32f32 {
                     $fun(*x0, *x1)
                 };
 
-                $fun.write_all(&y.to_bits().to_bytes())?;
+                $fun.write_all(&y.to_bits().to_le_bytes())?;
             )+
         }
     }};
@@ -64,7 +64,7 @@ macro_rules! f32f32f32 {
                         $fun(*x0, *x1, *x2)
                     };
 
-                    $fun.write_all(&y.to_bits().to_bytes())?;
+                    $fun.write_all(&y.to_bits().to_le_bytes())?;
                 )+
             }
     }};
@@ -88,7 +88,7 @@ macro_rules! f32i32 {
                         $fun(*x0, *x1 as i32)
                     };
 
-                    $fun.write_all(&y.to_bits().to_bytes())?;
+                    $fun.write_all(&y.to_bits().to_le_bytes())?;
                 )+
             }
     }};
@@ -112,7 +112,7 @@ macro_rules! f64 {
                     $fun(*x)
                 };
 
-                $fun.write_all(&y.to_bits().to_bytes())?;
+                $fun.write_all(&y.to_bits().to_le_bytes())?;
             )+
         }
     }};
@@ -136,7 +136,7 @@ macro_rules! f64f64 {
                     $fun(*x0, *x1)
                 };
 
-                $fun.write_all(&y.to_bits().to_bytes())?;
+                $fun.write_all(&y.to_bits().to_le_bytes())?;
             )+
         }
     }};
@@ -160,7 +160,7 @@ macro_rules! f64f64f64 {
                         $fun(*x0, *x1, *x2)
                     };
 
-                    $fun.write_all(&y.to_bits().to_bytes())?;
+                    $fun.write_all(&y.to_bits().to_le_bytes())?;
                 )+
             }
     }};
@@ -184,7 +184,7 @@ macro_rules! f64i32 {
                         $fun(*x0, *x1 as i32)
                     };
 
-                    $fun.write_all(&y.to_bits().to_bytes())?;
+                    $fun.write_all(&y.to_bits().to_le_bytes())?;
                 )+
             }
     }};

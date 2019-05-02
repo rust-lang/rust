@@ -1,8 +1,0 @@
-[package]
-name = "math"
-version = "0.0.0"
-
-[dependencies]
-qemu-arm-rt = { git = "https://github.com/japaric/qemu-arm-rt" }
-
-[workspace]

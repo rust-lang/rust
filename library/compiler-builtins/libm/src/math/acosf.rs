@@ -73,3 +73,17 @@ pub fn acosf(x: f32) -> f32 {
     w = r(z) * s + c;
     2. * (df + w)
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn acosf() {
+        extern {
+            fn acosf(x: f32) -> f32;
+        }
+        unsafe {
+            crate::_eqf(super::acosf(1.0), acosf(1.0)).unwrap();
+        }
+    }
+    // shared::f32!("musl", acosf);
+}

@@ -1,0 +1,41 @@
+steps:
+  - checkout: self
+    submodules: true
+  - template: azure-install-rust.yml
+
+  - bash: cargo build --manifest-path backtrace-sys/Cargo.toml
+    displayName: "Build backtrace-sys"
+  - bash: cargo build
+    displayName: "Build backtrace"
+  - bash: cargo test
+    displayName: "Test backtrace"
+  - bash: cargo test --no-default-features
+    displayName: "Test backtrace (-default)"
+  - bash: cargo test --no-default-features --features 'std'
+    displayName: "Test backtrace (-default + std)"
+  - bash: cargo test --no-default-features --features 'libunwind std'
+    displayName: "Test backtrace (-default + libunwind)"
+  - bash: cargo test --no-default-features --features 'libunwind dladdr std'
+    displayName: "Test backtrace (-default + libunwind + dladdr)"
+  - bash: cargo test --no-default-features --features 'libunwind libbacktrace std'
+    displayName: "Test backtrace (-default + libunwind + libbacktrace)"
+  - bash: cargo test --no-default-features --features 'unix-backtrace std'
+    displayName: "Test backtrace (-default + unix-backtrace)"
+  - bash: cargo test --no-default-features --features 'unix-backtrace dladdr std'
+    displayName: "Test backtrace (-default + unix-backtrace + dladdr)"
+  - bash: cargo test --no-default-features --features 'unix-backtrace libbacktrace std'
+    displayName: "Test backtrace (-default + unix-backtrace + libbacktrace)"
+  - bash: cargo test --no-default-features --features 'serialize-serde std'
+    displayName: "Test backtrace (-default + serialize-serde + std)"
+  - bash: cargo test --no-default-features --features 'serialize-rustc std'
+    displayName: "Test backtrace (-default + serialize-rustc + std)"
+  - bash: cargo test --no-default-features --features 'serialize-rustc serialize-serde std'
+    displayName: "Test backtrace (-default + serialize-rustc + serialize-serde + std)"
+  - bash: cargo test --no-default-features --features 'cpp_demangle std'
+    displayName: "Test backtrace (-default + cpp_demangle + std)"
+  - bash: cargo test --no-default-features --features 'gimli-symbolize std'
+    displayName: "Test backtrace (-default + gimli-symbolize + std)"
+  - bash: cargo test --no-default-features --features 'dbghelp std'
+    displayName: "Test backtrace (-default + dbghelp + std)"
+  - bash: cd ./cpp_smoke_test && cargo test
+    displayName: "Test cpp_smoke_test"

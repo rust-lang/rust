@@ -1,5 +1,3 @@
-#![feature(exact_chunks)]
-
 #[macro_use]
 extern crate lazy_static;
 
@@ -8,11 +6,11 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f32");
 
         bytes
-            .exact_chunks(4)
+            .chunks_exact(4)
             .map(|chunk| {
                 let mut buf = [0; 4];
                 buf.copy_from_slice(chunk);
-                f32::from_bits(u32::from_le(u32::from_bytes(buf)))
+                f32::from_bits(u32::from_le(u32::from_le_bytes(buf)))
             })
             .collect()
     };
@@ -20,7 +18,7 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f32f32");
 
         bytes
-            .exact_chunks(8)
+            .chunks_exact(8)
             .map(|chunk| {
                 let mut x0 = [0; 4];
                 let mut x1 = [0; 4];
@@ -28,8 +26,8 @@ lazy_static! {
                 x1.copy_from_slice(&chunk[4..]);
 
                 (
-                    f32::from_bits(u32::from_le(u32::from_bytes(x0))),
-                    f32::from_bits(u32::from_le(u32::from_bytes(x1))),
+                    f32::from_bits(u32::from_le(u32::from_le_bytes(x0))),
+                    f32::from_bits(u32::from_le(u32::from_le_bytes(x1))),
                 )
             })
             .collect()
@@ -38,7 +36,7 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f32f32f32");
 
         bytes
-            .exact_chunks(12)
+            .chunks_exact(12)
             .map(|chunk| {
                 let mut x0 = [0; 4];
                 let mut x1 = [0; 4];
@@ -48,9 +46,9 @@ lazy_static! {
                 x2.copy_from_slice(&chunk[8..]);
 
                 (
-                    f32::from_bits(u32::from_le(u32::from_bytes(x0))),
-                    f32::from_bits(u32::from_le(u32::from_bytes(x1))),
-                    f32::from_bits(u32::from_le(u32::from_bytes(x2))),
+                    f32::from_bits(u32::from_le(u32::from_le_bytes(x0))),
+                    f32::from_bits(u32::from_le(u32::from_le_bytes(x1))),
+                    f32::from_bits(u32::from_le(u32::from_le_bytes(x2))),
                 )
             })
             .collect()
@@ -59,7 +57,7 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f32i16");
 
         bytes
-            .exact_chunks(6)
+            .chunks_exact(6)
             .map(|chunk| {
                 let mut x0 = [0; 4];
                 let mut x1 = [0; 2];
@@ -67,8 +65,8 @@ lazy_static! {
                 x1.copy_from_slice(&chunk[4..]);
 
                 (
-                    f32::from_bits(u32::from_le(u32::from_bytes(x0))),
-                    i16::from_le(i16::from_bytes(x1)) as i32,
+                    f32::from_bits(u32::from_le(u32::from_le_bytes(x0))),
+                    i16::from_le(i16::from_le_bytes(x1)) as i32,
                 )
             })
             .collect()
@@ -77,11 +75,11 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f64");
 
         bytes
-            .exact_chunks(8)
+            .chunks_exact(8)
             .map(|chunk| {
                 let mut buf = [0; 8];
                 buf.copy_from_slice(chunk);
-                f64::from_bits(u64::from_le(u64::from_bytes(buf)))
+                f64::from_bits(u64::from_le(u64::from_le_bytes(buf)))
             })
             .collect()
     };
@@ -89,7 +87,7 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f64f64");
 
         bytes
-            .exact_chunks(16)
+            .chunks_exact(16)
             .map(|chunk| {
                 let mut x0 = [0; 8];
                 let mut x1 = [0; 8];
@@ -97,8 +95,8 @@ lazy_static! {
                 x1.copy_from_slice(&chunk[8..]);
 
                 (
-                    f64::from_bits(u64::from_le(u64::from_bytes(x0))),
-                    f64::from_bits(u64::from_le(u64::from_bytes(x1))),
+                    f64::from_bits(u64::from_le(u64::from_le_bytes(x0))),
+                    f64::from_bits(u64::from_le(u64::from_le_bytes(x1))),
                 )
             })
             .collect()
@@ -107,7 +105,7 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f64f64f64");
 
         bytes
-            .exact_chunks(24)
+            .chunks_exact(24)
             .map(|chunk| {
                 let mut x0 = [0; 8];
                 let mut x1 = [0; 8];
@@ -117,9 +115,9 @@ lazy_static! {
                 x2.copy_from_slice(&chunk[16..]);
 
                 (
-                    f64::from_bits(u64::from_le(u64::from_bytes(x0))),
-                    f64::from_bits(u64::from_le(u64::from_bytes(x1))),
-                    f64::from_bits(u64::from_le(u64::from_bytes(x2))),
+                    f64::from_bits(u64::from_le(u64::from_le_bytes(x0))),
+                    f64::from_bits(u64::from_le(u64::from_le_bytes(x1))),
+                    f64::from_bits(u64::from_le(u64::from_le_bytes(x2))),
                 )
             })
             .collect()
@@ -128,7 +126,7 @@ lazy_static! {
         let bytes = include_bytes!("../../bin/input/f64i16");
 
         bytes
-            .exact_chunks(10)
+            .chunks_exact(10)
             .map(|chunk| {
                 let mut x0 = [0; 8];
                 let mut x1 = [0; 2];
@@ -136,8 +134,8 @@ lazy_static! {
                 x1.copy_from_slice(&chunk[8..]);
 
                 (
-                    f64::from_bits(u64::from_le(u64::from_bytes(x0))),
-                    i16::from_le(i16::from_bytes(x1)) as i32,
+                    f64::from_bits(u64::from_le(u64::from_le_bytes(x0))),
+                    i16::from_le(i16::from_le_bytes(x1)) as i32,
                 )
             })
             .collect()
@@ -151,11 +149,11 @@ macro_rules! f32 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(4)
+                    .chunks_exact(4)
                     .map(|chunk| {
                         let mut buf = [0; 4];
                         buf.copy_from_slice(chunk);
-                        f32::from_bits(u32::from_le(u32::from_bytes(buf)))
+                        f32::from_bits(u32::from_le(u32::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 
@@ -190,11 +188,11 @@ macro_rules! f32f32 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(4)
+                    .chunks_exact(4)
                     .map(|chunk| {
                         let mut buf = [0; 4];
                         buf.copy_from_slice(chunk);
-                        f32::from_bits(u32::from_le(u32::from_bytes(buf)))
+                        f32::from_bits(u32::from_le(u32::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 
@@ -231,11 +229,11 @@ macro_rules! f32f32f32 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(4)
+                    .chunks_exact(4)
                     .map(|chunk| {
                         let mut buf = [0; 4];
                         buf.copy_from_slice(chunk);
-                        f32::from_bits(u32::from_le(u32::from_bytes(buf)))
+                        f32::from_bits(u32::from_le(u32::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 
@@ -273,11 +271,11 @@ macro_rules! f32i32 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(4)
+                    .chunks_exact(4)
                     .map(|chunk| {
                         let mut buf = [0; 4];
                         buf.copy_from_slice(chunk);
-                        f32::from_bits(u32::from_le(u32::from_bytes(buf)))
+                        f32::from_bits(u32::from_le(u32::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 
@@ -314,11 +312,11 @@ macro_rules! f64 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(8)
+                    .chunks_exact(8)
                     .map(|chunk| {
                         let mut buf = [0; 8];
                         buf.copy_from_slice(chunk);
-                        f64::from_bits(u64::from_le(u64::from_bytes(buf)))
+                        f64::from_bits(u64::from_le(u64::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 
@@ -353,11 +351,11 @@ macro_rules! f64f64 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(8)
+                    .chunks_exact(8)
                     .map(|chunk| {
                         let mut buf = [0; 8];
                         buf.copy_from_slice(chunk);
-                        f64::from_bits(u64::from_le(u64::from_bytes(buf)))
+                        f64::from_bits(u64::from_le(u64::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 
@@ -394,11 +392,11 @@ macro_rules! f64f64f64 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(8)
+                    .chunks_exact(8)
                     .map(|chunk| {
                         let mut buf = [0; 8];
                         buf.copy_from_slice(chunk);
-                        f64::from_bits(u64::from_le(u64::from_bytes(buf)))
+                        f64::from_bits(u64::from_le(u64::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 
@@ -436,11 +434,11 @@ macro_rules! f64i32 {
             #[test]
             fn $fun() {
                 let expected = include_bytes!(concat!("../bin/output/", $lib, ".", stringify!($fun)))
-                    .exact_chunks(8)
+                    .chunks_exact(8)
                     .map(|chunk| {
                         let mut buf = [0; 8];
                         buf.copy_from_slice(chunk);
-                        f64::from_bits(u64::from_le(u64::from_bytes(buf)))
+                        f64::from_bits(u64::from_le(u64::from_le_bytes(buf)))
                     })
                     .collect::<Vec<_>>();
 

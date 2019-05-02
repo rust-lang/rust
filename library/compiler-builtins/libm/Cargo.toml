@@ -17,11 +17,11 @@ stable = []
 
 [workspace]
 members = [
-  "cb",
-  "input-generator",
-  "musl-generator",
-  "newlib-generator",
-  "shared",
+  "crates/compiler-builtins-smoke-test",
+  "crates/input-generator",
+  "crates/musl-generator",
+  "crates/newlib-generator",
+  "crates/shared",
 ]
 
 [dev-dependencies]
