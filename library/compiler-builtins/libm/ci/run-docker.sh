@@ -22,9 +22,10 @@ run() {
            -v `pwd`/target:/target \
            -v `pwd`:/checkout:ro \
            -v `rustc --print sysroot`:/rust:ro \
+           --init \
            -w /checkout \
            $target \
-           sh -c "HOME=/tmp PATH=\$PATH:/rust/bin ci/run.sh $target"
+           sh -c "HOME=/tmp PATH=\$PATH:/rust/bin exec ci/run.sh $target"
 }
 
 if [ -z "$1" ]; then

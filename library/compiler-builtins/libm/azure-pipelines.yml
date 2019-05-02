@@ -8,7 +8,11 @@ jobs:
     steps:
       - template: ci/azure-install-rust.yml
       - bash: rustup target add $TARGET
+        displayName: "add cross target"
+      - bash: rustup target add x86_64-unknown-linux-musl
+        displayName: "add musl target"
       - bash: cargo generate-lockfile && ./ci/run-docker.sh $TARGET
+        displayName: "run tests"
     strategy:
       matrix:
         aarch64:
@@ -47,6 +51,8 @@ jobs:
         displayName: "Build for wasm"
       - script: cargo build --target wasm32-unknown-unknown --no-default-features
         displayName: "Build for wasm (no default features)"
+    variables:
+      TOOLCHAIN: nightly
 
   - job: rustfmt
     pool:
@@ -54,7 +60,9 @@ jobs:
     steps:
       - template: ci/azure-install-rust.yml
       - bash: rustup component add rustfmt
+        displayName: "install rustfmt"
       - bash: cargo fmt --all -- --check
+        displayName: "check formatting"
 
   - job: compiler_builtins_works
     pool:
@@ -62,3 +70,4 @@ jobs:
     steps:
       - template: ci/azure-install-rust.yml
       - bash: cargo build -p cb
+        displayName: "Check compiler-builtins still probably builds"
