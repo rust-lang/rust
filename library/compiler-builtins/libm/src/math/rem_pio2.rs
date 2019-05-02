@@ -10,7 +10,6 @@
 // ====================================================
 //
 // Optimized by Bruce D. Evans. */
-
 use super::rem_pio2_large;
 
 // #if FLT_EVAL_METHOD==0 || FLT_EVAL_METHOD==1

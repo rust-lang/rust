@@ -31,7 +31,6 @@ const P2: f32 = -2.7667332906e-3; /* -0xb55215.0p-32 */
 pub fn expf(mut x: f32) -> f32 {
     let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 127
     let x1p_126 = f32::from_bits(0x800000); // 0x1p-126f === 2 ^ -126  /*original 0x1p-149f    ??????????? */
-
     let mut hx = x.to_bits();
     let sign = (hx >> 31) as i32; /* sign bit of x */
     let signb: bool = sign != 0;

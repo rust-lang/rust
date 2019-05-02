@@ -267,22 +267,17 @@ mod musl_reference_tests {
             .status()
             .unwrap();
         assert!(status.success());
-        let output = Command::new("./gen")
-            .current_dir(&dst)
-            .output()
-            .unwrap();
+        let output = Command::new("./gen").current_dir(&dst).output().unwrap();
         assert!(output.status.success());
         assert!(output.stderr.is_empty());
 
         // Map all the output bytes back to an `i64` and then shove it all into
         // the expected results.
-        let mut results =
-            output.stdout.chunks_exact(8)
-             .map(|buf| {
-                 let mut exact = [0; 8];
-                 exact.copy_from_slice(buf);
-                 i64::from_le_bytes(exact)
-             });
+        let mut results = output.stdout.chunks_exact(8).map(|buf| {
+            let mut exact = [0; 8];
+            exact.copy_from_slice(buf);
+            i64::from_le_bytes(exact)
+        });
 
         for test in functions.iter_mut().flat_map(|f| f.tests.iter_mut()) {
             test.output = results.next().unwrap();
@@ -301,7 +296,10 @@ mod musl_reference_tests {
             src.push_str("fn ");
             src.push_str(&function.name);
             src.push_str("_matches_musl() {");
-            src.push_str(&format!("static TESTS: &[([i64; {}], i64)]", function.args.len()));
+            src.push_str(&format!(
+                "static TESTS: &[([i64; {}], i64)]",
+                function.args.len()
+            ));
             src.push_str(" = &[");
             for test in function.tests.iter() {
                 src.push_str("([");
@@ -336,9 +334,11 @@ mod musl_reference_tests {
                 Ty::Bool => unreachable!(),
             });
 
-            src.push_str(r#"
+            src.push_str(
+                r#"
                 panic!("INPUT: {:?} EXPECTED: {:?} ACTUAL {:?}", test, expected, output);
-            "#);
+            "#,
+            );
             src.push_str("}");
 
             src.push_str("}");

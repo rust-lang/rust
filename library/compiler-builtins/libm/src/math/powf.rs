@@ -198,7 +198,7 @@ pub fn powf(x: f32, y: f32) -> f32 {
         }
 
         /* now |1-x| is TINY <= 2**-20, suffice to compute
-       log(x) by x-x^2/2+x^3/3-x^4/4 */
+        log(x) by x-x^2/2+x^3/3-x^4/4 */
         t = ax - 1.; /* t has 20 trailing zeros */
         w = (t * t) * (0.5 - t * (0.333333333333 - t * 0.25));
         u = IVLN2_H * t; /* IVLN2_H has 16 sig. bits */

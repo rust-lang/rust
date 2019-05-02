@@ -166,13 +166,13 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
             }
             if r == c {
                 /* min normal after rounding, underflow depends
-                   on arch behaviour which can be imitated by
-                   a double to float conversion */
+                on arch behaviour which can be imitated by
+                a double to float conversion */
                 let fltmin: f32 = (x0_ffffff8p_63 * f32::MIN_POSITIVE as f64 * r) as f32;
                 return f64::MIN_POSITIVE / f32::MIN_POSITIVE as f64 * fltmin as f64;
             }
             /* one bit is lost when scaled, add another top bit to
-               only round once at conversion if it is inexact */
+            only round once at conversion if it is inexact */
             if (rhi << 53) != 0 {
                 i = (rhi >> 1 | (rhi & 1) | 1 << 62) as i64;
                 if sign != 0 {
@@ -182,7 +182,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
                 r = 2. * r - c; /* remove top bit */
 
                 /* raise underflow portably, such that it
-                   cannot be optimized away */
+                cannot be optimized away */
                 {
                     let tiny: f64 = f64::MIN_POSITIVE / f32::MIN_POSITIVE as f64 * r;
                     r += (tiny * tiny) * (r - r);

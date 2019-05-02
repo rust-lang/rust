@@ -19,7 +19,7 @@ pub fn scalbn(x: f64, mut n: i32) -> f64 {
         }
     } else if n < -1022 {
         /* make sure final n < -53 to avoid double
-           rounding in the subnormal range */
+        rounding in the subnormal range */
         y *= x1p_1022 * x1p53;
         n += 1022 - 53;
         if n < -1022 {

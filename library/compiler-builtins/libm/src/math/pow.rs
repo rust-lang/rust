@@ -262,7 +262,7 @@ pub fn pow(x: f64, y: f64) -> f64 {
         }
 
         /* now |1-x| is TINY <= 2**-20, suffice to compute
-           log(x) by x-x^2/2+x^3/3-x^4/4 */
+        log(x) by x-x^2/2+x^3/3-x^4/4 */
         let t: f64 = ax - 1.0; /* t has 20 trailing zeros */
         let w: f64 = (t * t) * (0.5 - t * (0.3333333333333333333333 - t * 0.25));
         let u: f64 = IVLN2_H * t; /* ivln2_h has 21 sig. bits */
