@@ -75,6 +75,7 @@
 #![feature(concat_idents)]
 #![feature(const_fn)]
 #![feature(const_fn_union)]
+#![feature(const_generics)]
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]
 #![feature(extern_types)]
