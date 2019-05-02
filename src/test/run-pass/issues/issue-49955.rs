@@ -1,5 +1,4 @@
 // run-pass
-// compile-flags: -Z borrowck=compare
 
 const ALL_THE_NUMS: [u32; 1] = [
     1

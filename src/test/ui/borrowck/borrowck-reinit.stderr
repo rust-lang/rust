@@ -1,15 +1,5 @@
-error[E0382]: use of moved value: `x` (Ast)
-  --> $DIR/borrowck-reinit.rs:8:16
-   |
-LL |     drop(x);
-   |          - value moved here
-LL |     let _ = (1,x);
-   |                ^ value used here after move
-   |
-   = note: move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
-
-error[E0382]: use of moved value: `x` (Mir)
-  --> $DIR/borrowck-reinit.rs:8:16
+error[E0382]: use of moved value: `x`
+  --> $DIR/borrowck-reinit.rs:6:16
    |
 LL |     let mut x = Box::new(0);
    |         ----- move occurs because `x` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
@@ -19,6 +9,6 @@ LL |     drop(x);
 LL |     let _ = (1,x);
    |                ^ value used here after move
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0382`.

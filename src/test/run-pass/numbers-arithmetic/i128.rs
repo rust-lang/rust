@@ -3,7 +3,6 @@
 
 // ignore-emscripten i128 doesn't work
 
-// compile-flags: -Z borrowck=compare
 
 #![feature(test)]
 
