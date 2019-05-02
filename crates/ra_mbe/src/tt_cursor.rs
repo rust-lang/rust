@@ -149,9 +149,16 @@ impl<'a> TtCursor<'a> {
         self.eat_ident().cloned().map(|ident| tt::Leaf::from(ident).into())
     }
 
-    pub(crate) fn eat_vis(&mut self) -> Option<tt::TokenTree> {
+    pub(crate) fn try_eat_vis(&mut self) -> Option<tt::TokenTree> {
+        // `vis` matcher is optional
+        let old_pos = self.pos;
         let parser = Parser::new(&mut self.pos, self.subtree);
-        parser.parse_vis()
+
+        let res = parser.parse_vis();
+        if res.is_none() {
+            self.pos = old_pos;
+        }
+        res
     }
 
     pub(crate) fn expect_char(&mut self, char: char) -> Result<(), ParseError> {

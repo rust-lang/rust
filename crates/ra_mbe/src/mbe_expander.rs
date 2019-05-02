@@ -206,8 +206,24 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             );
                         }
                         "vis" => {
-                            let vis = input.eat_vis().ok_or(ExpandError::UnexpectedToken)?.clone();
-                            res.inner.insert(text.clone(), Binding::Simple(vis.into()));
+                            // `vis` is optional
+                            if let Some(vis) = input.try_eat_vis() {
+                                let vis = vis.clone();
+                                res.inner.insert(text.clone(), Binding::Simple(vis.into()));
+                            } else {
+                                // FIXME: Do we have a better way to represent an empty token ?
+                                // Insert an empty subtree for empty token
+                                res.inner.insert(
+                                    text.clone(),
+                                    Binding::Simple(
+                                        tt::Subtree {
+                                            delimiter: tt::Delimiter::None,
+                                            token_trees: vec![],
+                                        }
+                                        .into(),
+                                    ),
+                                );
+                            }
                         }
 
                         _ => return Err(ExpandError::UnexpectedToken),

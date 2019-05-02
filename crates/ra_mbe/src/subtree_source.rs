@@ -319,7 +319,7 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
 
 fn convert_punct(p: &tt::Punct) -> TtToken {
     let kind = match p.char {
-        // lexer may produce combpund tokens for these ones
+        // lexer may produce compound tokens for these ones
         '.' => DOT,
         ':' => COLON,
         '=' => EQ,
