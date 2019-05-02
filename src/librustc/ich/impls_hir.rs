@@ -391,10 +391,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitCandidate {
                                           hcx: &mut StableHashingContext<'a>,
                                           hasher: &mut StableHasher<W>) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            let &hir::TraitCandidate {
+            let hir::TraitCandidate {
                 def_id,
                 import_ids,
-            } = &self;
+            } = self;
 
             def_id.hash_stable(hcx, hasher);
             // We only use the outermost import NodeId as key
