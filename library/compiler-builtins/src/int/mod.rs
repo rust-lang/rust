@@ -302,6 +302,7 @@ impl_wide_int!(u32, u64, 32);
 impl_wide_int!(u64, u128, 64);
 
 intrinsics! {
+    #[use_c_shim_if(/* always if C compilation is enabled */)]
     #[cfg(any(
         target_pointer_width = "16",
         target_pointer_width = "32",
@@ -310,7 +311,7 @@ intrinsics! {
     pub extern "C" fn __clzsi2(x: usize) -> usize {
         // TODO: const this? Would require const-if
         // Note(Lokathor): the `intrinsics!` macro can't process mut inputs
-        let mut x = x; 
+        let mut x = x;
         let mut y: usize;
         let mut n: usize = {
             #[cfg(target_pointer_width = "64")]
