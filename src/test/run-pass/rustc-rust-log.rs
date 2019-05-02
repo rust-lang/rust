@@ -8,6 +8,6 @@
 // dont-check-compiler-stderr
 // compile-flags: --error-format human
 
-// rustc-env:RUST_LOG=debug
+// rustc-env:RUSTC_LOG=debug
 
 fn main() {}

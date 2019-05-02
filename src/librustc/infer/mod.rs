@@ -704,7 +704,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// potentially leaving "dangling type variables" behind.
     /// In such cases, an assertion will fail when attempting to
     /// register obligations, within a snapshot. Very useful, much
-    /// better than grovelling through megabytes of `RUST_LOG` output.
+    /// better than grovelling through megabytes of `RUSTC_LOG` output.
     ///
     /// HOWEVER, in some cases the flag is unhelpful. In particular, we
     /// sometimes create a "mini-fulfilment-cx" in which we enroll
