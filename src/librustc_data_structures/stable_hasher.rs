@@ -324,9 +324,7 @@ impl<A, CTX> HashStable<CTX> for SmallVec<[A; 1]> where A: HashStable<CTX> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           ctx: &mut CTX,
                                           hasher: &mut StableHasher<W>) {
-        for item in self {
-            item.hash_stable(ctx, hasher);
-        }
+        (&self[..]).hash_stable(ctx, hasher);
     }
 }
 
