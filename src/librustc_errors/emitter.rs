@@ -16,6 +16,7 @@ use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
 use std::cmp::{min, Reverse};
+use std::path::Path;
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter, Ansi};
 use termcolor::{WriteColor, Color, Buffer};
 
@@ -52,9 +53,10 @@ pub trait Emitter {
     /// Emit a structured diagnostic.
     fn emit_diagnostic(&mut self, db: &DiagnosticBuilder<'_>);
 
-    /// Emit a JSON directive. The default is to do nothing; this should only
-    /// be emitted with --error-format=json.
-    fn maybe_emit_json_directive(&mut self, _directive: String) {}
+    /// Emit a notification that an artifact has been output.
+    /// This is currently only supported for the JSON format,
+    /// other formats can, and will, simply ignore it.
+    fn emit_artifact_notification(&mut self, _path: &Path) {}
 
     /// Checks if should show explanations about "rustc --explain"
     fn should_show_explain(&self) -> bool {

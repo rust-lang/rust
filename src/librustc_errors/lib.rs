@@ -26,6 +26,7 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::{error, fmt};
 use std::panic;
+use std::path::Path;
 
 use termcolor::{ColorSpec, Color};
 
@@ -294,16 +295,9 @@ impl error::Error for ExplicitBug {
 pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, DiagnosticId};
 pub use diagnostic_builder::DiagnosticBuilder;
 
-/// A handler deals with two kinds of compiler output.
-/// - Errors: certain errors (fatal, bug, unimpl) may cause immediate exit,
-///   others log errors for later reporting.
-/// - Directives: with --error-format=json, the compiler produces directives
-///   that indicate when certain actions have completed, which are useful for
-///   Cargo. They may change at any time and should not be considered a public
-///   API.
-///
-/// This crate's name (rustc_errors) doesn't encompass the directives, because
-/// directives were added much later.
+/// A handler deals with errors and other compiler output.
+/// Certain errors (fatal, bug, unimpl) may cause immediate exit,
+/// others log errors for later reporting.
 pub struct Handler {
     pub flags: HandlerFlags,
 
@@ -775,8 +769,8 @@ impl Handler {
         }
     }
 
-    pub fn maybe_emit_json_directive(&self, directive: String) {
-        self.emitter.borrow_mut().maybe_emit_json_directive(directive);
+    pub fn emit_artifact_notification(&self, path: &Path) {
+        self.emitter.borrow_mut().emit_artifact_notification(path);
     }
 }
 
