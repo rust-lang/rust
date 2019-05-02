@@ -1422,10 +1422,21 @@ impl<'test> TestCx<'test> {
     }
 
     fn compile_test(&self) -> ProcRes {
-        let mut rustc = self.make_compile_args(
-            &self.testpaths.file,
-            TargetLocation::ThisFile(self.make_exe_name()),
-        );
+        // Only use `make_exe_name` when the test ends up being executed.
+        let will_execute = match self.config.mode {
+            RunPass | Ui => self.should_run_successfully(),
+            Incremental => self.revision.unwrap().starts_with("r"),
+            RunFail | RunPassValgrind | MirOpt |
+            DebugInfoBoth | DebugInfoGdb | DebugInfoLldb => true,
+            _ => false,
+        };
+        let output_file = if will_execute {
+            TargetLocation::ThisFile(self.make_exe_name())
+        } else {
+            TargetLocation::ThisDirectory(self.output_base_dir())
+        };
+
+        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
 
         rustc.arg("-L").arg(&self.aux_output_dir_name());
 
@@ -1882,7 +1893,12 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-o").arg(path);
             }
             TargetLocation::ThisDirectory(path) => {
-                rustc.arg("--out-dir").arg(path);
+                if is_rustdoc {
+                    // `rustdoc` uses `-o` for the output directory.
+                    rustc.arg("-o").arg(path);
+                } else {
+                    rustc.arg("--out-dir").arg(path);
+                }
             }
         }
 
