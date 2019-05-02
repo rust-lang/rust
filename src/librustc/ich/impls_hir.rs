@@ -414,10 +414,10 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
             import_ids,
         } = self;
 
-        let import_ids = import_ids.first().map(|node_id| hcx.node_to_hir_id(*node_id))
+        let first_import_id = import_ids.first().map(|node_id| hcx.node_to_hir_id(*node_id))
                                            .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
                                                           hir_id.local_id));
-        (hcx.def_path_hash(*def_id), import_ids)
+        (hcx.def_path_hash(*def_id), first_import_id)
     }
 }
 
