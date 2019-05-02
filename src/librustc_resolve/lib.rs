@@ -4662,7 +4662,7 @@ impl<'a> Resolver<'a> {
     fn find_transitive_imports(&mut self, mut kind: &NameBindingKind<'_>,
                                trait_name: &Ident) -> SmallVec<[NodeId; 1]> {
         let mut import_ids = smallvec![];
-        while let NameBindingKind::Import { directive, binding, .. } = *kind {
+        while let NameBindingKind::Import { directive, binding, .. } = kind {
             self.maybe_unused_trait_imports.insert(directive.id);
             self.add_to_glob_map(&directive, *trait_name);
             import_ids.push(directive.id);
