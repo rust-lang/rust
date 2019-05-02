@@ -95,6 +95,9 @@ pub fn link_binary<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
                     );
                 }
             }
+            if sess.opts.debugging_opts.emit_artifact_notifications {
+                sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename);
+            }
         }
 
         if sess.opts.cg.save_temps {
