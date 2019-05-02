@@ -363,7 +363,7 @@ fn expand_tt(
             let mut has_seps = 0;
             let mut counter = 0;
 
-            // We store the old var expaned value, and restore it later
+            // We store the old var expanded value, and restore it later
             // It is because before this `$repeat`,
             // it is possible some variables already expanad in the same subtree
             //
@@ -373,12 +373,12 @@ fn expand_tt(
             ctx.var_expanded = false;
 
             while let Ok(t) = expand_subtree(&repeat.subtree, ctx) {
-                // if no var expaned in the child, we count it as a fail
+                // if no var expanded in the child, we count it as a fail
                 if !ctx.var_expanded {
                     break;
                 }
 
-                // Reset `ctx.var_expaneded` to see if there is other expaned variable
+                // Reset `ctx.var_expandeded` to see if there is other expanded variable
                 // in the next matching
                 some_var_expanded = true;
                 ctx.var_expanded = false;
