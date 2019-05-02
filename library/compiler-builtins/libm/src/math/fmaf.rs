@@ -41,6 +41,7 @@ use super::fenv::{
  * rounding occurs.
  */
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn fmaf(x: f32, y: f32, mut z: f32) -> f32 {
     let xy: f64;
     let mut result: f64;

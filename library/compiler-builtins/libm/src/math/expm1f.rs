@@ -26,6 +26,7 @@ const Q1: f32 = -3.3333212137e-2; /* -0x888868.0p-28 */
 const Q2: f32 = 1.5807170421e-3; /*  0xcf3010.0p-33 */
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn expm1f(mut x: f32) -> f32 {
     let x1p127 = f32::from_bits(0x7f000000); // 0x1p127f === 2 ^ 127
 

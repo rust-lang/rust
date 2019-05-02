@@ -44,6 +44,7 @@ const PI: f64 = 3.1415926535897931160E+00; /* 0x400921FB, 0x54442D18 */
 const PI_LO: f64 = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn atan2(y: f64, x: f64) -> f64 {
     if x.is_nan() || y.is_nan() {
         return x + y;

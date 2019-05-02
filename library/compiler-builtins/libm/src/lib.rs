@@ -626,5 +626,5 @@ mod private {
     impl Sealed for f64 {}
 }
 
-#[cfg(test)]
-include!(concat!(env!("OUT_DIR"), "/tests.rs"));
+#[cfg(all(test, feature = "musl-reference-tests"))]
+include!(concat!(env!("OUT_DIR"), "/musl-tests.rs"));

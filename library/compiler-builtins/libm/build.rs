@@ -1,8 +1,17 @@
+use std::env;
+
 fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     #[cfg(feature = "musl-reference-tests")]
     musl_reference_tests::generate();
+
+    if !cfg!(feature = "checked") {
+        let lvl = env::var("OPT_LEVEL").unwrap();
+        if lvl != "0" {
+            println!("cargo:rustc-cfg=assert_no_panic");
+        }
+    }
 }
 
 #[cfg(feature = "musl-reference-tests")]
@@ -335,7 +344,7 @@ mod musl_reference_tests {
             src.push_str("}");
         }
 
-        let path = format!("{}/tests.rs", dst);
+        let path = format!("{}/musl-tests.rs", dst);
         fs::write(&path, src).unwrap();
 
         // Try to make it somewhat pretty

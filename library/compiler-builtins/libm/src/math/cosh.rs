@@ -3,6 +3,7 @@ use super::expm1;
 use super::k_expo2;
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn cosh(mut x: f64) -> f64 {
     /* |x| */
     let mut ix = x.to_bits();

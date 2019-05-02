@@ -32,6 +32,7 @@ fn r(z: f32) -> f32 {
 }
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn asinf(mut x: f32) -> f32 {
     let x1p_120 = f64::from_bits(0x3870000000000000); // 0x1p-120 === 2 ^ (-120)
 

@@ -1,4 +1,5 @@
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn scalbn(x: f64, mut n: i32) -> f64 {
     let x1p1023 = f64::from_bits(0x7fe0000000000000); // 0x1p1023 === 2 ^ 1023
     let x1p53 = f64::from_bits(0x4340000000000000); // 0x1p53 === 2 ^ 53

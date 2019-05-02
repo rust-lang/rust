@@ -20,6 +20,7 @@ const PI: f32 = 3.1415927410e+00; /* 0x40490fdb */
 const PI_LO: f32 = -8.7422776573e-08; /* 0xb3bbbd2e */
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn atan2f(y: f32, x: f32) -> f32 {
     if x.is_nan() || y.is_nan() {
         return x + y;

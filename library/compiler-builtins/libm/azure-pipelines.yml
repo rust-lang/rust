@@ -10,26 +10,18 @@ jobs:
         env:
           TOOLCHAIN: nightly
       - bash: rustup target add $TARGET
-        displayName: "Install rust cross target"
-      - bash: |
-          set -e
-          mkdir cross
-          curl -L https://github.com/rust-embedded/cross/releases/download/v0.1.14/cross-v0.1.14-x86_64-unknown-linux-musl.tar.gz | tar xzf - -C $HOME/.cargo/bin
-        displayName: "Install cross"
-      - bash: cross test --lib --features checked --target $TARGET --release
-        displayName: "Run lib tests"
-      - bash: cross test --tests --features checked --target $TARGET --release
-        displayName: "Run integration tests"
+      - template: ci/azure-install-rust.yml
+      - bash: cargo generate-lockfile && ./ci/run-docker.sh $TARGET
     strategy:
       matrix:
         aarch64:
           TARGET: aarch64-unknown-linux-gnu
-        armhv:
+        arm:
+          TARGET: arm-unknown-linux-gnueabi
+        armhf:
           TARGET: arm-unknown-linux-gnueabihf
         armv7:
           TARGET: armv7-unknown-linux-gnueabihf
-        i586:
-          TARGET: i586-unknown-linux-gnu
         i686:
           TARGET: i686-unknown-linux-gnu
         mips:
@@ -47,97 +39,31 @@ jobs:
         x86_64:
           TARGET: x86_64-unknown-linux-gnu
 
-  # - job: Linux
-  #   pool:
-  #     vmImage: ubuntu-16.04
-  #   steps:
-  #     - template: ci/azure-test-all.yml
-  #   strategy:
-  #     matrix:
-  #       stable:
-  #         TOOLCHAIN: stable
-  #       beta:
-  #         TOOLCHAIN: beta
-  #       nightly:
-  #         TOOLCHAIN: nightly
-  #
-  # - job: macOS
-  #   pool:
-  #     vmImage: macos-10.13
-  #   steps:
-  #     - template: ci/azure-test-all.yml
-  #   strategy:
-  #     matrix:
-  #       x86_64:
-  #         TARGET: x86_64-apple-darwin
-  #
-  # - job: iOS
-  #   pool:
-  #     vmImage: macos-10.13
-  #   steps:
-  #     - checkout: self
-  #       submodules: true
-  #     - template: ci/azure-install-rust.yml
-  #     - script: rustup target add $TARGET
-  #       displayName: "Install rust cross target"
-  #     - bash: |
-  #         set -e
-  #         export SDK_PATH=`xcrun --show-sdk-path --sdk $SDK`
-  #         export RUSTFLAGS="-C link-arg=-isysroot -C link-arg=$SDK_PATH"
-  #         cargo test --no-run --target $TARGET
-  #       displayName: "Build for iOS"
-  #   strategy:
-  #     matrix:
-  #       aarch64:
-  #         TARGET: aarch64-apple-ios
-  #         SDK: iphoneos
-  #       armv7:
-  #         TARGET: armv7-apple-ios
-  #         SDK: iphoneos
-  #       armv7s:
-  #         TARGET: armv7s-apple-ios
-  #         SDK: iphoneos
-  #       i386:
-  #         TARGET: i386-apple-ios
-  #         SDK: iphonesimulator
-  #       x86_64:
-  #         TARGET: x86_64-apple-ios
-  #         SDK: iphonesimulator
-  #
-  # - job: wasm
-  #   pool:
-  #     vmImage: ubuntu-16.04
-  #   steps:
-  #     - checkout: self
-  #       submodules: true
-  #     - template: ci/azure-install-rust.yml
-  #     - script: rustup target add wasm32-unknown-unknown
-  #       displayName: "Install rust cross target"
-  #     - script: cargo build --target wasm32-unknown-unknown
-  #       displayName: "Build for wasm"
-  #
-  # - job: Windows
-  #   pool:
-  #     vmImage: vs2017-win2016
-  #   steps:
-  #     - template: ci/azure-test-all.yml
-  #   strategy:
-  #     matrix:
-  #       x86_64-msvc:
-  #         TARGET: x86_64-pc-windows-msvc
-  #       i686-msvc:
-  #         TARGET: i686-pc-windows-msvc
-  #       x86_64-gnu:
-  #         TARGET: x86_64-pc-windows-gnu
-  #       i686-gnu:
-  #         TARGET: i686-pc-windows-gnu
-  #
-  # - job: Windows_arm64
-  #   pool:
-  #     vmImage: windows-2019
-  #   steps:
-  #     - template: ci/azure-install-rust.yml
-  #     - script: rustup target add aarch64-pc-windows-msvc
-  #       displayName: "Install rust cross target"
-  #     - script: cargo test --no-run --target aarch64-pc-windows-msvc
-  #       displayName: "Build for arm64"
+  - job: wasm
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+        env:
+          TOOLCHAIN: nightly
+      - script: rustup target add wasm32-unknown-unknown
+        displayName: "Install rust wasm target"
+      - script: cargo build --target wasm32-unknown-unknown
+        displayName: "Build for wasm"
+      - script: cargo build --target wasm32-unknown-unknown --no-default-features
+        displayName: "Build for wasm (no default features)"
+
+  - job: rustfmt
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: rustup component add rustfmt
+      - bash: cargo fmt --all -- --check
+
+  - job: compiler_builtins_works
+    pool:
+      vmImage: ubuntu-16.04
+    steps:
+      - template: ci/azure-install-rust.yml
+      - bash: cargo build -p cb
