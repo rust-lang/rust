@@ -104,6 +104,22 @@ fn test_iterator_chain_nth() {
 }
 
 #[test]
+fn test_iterator_chain_nth_back() {
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
+    let zs = [];
+    let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
+    for (i, x) in expected.iter().rev().enumerate() {
+        assert_eq!(Some(x), xs.iter().chain(&ys).nth_back(i));
+    }
+    assert_eq!(zs.iter().chain(&xs).nth_back(0), Some(&5));
+
+    let mut it = xs.iter().chain(&zs);
+    assert_eq!(it.nth_back(5), Some(&0));
+    assert_eq!(it.next(), None);
+}
+
+#[test]
 fn test_iterator_chain_last() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
