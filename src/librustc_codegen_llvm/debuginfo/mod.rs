@@ -63,7 +63,7 @@ pub struct CrateDebugContext<'a, 'tcx> {
     llcontext: &'a llvm::Context,
     llmod: &'a llvm::Module,
     builder: &'a mut DIBuilder<'a>,
-    created_files: RefCell<FxHashMap<(Symbol, Symbol), &'a DIFile>>,
+    created_files: RefCell<FxHashMap<(Option<Symbol>, Option<Symbol>), &'a DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Primitive), &'a DIType>>,
 
     type_map: RefCell<TypeMap<'a, 'tcx>>,
