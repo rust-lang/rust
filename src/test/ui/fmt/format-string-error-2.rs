@@ -77,7 +77,6 @@ raw  { \n
 
     println!("\x7B}\u8 {", 1);
     //~^ ERROR incorrect unicode escape sequence
-    //~| ERROR invalid format string: expected `'}'` but string was terminated
 
     // note: raw strings don't escape `\xFF` and `\u{FF}` sequences
     println!(r#"\x7B}\u{8} {"#, 1);

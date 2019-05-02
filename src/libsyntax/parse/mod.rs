@@ -33,7 +33,7 @@ pub mod attr;
 pub mod classify;
 
 pub(crate) mod unescape;
-use unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte, EscapeError};
+use unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 
 pub(crate) mod unescape_error_reporting;
 
@@ -355,16 +355,14 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
         token::Byte(i) => {
             let lit_kind = match unescape_byte(&i.as_str()) {
                 Ok(c) => LitKind::Byte(c),
-                Err((_, EscapeError::MoreThanOneChar)) => LitKind::Err(i),
-                Err(_) => LitKind::Byte(0),
+                Err(_) => LitKind::Err(i),
             };
             (true, Some(lit_kind))
         },
         token::Char(i) => {
             let lit_kind = match unescape_char(&i.as_str()) {
                 Ok(c) => LitKind::Char(c),
-                Err((_, EscapeError::MoreThanOneChar)) => LitKind::Err(i),
-                Err(_) => LitKind::Char('\u{FFFD}'),
+                Err(_) => LitKind::Err(i),
             };
             (true, Some(lit_kind))
         },
@@ -380,17 +378,22 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
             // reuse the symbol from the Token. Otherwise, we must generate a
             // new symbol because the string in the LitKind is different to the
             // string in the Token.
+            let mut has_error = false;
             let s = &sym.as_str();
             if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
                 let mut buf = String::with_capacity(s.len());
                 unescape_str(s, &mut |_, unescaped_char| {
                     match unescaped_char {
                         Ok(c) => buf.push(c),
-                        Err(_) => buf.push('\u{FFFD}'),
+                        Err(_) => has_error = true,
                     }
                 });
+                if has_error {
+                    return (true, Some(LitKind::Err(sym)));
+                }
                 sym = Symbol::intern(&buf)
             }
+
             (true, Some(LitKind::Str(sym, ast::StrStyle::Cooked)))
         }
         token::StrRaw(mut sym, n) => {
@@ -404,12 +407,16 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
         token::ByteStr(i) => {
             let s = &i.as_str();
             let mut buf = Vec::with_capacity(s.len());
+            let mut has_error = false;
             unescape_byte_str(s, &mut |_, unescaped_byte| {
                 match unescaped_byte {
                     Ok(c) => buf.push(c),
-                    Err(_) => buf.push(0),
+                    Err(_) => has_error = true,
                 }
             });
+            if has_error {
+                return (true, Some(LitKind::Err(i)));
+            }
             buf.shrink_to_fit();
             (true, Some(LitKind::ByteStr(Lrc::new(buf))))
         }

@@ -157,18 +157,8 @@ LL |     println!("\x7B}\u{8} {", 1);
    |
    = note: if you intended to print `{`, you can escape it using `{{`
 
-error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/format-string-error-2.rs:78:27
-   |
-LL |     println!("\x7B}\u8 {", 1);
-   |                          -^ expected `'}'` in format string
-   |                          |
-   |                          because of this opening brace
-   |
-   = note: if you intended to print `{`, you can escape it using `{{`
-
 error: invalid format string: unmatched `}` found
-  --> $DIR/format-string-error-2.rs:83:21
+  --> $DIR/format-string-error-2.rs:82:21
    |
 LL |     println!(r#"\x7B}\u{8} {"#, 1);
    |                     ^ unmatched `}` in format string
@@ -176,12 +166,12 @@ LL |     println!(r#"\x7B}\u{8} {"#, 1);
    = note: if you intended to print `}`, you can escape it using `}}`
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/format-string-error-2.rs:86:21
+  --> $DIR/format-string-error-2.rs:85:21
    |
 LL |     println!(r#"\x7B}\u8 {"#, 1);
    |                     ^ unmatched `}` in format string
    |
    = note: if you intended to print `}`, you can escape it using `}}`
 
-error: aborting due to 19 previous errors
+error: aborting due to 18 previous errors
 
