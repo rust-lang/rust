@@ -46,5 +46,5 @@ pub fn sinh(x: f64) -> f64 {
     /* |x| > log(DBL_MAX) or nan */
     /* note: the result is stored to handle overflow */
     t = 2.0 * h * expo2(absx);
-    return t;
+    t
 }

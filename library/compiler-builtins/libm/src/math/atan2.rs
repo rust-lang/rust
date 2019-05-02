@@ -53,7 +53,7 @@ pub fn atan2(y: f64, x: f64) -> f64 {
     let lx = x.to_bits() as u32;
     let mut iy = (y.to_bits() >> 32) as u32;
     let ly = y.to_bits() as u32;
-    if (ix - 0x3ff00000 | lx) == 0 {
+    if ((ix - 0x3ff00000) | lx) == 0 {
         /* x = 1.0 */
         return atan(y);
     }

@@ -88,5 +88,5 @@ pub fn log10f(mut x: f32) -> f32 {
     hi = f32::from_bits(ui);
     lo = f - hi - hfsq + s * (hfsq + r);
     dk = k as f32;
-    return dk * LOG10_2LO + (lo + hi) * IVLN10LO + lo * IVLN10HI + hi * IVLN10HI + dk * LOG10_2HI;
+    dk * LOG10_2LO + (lo + hi) * IVLN10LO + lo * IVLN10HI + hi * IVLN10HI + dk * LOG10_2HI
 }

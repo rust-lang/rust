@@ -136,12 +136,12 @@ pub fn powf(x: f32, y: f32) -> f32 {
         return x * x;
     }
 
-    if hy == 0x3f000000 {
-        /* y is  0.5 */
-        if hx >= 0 {
-            /* x >= +0 */
-            return sqrtf(x);
-        }
+    if hy == 0x3f000000
+       /* y is  0.5 */
+       && hx >= 0
+    {
+        /* x >= +0 */
+        return sqrtf(x);
     }
 
     ax = fabsf(x);
@@ -296,11 +296,11 @@ pub fn powf(x: f32, y: f32) -> f32 {
         /* z < -150 */
         // FIXME: check should be  (uint32_t)j > 0xc3160000
         return sn * TINY * TINY; /* underflow */
-    } else if j as u32 == 0xc3160000 {
-        /* z == -150 */
-        if p_l <= z - p_h {
-            return sn * TINY * TINY; /* underflow */
-        }
+    } else if j as u32 == 0xc3160000
+              /* z == -150 */
+              && p_l <= z - p_h
+    {
+        return sn * TINY * TINY; /* underflow */
     }
 
     /*
@@ -339,5 +339,5 @@ pub fn powf(x: f32, y: f32) -> f32 {
     } else {
         z = f32::from_bits(j as u32);
     }
-    return sn * z;
+    sn * z
 }

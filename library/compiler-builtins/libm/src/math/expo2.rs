@@ -11,5 +11,5 @@ pub fn expo2(x: f64) -> f64 {
     /* note that k is odd and scale*scale overflows */
     let scale = combine_words(((0x3ff + K / 2) as u32) << 20, 0);
     /* exp(x - k ln2) * 2**(k-1) */
-    return exp(x - kln2) * scale * scale;
+    exp(x - kln2) * scale * scale
 }

@@ -140,5 +140,5 @@ pub fn log1p(x: f64) -> f64 {
     t2 = z * (LG1 + w * (LG3 + w * (LG5 + w * LG7)));
     r = t2 + t1;
     dk = k as f64;
-    return s * (hfsq + r) + (dk * LN2_LO + c) - hfsq + f + dk * LN2_HI;
+    s * (hfsq + r) + (dk * LN2_LO + c) - hfsq + f + dk * LN2_HI
 }

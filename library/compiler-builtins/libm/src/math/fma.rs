@@ -83,7 +83,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
     if d > 0 {
         if d < 64 {
             zlo = nz.m << d;
-            zhi = nz.m >> 64 - d;
+            zhi = nz.m >> (64 - d);
         } else {
             zlo = 0;
             zhi = nz.m;
@@ -91,7 +91,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
             d -= 64;
             if d == 0 {
             } else if d < 64 {
-                rlo = rhi << 64 - d | rlo >> d | ((rlo << 64 - d) != 0) as u64;
+                rlo = rhi << (64 - d) | rlo >> d | ((rlo << (64 - d)) != 0) as u64;
                 rhi = rhi >> d;
             } else {
                 rlo = 1;
@@ -104,7 +104,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         if d == 0 {
             zlo = nz.m;
         } else if d < 64 {
-            zlo = nz.m >> d | ((nz.m << 64 - d) != 0) as u64;
+            zlo = nz.m >> d | ((nz.m << (64 - d)) != 0) as u64;
         } else {
             zlo = 1;
         }
@@ -136,7 +136,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         e += 64;
         d = rhi.leading_zeros() as i32 - 1;
         /* note: d > 0 */
-        rhi = rhi << d | rlo >> 64 - d | ((rlo << d) != 0) as u64;
+        rhi = rhi << d | rlo >> (64 - d) | ((rlo << d) != 0) as u64;
     } else if rlo != 0 {
         d = rlo.leading_zeros() as i32 - 1;
         if d < 0 {
@@ -191,7 +191,7 @@ pub fn fma(x: f64, y: f64, z: f64) -> f64 {
         } else {
             /* only round once when scaled */
             d = 10;
-            i = ((rhi >> d | ((rhi << 64 - d) != 0) as u64) << d) as i64;
+            i = ((rhi >> d | ((rhi << (64 - d)) != 0) as u64) << d) as i64;
             if sign != 0 {
                 i = -i;
             }

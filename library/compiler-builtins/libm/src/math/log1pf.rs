@@ -95,5 +95,5 @@ pub fn log1pf(x: f32) -> f32 {
     r = t2 + t1;
     hfsq = 0.5 * f * f;
     dk = k as f32;
-    return s * (hfsq + r) + (dk * LN2_LO + c) - hfsq + f + dk * LN2_HI;
+    s * (hfsq + r) + (dk * LN2_LO + c) - hfsq + f + dk * LN2_HI
 }

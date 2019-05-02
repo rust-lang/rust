@@ -72,5 +72,5 @@ pub fn hypot(mut x: f64, mut y: f64) -> f64 {
     }
     let (hx, lx) = sq(x);
     let (hy, ly) = sq(y);
-    return z * sqrt(ly + lx + hy + hx);
+    z * sqrt(ly + lx + hy + hx)
 }

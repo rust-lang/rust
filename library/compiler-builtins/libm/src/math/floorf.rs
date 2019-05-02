@@ -35,7 +35,7 @@ pub fn floorf(x: f32) -> f32 {
             return -1.0;
         }
     }
-    return f32::from_bits(ui);
+    f32::from_bits(ui)
 }
 
 #[cfg(test)]

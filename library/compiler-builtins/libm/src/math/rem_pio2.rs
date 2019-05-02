@@ -78,7 +78,7 @@ pub fn rem_pio2(x: f64) -> (i32, f64, f64) {
             }
         }
         let y1 = (r - y0) - w;
-        return (n, y0, y1);
+        (n, y0, y1)
     }
 
     if ix <= 0x400f6a7a {
@@ -100,18 +100,16 @@ pub fn rem_pio2(x: f64) -> (i32, f64, f64) {
                 let y1 = (z - y0) + PIO2_1T;
                 return (-1, y0, y1);
             }
+        } else if sign == 0 {
+            let z = x - 2.0 * PIO2_1;
+            let y0 = z - 2.0 * PIO2_1T;
+            let y1 = (z - y0) - 2.0 * PIO2_1T;
+            return (2, y0, y1);
         } else {
-            if sign == 0 {
-                let z = x - 2.0 * PIO2_1;
-                let y0 = z - 2.0 * PIO2_1T;
-                let y1 = (z - y0) - 2.0 * PIO2_1T;
-                return (2, y0, y1);
-            } else {
-                let z = x + 2.0 * PIO2_1;
-                let y0 = z + 2.0 * PIO2_1T;
-                let y1 = (z - y0) + 2.0 * PIO2_1T;
-                return (-2, y0, y1);
-            }
+            let z = x + 2.0 * PIO2_1;
+            let y0 = z + 2.0 * PIO2_1T;
+            let y1 = (z - y0) + 2.0 * PIO2_1T;
+            return (-2, y0, y1);
         }
     }
     if ix <= 0x401c463b {
@@ -185,5 +183,5 @@ pub fn rem_pio2(x: f64) -> (i32, f64, f64) {
     if sign != 0 {
         return (-n, -ty[0], -ty[1]);
     }
-    return (n, ty[0], ty[1]);
+    (n, ty[0], ty[1])
 }

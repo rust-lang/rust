@@ -27,7 +27,7 @@ pub fn ceil(x: f64) -> f64 {
         x + TOINT - TOINT - x
     };
     // special case because of non-nearest rounding modes
-    if e <= 0x3ff - 1 {
+    if e < 0x3ff {
         force_eval!(y);
         return if (u >> 63) != 0 { -0. } else { 1. };
     }
