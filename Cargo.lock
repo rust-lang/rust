@@ -1057,7 +1057,7 @@ dependencies = [
 [[package]]
 name = "hashbrown"
 version = "0.3.0"
-source = "git+https://github.com/gankro/hashbrown?branch=singleton#99e5ba92e83a6ad40cbc5c9d79dd18a07592ebf1"
+source = "git+https://github.com/gankro/hashbrown?branch=singleton#09ed47028875a10cb6ad9ffeceb61cc4a5c9d690"
 dependencies = [
  "compiler_builtins 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-std-workspace-alloc 1.0.0",
