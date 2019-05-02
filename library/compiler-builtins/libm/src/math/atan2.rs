@@ -92,12 +92,12 @@ pub fn atan2(y: f64, x: f64) -> f64 {
         }
     }
     /* |y/x| > 0x1p64 */
-    if ix + (64 << 20) < iy || iy == 0x7ff00000 {
+    if ix.wrapping_add(64 << 20) < iy || iy == 0x7ff00000 {
         return if m & 1 != 0 { -PI / 2.0 } else { PI / 2.0 };
     }
 
     /* z = atan(|y/x|) without spurious underflow */
-    let z = if (m & 2 != 0) && iy + (64 << 20) < ix {
+    let z = if (m & 2 != 0) && iy.wrapping_add(64 << 20) < ix {
         /* |y/x| < 0x1p-64, x<0 */
         0.0
     } else {
