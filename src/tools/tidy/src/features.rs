@@ -20,7 +20,7 @@ use regex::{Regex, escape};
 mod version;
 use self::version::Version;
 
-const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start:";
+const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
 
 #[derive(Debug, PartialEq, Clone)]
@@ -194,7 +194,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
     // without one inside `// no tracking issue START` and `// no tracking issue END`.
     let mut next_feature_omits_tracking_issue = false;
 
-    let mut next_feature_group = None;
+    let mut in_feature_group = false;
     let mut prev_since = None;
 
     contents.lines().zip(1..)
@@ -215,7 +215,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
             }
 
             if line.starts_with(FEATURE_GROUP_START_PREFIX) {
-                if next_feature_group.is_some() {
+                if in_feature_group {
                     tidy_error!(
                         bad,
                         // ignore-tidy-linelength
@@ -224,12 +224,11 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                     );
                 }
 
-                let group = line.trim_start_matches(FEATURE_GROUP_START_PREFIX).trim();
-                next_feature_group = Some(group.to_owned());
+                in_feature_group = true;
                 prev_since = None;
                 return None;
             } else if line.starts_with(FEATURE_GROUP_END_PREFIX) {
-                next_feature_group = None;
+                in_feature_group = false;
                 prev_since = None;
                 return None;
             }
@@ -257,7 +256,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                     None
                 }
             };
-            if next_feature_group.is_some() {
+            if in_feature_group {
                 if prev_since > since {
                     tidy_error!(
                         bad,
