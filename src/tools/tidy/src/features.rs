@@ -153,8 +153,8 @@ fn format_features<'a>(features: &'a Features, family: &'a str) -> impl Iterator
                 name,
                 family,
                 feature.level,
-                feature.since.as_ref().map_or("None".to_owned(),
-                                              |since| since.to_string()))
+                feature.since.map_or("None".to_owned(),
+                                     |since| since.to_string()))
     })
 }
 
@@ -265,7 +265,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
                         name,
                     );
                 }
-                prev_since = since.clone();
+                prev_since = since;
             }
 
             let issue_str = parts.next().unwrap().trim();

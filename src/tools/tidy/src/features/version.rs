@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::num::ParseIntError;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Version {
     parts: [u32; 3],
 }
