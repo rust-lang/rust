@@ -594,14 +594,12 @@ fn main() {
         }");
     gen(|(a, b): (MyI128, MyI128)| Some(a.0.wrapping_mul(b.0)),
         "builtins::int::mul::__multi3(a, b)");
-    if !target_arch_mips { // FIXME(#137)
-        gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_mul(b.0)),
-            "{
-                let mut o = 2;
-                let c = builtins::int::mul::__muloti4(a, b, &mut o);
-                (c, match o { 0 => false, 1 => true, _ => panic!() })
-            }");
-    }
+    gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_mul(b.0)),
+        "{
+            let mut o = 2;
+            let c = builtins::int::mul::__muloti4(a, b, &mut o);
+            (c, match o { 0 => false, 1 => true, _ => panic!() })
+        }");
 
     // int/sdiv.rs
     gen(|(a, b): (MyI64, MyI64)| {
@@ -658,24 +656,22 @@ fn main() {
             }
         },
         "builtins::int::sdiv::__moddi3(a, b)");
-    if !target_arch_mips { // FIXME(#137)
-        gen(|(a, b): (MyI128, MyI128)| {
-                if b.0 == 0 {
-                    None
-                } else {
-                    Some(a.0 / b.0)
-                }
-            },
-            "builtins::int::sdiv::__divti3(a, b)");
-        gen(|(a, b): (MyI128, MyI128)| {
-                if b.0 == 0 {
-                    None
-                } else {
-                    Some(a.0 % b.0)
-                }
-            },
-            "builtins::int::sdiv::__modti3(a, b)");
-    }
+    gen(|(a, b): (MyI128, MyI128)| {
+            if b.0 == 0 {
+                None
+            } else {
+                Some(a.0 / b.0)
+            }
+        },
+        "builtins::int::sdiv::__divti3(a, b)");
+    gen(|(a, b): (MyI128, MyI128)| {
+            if b.0 == 0 {
+                None
+            } else {
+                Some(a.0 % b.0)
+            }
+        },
+        "builtins::int::sdiv::__modti3(a, b)");
 
     // int/shift.rs
     gen(|(a, b): (MyU64, MyU32)| Some(a.0 << (b.0 % 64)),
@@ -746,35 +742,33 @@ fn main() {
             }
         },
         "builtins::int::udiv::__umoddi3(a, b)");
-    if !target_arch_mips { // FIXME(#137)
-        gen(|(a, b): (MyU128, MyU128)| {
-                if b.0 == 0 {
-                    None
-                } else {
-                    Some(a.0 / b.0)
-                }
-            },
-            "builtins::int::udiv::__udivti3(a, b)");
-        gen(|(a, b): (MyU128, MyU128)| {
-                if b.0 == 0 {
-                    None
-                } else {
-                    Some(a.0 % b.0)
-                }
-            },
-            "builtins::int::udiv::__umodti3(a, b)");
-        gen(|(a, b): (MyU128, MyU128)| {
-                if b.0 == 0 {
-                    None
-                } else {
-                    Some((a.0 / b.0, a.0 % b.0))
-                }
-            },
-            "{
-                let mut r = 0;
-                (builtins::int::udiv::__udivmodti4(a, b, Some(&mut r)), r)
-            }");
-    }
+    gen(|(a, b): (MyU128, MyU128)| {
+            if b.0 == 0 {
+                None
+            } else {
+                Some(a.0 / b.0)
+            }
+        },
+        "builtins::int::udiv::__udivti3(a, b)");
+    gen(|(a, b): (MyU128, MyU128)| {
+            if b.0 == 0 {
+                None
+            } else {
+                Some(a.0 % b.0)
+            }
+        },
+        "builtins::int::udiv::__umodti3(a, b)");
+    gen(|(a, b): (MyU128, MyU128)| {
+            if b.0 == 0 {
+                None
+            } else {
+                Some((a.0 / b.0, a.0 % b.0))
+            }
+        },
+        "{
+            let mut r = 0;
+            (builtins::int::udiv::__udivmodti4(a, b, Some(&mut r)), r)
+        }");
 }
 
 macro_rules! gen_float {
