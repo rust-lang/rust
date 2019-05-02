@@ -1927,6 +1927,9 @@ pub enum ArgSource {
 /// Represents the header (not the body) of a function declaration.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct FnDecl {
+    /// The types of the function's arguments.
+    ///
+    /// Additional argument data is stored in the function's [body](Body::arguments).
     pub inputs: HirVec<Ty>,
     pub output: FunctionRetTy,
     pub c_variadic: bool,
