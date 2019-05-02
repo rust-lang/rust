@@ -1,4 +1,0 @@
-steps:
-  - template: azure-install-rust.yml
-
-  - bash: cargo generate-lockfile && ./ci/run-docker.sh $TARGET

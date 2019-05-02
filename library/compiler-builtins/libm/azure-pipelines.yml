@@ -7,10 +7,7 @@ jobs:
       vmImage: ubuntu-16.04
     steps:
       - template: ci/azure-install-rust.yml
-        env:
-          TOOLCHAIN: nightly
       - bash: rustup target add $TARGET
-      - template: ci/azure-install-rust.yml
       - bash: cargo generate-lockfile && ./ci/run-docker.sh $TARGET
     strategy:
       matrix:
@@ -44,8 +41,6 @@ jobs:
       vmImage: ubuntu-16.04
     steps:
       - template: ci/azure-install-rust.yml
-        env:
-          TOOLCHAIN: nightly
       - script: rustup target add wasm32-unknown-unknown
         displayName: "Install rust wasm target"
       - script: cargo build --target wasm32-unknown-unknown
