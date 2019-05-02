@@ -108,4 +108,12 @@ fn main() {
     }
 
     baz = 1337;
+
+    // issue 3043 - types with interior mutability should not trigger this lint
+    use std::cell::Cell;
+    let mut val = Cell::new(1);
+    if true {
+        val = Cell::new(2);
+    }
+    println!("{}", val.get());
 }
