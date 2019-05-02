@@ -38,6 +38,7 @@ const A_T: [f32; 5] = [
 ];
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn atanf(mut x: f32) -> f32 {
     let x1p_120 = f32::from_bits(0x03800000); // 0x1p-120 === 2 ^ (-120)
 

@@ -1,0 +1,23 @@
+steps:
+  - bash: |
+      set -e
+      toolchain=$TOOLCHAIN
+      if [ "$toolchain" = "" ]; then
+        toolchain=stable
+      fi
+      curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $toolchain
+      echo "##vso[task.prependpath]$HOME/.cargo/bin"
+    displayName: Install rust (unix)
+    condition: ne( variables['Agent.OS'], 'Windows_NT' )
+
+  - script: |
+      curl -sSf -o rustup-init.exe https://win.rustup.rs
+      rustup-init.exe -y --default-toolchain stable-%TARGET%
+      echo ##vso[task.prependpath]%USERPROFILE%\.cargo\bin
+    displayName: Install rust (windows)
+    condition: eq( variables['Agent.OS'], 'Windows_NT' )
+
+  - script: |
+        rustc -Vv
+        cargo -V
+    displayName: Query rust and cargo versions

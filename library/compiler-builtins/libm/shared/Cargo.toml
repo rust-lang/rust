@@ -1,7 +1,0 @@
-[package]
-name = "shared"
-version = "0.1.0"
-authors = ["Jorge Aparicio <jorge@japaric.io>"]
-
-[dependencies]
-lazy_static = "1.0.2"

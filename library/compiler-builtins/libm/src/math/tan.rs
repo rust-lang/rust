@@ -40,6 +40,7 @@ use super::{k_tan, rem_pio2};
 // Accuracy:
 //      TRIG(x) returns trig(x) nearly rounded
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn tan(x: f64) -> f64 {
     let x1p120 = f32::from_bits(0x7b800000); // 0x1p120f === 2 ^ 120
 

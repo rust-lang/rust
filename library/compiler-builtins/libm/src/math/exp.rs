@@ -78,6 +78,7 @@ const P4: f64 = -1.65339022054652515390e-06; /* 0xBEBBBD41, 0xC5D26BF1 */
 const P5: f64 = 4.13813679705723846039e-08; /* 0x3E663769, 0x72BEA4D0 */
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn exp(mut x: f64) -> f64 {
     let x1p1023 = f64::from_bits(0x7fe0000000000000); // 0x1p1023 === 2 ^ 1023
     let x1p_149 = f64::from_bits(0x36a0000000000000); // 0x1p-149 === 2 ^ -149

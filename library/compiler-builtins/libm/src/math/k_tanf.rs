@@ -20,6 +20,7 @@ const T: [f64; 6] = [
 ];
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn k_tanf(x: f64, odd: bool) -> f32 {
     let z = x * x;
     /*

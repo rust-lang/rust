@@ -1,6 +1,7 @@
 use core::f64;
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn trunc(x: f64) -> f64 {
     // On wasm32 we know that LLVM's intrinsic will compile to an optimized
     // `f64.trunc` native instruction, so we can leverage this for both code size

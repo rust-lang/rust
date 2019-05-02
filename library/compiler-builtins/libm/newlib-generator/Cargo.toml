@@ -1,7 +1,0 @@
-[package]
-name = "newlib-generator"
-version = "0.1.0"
-authors = ["Jorge Aparicio <jorge@japaric.io>"]
-
-[dependencies]
-shared = { path = "../shared" }

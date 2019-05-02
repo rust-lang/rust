@@ -81,6 +81,7 @@ use core::f64;
 const TINY: f64 = 1.0e-300;
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn sqrt(x: f64) -> f64 {
     // On wasm32 we know that LLVM's intrinsic will compile to an optimized
     // `f64.sqrt` native instruction, so we can leverage this for both code size

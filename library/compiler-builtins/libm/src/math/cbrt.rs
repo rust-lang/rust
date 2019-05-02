@@ -28,6 +28,7 @@ const P3: f64 = -0.758397934778766047437; /* 0xbfe844cb, 0xbee751d9 */
 const P4: f64 = 0.145996192886612446982; /* 0x3fc2b000, 0xd4e4edd7 */
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn cbrt(x: f64) -> f64 {
     let x1p54 = f64::from_bits(0x4350000000000000); // 0x1p54 === 2 ^ 54
 

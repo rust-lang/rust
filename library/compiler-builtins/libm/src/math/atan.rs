@@ -61,6 +61,7 @@ const AT: [f64; 11] = [
 ];
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn atan(x: f64) -> f64 {
     let mut x = x;
     let mut ix = (x.to_bits() >> 32) as u32;
@@ -147,7 +148,8 @@ mod tests {
             (-3.0_f64.sqrt() / 3.0, -f64::consts::FRAC_PI_6),
             (-1.0, -f64::consts::FRAC_PI_4),
             (-3.0_f64.sqrt(), -f64::consts::FRAC_PI_3),
-        ].iter()
+        ]
+        .iter()
         {
             assert!(
                 (atan(*input) - answer) / answer < 1e-5,

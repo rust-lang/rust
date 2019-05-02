@@ -90,6 +90,7 @@ const IVLN2_H: f64 = 1.44269502162933349609e+00; /* 0x3ff71547_60000000 =24b 1/l
 const IVLN2_L: f64 = 1.92596299112661746887e-08; /* 0x3e54ae0b_f85ddf44 =1/ln2 tail*/
 
 #[inline]
+#[cfg_attr(all(test, assert_no_panic), no_panic::no_panic)]
 pub fn pow(x: f64, y: f64) -> f64 {
     let t1: f64;
     let t2: f64;
@@ -261,7 +262,7 @@ pub fn pow(x: f64, y: f64) -> f64 {
         }
 
         /* now |1-x| is TINY <= 2**-20, suffice to compute
-           log(x) by x-x^2/2+x^3/3-x^4/4 */
+        log(x) by x-x^2/2+x^3/3-x^4/4 */
         let t: f64 = ax - 1.0; /* t has 20 trailing zeros */
         let w: f64 = (t * t) * (0.5 - t * (0.3333333333333333333333 - t * 0.25));
         let u: f64 = IVLN2_H * t; /* ivln2_h has 21 sig. bits */

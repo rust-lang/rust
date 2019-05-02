@@ -625,3 +625,6 @@ mod private {
     impl Sealed for f32 {}
     impl Sealed for f64 {}
 }
+
+#[cfg(all(test, feature = "musl-reference-tests"))]
+include!(concat!(env!("OUT_DIR"), "/musl-tests.rs"));
