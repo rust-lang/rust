@@ -29,7 +29,7 @@ use rustc::hir::def::{
 };
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap, SmallNodeIdVec};
+use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::{bug, span_bug};
@@ -67,6 +67,7 @@ use std::collections::BTreeSet;
 use std::mem::replace;
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc_data_structures::sync::Lrc;
+use smallvec::SmallVec;
 
 use diagnostics::{find_span_of_binding_until_next_binding, extend_span_to_previous_binding};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
@@ -4658,10 +4659,9 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn find_transitive_imports(&mut self, kind: &NameBindingKind<'_>,
-                               trait_name: &Ident) -> SmallNodeIdVec {
+    fn find_transitive_imports(&mut self, mut kind: &NameBindingKind<'_>,
+                               trait_name: &Ident) -> SmallVec<[NodeId; 1]> {
         let mut import_ids = smallvec![];
-        let mut kind = kind;
         while let NameBindingKind::Import { directive, binding, .. } = *kind {
             self.maybe_unused_trait_imports.insert(directive.id);
             self.add_to_glob_map(&directive, *trait_name);

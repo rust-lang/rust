@@ -7,7 +7,6 @@ use crate::check::autoderef::{self, Autoderef};
 use crate::check::FnCtxt;
 use crate::hir::def_id::DefId;
 use crate::hir::def::DefKind;
-use crate::hir::SmallHirIdVec;
 use crate::namespace::Namespace;
 
 use rustc_data_structures::sync::Lrc;
@@ -36,7 +35,7 @@ use std::mem;
 use std::ops::Deref;
 use std::cmp::max;
 
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 
 use self::CandidateKind::*;
 pub use self::PickKind::*;
@@ -124,7 +123,7 @@ struct Candidate<'tcx> {
     xform_ret_ty: Option<Ty<'tcx>>,
     item: ty::AssociatedItem,
     kind: CandidateKind<'tcx>,
-    import_ids: SmallHirIdVec,
+    import_ids: SmallVec<[hir::HirId; 1]>,
 }
 
 #[derive(Debug)]
@@ -149,7 +148,7 @@ enum ProbeResult {
 pub struct Pick<'tcx> {
     pub item: ty::AssociatedItem,
     pub kind: PickKind<'tcx>,
-    pub import_ids: hir::SmallHirIdVec,
+    pub import_ids: SmallVec<[hir::HirId; 1]>,
 
     // Indicates that the source expression should be autoderef'd N times
     //
@@ -894,7 +893,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn assemble_extension_candidates_for_trait(&mut self,
-                                               import_ids: SmallHirIdVec,
+                                               import_ids: SmallVec<[hir::HirId; 1]>,
                                                trait_def_id: DefId)
                                                -> Result<(), MethodError<'tcx>> {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})",

@@ -2506,16 +2506,13 @@ pub type FreevarMap = NodeMap<Vec<Freevar<ast::NodeId>>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 
-pub type SmallHirIdVec = SmallVec<[HirId;1]>;
-pub type SmallNodeIdVec = SmallVec<[NodeId;1]>;
-
  // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
  // has length > 0 if the trait is found through an chain of imports, starting with the
  // import/use statement in the scope where the trait is used.
 #[derive(Clone, Debug)]
 pub struct TraitCandidate {
     pub def_id: DefId,
-    pub import_ids: SmallNodeIdVec,
+    pub import_ids: SmallVec<[NodeId; 1]>,
 }
 
 // Trait method resolution
