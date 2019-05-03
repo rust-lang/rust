@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL |     X = Trait::Number,
    |         ^^^^^^^^^^^^^ expected isize, found i32
-help: you can convert an `i32` to `isize` or panic if it the converted value wouldn't fit
+help: you can convert an `i32` to `isize` and panic if the converted value wouldn't fit
    |
 LL |     X = Trait::Number.try_into().unwrap(),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
