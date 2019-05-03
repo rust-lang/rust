@@ -355,7 +355,6 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             // the children of the visible parent (as was done when computing
             // `visible_parent_map`), looking for the specific child we currently have and then
             // have access to the re-exported name.
-            DefPathData::Module(ref mut name) |
             DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
                 let reexport = self.tcx().item_children(visible_parent)
                     .iter()
@@ -367,7 +366,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             }
             // Re-exported `extern crate` (#43189).
             DefPathData::CrateRoot => {
-                data = DefPathData::Module(
+                data = DefPathData::TypeNs(
                     self.tcx().original_crate_name(def_id.krate).as_interned_str(),
                 );
             }
@@ -860,7 +859,6 @@ impl TyCtxt<'_, '_, '_> {
     fn guess_def_namespace(self, def_id: DefId) -> Namespace {
         match self.def_key(def_id).disambiguated_data.data {
             DefPathData::ValueNs(..) |
-            DefPathData::EnumVariant(..) |
             DefPathData::Field(..) |
             DefPathData::AnonConst |
             DefPathData::ConstParam(..) |

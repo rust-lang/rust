@@ -139,14 +139,13 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // information we encapsulate into, the better
         let def_data = match i.node {
             ItemKind::Impl(..) => DefPathData::Impl,
-            ItemKind::Trait(..) => DefPathData::Trait(i.ident.as_interned_str()),
-            ItemKind::TraitAlias(..) => DefPathData::TraitAlias(i.ident.as_interned_str()),
-            ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
-            ItemKind::Existential(..) | ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) |
-            ItemKind::Ty(..) => DefPathData::TypeNs(i.ident.as_interned_str()),
             ItemKind::Mod(..) if i.ident == keywords::Invalid.ident() => {
                 return visit::walk_item(self, i);
             }
+            ItemKind::Mod(..) | ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
+            ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
+            ItemKind::Existential(..) | ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) |
+            ItemKind::Ty(..) => DefPathData::TypeNs(i.ident.as_interned_str()),
             ItemKind::Fn(
                 ref decl,
                 ref header,
@@ -163,7 +162,6 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     body,
                 )
             }
-            ItemKind::Mod(..) => DefPathData::Module(i.ident.as_interned_str()),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
                 DefPathData::ValueNs(i.ident.as_interned_str()),
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.as_interned_str()),
@@ -211,7 +209,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_variant(&mut self, v: &'a Variant, g: &'a Generics, item_id: NodeId) {
         let def = self.create_def(v.node.id,
-                                  DefPathData::EnumVariant(v.node.ident.as_interned_str()),
+                                  DefPathData::TypeNs(v.node.ident.as_interned_str()),
                                   REGULAR_SPACE,
                                   v.span);
         self.with_parent(def, |this| {
@@ -239,7 +237,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let name = param.ident.as_interned_str();
         let def_path_data = match param.kind {
             GenericParamKind::Lifetime { .. } => DefPathData::LifetimeParam(name),
-            GenericParamKind::Type { .. } => DefPathData::TypeParam(name),
+            GenericParamKind::Type { .. } => DefPathData::TypeNs(name),
             GenericParamKind::Const { .. } => DefPathData::ConstParam(name),
         };
         self.create_def(param.id, def_path_data, REGULAR_SPACE, param.ident.span);
@@ -252,7 +250,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.as_interned_str()),
             TraitItemKind::Type(..) => {
-                DefPathData::AssocTypeInTrait(ti.ident.as_interned_str())
+                DefPathData::TypeNs(ti.ident.as_interned_str())
             },
             TraitItemKind::Macro(..) => return self.visit_macro_invoc(ti.id),
         };
@@ -279,9 +277,9 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             ImplItemKind::Method(..) | ImplItemKind::Const(..) =>
                 DefPathData::ValueNs(ii.ident.as_interned_str()),
-            ImplItemKind::Type(..) => DefPathData::AssocTypeInImpl(ii.ident.as_interned_str()),
+            ImplItemKind::Type(..) |
             ImplItemKind::Existential(..) => {
-                DefPathData::AssocExistentialInImpl(ii.ident.as_interned_str())
+                DefPathData::TypeNs(ii.ident.as_interned_str())
             },
             ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),
         };

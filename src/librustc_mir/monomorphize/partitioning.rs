@@ -99,11 +99,11 @@ use std::sync::Arc;
 use syntax::symbol::InternedString;
 use rustc::dep_graph::{WorkProductId, WorkProduct, DepNode, DepConstructor};
 use rustc::hir::{CodegenFnAttrFlags, HirId};
+use rustc::hir::def::DefKind;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
-use rustc::hir::map::DefPathData;
 use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
 use rustc::middle::exported_symbols::SymbolExportLevel;
-use rustc::ty::{self, TyCtxt, InstanceDef};
+use rustc::ty::{self, DefIdTree, TyCtxt, InstanceDef};
 use rustc::ty::print::characteristic_def_id_of_type;
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
@@ -805,33 +805,27 @@ fn compute_codegen_unit_name(tcx: TyCtxt<'_, '_, '_>,
     let mut cgu_def_id = None;
     // Walk backwards from the item we want to find the module for:
     loop {
-        let def_key = tcx.def_key(current_def_id);
-
-        match def_key.disambiguated_data.data {
-            DefPathData::Module(..) => {
-                if cgu_def_id.is_none() {
-                    cgu_def_id = Some(current_def_id);
-                }
+        if current_def_id.index == CRATE_DEF_INDEX {
+            if cgu_def_id.is_none() {
+                // If we have not found a module yet, take the crate root.
+                cgu_def_id = Some(DefId {
+                    krate: def_id.krate,
+                    index: CRATE_DEF_INDEX,
+                });
             }
-            DefPathData::CrateRoot { .. } => {
-                if cgu_def_id.is_none() {
-                    // If we have not found a module yet, take the crate root.
-                    cgu_def_id = Some(DefId {
-                        krate: def_id.krate,
-                        index: CRATE_DEF_INDEX,
-                    });
-                }
-                break
+            break
+        } else if tcx.def_kind(current_def_id) == Some(DefKind::Mod) {
+            if cgu_def_id.is_none() {
+                cgu_def_id = Some(current_def_id);
             }
-            _ => {
-                // If we encounter something that is not a module, throw away
-                // any module that we've found so far because we now know that
-                // it is nested within something else.
-                cgu_def_id = None;
-            }
+        } else {
+            // If we encounter something that is not a module, throw away
+            // any module that we've found so far because we now know that
+            // it is nested within something else.
+            cgu_def_id = None;
         }
 
-        current_def_id.index = def_key.parent.unwrap();
+        current_def_id = tcx.parent(current_def_id).unwrap();
     }
 
     let cgu_def_id = cgu_def_id.unwrap();

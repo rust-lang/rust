@@ -1,5 +1,6 @@
 mod environment;
 
+use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::map::definitions::DefPathData;
@@ -157,13 +158,27 @@ crate fn program_clauses_for<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Clauses<'tcx> {
+    // FIXME(eddyb) this should only be using `def_kind`.
     match tcx.def_key(def_id).disambiguated_data.data {
-        DefPathData::Trait(_) |
-        DefPathData::TraitAlias(_) => program_clauses_for_trait(tcx, def_id),
+        DefPathData::TypeNs(..) => match tcx.def_kind(def_id) {
+            Some(DefKind::Trait)
+            | Some(DefKind::TraitAlias) => program_clauses_for_trait(tcx, def_id),
+            // FIXME(eddyb) deduplicate this `associated_item` call with
+            // `program_clauses_for_associated_type_{value,def}`.
+            Some(DefKind::AssociatedTy) => match tcx.associated_item(def_id).container {
+                ty::AssociatedItemContainer::ImplContainer(_) =>
+                    program_clauses_for_associated_type_value(tcx, def_id),
+                ty::AssociatedItemContainer::TraitContainer(_) =>
+                    program_clauses_for_associated_type_def(tcx, def_id)
+            },
+            Some(DefKind::Struct)
+            | Some(DefKind::Enum)
+            | Some(DefKind::TyAlias)
+            | Some(DefKind::Union)
+            | Some(DefKind::Existential) => program_clauses_for_type_def(tcx, def_id),
+            _ => List::empty(),
+        },
         DefPathData::Impl => program_clauses_for_impl(tcx, def_id),
-        DefPathData::AssocTypeInImpl(..) => program_clauses_for_associated_type_value(tcx, def_id),
-        DefPathData::AssocTypeInTrait(..) => program_clauses_for_associated_type_def(tcx, def_id),
-        DefPathData::TypeNs(..) => program_clauses_for_type_def(tcx, def_id),
         _ => List::empty(),
     }
 }

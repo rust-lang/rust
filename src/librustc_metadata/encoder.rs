@@ -586,8 +586,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
+            // FIXME(eddyb) deduplicate these with `encode_enum_variant_ctor`.
             ctor: variant.ctor_def_id.map(|did| did.index),
-            ctor_sig: None,
+            ctor_sig: if variant.ctor_kind == CtorKind::Fn {
+                variant.ctor_def_id.map(|ctor_def_id| self.lazy(&tcx.fn_sig(ctor_def_id)))
+            } else {
+                None
+            },
         };
 
         let enum_id = tcx.hir().as_local_hir_id(enum_did).unwrap();
