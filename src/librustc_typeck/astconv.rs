@@ -553,7 +553,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         tcx.intern_substs(&substs)
     }
 
-    /// Given the type/region arguments provided to some path (along with
+    /// Given the type/lifetime/const arguments provided to some path (along with
     /// an implicit `Self`, if this is a trait reference) returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
     ///
@@ -678,7 +678,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     GenericParamDefKind::Const => {
                         // FIXME(const_generics:defaults)
                         // We've already errored above about the mismatch.
-                        tcx.types.err.into()
+                        tcx.consts.err.into()
                     }
                 }
             },
