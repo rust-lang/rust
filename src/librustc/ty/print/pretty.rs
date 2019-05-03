@@ -669,7 +669,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 if let Some(n) = sz.assert_usize(self.tcx()) {
                     p!(write("{}", n));
                 } else {
-                    p!(print(sz));
+                    p!(write("_"));
                 }
                 p!(write("]"))
             }
