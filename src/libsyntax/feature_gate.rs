@@ -109,15 +109,14 @@ macro_rules! declare_features {
 // stable (active).
 //
 // Note that the features should be grouped into internal/user-facing
-// and then sorted by version inside those groups.
-// FIXME(60361): Enforce ^-- with tidy.
+// and then sorted by version inside those groups. This is inforced with tidy.
 //
 // N.B., `tools/tidy/src/features.rs` parses this information directly out of the
 // source, so take care when modifying it.
 
 declare_features! (
     // -------------------------------------------------------------------------
-    // Internal feature gates.
+    // feature-group-start: internal feature gates
     // -------------------------------------------------------------------------
 
     // no tracking issue START
@@ -211,11 +210,11 @@ declare_features! (
 
     // no tracking issue END
 
-    // Allows using the `may_dangle` attribute (RFC 1327).
-    (active, dropck_eyepatch, "1.10.0", Some(34761), None),
-
     // Allows using `#[structural_match]` which indicates that a type is structurally matchable.
     (active, structural_match, "1.8.0", Some(31434), None),
+
+    // Allows using the `may_dangle` attribute (RFC 1327).
+    (active, dropck_eyepatch, "1.10.0", Some(34761), None),
 
     // Allows using the `#![panic_runtime]` attribute.
     (active, panic_runtime, "1.10.0", Some(32837), None),
@@ -252,7 +251,11 @@ declare_features! (
     (active, test_2018_feature, "1.31.0", Some(0), Some(Edition::Edition2018)),
 
     // -------------------------------------------------------------------------
-    // Actual feature gates (target features).
+    // feature-group-end: internal feature gates
+    // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // feature-group-start: actual feature gates (target features)
     // -------------------------------------------------------------------------
 
     // FIXME: Document these and merge with the list below.
@@ -275,7 +278,11 @@ declare_features! (
     (active, f16c_target_feature, "1.36.0", Some(44839), None),
 
     // -------------------------------------------------------------------------
-    // Actual feature gates.
+    // feature-group-end: actual feature gates (target features)
+    // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // feature-group-start: actual feature gates
     // -------------------------------------------------------------------------
 
     // Allows using `asm!` macro with which inline assembly can be embedded.
@@ -340,9 +347,6 @@ declare_features! (
     // Permits specifying whether a function should permit unwinding or abort on unwind.
     (active, unwind_attributes, "1.4.0", Some(58760), None),
 
-    // Allows using `#[naked]` on functions.
-    (active, naked_functions, "1.9.0", Some(32408), None),
-
     // Allows `#[no_debug]`.
     (active, no_debug, "1.5.0", Some(29721), None),
 
@@ -357,6 +361,9 @@ declare_features! (
 
     // Allows specialization of implementations (RFC 1210).
     (active, specialization, "1.7.0", Some(31844), None),
+
+    // Allows using `#[naked]` on functions.
+    (active, naked_functions, "1.9.0", Some(32408), None),
 
     // Allows `cfg(target_has_atomic = "...")`.
     (active, cfg_target_has_atomic, "1.9.0", Some(32976), None),
@@ -545,6 +552,10 @@ declare_features! (
 
     // Allows using C-variadics.
     (active, c_variadic, "1.34.0", Some(44930), None),
+
+    // -------------------------------------------------------------------------
+    // feature-group-end: actual feature gates
+    // -------------------------------------------------------------------------
 );
 
 // Some features are known to be incomplete and using them is likely to have

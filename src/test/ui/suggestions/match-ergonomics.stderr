@@ -1,0 +1,52 @@
+error[E0308]: mismatched types
+  --> $DIR/match-ergonomics.rs:4:10
+   |
+LL |         [&v] => {},
+   |          ^^
+   |          |
+   |          expected i32, found reference
+   |          help: you can probably remove the explicit borrow: `v`
+   |
+   = note: expected type `i32`
+              found type `&_`
+
+error[E0529]: expected an array or slice, found `std::vec::Vec<i32>`
+  --> $DIR/match-ergonomics.rs:8:9
+   |
+LL |         [&v] => {},
+   |         ^^^^ pattern cannot match with input type `std::vec::Vec<i32>`
+
+error[E0529]: expected an array or slice, found `std::vec::Vec<i32>`
+  --> $DIR/match-ergonomics.rs:20:9
+   |
+LL |         [v] => {},
+   |         ^^^ pattern cannot match with input type `std::vec::Vec<i32>`
+
+error[E0308]: mismatched types
+  --> $DIR/match-ergonomics.rs:29:9
+   |
+LL |         &v => {},
+   |         ^^
+   |         |
+   |         expected i32, found reference
+   |         help: you can probably remove the explicit borrow: `v`
+   |
+   = note: expected type `i32`
+              found type `&_`
+
+error[E0308]: mismatched types
+  --> $DIR/match-ergonomics.rs:40:13
+   |
+LL |     if let [&v] = &x[..] {}
+   |             ^^
+   |             |
+   |             expected i32, found reference
+   |             help: you can probably remove the explicit borrow: `v`
+   |
+   = note: expected type `i32`
+              found type `&_`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0308, E0529.
+For more information about an error, try `rustc --explain E0308`.

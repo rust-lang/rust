@@ -5,6 +5,7 @@
 
 #![deny(rust_2018_idioms)]
 
+extern crate regex;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;

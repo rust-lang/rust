@@ -2110,15 +2110,49 @@ impl<'a> LoweringContext<'a> {
                         .expect("already checked that type args or bindings exist");
                     (false, first_generic_span.shrink_to_lo(), format!("{}, ", anon_lt_suggestion))
                 };
-                self.sess.buffer_lint_with_diagnostic(
-                    ELIDED_LIFETIMES_IN_PATHS,
-                    CRATE_NODE_ID,
-                    path_span,
-                    "hidden lifetime parameters in types are deprecated",
-                    builtin::BuiltinLintDiagnostics::ElidedLifetimesInPaths(
-                        expected_lifetimes, path_span, incl_angl_brckt, insertion_span, suggestion
-                    )
-                );
+                match self.anonymous_lifetime_mode {
+                    // In create-parameter mode we error here because we don't want to support
+                    // deprecated impl elision in new features like impl elision and `async fn`,
+                    // both of which work using the `CreateParameter` mode:
+                    //
+                    //     impl Foo for std::cell::Ref<u32> // note lack of '_
+                    //     async fn foo(_: std::cell::Ref<u32>) { ... }
+                    AnonymousLifetimeMode::CreateParameter => {
+                        let mut err = struct_span_err!(
+                            self.sess,
+                            path_span,
+                            E0726,
+                            "implicit elided lifetime not allowed here"
+                        );
+                        crate::lint::builtin::add_elided_lifetime_in_path_suggestion(
+                            &self.sess,
+                            &mut err,
+                            expected_lifetimes,
+                            path_span,
+                            incl_angl_brckt,
+                            insertion_span,
+                            suggestion,
+                        );
+                        err.emit();
+                    }
+                    AnonymousLifetimeMode::PassThrough |
+                    AnonymousLifetimeMode::ReportError |
+                    AnonymousLifetimeMode::Replace(_) => {
+                        self.sess.buffer_lint_with_diagnostic(
+                            ELIDED_LIFETIMES_IN_PATHS,
+                            CRATE_NODE_ID,
+                            path_span,
+                            "hidden lifetime parameters in types are deprecated",
+                            builtin::BuiltinLintDiagnostics::ElidedLifetimesInPaths(
+                                expected_lifetimes,
+                                path_span,
+                                incl_angl_brckt,
+                                insertion_span,
+                                suggestion,
+                            )
+                        );
+                    }
+                }
             }
         }
 
@@ -5335,13 +5369,15 @@ impl<'a> LoweringContext<'a> {
 
     fn elided_path_lifetime(&mut self, span: Span) -> hir::Lifetime {
         match self.anonymous_lifetime_mode {
-            // N.B., We intentionally ignore the create-parameter mode here
-            // and instead "pass through" to resolve-lifetimes, which will then
-            // report an error. This is because we don't want to support
-            // impl elision for deprecated forms like
-            //
-            //     impl Foo for std::cell::Ref<u32> // note lack of '_
-            AnonymousLifetimeMode::CreateParameter |
+            AnonymousLifetimeMode::CreateParameter => {
+                // We should have emitted E0726 when processing this path above
+                self.sess.delay_span_bug(
+                    span,
+                    "expected 'implicit elided lifetime not allowed' error",
+                );
+                let id = self.sess.next_node_id();
+                self.new_named_lifetime(id, span, hir::LifetimeName::Error)
+            }
             // This is the normal case.
             AnonymousLifetimeMode::PassThrough => self.new_implicit_lifetime(span),
 

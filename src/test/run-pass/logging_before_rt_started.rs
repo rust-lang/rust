@@ -1,4 +1,4 @@
-// exec-env:RUST_LOG=std::ptr
+// exec-env:RUSTC_LOG=std::ptr
 
 // In issue #9487, it was realized that std::ptr was invoking the logging
 // infrastructure, and when std::ptr was used during runtime initialization,

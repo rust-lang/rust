@@ -5,7 +5,7 @@ trait MyTrait { }
 struct Foo<'a> { x: &'a u32 }
 
 impl MyTrait for Foo {
-    //~^ ERROR missing lifetime specifier
+    //~^ ERROR implicit elided lifetime not allowed here
 }
 
 fn main() {}
