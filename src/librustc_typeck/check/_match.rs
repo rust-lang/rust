@@ -1,8 +1,8 @@
 use crate::check::{FnCtxt, Expectation, Diverges, Needs};
 use crate::check::coercion::CoerceMany;
 use crate::util::nodemap::FxHashMap;
-use errors::Applicability;
-use rustc::hir::{self, PatKind};
+use errors::{Applicability, DiagnosticBuilder};
+use rustc::hir::{self, PatKind, Pat};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
@@ -377,15 +377,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             // Look for a case like `fn foo(&foo: u32)` and suggest
                             // `fn foo(foo: &u32)`
                             if let Some(mut err) = err {
-                                if let PatKind::Binding(..) = inner.node {
-                                    if let Ok(snippet) = tcx.sess.source_map()
-                                                                    .span_to_snippet(pat.span)
-                                    {
-                                        err.help(&format!("did you mean `{}: &{}`?",
-                                                            &snippet[1..],
-                                                            expected));
-                                    }
-                                }
+                                self.borrow_pat_suggestion(&mut err, &pat, &inner, &expected);
                                 err.emit();
                             }
                             (rptr_ty, inner_ty)
@@ -515,6 +507,49 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // bound in a closure signature, and that detection gets thrown
         // off when we substitute fresh region variables here to enable
         // subtyping.
+    }
+
+    fn borrow_pat_suggestion(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        pat: &Pat,
+        inner: &Pat,
+        expected: Ty<'tcx>,
+    ) {
+        let tcx = self.tcx;
+        if let PatKind::Binding(..) = inner.node {
+            let parent_id = tcx.hir().get_parent_node_by_hir_id(pat.hir_id);
+            let parent = tcx.hir().get_by_hir_id(parent_id);
+            debug!("inner {:?} pat {:?} parent {:?}", inner, pat, parent);
+            match parent {
+                hir::Node::Item(hir::Item { node: hir::ItemKind::Fn(..), .. }) |
+                hir::Node::ForeignItem(hir::ForeignItem {
+                    node: hir::ForeignItemKind::Fn(..), ..
+                }) |
+                hir::Node::TraitItem(hir::TraitItem { node: hir::TraitItemKind::Method(..), .. }) |
+                hir::Node::ImplItem(hir::ImplItem { node: hir::ImplItemKind::Method(..), .. }) => {
+                    // this pat is likely an argument
+                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
+                        // FIXME: turn into structured suggestion, will need a span that also
+                        // includes the the arg's type.
+                        err.help(&format!("did you mean `{}: &{}`?", snippet, expected));
+                    }
+                }
+                hir::Node::Expr(hir::Expr { node: hir::ExprKind::Match(..), .. }) |
+                hir::Node::Pat(_) => {
+                    // rely on match ergonomics or it might be nested `&&pat`
+                    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
+                        err.span_suggestion(
+                            pat.span,
+                            "you can probably remove the explicit borrow",
+                            snippet,
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+                _ => {} // don't provide suggestions in other cases #55175
+            }
+        }
     }
 
     pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &hir::Pat) -> bool {

@@ -20,21 +20,25 @@ error[E0308]: mismatched types
   --> $DIR/destructure-trait-ref.rs:31:10
    |
 LL |     let &&x = &1isize as &T;
-   |          ^^ expected trait T, found reference
+   |          ^^
+   |          |
+   |          expected trait T, found reference
+   |          help: you can probably remove the explicit borrow: `x`
    |
    = note: expected type `dyn T`
               found type `&_`
-   = help: did you mean `x: &dyn T`?
 
 error[E0308]: mismatched types
   --> $DIR/destructure-trait-ref.rs:36:11
    |
 LL |     let &&&x = &(&1isize as &T);
-   |           ^^ expected trait T, found reference
+   |           ^^
+   |           |
+   |           expected trait T, found reference
+   |           help: you can probably remove the explicit borrow: `x`
    |
    = note: expected type `dyn T`
               found type `&_`
-   = help: did you mean `x: &dyn T`?
 
 error[E0308]: mismatched types
   --> $DIR/destructure-trait-ref.rs:41:13
