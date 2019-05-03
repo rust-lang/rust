@@ -781,8 +781,9 @@ declare_clippy_lint! {
     /// their content into an iterator. Auto-referencing resolves the `into_iter` call to its reference
     /// instead, like `<&[T; N] as IntoIterator>::into_iter`, which just iterates over item references
     /// like calling `iter` would. Furthermore, when the standard library actually
-    /// [implements the `into_iter` method][25725] which moves the content out of the array, the
-    /// original use of `into_iter` got inferred with the wrong type and the code will be broken.
+    /// [implements the `into_iter` method](https://github.com/rust-lang/rust/issues/25725) which moves
+    /// the content out of the array, the original use of `into_iter` got inferred with the wrong type
+    /// and the code will be broken.
     ///
     /// **Known problems:** None
     ///
@@ -791,8 +792,6 @@ declare_clippy_lint! {
     /// ```rust
     /// let _ = [1, 2, 3].into_iter().map(|x| *x).collect::<Vec<u32>>();
     /// ```
-    ///
-    /// [25725]: https://github.com/rust-lang/rust/issues/25725
     pub INTO_ITER_ON_ARRAY,
     correctness,
     "using `.into_iter()` on an array"
