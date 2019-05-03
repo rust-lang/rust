@@ -611,6 +611,7 @@ pub trait PrintState<'a> {
         }
         match lit.node {
             ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
+            ast::LitKind::ByteStr(ref st, style) => self.print_byte_string(st, style),
             ast::LitKind::Err(st) => {
                 let st = st.as_str().escape_debug().to_string();
                 let mut res = String::with_capacity(st.len() + 2);
@@ -651,14 +652,6 @@ pub trait PrintState<'a> {
             ast::LitKind::Bool(val) => {
                 if val { self.writer().word("true") } else { self.writer().word("false") }
             }
-            ast::LitKind::ByteStr(ref v) => {
-                let mut escaped: String = String::new();
-                for &ch in v.iter() {
-                    escaped.extend(ascii::escape_default(ch)
-                                         .map(|c| c as char));
-                }
-                self.writer().word(format!("b\"{}\"", escaped))
-            }
         }
     }
 
@@ -672,6 +665,24 @@ pub trait PrintState<'a> {
                 (format!("r{delim}\"{string}\"{delim}",
                          delim="#".repeat(n as usize),
                          string=st))
+            }
+        };
+        self.writer().word(st)
+    }
+
+    fn print_byte_string(&mut self, st: &[u8], style: ast::StrStyle) -> io::Result<()> {
+        let st = match style {
+            ast::StrStyle::Cooked => {
+                let mut escaped = String::with_capacity(st.len());
+                for &c in st {
+                    escaped.extend(ascii::escape_default(c).map(|c| c as char));
+                }
+                format!("b\"{}\"", escaped)
+            }
+            ast::StrStyle::Raw(n) => {
+                let st = String::from_utf8(st.to_owned())
+                    .expect("broken UTF-8 in a raw byte string literal");
+                format!("br{delim}\"{string}\"{delim}", delim="#".repeat(n as usize), string=st)
             }
         };
         self.writer().word(st)

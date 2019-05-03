@@ -166,7 +166,7 @@ impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
 impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Str(value, style),
     Err(value),
-    ByteStr(value),
+    ByteStr(value, style),
     Byte(value),
     Char(value),
     Int(value, lit_int_type),

@@ -635,10 +635,15 @@ impl LitKind {
             LitKind::Str(string, ast::StrStyle::Raw(n)) => {
                 Token::Literal(token::Lit::StrRaw(string, n), None)
             }
-            LitKind::ByteStr(ref bytes) => {
+            LitKind::ByteStr(ref bytes, ast::StrStyle::Cooked) => {
                 let string = bytes.iter().cloned().flat_map(ascii::escape_default)
                     .map(Into::<char>::into).collect::<String>();
                 Token::Literal(token::Lit::ByteStr(Symbol::intern(&string)), None)
+            }
+            LitKind::ByteStr(ref bytes, ast::StrStyle::Raw(n)) => {
+                let string = String::from_utf8(bytes.to_vec())
+                    .expect("broken UTF-8 in a raw byte string literal");
+                Token::Literal(token::Lit::ByteStrRaw(Symbol::intern(&string), n), None)
             }
             LitKind::Byte(byte) => {
                 let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();

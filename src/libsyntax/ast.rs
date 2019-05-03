@@ -1355,7 +1355,7 @@ pub enum LitKind {
     /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),
     /// A byte string (`b"foo"`).
-    ByteStr(Lrc<Vec<u8>>),
+    ByteStr(Lrc<Vec<u8>>, StrStyle),
     /// A byte char (`b'f'`).
     Byte(u8),
     /// A character literal (`'a'`).
@@ -1384,7 +1384,7 @@ impl LitKind {
     /// Returns `true` if this literal is byte literal string.
     pub fn is_bytestr(&self) -> bool {
         match self {
-            LitKind::ByteStr(_) => true,
+            LitKind::ByteStr(..) => true,
             _ => false,
         }
     }

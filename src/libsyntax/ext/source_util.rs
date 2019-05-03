@@ -166,7 +166,8 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: &[tokenstream::
             };
             cx.source_map().new_source_file(file.into(), contents);
 
-            base::MacEager::expr(cx.expr_lit(sp, ast::LitKind::ByteStr(Lrc::new(bytes))))
+            let lit_kind = ast::LitKind::ByteStr(Lrc::new(bytes), ast::StrStyle::Raw(0));
+            base::MacEager::expr(cx.expr_lit(sp, lit_kind))
         },
         Err(e) => {
             cx.span_err(sp, &format!("couldn't read {}: {}", file.display(), e));

@@ -419,10 +419,11 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
                 return (true, Some(LitKind::Err(i)));
             }
             buf.shrink_to_fit();
-            (true, Some(LitKind::ByteStr(Lrc::new(buf))))
+            (true, Some(LitKind::ByteStr(Lrc::new(buf), ast::StrStyle::Cooked)))
         }
-        token::ByteStrRaw(i, _) => {
-            (true, Some(LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))))
+        token::ByteStrRaw(i, n) => {
+            let bytes = Lrc::new(i.to_string().into_bytes());
+            (true, Some(LitKind::ByteStr(bytes, ast::StrStyle::Raw(n))))
         }
     }
 }

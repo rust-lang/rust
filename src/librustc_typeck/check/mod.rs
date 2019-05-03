@@ -3092,7 +3092,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match lit.node {
             ast::LitKind::Str(..) => tcx.mk_static_str(),
-            ast::LitKind::ByteStr(ref v) => {
+            ast::LitKind::ByteStr(ref v, _) => {
                 tcx.mk_imm_ref(tcx.lifetimes.re_static,
                                tcx.mk_array(tcx.types.u8, v.len() as u64))
             }

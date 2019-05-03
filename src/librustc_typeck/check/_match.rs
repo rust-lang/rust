@@ -153,7 +153,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // They can denote both statically and dynamically sized byte arrays
                 let mut pat_ty = ty;
                 if let hir::ExprKind::Lit(ref lt) = lt.node {
-                    if let ast::LitKind::ByteStr(_) = lt.node {
+                    if let ast::LitKind::ByteStr(..) = lt.node {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
                         if let ty::Ref(_, r_ty, _) = expected_ty.sty {
                             if let ty::Slice(_) = r_ty.sty {

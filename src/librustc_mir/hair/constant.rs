@@ -44,7 +44,7 @@ crate fn lit_to_const<'a, 'gcx, 'tcx>(
                 ty: tcx.types.err,
             });
         },
-        LitKind::ByteStr(ref data) => {
+        LitKind::ByteStr(ref data, _) => {
             let id = tcx.allocate_bytes(data);
             ConstValue::Scalar(Scalar::Ptr(id.into()))
         },
