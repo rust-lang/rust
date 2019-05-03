@@ -63,7 +63,6 @@
 
 use core::sync::atomic::{AtomicPtr, Ordering};
 use core::{mem, ptr};
-use core::ptr::NonNull;
 
 use crate::sys_common::util::dumb_print;
 
@@ -132,33 +131,6 @@ pub use alloc_crate::alloc::*;
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 #[derive(Debug, Default, Copy, Clone)]
 pub struct System;
-
-// The Alloc impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl Alloc for System {
-    #[inline]
-    unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc(self, layout)).ok_or(AllocErr)
-    }
-
-    #[inline]
-    unsafe fn alloc_zeroed(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(GlobalAlloc::alloc_zeroed(self, layout)).ok_or(AllocErr)
-    }
-
-    #[inline]
-    unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
-        GlobalAlloc::dealloc(self, ptr.as_ptr(), layout)
-    }
-
-    #[inline]
-    unsafe fn realloc(&mut self,
-                      ptr: NonNull<u8>,
-                      layout: Layout,
-                      new_size: usize) -> Result<NonNull<u8>, AllocErr> {
-        NonNull::new(GlobalAlloc::realloc(self, ptr.as_ptr(), layout, new_size)).ok_or(AllocErr)
-    }
-}
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 

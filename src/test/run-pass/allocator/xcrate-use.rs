@@ -9,7 +9,7 @@
 extern crate custom;
 extern crate helper;
 
-use std::alloc::{Global, Alloc, System, Layout};
+use std::alloc::{Global, Alloc, GlobalAlloc, System, Layout};
 use std::sync::atomic::{Ordering, AtomicUsize};
 
 #[global_allocator]
@@ -26,7 +26,7 @@ fn main() {
         Global.dealloc(ptr, layout.clone());
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 2);
 
-        let ptr = System.alloc(layout.clone()).unwrap();
+        let ptr = System.alloc(layout.clone());
         assert_eq!(GLOBAL.0.load(Ordering::SeqCst), n + 2);
         helper::work_with(&ptr);
         System.dealloc(ptr, layout);

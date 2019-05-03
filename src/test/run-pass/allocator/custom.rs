@@ -7,14 +7,14 @@
 
 extern crate helper;
 
-use std::alloc::{self, Global, Alloc, System, Layout};
+use std::alloc::{Global, Alloc, GlobalAlloc, System, Layout};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static HITS: AtomicUsize = AtomicUsize::new(0);
 
 struct A;
 
-unsafe impl alloc::GlobalAlloc for A {
+unsafe impl GlobalAlloc for A {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         HITS.fetch_add(1, Ordering::SeqCst);
         System.alloc(layout)
@@ -49,7 +49,7 @@ fn main() {
         drop(s);
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
 
-        let ptr = System.alloc(layout.clone()).unwrap();
+        let ptr = System.alloc(layout.clone());
         assert_eq!(HITS.load(Ordering::SeqCst), n + 4);
         helper::work_with(&ptr);
         System.dealloc(ptr, layout);
