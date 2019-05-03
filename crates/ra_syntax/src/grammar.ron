@@ -563,7 +563,7 @@ Grammar(
                 ["lifetime_params", "LifetimeParam" ],
             ]
         ),
-        "TypeParam": ( traits: ["NameOwner", "AttrsOwner", "TypeBoundsOwner"] ),
+        "TypeParam": ( traits: ["NameOwner", "AttrsOwner", "TypeBoundsOwner", "DefaultTypeParamOwner"] ),
         "LifetimeParam": (
             traits: ["AttrsOwner"],
         ),

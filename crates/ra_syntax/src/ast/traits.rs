@@ -152,3 +152,9 @@ impl<'a> Iterator for CommentIter<'a> {
         self.iter.by_ref().find_map(|el| el.as_token().and_then(ast::Comment::cast))
     }
 }
+
+pub trait DefaultTypeParamOwner: AstNode {
+    fn default_type(&self) -> Option<&ast::PathType> {
+        child_opt(self)
+    }
+}
