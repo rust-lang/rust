@@ -757,12 +757,12 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     /// Check if a `DefId`'s path matches the given absolute type path usage.
     ///
     /// # Examples
-    /// ```rust,ignore (no `cx` or `def_id` available)
+    ///
+    /// ```rust,ignore (no context or def id available)
     /// if cx.match_def_path(def_id, &["core", "option", "Option"]) {
     ///     // The given `def_id` is that of an `Option` type
     /// }
     /// ```
-    // Uplifted from rust-lang/rust-clippy
     pub fn match_def_path(&self, def_id: DefId, path: &[&str]) -> bool {
         let names = self.get_def_path(def_id);
 
@@ -772,13 +772,13 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     /// Gets the absolute path of `def_id` as a vector of `&str`.
     ///
     /// # Examples
-    /// ```rust,ignore (no `cx` or `def_id` available)
+    ///
+    /// ```rust,ignore (no context or def id available)
     /// let def_path = cx.get_def_path(def_id);
     /// if let &["core", "option", "Option"] = &def_path[..] {
     ///     // The given `def_id` is that of an `Option` type
     /// }
     /// ```
-    // Uplifted from rust-lang/rust-clippy
     pub fn get_def_path(&self, def_id: DefId) -> Vec<LocalInternedString> {
         pub struct AbsolutePathPrinter<'a, 'tcx> {
             pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
