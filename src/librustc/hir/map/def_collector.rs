@@ -226,7 +226,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             let name = field.ident.map(|ident| ident.name)
                 .unwrap_or_else(|| Symbol::intern(&index.to_string()));
             let def = self.create_def(field.id,
-                                      DefPathData::Field(name.as_interned_str()),
+                                      DefPathData::ValueNs(name.as_interned_str()),
                                       REGULAR_SPACE,
                                       field.span);
             self.with_parent(def, |this| this.visit_struct_field(field));
@@ -238,7 +238,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_path_data = match param.kind {
             GenericParamKind::Lifetime { .. } => DefPathData::LifetimeParam(name),
             GenericParamKind::Type { .. } => DefPathData::TypeNs(name),
-            GenericParamKind::Const { .. } => DefPathData::ConstParam(name),
+            GenericParamKind::Const { .. } => DefPathData::ValueNs(name),
         };
         self.create_def(param.id, def_path_data, REGULAR_SPACE, param.ident.span);
 

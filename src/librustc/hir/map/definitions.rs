@@ -348,10 +348,6 @@ pub enum DefPathData {
     // Subportions of items
     /// A lifetime (generic) parameter
     LifetimeParam(InternedString),
-    /// A const (generic) parameter
-    ConstParam(InternedString),
-    /// A struct field
-    Field(InternedString),
     /// Implicit ctor for a unit or tuple-like struct or enum variant.
     Ctor,
     /// A constant expression (see {ast,hir}::AnonConst).
@@ -620,8 +616,6 @@ impl DefPathData {
             ValueNs(name) |
             MacroDef(name) |
             LifetimeParam(name) |
-            ConstParam(name) |
-            Field(name) |
             GlobalMetaData(name) => Some(name),
 
             Impl |
@@ -641,8 +635,6 @@ impl DefPathData {
             ValueNs(name) |
             MacroDef(name) |
             LifetimeParam(name) |
-            ConstParam(name) |
-            Field(name) |
             GlobalMetaData(name) => {
                 return name
             }

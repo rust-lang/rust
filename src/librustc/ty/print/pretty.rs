@@ -859,9 +859,7 @@ impl TyCtxt<'_, '_, '_> {
     fn guess_def_namespace(self, def_id: DefId) -> Namespace {
         match self.def_key(def_id).disambiguated_data.data {
             DefPathData::ValueNs(..) |
-            DefPathData::Field(..) |
             DefPathData::AnonConst |
-            DefPathData::ConstParam(..) |
             DefPathData::ClosureExpr |
             DefPathData::Ctor => Namespace::ValueNS,
 
