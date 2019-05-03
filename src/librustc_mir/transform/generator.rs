@@ -58,7 +58,7 @@ use rustc::ty::GeneratorSubsts;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::bit_set::BitSet;
 use std::borrow::Cow;
 use std::iter;
@@ -560,7 +560,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }).unzip();
 
     // Put every var in each variant, for now.
-    let empty_variants = iter::repeat(vec![]).take(3);
+    let empty_variants = iter::repeat(IndexVec::new()).take(3);
     let state_variants = iter::repeat(vars).take(suspending_blocks.count());
     let layout = GeneratorLayout {
         variant_fields: empty_variants.chain(state_variants).collect()

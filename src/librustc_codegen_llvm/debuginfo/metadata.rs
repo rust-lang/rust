@@ -1598,7 +1598,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 Some(variant.fields[i].ident.to_string()),
             VariantInfo::Generator(_, generator_layout, variant_index) => {
                 let variant_decls = &generator_layout.variant_fields[*variant_index];
-                variant_decls[i].name.map(|name| name.to_string())
+                variant_decls[i.into()].name.map(|name| name.to_string())
             }
             _ => None,
         };
