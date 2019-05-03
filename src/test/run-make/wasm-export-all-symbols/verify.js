@@ -16,7 +16,13 @@ for (const entry of list) {
   nexports += 1;
 }
 
-if (nexports != 1)
-  throw new Error("should only have one function export");
 if (my_exports.foo === undefined)
   throw new Error("`foo` wasn't defined");
+
+if (my_exports.main === undefined) {
+  if (nexports != 1)
+    throw new Error("should only have one function export");
+} else {
+  if (nexports != 2)
+    throw new Error("should only have two function exports");
+}
