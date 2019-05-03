@@ -13,11 +13,9 @@ static __KEY: std::thread::__FastLocalKeyInner<Foo> =
 static __KEY: std::thread::__OsLocalKeyInner<Foo> =
     std::thread::__OsLocalKeyInner::new();
 
-fn __getit() -> std::option::Option<
-    &'static std::cell::UnsafeCell<
-        std::option::Option<Foo>>>
+fn __getit(init: fn() -> Foo) -> std::option::Option<&'static Foo>
 {
-    __KEY.get() //~ ERROR call to unsafe function is unsafe
+    __KEY.get(init) //~ ERROR call to unsafe function is unsafe
 }
 
 static FOO: std::thread::LocalKey<Foo> =
