@@ -7,6 +7,26 @@ fn good(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, 
 
 fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {}
 
+#[rustfmt::skip]
+fn bad_multiline(
+    one: u32,
+    two: u32,
+    three: &str,
+    four: bool,
+    five: f32,
+    six: f32,
+    seven: bool,
+    eight: ()
+) {
+    let _one = one;
+    let _two = two;
+    let _three = three;
+    let _four = four;
+    let _five = five;
+    let _six = six;
+    let _seven = seven;
+}
+
 // don't lint extern fns
 extern "C" fn extern_fn(
     _one: u32,
