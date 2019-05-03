@@ -42,7 +42,7 @@ use syntax::feature_gate;
 use syntax::symbol::{keywords, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc::hir::def::{CtorKind, Def};
+use rustc::hir::def::{CtorKind, Res, DefKind};
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
@@ -380,8 +380,8 @@ fn is_param<'a, 'tcx>(
     param_id: hir::HirId,
 ) -> bool {
     if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.node {
-        match path.def {
-            Def::SelfTy(Some(def_id), None) | Def::TyParam(def_id) => {
+        match path.res {
+            Res::SelfTy(Some(def_id), None) | Res::Def(DefKind::TyParam, def_id) => {
                 def_id == tcx.hir().local_def_id_from_hir_id(param_id)
             }
             _ => false,
@@ -1377,14 +1377,14 @@ pub fn checked_type_of<'a, 'tcx>(
                                 }
                                 bug!("no arg matching AnonConst in path")
                             }
-                            match path.def {
+                            match path.res {
                                 // We've encountered an `AnonConst` in some path, so we need to
                                 // figure out which generic parameter it corresponds to and return
                                 // the relevant type.
-                                Def::Struct(def_id)
-                                | Def::Union(def_id)
-                                | Def::Enum(def_id)
-                                | Def::Fn(def_id) => {
+                                Res::Def(DefKind::Struct, def_id)
+                                | Res::Def(DefKind::Union, def_id)
+                                | Res::Def(DefKind::Enum, def_id)
+                                | Res::Def(DefKind::Fn, def_id) => {
                                     let generics = tcx.generics_of(def_id);
                                     let mut param_index = 0;
                                     for param in &generics.params {
@@ -1399,7 +1399,7 @@ pub fn checked_type_of<'a, 'tcx>(
                                     // probably from an extra arg where one is not needed.
                                     return Some(tcx.types.err);
                                 }
-                                Def::Err => tcx.types.err,
+                                Res::Err => tcx.types.err,
                                 x => {
                                     if !fail {
                                         return None;
@@ -1778,7 +1778,7 @@ fn is_unsized<'gcx: 'tcx, 'tcx>(
         Some(ref tpb) => {
             // FIXME(#8559) currently requires the unbound to be built-in.
             if let Ok(kind_id) = kind_id {
-                if tpb.path.def != Def::Trait(kind_id) {
+                if tpb.path.res != Res::Def(DefKind::Trait, kind_id) {
                     tcx.sess.span_warn(
                         span,
                         "default bound relaxed for a type parameter, but \

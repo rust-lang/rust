@@ -10,7 +10,7 @@ pub use self::fold::TypeFoldable;
 
 use crate::hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
 use crate::hir::{HirId, Node};
-use crate::hir::def::{Def, CtorOf, CtorKind, ExportMap};
+use crate::hir::def::{Res, DefKind, CtorOf, CtorKind, ExportMap};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::svh::Svh;
 use rustc_macros::HashStable;
@@ -191,12 +191,12 @@ pub enum AssociatedKind {
 }
 
 impl AssociatedItem {
-    pub fn def(&self) -> Def {
+    pub fn def_kind(&self) -> DefKind {
         match self.kind {
-            AssociatedKind::Const => Def::AssociatedConst(self.def_id),
-            AssociatedKind::Method => Def::Method(self.def_id),
-            AssociatedKind::Type => Def::AssociatedTy(self.def_id),
-            AssociatedKind::Existential => Def::AssociatedExistential(self.def_id),
+            AssociatedKind::Const => DefKind::AssociatedConst,
+            AssociatedKind::Method => DefKind::Method,
+            AssociatedKind::Type => DefKind::AssociatedTy,
+            AssociatedKind::Existential => DefKind::AssociatedExistential,
         }
     }
 
@@ -269,10 +269,10 @@ impl Visibility {
         match visibility.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Crate(_) => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
-            hir::VisibilityKind::Restricted { ref path, .. } => match path.def {
+            hir::VisibilityKind::Restricted { ref path, .. } => match path.res {
                 // If there is no resolution, `resolve` will have already reported an error, so
                 // assume that the visibility is public to avoid reporting more privacy errors.
-                Def::Err => Visibility::Public,
+                Res::Err => Visibility::Public,
                 def => Visibility::Restricted(def.def_id()),
             },
             hir::VisibilityKind::Inherited => {
@@ -812,7 +812,7 @@ pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
 #[derive(Copy, Clone)]
 pub struct ClosureUpvar<'tcx> {
-    pub def: Def,
+    pub res: Res,
     pub span: Span,
     pub ty: Ty<'tcx>,
 }
@@ -2337,14 +2337,14 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             .expect("variant_index_with_ctor_id: unknown variant").0
     }
 
-    pub fn variant_of_def(&self, def: Def) -> &VariantDef {
-        match def {
-            Def::Variant(vid) => self.variant_with_id(vid),
-            Def::Ctor(cid, ..) => self.variant_with_ctor_id(cid),
-            Def::Struct(..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) |
-            Def::SelfCtor(..) => self.non_enum_variant(),
-            _ => bug!("unexpected def {:?} in variant_of_def", def)
+    pub fn variant_of_res(&self, res: Res) -> &VariantDef {
+        match res {
+            Res::Def(DefKind::Variant, vid) => self.variant_with_id(vid),
+            Res::Def(DefKind::Ctor(..), cid) => self.variant_with_ctor_id(cid),
+            Res::Def(DefKind::Struct, _) | Res::Def(DefKind::Union, _) |
+            Res::Def(DefKind::TyAlias, _) | Res::Def(DefKind::AssociatedTy, _) | Res::SelfTy(..) |
+            Res::SelfCtor(..) => self.non_enum_variant(),
+            _ => bug!("unexpected res {:?} in variant_of_res", res)
         }
     }
 
@@ -2805,8 +2805,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 _ => false,
             }
         } else {
-            match self.describe_def(def_id).expect("no def for def-id") {
-                Def::AssociatedConst(_) | Def::Method(_) | Def::AssociatedTy(_) => true,
+            match self.def_kind(def_id).expect("no def for def-id") {
+                DefKind::AssociatedConst
+                | DefKind::Method
+                | DefKind::AssociatedTy => true,
                 _ => false,
             }
         };
@@ -2948,27 +2950,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns `ty::VariantDef` if `def` refers to a struct,
+    /// Returns `ty::VariantDef` if `res` refers to a struct,
     /// or variant or their constructors, panics otherwise.
-    pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
-        match def {
-            Def::Variant(did) => {
+    pub fn expect_variant_res(self, res: Res) -> &'tcx VariantDef {
+        match res {
+            Res::Def(DefKind::Variant, did) => {
                 let enum_did = self.parent(did).unwrap();
                 self.adt_def(enum_did).variant_with_id(did)
             }
-            Def::Struct(did) | Def::Union(did) => {
+            Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did) => {
                 self.adt_def(did).non_enum_variant()
             }
-            Def::Ctor(variant_ctor_did, CtorOf::Variant, ..) => {
+            Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_did) => {
                 let variant_did = self.parent(variant_ctor_did).unwrap();
                 let enum_did = self.parent(variant_did).unwrap();
                 self.adt_def(enum_did).variant_with_ctor_id(variant_ctor_did)
             }
-            Def::Ctor(ctor_did, CtorOf::Struct, ..) => {
+            Res::Def(DefKind::Ctor(CtorOf::Struct, ..), ctor_did) => {
                 let struct_did = self.parent(ctor_did).expect("struct ctor has no parent");
                 self.adt_def(struct_did).non_enum_variant()
             }
-            _ => bug!("expect_variant_def used with unexpected def {:?}", def)
+            _ => bug!("expect_variant_res used with unexpected res {:?}", res)
         }
     }
 
@@ -3044,7 +3046,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `DefId` of the impl that the method belongs to; otherwise, returns `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         let item = if def_id.krate != LOCAL_CRATE {
-            if let Some(Def::Method(_)) = self.describe_def(def_id) {
+            if let Some(DefKind::Method) = self.def_kind(def_id) {
                 Some(self.associated_item(def_id))
             } else {
                 None

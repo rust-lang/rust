@@ -7,7 +7,7 @@
 
 use crate::hir::{CodegenFnAttrs, CodegenFnAttrFlags};
 use crate::hir::Node;
-use crate::hir::def::Def;
+use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{DefId, CrateNum};
 use rustc_data_structures::sync::Lrc;
 use crate::ty::{self, TyCtxt};
@@ -92,32 +92,33 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        let def = match expr.node {
+        let res = match expr.node {
             hir::ExprKind::Path(ref qpath) => {
-                Some(self.tables.qpath_def(qpath, expr.hir_id))
+                Some(self.tables.qpath_res(qpath, expr.hir_id))
             }
             hir::ExprKind::MethodCall(..) => {
                 self.tables.type_dependent_def(expr.hir_id)
+                    .map(|(kind, def_id)| Res::Def(kind, def_id))
             }
             _ => None
         };
 
-        match def {
-            Some(Def::Local(hir_id)) | Some(Def::Upvar(hir_id, ..)) => {
+        match res {
+            Some(Res::Local(hir_id)) | Some(Res::Upvar(hir_id, ..)) => {
                 self.reachable_symbols.insert(hir_id);
             }
-            Some(def) => {
-                if let Some((hir_id, def_id)) = def.opt_def_id().and_then(|def_id| {
+            Some(res) => {
+                if let Some((hir_id, def_id)) = res.opt_def_id().and_then(|def_id| {
                     self.tcx.hir().as_local_hir_id(def_id).map(|hir_id| (hir_id, def_id))
                 }) {
                     if self.def_id_represents_local_inlined_item(def_id) {
                         self.worklist.push(hir_id);
                     } else {
-                        match def {
+                        match res {
                             // If this path leads to a constant, then we need to
                             // recurse into the constant to continue finding
                             // items that are reachable.
-                            Def::Const(..) | Def::AssociatedConst(..) => {
+                            Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssociatedConst, _) => {
                                 self.worklist.push(hir_id);
                             }
 
@@ -356,8 +357,8 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
             if !self.access_levels.is_reachable(item.hir_id) {
                 self.worklist.extend(impl_item_refs.iter().map(|ii_ref| ii_ref.id.hir_id));
 
-                let trait_def_id = match trait_ref.path.def {
-                    Def::Trait(def_id) => def_id,
+                let trait_def_id = match trait_ref.path.res {
+                    Res::Def(DefKind::Trait, def_id) => def_id,
                     _ => unreachable!()
                 };
 

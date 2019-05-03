@@ -10,7 +10,7 @@ use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
 use crate::middle;
 use crate::hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
-use crate::hir::def::{Def, Export};
+use crate::hir::def::{Res, DefKind, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use crate::hir::map as hir_map;
 use crate::hir::map::DefPathHash;
@@ -44,6 +44,7 @@ use crate::ty::steal::Steal;
 use crate::ty::subst::{UserSubsts, UnpackedKind};
 use crate::ty::{BoundVar, BindingMode};
 use crate::ty::CanonicalPolyFnSig;
+use crate::util::common::ErrorReported;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::DiagnosticBuilder;
@@ -347,7 +348,7 @@ pub struct TypeckTables<'tcx> {
 
     /// Resolved definitions for `<T>::X` associated paths and
     /// method calls, including those of overloaded operators.
-    type_dependent_defs: ItemLocalMap<Def>,
+    type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorReported>>,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -478,33 +479,35 @@ impl<'tcx> TypeckTables<'tcx> {
     }
 
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
-    pub fn qpath_def(&self, qpath: &hir::QPath, id: hir::HirId) -> Def {
+    pub fn qpath_res(&self, qpath: &hir::QPath, id: hir::HirId) -> Res {
         match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.def,
-            hir::QPath::TypeRelative(..) => {
-                validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-                self.type_dependent_defs.get(&id.local_id).cloned().unwrap_or(Def::Err)
-            }
+            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::TypeRelative(..) => self.type_dependent_def(id)
+                .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
         }
     }
 
-    pub fn type_dependent_defs(&self) -> LocalTableInContext<'_, Def> {
+    pub fn type_dependent_defs(
+        &self,
+    ) -> LocalTableInContext<'_, Result<(DefKind, DefId), ErrorReported>> {
         LocalTableInContext {
             local_id_root: self.local_id_root,
             data: &self.type_dependent_defs
         }
     }
 
-    pub fn type_dependent_def(&self, id: HirId) -> Option<Def> {
+    pub fn type_dependent_def(&self, id: HirId) -> Option<(DefKind, DefId)> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-        self.type_dependent_defs.get(&id.local_id).cloned()
+        self.type_dependent_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
     }
 
     pub fn type_dependent_def_id(&self, id: HirId) -> Option<DefId> {
-        self.type_dependent_def(id).map(|def| def.def_id())
+        self.type_dependent_def(id).map(|(_, def_id)| def_id)
     }
 
-    pub fn type_dependent_defs_mut(&mut self) -> LocalTableInContextMut<'_, Def> {
+    pub fn type_dependent_defs_mut(
+        &mut self,
+    ) -> LocalTableInContextMut<'_, Result<(DefKind, DefId), ErrorReported>> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.type_dependent_defs
@@ -658,7 +661,7 @@ impl<'tcx> TypeckTables<'tcx> {
         }
 
         match self.type_dependent_defs().get(expr.hir_id) {
-            Some(&Def::Method(_)) => true,
+            Some(Ok((DefKind::Method, _))) => true,
             _ => false
         }
     }

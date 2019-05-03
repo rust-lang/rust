@@ -37,7 +37,7 @@ use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
 use crate::hir::map::{DefKey, DefPathData, Definitions};
 use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
-use crate::hir::def::{Def, PathResolution, PerNS};
+use crate::hir::def::{Res, DefKind, PathResolution, PerNS};
 use crate::hir::{GenericArg, ConstArg};
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
@@ -812,29 +812,29 @@ impl<'a> LoweringContext<'a> {
         self.lower_node_id(self.sess.next_node_id())
     }
 
-    fn lower_def(&mut self, def: Def<NodeId>) -> Def {
-        def.map_id(|id| {
+    fn lower_res(&mut self, res: Res<NodeId>) -> Res {
+        res.map_id(|id| {
             self.lower_node_id_generic(id, |_| {
-                panic!("expected node_id to be lowered already for def {:#?}", def)
+                panic!("expected node_id to be lowered already for res {:#?}", res)
             })
         })
     }
 
-    fn expect_full_def(&mut self, id: NodeId) -> Def<NodeId> {
-        self.resolver.get_resolution(id).map_or(Def::Err, |pr| {
+    fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
+        self.resolver.get_resolution(id).map_or(Res::Err, |pr| {
             if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
             }
-            pr.base_def()
+            pr.base_res()
         })
     }
 
-    fn expect_full_def_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Def<NodeId>> {
+    fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
         self.resolver.get_import(id).present_items().map(|pr| {
             if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
             }
-            pr.base_def()
+            pr.base_res()
         })
     }
 
@@ -1136,7 +1136,7 @@ impl<'a> LoweringContext<'a> {
             output,
             c_variadic: false
         };
-        // Lower the arguments before the body otherwise the body will call `lower_def` expecting
+        // Lower the arguments before the body otherwise the body will call `lower_res` expecting
         // the argument to have been assigned an id already.
         let arguments = self.lower_args(Some(&decl));
         let body_expr = body(self);
@@ -1251,7 +1251,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
-                if let Def::Label(loop_id) = self.expect_full_def(id) {
+                if let Res::Label(loop_id) = self.expect_full_res(id) {
                     Ok(self.lower_node_id(loop_id))
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
@@ -1417,12 +1417,12 @@ impl<'a> LoweringContext<'a> {
                 return ty;
             }
             TyKind::ImplicitSelf => {
-                let def = self.expect_full_def(t.id);
-                let def = self.lower_def(def);
+                let res = self.expect_full_res(t.id);
+                let res = self.lower_res(res);
                 hir::TyKind::Path(hir::QPath::Resolved(
                     None,
                     P(hir::Path {
-                        def,
+                        res,
                         segments: hir_vec![hir::PathSegment::from_ident(
                             keywords::SelfUpper.ident()
                         )],
@@ -1500,7 +1500,7 @@ impl<'a> LoweringContext<'a> {
                             None,
                             P(hir::Path {
                                 span,
-                                def: Def::TyParam(DefId::local(def_index)),
+                                res: Res::Def(DefKind::TyParam, DefId::local(def_index)),
                                 segments: hir_vec![hir::PathSegment::from_ident(ident)],
                             }),
                         ))
@@ -1844,11 +1844,11 @@ impl<'a> LoweringContext<'a> {
 
         let resolution = self.resolver
             .get_resolution(id)
-            .unwrap_or_else(|| PathResolution::new(Def::Err));
+            .unwrap_or_else(|| PathResolution::new(Res::Err));
 
         let proj_start = p.segments.len() - resolution.unresolved_segments();
         let path = P(hir::Path {
-            def: self.lower_def(resolution.base_def()),
+            res: self.lower_res(resolution.base_res()),
             segments: p.segments[..proj_start]
                 .iter()
                 .enumerate()
@@ -1869,40 +1869,43 @@ impl<'a> LoweringContext<'a> {
                         krate: def_id.krate,
                         index: this.def_key(def_id).parent.expect("missing parent"),
                     };
-                    let type_def_id = match resolution.base_def() {
-                        Def::AssociatedTy(def_id) if i + 2 == proj_start => {
+                    let type_def_id = match resolution.base_res() {
+                        Res::Def(DefKind::AssociatedTy, def_id) if i + 2 == proj_start => {
                             Some(parent_def_id(self, def_id))
                         }
-                        Def::Variant(def_id) if i + 1 == proj_start => {
+                        Res::Def(DefKind::Variant, def_id) if i + 1 == proj_start => {
                             Some(parent_def_id(self, def_id))
                         }
-                        Def::Struct(def_id)
-                        | Def::Union(def_id)
-                        | Def::Enum(def_id)
-                        | Def::TyAlias(def_id)
-                        | Def::Trait(def_id) if i + 1 == proj_start =>
+                        Res::Def(DefKind::Struct, def_id)
+                        | Res::Def(DefKind::Union, def_id)
+                        | Res::Def(DefKind::Enum, def_id)
+                        | Res::Def(DefKind::TyAlias, def_id)
+                        | Res::Def(DefKind::Trait, def_id) if i + 1 == proj_start =>
                         {
                             Some(def_id)
                         }
                         _ => None,
                     };
-                    let parenthesized_generic_args = match resolution.base_def() {
+                    let parenthesized_generic_args = match resolution.base_res() {
                         // `a::b::Trait(Args)`
-                        Def::Trait(..) if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
+                        Res::Def(DefKind::Trait, _)
+                            if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
                         // `a::b::Trait(Args)::TraitItem`
-                        Def::Method(..) | Def::AssociatedConst(..) | Def::AssociatedTy(..)
+                        Res::Def(DefKind::Method, _)
+                        | Res::Def(DefKind::AssociatedConst, _)
+                        | Res::Def(DefKind::AssociatedTy, _)
                             if i + 2 == proj_start =>
                         {
                             ParenthesizedGenericArgs::Ok
                         }
                         // Avoid duplicated errors.
-                        Def::Err => ParenthesizedGenericArgs::Ok,
+                        Res::Err => ParenthesizedGenericArgs::Ok,
                         // An error
-                        Def::Struct(..)
-                        | Def::Enum(..)
-                        | Def::Union(..)
-                        | Def::TyAlias(..)
-                        | Def::Variant(..) if i + 1 == proj_start =>
+                        Res::Def(DefKind::Struct, _)
+                        | Res::Def(DefKind::Enum, _)
+                        | Res::Def(DefKind::Union, _)
+                        | Res::Def(DefKind::TyAlias, _)
+                        | Res::Def(DefKind::Variant, _) if i + 1 == proj_start =>
                         {
                             ParenthesizedGenericArgs::Err
                         }
@@ -1997,13 +2000,13 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_path_extra(
         &mut self,
-        def: Def,
+        res: Res,
         p: &Path,
         param_mode: ParamMode,
         explicit_owner: Option<NodeId>,
     ) -> hir::Path {
         hir::Path {
-            def,
+            res,
             segments: p.segments
                 .iter()
                 .map(|segment| {
@@ -2023,9 +2026,9 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn lower_path(&mut self, id: NodeId, p: &Path, param_mode: ParamMode) -> hir::Path {
-        let def = self.expect_full_def(id);
-        let def = self.lower_def(def);
-        self.lower_path_extra(def, p, param_mode, None)
+        let res = self.expect_full_res(id);
+        let res = self.lower_res(res);
+        self.lower_path_extra(res, p, param_mode, None)
     }
 
     fn lower_path_segment(
@@ -2156,7 +2159,7 @@ impl<'a> LoweringContext<'a> {
             }
         }
 
-        let def = self.expect_full_def(segment.id);
+        let res = self.expect_full_res(segment.id);
         let id = if let Some(owner) = explicit_owner {
             self.lower_node_id_with_owner(segment.id, owner)
         } else {
@@ -2170,7 +2173,7 @@ impl<'a> LoweringContext<'a> {
         hir::PathSegment::new(
             segment.ident,
             Some(id),
-            Some(self.lower_def(def)),
+            Some(self.lower_res(res)),
             generic_args,
             infer_types,
         )
@@ -2788,9 +2791,9 @@ impl<'a> LoweringContext<'a> {
                                 if path.segments.len() == 1
                                     && bound_pred.bound_generic_params.is_empty() =>
                             {
-                                if let Some(Def::TyParam(def_id)) = self.resolver
+                                if let Some(Res::Def(DefKind::TyParam, def_id)) = self.resolver
                                     .get_resolution(bound_pred.bounded_ty.id)
-                                    .map(|d| d.base_def())
+                                    .map(|d| d.base_res())
                                 {
                                     if let Some(node_id) =
                                         self.resolver.definitions().as_local_node_id(def_id)
@@ -3242,7 +3245,7 @@ impl<'a> LoweringContext<'a> {
                         });
 
                         if let Some(ref trait_ref) = trait_ref {
-                            if let Def::Trait(def_id) = trait_ref.path.def {
+                            if let Res::Def(DefKind::Trait, def_id) = trait_ref.path.res {
                                 this.trait_impls.entry(def_id).or_default().push(
                                     lowered_trait_impl_id);
                             }
@@ -3339,17 +3342,17 @@ impl<'a> LoweringContext<'a> {
                     }
                 }
 
-                let mut defs = self.expect_full_def_from_use(id);
+                let mut resolutions = self.expect_full_res_from_use(id);
                 // We want to return *something* from this function, so hold onto the first item
                 // for later.
-                let ret_def = self.lower_def(defs.next().unwrap_or(Def::Err));
+                let ret_res = self.lower_res(resolutions.next().unwrap_or(Res::Err));
 
                 // Here, we are looping over namespaces, if they exist for the definition
                 // being imported. We only handle type and value namespaces because we
                 // won't be dealing with macros in the rest of the compiler.
                 // Essentially a single `use` which imports two names is desugared into
                 // two imports.
-                for (def, &new_node_id) in defs.zip([id1, id2].iter()) {
+                for (res, &new_node_id) in resolutions.zip([id1, id2].iter()) {
                     let vis = vis.clone();
                     let ident = ident.clone();
                     let mut path = path.clone();
@@ -3360,9 +3363,9 @@ impl<'a> LoweringContext<'a> {
 
                     self.with_hir_id_owner(new_node_id, |this| {
                         let new_id = this.lower_node_id(new_node_id);
-                        let def = this.lower_def(def);
+                        let res = this.lower_res(res);
                         let path =
-                            this.lower_path_extra(def, &path, ParamMode::Explicit, None);
+                            this.lower_path_extra(res, &path, ParamMode::Explicit, None);
                         let item = hir::ItemKind::Use(P(path), hir::UseKind::Single);
                         let vis_kind = match vis.node {
                             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
@@ -3392,7 +3395,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 let path =
-                    P(self.lower_path_extra(ret_def, &path, ParamMode::Explicit, None));
+                    P(self.lower_path_extra(ret_res, &path, ParamMode::Explicit, None));
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
@@ -3510,9 +3513,9 @@ impl<'a> LoweringContext<'a> {
                     }
                 }
 
-                let def = self.expect_full_def_from_use(id).next().unwrap_or(Def::Err);
-                let def = self.lower_def(def);
-                let path = P(self.lower_path_extra(def, &prefix, ParamMode::Explicit, None));
+                let res = self.expect_full_res_from_use(id).next().unwrap_or(Res::Err);
+                let res = self.lower_res(res);
+                let path = P(self.lower_path_extra(res, &prefix, ParamMode::Explicit, None));
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
@@ -3766,7 +3769,7 @@ impl<'a> LoweringContext<'a> {
             },
             UseTreeKind::Glob => {}
             UseTreeKind::Simple(_, id1, id2) => {
-                for (_, &id) in self.expect_full_def_from_use(base_id)
+                for (_, &id) in self.expect_full_res_from_use(base_id)
                                     .skip(1)
                                     .zip([id1, id2].iter())
                 {
@@ -3943,11 +3946,11 @@ impl<'a> LoweringContext<'a> {
         let node = match p.node {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
-                match self.resolver.get_resolution(p.id).map(|d| d.base_def()) {
+                match self.resolver.get_resolution(p.id).map(|d| d.base_res()) {
                     // `None` can occur in body-less function signatures
-                    def @ None | def @ Some(Def::Local(_)) => {
-                        let canonical_id = match def {
-                            Some(Def::Local(id)) => id,
+                    res @ None | res @ Some(Res::Local(_)) => {
+                        let canonical_id = match res {
+                            Some(Res::Local(id)) => id,
                             _ => p.id,
                         };
 
@@ -3958,11 +3961,11 @@ impl<'a> LoweringContext<'a> {
                             sub.as_ref().map(|x| self.lower_pat(x)),
                         )
                     }
-                    Some(def) => hir::PatKind::Path(hir::QPath::Resolved(
+                    Some(res) => hir::PatKind::Path(hir::QPath::Resolved(
                         None,
                         P(hir::Path {
                             span: ident.span,
-                            def: self.lower_def(def),
+                            res: self.lower_res(res),
                             segments: hir_vec![hir::PathSegment::from_ident(ident)],
                         }),
                     )),
@@ -4954,11 +4957,11 @@ impl<'a> LoweringContext<'a> {
                 } else {
                     self.lower_node_id(id)
                 };
-                let def = self.expect_full_def(id);
-                let def = self.lower_def(def);
+                let res = self.expect_full_res(id);
+                let res = self.lower_res(res);
                 hir::VisibilityKind::Restricted {
                     path: P(self.lower_path_extra(
-                        def,
+                        res,
                         path,
                         ParamMode::Explicit,
                         explicit_owner,
@@ -5070,7 +5073,7 @@ impl<'a> LoweringContext<'a> {
             None,
             P(hir::Path {
                 span,
-                def: Def::Local(binding),
+                res: Res::Local(binding),
                 segments: hir_vec![hir::PathSegment::from_ident(ident)],
             }),
         ));
@@ -5276,8 +5279,8 @@ impl<'a> LoweringContext<'a> {
         let node = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
-                match path.def {
-                    Def::Trait(_) | Def::TraitAlias(_) => {
+                match path.res {
+                    Res::Def(DefKind::Trait, _) | Res::Def(DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: hir::HirVec::new(),
                             trait_ref: hir::TraitRef {

@@ -12,7 +12,7 @@
 
 use rustc::bug;
 use rustc::hir::{self, Node, PatKind, AssociatedItemKind};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
@@ -234,7 +234,7 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                         Node::Item(item) => match &item.node {
                             hir::ItemKind::Impl(.., None, _, _) => &impl_item.vis,
                             hir::ItemKind::Impl(.., Some(trait_ref), _, _)
-                                => return def_id_visibility(tcx, trait_ref.path.def.def_id()),
+                                => return def_id_visibility(tcx, trait_ref.path.res.def_id()),
                             kind => bug!("unexpected item kind: {:?}", kind),
                         }
                         node => bug!("unexpected node kind: {:?}", node),
@@ -472,7 +472,7 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     /// to update the visibility of the intermediate use so that it isn't linted
     /// by `unreachable_pub`.
     ///
-    /// This isn't trivial as `path.def` has the `DefId` of the eventual target
+    /// This isn't trivial as `path.res` has the `DefId` of the eventual target
     /// of the use statement not of the next intermediate use statement.
     ///
     /// To do this, consider the last two segments of the path to our intermediate
@@ -485,8 +485,8 @@ impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     /// namespaces. See <https://github.com/rust-lang/rust/pull/57922#discussion_r251234202>.
     fn update_visibility_of_intermediate_use_statements(&mut self, segments: &[hir::PathSegment]) {
         if let Some([module, segment]) = segments.rchunks_exact(2).next() {
-            if let Some(item) = module.def
-                .and_then(|def| def.mod_def_id())
+            if let Some(item) = module.res
+                .and_then(|res| res.mod_def_id())
                 .and_then(|def_id| self.tcx.hir().as_local_hir_id(def_id))
                 .map(|module_hir_id| self.tcx.hir().expect_item_by_hir_id(module_hir_id))
              {
@@ -717,7 +717,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
                     if export.vis == ty::Visibility::Public {
-                        if let Some(def_id) = export.def.opt_def_id() {
+                        if let Some(def_id) = export.res.opt_def_id() {
                             if let Some(hir_id) = self.tcx.hir().as_local_hir_id(def_id) {
                                 self.update(hir_id, Some(AccessLevel::Exported));
                             }
@@ -762,7 +762,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             let def_id = self.tcx.hir().local_def_id_from_hir_id(module_id);
             if let Some(exports) = self.tcx.module_exports(def_id) {
                 for export in exports.iter() {
-                    if let Some(hir_id) = self.tcx.hir().as_local_hir_id(export.def.def_id()) {
+                    if let Some(hir_id) = self.tcx.hir().as_local_hir_id(export.res.def_id()) {
                         self.update(hir_id, level);
                     }
                 }
@@ -900,9 +900,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprKind::Struct(ref qpath, ref fields, ref base) => {
-                let def = self.tables.qpath_def(qpath, expr.hir_id);
+                let res = self.tables.qpath_res(qpath, expr.hir_id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
-                let variant = adt.variant_of_def(def);
+                let variant = adt.variant_of_res(res);
                 if let Some(ref base) = *base {
                     // If the expression uses FRU we need to make sure all the unmentioned fields
                     // are checked for privacy (RFC 736). Rather than computing the set of
@@ -934,9 +934,9 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         match pat.node {
             PatKind::Struct(ref qpath, ref fields, _) => {
-                let def = self.tables.qpath_def(qpath, pat.hir_id);
+                let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let adt = self.tables.pat_ty(pat).ty_adt_def().unwrap();
-                let variant = adt.variant_of_def(def);
+                let variant = adt.variant_of_res(res);
                 for field in fields {
                     let use_ctxt = field.node.ident.span;
                     let index = self.tcx.field_index(field.node.hir_id, self.tables);
@@ -1105,26 +1105,30 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     // more code internal visibility at link time. (Access to private functions
     // is already prohibited by type privacy for function types.)
     fn visit_qpath(&mut self, qpath: &'tcx hir::QPath, id: hir::HirId, span: Span) {
-        let def = match *qpath {
-            hir::QPath::Resolved(_, ref path) => match path.def {
-                Def::Method(..) | Def::AssociatedConst(..) |
-                Def::AssociatedTy(..) | Def::AssociatedExistential(..) |
-                Def::Static(..) => Some(path.def),
-                _ => None,
-            }
-            hir::QPath::TypeRelative(..) => {
-                self.tables.type_dependent_def(id)
-            }
+        let def = match self.tables.qpath_res(qpath, id) {
+            Res::Def(kind, def_id) => Some((kind, def_id)),
+            _ => None,
         };
-        if let Some(def) = def {
-            let def_id = def.def_id();
-            let is_local_static = if let Def::Static(..) = def { def_id.is_local() } else { false };
+        let def = def.filter(|(kind, _)| {
+            match kind {
+                DefKind::Method
+                | DefKind::AssociatedConst
+                | DefKind::AssociatedTy
+                | DefKind::AssociatedExistential
+                | DefKind::Static => true,
+                _ => false,
+            }
+        });
+        if let Some((kind, def_id)) = def {
+            let is_local_static = if let DefKind::Static = kind {
+                def_id.is_local()
+            } else { false };
             if !self.item_is_accessible(def_id) && !is_local_static {
                 let name = match *qpath {
                     hir::QPath::Resolved(_, ref path) => path.to_string(),
                     hir::QPath::TypeRelative(_, ref segment) => segment.ident.to_string(),
                 };
-                let msg = format!("{} `{}` is private", def.kind_name(), name);
+                let msg = format!("{} `{}` is private", kind.descr(), name);
                 self.tcx.sess.span_err(span, &msg);
                 return;
             }
@@ -1227,9 +1231,9 @@ struct ObsoleteCheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path: &hir::Path) -> bool {
-        let did = match path.def {
-            Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => return false,
-            def => def.def_id(),
+        let did = match path.res {
+            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => return false,
+            res => res.def_id(),
         };
 
         // A path can only be private if:
@@ -1349,7 +1353,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
                 let not_private_trait =
                     trait_ref.as_ref().map_or(true, // no trait counts as public trait
                                               |tr| {
-                        let did = tr.path.def.def_id();
+                        let did = tr.path.res.def_id();
 
                         if let Some(hir_id) = self.tcx.hir().as_local_hir_id(did) {
                             self.trait_is_public(hir_id)

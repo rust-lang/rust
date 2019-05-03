@@ -88,7 +88,7 @@ mod op;
 use crate::astconv::{AstConv, PathSeg};
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use rustc::hir::{self, ExprKind, GenericArg, ItemKind, Node, PatKind, QPath};
-use rustc::hir::def::{CtorOf, CtorKind, Def};
+use rustc::hir::def::{CtorOf, CtorKind, Res, DefKind};
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -1896,13 +1896,13 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_representable(tcx, sp, def_id);
 }
 
-fn report_unexpected_variant_def<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                 def: &Def,
+fn report_unexpected_variant_res<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                                 res: Res,
                                                  span: Span,
                                                  qpath: &QPath) {
     span_err!(tcx.sess, span, E0533,
               "expected unit struct/variant or constant, found {} `{}`",
-              def.kind_name(),
+              res.kind_name(),
               hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
 }
 
@@ -2149,7 +2149,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tables
             .borrow_mut()
             .type_dependent_defs_mut()
-            .insert(hir_id, Def::Method(method.def_id));
+            .insert(hir_id, Ok((DefKind::Method, method.def_id)));
 
         self.write_substs(hir_id, method.substs);
 
@@ -3922,20 +3922,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
         let variant = match def {
-            Def::Err => {
+            Res::Err => {
                 self.set_tainted_by_errors();
                 return None;
             }
-            Def::Variant(..) => {
+            Res::Def(DefKind::Variant, _) => {
                 match ty.sty {
                     ty::Adt(adt, substs) => {
-                        Some((adt.variant_of_def(def), adt.did, substs))
+                        Some((adt.variant_of_res(def), adt.did, substs))
                     }
                     _ => bug!("unexpected type: {:?}", ty)
                 }
             }
-            Def::Struct(..) | Def::Union(..) | Def::TyAlias(..) |
-            Def::AssociatedTy(..) | Def::SelfTy(..) => {
+            Res::Def(DefKind::Struct, _)
+            | Res::Def(DefKind::Union, _)
+            | Res::Def(DefKind::TyAlias, _)
+            | Res::Def(DefKind::AssociatedTy, _)
+            | Res::SelfTy(..) => {
                 match ty.sty {
                     ty::Adt(adt, substs) if !adt.is_enum() => {
                         Some((adt.non_enum_variant(), adt.did, substs))
@@ -4230,18 +4233,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             ExprKind::Path(ref qpath) => {
-                let (def, opt_ty, segs) = self.resolve_ty_and_def_ufcs(qpath, expr.hir_id,
+                let (res, opt_ty, segs) = self.resolve_ty_and_res_ufcs(qpath, expr.hir_id,
                     expr.span);
-                let ty = match def {
-                    Def::Err => {
+                let ty = match res {
+                    Res::Err => {
                         self.set_tainted_by_errors();
                         tcx.types.err
                     }
-                    Def::Ctor(_, _, CtorKind::Fictive) => {
-                        report_unexpected_variant_def(tcx, &def, expr.span, qpath);
+                    Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) => {
+                        report_unexpected_variant_res(tcx, res, expr.span, qpath);
                         tcx.types.err
                     }
-                    _ => self.instantiate_value_path(segs, opt_ty, def, expr.span, id).0,
+                    _ => self.instantiate_value_path(segs, opt_ty, res, expr.span, id).0,
                 };
 
                 if let ty::FnDef(..) = ty.sty {
@@ -4778,45 +4781,54 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     qpath: &QPath,
                                     path_span: Span,
                                     hir_id: hir::HirId)
-                                    -> (Def, Ty<'tcx>)
+                                    -> (Res, Ty<'tcx>)
     {
         match *qpath {
             QPath::Resolved(ref maybe_qself, ref path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself));
-                let ty = AstConv::def_to_ty(self, self_ty, path, true);
-                (path.def, ty)
+                let ty = AstConv::res_to_ty(self, self_ty, path, true);
+                (path.res, ty)
             }
             QPath::TypeRelative(ref qself, ref segment) => {
                 let ty = self.to_ty(qself);
 
-                let def = if let hir::TyKind::Path(QPath::Resolved(_, ref path)) = qself.node {
-                    path.def
+                let res = if let hir::TyKind::Path(QPath::Resolved(_, ref path)) = qself.node {
+                    path.res
                 } else {
-                    Def::Err
+                    Res::Err
                 };
-                let (ty, def) = AstConv::associated_path_to_ty(self, hir_id, path_span,
-                                                               ty, def, segment, true);
+                let result = AstConv::associated_path_to_ty(
+                    self,
+                    hir_id,
+                    path_span,
+                    ty,
+                    res,
+                    segment,
+                    true,
+                );
+                let ty = result.map(|(ty, _, _)| ty).unwrap_or(self.tcx().types.err);
+                let result = result.map(|(_, kind, def_id)| (kind, def_id));
 
                 // Write back the new resolution.
-                self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
+                self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, result);
 
-                (def, ty)
+                (result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err), ty)
             }
         }
     }
 
     /// Resolves associated value path into a base type and associated constant or method
-    /// definition. The newly resolved definition is written into `type_dependent_defs`.
-    pub fn resolve_ty_and_def_ufcs<'b>(&self,
+    /// resolution. The newly resolved definition is written into `type_dependent_defs`.
+    pub fn resolve_ty_and_res_ufcs<'b>(&self,
                                        qpath: &'b QPath,
                                        hir_id: hir::HirId,
                                        span: Span)
-                                       -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
+                                       -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
-        debug!("resolve_ty_and_def_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
+        debug!("resolve_ty_and_res_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
-                return (path.def,
+                return (path.res,
                         opt_qself.as_ref().map(|qself| self.to_ty(qself)),
                         &path.segments[..]);
             }
@@ -4824,34 +4836,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (self.to_ty(qself), qself, segment)
             }
         };
-        if let Some(cached_def) = self.tables.borrow().type_dependent_def(hir_id) {
+        if let Some(&cached_result) = self.tables.borrow().type_dependent_defs().get(hir_id) {
             // Return directly on cache hit. This is useful to avoid doubly reporting
             // errors with default match binding modes. See #44614.
-            return (cached_def, Some(ty), slice::from_ref(&**item_segment))
+            let def = cached_result.map(|(kind, def_id)| Res::Def(kind, def_id))
+                .unwrap_or(Res::Err);
+            return (def, Some(ty), slice::from_ref(&**item_segment));
         }
         let item_name = item_segment.ident;
-        let def = match self.resolve_ufcs(span, item_name, ty, hir_id) {
-            Ok(def) => def,
-            Err(error) => {
-                let def = match error {
-                    method::MethodError::PrivateMatch(def, _) => def,
-                    _ => Def::Err,
-                };
-                if item_name.name != keywords::Invalid.name() {
-                    self.report_method_error(span,
-                                             ty,
-                                             item_name,
-                                             SelfSource::QPath(qself),
-                                             error,
-                                             None);
-                }
-                def
+        let result = self.resolve_ufcs(span, item_name, ty, hir_id).or_else(|error| {
+            let result = match error {
+                method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
+                _ => Err(ErrorReported),
+            };
+            if item_name.name != keywords::Invalid.name() {
+                self.report_method_error(
+                    span,
+                    ty,
+                    item_name,
+                    SelfSource::QPath(qself),
+                    error,
+                    None,
+                );
             }
-        };
+            result
+        });
 
         // Write back the new resolution.
-        self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, def);
-        (def, Some(ty), slice::from_ref(&**item_segment))
+        self.tables.borrow_mut().type_dependent_defs_mut().insert(hir_id, result);
+        (
+            result.map(|(kind, def_id)| Res::Def(kind, def_id)).unwrap_or(Res::Err),
+            Some(ty),
+            slice::from_ref(&**item_segment),
+        )
     }
 
     pub fn check_decl_initializer(&self,
@@ -5352,9 +5369,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     // Rewrite `SelfCtor` to `Ctor`
-    pub fn rewrite_self_ctor(&self, def: Def, span: Span) -> (Def, DefId, Ty<'tcx>) {
+    pub fn rewrite_self_ctor(
+        &self,
+        res: Res,
+        span: Span,
+    ) -> Result<(DefKind, DefId, Ty<'tcx>), ErrorReported> {
         let tcx = self.tcx;
-        if let Def::SelfCtor(impl_def_id) = def {
+        if let Res::SelfCtor(impl_def_id) = res {
             let ty = self.impl_self_ty(span, impl_def_id).ty;
             let adt_def = ty.ty_adt_def();
 
@@ -5362,8 +5383,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Some(adt_def) if adt_def.has_ctor() => {
                     let variant = adt_def.non_enum_variant();
                     let ctor_def_id = variant.ctor_def_id.unwrap();
-                    let def = Def::Ctor(ctor_def_id, CtorOf::Struct, variant.ctor_kind);
-                    (def, ctor_def_id, tcx.type_of(ctor_def_id))
+                    Ok((
+                        DefKind::Ctor(CtorOf::Struct, variant.ctor_kind),
+                        ctor_def_id,
+                        tcx.type_of(ctor_def_id),
+                    ))
                 }
                 _ => {
                     let mut err = tcx.sess.struct_span_err(span,
@@ -5386,16 +5410,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                     err.emit();
 
-                    (def, impl_def_id, tcx.types.err)
+                    Err(ErrorReported)
                 }
             }
         } else {
-            let def_id = def.def_id();
-
-            // The things we are substituting into the type should not contain
-            // escaping late-bound regions, and nor should the base type scheme.
-            let ty = tcx.type_of(def_id);
-            (def, def_id, ty)
+            match res {
+                Res::Def(kind, def_id) => {
+                    // The things we are substituting into the type should not contain
+                    // escaping late-bound regions, and nor should the base type scheme.
+                    let ty = tcx.type_of(def_id);
+                    Ok((kind, def_id, ty))
+                }
+                _ => span_bug!(span, "unexpected res in rewrite_self_ctor: {:?}", res),
+            }
         }
     }
 
@@ -5404,37 +5431,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn instantiate_value_path(&self,
                                   segments: &[hir::PathSegment],
                                   self_ty: Option<Ty<'tcx>>,
-                                  def: Def,
+                                  res: Res,
                                   span: Span,
                                   hir_id: hir::HirId)
-                                  -> (Ty<'tcx>, Def) {
+                                  -> (Ty<'tcx>, Res) {
         debug!(
-            "instantiate_value_path(segments={:?}, self_ty={:?}, def={:?}, hir_id={})",
+            "instantiate_value_path(segments={:?}, self_ty={:?}, res={:?}, hir_id={})",
             segments,
             self_ty,
-            def,
+            res,
             hir_id,
         );
 
         let tcx = self.tcx;
 
-        match def {
-            Def::Local(hid) | Def::Upvar(hid, ..) => {
+        match res {
+            Res::Local(hid) | Res::Upvar(hid, ..) => {
                 let ty = self.local_ty(span, hid).decl_ty;
                 let ty = self.normalize_associated_types_in(span, &ty);
                 self.write_ty(hir_id, ty);
-                return (ty, def);
+                return (ty, res);
             }
             _ => {}
         }
 
-        let (def, def_id, ty) = self.rewrite_self_ctor(def, span);
-        let path_segs = AstConv::def_ids_for_path_segments(self, segments, self_ty, def);
+        let (kind, def_id, ty) = match self.rewrite_self_ctor(res, span) {
+            Ok(result) => result,
+            Err(ErrorReported) => return (tcx.types.err, res),
+        };
+        let path_segs =
+            AstConv::def_ids_for_value_path_segments(self, segments, self_ty, kind, def_id);
 
         let mut user_self_ty = None;
         let mut is_alias_variant_ctor = false;
-        match def {
-            Def::Ctor(_, CtorOf::Variant, _) => {
+        match kind {
+            DefKind::Ctor(CtorOf::Variant, _) => {
                 if let Some(self_ty) = self_ty {
                     let adt_def = self_ty.ty_adt_def().unwrap();
                     user_self_ty = Some(UserSelfTy {
@@ -5444,10 +5475,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     is_alias_variant_ctor = true;
                 }
             }
-            Def::Method(def_id) |
-            Def::AssociatedConst(def_id) => {
+            DefKind::Method
+            | DefKind::AssociatedConst => {
                 let container = tcx.associated_item(def_id).container;
-                debug!("instantiate_value_path: def={:?} container={:?}", def, container);
+                debug!("instantiate_value_path: def_id={:?} container={:?}", def_id, container);
                 match container {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(tcx, span, trait_did)
@@ -5637,7 +5668,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                ty_substituted);
         self.write_substs(hir_id, substs);
 
-        (ty_substituted, def)
+        (ty_substituted, Res::Def(kind, def_id))
     }
 
     fn check_rustc_args_require_const(&self,

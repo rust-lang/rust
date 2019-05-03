@@ -5,7 +5,7 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore, we break lifetime name resolution into a separate pass.
 
-use crate::hir::def::Def;
+use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::Map;
 use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName};
@@ -925,7 +925,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
             if let Some(ref args) = segment.args {
-                self.visit_segment_args(path.def, depth, args);
+                self.visit_segment_args(path.res, depth, args);
             }
         }
     }
@@ -1360,12 +1360,12 @@ fn object_lifetime_defaults_for_item(
                         continue;
                     }
 
-                    let def = match data.bounded_ty.node {
-                        hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => path.def,
+                    let res = match data.bounded_ty.node {
+                        hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => path.res,
                         _ => continue,
                     };
 
-                    if def == Def::TyParam(param_def_id) {
+                    if res == Res::Def(DefKind::TyParam, param_def_id) {
                         add_bounds(&mut set, &data.bounds);
                     }
                 }
@@ -1890,7 +1890,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_segment_args(&mut self, def: Def, depth: usize, generic_args: &'tcx hir::GenericArgs) {
+    fn visit_segment_args(&mut self, res: Res, depth: usize, generic_args: &'tcx hir::GenericArgs) {
         if generic_args.parenthesized {
             let was_in_fn_syntax = self.is_in_fn_syntax;
             self.is_in_fn_syntax = true;
@@ -1928,14 +1928,16 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 index: def_key.parent.expect("missing parent"),
             }
         };
-        let type_def_id = match def {
-            Def::AssociatedTy(def_id) if depth == 1 => Some(parent_def_id(self, def_id)),
-            Def::Variant(def_id) if depth == 0 => Some(parent_def_id(self, def_id)),
-            Def::Struct(def_id)
-            | Def::Union(def_id)
-            | Def::Enum(def_id)
-            | Def::TyAlias(def_id)
-            | Def::Trait(def_id) if depth == 0 =>
+        let type_def_id = match res {
+            Res::Def(DefKind::AssociatedTy, def_id)
+                if depth == 1 => Some(parent_def_id(self, def_id)),
+            Res::Def(DefKind::Variant, def_id)
+                if depth == 0 => Some(parent_def_id(self, def_id)),
+            Res::Def(DefKind::Struct, def_id)
+            | Res::Def(DefKind::Union, def_id)
+            | Res::Def(DefKind::Enum, def_id)
+            | Res::Def(DefKind::TyAlias, def_id)
+            | Res::Def(DefKind::Trait, def_id) if depth == 0 =>
             {
                 Some(def_id)
             }
@@ -2126,8 +2128,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if has_self {
             // Look for `self: &'a Self` - also desugared from `&'a self`,
             // and if that matches, use it for elision and return early.
-            let is_self_ty = |def: Def| {
-                if let Def::SelfTy(..) = def {
+            let is_self_ty = |res: Res| {
+                if let Res::SelfTy(..) = res {
                     return true;
                 }
 
@@ -2135,12 +2137,15 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 // to the way elision rules were originally specified.
                 let impl_self = impl_self.map(|ty| &ty.node);
                 if let Some(&hir::TyKind::Path(hir::QPath::Resolved(None, ref path))) = impl_self {
-                    match path.def {
+                    match path.res {
                         // Whitelist the types that unambiguously always
                         // result in the same type constructor being used
                         // (it can't differ between `Self` and `self`).
-                        Def::Struct(_) | Def::Union(_) | Def::Enum(_) | Def::PrimTy(_) => {
-                            return def == path.def
+                        Res::Def(DefKind::Struct, _)
+                        | Res::Def(DefKind::Union, _)
+                        | Res::Def(DefKind::Enum, _)
+                        | Res::PrimTy(_) => {
+                            return res == path.res
                         }
                         _ => {}
                     }
@@ -2151,7 +2156,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             if let hir::TyKind::Rptr(lifetime_ref, ref mt) = inputs[0].node {
                 if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.node {
-                    if is_self_ty(path.def) {
+                    if is_self_ty(path.res) {
                         if let Some(&lifetime) = self.map.defs.get(&lifetime_ref.hir_id) {
                             let scope = Scope::Elision {
                                 elide: Elide::Exact(lifetime),

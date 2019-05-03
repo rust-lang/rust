@@ -3,7 +3,7 @@ use super::method::MethodCallee;
 use super::{Expectation, FnCtxt, Needs, TupleArgumentsFlag};
 
 use errors::{Applicability, DiagnosticBuilder};
-use hir::def::Def;
+use hir::def::Res;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -317,7 +317,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let mut inner_callee_path = None;
                     let def = match callee.node {
                         hir::ExprKind::Path(ref qpath) => {
-                            self.tables.borrow().qpath_def(qpath, callee.hir_id)
+                            self.tables.borrow().qpath_res(qpath, callee.hir_id)
                         }
                         hir::ExprKind::Call(ref inner_callee, _) => {
                             // If the call spans more than one line and the callee kind is
@@ -338,19 +338,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 inner_callee_path = Some(inner_qpath);
                                 self.tables
                                     .borrow()
-                                    .qpath_def(inner_qpath, inner_callee.hir_id)
+                                    .qpath_res(inner_qpath, inner_callee.hir_id)
                             } else {
-                                Def::Err
+                                Res::Err
                             }
                         }
-                        _ => Def::Err,
+                        _ => Res::Err,
                     };
 
                     err.span_label(call_expr.span, "call expression requires function");
 
                     let def_span = match def {
-                        Def::Err => None,
-                        Def::Local(id) | Def::Upvar(id, ..) => {
+                        Res::Err => None,
+                        Res::Local(id) | Res::Upvar(id, ..) => {
                             Some(self.tcx.hir().span_by_hir_id(id))
                         },
                         _ => def

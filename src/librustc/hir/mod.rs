@@ -10,7 +10,7 @@ pub use self::PrimTy::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 
-use crate::hir::def::Def;
+use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
 use crate::util::nodemap::{NodeMap, FxHashSet};
 use crate::mir::mono::Linkage;
@@ -296,8 +296,8 @@ impl Lifetime {
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Path {
     pub span: Span,
-    /// The definition that the path resolved to.
-    pub def: Def,
+    /// The resolution for the path.
+    pub res: Res,
     /// The segments in the path: the things separated by `::`.
     pub segments: HirVec<PathSegment>,
 }
@@ -327,13 +327,13 @@ pub struct PathSegment {
     /// The identifier portion of this path segment.
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    // `id` and `def` are optional. We currently only use these in save-analysis,
+    // `id` and `res` are optional. We currently only use these in save-analysis,
     // any path segments without these will not have save-analysis info and
     // therefore will not have 'jump to def' in IDEs, but otherwise will not be
     // affected. (In general, we don't bother to get the defs for synthesized
     // segments, only for segments which have come from the AST).
     pub hir_id: Option<HirId>,
-    pub def: Option<Def>,
+    pub res: Option<Res>,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -355,7 +355,7 @@ impl PathSegment {
         PathSegment {
             ident,
             hir_id: None,
-            def: None,
+            res: None,
             infer_types: true,
             args: None,
         }
@@ -364,14 +364,14 @@ impl PathSegment {
     pub fn new(
         ident: Ident,
         hir_id: Option<HirId>,
-        def: Option<Def>,
+        res: Option<Res>,
         args: GenericArgs,
         infer_types: bool,
     ) -> Self {
         PathSegment {
             ident,
             hir_id,
-            def,
+            res,
             infer_types,
             args: if args.is_empty() {
                 None
@@ -1393,8 +1393,11 @@ impl Expr {
     pub fn is_place_expr(&self) -> bool {
          match self.node {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
-                match path.def {
-                    Def::Local(..) | Def::Upvar(..) | Def::Static(..) | Def::Err => true,
+                match path.res {
+                    Res::Local(..)
+                    | Res::Upvar(..)
+                    | Res::Def(DefKind::Static, _)
+                    | Res::Err => true,
                     _ => false,
                 }
             }
@@ -2139,7 +2142,7 @@ pub enum UseKind {
 /// resolve maps each TraitRef's ref_id to its defining trait; that's all
 /// that the ref_id is for. Note that ref_id's value is not the NodeId of the
 /// trait being referred to but just a unique NodeId that serves as a key
-/// within the DefMap.
+/// within the ResMap.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct TraitRef {
     pub path: Path,
@@ -2151,10 +2154,10 @@ pub struct TraitRef {
 impl TraitRef {
     /// Gets the `DefId` of the referenced trait. It _must_ actually be a trait or trait alias.
     pub fn trait_def_id(&self) -> DefId {
-        match self.path.def {
-            Def::Trait(did) => did,
-            Def::TraitAlias(did) => did,
-            Def::Err => {
+        match self.path.res {
+            Res::Def(DefKind::Trait, did) => did,
+            Res::Def(DefKind::TraitAlias, did) => did,
+            Res::Err => {
                 FatalError.raise();
             }
             _ => unreachable!(),
@@ -2476,7 +2479,7 @@ impl ForeignItemKind {
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Freevar<Id = HirId> {
     /// The variable being accessed free.
-    pub def: def::Def<Id>,
+    pub res: Res<Id>,
 
     // First span where it is accessed (there can be multiple).
     pub span: Span
@@ -2485,15 +2488,15 @@ pub struct Freevar<Id = HirId> {
 impl<Id: fmt::Debug + Copy> Freevar<Id> {
     pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Freevar<R> {
         Freevar {
-            def: self.def.map_id(map),
+            res: self.res.map_id(map),
             span: self.span,
         }
     }
 
     pub fn var_id(&self) -> Id {
-        match self.def {
-            Def::Local(id) | Def::Upvar(id, ..) => id,
-            _ => bug!("Freevar::var_id: bad def ({:?})", self.def)
+        match self.res {
+            Res::Local(id) | Res::Upvar(id, ..) => id,
+            _ => bug!("Freevar::var_id: bad res ({:?})", self.res)
         }
     }
 }
@@ -2518,7 +2521,7 @@ pub type GlobMap = NodeMap<FxHashSet<Name>>;
 
 pub fn provide(providers: &mut Providers<'_>) {
     check_attr::provide(providers);
-    providers.describe_def = map::describe_def;
+    providers.def_kind = map::def_kind;
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]

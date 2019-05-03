@@ -18,7 +18,7 @@ use rustc::ty::{CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTyp
 use rustc::ty::subst::{SubstsRef, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
-use rustc::hir::def::{CtorOf, Def, CtorKind};
+use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 
 use rustc_data_structures::indexed_vec::Idx;
@@ -599,7 +599,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
             }
 
             PatKind::TupleStruct(ref qpath, ref subpatterns, ddpos) => {
-                let def = self.tables.qpath_def(qpath, pat.hir_id);
+                let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let adt_def = match ty.sty {
                     ty::Adt(adt_def, _) => adt_def,
                     ty::Error => { // Avoid ICE (#50585)
@@ -609,7 +609,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                    "tuple struct pattern not applied to an ADT {:?}",
                                    ty),
                 };
-                let variant_def = adt_def.variant_of_def(def);
+                let variant_def = adt_def.variant_of_res(res);
 
                 let subpatterns =
                         subpatterns.iter()
@@ -620,11 +620,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                    })
                     .collect();
 
-                self.lower_variant_or_leaf(def, pat.hir_id, pat.span, ty, subpatterns)
+                self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
 
             PatKind::Struct(ref qpath, ref fields, _) => {
-                let def = self.tables.qpath_def(qpath, pat.hir_id);
+                let res = self.tables.qpath_res(qpath, pat.hir_id);
                 let subpatterns =
                     fields.iter()
                           .map(|field| {
@@ -636,7 +636,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                           })
                           .collect();
 
-                self.lower_variant_or_leaf(def, pat.hir_id, pat.span, ty, subpatterns)
+                self.lower_variant_or_leaf(res, pat.hir_id, pat.span, ty, subpatterns)
             }
         };
 
@@ -726,22 +726,22 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
     fn lower_variant_or_leaf(
         &mut self,
-        def: Def,
+        res: Res,
         hir_id: hir::HirId,
         span: Span,
         ty: Ty<'tcx>,
         subpatterns: Vec<FieldPattern<'tcx>>,
     ) -> PatternKind<'tcx> {
-        let def = match def {
-            Def::Ctor(variant_ctor_id, CtorOf::Variant, ..) => {
+        let res = match res {
+            Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
                 let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
-                Def::Variant(variant_id)
+                Res::Def(DefKind::Variant, variant_id)
             },
-            def => def,
+            res => res,
         };
 
-        let mut kind = match def {
-            Def::Variant(variant_id) => {
+        let mut kind = match res {
+            Res::Def(DefKind::Variant, variant_id) => {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
@@ -764,8 +764,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }
 
-            Def::Struct(..) | Def::Ctor(_, CtorOf::Struct, ..) | Def::Union(..) |
-            Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) => {
+            Res::Def(DefKind::Struct, _)
+            | Res::Def(DefKind::Ctor(CtorOf::Struct, ..), _)
+            | Res::Def(DefKind::Union, _)
+            | Res::Def(DefKind::TyAlias, _)
+            | Res::Def(DefKind::AssociatedTy, _)
+            | Res::SelfTy(..)
+            | Res::SelfCtor(..) => {
                 PatternKind::Leaf { subpatterns }
             }
 
@@ -803,13 +808,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                   span: Span)
                   -> Pattern<'tcx> {
         let ty = self.tables.node_type(id);
-        let def = self.tables.qpath_def(qpath, id);
-        let is_associated_const = match def {
-            Def::AssociatedConst(_) => true,
+        let res = self.tables.qpath_res(qpath, id);
+        let is_associated_const = match res {
+            Res::Def(DefKind::AssociatedConst, _) => true,
             _ => false,
         };
-        let kind = match def {
-            Def::Const(def_id) | Def::AssociatedConst(def_id) => {
+        let kind = match res {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssociatedConst, def_id) => {
                 let substs = self.tables.node_substs(id);
                 match ty::Instance::resolve(
                     self.tcx,
@@ -871,7 +876,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                     },
                 }
             }
-            _ => self.lower_variant_or_leaf(def, id, span, ty, vec![]),
+            _ => self.lower_variant_or_leaf(res, id, span, ty, vec![]),
         };
 
         Pattern {

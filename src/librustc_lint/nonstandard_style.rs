@@ -1,5 +1,5 @@
 use rustc::hir::{self, GenericParamKind, PatKind};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Res, DefKind};
 use rustc::hir::intravisit::FnKind;
 use rustc::lint;
 use rustc::ty;
@@ -415,7 +415,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
     fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.node {
-            if let Def::Const(..) = path.def {
+            if let Res::Def(DefKind::Const, _) = path.res {
                 if path.segments.len() == 1 {
                     NonUpperCaseGlobals::check_upper_case(
                         cx,

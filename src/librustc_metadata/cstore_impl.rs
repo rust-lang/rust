@@ -110,7 +110,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     associated_item_def_ids => {
         let mut result = vec![];
         cdata.each_child_of_item(def_id.index,
-          |child| result.push(child.def.def_id()), tcx.sess);
+          |child| result.push(child.res.def_id()), tcx.sess);
         Lrc::new(result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
@@ -138,7 +138,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_const_fn_raw => { cdata.is_const_fn_raw(def_id.index) }
     is_foreign_item => { cdata.is_foreign_item(def_id.index) }
     static_mutability => { cdata.static_mutability(def_id.index) }
-    describe_def => { cdata.get_def(def_id.index) }
+    def_kind => { cdata.def_kind(def_id.index) }
     def_span => { cdata.get_span(def_id.index, &tcx.sess) }
     lookup_stability => {
         cdata.get_stability(def_id.index).map(|s| tcx.intern_stability(s))
@@ -355,7 +355,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                         return;
                     }
 
-                    let child = child.def.def_id();
+                    let child = child.res.def_id();
 
                     match visible_parent_map.entry(child) {
                         Entry::Occupied(mut entry) => {

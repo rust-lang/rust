@@ -15,7 +15,7 @@
 // by borrowck::gather_loans
 
 use rustc::ty::cast::CastTy;
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
@@ -319,16 +319,19 @@ fn check_expr_kind<'a, 'tcx>(
             }
         }
         hir::ExprKind::Path(ref qpath) => {
-            let def = v.tables.qpath_def(qpath, e.hir_id);
-            match def {
-                Def::Ctor(..) | Def::Fn(..) | Def::Method(..) | Def::SelfCtor(..) =>
+            let res = v.tables.qpath_res(qpath, e.hir_id);
+            match res {
+                Res::Def(DefKind::Ctor(..), _)
+                | Res::Def(DefKind::Fn, _)
+                | Res::Def(DefKind::Method, _)
+                | Res::SelfCtor(..) =>
                     Promotable,
 
                 // References to a static that are themselves within a static
                 // are inherently promotable with the exception
                 //  of "#[thread_local]" statics, which may not
                 // outlive the current function
-                Def::Static(did) => {
+                Res::Def(DefKind::Static, did) => {
 
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {
@@ -346,8 +349,8 @@ fn check_expr_kind<'a, 'tcx>(
                     }
                 }
 
-                Def::Const(did) |
-                Def::AssociatedConst(did) => {
+                Res::Def(DefKind::Const, did) |
+                Res::Def(DefKind::AssociatedConst, did) => {
                     let promotable = if v.tcx.trait_of_item(did).is_some() {
                         // Don't peek inside trait associated constants.
                         NotPromotable
@@ -381,15 +384,15 @@ fn check_expr_kind<'a, 'tcx>(
             }
             // The callee is an arbitrary expression, it doesn't necessarily have a definition.
             let def = if let hir::ExprKind::Path(ref qpath) = callee.node {
-                v.tables.qpath_def(qpath, callee.hir_id)
+                v.tables.qpath_res(qpath, callee.hir_id)
             } else {
-                Def::Err
+                Res::Err
             };
             let def_result = match def {
-                Def::Ctor(_, _, CtorKind::Fn) |
-                Def::SelfCtor(..) => Promotable,
-                Def::Fn(did) => v.handle_const_fn_call(did),
-                Def::Method(did) => {
+                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) |
+                Res::SelfCtor(..) => Promotable,
+                Res::Def(DefKind::Fn, did) => v.handle_const_fn_call(did),
+                Res::Def(DefKind::Method, did) => {
                     match v.tcx.associated_item(did).container {
                         ty::ImplContainer(_) => v.handle_const_fn_call(did),
                         ty::TraitContainer(_) => NotPromotable,

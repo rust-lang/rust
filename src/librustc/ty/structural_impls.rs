@@ -55,7 +55,7 @@ impl fmt::Debug for ty::AdtDef {
 impl fmt::Debug for ty::ClosureUpvar<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "ClosureUpvar({:?},{:?})",
-               self.def,
+               self.res,
                self.ty)
     }
 }
@@ -302,7 +302,7 @@ CloneTypeFoldableAndLiftImpls! {
     ::syntax::ast::FloatTy,
     ::syntax::ast::NodeId,
     ::syntax_pos::symbol::Symbol,
-    crate::hir::def::Def,
+    crate::hir::def::Res,
     crate::hir::def_id::DefId,
     crate::hir::InlineAsm,
     crate::hir::MatchSource,
@@ -1279,7 +1279,7 @@ TupleStructTypeFoldableImpl! {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for ty::ClosureUpvar<'tcx> {
-        def, span, ty
+        res, span, ty
     }
 }
 

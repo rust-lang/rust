@@ -5,7 +5,7 @@ pub use self::StabilityLevel::*;
 
 use crate::lint::{self, Lint, in_derive_expansion};
 use crate::hir::{self, Item, Generics, StructField, Variant, HirId};
-use crate::hir::def::Def;
+use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::ty::query::Providers;
@@ -525,10 +525,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // See issue #38412.
     fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
         // Check if `def_id` is a trait method.
-        match self.describe_def(def_id) {
-            Some(Def::Method(_)) |
-            Some(Def::AssociatedTy(_)) |
-            Some(Def::AssociatedConst(_)) => {
+        match self.def_kind(def_id) {
+            Some(DefKind::Method) |
+            Some(DefKind::AssociatedTy) |
+            Some(DefKind::AssociatedConst) => {
                 if let ty::TraitContainer(trait_def_id) = self.associated_item(def_id).container {
                     // Trait methods do not declare visibility (even
                     // for visibility info in cstore). Use containing
@@ -779,7 +779,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             // individually as it's possible to have a stable trait with unstable
             // items.
             hir::ItemKind::Impl(.., Some(ref t), _, ref impl_item_refs) => {
-                if let Def::Trait(trait_did) = t.path.def {
+                if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);
                         let trait_item_def_id = self.tcx.associated_items(trait_did)
@@ -820,7 +820,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &'tcx hir::Path, id: hir::HirId) {
-        if let Some(def_id) = path.def.opt_def_id() {
+        if let Some(def_id) = path.res.opt_def_id() {
             self.tcx.check_stability(def_id, Some(id), path.span)
         }
         intravisit::walk_path(self, path)

@@ -21,7 +21,7 @@ use rustc::lint::builtin::{
     UNUSED_IMPORTS,
 };
 use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::def::{self, PathResolution, Export};
+use rustc::hir::def::{self, DefKind, PathResolution, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
@@ -39,7 +39,7 @@ use log::*;
 use std::cell::{Cell, RefCell};
 use std::{mem, ptr};
 
-type Def = def::Def<NodeId>;
+type Res = def::Res<NodeId>;
 
 /// Contains data for specific types of import directives.
 #[derive(Clone, Debug)]
@@ -247,7 +247,7 @@ impl<'a> Resolver<'a> {
 
         if let Some(binding) = resolution.binding {
             if !restricted_shadowing && binding.expansion != Mark::root() {
-                if let NameBindingKind::Def(_, true) = binding.kind {
+                if let NameBindingKind::Res(_, true) = binding.kind {
                     self.macro_expanded_macro_export_errors.insert((path_span, binding.span));
                 }
             }
@@ -287,7 +287,7 @@ impl<'a> Resolver<'a> {
                         // Forbid expanded shadowing to avoid time travel.
                         if restricted_shadowing &&
                         binding.expansion != Mark::root() &&
-                        binding.def() != shadowed_glob.def() {
+                        binding.res() != shadowed_glob.res() {
                             self.ambiguity_errors.push(AmbiguityError {
                                 kind: AmbiguityKind::GlobVsExpanded,
                                 ident,
@@ -513,13 +513,13 @@ impl<'a> Resolver<'a> {
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
-                if binding.def() == Def::Err {
-                    // Do not override real bindings with `Def::Err`s from error recovery.
+                if binding.res() == Res::Err {
+                    // Do not override real bindings with `Res::Err`s from error recovery.
                     return Ok(());
                 }
                 match (old_binding.is_glob_import(), binding.is_glob_import()) {
                     (true, true) => {
-                        if binding.def() != old_binding.def() {
+                        if binding.res() != old_binding.res() {
                             resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsGlob,
                                                                      old_binding, binding));
                         } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
@@ -533,7 +533,7 @@ impl<'a> Resolver<'a> {
                         } else {
                             (binding, old_binding)
                         };
-                        if glob_binding.def() != nonglob_binding.def() &&
+                        if glob_binding.res() != nonglob_binding.res() &&
                            ns == MacroNS && nonglob_binding.expansion != Mark::root() {
                             resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsExpanded,
                                                                     nonglob_binding, glob_binding));
@@ -543,7 +543,7 @@ impl<'a> Resolver<'a> {
                         resolution.shadowed_glob = Some(glob_binding);
                     }
                     (false, false) => {
-                        if let (&NameBindingKind::Def(_, true), &NameBindingKind::Def(_, true)) =
+                        if let (&NameBindingKind::Res(_, true), &NameBindingKind::Res(_, true)) =
                                (&old_binding.kind, &binding.kind) {
 
                             this.session.buffer_lint_with_diagnostic(
@@ -619,7 +619,7 @@ impl<'a> Resolver<'a> {
         t
     }
 
-    // Define a "dummy" resolution containing a Def::Err as a placeholder for a
+    // Define a "dummy" resolution containing a Res::Err as a placeholder for a
     // failed resolution
     fn import_dummy_binding(&mut self, directive: &'a ImportDirective<'a>) {
         if let SingleImport { target, .. } = directive.subclass {
@@ -971,7 +971,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 }
                 return None;
             }
-            PathResult::NonModule(path_res) if path_res.base_def() == Def::Err => {
+            PathResult::NonModule(path_res) if path_res.base_res() == Res::Err => {
                 if no_ambiguity {
                     assert!(directive.imported_module.get().is_none());
                 }
@@ -1038,7 +1038,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             match binding {
                 Ok(binding) => {
                     // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
-                    let initial_def = source_bindings[ns].get().map(|initial_binding| {
+                    let initial_res = source_bindings[ns].get().map(|initial_binding| {
                         all_ns_err = false;
                         if let Some(target_binding) = target_bindings[ns].get() {
                             if target.name == "_" &&
@@ -1047,15 +1047,15 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                                 directive.module_path.is_empty());
                             }
                         }
-                        initial_binding.def()
+                        initial_binding.res()
                     });
-                    let def = binding.def();
-                    if let Ok(initial_def) = initial_def {
-                        if def != initial_def && this.ambiguity_errors.is_empty() {
+                    let res = binding.res();
+                    if let Ok(initial_res) = initial_res {
+                        if res != initial_res && this.ambiguity_errors.is_empty() {
                             span_bug!(directive.span, "inconsistent resolution for an import");
                         }
                     } else {
-                        if def != Def::Err &&
+                        if res != Res::Err &&
                            this.ambiguity_errors.is_empty() && this.privacy_errors.is_empty() {
                             let msg = "cannot determine resolution for the import";
                             let msg_note =
@@ -1101,7 +1101,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                     match binding.kind {
                                         // Never suggest the name that has binding error
                                         // i.e., the name that cannot be previously resolved
-                                        NameBindingKind::Def(Def::Err, _) => return None,
+                                        NameBindingKind::Res(Res::Err, _) => return None,
                                         _ => Some(&i.name),
                                     }
                                 },
@@ -1223,18 +1223,18 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| if let Some(binding) = source_bindings[ns].get().ok() {
-            let mut def = binding.def();
-            if let Def::Macro(def_id, _) = def {
+            let mut res = binding.res();
+            if let Res::Def(DefKind::Macro(_), def_id) = res {
                 // `DefId`s from the "built-in macro crate" should not leak from resolve because
                 // later stages are not ready to deal with them and produce lots of ICEs. Replace
-                // them with `Def::Err` until some saner scheme is implemented for built-in macros.
+                // them with `Res::Err` until some saner scheme is implemented for built-in macros.
                 if def_id.krate == CrateNum::BuiltinMacros {
                     this.session.span_err(directive.span, "cannot import a built-in macro");
-                    def = Def::Err;
+                    res = Res::Err;
                 }
             }
             let import = this.import_map.entry(directive.id).or_default();
-            import[ns] = Some(PathResolution::new(def));
+            import[ns] = Some(PathResolution::new(res));
         });
 
         self.check_for_redundant_imports(
@@ -1264,7 +1264,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
 
         // Skip if we are inside a named module (in contrast to an anonymous
         // module defined by a block).
-        if let ModuleKind::Def(_, _) = directive.parent_scope.module.kind {
+        if let ModuleKind::Def(..) = directive.parent_scope.module.kind {
             return;
         }
 
@@ -1281,7 +1281,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         };
 
         self.per_ns(|this, ns| if let Some(binding) = source_bindings[ns].get().ok() {
-            if binding.def() == Def::Err {
+            if binding.res() == Res::Err {
                 return;
             }
 
@@ -1300,7 +1300,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             ) {
                 Ok(other_binding) => {
                     is_redundant[ns] = Some(
-                        binding.def() == other_binding.def()
+                        binding.res() == other_binding.res()
                         && !other_binding.is_ambiguity()
                     );
                     redundant_span[ns] =
@@ -1371,7 +1371,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         // Record the destination of this import
-        self.record_def(directive.id, PathResolution::new(module.def().unwrap()));
+        self.record_res(directive.id, PathResolution::new(module.res().unwrap()));
     }
 
     // Miscellaneous post-processing, including recording re-exports,
@@ -1395,16 +1395,16 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             let is_good_import = binding.is_import() && !binding.is_ambiguity() &&
                                  !(ident.name.is_gensymed() && ident.name != "_");
             if is_good_import || binding.is_macro_def() {
-                let def = binding.def();
-                if def != Def::Err {
-                    if let Some(def_id) = def.opt_def_id() {
+                let res = binding.res();
+                if res != Res::Err {
+                    if let Some(def_id) = res.opt_def_id() {
                         if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
                             self.cstore.export_macros_untracked(def_id.krate);
                         }
                     }
                     reexports.push(Export {
                         ident: ident.modern(),
-                        def: def,
+                        res: res,
                         span: binding.span,
                         vis: binding.vis,
                     });

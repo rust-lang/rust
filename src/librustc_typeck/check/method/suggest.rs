@@ -8,7 +8,7 @@ use crate::util::nodemap::FxHashSet;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use rustc::hir::{self, ExprKind, Node, QPath};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::hir::map as hir_map;
 use rustc::hir::print;
@@ -249,7 +249,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             ExprKind::Path(ref qpath) => {
                                 // local binding
                                 if let &QPath::Resolved(_, ref path) = &qpath {
-                                    if let hir::def::Def::Local(hir_id) = path.def {
+                                    if let hir::def::Res::Local(hir_id) = path.res {
                                         let span = tcx.hir().span_by_hir_id(hir_id);
                                         let snippet = tcx.sess.source_map().span_to_snippet(span)
                                             .unwrap();
@@ -483,13 +483,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if let Some(lev_candidate) = lev_candidate {
-                    let def = lev_candidate.def();
+                    let def_kind = lev_candidate.def_kind();
                     err.span_suggestion(
                         span,
                         &format!(
                             "there is {} {} with a similar name",
-                            def.article(),
-                            def.kind_name(),
+                            def_kind.article(),
+                            def_kind.descr(),
                         ),
                         lev_candidate.ident.to_string(),
                         Applicability::MaybeIncorrect,
@@ -510,9 +510,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 err.emit();
             }
 
-            MethodError::PrivateMatch(def, out_of_scope_traits) => {
+            MethodError::PrivateMatch(kind, _, out_of_scope_traits) => {
                 let mut err = struct_span_err!(self.tcx.sess, span, E0624,
-                                               "{} `{}` is private", def.kind_name(), item_name);
+                                               "{} `{}` is private", kind.descr(), item_name);
                 self.suggest_valid_traits(&mut err, out_of_scope_traits);
                 err.emit();
             }
@@ -799,21 +799,21 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
     // Cross-crate:
 
     let mut external_mods = FxHashSet::default();
-    fn handle_external_def(tcx: TyCtxt<'_, '_, '_>,
+    fn handle_external_res(tcx: TyCtxt<'_, '_, '_>,
                            traits: &mut Vec<DefId>,
                            external_mods: &mut FxHashSet<DefId>,
-                           def: Def) {
-        match def {
-            Def::Trait(def_id) |
-            Def::TraitAlias(def_id) => {
+                           res: Res) {
+        match res {
+            Res::Def(DefKind::Trait, def_id) |
+            Res::Def(DefKind::TraitAlias, def_id) => {
                 traits.push(def_id);
             }
-            Def::Mod(def_id) => {
+            Res::Def(DefKind::Mod, def_id) => {
                 if !external_mods.insert(def_id) {
                     return;
                 }
                 for child in tcx.item_children(def_id).iter() {
-                    handle_external_def(tcx, traits, external_mods, child.def)
+                    handle_external_res(tcx, traits, external_mods, child.res)
                 }
             }
             _ => {}
@@ -824,7 +824,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
             krate: cnum,
             index: CRATE_DEF_INDEX,
         };
-        handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));
+        handle_external_res(tcx, &mut traits, &mut external_mods, Res::Def(DefKind::Mod, def_id));
     }
 
     traits

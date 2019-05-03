@@ -1,7 +1,7 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use rustc::hir::def::Def;
+use rustc::hir::def::DefKind;
 use rustc::mir::{
     Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local,
     NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
@@ -42,8 +42,8 @@ impl MirPass for ConstProp {
                               .expect("Non-local call to local provider is_const_fn");
 
         let is_fn_like = FnLikeNode::from_node(tcx.hir().get_by_hir_id(hir_id)).is_some();
-        let is_assoc_const = match tcx.describe_def(source.def_id()) {
-            Some(Def::AssociatedConst(_)) => true,
+        let is_assoc_const = match tcx.def_kind(source.def_id()) {
+            Some(DefKind::AssociatedConst) => true,
             _ => false,
         };
 

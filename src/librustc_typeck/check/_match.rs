@@ -3,7 +3,7 @@ use crate::check::coercion::CoerceMany;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc::hir::{self, PatKind, Pat};
-use rustc::hir::def::{Def, CtorKind};
+use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
 use rustc::infer::type_variable::TypeVariableOrigin;
@@ -19,7 +19,7 @@ use syntax_pos::Span;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
 
-use super::report_unexpected_variant_def;
+use super::report_unexpected_variant_res;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `match_discrim_span` argument having a `Span` indicates that this pattern is part of
@@ -65,9 +65,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             }
             PatKind::Path(ref qpath) => {
-                let (def, _, _) = self.resolve_ty_and_def_ufcs(qpath, pat.hir_id, pat.span);
+                let (def, _, _) = self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span);
                 match def {
-                    Def::Const(..) | Def::AssociatedConst(..) => false,
+                    Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssociatedConst, _) => false,
                     _ => true,
                 }
             }
@@ -840,28 +840,28 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let tcx = self.tcx;
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.hir_id, pat.span);
-        match def {
-            Def::Err => {
+        let (res, opt_ty, segments) = self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span);
+        match res {
+            Res::Err => {
                 self.set_tainted_by_errors();
                 return tcx.types.err;
             }
-            Def::Method(..) => {
-                report_unexpected_variant_def(tcx, &def, pat.span, qpath);
+            Res::Def(DefKind::Method, _) => {
+                report_unexpected_variant_res(tcx, res, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::Ctor(_, _, CtorKind::Fictive) |
-            Def::Ctor(_, _, CtorKind::Fn) => {
-                report_unexpected_variant_def(tcx, &def, pat.span, qpath);
+            Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _) |
+            Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
+                report_unexpected_variant_res(tcx, res, pat.span, qpath);
                 return tcx.types.err;
             }
-            Def::Ctor(_, _, CtorKind::Const) | Def::SelfCtor(..) |
-            Def::Const(..) | Def::AssociatedConst(..) => {} // OK
-            _ => bug!("unexpected pattern definition: {:?}", def)
+            Res::Def(DefKind::Ctor(_, CtorKind::Const), _) | Res::SelfCtor(..) |
+            Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssociatedConst, _) => {} // OK
+            _ => bug!("unexpected pattern resolution: {:?}", res)
         }
 
         // Type-check the path.
-        let pat_ty = self.instantiate_value_path(segments, opt_ty, def, pat.span, pat.hir_id).0;
+        let pat_ty = self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.hir_id).0;
         self.demand_suptype(pat.span, expected, pat_ty);
         pat_ty
     }
@@ -882,9 +882,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 self.check_pat_walk(&pat, tcx.types.err, def_bm, match_arm_pat_span);
             }
         };
-        let report_unexpected_def = |def: Def| {
+        let report_unexpected_res = |res: Res| {
             let msg = format!("expected tuple struct/variant, found {} `{}`",
-                              def.kind_name(),
+                              res.kind_name(),
                               hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
                 .span_label(pat.span, "not a tuple variant or struct").emit();
@@ -892,35 +892,35 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         };
 
         // Resolve the path and check the definition for errors.
-        let (def, opt_ty, segments) = self.resolve_ty_and_def_ufcs(qpath, pat.hir_id, pat.span);
-        if def == Def::Err {
+        let (res, opt_ty, segments) = self.resolve_ty_and_res_ufcs(qpath, pat.hir_id, pat.span);
+        if res == Res::Err {
             self.set_tainted_by_errors();
             on_error();
             return self.tcx.types.err;
         }
 
         // Type-check the path.
-        let (pat_ty, def) = self.instantiate_value_path(segments, opt_ty, def, pat.span,
+        let (pat_ty, res) = self.instantiate_value_path(segments, opt_ty, res, pat.span,
             pat.hir_id);
         if !pat_ty.is_fn() {
-            report_unexpected_def(def);
+            report_unexpected_res(res);
             return self.tcx.types.err;
         }
 
-        let variant = match def {
-            Def::Err => {
+        let variant = match res {
+            Res::Err => {
                 self.set_tainted_by_errors();
                 on_error();
                 return tcx.types.err;
             }
-            Def::AssociatedConst(..) | Def::Method(..) => {
-                report_unexpected_def(def);
+            Res::Def(DefKind::AssociatedConst, _) | Res::Def(DefKind::Method, _) => {
+                report_unexpected_res(res);
                 return tcx.types.err;
             }
-            Def::Ctor(_, _, CtorKind::Fn) => {
-                tcx.expect_variant_def(def)
+            Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
+                tcx.expect_variant_res(res)
             }
-            _ => bug!("unexpected pattern definition: {:?}", def)
+            _ => bug!("unexpected pattern resolution: {:?}", res)
         };
 
         // Replace constructor type with constructed type for tuple struct patterns.
@@ -947,7 +947,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             let fields_ending = if variant.fields.len() == 1 { "" } else { "s" };
             struct_span_err!(tcx.sess, pat.span, E0023,
                              "this pattern has {} field{}, but the corresponding {} has {} field{}",
-                             subpats.len(), subpats_ending, def.kind_name(),
+                             subpats.len(), subpats_ending, res.kind_name(),
                              variant.fields.len(),  fields_ending)
                 .span_label(pat.span, format!("expected {} field{}, found {}",
                                               variant.fields.len(), fields_ending, subpats.len()))

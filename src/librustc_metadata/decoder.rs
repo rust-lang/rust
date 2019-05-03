@@ -8,7 +8,7 @@ use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash, Definitions};
 use rustc::hir;
 use rustc::middle::cstore::LinkagePreference;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
-use rustc::hir::def::{self, Def, CtorOf, CtorKind};
+use rustc::hir::def::{self, Res, DefKind, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, DefIndexAddressSpace,
                          CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
 use rustc::hir::map::definitions::DefPathTable;
@@ -399,32 +399,32 @@ impl<'a, 'tcx> MetadataBlob {
 }
 
 impl<'tcx> EntryKind<'tcx> {
-    fn to_def(&self, did: DefId) -> Option<Def> {
+    fn def_kind(&self) -> Option<DefKind> {
         Some(match *self {
-            EntryKind::Const(..) => Def::Const(did),
-            EntryKind::AssociatedConst(..) => Def::AssociatedConst(did),
+            EntryKind::Const(..) => DefKind::Const,
+            EntryKind::AssociatedConst(..) => DefKind::AssociatedConst,
             EntryKind::ImmStatic |
             EntryKind::MutStatic |
             EntryKind::ForeignImmStatic |
-            EntryKind::ForeignMutStatic => Def::Static(did),
-            EntryKind::Struct(_, _) => Def::Struct(did),
-            EntryKind::Union(_, _) => Def::Union(did),
+            EntryKind::ForeignMutStatic => DefKind::Static,
+            EntryKind::Struct(_, _) => DefKind::Struct,
+            EntryKind::Union(_, _) => DefKind::Union,
             EntryKind::Fn(_) |
-            EntryKind::ForeignFn(_) => Def::Fn(did),
-            EntryKind::Method(_) => Def::Method(did),
-            EntryKind::Type => Def::TyAlias(did),
-            EntryKind::TypeParam => Def::TyParam(did),
-            EntryKind::ConstParam => Def::ConstParam(did),
-            EntryKind::Existential => Def::Existential(did),
-            EntryKind::AssociatedType(_) => Def::AssociatedTy(did),
-            EntryKind::AssociatedExistential(_) => Def::AssociatedExistential(did),
-            EntryKind::Mod(_) => Def::Mod(did),
-            EntryKind::Variant(_) => Def::Variant(did),
-            EntryKind::Trait(_) => Def::Trait(did),
-            EntryKind::TraitAlias(_) => Def::TraitAlias(did),
-            EntryKind::Enum(..) => Def::Enum(did),
-            EntryKind::MacroDef(_) => Def::Macro(did, MacroKind::Bang),
-            EntryKind::ForeignType => Def::ForeignTy(did),
+            EntryKind::ForeignFn(_) => DefKind::Fn,
+            EntryKind::Method(_) => DefKind::Method,
+            EntryKind::Type => DefKind::TyAlias,
+            EntryKind::TypeParam => DefKind::TyParam,
+            EntryKind::ConstParam => DefKind::ConstParam,
+            EntryKind::Existential => DefKind::Existential,
+            EntryKind::AssociatedType(_) => DefKind::AssociatedTy,
+            EntryKind::AssociatedExistential(_) => DefKind::AssociatedExistential,
+            EntryKind::Mod(_) => DefKind::Mod,
+            EntryKind::Variant(_) => DefKind::Variant,
+            EntryKind::Trait(_) => DefKind::Trait,
+            EntryKind::TraitAlias(_) => DefKind::TraitAlias,
+            EntryKind::Enum(..) => DefKind::Enum,
+            EntryKind::MacroDef(_) => DefKind::Macro(MacroKind::Bang),
+            EntryKind::ForeignType => DefKind::ForeignTy,
 
             EntryKind::ForeignMod |
             EntryKind::GlobalAsm |
@@ -507,12 +507,12 @@ impl<'a, 'tcx> CrateMetadata {
             .expect("no name in item_name")
     }
 
-    pub fn get_def(&self, index: DefIndex) -> Option<Def> {
+    pub fn def_kind(&self, index: DefIndex) -> Option<DefKind> {
         if !self.is_proc_macro(index) {
-            self.entry(index).kind.to_def(self.local_def_id(index))
+            self.entry(index).kind.def_kind()
         } else {
             let kind = self.proc_macros.as_ref().unwrap()[index.to_proc_macro_index()].1.kind();
-            Some(Def::Macro(self.local_def_id(index), kind))
+            Some(DefKind::Macro(kind))
         }
     }
 
@@ -743,17 +743,14 @@ impl<'a, 'tcx> CrateMetadata {
              */
             if id == CRATE_DEF_INDEX {
                 for (id, &(name, ref ext)) in proc_macros.iter().enumerate() {
-                    let def = Def::Macro(
-                        DefId {
-                            krate: self.cnum,
-                            index: DefIndex::from_proc_macro_index(id),
-                        },
-                        ext.kind()
+                    let res = Res::Def(
+                        DefKind::Macro(ext.kind()),
+                        self.local_def_id(DefIndex::from_proc_macro_index(id)),
                     );
                     let ident = Ident::with_empty_ctxt(name);
                     callback(def::Export {
                         ident: ident,
-                        def: def,
+                        res: res,
                         vis: ty::Visibility::Public,
                         span: DUMMY_SP,
                     });
@@ -789,9 +786,9 @@ impl<'a, 'tcx> CrateMetadata {
                     // FIXME(eddyb) Don't encode these in children.
                     EntryKind::ForeignMod => {
                         for child_index in child.children.decode((self, sess)) {
-                            if let Some(def) = self.get_def(child_index) {
+                            if let Some(kind) = self.def_kind(child_index) {
                                 callback(def::Export {
-                                    def,
+                                    res: Res::Def(kind, self.local_def_id(child_index)),
                                     ident: Ident::from_interned_str(self.item_name(child_index)),
                                     vis: self.get_visibility(child_index),
                                     span: self.entry(child_index).span.decode((self, sess)),
@@ -807,30 +804,38 @@ impl<'a, 'tcx> CrateMetadata {
 
                 let def_key = self.def_key(child_index);
                 let span = child.span.decode((self, sess));
-                if let (Some(def), Some(name)) =
-                    (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
+                if let (Some(kind), Some(name)) =
+                    (self.def_kind(child_index), def_key.disambiguated_data.data.get_opt_name()) {
                     let ident = Ident::from_interned_str(name);
                     let vis = self.get_visibility(child_index);
-                    callback(def::Export { def, ident, vis, span });
+                    let def_id = self.local_def_id(child_index);
+                    let res = Res::Def(kind, def_id);
+                    callback(def::Export { res, ident, vis, span });
                     // For non-re-export structs and variants add their constructors to children.
                     // Re-export lists automatically contain constructors when necessary.
-                    match def {
-                        Def::Struct(..) => {
+                    match kind {
+                        DefKind::Struct => {
                             if let Some(ctor_def_id) = self.get_ctor_def_id(child_index) {
                                 let ctor_kind = self.get_ctor_kind(child_index);
-                                let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Struct, ctor_kind);
+                                let ctor_res = Res::Def(
+                                    DefKind::Ctor(CtorOf::Struct, ctor_kind),
+                                    ctor_def_id,
+                                );
                                 let vis = self.get_visibility(ctor_def_id.index);
-                                callback(def::Export { def: ctor_def, vis, ident, span });
+                                callback(def::Export { res: ctor_res, vis, ident, span });
                             }
                         }
-                        Def::Variant(def_id) => {
+                        DefKind::Variant => {
                             // Braced variants, unlike structs, generate unusable names in
                             // value namespace, they are reserved for possible future use.
                             // It's ok to use the variant's id as a ctor id since an
                             // error will be reported on any use of such resolution anyway.
                             let ctor_def_id = self.get_ctor_def_id(child_index).unwrap_or(def_id);
                             let ctor_kind = self.get_ctor_kind(child_index);
-                            let ctor_def = Def::Ctor(ctor_def_id, CtorOf::Variant, ctor_kind);
+                            let ctor_res = Res::Def(
+                                DefKind::Ctor(CtorOf::Variant, ctor_kind),
+                                ctor_def_id,
+                            );
                             let mut vis = self.get_visibility(ctor_def_id.index);
                             if ctor_def_id == def_id && vis == ty::Visibility::Public {
                                 // For non-exhaustive variants lower the constructor visibility to
@@ -839,11 +844,11 @@ impl<'a, 'tcx> CrateMetadata {
                                 // were already encoded in metadata.
                                 let attrs = self.get_item_attrs(def_id.index, sess);
                                 if attr::contains_name(&attrs, "non_exhaustive") {
-                                    let crate_def_id = DefId { index: CRATE_DEF_INDEX, ..def_id };
+                                    let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
                             }
-                            callback(def::Export { def: ctor_def, ident, vis, span });
+                            callback(def::Export { res: ctor_res, ident, vis, span });
                         }
                         _ => {}
                     }
@@ -853,8 +858,8 @@ impl<'a, 'tcx> CrateMetadata {
 
         if let EntryKind::Mod(data) = item.kind {
             for exp in data.decode((self, sess)).reexports.decode((self, sess)) {
-                match exp.def {
-                    Def::Macro(..) => {}
+                match exp.res {
+                    Res::Def(DefKind::Macro(..), _) => {}
                     _ if macros_only => continue,
                     _ => {}
                 }

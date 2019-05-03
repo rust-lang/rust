@@ -8,7 +8,7 @@ use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
                          CrateNum, DefIndexAddressSpace};
-use rustc::hir::def::{self, NonMacroAttrKind};
+use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
 use rustc::{bug, span_bug};
@@ -33,7 +33,7 @@ use std::cell::Cell;
 use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
 
-type Def = def::Def<ast::NodeId>;
+type Res = def::Res<ast::NodeId>;
 
 #[derive(Clone, Debug)]
 pub struct InvocationData<'a> {
@@ -140,7 +140,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             fn visit_ident(&mut self, ident: Ident) {
                 if ident.name == keywords::DollarCrate.name() {
                     let name = match self.resolver.resolve_crate_root(ident).kind {
-                        ModuleKind::Def(_, name) if name != keywords::Invalid.name() => name,
+                        ModuleKind::Def(.., name) if name != keywords::Invalid.name() => name,
                         _ => keywords::Crate.name(),
                     };
                     ident.span.ctxt().set_dollar_crate_name(name);
@@ -179,7 +179,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         let kind = ext.kind();
         self.macro_map.insert(def_id, ext);
         let binding = self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
+            kind: NameBindingKind::Res(Res::Def(DefKind::Macro(kind), def_id), false),
             ambiguity: None,
             span: DUMMY_SP,
             vis: ty::Visibility::Public,
@@ -209,8 +209,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        let (def, ext) = match self.resolve_macro_to_def(path, kind, &parent_scope, true, force) {
-            Ok((def, ext)) => (def, ext),
+        let (res, ext) = match self.resolve_macro_to_res(path, kind, &parent_scope, true, force) {
+            Ok((res, ext)) => (res, ext),
             Err(Determinacy::Determined) if kind == MacroKind::Attr => {
                 // Replace unresolved attributes with used inert attributes for better recovery.
                 return Ok(Some(Lrc::new(SyntaxExtension::NonMacroAttr { mark_used: true })));
@@ -218,7 +218,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             Err(determinacy) => return Err(determinacy),
         };
 
-        if let Def::Macro(def_id, _) = def {
+        if let Res::Def(DefKind::Macro(_), def_id) = res {
             if after_derive {
                 self.session.span_err(invoc.span(),
                                       "macro attributes must be placed before `#[derive]`");
@@ -238,7 +238,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                           derives_in_scope: Vec<ast::Path>, force: bool)
                           -> Result<Lrc<SyntaxExtension>, Determinacy> {
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        Ok(self.resolve_macro_to_def(path, kind, &parent_scope, false, force)?.1)
+        Ok(self.resolve_macro_to_res(path, kind, &parent_scope, false, force)?.1)
     }
 
     fn check_unused_macros(&self) {
@@ -274,18 +274,18 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_macro_to_def(
+    fn resolve_macro_to_res(
         &mut self,
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
-    ) -> Result<(Def, Lrc<SyntaxExtension>), Determinacy> {
-        let def = self.resolve_macro_to_def_inner(path, kind, parent_scope, trace, force);
+    ) -> Result<(Res, Lrc<SyntaxExtension>), Determinacy> {
+        let res = self.resolve_macro_to_res_inner(path, kind, parent_scope, trace, force);
 
         // Report errors and enforce feature gates for the resolved macro.
-        if def != Err(Determinacy::Undetermined) {
+        if res != Err(Determinacy::Undetermined) {
             // Do not report duplicated errors on every undetermined resolution.
             for segment in &path.segments {
                 if let Some(args) = &segment.args {
@@ -294,10 +294,10 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        let def = def?;
+        let res = res?;
 
-        match def {
-            Def::Macro(def_id, macro_kind) => {
+        match res {
+            Res::Def(DefKind::Macro(macro_kind), def_id) => {
                 self.unused_macros.remove(&def_id);
                 if macro_kind == MacroKind::ProcMacroStub {
                     let msg = "can't use a procedural macro from the same crate that defines it";
@@ -305,7 +305,7 @@ impl<'a> Resolver<'a> {
                     return Err(Determinacy::Determined);
                 }
             }
-            Def::NonMacroAttr(attr_kind) => {
+            Res::NonMacroAttr(attr_kind) => {
                 if kind == MacroKind::Attr {
                     let features = self.session.features_untracked();
                     if attr_kind == NonMacroAttrKind::Custom {
@@ -331,20 +331,20 @@ impl<'a> Resolver<'a> {
                     }
                 } else {
                     // Not only attributes, but anything in macro namespace can result in
-                    // `Def::NonMacroAttr` definition (e.g., `inline!()`), so we must report
+                    // `Res::NonMacroAttr` definition (e.g., `inline!()`), so we must report
                     // an error for those cases.
-                    let msg = format!("expected a macro, found {}", def.kind_name());
+                    let msg = format!("expected a macro, found {}", res.kind_name());
                     self.session.span_err(path.span, &msg);
                     return Err(Determinacy::Determined);
                 }
             }
-            Def::Err => {
+            Res::Err => {
                 return Err(Determinacy::Determined);
             }
-            _ => panic!("expected `Def::Macro` or `Def::NonMacroAttr`"),
+            _ => panic!("expected `DefKind::Macro` or `Res::NonMacroAttr`"),
         }
 
-        Ok((def, self.get_macro(def)))
+        Ok((res, self.get_macro(res)))
     }
 
     fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: &str) {
@@ -401,14 +401,14 @@ impl<'a> Resolver<'a> {
         err.emit();
     }
 
-    pub fn resolve_macro_to_def_inner(
+    pub fn resolve_macro_to_res_inner(
         &mut self,
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
         trace: bool,
         force: bool,
-    ) -> Result<Def, Determinacy> {
+    ) -> Result<Res, Determinacy> {
         let path_span = path.span;
         let mut path = Segment::from_path(path);
 
@@ -421,10 +421,10 @@ impl<'a> Resolver<'a> {
         }
 
         if path.len() > 1 {
-            let def = match self.resolve_path(&path, Some(MacroNS), parent_scope,
+            let res = match self.resolve_path(&path, Some(MacroNS), parent_scope,
                                               false, path_span, CrateLint::No) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                    Ok(path_res.base_def())
+                    Ok(path_res.base_res())
                 }
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 PathResult::NonModule(..)
@@ -435,11 +435,11 @@ impl<'a> Resolver<'a> {
 
             if trace {
                 parent_scope.module.multi_segment_macro_resolutions.borrow_mut()
-                    .push((path, path_span, kind, parent_scope.clone(), def.ok()));
+                    .push((path, path_span, kind, parent_scope.clone(), res.ok()));
             }
 
-            self.prohibit_imported_non_macro_attrs(None, def.ok(), path_span);
-            def
+            self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
+            res
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
                 path[0].ident, ScopeSet::Macro(kind), parent_scope, false, force, path_span
@@ -453,9 +453,9 @@ impl<'a> Resolver<'a> {
                     .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
             }
 
-            let def = binding.map(|binding| binding.def());
-            self.prohibit_imported_non_macro_attrs(binding.ok(), def.ok(), path_span);
-            def
+            let res = binding.map(|binding| binding.res());
+            self.prohibit_imported_non_macro_attrs(binding.ok(), res.ok(), path_span);
+            res
         }
     }
 
@@ -585,13 +585,13 @@ impl<'a> Resolver<'a> {
                     let mut result = Err(Determinacy::Determined);
                     for derive in &parent_scope.derives {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
-                        match self.resolve_macro_to_def(derive, MacroKind::Derive,
+                        match self.resolve_macro_to_res(derive, MacroKind::Derive,
                                                         &parent_scope, true, force) {
                             Ok((_, ext)) => {
                                 if let SyntaxExtension::ProcMacroDerive(_, helpers, _) = &*ext {
                                     if helpers.contains(&ident.name) {
                                         let binding =
-                                            (Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
+                                            (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
                                             ty::Visibility::Public, derive.span, Mark::root())
                                             .to_name_binding(self.arenas);
                                         result = Ok((binding, Flags::empty()));
@@ -684,7 +684,7 @@ impl<'a> Resolver<'a> {
                 }
                 WhereToResolve::BuiltinAttrs => {
                     if is_builtin_attr_name(ident.name) {
-                        let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
+                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, DUMMY_SP, Mark::root())
                                        .to_name_binding(self.arenas);
                         Ok((binding, Flags::PRELUDE))
@@ -696,7 +696,7 @@ impl<'a> Resolver<'a> {
                     if (use_prelude || rust_2015) &&
                        self.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == &**name) {
-                        let binding = (Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
+                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
                                        ty::Visibility::Public, DUMMY_SP, Mark::root())
                                        .to_name_binding(self.arenas);
                         Ok((binding, Flags::PRELUDE))
@@ -718,7 +718,7 @@ impl<'a> Resolver<'a> {
                 }
                 WhereToResolve::ToolPrelude => {
                     if use_prelude && is_known_tool(ident.name) {
-                        let binding = (Def::ToolMod, ty::Visibility::Public,
+                        let binding = (Res::ToolMod, ty::Visibility::Public,
                                        DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
                         Ok((binding, Flags::PRELUDE))
                     } else {
@@ -745,7 +745,7 @@ impl<'a> Resolver<'a> {
                 WhereToResolve::BuiltinTypes => {
                     match self.primitive_type_table.primitive_types.get(&ident.name).cloned() {
                         Some(prim_ty) => {
-                            let binding = (Def::PrimTy(prim_ty), ty::Visibility::Public,
+                            let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
                                            DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
                             Ok((binding, Flags::PRELUDE))
                         }
@@ -762,22 +762,22 @@ impl<'a> Resolver<'a> {
 
                     if let Some((innermost_binding, innermost_flags)) = innermost_result {
                         // Found another solution, if the first one was "weak", report an error.
-                        let (def, innermost_def) = (binding.def(), innermost_binding.def());
-                        if def != innermost_def {
-                            let builtin = Def::NonMacroAttr(NonMacroAttrKind::Builtin);
-                            let derive_helper = Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+                        let (res, innermost_res) = (binding.res(), innermost_binding.res());
+                        if res != innermost_res {
+                            let builtin = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
+                            let derive_helper = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                             let legacy_helper =
-                                Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
+                                Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
 
                             let ambiguity_error_kind = if is_import {
                                 Some(AmbiguityKind::Import)
-                            } else if innermost_def == builtin || def == builtin {
+                            } else if innermost_res == builtin || res == builtin {
                                 Some(AmbiguityKind::BuiltinAttr)
-                            } else if innermost_def == derive_helper || def == derive_helper {
+                            } else if innermost_res == derive_helper || res == derive_helper {
                                 Some(AmbiguityKind::DeriveHelper)
-                            } else if innermost_def == legacy_helper &&
+                            } else if innermost_res == legacy_helper &&
                                       flags.contains(Flags::PRELUDE) ||
-                                      def == legacy_helper &&
+                                      res == legacy_helper &&
                                       innermost_flags.contains(Flags::PRELUDE) {
                                 Some(AmbiguityKind::LegacyHelperVsPrelude)
                             } else if innermost_flags.contains(Flags::MACRO_RULES) &&
@@ -889,7 +889,7 @@ impl<'a> Resolver<'a> {
             // attribute. (Lexical resolution implies the first segment and attr kind should imply
             // the last segment, so we are certainly working with a single-segment attribute here.)
             assert!(ns == MacroNS);
-            let binding = (Def::NonMacroAttr(NonMacroAttrKind::Custom),
+            let binding = (Res::NonMacroAttr(NonMacroAttrKind::Custom),
                            ty::Visibility::Public, ident.span, Mark::root())
                            .to_name_binding(self.arenas);
             Ok(binding)
@@ -902,18 +902,18 @@ impl<'a> Resolver<'a> {
         let module = self.current_module;
 
         let check_consistency = |this: &mut Self, path: &[Segment], span, kind: MacroKind,
-                                 initial_def: Option<Def>, def: Def| {
-            if let Some(initial_def) = initial_def {
-                if def != initial_def && def != Def::Err && this.ambiguity_errors.is_empty() {
+                                 initial_res: Option<Res>, res: Res| {
+            if let Some(initial_res) = initial_res {
+                if res != initial_res && res != Res::Err && this.ambiguity_errors.is_empty() {
                     // Make sure compilation does not succeed if preferred macro resolution
                     // has changed after the macro had been expanded. In theory all such
                     // situations should be reported as ambiguity errors, so this is a bug.
-                    if initial_def == Def::NonMacroAttr(NonMacroAttrKind::Custom) {
+                    if initial_res == Res::NonMacroAttr(NonMacroAttrKind::Custom) {
                         // Yeah, legacy custom attributes are implemented using forced resolution
                         // (which is a best effort error recovery tool, basically), so we can't
                         // promise their resolution won't change later.
                         let msg = format!("inconsistent resolution for a macro: first {}, then {}",
-                                          initial_def.kind_name(), def.kind_name());
+                                          initial_res.kind_name(), res.kind_name());
                         this.session.span_err(span, &msg);
                     } else {
                         span_bug!(span, "inconsistent resolution for a macro");
@@ -938,14 +938,14 @@ impl<'a> Resolver<'a> {
 
         let macro_resolutions =
             mem::replace(&mut *module.multi_segment_macro_resolutions.borrow_mut(), Vec::new());
-        for (mut path, path_span, kind, parent_scope, initial_def) in macro_resolutions {
+        for (mut path, path_span, kind, parent_scope, initial_res) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
             match self.resolve_path(&path, Some(MacroNS), &parent_scope,
                                     true, path_span, CrateLint::No) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                    let def = path_res.base_def();
-                    check_consistency(self, &path, path_span, kind, initial_def, def);
+                    let res = path_res.base_res();
+                    check_consistency(self, &path, path_span, kind, initial_res, res);
                 }
                 path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed { .. } => {
                     let (span, label) = if let PathResult::Failed { span, label, .. } = path_res {
@@ -969,13 +969,13 @@ impl<'a> Resolver<'a> {
             match self.early_resolve_ident_in_lexical_scope(ident, ScopeSet::Macro(kind),
                                                             &parent_scope, true, true, ident.span) {
                 Ok(binding) => {
-                    let initial_def = initial_binding.map(|initial_binding| {
+                    let initial_res = initial_binding.map(|initial_binding| {
                         self.record_use(ident, MacroNS, initial_binding, false);
-                        initial_binding.def()
+                        initial_binding.res()
                     });
-                    let def = binding.def();
+                    let res = binding.res();
                     let seg = Segment::from_ident(ident);
-                    check_consistency(self, &[seg], ident.span, kind, initial_def, def);
+                    check_consistency(self, &[seg], ident.span, kind, initial_res, res);
                 }
                 Err(..) => {
                     assert!(initial_binding.is_none());
@@ -998,8 +998,8 @@ impl<'a> Resolver<'a> {
     }
 
     fn prohibit_imported_non_macro_attrs(&self, binding: Option<&'a NameBinding<'a>>,
-                                         def: Option<Def>, span: Span) {
-        if let Some(Def::NonMacroAttr(kind)) = def {
+                                         res: Option<Res>, span: Span) {
+        if let Some(Res::NonMacroAttr(kind)) = res {
             if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
                 let msg = format!("cannot use a {} through an import", kind.descr());
                 let mut err = self.session.struct_span_err(span, &msg);
@@ -1027,8 +1027,8 @@ impl<'a> Resolver<'a> {
             find_best_match_for_name(names, name, None)
         // Then check modules.
         }).or_else(|| {
-            let is_macro = |def| {
-                if let Def::Macro(_, def_kind) = def {
+            let is_macro = |res| {
+                if let Res::Def(DefKind::Macro(def_kind), _) = res {
                     def_kind == kind
                 } else {
                     false
@@ -1107,24 +1107,24 @@ impl<'a> Resolver<'a> {
         if def.legacy {
             let ident = ident.modern();
             self.macro_names.insert(ident);
-            let def = Def::Macro(def_id, MacroKind::Bang);
+            let res = Res::Def(DefKind::Macro(MacroKind::Bang), def_id);
             let is_macro_export = attr::contains_name(&item.attrs, "macro_export");
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
                 ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
             };
-            let binding = (def, vis, item.span, expansion).to_name_binding(self.arenas);
+            let binding = (res, vis, item.span, expansion).to_name_binding(self.arenas);
             self.set_binding_parent_module(binding, self.current_module);
             let legacy_binding = self.arenas.alloc_legacy_binding(LegacyBinding {
                 parent_legacy_scope: *current_legacy_scope, binding, ident
             });
             *current_legacy_scope = LegacyScope::Binding(legacy_binding);
-            self.all_macros.insert(ident.name, def);
+            self.all_macros.insert(ident.name, res);
             if is_macro_export {
                 let module = self.graph_root;
                 self.define(module, ident, MacroNS,
-                            (def, vis, item.span, expansion, IsMacroExport));
+                            (res, vis, item.span, expansion, IsMacroExport));
             } else {
                 if !attr::contains_name(&item.attrs, "rustc_doc_only_macro") {
                     self.check_reserved_macro_name(ident, MacroNS);
@@ -1133,12 +1133,12 @@ impl<'a> Resolver<'a> {
             }
         } else {
             let module = self.current_module;
-            let def = Def::Macro(def_id, MacroKind::Bang);
+            let res = Res::Def(DefKind::Macro(MacroKind::Bang), def_id);
             let vis = self.resolve_visibility(&item.vis);
             if vis != ty::Visibility::Public {
                 self.unused_macros.insert(def_id);
             }
-            self.define(module, ident, MacroNS, (def, vis, item.span, expansion));
+            self.define(module, ident, MacroNS, (res, vis, item.span, expansion));
         }
     }
 }

@@ -9,7 +9,7 @@ pub use self::MatchMode::*;
 use self::TrackMatchMode::*;
 use self::OverloadedCallType::*;
 
-use crate::hir::def::{CtorOf, Def};
+use crate::hir::def::{CtorOf, Res, DefKind};
 use crate::hir::def_id::DefId;
 use crate::infer::InferCtxt;
 use crate::middle::mem_categorization as mc;
@@ -862,8 +862,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
                     // Each match binding is effectively an assignment to the
                     // binding being produced.
-                    let def = Def::Local(canonical_id);
-                    if let Ok(ref binding_cmt) = mc.cat_def(pat.hir_id, pat.span, pat_ty, def) {
+                    let def = Res::Local(canonical_id);
+                    if let Ok(ref binding_cmt) = mc.cat_res(pat.hir_id, pat.span, pat_ty, def) {
                         delegate.mutate(pat.hir_id, pat.span, binding_cmt, MutateMode::Init);
                     }
 
@@ -898,23 +898,27 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 PatKind::Struct(ref qpath, ..) => qpath,
                 _ => return
             };
-            let def = mc.tables.qpath_def(qpath, pat.hir_id);
-            match def {
-                Def::Ctor(variant_ctor_did, CtorOf::Variant, ..) => {
+            let res = mc.tables.qpath_res(qpath, pat.hir_id);
+            match res {
+                Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_did) => {
                     let variant_did = mc.tcx.parent(variant_ctor_did).unwrap();
                     let downcast_cmt = mc.cat_downcast_if_needed(pat, cmt_pat, variant_did);
 
                     debug!("variantctor downcast_cmt={:?} pat={:?}", downcast_cmt, pat);
                     delegate.matched_pat(pat, &downcast_cmt, match_mode);
                 }
-                Def::Variant(variant_did) => {
+                Res::Def(DefKind::Variant, variant_did) => {
                     let downcast_cmt = mc.cat_downcast_if_needed(pat, cmt_pat, variant_did);
 
                     debug!("variant downcast_cmt={:?} pat={:?}", downcast_cmt, pat);
                     delegate.matched_pat(pat, &downcast_cmt, match_mode);
                 }
-                Def::Struct(..) | Def::Ctor(..) | Def::Union(..) |
-                Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) => {
+                Res::Def(DefKind::Struct, _)
+                | Res::Def(DefKind::Ctor(..), _)
+                | Res::Def(DefKind::Union, _)
+                | Res::Def(DefKind::TyAlias, _)
+                | Res::Def(DefKind::AssociatedTy, _)
+                | Res::SelfTy(..) => {
                     debug!("struct cmt_pat={:?} pat={:?}", cmt_pat, pat);
                     delegate.matched_pat(pat, &cmt_pat, match_mode);
                 }
@@ -968,7 +972,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         // caller's perspective
         let var_hir_id = upvar.var_id();
         let var_ty = self.mc.node_ty(var_hir_id)?;
-        self.mc.cat_def(closure_hir_id, closure_span, var_ty, upvar.def)
+        self.mc.cat_res(closure_hir_id, closure_span, var_ty, upvar.res)
     }
 }
 

@@ -2,7 +2,7 @@
 //! usable for `clean`.
 
 use rustc::hir::{self, Node};
-use rustc::hir::def::Def;
+use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
@@ -265,7 +265,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
     /// Returns `true` if the target has been inlined.
     fn maybe_inline_local(&mut self,
                           id: hir::HirId,
-                          def: Def,
+                          res: Res,
                           renamed: Option<ast::Ident>,
                           glob: bool,
                           om: &mut Module,
@@ -284,10 +284,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             false
         }
 
-        debug!("maybe_inline_local def: {:?}", def);
+        debug!("maybe_inline_local res: {:?}", res);
 
         let tcx = self.cx.tcx;
-        let def_did = if let Some(did) = def.opt_def_id() {
+        let res_did = if let Some(did) = res.opt_def_id() {
             did
         } else {
             return false;
@@ -302,22 +302,22 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // reachable in documentation -- a previously nonreachable item can be
         // made reachable by cross-crate inlining which we're checking here.
         // (this is done here because we need to know this upfront).
-        if !def_did.is_local() && !is_no_inline {
-            let attrs = clean::inline::load_attrs(self.cx, def_did);
+        if !res_did.is_local() && !is_no_inline {
+            let attrs = clean::inline::load_attrs(self.cx, res_did);
             let self_is_hidden = attrs.lists("doc").has_word("hidden");
-            match def {
-                Def::Trait(did) |
-                Def::Struct(did) |
-                Def::Union(did) |
-                Def::Enum(did) |
-                Def::ForeignTy(did) |
-                Def::TyAlias(did) if !self_is_hidden => {
+            match res {
+                Res::Def(DefKind::Trait, did) |
+                Res::Def(DefKind::Struct, did) |
+                Res::Def(DefKind::Union, did) |
+                Res::Def(DefKind::Enum, did) |
+                Res::Def(DefKind::ForeignTy, did) |
+                Res::Def(DefKind::TyAlias, did) if !self_is_hidden => {
                     self.cx.renderinfo
                         .borrow_mut()
                         .access_levels.map
                         .insert(did, AccessLevel::Public);
                 },
-                Def::Mod(did) => if !self_is_hidden {
+                Res::Def(DefKind::Mod, did) => if !self_is_hidden {
                     crate::visit_lib::LibEmbargoVisitor::new(self.cx).visit_mod(did);
                 },
                 _ => {},
@@ -326,21 +326,21 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             return false
         }
 
-        let def_hir_id = match tcx.hir().as_local_hir_id(def_did) {
+        let res_hir_id = match tcx.hir().as_local_hir_id(res_did) {
             Some(n) => n, None => return false
         };
 
-        let is_private = !self.cx.renderinfo.borrow().access_levels.is_public(def_did);
-        let is_hidden = inherits_doc_hidden(self.cx, def_hir_id);
+        let is_private = !self.cx.renderinfo.borrow().access_levels.is_public(res_did);
+        let is_hidden = inherits_doc_hidden(self.cx, res_hir_id);
 
         // Only inline if requested or if the item would otherwise be stripped.
         if (!please_inline && !is_private && !is_hidden) || is_no_inline {
             return false
         }
 
-        if !self.view_item_stack.insert(def_hir_id) { return false }
+        if !self.view_item_stack.insert(res_hir_id) { return false }
 
-        let ret = match tcx.hir().get_by_hir_id(def_hir_id) {
+        let ret = match tcx.hir().get_by_hir_id(res_hir_id) {
             Node::Item(&hir::Item { node: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for i in &m.item_ids {
@@ -373,7 +373,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             _ => false,
         };
-        self.view_item_stack.remove(&def_hir_id);
+        self.view_item_stack.remove(&res_hir_id);
         ret
     }
 
@@ -420,9 +420,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
                 // Struct and variant constructors and proc macro stubs always show up alongside
                 // their definitions, we've already processed them so just discard these.
-                match path.def {
-                    Def::Ctor(..) | Def::SelfCtor(..) | Def::Macro(_, MacroKind::ProcMacroStub) =>
-                        return,
+                match path.res {
+                    Res::Def(DefKind::Ctor(..), _)
+                    | Res::SelfCtor(..)
+                    | Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) => return,
                     _ => {}
                 }
 
@@ -439,7 +440,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     });
                     let ident = if is_glob { None } else { Some(ident) };
                     if self.maybe_inline_local(item.hir_id,
-                                               path.def,
+                                               path.res,
                                                ident,
                                                is_glob,
                                                om,

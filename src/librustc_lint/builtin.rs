@@ -21,7 +21,7 @@
 //! If you define a new `LateLintPass`, you will also need to add it to the
 //! `late_lint_methods!` invocation in `lib.rs`.
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::{self, Ty};
 use rustc::{lint, util};
@@ -154,7 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonShorthandFieldPatterns {
         if let PatKind::Struct(ref qpath, ref field_pats, _) = pat.node {
             let variant = cx.tables.pat_ty(pat).ty_adt_def()
                                    .expect("struct pattern type is not an ADT")
-                                   .variant_of_def(cx.tables.qpath_def(qpath, pat.hir_id));
+                                   .variant_of_res(cx.tables.qpath_res(qpath, pat.hir_id));
             for fieldpat in field_pats {
                 if fieldpat.node.is_shorthand {
                     continue;
@@ -404,7 +404,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) => {
                 // If the trait is private, add the impl items to private_traits so they don't get
                 // reported for missing docs.
-                let real_trait = trait_ref.path.def.def_id();
+                let real_trait = trait_ref.path.res.def_id();
                 if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(real_trait) {
                     match cx.tcx.hir().find_by_hir_id(hir_id) {
                         Some(Node::Item(item)) => {
@@ -912,11 +912,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
              expr: &hir::Expr)
              -> Option<(Ty<'tcx>, Ty<'tcx>)> {
             let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
-                cx.tables.qpath_def(qpath, expr.hir_id)
+                cx.tables.qpath_res(qpath, expr.hir_id)
             } else {
                 return None;
             };
-            if let Def::Fn(did) = def {
+            if let Res::Def(DefKind::Fn, did) = def {
                 if !def_id_is_transmute(cx, did) {
                     return None;
                 }
@@ -1071,8 +1071,8 @@ impl TypeAliasBounds {
                 // If this is a type variable, we found a `T::Assoc`.
                 match ty.node {
                     hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
-                        match path.def {
-                            Def::TyParam(_) => true,
+                        match path.res {
+                            Res::Def(DefKind::TyParam, _) => true,
                             _ => false
                         }
                     }

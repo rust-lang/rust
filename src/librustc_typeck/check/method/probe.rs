@@ -6,7 +6,7 @@ use super::suggest;
 use crate::check::autoderef::{self, Autoderef};
 use crate::check::FnCtxt;
 use crate::hir::def_id::DefId;
-use crate::hir::def::Def;
+use crate::hir::def::DefKind;
 use crate::namespace::Namespace;
 
 use rustc_data_structures::sync::Lrc;
@@ -68,7 +68,7 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     allow_similar_names: bool,
 
     /// Some(candidate) if there is a private candidate
-    private_candidate: Option<Def>,
+    private_candidate: Option<(DefKind, DefId)>,
 
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
@@ -520,7 +520,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.extension_candidates.push(candidate);
             }
         } else if self.private_candidate.is_none() {
-            self.private_candidate = Some(candidate.item.def());
+            self.private_candidate =
+                Some((candidate.item.def_kind(), candidate.item.def_id));
         }
     }
 
@@ -861,9 +862,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                                method: &ty::AssociatedItem,
                                self_ty: Option<Ty<'tcx>>,
                                expected: Ty<'tcx>) -> bool {
-        match method.def() {
-            Def::Method(def_id) => {
-                let fty = self.tcx.fn_sig(def_id);
+        match method.kind {
+            ty::AssociatedKind::Method => {
+                let fty = self.tcx.fn_sig(method.def_id);
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let fty = fty.subst(self.tcx, substs);
@@ -1004,8 +1005,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
             _ => vec![],
         };
 
-        if let Some(def) = private_candidate {
-            return Err(MethodError::PrivateMatch(def, out_of_scope_traits));
+        if let Some((kind, def_id)) = private_candidate {
+            return Err(MethodError::PrivateMatch(kind, def_id, out_of_scope_traits));
         }
         let lev_candidate = self.probe_for_lev_candidate()?;
 

@@ -1,5 +1,5 @@
 use errors::Applicability;
-use rustc::hir::def::{Def, Namespace::{self, *}, PerNS};
+use rustc::hir::def::{Res, DefKind, Namespace::{self, *}, PerNS};
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::lint as lint;
@@ -56,7 +56,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                ns: Namespace,
                current_item: &Option<String>,
                parent_id: Option<hir::HirId>)
-        -> Result<(Def, Option<String>), ()>
+        -> Result<(Res, Option<String>), ()>
     {
         let cx = self.cx;
 
@@ -74,12 +74,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             if let Ok(result) = result {
                 // In case this is a trait item, skip the
                 // early return and try looking for the trait.
-                let value = match result.def {
-                    Def::Method(_) | Def::AssociatedConst(_) => true,
-                    Def::AssociatedTy(_) => false,
-                    Def::Variant(_) => return handle_variant(cx, result.def),
+                let value = match result.res {
+                    Res::Def(DefKind::Method, _) | Res::Def(DefKind::AssociatedConst, _) => true,
+                    Res::Def(DefKind::AssociatedTy, _) => false,
+                    Res::Def(DefKind::Variant, _) => return handle_variant(cx, result.res),
                     // Not a trait item; just return what we found.
-                    _ => return Ok((result.def, None))
+                    _ => return Ok((result.res, None))
                 };
 
                 if value != (ns == ValueNS) {
@@ -132,8 +132,11 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             let ty = cx.enter_resolver(|resolver| resolver.with_scope(node_id, |resolver| {
                     resolver.resolve_str_path_error(DUMMY_SP, &path, false)
             }))?;
-            match ty.def {
-                Def::Struct(did) | Def::Union(did) | Def::Enum(did) | Def::TyAlias(did) => {
+            match ty.res {
+                Res::Def(DefKind::Struct, did)
+                | Res::Def(DefKind::Union, did)
+                | Res::Def(DefKind::Enum, did)
+                | Res::Def(DefKind::TyAlias, did) => {
                     let item = cx.tcx.inherent_impls(did)
                                      .iter()
                                      .flat_map(|imp| cx.tcx.associated_items(*imp))
@@ -144,7 +147,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             ty::AssociatedKind::Const if ns == ValueNS => "associatedconstant",
                             _ => return Err(())
                         };
-                        Ok((ty.def, Some(format!("{}.{}", out, item_name))))
+                        Ok((ty.res, Some(format!("{}.{}", out, item_name))))
                     } else {
                         match cx.tcx.type_of(did).sty {
                             ty::Adt(def, _) => {
@@ -156,7 +159,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                        .iter()
                                        .find(|item| item.ident.name == item_name)
                                 } {
-                                    Ok((ty.def,
+                                    Ok((ty.res,
                                         Some(format!("{}.{}",
                                                      if def.is_enum() {
                                                          "variant"
@@ -172,7 +175,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         }
                     }
                 }
-                Def::Trait(did) => {
+                Res::Def(DefKind::Trait, did) => {
                     let item = cx.tcx.associated_item_def_ids(did).iter()
                                  .map(|item| cx.tcx.associated_item(*item))
                                  .find(|item| item.ident.name == item_name);
@@ -190,7 +193,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             _ => return Err(())
                         };
 
-                        Ok((ty.def, Some(format!("{}.{}", kind, item_name))))
+                        Ok((ty.res, Some(format!("{}.{}", kind, item_name))))
                     } else {
                         Err(())
                     }
@@ -280,7 +283,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
 
             let link = ori_link.replace("`", "");
-            let (def, fragment) = {
+            let (res, fragment) = {
                 let mut kind = None;
                 let path_str = if let Some(prefix) =
                     ["struct@", "enum@", "type@",
@@ -315,8 +318,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
                 match kind {
                     Some(ns @ ValueNS) => {
-                        if let Ok(def) = self.resolve(path_str, ns, &current_item, parent_node) {
-                            def
+                        if let Ok(res) = self.resolve(path_str, ns, &current_item, parent_node) {
+                            res
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
                             // This could just be a normal link or a broken link
@@ -326,8 +329,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         }
                     }
                     Some(ns @ TypeNS) => {
-                        if let Ok(def) = self.resolve(path_str, ns, &current_item, parent_node) {
-                            def
+                        if let Ok(res) = self.resolve(path_str, ns, &current_item, parent_node) {
+                            res
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
                             // This could just be a normal link.
@@ -337,18 +340,18 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     None => {
                         // Try everything!
                         let candidates = PerNS {
-                            macro_ns: macro_resolve(cx, path_str).map(|def| (def, None)),
+                            macro_ns: macro_resolve(cx, path_str).map(|res| (res, None)),
                             type_ns: self
                                 .resolve(path_str, TypeNS, &current_item, parent_node)
                                 .ok(),
                             value_ns: self
                                 .resolve(path_str, ValueNS, &current_item, parent_node)
                                 .ok()
-                                .and_then(|(def, fragment)| {
+                                .and_then(|(res, fragment)| {
                                     // Constructors are picked up in the type namespace.
-                                    match def {
-                                        Def::Ctor(..) | Def::SelfCtor(..) => None,
-                                        _ => Some((def, fragment))
+                                    match res {
+                                        Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => None,
+                                        _ => Some((res, fragment))
                                     }
                                 }),
                         };
@@ -369,14 +372,14 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                                 path_str,
                                 &dox,
                                 link_range,
-                                candidates.map(|candidate| candidate.map(|(def, _)| def)),
+                                candidates.map(|candidate| candidate.map(|(res, _)| res)),
                             );
                             continue;
                         }
                     }
                     Some(MacroNS) => {
-                        if let Some(def) = macro_resolve(cx, path_str) {
-                            (def, None)
+                        if let Some(res) = macro_resolve(cx, path_str) {
+                            (res, None)
                         } else {
                             resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
                             continue
@@ -385,10 +388,10 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                 }
             };
 
-            if let Def::PrimTy(_) = def {
+            if let Res::PrimTy(_) = res {
                 item.attrs.links.push((ori_link, None, fragment));
             } else {
-                let id = register_def(cx, def);
+                let id = register_res(cx, res);
                 item.attrs.links.push((ori_link, Some(id), fragment));
             }
         }
@@ -419,24 +422,24 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 }
 
 /// Resolves a string as a macro.
-fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Def> {
+fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
     use syntax::ext::base::{MacroKind, SyntaxExtension};
     let segment = ast::PathSegment::from_ident(Ident::from_str(path_str));
     let path = ast::Path { segments: vec![segment], span: DUMMY_SP };
     cx.enter_resolver(|resolver| {
         let parent_scope = resolver.dummy_parent_scope();
-        if let Ok(def) = resolver.resolve_macro_to_def_inner(&path, MacroKind::Bang,
+        if let Ok(res) = resolver.resolve_macro_to_res_inner(&path, MacroKind::Bang,
                                                             &parent_scope, false, false) {
-            if let Def::Macro(_, MacroKind::ProcMacroStub) = def {
+            if let Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), _) = res {
                 // skip proc-macro stubs, they'll cause `get_macro` to crash
             } else {
-                if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(def) {
-                    return Some(def.map_id(|_| panic!("unexpected id")));
+                if let SyntaxExtension::DeclMacro { .. } = *resolver.get_macro(res) {
+                    return Some(res.map_id(|_| panic!("unexpected id")));
                 }
             }
         }
-        if let Some(def) = resolver.all_macros.get(&Symbol::intern(path_str)) {
-            return Some(def.map_id(|_| panic!("unexpected id")));
+        if let Some(res) = resolver.all_macros.get(&Symbol::intern(path_str)) {
+            return Some(res.map_id(|_| panic!("unexpected id")));
         }
         None
     })
@@ -496,14 +499,14 @@ fn ambiguity_error(
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
-    candidates: PerNS<Option<Def>>,
+    candidates: PerNS<Option<Res>>,
 ) {
     let sp = span_of_attrs(attrs);
 
     let mut msg = format!("`{}` is ", path_str);
 
     let candidates = [TypeNS, ValueNS, MacroNS].iter().filter_map(|&ns| {
-        candidates[ns].map(|def| (def, ns))
+        candidates[ns].map(|res| (res, ns))
     }).collect::<Vec<_>>();
     match candidates.as_slice() {
         [(first_def, _), (second_def, _)] => {
@@ -517,11 +520,11 @@ fn ambiguity_error(
         }
         _ => {
             let mut candidates = candidates.iter().peekable();
-            while let Some((def, _)) = candidates.next() {
+            while let Some((res, _)) = candidates.next() {
                 if candidates.peek().is_some() {
-                    msg += &format!("{} {}, ", def.article(), def.kind_name());
+                    msg += &format!("{} {}, ", res.article(), res.kind_name());
                 } else {
-                    msg += &format!("and {} {}", def.article(), def.kind_name());
+                    msg += &format!("and {} {}", res.article(), res.kind_name());
                 }
             }
         }
@@ -539,23 +542,23 @@ fn ambiguity_error(
             diag.set_span(sp);
             diag.span_label(sp, "ambiguous link");
 
-            for (def, ns) in candidates {
-                let (action, mut suggestion) = match def {
-                    Def::Method(..) | Def::Fn(..) => {
+            for (res, ns) in candidates {
+                let (action, mut suggestion) = match res {
+                    Res::Def(DefKind::Method, _) | Res::Def(DefKind::Fn, _) => {
                         ("add parentheses", format!("{}()", path_str))
                     }
-                    Def::Macro(..) => {
+                    Res::Def(DefKind::Macro(..), _) => {
                         ("add an exclamation mark", format!("{}!", path_str))
                     }
                     _ => {
-                        let type_ = match (def, ns) {
-                            (Def::Const(..), _) => "const",
-                            (Def::Static(..), _) => "static",
-                            (Def::Struct(..), _) => "struct",
-                            (Def::Enum(..), _) => "enum",
-                            (Def::Union(..), _) => "union",
-                            (Def::Trait(..), _) => "trait",
-                            (Def::Mod(..), _) => "module",
+                        let type_ = match (res, ns) {
+                            (Res::Def(DefKind::Const, _), _) => "const",
+                            (Res::Def(DefKind::Static, _), _) => "static",
+                            (Res::Def(DefKind::Struct, _), _) => "struct",
+                            (Res::Def(DefKind::Enum, _), _) => "enum",
+                            (Res::Def(DefKind::Union, _), _) => "union",
+                            (Res::Def(DefKind::Trait, _), _) => "trait",
+                            (Res::Def(DefKind::Mod, _), _) => "module",
                             (_, TypeNS) => "type",
                             (_, ValueNS) => "value",
                             (_, MacroNS) => "macro",
@@ -572,7 +575,7 @@ fn ambiguity_error(
 
                 diag.span_suggestion(
                     sp,
-                    &format!("to link to the {}, {}", def.kind_name(), action),
+                    &format!("to link to the {}, {}", res.kind_name(), action),
                     suggestion,
                     Applicability::MaybeIncorrect,
                 );
@@ -600,41 +603,41 @@ fn ambiguity_error(
     diag.emit();
 }
 
-/// Given an enum variant's def, return the def of its enum and the associated fragment.
-fn handle_variant(cx: &DocContext<'_>, def: Def) -> Result<(Def, Option<String>), ()> {
+/// Given an enum variant's res, return the res of its enum and the associated fragment.
+fn handle_variant(cx: &DocContext<'_>, res: Res) -> Result<(Res, Option<String>), ()> {
     use rustc::ty::DefIdTree;
 
-    let parent = if let Some(parent) = cx.tcx.parent(def.def_id()) {
+    let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
         parent
     } else {
         return Err(())
     };
-    let parent_def = Def::Enum(parent);
-    let variant = cx.tcx.expect_variant_def(def);
+    let parent_def = Res::Def(DefKind::Enum, parent);
+    let variant = cx.tcx.expect_variant_res(res);
     Ok((parent_def, Some(format!("{}.v", variant.ident.name))))
 }
 
-const PRIMITIVES: &[(&str, Def)] = &[
-    ("u8",    Def::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U8))),
-    ("u16",   Def::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U16))),
-    ("u32",   Def::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U32))),
-    ("u64",   Def::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U64))),
-    ("u128",  Def::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U128))),
-    ("usize", Def::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::Usize))),
-    ("i8",    Def::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I8))),
-    ("i16",   Def::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I16))),
-    ("i32",   Def::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I32))),
-    ("i64",   Def::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I64))),
-    ("i128",  Def::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I128))),
-    ("isize", Def::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::Isize))),
-    ("f32",   Def::PrimTy(hir::PrimTy::Float(syntax::ast::FloatTy::F32))),
-    ("f64",   Def::PrimTy(hir::PrimTy::Float(syntax::ast::FloatTy::F64))),
-    ("str",   Def::PrimTy(hir::PrimTy::Str)),
-    ("bool",  Def::PrimTy(hir::PrimTy::Bool)),
-    ("char",  Def::PrimTy(hir::PrimTy::Char)),
+const PRIMITIVES: &[(&str, Res)] = &[
+    ("u8",    Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U8))),
+    ("u16",   Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U16))),
+    ("u32",   Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U32))),
+    ("u64",   Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U64))),
+    ("u128",  Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::U128))),
+    ("usize", Res::PrimTy(hir::PrimTy::Uint(syntax::ast::UintTy::Usize))),
+    ("i8",    Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I8))),
+    ("i16",   Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I16))),
+    ("i32",   Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I32))),
+    ("i64",   Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I64))),
+    ("i128",  Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::I128))),
+    ("isize", Res::PrimTy(hir::PrimTy::Int(syntax::ast::IntTy::Isize))),
+    ("f32",   Res::PrimTy(hir::PrimTy::Float(syntax::ast::FloatTy::F32))),
+    ("f64",   Res::PrimTy(hir::PrimTy::Float(syntax::ast::FloatTy::F64))),
+    ("str",   Res::PrimTy(hir::PrimTy::Str)),
+    ("bool",  Res::PrimTy(hir::PrimTy::Bool)),
+    ("char",  Res::PrimTy(hir::PrimTy::Char)),
 ];
 
-fn is_primitive(path_str: &str, ns: Namespace) -> Option<Def> {
+fn is_primitive(path_str: &str, ns: Namespace) -> Option<Res> {
     if ns == TypeNS {
         PRIMITIVES.iter().find(|x| x.0 == path_str).map(|x| x.1)
     } else {

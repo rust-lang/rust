@@ -29,7 +29,7 @@ use crate::{id_from_def_id, id_from_node_id, SaveContext};
 
 use rls_data::{SigElement, Signature};
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{Res, DefKind};
 use syntax::ast::{self, NodeId};
 use syntax::print::pprust;
 
@@ -273,8 +273,8 @@ impl Sig for ast::Ty {
                 };
 
                 let name = pprust::path_segment_to_string(path.segments.last().ok_or("Bad path")?);
-                let def = scx.get_path_def(id.ok_or("Missing id for Path")?);
-                let id = id_from_def_id(def.def_id());
+                let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
+                let id = id_from_def_id(res.def_id());
                 if path.segments.len() - qself.position == 1 {
                     let start = offset + prefix.len();
                     let end = start + name.len();
@@ -576,17 +576,19 @@ impl Sig for ast::Item {
 
 impl Sig for ast::Path {
     fn make(&self, offset: usize, id: Option<NodeId>, scx: &SaveContext<'_, '_>) -> Result {
-        let def = scx.get_path_def(id.ok_or("Missing id for Path")?);
+        let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
 
-        let (name, start, end) = match def {
-            Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => {
+        let (name, start, end) = match res {
+            Res::Label(..) | Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => {
                 return Ok(Signature {
                     text: pprust::path_to_string(self),
                     defs: vec![],
                     refs: vec![],
                 })
             }
-            Def::AssociatedConst(..) | Def::Variant(..) | Def::Ctor(..) => {
+            Res::Def(DefKind::AssociatedConst, _)
+            | Res::Def(DefKind::Variant, _)
+            | Res::Def(DefKind::Ctor(..), _) => {
                 let len = self.segments.len();
                 if len < 2 {
                     return Err("Bad path");
@@ -606,7 +608,7 @@ impl Sig for ast::Path {
             }
         };
 
-        let id = id_from_def_id(def.def_id());
+        let id = id_from_def_id(res.def_id());
         Ok(Signature {
             text: name,
             defs: vec![],

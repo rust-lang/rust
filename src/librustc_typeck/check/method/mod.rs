@@ -15,7 +15,7 @@ use crate::namespace::Namespace;
 use errors::{Applicability, DiagnosticBuilder};
 use rustc_data_structures::sync::Lrc;
 use rustc::hir;
-use rustc::hir::def::{CtorOf, Def};
+use rustc::hir::def::{CtorOf, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -53,9 +53,9 @@ pub enum MethodError<'tcx> {
     // Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
 
-    // Found an applicable method, but it is not visible. The second argument contains a list of
+    // Found an applicable method, but it is not visible. The third argument contains a list of
     // not-in-scope traits which may work.
-    PrivateMatch(Def, Vec<DefId>),
+    PrivateMatch(DefKind, DefId, Vec<DefId>),
 
     // Found a `Self: Sized` bound where `Self` is a trait object, also the caller may have
     // forgotten to import a trait.
@@ -400,7 +400,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         method_name: ast::Ident,
         self_ty: Ty<'tcx>,
         expr_id: hir::HirId
-    ) -> Result<Def, MethodError<'tcx>> {
+    ) -> Result<(DefKind, DefId), MethodError<'tcx>> {
         debug!(
             "resolve_ufcs: method_name={:?} self_ty={:?} expr_id={:?}",
             method_name, self_ty, expr_id,
@@ -422,9 +422,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // them as well. It's ok to use the variant's id as a ctor id since an
                     // error will be reported on any use of such resolution anyway.
                     let ctor_def_id = variant_def.ctor_def_id.unwrap_or(variant_def.def_id);
-                    let def = Def::Ctor(ctor_def_id, CtorOf::Variant, variant_def.ctor_kind);
-                    tcx.check_stability(def.def_id(), Some(expr_id), span);
-                    return Ok(def);
+                    tcx.check_stability(ctor_def_id, Some(expr_id), span);
+                    return Ok((
+                        DefKind::Ctor(CtorOf::Variant, variant_def.ctor_kind),
+                        ctor_def_id,
+                    ));
                 }
             }
         }
@@ -439,10 +441,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 .unwrap().insert(import_def_id);
         }
 
-        let def = pick.item.def();
-        debug!("resolve_ufcs: def={:?}", def);
-        tcx.check_stability(def.def_id(), Some(expr_id), span);
-        Ok(def)
+        let def_kind = pick.item.def_kind();
+        debug!("resolve_ufcs: def_kind={:?}, def_id={:?}", def_kind, pick.item.def_id);
+        tcx.check_stability(pick.item.def_id, Some(expr_id), span);
+        Ok((def_kind, pick.item.def_id))
     }
 
     /// Finds item with name `item_name` defined in impl/trait `def_id`

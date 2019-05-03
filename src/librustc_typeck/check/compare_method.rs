@@ -1,4 +1,5 @@
 use rustc::hir::{self, GenericParamKind, ImplItemKind, TraitItemKind};
+use rustc::hir::def::{Res, DefKind};
 use rustc::infer::{self, InferOk};
 use rustc::ty::{self, TyCtxt, GenericParamDefKind};
 use rustc::ty::util::ExplicitSelf;
@@ -844,7 +845,7 @@ fn compare_synthetic_generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 if let hir::TyKind::Path(
                                     hir::QPath::Resolved(None, ref path)) = ty.node
                                 {
-                                    if let hir::def::Def::TyParam(def_id) = path.def {
+                                    if let Res::Def(DefKind::TyParam, def_id) = path.res {
                                         if def_id == self.1 {
                                             self.0 = Some(ty.span);
                                         }

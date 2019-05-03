@@ -1,4 +1,4 @@
-use crate::hir::def::Def;
+use crate::hir::def::{Res, DefKind};
 use crate::hir::def_id::DefId;
 use crate::ty::{self, Ty, TyCtxt};
 use crate::ty::layout::{LayoutError, Pointer, SizeSkeleton, VariantIdx};
@@ -152,12 +152,12 @@ impl<'a, 'tcx> Visitor<'tcx> for ExprVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-        let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
-            self.tables.qpath_def(qpath, expr.hir_id)
+        let res = if let hir::ExprKind::Path(ref qpath) = expr.node {
+            self.tables.qpath_res(qpath, expr.hir_id)
         } else {
-            Def::Err
+            Res::Err
         };
-        if let Def::Fn(did) = def {
+        if let Res::Def(DefKind::Fn, did) = res {
             if self.def_id_is_transmute(did) {
                 let typ = self.tables.node_type(expr.hir_id);
                 let sig = typ.fn_sig(self.tcx);

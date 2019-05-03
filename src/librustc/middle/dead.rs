@@ -7,7 +7,7 @@ use crate::hir::{self, PatKind, TyKind};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 
-use crate::hir::def::{CtorOf, Def};
+use crate::hir::def::{CtorOf, Res, DefKind};
 use crate::hir::CodegenFnAttrFlags;
 use crate::hir::def_id::{DefId, LOCAL_CRATE};
 use crate::lint;
@@ -68,15 +68,17 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_definition(&mut self, def: Def) {
-        match def {
-            Def::Const(_) | Def::AssociatedConst(..) | Def::TyAlias(_) => {
-                self.check_def_id(def.def_id());
+    fn handle_res(&mut self, res: Res) {
+        match res {
+            Res::Def(DefKind::Const, _)
+            | Res::Def(DefKind::AssociatedConst, _)
+            | Res::Def(DefKind::TyAlias, _) => {
+                self.check_def_id(res.def_id());
             }
             _ if self.in_pat => {},
-            Def::PrimTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) |
-            Def::Local(..) | Def::Upvar(..) => {}
-            Def::Ctor(ctor_def_id, CtorOf::Variant, ..) => {
+            Res::PrimTy(..) | Res::SelfTy(..) | Res::SelfCtor(..) |
+            Res::Local(..) | Res::Upvar(..) => {}
+            Res::Def(DefKind::Ctor(CtorOf::Variant, ..), ctor_def_id) => {
                 let variant_id = self.tcx.parent(ctor_def_id).unwrap();
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 self.check_def_id(enum_id);
@@ -84,16 +86,16 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     self.check_def_id(variant_id);
                 }
             }
-            Def::Variant(variant_id) => {
+            Res::Def(DefKind::Variant, variant_id) => {
                 let enum_id = self.tcx.parent(variant_id).unwrap();
                 self.check_def_id(enum_id);
                 if !self.ignore_variant_stack.contains(&variant_id) {
                     self.check_def_id(variant_id);
                 }
             }
-            Def::ToolMod | Def::NonMacroAttr(..) | Def::Err => {}
+            Res::ToolMod | Res::NonMacroAttr(..) | Res::Err => {}
             _ => {
-                self.check_def_id(def.def_id());
+                self.check_def_id(res.def_id());
             }
         }
     }
@@ -117,10 +119,10 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, def: Def,
+    fn handle_field_pattern_match(&mut self, lhs: &hir::Pat, res: Res,
                                   pats: &[source_map::Spanned<hir::FieldPat>]) {
         let variant = match self.tables.node_type(lhs.hir_id).sty {
-            ty::Adt(adt, _) => adt.variant_of_def(def),
+            ty::Adt(adt, _) => adt.variant_of_res(res),
             _ => span_bug!(lhs.span, "non-ADT in struct pattern")
         };
         for pat in pats {
@@ -229,8 +231,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
             hir::ExprKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let def = self.tables.qpath_def(qpath, expr.hir_id);
-                self.handle_definition(def);
+                let res = self.tables.qpath_res(qpath, expr.hir_id);
+                self.handle_res(res);
             }
             hir::ExprKind::MethodCall(..) => {
                 self.lookup_and_handle_method(expr.hir_id);
@@ -268,11 +270,11 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
         match pat.node {
             PatKind::Struct(hir::QPath::Resolved(_, ref path), ref fields, _) => {
-                self.handle_field_pattern_match(pat, path.def, fields);
+                self.handle_field_pattern_match(pat, path.res, fields);
             }
             PatKind::Path(ref qpath @ hir::QPath::TypeRelative(..)) => {
-                let def = self.tables.qpath_def(qpath, pat.hir_id);
-                self.handle_definition(def);
+                let res = self.tables.qpath_res(qpath, pat.hir_id);
+                self.handle_res(res);
             }
             _ => ()
         }
@@ -283,7 +285,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
-        self.handle_definition(path.def);
+        self.handle_res(path.res);
         intravisit::walk_path(self, path);
     }
 

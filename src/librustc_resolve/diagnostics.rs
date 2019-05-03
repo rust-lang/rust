@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 use log::debug;
-use rustc::hir::def::{self, CtorKind, Namespace::*};
+use rustc::hir::def::{self, DefKind, CtorKind, Namespace::*};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::{Session, config::nightly_options};
 use syntax::ast::{self, Expr, ExprKind, Ident};
@@ -10,7 +10,7 @@ use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{BytePos, Span};
 
-type Def = def::Def<ast::NodeId>;
+type Res = def::Res<ast::NodeId>;
 
 use crate::macros::ParentScope;
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
@@ -26,20 +26,22 @@ impl<'a> Resolver<'a> {
         path: &[Segment],
         span: Span,
         source: PathSource<'_>,
-        def: Option<Def>,
+        res: Option<Res>,
     ) -> (DiagnosticBuilder<'a>, Vec<ImportSuggestion>) {
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
-        let is_expected = &|def| source.is_expected(def);
-        let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
+        let is_expected = &|res| source.is_expected(res);
+        let is_enum_variant = &|res| {
+            if let Res::Def(DefKind::Variant, _) = res { true } else { false }
+        };
 
         // Make the base error.
         let expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
         let item_str = path.last().unwrap().ident;
-        let code = source.error_code(def.is_some());
-        let (base_msg, fallback_label, base_span) = if let Some(def) = def {
-            (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
+        let code = source.error_code(res.is_some());
+        let (base_msg, fallback_label, base_span) = if let Some(res) = res {
+            (format!("expected {}, found {} `{}`", expected, res.kind_name(), path_str),
                 format!("not a {}", expected),
                 span)
         } else {
@@ -54,9 +56,9 @@ impl<'a> Resolver<'a> {
                     mod_path, Some(TypeNS), false, span, CrateLint::No
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
-                        module.def(),
+                        module.def_kind(),
                     _ => None,
-                }.map_or(String::new(), |def| format!("{} ", def.kind_name()));
+                }.map_or(String::new(), |kind| format!("{} ", kind.descr()));
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
             };
             (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
@@ -111,13 +113,14 @@ impl<'a> Resolver<'a> {
         let candidates = self.lookup_import_candidates(ident, ns, is_expected)
             .drain(..)
             .filter(|ImportSuggestion { did, .. }| {
-                match (did, def.and_then(|def| def.opt_def_id())) {
+                match (did, res.and_then(|res| res.opt_def_id())) {
                     (Some(suggestion_did), Some(actual_did)) => *suggestion_did != actual_did,
                     _ => true,
                 }
             })
             .collect::<Vec<_>>();
-        if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
+        let crate_def_id = DefId::local(CRATE_DEF_INDEX);
+        if candidates.is_empty() && is_expected(Res::Def(DefKind::Enum, crate_def_id)) {
             let enum_candidates =
                 self.lookup_import_candidates(ident, ns, is_enum_variant);
             let mut enum_candidates = enum_candidates.iter()
@@ -129,7 +132,7 @@ impl<'a> Resolver<'a> {
             if !enum_candidates.is_empty() {
                 // Contextualize for E0412 "cannot find type", but don't belabor the point
                 // (that it's a variant) for E0573 "expected type, found variant".
-                let preamble = if def.is_none() {
+                let preamble = if res.is_none() {
                     let others = match enum_candidates.len() {
                         1 => String::new(),
                         2 => " and 1 other".to_owned(),
@@ -221,11 +224,11 @@ impl<'a> Resolver<'a> {
         }
 
         // Try context-dependent help if relaxed lookup didn't work.
-        if let Some(def) = def {
+        if let Some(res) = res {
             if self.smart_resolve_context_dependent_help(&mut err,
                                                          span,
                                                          source,
-                                                         def,
+                                                         res,
                                                          &path_str,
                                                          &fallback_label) {
                 return (err, candidates);
@@ -298,12 +301,12 @@ impl<'a> Resolver<'a> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
         source: PathSource<'_>,
-        def: Def,
+        res: Res,
         path_str: &str,
         fallback_label: &str,
     ) -> bool {
         let ns = source.namespace();
-        let is_expected = &|def| source.is_expected(def);
+        let is_expected = &|res| source.is_expected(res);
 
         let path_sep = |err: &mut DiagnosticBuilder<'_>, expr: &Expr| match expr.node {
             ExprKind::Field(_, ident) => {
@@ -361,8 +364,8 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        match (def, source) {
-            (Def::Macro(..), _) => {
+        match (res, source) {
+            (Res::Def(DefKind::Macro(..), _), _) => {
                 err.span_suggestion(
                     span,
                     "use `!` to invoke the macro",
@@ -373,18 +376,20 @@ impl<'a> Resolver<'a> {
                     err.note("if you want the `try` keyword, you need to be in the 2018 edition");
                 }
             }
-            (Def::TyAlias(..), PathSource::Trait(_)) => {
+            (Res::Def(DefKind::TyAlias, _), PathSource::Trait(_)) => {
                 err.span_label(span, "type aliases cannot be used as traits");
                 if nightly_options::is_nightly_build() {
                     err.note("did you mean to use a trait alias?");
                 }
             }
-            (Def::Mod(..), PathSource::Expr(Some(parent))) => if !path_sep(err, &parent) {
-                return false;
-            },
-            (Def::Enum(..), PathSource::TupleStruct)
-                | (Def::Enum(..), PathSource::Expr(..))  => {
-                if let Some(variants) = self.collect_enum_variants(def) {
+            (Res::Def(DefKind::Mod, _), PathSource::Expr(Some(parent))) => {
+                if !path_sep(err, &parent) {
+                    return false;
+                }
+            }
+            (Res::Def(DefKind::Enum, def_id), PathSource::TupleStruct)
+                | (Res::Def(DefKind::Enum, def_id), PathSource::Expr(..))  => {
+                if let Some(variants) = self.collect_enum_variants(def_id) {
                     if !variants.is_empty() {
                         let msg = if variants.len() == 1 {
                             "try using the enum's variant"
@@ -403,7 +408,7 @@ impl<'a> Resolver<'a> {
                     err.note("did you mean to use one of the enum's variants?");
                 }
             },
-            (Def::Struct(def_id), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Struct, def_id), _) if ns == ValueNS => {
                 if let Some((ctor_def, ctor_vis))
                         = self.struct_constructors.get(&def_id).cloned() {
                     let accessible_ctor = self.is_accessible(ctor_vis);
@@ -417,16 +422,17 @@ impl<'a> Resolver<'a> {
                     bad_struct_syntax_suggestion();
                 }
             }
-            (Def::Union(..), _) |
-            (Def::Variant(..), _) |
-            (Def::Ctor(_, _, CtorKind::Fictive), _) if ns == ValueNS => {
+            (Res::Def(DefKind::Union, _), _) |
+            (Res::Def(DefKind::Variant, _), _) |
+            (Res::Def(DefKind::Ctor(_, CtorKind::Fictive), _), _) if ns == ValueNS => {
                 bad_struct_syntax_suggestion();
             }
-            (Def::SelfTy(..), _) if ns == ValueNS => {
+            (Res::SelfTy(..), _) if ns == ValueNS => {
                 err.span_label(span, fallback_label);
                 err.note("can't use `Self` as a constructor, you must use the implemented struct");
             }
-            (Def::TyAlias(_), _) | (Def::AssociatedTy(..), _) if ns == ValueNS => {
+            (Res::Def(DefKind::TyAlias, _), _)
+            | (Res::Def(DefKind::AssociatedTy, _), _) if ns == ValueNS => {
                 err.note("can't use a type alias as a constructor");
             }
             _ => return false,
@@ -622,7 +628,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let resolutions = crate_module.resolutions.borrow();
         let resolution = resolutions.get(&(ident, MacroNS))?;
         let binding = resolution.borrow().binding()?;
-        if let Def::Macro(_, MacroKind::Bang) = binding.def() {
+        if let Res::Def(DefKind::Macro(MacroKind::Bang), _) = binding.res() {
             let module_name = crate_module.kind.name().unwrap();
             let import = match directive.subclass {
                 ImportDirectiveSubclass::SingleImport { source, target, .. } if source != target =>
