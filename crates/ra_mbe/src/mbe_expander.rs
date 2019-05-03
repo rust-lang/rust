@@ -81,9 +81,25 @@ struct Bindings {
 enum Binding {
     Simple(tt::TokenTree),
     Nested(Vec<Binding>),
+    Empty,
 }
 
 impl Bindings {
+    fn push_optional(&mut self, name: &SmolStr) {
+        // FIXME: Do we have a better way to represent an empty token ?
+        // Insert an empty subtree for empty token
+        self.inner.insert(
+            name.clone(),
+            Binding::Simple(
+                tt::Subtree { delimiter: tt::Delimiter::None, token_trees: vec![] }.into(),
+            ),
+        );
+    }
+
+    fn push_empty(&mut self, name: &SmolStr) {
+        self.inner.insert(name.clone(), Binding::Empty);
+    }
+
     fn contains(&self, name: &SmolStr) -> bool {
         self.inner.contains_key(name)
     }
@@ -100,12 +116,22 @@ impl Bindings {
                     "could not find nested binding `{}`",
                     name
                 )))?,
+                Binding::Empty => {
+                    return Err(ExpandError::BindingError(format!(
+                        "could not find empty binding `{}`",
+                        name
+                    )))
+                }
             };
         }
         match b {
             Binding::Simple(it) => Ok(it),
             Binding::Nested(_) => Err(ExpandError::BindingError(format!(
                 "expected simple binding, found nested binding `{}`",
+                name
+            ))),
+            Binding::Empty => Err(ExpandError::BindingError(format!(
+                "expected simple binding, found empty binding `{}`",
                 name
             ))),
         }
@@ -138,6 +164,24 @@ impl Bindings {
     fn merge(&mut self, nested: Bindings) {
         self.inner.extend(nested.inner);
     }
+}
+
+fn collect_vars(subtree: &crate::Subtree) -> Vec<SmolStr> {
+    let mut res = vec![];
+
+    for tkn in subtree.token_trees.iter() {
+        match tkn {
+            crate::TokenTree::Leaf(crate::Leaf::Var(crate::Var { text, .. })) => {
+                res.push(text.clone());
+            }
+            crate::TokenTree::Subtree(subtree) => {
+                res.extend(collect_vars(subtree));
+            }
+            _ => {}
+        }
+    }
+
+    res
 }
 
 fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings, ExpandError> {
@@ -217,18 +261,7 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                                 let vis = vis.clone();
                                 res.inner.insert(text.clone(), Binding::Simple(vis.into()));
                             } else {
-                                // FIXME: Do we have a better way to represent an empty token ?
-                                // Insert an empty subtree for empty token
-                                res.inner.insert(
-                                    text.clone(),
-                                    Binding::Simple(
-                                        tt::Subtree {
-                                            delimiter: tt::Delimiter::None,
-                                            token_trees: vec![],
-                                        }
-                                        .into(),
-                                    ),
-                                );
+                                res.push_optional(&text);
                             }
                         }
 
@@ -294,6 +327,10 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                 match kind {
                     crate::RepeatKind::OneOrMore if counter == 0 => {
                         return Err(ExpandError::UnexpectedToken);
+                    }
+                    _ if counter == 0 => {
+                        // Collect all empty variables in subtrees
+                        collect_vars(subtree).iter().for_each(|s| res.push_empty(s));
                     }
                     _ => {}
                 }

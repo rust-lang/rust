@@ -1244,7 +1244,12 @@ fn test_cfg_if_main() {
                     $( ( ($($meta),*) ($($it)*) ), )*
                     ( () ($($it2)*) ),
                 }
-            }
+            };
+
+            // Internal macro to Apply a cfg attribute to a list of items
+            (@__apply $m:meta, $($it:item)*) => {
+                $(#[$m] $it)*
+            };
         }
 "#,
     );
@@ -1262,6 +1267,12 @@ cfg_if !   {
  }        
 "#,         
         "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
+
+    assert_expansion(MacroKind::Items, &rules, r#"
+cfg_if ! { @ __apply cfg ( all ( not ( any ( not ( any ( target_os = "solaris" , target_os = "illumos" ) ) ) ) ) ) , }    
+"#,
+        ""    
+    );
 }
 
 #[test]
