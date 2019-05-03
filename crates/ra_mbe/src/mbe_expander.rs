@@ -329,6 +329,14 @@ fn expand_subtree(
         .token_trees
         .iter()
         .map(|it| expand_tt(it, ctx))
+        .filter(|it| {
+            // Filter empty subtree
+            if let Ok(tt::TokenTree::Subtree(subtree)) = it {
+                subtree.delimiter != tt::Delimiter::None || !subtree.token_trees.is_empty()
+            } else {
+                true
+            }
+        })
         .collect::<Result<Vec<_>, ExpandError>>()?;
 
     Ok(tt::Subtree { token_trees, delimiter: template.delimiter })
