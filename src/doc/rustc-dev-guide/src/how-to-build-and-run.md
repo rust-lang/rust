@@ -300,11 +300,19 @@ in other sections:
 
 ### ctags
 
-One of the challenges with rustc is that the RLS can't handle it, since it's a bootstrapping
-compiler. This makes code navigation difficult. One solution is to use `ctags`. The following
-script can be used to set it up: [https://github.com/nikomatsakis/rust-etags][etags].
+One of the challenges with rustc is that the RLS can't handle it, since it's a
+bootstrapping compiler. This makes code navigation difficult. One solution is to
+use `ctags`.
 
-CTAGS integrates into emacs and vim quite easily. The following can then be
+`ctags` has a long history and several variants. Exhuberant CTags seems to be
+quite commonly distributed but it does not have out-of-box Rust support. Some
+distributions seem to use [Universal Ctags][utags], which is a maintained fork
+and does have built-in Rust support.
+
+The following script can be used to set up Exhuberant Ctags:
+[https://github.com/nikomatsakis/rust-etags][etags].
+
+`ctags` integrates into emacs and vim quite easily. The following can then be
 used to build and generate tags:
 
 ```console
@@ -315,6 +323,7 @@ This allows you to do "jump-to-def" with whatever functions were around when
 you last built, which is ridiculously useful.
 
 [etags]: https://github.com/nikomatsakis/rust-etags
+[utags]: https://github.com/universal-ctags/ctags
 
 ### Cleaning out build directories
 
