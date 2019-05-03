@@ -47,11 +47,10 @@ pub(super) fn generate<'gcx, 'tcx>(
         mir.local_decls.indices().collect()
     } else {
         let free_regions = {
-            let borrowck_context = typeck.borrowck_context.as_ref().unwrap();
             regions_that_outlive_free_regions(
                 typeck.infcx.num_region_vars(),
-                &borrowck_context.universal_regions,
-                &borrowck_context.constraints.outlives_constraints,
+                &typeck.borrowck_context.universal_regions,
+                &typeck.borrowck_context.constraints.outlives_constraints,
             )
         };
         compute_live_locals(typeck.tcx(), &free_regions, mir)
