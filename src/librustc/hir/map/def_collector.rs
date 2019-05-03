@@ -164,7 +164,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
                 DefPathData::ValueNs(i.ident.as_interned_str()),
-            ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.as_interned_str()),
+            ItemKind::MacroDef(..) => DefPathData::MacroNs(i.ident.as_interned_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id),
             ItemKind::GlobalAsm(..) => DefPathData::Misc,
             ItemKind::Use(..) => {
@@ -236,7 +236,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
     fn visit_generic_param(&mut self, param: &'a GenericParam) {
         let name = param.ident.as_interned_str();
         let def_path_data = match param.kind {
-            GenericParamKind::Lifetime { .. } => DefPathData::LifetimeParam(name),
+            GenericParamKind::Lifetime { .. } => DefPathData::LifetimeNs(name),
             GenericParamKind::Type { .. } => DefPathData::TypeNs(name),
             GenericParamKind::Const { .. } => DefPathData::ValueNs(name),
         };

@@ -858,12 +858,16 @@ impl TyCtxt<'_, '_, '_> {
     // (but also some things just print a `DefId` generally so maybe we need this?)
     fn guess_def_namespace(self, def_id: DefId) -> Namespace {
         match self.def_key(def_id).disambiguated_data.data {
-            DefPathData::ValueNs(..) |
-            DefPathData::AnonConst |
-            DefPathData::ClosureExpr |
-            DefPathData::Ctor => Namespace::ValueNS,
+            DefPathData::TypeNs(..)
+            | DefPathData::CrateRoot
+            | DefPathData::ImplTrait => Namespace::TypeNS,
 
-            DefPathData::MacroDef(..) => Namespace::MacroNS,
+            DefPathData::ValueNs(..)
+            | DefPathData::AnonConst
+            | DefPathData::ClosureExpr
+            | DefPathData::Ctor => Namespace::ValueNS,
+
+            DefPathData::MacroNs(..) => Namespace::MacroNS,
 
             _ => Namespace::TypeNS,
         }

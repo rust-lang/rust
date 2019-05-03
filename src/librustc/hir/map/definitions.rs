@@ -341,13 +341,13 @@ pub enum DefPathData {
     TypeNs(InternedString),
     /// Something in the value NS
     ValueNs(InternedString),
-    /// A macro rule
-    MacroDef(InternedString),
+    /// Something in the macro NS
+    MacroNs(InternedString),
+    /// Something in the lifetime NS
+    LifetimeNs(InternedString),
     /// A closure expression
     ClosureExpr,
     // Subportions of items
-    /// A lifetime (generic) parameter
-    LifetimeParam(InternedString),
     /// Implicit ctor for a unit or tuple-like struct or enum variant.
     Ctor,
     /// A constant expression (see {ast,hir}::AnonConst).
@@ -614,8 +614,8 @@ impl DefPathData {
         match *self {
             TypeNs(name) |
             ValueNs(name) |
-            MacroDef(name) |
-            LifetimeParam(name) |
+            MacroNs(name) |
+            LifetimeNs(name) |
             GlobalMetaData(name) => Some(name),
 
             Impl |
@@ -633,8 +633,8 @@ impl DefPathData {
         let s = match *self {
             TypeNs(name) |
             ValueNs(name) |
-            MacroDef(name) |
-            LifetimeParam(name) |
+            MacroNs(name) |
+            LifetimeNs(name) |
             GlobalMetaData(name) => {
                 return name
             }
