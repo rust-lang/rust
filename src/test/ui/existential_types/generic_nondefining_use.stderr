@@ -1,5 +1,11 @@
+error: at least one trait must be specified
+  --> $DIR/generic_nondefining_use.rs:5:26
+   |
+LL | existential type Cmp<T>: 'static;
+   |                          ^^^^^^^
+
 error: defining existential type use does not fully define existential type
-  --> $DIR/generic_nondefining_use.rs:9:1
+  --> $DIR/generic_nondefining_use.rs:11:1
    |
 LL | / fn cmp() -> Cmp<u32> {
 LL | |     5u32
@@ -12,5 +18,5 @@ error: could not find defining uses
 LL | existential type Cmp<T>: 'static;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
