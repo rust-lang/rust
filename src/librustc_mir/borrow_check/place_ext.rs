@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::mir::ProjectionElem;
-use rustc::mir::{Local, Mir, Place, PlaceBase, Mutability, Static, StaticKind};
+use rustc::mir::{Mir, Place, PlaceBase, Mutability, Static, StaticKind};
 use rustc::ty::{self, TyCtxt};
 use crate::borrow_check::borrow_set::LocalsStateAtExit;
 
@@ -16,10 +16,6 @@ crate trait PlaceExt<'tcx> {
         mir: &Mir<'tcx>,
         locals_state_at_exit: &LocalsStateAtExit,
         ) -> bool;
-
-    /// If this is a place like `x.f.g`, returns the local
-    /// `x`. Returns `None` if this is based in a static.
-    fn root_local(&self) -> Option<Local>;
 }
 
 impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
@@ -80,17 +76,6 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     }
                 }
             },
-        }
-    }
-
-    fn root_local(&self) -> Option<Local> {
-        let mut p = self;
-        loop {
-            match p {
-                Place::Projection(pi) => p = &pi.base,
-                Place::Base(PlaceBase::Static(_)) => return None,
-                Place::Base(PlaceBase::Local(l)) => return Some(*l),
-            }
         }
     }
 }

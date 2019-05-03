@@ -1,13 +1,14 @@
+use rustc_data_structures::fx::FxHashMap;
+use syntax_pos::Span;
+
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::hir::Node;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin};
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
-use rustc_data_structures::fx::FxHashMap;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::{self, Ty, TyCtxt, GenericParamDefKind};
-use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
-use crate::ty::outlives::Component;
+use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{Kind, InternalSubsts, SubstsRef, UnpackedKind};
 use crate::util::nodemap::DefIdMap;
 
@@ -373,58 +374,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let least_region = least_region.unwrap_or(self.tcx.lifetimes.re_static);
         debug!("constrain_opaque_types: least_region={:?}", least_region);
 
-        // Require that the type `concrete_ty` outlives
-        // `least_region`, modulo any type parameters that appear
-        // in the type, which we ignore. This is because impl
-        // trait values are assumed to capture all the in-scope
-        // type parameters. This little loop here just invokes
-        // `outlives` repeatedly, draining all the nested
-        // obligations that result.
-        let mut types = vec![concrete_ty];
-        let bound_region = |r| self.sub_regions(infer::CallReturn(span), least_region, r);
-        while let Some(ty) = types.pop() {
-            let mut components = smallvec![];
-            self.tcx.push_outlives_components(ty, &mut components);
-            while let Some(component) = components.pop() {
-                match component {
-                    Component::Region(r) => {
-                        bound_region(r);
-                    }
-
-                    Component::Param(_) => {
-                        // ignore type parameters like `T`, they are captured
-                        // implicitly by the `impl Trait`
-                    }
-
-                    Component::UnresolvedInferenceVariable(_) => {
-                        // we should get an error that more type
-                        // annotations are needed in this case
-                        self.tcx
-                            .sess
-                            .delay_span_bug(span, "unresolved inf var in opaque");
-                    }
-
-                    Component::Projection(ty::ProjectionTy {
-                        substs,
-                        item_def_id: _,
-                    }) => {
-                        for k in substs {
-                            match k.unpack() {
-                                UnpackedKind::Lifetime(lt) => bound_region(lt),
-                                UnpackedKind::Type(ty) => types.push(ty),
-                                UnpackedKind::Const(_) => {
-                                    // Const parameters don't impose constraints.
-                                }
-                            }
-                        }
-                    }
-
-                    Component::EscapingProjection(more_components) => {
-                        components.extend(more_components);
-                    }
-                }
-            }
-        }
+        concrete_ty.visit_with(&mut OpaqueTypeOutlivesVisitor {
+            infcx: self,
+            least_region,
+            span,
+        });
     }
 
     /// Given the fully resolved, instantiated type for an opaque
@@ -502,6 +456,80 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
+// Visitor that requires that (almost) all regions in the type visited outlive
+// `least_region`. We cannot use `push_outlives_components` because regions in
+// closure signatures are not included in their outlives components. We need to
+// ensure all regions outlive the given bound so that we don't end up with,
+// say, `ReScope` appearing in a return type and causing ICEs when other
+// functions end up with region constraints involving regions from other
+// functions.
+//
+// We also cannot use `for_each_free_region` because for closures it includes
+// the regions parameters from the enclosing item.
+//
+// We ignore any type parameters because impl trait values are assumed to
+// capture all the in-scope type parameters.
+struct OpaqueTypeOutlivesVisitor<'a, 'gcx, 'tcx> {
+    infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    least_region: ty::Region<'tcx>,
+    span: Span,
+}
+
+impl<'tcx> TypeVisitor<'tcx> for OpaqueTypeOutlivesVisitor<'_, '_, 'tcx>
+{
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
+        t.skip_binder().visit_with(self);
+        false // keep visiting
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+        match *r {
+            // ignore bound regions, keep visiting
+            ty::ReLateBound(_, _) => false,
+            _ => {
+                self.infcx.sub_regions(infer::CallReturn(self.span), self.least_region, r);
+                false
+            }
+        }
+    }
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> bool {
+        // We're only interested in types involving regions
+        if !ty.flags.intersects(ty::TypeFlags::HAS_FREE_REGIONS) {
+            return false; // keep visiting
+        }
+
+        match ty.sty {
+            ty::Closure(def_id, ref substs) => {
+                // Skip lifetime parameters of the enclosing item(s)
+
+                for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
+                    upvar_ty.visit_with(self);
+                }
+
+                substs.closure_sig_ty(def_id, self.infcx.tcx).visit_with(self);
+            }
+
+            ty::Generator(def_id, ref substs, _) => {
+                // Skip lifetime parameters of the enclosing item(s)
+                // Also skip the witness type, because that has no free regions.
+
+                for upvar_ty in substs.upvar_tys(def_id, self.infcx.tcx) {
+                    upvar_ty.visit_with(self);
+                }
+
+                substs.return_ty(def_id, self.infcx.tcx).visit_with(self);
+                substs.yield_ty(def_id, self.infcx.tcx).visit_with(self);
+            }
+            _ => {
+                ty.super_visit_with(self);
+            }
+        }
+
+        false
+    }
+}
+
 struct ReverseMapper<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 
@@ -563,8 +591,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
             // ignore `'static`, as that can appear anywhere
             ty::ReStatic |
 
-            // ignore `ReScope`, as that can appear anywhere
-            // See `src/test/run-pass/issue-49556.rs` for example.
+            // ignore `ReScope`, which may appear in impl Trait in bindings.
             ty::ReScope(..) => return r,
 
             _ => { }

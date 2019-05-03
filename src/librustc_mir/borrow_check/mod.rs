@@ -1831,7 +1831,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     }
 
                     place = base;
-                    continue;
                 }
             }
         }
