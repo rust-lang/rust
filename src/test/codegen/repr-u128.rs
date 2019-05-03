@@ -1,8 +1,11 @@
-// ignore-windows
 // ignore-tidy-linelength
-//min-system-llvm-version 8.0
+// ignore-windows
+// min-system-llvm-version 8.0
 
-//compile-flags: -g -C no-prepopulate-passes
+// compile-flags: -g -C no-prepopulate-passes
+
+// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "None",{{.*}}extraData: i128 18446745000000000124{{[,)].*}}
+
 #![feature(repr128)]
 
 #[repr(u128)]
@@ -12,9 +15,10 @@ pub enum Foo {
     Bar = 18_446_745_000_000_000_123,
 }
 
-// CHECK: {{.*}}DIDerivedType{{.*}}tag: DW_TAG_member,{{.*}}name: "None",{{.*}}extraData:18446745000000000124
 pub fn foo() -> Option<Foo> {
     None
 }
 
-fn main() {}
+fn main() {
+    let roa = foo();
+}
