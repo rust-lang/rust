@@ -29,23 +29,32 @@ LL | impl<'self> Serializable<str> for &'self str {
    |                                    ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:9:25
+  --> $DIR/issue-10412.rs:10:25
    |
 LL |     fn serialize(val : &'self str) -> Vec<u8> {
    |                         ^^^^^
 
 error: lifetimes cannot use keyword names
-  --> $DIR/issue-10412.rs:12:37
+  --> $DIR/issue-10412.rs:13:37
    |
 LL |     fn deserialize(repr: &[u8]) -> &'self str {
    |                                     ^^^^^
 
-error[E0106]: missing lifetime specifier
+error[E0726]: implicit elided lifetime not allowed here
   --> $DIR/issue-10412.rs:6:13
    |
 LL | impl<'self> Serializable<str> for &'self str {
-   |             ^^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |             ^^^^^^^^^^^^^^^^^ help: indicate the anonymous lifetime: `Serializable<'_, str>`
 
-error: aborting due to 8 previous errors
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/issue-10412.rs:6:13
+   |
+LL | impl<'self> Serializable<str> for &'self str {
+   |             ^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
 
-For more information about this error, try `rustc --explain E0106`.
+error: aborting due to 9 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

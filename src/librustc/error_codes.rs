@@ -362,10 +362,6 @@ struct Foo1 { x: &bool }
               // ^ expected lifetime parameter
 struct Foo2<'a> { x: &'a bool } // correct
 
-impl Foo2 {}
-  // ^^^^ expected lifetime parameter
-impl<'a> Foo2<'a> {} // correct
-
 struct Bar1 { x: Foo2 }
               // ^^^^ expected lifetime parameter
 struct Bar2<'a> { x: Foo2<'a> } // correct
@@ -2208,4 +2204,5 @@ register_diagnostics! {
     E0710, // an unknown tool name found in scoped lint
     E0711, // a feature has been declared with conflicting stability attributes
 //  E0702, // replaced with a generic attribute input check
+    E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
 }
