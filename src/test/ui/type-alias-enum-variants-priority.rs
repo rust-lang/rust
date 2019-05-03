@@ -1,5 +1,4 @@
 #![feature(type_alias_enum_variants)]
-#![deny(ambiguous_associated_items)]
 
 enum E {
     V
