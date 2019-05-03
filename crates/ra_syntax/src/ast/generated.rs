@@ -4038,6 +4038,7 @@ impl ToOwned for TypeParam {
 impl ast::NameOwner for TypeParam {}
 impl ast::AttrsOwner for TypeParam {}
 impl ast::TypeBoundsOwner for TypeParam {}
+impl ast::DefaultTypeParamOwner for TypeParam {}
 impl TypeParam {}
 
 // TypeParamList
