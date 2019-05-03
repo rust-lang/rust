@@ -84,6 +84,10 @@ enum Binding {
 }
 
 impl Bindings {
+    fn contains(&self, name: &SmolStr) -> bool {
+        self.inner.contains_key(name)
+    }
+
     fn get(&self, name: &SmolStr, nesting: &[usize]) -> Result<&tt::TokenTree, ExpandError> {
         let mut b = self
             .inner
@@ -458,6 +462,33 @@ fn expand_tt(
                     // FIXME: Properly handle $crate token
                     tt::Leaf::from(tt::Ident { text: "$crate".into(), id: TokenId::unspecified() })
                         .into()
+                } else if !ctx.bindings.contains(&v.text) {
+                    // Note that it is possible to have a `$var` inside a macro which is not bound.
+                    // For example:
+                    // ```
+                    // macro_rules! foo {
+                    //     ($a:ident, $b:ident, $c:tt) => {
+                    //         macro_rules! bar {
+                    //             ($bi:ident) => {
+                    //                 fn $bi() -> u8 {$c}
+                    //             }
+                    //         }
+                    //     }
+                    // ```
+                    // We just treat it a normal tokens
+                    tt::Subtree {
+                        delimiter: tt::Delimiter::None,
+                        token_trees: vec![
+                            tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone })
+                                .into(),
+                            tt::Leaf::from(tt::Ident {
+                                text: v.text.clone(),
+                                id: TokenId::unspecified(),
+                            })
+                            .into(),
+                        ],
+                    }
+                    .into()
                 } else {
                     let tkn = ctx.bindings.get(&v.text, &ctx.nesting)?.clone();
                     ctx.var_expanded = true;
@@ -484,11 +515,12 @@ mod tests {
 
     #[test]
     fn test_expand_rule() {
-        assert_err(
-            "($i:ident) => ($j)",
-            "foo!{a}",
-            ExpandError::BindingError(String::from("could not find binding `j`")),
-        );
+        // FIXME: The missing $var check should be in parsing phase
+        // assert_err(
+        //     "($i:ident) => ($j)",
+        //     "foo!{a}",
+        //     ExpandError::BindingError(String::from("could not find binding `j`")),
+        // );
 
         assert_err(
             "($($i:ident);*) => ($i)",

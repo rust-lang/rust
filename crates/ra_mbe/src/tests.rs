@@ -952,7 +952,7 @@ macro_rules! foo {
         MacroKind::Items,
         &rules,
         r#"foo!(x,y, 1);"#,
-        r#"macro_rules ! bar {(bi : ident) => {fn bi () -> u8 {1}}} bar ! (x) ; fn y () -> u8 {1}"#,
+        r#"macro_rules ! bar {($ bi : ident) => {fn $ bi () -> u8 {1}}} bar ! (x) ; fn y () -> u8 {1}"#,
     );
 }
 
