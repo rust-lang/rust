@@ -483,7 +483,7 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     #[inline]
     pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
-        let num_variants = self.state_tys(def_id, tcx).count();
+        let num_variants = tcx.generator_layout(def_id).variant_fields.len();
         (VariantIdx::new(0)..VariantIdx::new(num_variants))
     }
 
@@ -541,9 +541,12 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a>
     {
-        tcx.generator_layout(def_id)
-            .variant_fields.iter()
-            .map(move |v| v.iter().map(move |d| d.ty.subst(tcx, self.substs)))
+        let layout = tcx.generator_layout(def_id);
+        layout.variant_fields.iter().map(move |variant| {
+            variant.iter().map(move |field| {
+                layout.field_tys[*field].subst(tcx, self.substs)
+            })
+        })
     }
 
     /// This is the types of the fields of a generator which are not stored in a

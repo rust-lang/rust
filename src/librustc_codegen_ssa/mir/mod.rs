@@ -663,12 +663,14 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                     generator_layout.variant_fields.iter()
                         .zip(state_tys)
                         .enumerate()
-                        .flat_map(move |(variant_idx, (decls, tys))| {
+                        .flat_map(move |(variant_idx, (fields, tys))| {
                             let variant_idx = Some(VariantIdx::from(variant_idx));
-                            decls.iter()
+                            fields.iter()
                                 .zip(tys)
                                 .enumerate()
-                                .filter_map(move |(i, (decl, ty))| {
+                                .filter_map(move |(i, (field, ty))| {
+                                    let decl = &generator_layout.
+                                        __local_debuginfo_codegen_only_do_not_use[*field];
                                     if let Some(name) = decl.name {
                                         let ty = fx.monomorphize(&ty);
                                         let (var_scope, var_span) = fx.debug_loc(mir::SourceInfo {

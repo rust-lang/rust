@@ -1597,8 +1597,9 @@ impl<'tcx> VariantInfo<'tcx> {
             VariantInfo::Adt(variant) if variant.ctor_kind != CtorKind::Fn =>
                 Some(variant.fields[i].ident.to_string()),
             VariantInfo::Generator(_, generator_layout, variant_index) => {
-                let variant_decls = &generator_layout.variant_fields[*variant_index];
-                variant_decls[i.into()].name.map(|name| name.to_string())
+                let field = generator_layout.variant_fields[*variant_index][i.into()];
+                let decl = &generator_layout.__local_debuginfo_codegen_only_do_not_use[field];
+                decl.name.map(|name| name.to_string())
             }
             _ => None,
         };

@@ -555,15 +555,22 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Create a map from local indices to generator struct indices.
     // We also create a vector of the LocalDecls of these locals.
-    let (remap, vars) = live_decls.enumerate().map(|(idx, (local, var))| {
-        ((local, (var.ty, variant_index, idx)), var)
-    }).unzip();
+    let mut remap = FxHashMap::default();
+    let mut decls = IndexVec::new();
+    for (idx, (local, var)) in live_decls.enumerate() {
+        remap.insert(local, (var.ty, variant_index, idx));
+        decls.push(var);
+    }
+    let field_tys = decls.iter().map(|field| field.ty).collect::<IndexVec<GeneratorField, _>>();
 
     // Put every var in each variant, for now.
+    let all_vars = (0..field_tys.len()).map(GeneratorField::from).collect();
     let empty_variants = iter::repeat(IndexVec::new()).take(3);
-    let state_variants = iter::repeat(vars).take(suspending_blocks.count());
+    let state_variants = iter::repeat(all_vars).take(suspending_blocks.count());
     let layout = GeneratorLayout {
-        variant_fields: empty_variants.chain(state_variants).collect()
+        field_tys,
+        variant_fields: empty_variants.chain(state_variants).collect(),
+        __local_debuginfo_codegen_only_do_not_use: decls,
     };
 
     (remap, layout, storage_liveness)
