@@ -420,28 +420,31 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     );
                 }
 
-                if let Some(name) = local_decl.name {
-                    err.span_label(
-                        span,
-                        format!(
-                            "`{NAME}` is a `{SIGIL}` {DESC}, \
-                             so the data it refers to cannot be {ACTED_ON}",
-                            NAME = name,
-                            SIGIL = pointer_sigil,
-                            DESC = pointer_desc,
-                            ACTED_ON = acted_on
-                        ),
-                    );
-                } else {
-                    err.span_label(
-                        span,
-                        format!(
-                            "cannot {ACT} through `{SIGIL}` {DESC}",
-                            ACT = act,
-                            SIGIL = pointer_sigil,
-                            DESC = pointer_desc
-                        ),
-                    );
+                match local_decl.name {
+                    Some(name) if !local_decl.from_compiler_desugaring() => {
+                        err.span_label(
+                            span,
+                            format!(
+                                "`{NAME}` is a `{SIGIL}` {DESC}, \
+                                so the data it refers to cannot be {ACTED_ON}",
+                                NAME = name,
+                                SIGIL = pointer_sigil,
+                                DESC = pointer_desc,
+                                ACTED_ON = acted_on
+                            ),
+                        );
+                    }
+                    _ => {
+                        err.span_label(
+                            span,
+                            format!(
+                                "cannot {ACT} through `{SIGIL}` {DESC}",
+                                ACT = act,
+                                SIGIL = pointer_sigil,
+                                DESC = pointer_desc
+                            ),
+                        );
+                    }
                 }
             }
 

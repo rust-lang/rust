@@ -8423,6 +8423,8 @@ impl<'a> Parser<'a> {
             for (index, input) in decl.inputs.iter_mut().enumerate() {
                 let id = ast::DUMMY_NODE_ID;
                 let span = input.pat.span;
+                let desugared_span = self.sess.source_map()
+                    .mark_span_with_reason(CompilerDesugaringKind::Async, span, None);
 
                 // Construct a name for our temporary argument.
                 let name = format!("__arg{}", index);
@@ -8439,8 +8441,7 @@ impl<'a> Parser<'a> {
                         // this would affect the input to procedural macros, but they can have
                         // their span marked as being the result of a compiler desugaring so
                         // that they aren't linted against.
-                        input.pat.span = self.sess.source_map().mark_span_with_reason(
-                            CompilerDesugaringKind::Async, span, None);
+                        input.pat.span = desugared_span;
 
                         (binding_mode, ident, true)
                     }
@@ -8460,7 +8461,7 @@ impl<'a> Parser<'a> {
                             node: PatKind::Ident(
                                 BindingMode::ByValue(Mutability::Immutable), ident, None,
                             ),
-                            span,
+                            span: desugared_span,
                         }),
                         source: ArgSource::AsyncFn(input.pat.clone()),
                     })
@@ -8473,7 +8474,7 @@ impl<'a> Parser<'a> {
                     pat: P(Pat {
                         id,
                         node: PatKind::Ident(binding_mode, ident, None),
-                        span,
+                        span: desugared_span,
                     }),
                     // We explicitly do not specify the type for this statement. When the user's
                     // argument type is `impl Trait` then this would require the

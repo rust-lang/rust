@@ -915,6 +915,13 @@ impl<'tcx> LocalDecl<'tcx> {
         }
     }
 
+    /// Returns `true` is the local is from a compiler desugaring, e.g.,
+    /// `__next` from a `for` loop.
+    #[inline]
+    pub fn from_compiler_desugaring(&self) -> bool {
+        self.source_info.span.compiler_desugaring_kind().is_some()
+    }
+
     /// Creates a new `LocalDecl` for a temporary.
     #[inline]
     pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
