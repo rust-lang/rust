@@ -97,7 +97,7 @@ impl SuppressRegionErrors {
             // If we're on Migrate mode, report AST region errors
             BorrowckMode::Migrate => SuppressRegionErrors { suppressed: false },
 
-            // If we're on MIR don't report AST region errors as they should be reported by NLL
+            // If we're on MIR, don't report AST region errors as they should be reported by NLL
             BorrowckMode::Mir => SuppressRegionErrors { suppressed: true },
         }
     }
