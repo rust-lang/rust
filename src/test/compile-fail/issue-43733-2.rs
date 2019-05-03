@@ -23,6 +23,6 @@ use std::thread::__FastLocalKeyInner as Key;
 
 static __KEY: Key<()> = Key::new();
 //~^ ERROR `std::cell::UnsafeCell<std::option::Option<()>>` cannot be shared between threads
-//~| ERROR `std::cell::Cell<bool>` cannot be shared between threads safely [E0277]
+//~| ERROR `std::cell::Cell<std::thread::local::fast::DtorState>` cannot be shared between threads safely [E0277]
 
 fn main() {}
