@@ -2995,7 +2995,7 @@ pub struct UnsafetyCheckResult {
 }
 
 newtype_index! {
-    pub struct GeneratorField {
+    pub struct GeneratorSavedLocal {
         derive [HashStable]
         DEBUG_FORMAT = "_{}",
     }
@@ -3005,18 +3005,18 @@ newtype_index! {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
-    pub field_tys: IndexVec<GeneratorField, Ty<'tcx>>,
+    pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,
 
     /// Which of the above fields are in each variant. Note that one field may
     /// be stored in multiple variants.
-    pub variant_fields: IndexVec<VariantIdx, IndexVec<Field, GeneratorField>>,
+    pub variant_fields: IndexVec<VariantIdx, IndexVec<Field, GeneratorSavedLocal>>,
 
     /// Names and scopes of all the stored generator locals.
     /// NOTE(tmandry) This is *strictly* a temporary hack for codegen
     /// debuginfo generation, and will be removed at some point.
     /// Do **NOT** use it for anything else, local information should not be
     /// in the MIR, please rely on local crate HIR or other side-channels.
-    pub __local_debuginfo_codegen_only_do_not_use: IndexVec<GeneratorField, LocalDecl<'tcx>>,
+    pub __local_debuginfo_codegen_only_do_not_use: IndexVec<GeneratorSavedLocal, LocalDecl<'tcx>>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -3582,7 +3582,7 @@ impl<'tcx> TypeFoldable<'tcx> for Field {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for GeneratorField {
+impl<'tcx> TypeFoldable<'tcx> for GeneratorSavedLocal {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, _: &mut F) -> Self {
         *self
     }

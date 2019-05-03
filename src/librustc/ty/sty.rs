@@ -16,6 +16,7 @@ use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, Pointer};
 
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
@@ -513,16 +514,13 @@ impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
     /// Calls `f` with a reference to the name of the enumerator for the given
     /// variant `v`.
     #[inline]
-    pub fn map_variant_name<R>(&self, v: VariantIdx, f: impl FnOnce(&str) -> R) -> R {
-        let name = match v.as_usize() {
-            Self::UNRESUMED => Self::UNRESUMED_NAME,
-            Self::RETURNED => Self::RETURNED_NAME,
-            Self::POISONED => Self::POISONED_NAME,
-            _ => {
-                return f(&format!("variant#{}", v.as_usize()));
-            }
-        };
-        f(name)
+    pub fn variant_name(&self, v: VariantIdx) -> Cow<'static, str> {
+        match v.as_usize() {
+            Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
+            Self::RETURNED => Cow::from(Self::RETURNED_NAME),
+            Self::POISONED => Cow::from(Self::POISONED_NAME),
+            _ => Cow::from(format!("Suspend{}", v.as_usize() - 3))
+        }
     }
 
     /// The type of the state discriminant used in the generator type.

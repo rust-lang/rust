@@ -684,25 +684,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }
                     }
                 }
-                ty::Generator(def_id, substs, _) => {
-                    let variants = substs.state_tys(def_id, tcx).count();
-                    if index.as_usize() >= variants {
-                        PlaceTy::from_ty(
-                            span_mirbug_and_err!(
-                                self,
-                                place,
-                                "cast to variant #{:?} but generator only has {:?}",
-                                index,
-                                variants
-                            ),
-                        )
-                    } else {
-                        PlaceTy {
-                            ty: base_ty,
-                            variant_index: Some(index),
-                        }
-                    }
-                }
+                // We do not need to handle generators here, because this runs
+                // before the generator transform stage.
                 _ => {
                     let ty = if let Some(name) = maybe_name {
                         span_mirbug_and_err!(

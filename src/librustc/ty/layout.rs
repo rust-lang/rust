@@ -605,6 +605,12 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             ty::Generator(def_id, ref substs, _) => {
+                // FIXME(tmandry): For fields that are repeated in multiple
+                // variants in the GeneratorLayout, we need code to ensure that
+                // the offset of these fields never change. Right now this is
+                // not an issue since every variant has every field, but once we
+                // optimize this we have to be more careful.
+
                 let discr_index = substs.prefix_tys(def_id, tcx).count();
                 let prefix_tys = substs.prefix_tys(def_id, tcx)
                     .chain(iter::once(substs.discr_ty(tcx)));
@@ -1691,7 +1697,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 
     fn field(this: TyLayout<'tcx>, cx: &C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
-        let handle_discriminant = |discr: &Scalar| -> C::TyLayout {
+        let discr_layout = |discr: &Scalar| -> C::TyLayout {
             let layout = LayoutDetails::scalar(cx, discr.clone());
             MaybeResult::from_ok(TyLayout {
                 details: tcx.intern_layout(layout),
@@ -1781,7 +1787,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     }
                     Variants::Multiple { ref discr, discr_index, .. } => {
                         if i == discr_index {
-                            return handle_discriminant(discr);
+                            return discr_layout(discr);
                         }
                         substs.prefix_tys(def_id, tcx).nth(i).unwrap()
                     }
@@ -1805,7 +1811,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     // Discriminant field for enums (where applicable).
                     Variants::Multiple { ref discr, .. } => {
                         assert_eq!(i, 0);
-                        return handle_discriminant(discr);
+                        return discr_layout(discr);
                     }
                 }
             }

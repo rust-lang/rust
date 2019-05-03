@@ -561,12 +561,13 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         remap.insert(local, (var.ty, variant_index, idx));
         decls.push(var);
     }
-    let field_tys = decls.iter().map(|field| field.ty).collect::<IndexVec<GeneratorField, _>>();
+    let field_tys = decls.iter().map(|field| field.ty).collect::<IndexVec<_, _>>();
 
     // Put every var in each variant, for now.
-    let all_vars = (0..field_tys.len()).map(GeneratorField::from).collect();
+    let all_vars = (0..field_tys.len()).map(GeneratorSavedLocal::from).collect();
     let empty_variants = iter::repeat(IndexVec::new()).take(3);
     let state_variants = iter::repeat(all_vars).take(suspending_blocks.count());
+
     let layout = GeneratorLayout {
         field_tys,
         variant_fields: empty_variants.chain(state_variants).collect(),

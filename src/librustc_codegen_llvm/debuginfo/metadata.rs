@@ -1575,7 +1575,7 @@ impl<'tcx> VariantInfo<'tcx> {
         match self {
             VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
             VariantInfo::Generator(substs, _, variant_index) =>
-                substs.map_variant_name(*variant_index, f),
+                f(&substs.variant_name(*variant_index)),
         }
     }
 
@@ -1720,16 +1720,16 @@ fn prepare_enum_metadata(
                 .collect(),
             ty::Generator(_, substs, _) => substs
                 .variant_range(enum_def_id, cx.tcx)
-                .map(|v| substs.map_variant_name(v, |name| {
-                    let name = SmallCStr::new(name);
+                .map(|variant_index| {
+                    let name = SmallCStr::new(&substs.variant_name(variant_index));
                     unsafe {
                         Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                             DIB(cx),
                             name.as_ptr(),
                             // FIXME: what if enumeration has i128 discriminant?
-                            v.as_usize() as u64))
+                            variant_index.as_usize() as u64))
                     }
-                }))
+                })
                 .collect(),
             _ => bug!(),
         };

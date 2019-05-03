@@ -58,7 +58,7 @@ impl MirPass for Deaggregator {
                     }
                     AggregateKind::Generator(..) => {
                         // Right now we only support initializing generators to
-                        // variant#0.
+                        // variant 0 (Unresumed).
                         let variant_index = VariantIdx::new(0);
                         set_discriminant = Some(Statement {
                             kind: StatementKind::SetDiscriminant {
