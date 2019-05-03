@@ -550,17 +550,32 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
         let opt_ty = self.substs.get(p.idx as usize).map(|k| k.unpack());
         let ty = match opt_ty {
             Some(UnpackedKind::Type(ty)) => ty,
-            _ => {
+            Some(kind) => {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 span_bug!(
                     span,
-                    "Type parameter `{:?}` ({:?}/{}) out of range \
+                    "expected type for `{:?}` ({:?}/{}) but found {:?} \
+                     when substituting (root type={:?}) substs={:?}",
+                    p,
+                    source_ty,
+                    p.idx,
+                    kind,
+                    self.root_ty,
+                    self.substs,
+                );
+            }
+            None => {
+                let span = self.span.unwrap_or(DUMMY_SP);
+                span_bug!(
+                    span,
+                    "type parameter `{:?}` ({:?}/{}) out of range \
                      when substituting (root type={:?}) substs={:?}",
                     p,
                     source_ty,
                     p.idx,
                     self.root_ty,
-                    self.substs);
+                    self.substs,
+                );
             }
         };
 
@@ -570,29 +585,41 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     fn const_for_param(
         &self,
         p: ParamConst,
-        source_cn: &'tcx ty::Const<'tcx>
+        source_ct: &'tcx ty::Const<'tcx>
     ) -> &'tcx ty::Const<'tcx> {
         // Look up the const in the substitutions. It really should be in there.
-        let opt_cn = self.substs.get(p.index as usize).map(|k| k.unpack());
-        let cn = match opt_cn {
-            Some(UnpackedKind::Const(cn)) => cn,
-            _ => {
+        let opt_ct = self.substs.get(p.index as usize).map(|k| k.unpack());
+        let ct = match opt_ct {
+            Some(UnpackedKind::Const(ct)) => ct,
+            Some(kind) => {
                 let span = self.span.unwrap_or(DUMMY_SP);
                 span_bug!(
                     span,
-                    "Const parameter `{:?}` ({:?}/{}) out of range \
-                     when substituting (root type={:?}) substs={:?}",
+                    "expected const for `{:?}` ({:?}/{}) but found {:?} \
+                     when substituting substs={:?}",
                     p,
-                    source_cn,
+                    source_ct,
                     p.index,
-                    self.root_ty,
+                    kind,
+                    self.substs,
+                );
+            }
+            None => {
+                let span = self.span.unwrap_or(DUMMY_SP);
+                span_bug!(
+                    span,
+                    "const parameter `{:?}` ({:?}/{}) out of range \
+                     when substituting substs={:?}",
+                    p,
+                    source_ct,
+                    p.index,
                     self.substs,
                 );
             }
         };
 
         // FIXME(const_generics): shift const through binders
-        cn
+        ct
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs
