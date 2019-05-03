@@ -107,13 +107,19 @@ impl Bindings {
         }
     }
 
-    fn push_nested(&mut self, nested: Bindings) -> Result<(), ExpandError> {
+    fn push_nested(&mut self, idx: usize, nested: Bindings) -> Result<(), ExpandError> {
         for (key, value) in nested.inner {
             if !self.inner.contains_key(&key) {
                 self.inner.insert(key.clone(), Binding::Nested(Vec::new()));
             }
             match self.inner.get_mut(&key) {
-                Some(Binding::Nested(it)) => it.push(value),
+                Some(Binding::Nested(it)) => {
+                    // insert empty nested bindings before this one
+                    while it.len() < idx {
+                        it.push(Binding::Nested(vec![]));
+                    }
+                    it.push(value);
+                }
                 _ => {
                     return Err(ExpandError::BindingError(format!(
                         "could not find binding `{}`",
@@ -178,10 +184,6 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                                 input.eat_meta().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(meta.into()));
                         }
-                        // FIXME:
-                        // Enable followiing code when everything is fixed
-                        // At least we can dogfood itself to not stackoverflow
-                        //
                         "tt" => {
                             let token = input.eat().ok_or(ExpandError::UnexpectedToken)?.clone();
                             res.inner.insert(text.clone(), Binding::Simple(token.into()));
@@ -252,7 +254,6 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                 loop {
                     match match_lhs(subtree, input) {
                         Ok(nested) => {
-                            counter += 1;
                             limit -= 1;
                             if limit == 0 {
                                 log::warn!("match_lhs excced in repeat pattern exceed limit => {:#?}\n{:#?}\n{:#?}\n{:#?}", subtree, input, kind, separator);
@@ -260,7 +261,8 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             }
 
                             memento = input.save();
-                            res.push_nested(nested)?;
+                            res.push_nested(counter, nested)?;
+                            counter += 1;
                             if counter == 1 {
                                 if let crate::RepeatKind::ZeroOrOne = kind {
                                     break;
@@ -268,20 +270,9 @@ fn match_lhs(pattern: &crate::Subtree, input: &mut TtCursor) -> Result<Bindings,
                             }
 
                             if let Some(separator) = separator {
-                                use crate::Separator::*;
-
                                 if !input
                                     .eat_seperator()
-                                    .map(|sep| match (sep, separator) {
-                                        (Ident(ref a), Ident(ref b)) => a.text == b.text,
-                                        (Literal(ref a), Literal(ref b)) => a.text == b.text,
-                                        (Puncts(ref a), Puncts(ref b)) if a.len() == b.len() => {
-                                            let a_iter = a.iter().map(|a| a.char);
-                                            let b_iter = b.iter().map(|b| b.char);
-                                            a_iter.eq(b_iter)
-                                        }
-                                        _ => false,
-                                    })
+                                    .map(|sep| sep == *separator)
                                     .unwrap_or(false)
                                 {
                                     input.rollback(memento);
@@ -372,14 +363,23 @@ fn expand_tt(
             let mut has_seps = 0;
             let mut counter = 0;
 
+            // We store the old var expanded value, and restore it later
+            // It is because before this `$repeat`,
+            // it is possible some variables already expanad in the same subtree
+            //
+            // `some_var_expanded` keep check if the deeper subtree has expanded variables
             let mut some_var_expanded = false;
+            let old_var_expanded = ctx.var_expanded;
             ctx.var_expanded = false;
 
             while let Ok(t) = expand_subtree(&repeat.subtree, ctx) {
-                // if no var expaned in the child, we count it as a fail
+                // if no var expanded in the child, we count it as a fail
                 if !ctx.var_expanded {
                     break;
                 }
+
+                // Reset `ctx.var_expandeded` to see if there is other expanded variable
+                // in the next matching
                 some_var_expanded = true;
                 ctx.var_expanded = false;
 
@@ -423,7 +423,8 @@ fn expand_tt(
                 }
             }
 
-            ctx.var_expanded = some_var_expanded;
+            // Restore the `var_expanded` by combining old one and the new one
+            ctx.var_expanded = some_var_expanded || old_var_expanded;
 
             ctx.nesting.pop().unwrap();
             for _ in 0..has_seps {

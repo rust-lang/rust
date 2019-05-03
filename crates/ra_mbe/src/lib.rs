@@ -99,11 +99,29 @@ pub(crate) struct Subtree {
     pub(crate) token_trees: Vec<TokenTree>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Eq)]
 pub(crate) enum Separator {
     Literal(tt::Literal),
     Ident(tt::Ident),
     Puncts(SmallVec<[tt::Punct; 3]>),
+}
+
+// Note that when we compare a Separator, we just care about its textual value.
+impl PartialEq for crate::Separator {
+    fn eq(&self, other: &crate::Separator) -> bool {
+        use crate::Separator::*;
+
+        match (self, other) {
+            (Ident(ref a), Ident(ref b)) => a.text == b.text,
+            (Literal(ref a), Literal(ref b)) => a.text == b.text,
+            (Puncts(ref a), Puncts(ref b)) if a.len() == b.len() => {
+                let a_iter = a.iter().map(|a| a.char);
+                let b_iter = b.iter().map(|b| b.char);
+                a_iter.eq(b_iter)
+            }
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -1270,6 +1288,6 @@ cfg_if !   {
      } 
  }        
 "#,         
-        "__cfg_if_items ! {() ;  (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
+        "__cfg_if_items ! {() ; ((target_env = \"msvc\") ()) , ((all (target_arch = \"wasm32\" , not (target_os = \"emscripten\"))) ()) , (() (mod libunwind ; pub use libunwind :: * ;)) ,}");
     }
 }
