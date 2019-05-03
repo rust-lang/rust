@@ -31,6 +31,8 @@ fn main() {
     } else if target.contains("apple-darwin") {
         println!("cargo:rustc-link-lib=System");
         #[cfg(miri)]
+        // With Miri, we use SecRandomCopyBytes got randomness, so we need to link
+        // with `framework=Security`.
         println!("cargo:rustc-link-lib=framework=Security");
 
         // res_init and friends require -lresolv on macOS/iOS.
