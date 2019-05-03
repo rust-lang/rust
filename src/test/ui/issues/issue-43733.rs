@@ -13,13 +13,13 @@ static __KEY: std::thread::__FastLocalKeyInner<Foo> =
 static __KEY: std::thread::__OsLocalKeyInner<Foo> =
     std::thread::__OsLocalKeyInner::new();
 
-fn __getit(init: fn() -> Foo) -> std::option::Option<&'static Foo>
+fn __getit() -> std::option::Option<&'static Foo>
 {
-    __KEY.get(init) //~ ERROR call to unsafe function is unsafe
+    __KEY.get(Default::default) //~ ERROR call to unsafe function is unsafe
 }
 
 static FOO: std::thread::LocalKey<Foo> =
-    std::thread::LocalKey::new(__getit, Default::default);
+    std::thread::LocalKey::new(__getit);
 //~^ ERROR call to unsafe function is unsafe
 
 fn main() {
