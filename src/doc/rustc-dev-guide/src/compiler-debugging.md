@@ -149,7 +149,7 @@ $ # Cool, now I have a backtrace for the error
 These crates are used in compiler for logging:
 
 * [log]
-* [env-logger]: check the link to see the full `RUST_LOG` syntax
+* [env-logger]: check the link to see the full `RUSTC_LOG` syntax
 
 [log]: https://docs.rs/log/0.4.6/log/index.html
 [env-logger]: https://docs.rs/env_logger/0.4.3/env_logger/
@@ -159,9 +159,9 @@ at many points. These are very useful to at least narrow down the location of
 a bug if not to find it entirely, or just to orient yourself as to why the
 compiler is doing a particular thing.
 
-To see the logs, you need to set the `RUST_LOG` environment variable to
+To see the logs, you need to set the `RUSTC_LOG` environment variable to
 your log filter, e.g. to get the logs for a specific module, you can run the
-compiler as `RUST_LOG=module::path rustc my-file.rs`. All `debug!` output will
+compiler as `RUSTC_LOG=module::path rustc my-file.rs`. All `debug!` output will
 then appear in standard error.
 
 **Note that unless you use a very strict filter, the logger will emit a lot of
@@ -174,16 +174,16 @@ So to put it together.
 ```bash
 # This puts the output of all debug calls in `librustc/traits` into
 # standard error, which might fill your console backscroll.
-$ RUST_LOG=rustc::traits rustc +local my-file.rs
+$ RUSTC_LOG=rustc::traits rustc +local my-file.rs
 
 # This puts the output of all debug calls in `librustc/traits` in
 # `traits-log`, so you can then see it with a text editor.
-$ RUST_LOG=rustc::traits rustc +local my-file.rs 2>traits-log
+$ RUSTC_LOG=rustc::traits rustc +local my-file.rs 2>traits-log
 
 # Not recommended. This will show the output of all `debug!` calls
 # in the Rust compiler, and there are a *lot* of them, so it will be
 # hard to find anything.
-$ RUST_LOG=debug rustc +local my-file.rs 2>all-log
+$ RUSTC_LOG=debug rustc +local my-file.rs 2>all-log
 
 # This will show the output of all `info!` calls in `rustc_trans`.
 #
@@ -192,7 +192,7 @@ $ RUST_LOG=debug rustc +local my-file.rs 2>all-log
 # which function triggers an LLVM assertion, and this is an `info!`
 # log rather than a `debug!` log so it will work on the official
 # compilers.
-$ RUST_LOG=rustc_trans=info rustc +local my-file.rs
+$ RUSTC_LOG=rustc_trans=info rustc +local my-file.rs
 ```
 
 ### How to keep or remove `debug!` and `trace!` calls from the resulting binary
@@ -201,7 +201,7 @@ While calls to `error!`, `warn!` and `info!` are included in every build of the 
 calls to `debug!` and `trace!` are only included in the program if
 `debug-assertions=yes` is turned on in config.toml (it is
 turned off by default), so if you don't see `DEBUG` logs, especially
-if you run the compiler with `RUST_LOG=rustc rustc some.rs` and only see
+if you run the compiler with `RUSTC_LOG=rustc rustc some.rs` and only see
 `INFO` logs, make sure that `debug-assertions=yes` is turned on in your
 config.toml.
 
@@ -230,7 +230,7 @@ If in the module `rustc::foo` you have a statement
 debug!("{:?}", random_operation(tcx));
 ```
 
-Then if someone runs a debug `rustc` with `RUST_LOG=rustc::bar`, then
+Then if someone runs a debug `rustc` with `RUSTC_LOG=rustc::bar`, then
 `random_operation()` will run.
 
 This means that you should not put anything too expensive or likely to crash
