@@ -1961,6 +1961,14 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
         }
     }
 
+    fn is_freeze(
+        this: TyLayout<'tcx>,
+        cx: &C,
+        param_env: Self::ParamEnv,
+    )-> bool {
+        this.ty.is_freeze(cx.tcx(), param_env, DUMMY_SP)
+    }
+
 }
 
 struct Niche {
