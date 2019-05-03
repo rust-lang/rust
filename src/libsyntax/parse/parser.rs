@@ -8725,9 +8725,9 @@ impl<'a> Parser<'a> {
                 // Check if this is a ident pattern, if so, we can optimize and avoid adding a
                 // `let <pat> = __argN;` statement, instead just adding a `let <pat> = <pat>;`
                 // statement.
-                let (ident, is_simple_pattern) = match input.pat.node {
-                    PatKind::Ident(_, ident, _) => (ident, true),
-                    _ => (ident, false),
+                let (binding_mode, ident, is_simple_pattern) = match input.pat.node {
+                    PatKind::Ident(binding_mode, ident, _) => (binding_mode, ident, true),
+                    _ => (BindingMode::ByValue(Mutability::Immutable), ident, false),
                 };
 
                 // Construct an argument representing `__argN: <ty>` to replace the argument of the
@@ -8755,9 +8755,7 @@ impl<'a> Parser<'a> {
                 let move_local = Local {
                     pat: P(Pat {
                         id,
-                        node: PatKind::Ident(
-                            BindingMode::ByValue(Mutability::Immutable), ident, None,
-                        ),
+                        node: PatKind::Ident(binding_mode, ident, None),
                         span,
                     }),
                     // We explicitly do not specify the type for this statement. When the user's
