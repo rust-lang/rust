@@ -41,7 +41,7 @@ impl<'a> Resolver<'a> {
         let item_str = path.last().unwrap().ident;
         let code = source.error_code(res.is_some());
         let (base_msg, fallback_label, base_span) = if let Some(res) = res {
-            (format!("expected {}, found {} `{}`", expected, res.kind_name(), path_str),
+            (format!("expected {}, found {} `{}`", expected, res.descr(), path_str),
                 format!("not a {}", expected),
                 span)
         } else {

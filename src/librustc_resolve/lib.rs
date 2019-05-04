@@ -1532,7 +1532,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn descr(&self) -> &'static str {
-        if self.is_extern_crate() { "extern crate" } else { self.res().kind_name() }
+        if self.is_extern_crate() { "extern crate" } else { self.res().descr() }
     }
 
     fn article(&self) -> &'static str {
@@ -3868,7 +3868,7 @@ impl<'a> Resolver<'a> {
                             "`{}` is {} {}, not a module",
                             ident,
                             res.article(),
-                            res.kind_name(),
+                            res.descr(),
                         );
 
                         return PathResult::Failed {
@@ -4220,7 +4220,7 @@ impl<'a> Resolver<'a> {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: binding.res().article(),
-                            kind: binding.res().kind_name(),
+                            kind: binding.res().descr(),
                         });
                     }
                 }
@@ -4238,7 +4238,7 @@ impl<'a> Resolver<'a> {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: res.article(),
-                            kind: res.kind_name(),
+                            kind: res.descr(),
                         });
                     }
                 }

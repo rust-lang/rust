@@ -370,7 +370,7 @@ impl<Id> Res<Id> {
     }
 
     /// A human readable name for the res kind ("function", "module", etc.).
-    pub fn kind_name(&self) -> &'static str {
+    pub fn descr(&self) -> &'static str {
         match *self {
             Res::Def(kind, _) => kind.descr(),
             Res::SelfCtor(..) => "self constructor",
