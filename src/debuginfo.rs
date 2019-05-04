@@ -135,7 +135,7 @@ impl<'a, 'tcx: 'a> DebugContext<'tcx> {
             root.set(gimli::DW_AT_comp_dir, AttributeValue::StringRef(comp_dir));
             root.set(
                 gimli::DW_AT_low_pc,
-                AttributeValue::Address(Address::Absolute(0)),
+                AttributeValue::Address(Address::Constant(0)),
             );
         }
 
@@ -251,7 +251,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
 
         entry.set(
             gimli::DW_AT_low_pc,
-            AttributeValue::Address(Address::Relative { symbol, addend: 0 }),
+            AttributeValue::Address(Address::Symbol { symbol, addend: 0 }),
         );
 
         debug_context.emit_location(tcx, entry_id, mir.span);
@@ -273,7 +273,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
     ) {
         let line_program = &mut self.debug_context.dwarf.unit.line_program;
 
-        line_program.begin_sequence(Some(Address::Relative {
+        line_program.begin_sequence(Some(Address::Symbol {
             symbol: self.symbol,
             addend: 0,
         }));
@@ -326,7 +326,7 @@ impl<'a, 'b, 'tcx: 'b> FunctionDebugContext<'a, 'tcx> {
             .unit_range_list
             .0
             .push(Range::StartLength {
-                begin: Address::Relative {
+                begin: Address::Symbol {
                     symbol: self.symbol,
                     addend: 0,
                 },
@@ -371,8 +371,8 @@ impl Writer for WriterRelocate {
 
     fn write_address(&mut self, address: Address, size: u8) -> Result<()> {
         match address {
-            Address::Absolute(val) => self.write_word(val, size),
-            Address::Relative { symbol, addend } => {
+            Address::Constant(val) => self.write_udata(val, size),
+            Address::Symbol { symbol, addend } => {
                 let offset = self.len() as u64;
                 self.relocs.push(DebugReloc {
                     offset: offset as u32,
@@ -380,10 +380,12 @@ impl Writer for WriterRelocate {
                     name: DebugRelocName::Symbol(symbol),
                     addend: addend as i64,
                 });
-                self.write_word(0, size)
+                self.write_udata(0, size)
             }
         }
     }
+
+    // TODO: implement write_eh_pointer
 
     fn write_offset(&mut self, val: usize, section: SectionId, size: u8) -> Result<()> {
         let offset = self.len() as u32;
@@ -393,7 +395,7 @@ impl Writer for WriterRelocate {
             name: DebugRelocName::Section(section),
             addend: val as i64,
         });
-        self.write_word(0, size)
+        self.write_udata(0, size)
     }
 
     fn write_offset_at(
@@ -409,6 +411,6 @@ impl Writer for WriterRelocate {
             name: DebugRelocName::Section(section),
             addend: val as i64,
         });
-        self.write_word_at(offset, 0, size)
+        self.write_udata_at(offset, 0, size)
     }
 }

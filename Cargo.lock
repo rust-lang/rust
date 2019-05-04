@@ -299,8 +299,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "gimli"
-version = "0.17.0"
-source = "git+https://github.com/gimli-rs/gimli.git#70c3730b5e3d8669dd2dbcf829fedd4f679185d9"
+version = "0.18.0"
+source = "git+https://github.com/gimli-rs/gimli.git#423431f6747167af8e64cc8c8378f9a34a18ff8f"
 dependencies = [
  "arrayvec 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -591,7 +591,7 @@ dependencies = [
  "cranelift-simplejit 0.30.0 (git+https://github.com/CraneStation/cranelift.git)",
  "env_logger 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "faerie 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "gimli 0.17.0 (git+https://github.com/gimli-rs/gimli.git)",
+ "gimli 0.18.0 (git+https://github.com/gimli-rs/gimli.git)",
  "indexmap 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.53 (registry+https://github.com/rust-lang/crates.io-index)",
  "target-lexicon 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -874,7 +874,7 @@ dependencies = [
 "checksum fallible-iterator 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
 "checksum fuchsia-cprng 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 "checksum gcc 0.3.55 (registry+https://github.com/rust-lang/crates.io-index)" = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
-"checksum gimli 0.17.0 (git+https://github.com/gimli-rs/gimli.git)" = "<none>"
+"checksum gimli 0.18.0 (git+https://github.com/gimli-rs/gimli.git)" = "<none>"
 "checksum goblin 0.0.21 (registry+https://github.com/rust-lang/crates.io-index)" = "6a4013e9182f2345c6b7829b9ef6e670bce0dfca12c6f974457ed2160c2c7fe9"
 "checksum heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)" = "20564e78d53d2bb135c343b3f47714a56af2061f1c928fdb541dc7b9fdd94205"
 "checksum humantime 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3ca7e5f2e110db35f93b837c81797f3714500b81d517bf20c431b16d3ca4f114"
