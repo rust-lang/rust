@@ -324,23 +324,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_obligations_as_possible(&mut self) {
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
-            let mut canonicalizer = self.canonicalizer();
-            let solution = match &obligation {
+            let (solution, canonicalized) = match &obligation {
                 Obligation::Trait(tr) => {
-                    let canonical = canonicalizer.canonicalize_trait_ref(tr.clone());
-                    super::traits::implements(
-                        canonicalizer.ctx.db,
-                        canonicalizer.ctx.resolver.krate().unwrap(),
-                        canonical,
+                    let canonicalized = self.canonicalizer().canonicalize_trait_ref(tr.clone());
+                    (
+                        super::traits::implements(
+                            self.db,
+                            self.resolver.krate().unwrap(),
+                            canonicalized.value.clone(),
+                        ),
+                        canonicalized,
                     )
                 }
             };
             match solution {
                 Some(Solution::Unique(substs)) => {
-                    canonicalizer.apply_solution(substs.0);
+                    canonicalized.apply_solution(self, substs.0);
                 }
                 Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    canonicalizer.apply_solution(substs.0);
+                    canonicalized.apply_solution(self, substs.0);
                     self.obligations.push(obligation);
                 }
                 Some(_) => {
@@ -877,17 +879,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         generic_args: Option<&GenericArgs>,
     ) -> Ty {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
-        let mut canonicalizer = self.canonicalizer();
-        let canonical_receiver = canonicalizer.canonicalize_ty(receiver_ty.clone());
+        let canonicalized_receiver = self.canonicalizer().canonicalize_ty(receiver_ty.clone());
         let resolved = method_resolution::lookup_method(
-            &canonical_receiver,
-            canonicalizer.ctx.db,
+            &canonicalized_receiver.value,
+            self.db,
             method_name,
-            &canonicalizer.ctx.resolver,
+            &self.resolver,
         );
         let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
             Some((ty, func)) => {
-                let ty = canonicalizer.decanonicalize_ty(ty);
+                let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
                 (
                     ty,
