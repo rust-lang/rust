@@ -584,7 +584,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                     let mut sep = " ";
                     for (freevar, upvar_ty) in self.tcx().freevars(did)
                         .as_ref()
-                        .map_or(&[][..], |fv| &fv[..])
+                        .map_or(&[][..], |v| &v[..])
                         .iter()
                         .zip(upvar_tys)
                     {
@@ -627,7 +627,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                     let mut sep = " ";
                     for (freevar, upvar_ty) in self.tcx().freevars(did)
                         .as_ref()
-                        .map_or(&[][..], |fv| &fv[..])
+                        .map_or(&[][..], |v| &v[..])
                         .iter()
                         .zip(upvar_tys)
                     {

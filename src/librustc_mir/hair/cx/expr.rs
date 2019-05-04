@@ -516,12 +516,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let upvars = cx.tcx.with_freevars(expr.hir_id, |freevars| {
-                freevars.iter()
-                    .zip(substs.upvar_tys(def_id, cx.tcx))
-                    .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))
-                    .collect()
-            });
+            let upvars = cx.tcx.freevars(def_id).iter()
+                .flat_map(|freevars| freevars.iter())
+                .zip(substs.upvar_tys(def_id, cx.tcx))
+                .map(|(freevar, ty)| capture_freevar(cx, expr, freevar, ty))
+                .collect();
             ExprKind::Closure {
                 closure_id: def_id,
                 substs,

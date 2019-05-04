@@ -9,7 +9,7 @@ pub use self::IntVarValue::*;
 pub use self::fold::TypeFoldable;
 
 use crate::hir::{map as hir_map, FreevarMap, GlobMap, TraitMap};
-use crate::hir::{HirId, Node};
+use crate::hir::Node;
 use crate::hir::def::{Res, DefKind, CtorOf, CtorKind, ExportMap};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::svh::Svh;
@@ -3117,18 +3117,6 @@ impl Iterator for AssociatedItemsIterator<'_, '_, '_> {
         let def_id = self.def_ids.get(self.next_index)?;
         self.next_index += 1;
         Some(self.tcx.associated_item(*def_id))
-    }
-}
-
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    pub fn with_freevars<T, F>(self, fid: HirId, f: F) -> T where
-        F: FnOnce(&[hir::Freevar]) -> T,
-    {
-        let def_id = self.hir().local_def_id_from_hir_id(fid);
-        match self.freevars(def_id) {
-            None => f(&[]),
-            Some(d) => f(&d),
-        }
     }
 }
 

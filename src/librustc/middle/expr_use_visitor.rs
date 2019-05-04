@@ -931,8 +931,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
-        self.tcx().with_freevars(closure_expr.hir_id, |freevars| {
-            for freevar in freevars {
+        if let Some(freevars) = self.tcx().freevars(closure_def_id) {
+            for freevar in freevars.iter() {
                 let var_hir_id = freevar.var_id();
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_hir_id },
@@ -960,7 +960,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-        });
+        }
     }
 
     fn cat_captured_var(&mut self,
