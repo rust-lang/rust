@@ -10,7 +10,7 @@ use std::sync::Arc;
 use rustc_hash::{FxHashSet, FxHashMap};
 use ra_db::{FileId, FilePosition};
 use ra_syntax::{
-    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr, TextRange,
+    SyntaxNode, AstPtr, TextUnit, SyntaxNodePtr, TextRange,TreeArc,
     ast::{self, AstNode, NameOwner},
     algo::find_node_at_offset,
     SyntaxKind::*,
@@ -18,9 +18,10 @@ use ra_syntax::{
 
 use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
-    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,
+    AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,Path,
     expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
-    ids::LocationCtx,
+    ids::{LocationCtx,MacroCallId},
+    docs::{docs_from_ast,Documentation},
     expr, AstId,
 };
 
@@ -184,7 +185,26 @@ pub enum PathResolution {
     /// A generic parameter
     GenericParam(u32),
     SelfType(crate::ImplBlock),
+    Macro(MacroByExampleDef),
     AssocItem(crate::ImplItem),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct MacroByExampleDef {
+    pub(crate) id: MacroCallId,
+}
+
+impl MacroByExampleDef {
+    pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::MacroCall>) {
+        let loc = self.id.loc(db);
+        (self.id.into(), loc.def.0.to_node(db))
+    }
+}
+
+impl crate::Docs for MacroByExampleDef {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        docs_from_ast(&*self.source(db).1)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -262,6 +282,23 @@ impl SourceAnalyzer {
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
         let expr_id = self.body_source_map.as_ref()?.node_expr(field.into())?;
         self.infer.as_ref()?.field_resolution(expr_id)
+    }
+
+    pub fn resolve_macro_call(
+        &self,
+        db: &impl HirDatabase,
+        file_id: FileId,
+        macro_call: &ast::MacroCall,
+    ) -> Option<MacroByExampleDef> {
+        let hir_id = file_id.into();
+        let ast_id = db.ast_id_map(hir_id).ast_id(macro_call).with_file_id(hir_id);
+        let call_id = self.resolver.resolve_macro_call(
+            db,
+            macro_call.path().and_then(Path::from_ast),
+            ast_id,
+        );
+
+        call_id.map(|id| MacroByExampleDef { id })
     }
 
     pub fn resolve_hir_path(

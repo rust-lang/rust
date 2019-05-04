@@ -59,6 +59,21 @@ pub(crate) fn reference_definition(
             return Exact(NavigationTarget::from_function(db, func));
         }
     }
+
+    //it could be a macro call
+    if let Some(macro_call) = name_ref
+        .syntax()
+        .parent()
+        .and_then(|node| node.parent())
+        .and_then(|node| node.parent())
+        .and_then(ast::MacroCall::cast)
+    {
+        tested_by!(goto_definition_works_for_macros);
+        if let Some(macro_call) = analyzer.resolve_macro_call(db, file_id, macro_call) {
+            return Exact(NavigationTarget::from_macro_def(db, macro_call));
+        }
+    }
+
     // It could also be a field access
     if let Some(field_expr) = name_ref.syntax().parent().and_then(ast::FieldExpr::cast) {
         tested_by!(goto_definition_works_for_fields);
@@ -96,6 +111,10 @@ pub(crate) fn reference_definition(
                 }
                 hir::PathResolution::GenericParam(..) => {
                     // FIXME: go to the generic param def
+                }
+                hir::PathResolution::Macro(def) => {
+                    let nav = NavigationTarget::from_macro_def(db, def);
+                    return Exact(nav);
                 }
                 hir::PathResolution::SelfType(impl_block) => {
                     let ty = impl_block.target_ty(db);
@@ -156,6 +175,7 @@ fn named_target(file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> 
         .visit(|node: &ast::TraitDef| NavigationTarget::from_named(file_id, node))
         .visit(|node: &ast::NamedFieldDef| NavigationTarget::from_named(file_id, node))
         .visit(|node: &ast::Module| NavigationTarget::from_named(file_id, node))
+        .visit(|node: &ast::MacroCall| NavigationTarget::from_named(file_id, node))
         .accept(node)
 }
 
@@ -224,6 +244,26 @@ mod tests {
             // empty
             ",
             "foo SOURCE_FILE FileId(2) [0; 10)",
+        );
+    }
+
+    #[test]
+    fn goto_definition_works_for_macros() {
+        covers!(goto_definition_works_for_macros);
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! foo {
+                () => {
+                    {}
+                };
+            }
+
+            fn bar() {
+                <|>foo!();
+            }
+            ",
+            "foo MACRO_CALL FileId(1) [0; 50) [13; 16)",
         );
     }
 

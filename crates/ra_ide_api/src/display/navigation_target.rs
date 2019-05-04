@@ -213,6 +213,15 @@ impl NavigationTarget {
         }
     }
 
+    pub(crate) fn from_macro_def(
+        db: &RootDatabase,
+        macro_call: hir::MacroByExampleDef,
+    ) -> NavigationTarget {
+        let (file_id, node) = macro_call.source(db);
+        log::debug!("nav target {}", node.syntax().debug_dump());
+        NavigationTarget::from_named(file_id.original_file(db), &*node)
+    }
+
     #[cfg(test)]
     pub(crate) fn assert_match(&self, expected: &str) {
         let actual = self.debug_render();
@@ -289,6 +298,7 @@ impl NavigationTarget {
             .visit(doc_comments::<ast::StaticDef>)
             .visit(doc_comments::<ast::NamedFieldDef>)
             .visit(doc_comments::<ast::EnumVariant>)
+            .visit(doc_comments::<ast::MacroCall>)
             .accept(&node)?
     }
 
