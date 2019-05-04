@@ -177,6 +177,32 @@ mod sealed {
         }
     }
 
+    macro_rules! impl_vec_trait {
+        ([$Trait:ident $m:ident] $fun:ident ($a:ty, $b:ty) -> $r:ty) => {
+            impl $Trait<$b> for $a {
+                type Result = $r;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn $m(self, b: $b) -> Self::Result {
+                    $fun(transmute(self), transmute(b))
+                }
+            }
+        };
+        ([$Trait:ident $m:ident] $fun:ident ($a:ty, ~$b:ty) -> $r:ty) => {
+            impl_vec_trait!{ [$Trait $m] $fun ($a, $a) -> $r }
+            impl_vec_trait!{ [$Trait $m] $fun ($a, $b) -> $r }
+            impl_vec_trait!{ [$Trait $m] $fun ($b, $a) -> $r }
+        };
+        ([$Trait:ident $m:ident] ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
+            impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char, ~vector_bool_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char, ~vector_bool_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short, ~vector_bool_short) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m] $sh (vector_signed_short, ~vector_bool_short) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int, ~vector_bool_int) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
+        }
+    }
+
     test_impl! { vec_vminsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vminsb, vminsb] }
     test_impl! { vec_vminsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vminsh, vminsh] }
     test_impl! { vec_vminsw (a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [vminsw, vminsw] }
@@ -190,43 +216,7 @@ mod sealed {
         unsafe fn vec_min(self, b: Other) -> Self::Result;
     }
 
-    macro_rules! impl_vec_min {
-        ($fun:ident ($a:ty, $b:ty) -> $r:ty) => {
-            impl VectorMin<$b> for $a {
-                type Result = $r;
-                #[inline]
-                #[target_feature(enable = "altivec")]
-                unsafe fn vec_min(self, b: $b) -> Self::Result {
-                    $fun(transmute(self), transmute(b))
-                }
-            }
-        }
-    }
-
-    impl_vec_min!{ vminub (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
-    impl_vec_min!{ vminub (vector_unsigned_char, vector_bool_char) -> vector_unsigned_char }
-    impl_vec_min!{ vminub (vector_bool_char, vector_unsigned_char) -> vector_unsigned_char }
-
-    impl_vec_min!{ vminsb (vector_signed_char, vector_signed_char) -> vector_signed_char }
-    impl_vec_min!{ vminsb (vector_signed_char, vector_bool_char) -> vector_signed_char }
-    impl_vec_min!{ vminsb (vector_bool_char, vector_signed_char) -> vector_signed_char }
-
-    impl_vec_min!{ vminuh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
-    impl_vec_min!{ vminuh (vector_unsigned_short, vector_bool_short) -> vector_unsigned_short }
-    impl_vec_min!{ vminuh (vector_bool_short, vector_unsigned_short) -> vector_unsigned_short }
-
-    impl_vec_min!{ vminsh (vector_signed_short, vector_signed_short) -> vector_signed_short }
-    impl_vec_min!{ vminsh (vector_signed_short, vector_bool_short) -> vector_signed_short }
-    impl_vec_min!{ vminsh (vector_bool_short, vector_signed_short) -> vector_signed_short }
-
-    impl_vec_min!{ vminuw (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
-    impl_vec_min!{ vminuw (vector_unsigned_int, vector_bool_int) -> vector_unsigned_int }
-    impl_vec_min!{ vminuw (vector_bool_int, vector_unsigned_int) -> vector_unsigned_int }
-
-    impl_vec_min!{ vminsw (vector_signed_int, vector_signed_int) -> vector_signed_int }
-    impl_vec_min!{ vminsw (vector_signed_int, vector_bool_int) -> vector_signed_int }
-    impl_vec_min!{ vminsw (vector_bool_int, vector_signed_int) -> vector_signed_int }
-
+    impl_vec_trait!{ [VectorMin vec_min] (vminub, vminsb, vminuh, vminsh, vminuw, vminsw) }
 
     test_impl! { vec_vmaxsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vmaxsb, vmaxsb] }
     test_impl! { vec_vmaxsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vmaxsh, vmaxsh] }
@@ -241,42 +231,7 @@ mod sealed {
         unsafe fn vec_max(self, b: Other) -> Self::Result;
     }
 
-    macro_rules! impl_vec_max {
-        ($fun:ident ($a:ty, $b:ty) -> $r:ty) => {
-            impl VectorMax<$b> for $a {
-                type Result = $r;
-                #[inline]
-                #[target_feature(enable = "altivec")]
-                unsafe fn vec_max(self, b: $b) -> Self::Result {
-                    $fun(transmute(self), transmute(b))
-                }
-            }
-        }
-    }
-
-    impl_vec_max!{ vmaxub (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
-    impl_vec_max!{ vmaxub (vector_unsigned_char, vector_bool_char) -> vector_unsigned_char }
-    impl_vec_max!{ vmaxub (vector_bool_char, vector_unsigned_char) -> vector_unsigned_char }
-
-    impl_vec_max!{ vmaxsb (vector_signed_char, vector_signed_char) -> vector_signed_char }
-    impl_vec_max!{ vmaxsb (vector_signed_char, vector_bool_char) -> vector_signed_char }
-    impl_vec_max!{ vmaxsb (vector_bool_char, vector_signed_char) -> vector_signed_char }
-
-    impl_vec_max!{ vmaxuh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
-    impl_vec_max!{ vmaxuh (vector_unsigned_short, vector_bool_short) -> vector_unsigned_short }
-    impl_vec_max!{ vmaxuh (vector_bool_short, vector_unsigned_short) -> vector_unsigned_short }
-
-    impl_vec_max!{ vmaxsh (vector_signed_short, vector_signed_short) -> vector_signed_short }
-    impl_vec_max!{ vmaxsh (vector_signed_short, vector_bool_short) -> vector_signed_short }
-    impl_vec_max!{ vmaxsh (vector_bool_short, vector_signed_short) -> vector_signed_short }
-
-    impl_vec_max!{ vmaxuw (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
-    impl_vec_max!{ vmaxuw (vector_unsigned_int, vector_bool_int) -> vector_unsigned_int }
-    impl_vec_max!{ vmaxuw (vector_bool_int, vector_unsigned_int) -> vector_unsigned_int }
-
-    impl_vec_max!{ vmaxsw (vector_signed_int, vector_signed_int) -> vector_signed_int }
-    impl_vec_max!{ vmaxsw (vector_signed_int, vector_bool_int) -> vector_signed_int }
-    impl_vec_max!{ vmaxsw (vector_bool_int, vector_signed_int) -> vector_signed_int }
+    impl_vec_trait!{ [VectorMax vec_max] (vmaxub, vmaxsb, vmaxuh, vmaxsh, vmaxuw, vmaxsw) }
 
     #[inline]
     #[target_feature(enable = "altivec")]
