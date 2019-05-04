@@ -119,7 +119,7 @@ declare_features! (
     // feature-group-start: internal feature gates
     // -------------------------------------------------------------------------
 
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows using the `rust-intrinsic`'s "ABI".
     (active, intrinsics, "1.0.0", None, None),
@@ -152,7 +152,7 @@ declare_features! (
     // lets a function to be `const` when opted into with `#![feature(foo)]`.
     (active, rustc_const_unstable, "1.0.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Allows using `#[link_name="llvm.*"]`.
     (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
@@ -187,17 +187,17 @@ declare_features! (
     // Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
 
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows using `#[prelude_import]` on glob `use` items.
     (active, prelude_import, "1.2.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (active, dropck_parametricity, "1.3.0", Some(28498), None),
 
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
@@ -205,7 +205,7 @@ declare_features! (
     // Allows using the `vectorcall` ABI.
     (active, abi_vectorcall, "1.7.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Allows using `#[structural_match]` which indicates that a type is structurally matchable.
     (active, structural_match, "1.8.0", Some(31434), None),
@@ -219,7 +219,7 @@ declare_features! (
     // Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
     (active, needs_panic_runtime, "1.10.0", Some(32837), None),
 
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
@@ -242,7 +242,7 @@ declare_features! (
     // Allows using the `format_args_nl` macro.
     (active, format_args_nl, "1.29.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", Some(0), Some(Edition::Edition2018)),

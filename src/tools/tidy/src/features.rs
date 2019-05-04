@@ -191,7 +191,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
 
     // We allow rustc-internal features to omit a tracking issue.
     // To make tidy accept omitting a tracking issue, group the list of features
-    // without one inside `// no tracking issue START` and `// no tracking issue END`.
+    // without one inside `// no-tracking-issue` and `// no-tracking-issue-end`.
     let mut next_feature_omits_tracking_issue = false;
 
     let mut in_feature_group = false;
@@ -201,13 +201,13 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
         .filter_map(|(line, line_number)| {
             let line = line.trim();
 
-            // Within START and END, the tracking issue can be omitted.
+            // Within -start and -end, the tracking issue can be omitted.
             match line {
-                "// no tracking issue START" => {
+                "// no-tracking-issue-start" => {
                     next_feature_omits_tracking_issue = true;
                     return None;
                 }
-                "// no tracking issue END" => {
+                "// no-tracking-issue-end" => {
                     next_feature_omits_tracking_issue = false;
                     return None;
                 }
