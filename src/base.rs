@@ -2,61 +2,7 @@ use rustc::ty::adjustment::PointerCast;
 
 use crate::prelude::*;
 
-struct PrintOnPanic<F: Fn() -> String>(F);
-impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
-    fn drop(&mut self) {
-        if ::std::thread::panicking() {
-            println!("{}", (self.0)());
-        }
-    }
-}
-
-pub fn trans_mono_item<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
-    cx: &mut crate::CodegenCx<'a, 'clif, 'tcx, B>,
-    mono_item: MonoItem<'tcx>,
-    linkage: Linkage,
-) {
-    let tcx = cx.tcx;
-    match mono_item {
-        MonoItem::Fn(inst) => {
-            let _inst_guard =
-                PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).as_str()));
-            debug_assert!(!inst.substs.needs_infer());
-            let _mir_guard = PrintOnPanic(|| {
-                match inst.def {
-                    InstanceDef::Item(_)
-                    | InstanceDef::DropGlue(_, _)
-                    | InstanceDef::Virtual(_, _)
-                        if inst.def_id().krate == LOCAL_CRATE =>
-                    {
-                        let mut mir = ::std::io::Cursor::new(Vec::new());
-                        crate::rustc_mir::util::write_mir_pretty(
-                            tcx,
-                            Some(inst.def_id()),
-                            &mut mir,
-                        )
-                        .unwrap();
-                        String::from_utf8(mir.into_inner()).unwrap()
-                    }
-                    _ => {
-                        // FIXME fix write_mir_pretty for these instances
-                        format!("{:#?}", tcx.instance_mir(inst.def))
-                    }
-                }
-            });
-
-            trans_fn(cx, inst, linkage);
-        }
-        MonoItem::Static(def_id) => {
-            crate::constant::codegen_static(&mut cx.ccx, def_id);
-        }
-        MonoItem::GlobalAsm(node_id) => tcx
-            .sess
-            .fatal(&format!("Unimplemented global asm mono item {:?}", node_id)),
-    }
-}
-
-fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
+pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
     cx: &mut crate::CodegenCx<'a, 'clif, 'tcx, B>,
     instance: Instance<'tcx>,
     linkage: Linkage,
