@@ -5,7 +5,7 @@ Language
 --------
 - [`FnOnce`, `FnMut`, and the `Fn` traits are now implemented for `Box<FnOnce>`,
   `Box<FnMut>`, and `Box<Fn>` respectively.][59500]
-- [You can now coerce closures into unsafe functions.][59580] e.g.
+- [You can now coerce closures into unsafe function pointers.][59580] e.g.
   ```rust
   unsafe fn call_unsafe(func: unsafe fn() -> ()) -> () {
       func()
