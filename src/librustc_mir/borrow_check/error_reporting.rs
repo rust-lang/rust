@@ -180,9 +180,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                                     &including_downcast,
                                 )?;
                             } else if let Place::Base(PlaceBase::Local(local)) = proj.base {
-                                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
-                                    self.mir.local_decls[local].is_user_variable
-                                {
+                                if self.mir.local_decls[local].is_ref_for_guard() {
                                     self.append_place_to_string(
                                         &proj.base,
                                         buf,
