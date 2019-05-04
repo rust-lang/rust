@@ -20,7 +20,7 @@ use std::os::raw::{c_char, c_int};
 use std::sync::mpsc;
 
 use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::MetadataLoader;
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::mir::mono::{Linkage as RLinkage, Visibility};
 use rustc::session::config::{DebugInfo, OutputFilenames, OutputType};
 use rustc::ty::query::Providers;
@@ -192,6 +192,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        metadata: EncodedMetadata,
+        _need_metadata_module: bool,
         _rx: mpsc::Receiver<Box<dyn Any + Send>>,
     ) -> Box<dyn Any> {
         env_logger::init();
@@ -203,8 +205,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
 
         tcx.sess.abort_if_errors();
-
-        let metadata = tcx.encode_metadata();
 
         let mut log = if cfg!(debug_assertions) {
             Some(File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt")).unwrap())
