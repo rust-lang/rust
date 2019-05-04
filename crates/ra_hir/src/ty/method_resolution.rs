@@ -16,7 +16,7 @@ use crate::{
     generics::HasGenericParams,
     ty::primitive::{UncertainIntTy, UncertainFloatTy}
 };
-use super::{TraitRef, Substs};
+use super::{TraitRef, Canonical};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -130,124 +130,122 @@ fn def_crate(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<Crate> 
     }
 }
 
+/// Look up the method with the given name, returning the actual autoderefed
+/// receiver type (but without autoref applied yet).
+pub(crate) fn lookup_method(
+    ty: &Canonical<Ty>,
+    db: &impl HirDatabase,
+    name: &Name,
+    resolver: &Resolver,
+) -> Option<(Ty, Function)> {
+    iterate_method_candidates(ty, db, resolver, Some(name), |ty, f| Some((ty.clone(), f)))
+}
+
+// This would be nicer if it just returned an iterator, but that runs into
+// lifetime problems, because we need to borrow temp `CrateImplBlocks`.
+pub(crate) fn iterate_method_candidates<T>(
+    ty: &Canonical<Ty>,
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    name: Option<&Name>,
+    mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+) -> Option<T> {
+    // For method calls, rust first does any number of autoderef, and then one
+    // autoref (i.e. when the method takes &self or &mut self). We just ignore
+    // the autoref currently -- when we find a method matching the given name,
+    // we assume it fits.
+
+    // Also note that when we've got a receiver like &S, even if the method we
+    // find in the end takes &self, we still do the autoderef step (just as
+    // rustc does an autoderef and then autoref again).
+
+    let krate = resolver.krate()?;
+    for derefed_ty in ty.value.clone().autoderef(db) {
+        let derefed_ty = Canonical { value: derefed_ty, num_vars: ty.num_vars };
+        if let Some(result) = iterate_inherent_methods(&derefed_ty, db, name, krate, &mut callback)
+        {
+            return Some(result);
+        }
+        if let Some(result) =
+            iterate_trait_method_candidates(&derefed_ty, db, resolver, name, &mut callback)
+        {
+            return Some(result);
+        }
+    }
+    None
+}
+
+fn iterate_trait_method_candidates<T>(
+    ty: &Canonical<Ty>,
+    db: &impl HirDatabase,
+    resolver: &Resolver,
+    name: Option<&Name>,
+    mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+) -> Option<T> {
+    let krate = resolver.krate()?;
+    'traits: for t in resolver.traits_in_scope() {
+        let data = t.trait_data(db);
+        // we'll be lazy about checking whether the type implements the
+        // trait, but if we find out it doesn't, we'll skip the rest of the
+        // iteration
+        let mut known_implemented = false;
+        for item in data.items() {
+            match item {
+                &TraitItem::Function(m) => {
+                    let sig = m.signature(db);
+                    if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
+                        if !known_implemented {
+                            let trait_ref = canonical_trait_ref(db, t, ty.clone());
+                            // FIXME cache this implements check (without solution) in a query?
+                            if super::traits::implements(db, krate, trait_ref).is_none() {
+                                continue 'traits;
+                            }
+                        }
+                        known_implemented = true;
+                        if let Some(result) = callback(&ty.value, m) {
+                            return Some(result);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    None
+}
+
+fn iterate_inherent_methods<T>(
+    ty: &Canonical<Ty>,
+    db: &impl HirDatabase,
+    name: Option<&Name>,
+    krate: Crate,
+    mut callback: impl FnMut(&Ty, Function) -> Option<T>,
+) -> Option<T> {
+    let krate = match def_crate(db, krate, &ty.value) {
+        Some(krate) => krate,
+        None => return None,
+    };
+    let impls = db.impls_in_crate(krate);
+
+    for impl_block in impls.lookup_impl_blocks(&ty.value) {
+        for item in impl_block.items(db) {
+            match item {
+                ImplItem::Method(f) => {
+                    let sig = f.signature(db);
+                    if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
+                        if let Some(result) = callback(&ty.value, f) {
+                            return Some(result);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    None
+}
+
 impl Ty {
-    /// Look up the method with the given name, returning the actual autoderefed
-    /// receiver type (but without autoref applied yet).
-    pub(crate) fn lookup_method(
-        self,
-        db: &impl HirDatabase,
-        name: &Name,
-        resolver: &Resolver,
-    ) -> Option<(Ty, Function)> {
-        self.iterate_method_candidates(db, resolver, Some(name), |ty, f| Some((ty.clone(), f)))
-    }
-
-    // This would be nicer if it just returned an iterator, but that runs into
-    // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
-    pub(crate) fn iterate_method_candidates<T>(
-        self,
-        db: &impl HirDatabase,
-        resolver: &Resolver,
-        name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
-    ) -> Option<T> {
-        // For method calls, rust first does any number of autoderef, and then one
-        // autoref (i.e. when the method takes &self or &mut self). We just ignore
-        // the autoref currently -- when we find a method matching the given name,
-        // we assume it fits.
-
-        // Also note that when we've got a receiver like &S, even if the method we
-        // find in the end takes &self, we still do the autoderef step (just as
-        // rustc does an autoderef and then autoref again).
-
-        let krate = resolver.krate()?;
-        for derefed_ty in self.autoderef(db) {
-            if let Some(result) =
-                derefed_ty.iterate_inherent_methods(db, name, krate, &mut callback)
-            {
-                return Some(result);
-            }
-            if let Some(result) =
-                derefed_ty.iterate_trait_method_candidates(db, resolver, name, &mut callback)
-            {
-                return Some(result);
-            }
-        }
-        None
-    }
-
-    fn iterate_trait_method_candidates<T>(
-        &self,
-        db: &impl HirDatabase,
-        resolver: &Resolver,
-        name: Option<&Name>,
-        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
-    ) -> Option<T> {
-        'traits: for t in resolver.traits_in_scope() {
-            let data = t.trait_data(db);
-            // we'll be lazy about checking whether the type implements the
-            // trait, but if we find out it doesn't, we'll skip the rest of the
-            // iteration
-            let mut known_implemented = false;
-            for item in data.items() {
-                match item {
-                    &TraitItem::Function(m) => {
-                        let sig = m.signature(db);
-                        if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
-                            if !known_implemented {
-                                let trait_ref = TraitRef {
-                                    trait_: t,
-                                    substs: fresh_substs_for_trait(db, t, self.clone()),
-                                };
-                                let (trait_ref, _) = super::traits::canonicalize(trait_ref);
-                                if db.implements(trait_ref).is_none() {
-                                    continue 'traits;
-                                }
-                            }
-                            known_implemented = true;
-                            if let Some(result) = callback(self, m) {
-                                return Some(result);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        None
-    }
-
-    fn iterate_inherent_methods<T>(
-        &self,
-        db: &impl HirDatabase,
-        name: Option<&Name>,
-        krate: Crate,
-        mut callback: impl FnMut(&Ty, Function) -> Option<T>,
-    ) -> Option<T> {
-        let krate = match def_crate(db, krate, self) {
-            Some(krate) => krate,
-            None => return None,
-        };
-        let impls = db.impls_in_crate(krate);
-
-        for impl_block in impls.lookup_impl_blocks(self) {
-            for item in impl_block.items(db) {
-                match item {
-                    ImplItem::Method(f) => {
-                        let sig = f.signature(db);
-                        if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
-                            if let Some(result) = callback(self, f) {
-                                return Some(result);
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        }
-        None
-    }
-
     // This would be nicer if it just returned an iterator, but that runs into
     // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
     pub fn iterate_impl_items<T>(
@@ -271,15 +269,26 @@ impl Ty {
 }
 
 /// This creates Substs for a trait with the given Self type and type variables
-/// for all other parameters. This is kind of a hack since these aren't 'real'
-/// type variables; the resulting trait reference is just used for the
-/// preliminary method candidate check.
-fn fresh_substs_for_trait(db: &impl HirDatabase, tr: Trait, self_ty: Ty) -> Substs {
+/// for all other parameters, to query Chalk with it.
+fn canonical_trait_ref(
+    db: &impl HirDatabase,
+    trait_: Trait,
+    self_ty: Canonical<Ty>,
+) -> Canonical<TraitRef> {
     let mut substs = Vec::new();
-    let generics = tr.generic_params(db);
-    substs.push(self_ty);
-    substs.extend(generics.params_including_parent().into_iter().skip(1).enumerate().map(
-        |(i, _p)| Ty::Infer(super::infer::InferTy::TypeVar(super::infer::TypeVarId(i as u32))),
-    ));
-    substs.into()
+    let generics = trait_.generic_params(db);
+    let num_vars = self_ty.num_vars;
+    substs.push(self_ty.value);
+    substs.extend(
+        generics
+            .params_including_parent()
+            .into_iter()
+            .skip(1)
+            .enumerate()
+            .map(|(i, _p)| Ty::Bound((i + num_vars) as u32)),
+    );
+    Canonical {
+        num_vars: substs.len() - 1 + self_ty.num_vars,
+        value: TraitRef { trait_, substs: substs.into() },
+    }
 }

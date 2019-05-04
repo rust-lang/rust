@@ -1,47 +1,65 @@
-//! Stuff that will probably mostly replaced by Chalk.
-use std::collections::HashMap;
+//! Trait solving using Chalk.
+use std::sync::{Arc, Mutex};
 
-use crate::{db::HirDatabase, generics::HasGenericParams};
-use super::{TraitRef, Substs, infer::{TypeVarId, InferTy}, Ty};
+use log::debug;
+use chalk_ir::cast::Cast;
 
-// Copied (and simplified) from Chalk
+use crate::{Crate, Trait, db::HirDatabase, ImplBlock};
+use super::{TraitRef, Ty, Canonical};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-/// A (possible) solution for a proposed goal. Usually packaged in a `Result`,
-/// where `Err` represents definite *failure* to prove a goal.
-pub enum Solution {
-    /// The goal indeed holds, and there is a unique value for all existential
-    /// variables.
-    Unique(Substs),
+use self::chalk::{ToChalk, from_chalk};
 
-    /// The goal may be provable in multiple ways, but regardless we may have some guidance
-    /// for type inference.
-    Ambig(Guidance),
+mod chalk;
+
+pub(crate) type Solver = chalk_solve::Solver;
+
+#[derive(Debug, Copy, Clone)]
+struct ChalkContext<'a, DB> {
+    db: &'a DB,
+    krate: Crate,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-/// When a goal holds ambiguously (e.g., because there are multiple possible
-/// solutions), we issue a set of *guidance* back to type inference.
-pub enum Guidance {
-    /// The existential variables *must* have the given values if the goal is
-    /// ever to hold, but that alone isn't enough to guarantee the goal will
-    /// actually hold.
-    Definite(Substs),
+pub(crate) fn solver(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
+    // krate parameter is just so we cache a unique solver per crate
+    let solver_choice = chalk_solve::SolverChoice::SLG { max_size: 10 };
+    Arc::new(Mutex::new(solver_choice.into_solver()))
+}
 
-    /// There are multiple plausible values for the existentials, but the ones
-    /// here are suggested as the preferred choice heuristically. These should
-    /// be used for inference fallback only.
-    Suggested(Substs),
+/// Collects impls for the given trait in the whole dependency tree of `krate`.
+pub(crate) fn impls_for_trait(
+    db: &impl HirDatabase,
+    krate: Crate,
+    trait_: Trait,
+) -> Arc<[ImplBlock]> {
+    let mut impls = Vec::new();
+    // We call the query recursively here. On the one hand, this means we can
+    // reuse results from queries for different crates; on the other hand, this
+    // will only ever get called for a few crates near the root of the tree (the
+    // ones the user is editing), so this may actually be a waste of memory. I'm
+    // doing it like this mainly for simplicity for now.
+    for dep in krate.dependencies(db) {
+        impls.extend(db.impls_for_trait(dep.krate, trait_).iter());
+    }
+    let crate_impl_blocks = db.impls_in_crate(krate);
+    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_));
+    impls.into()
+}
 
-    /// There's no useful information to feed back to type inference
-    Unknown,
+fn solve(
+    db: &impl HirDatabase,
+    krate: Crate,
+    goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal>>,
+) -> Option<chalk_solve::Solution> {
+    let context = ChalkContext { db, krate };
+    let solver = db.solver(krate);
+    let solution = solver.lock().unwrap().solve(&context, goal);
+    debug!("solve({:?}) => {:?}", goal, solution);
+    solution
 }
 
 /// Something that needs to be proven (by Chalk) during type checking, e.g. that
 /// a certain type implements a certain trait. Proving the Obligation might
 /// result in additional information about inference variables.
-///
-/// This might be handled by Chalk when we integrate it?
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Obligation {
     /// Prove that a certain type implements a trait (the type is the `Self` type
@@ -49,67 +67,94 @@ pub enum Obligation {
     Trait(TraitRef),
 }
 
-/// Rudimentary check whether an impl exists for a given type and trait; this
-/// will actually be done by chalk.
-pub(crate) fn implements(db: &impl HirDatabase, trait_ref: TraitRef) -> Option<Solution> {
-    // FIXME use all trait impls in the whole crate graph
-    let krate = trait_ref.trait_.module(db).krate(db);
-    let krate = match krate {
-        Some(krate) => krate,
-        None => return None,
+/// Check using Chalk whether trait is implemented for given parameters including `Self` type.
+pub(crate) fn implements(
+    db: &impl HirDatabase,
+    krate: Crate,
+    trait_ref: Canonical<TraitRef>,
+) -> Option<Solution> {
+    let goal: chalk_ir::Goal = trait_ref.value.to_chalk(db).cast();
+    debug!("goal: {:?}", goal);
+    let env = chalk_ir::Environment::new();
+    let in_env = chalk_ir::InEnvironment::new(&env, goal);
+    let parameter = chalk_ir::ParameterKind::Ty(chalk_ir::UniverseIndex::ROOT);
+    let canonical =
+        chalk_ir::Canonical { value: in_env, binders: vec![parameter; trait_ref.num_vars] };
+    // We currently don't deal with universes (I think / hope they're not yet
+    // relevant for our use cases?)
+    let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
+    let solution = solve(db, krate, &u_canonical);
+    solution.map(|solution| solution_from_chalk(db, solution))
+}
+
+fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -> Solution {
+    let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution>| {
+        let value = subst
+            .value
+            .parameters
+            .into_iter()
+            .map(|p| {
+                let ty = match p {
+                    chalk_ir::Parameter(chalk_ir::ParameterKind::Ty(ty)) => from_chalk(db, ty),
+                    chalk_ir::Parameter(chalk_ir::ParameterKind::Lifetime(_)) => unimplemented!(),
+                };
+                ty
+            })
+            .collect();
+        let result = Canonical { value, num_vars: subst.binders.len() };
+        SolutionVariables(result)
     };
-    let crate_impl_blocks = db.impls_in_crate(krate);
-    let mut impl_blocks = crate_impl_blocks
-        .lookup_impl_blocks_for_trait(&trait_ref.trait_)
-        // we don't handle where clauses at all, waiting for Chalk for that
-        .filter(|impl_block| impl_block.generic_params(db).where_predicates.is_empty());
-    impl_blocks
-        .find_map(|impl_block| unify_trait_refs(&trait_ref, &impl_block.target_trait_ref(db)?))
-}
-
-pub(super) fn canonicalize(trait_ref: TraitRef) -> (TraitRef, Vec<TypeVarId>) {
-    let mut canonical = HashMap::new(); // mapping uncanonical -> canonical
-    let mut uncanonical = Vec::new(); // mapping canonical -> uncanonical (which is dense)
-    let mut substs = trait_ref.substs.0.to_vec();
-    for ty in &mut substs {
-        ty.walk_mut(&mut |ty| match ty {
-            Ty::Infer(InferTy::TypeVar(tv)) => {
-                let tv: &mut TypeVarId = tv;
-                *tv = *canonical.entry(*tv).or_insert_with(|| {
-                    let i = uncanonical.len();
-                    uncanonical.push(*tv);
-                    TypeVarId(i as u32)
-                });
-            }
-            _ => {}
-        });
-    }
-    (TraitRef { substs: substs.into(), ..trait_ref }, uncanonical)
-}
-
-fn unify_trait_refs(tr1: &TraitRef, tr2: &TraitRef) -> Option<Solution> {
-    if tr1.trait_ != tr2.trait_ {
-        return None;
-    }
-    let mut solution_substs = Vec::new();
-    for (t1, t2) in tr1.substs.0.iter().zip(tr2.substs.0.iter()) {
-        // this is very bad / hacky 'unification' logic, just enough to make the simple tests pass
-        match (t1, t2) {
-            (_, Ty::Infer(InferTy::TypeVar(_))) | (_, Ty::Unknown) | (_, Ty::Param { .. }) => {
-                // type variable (or similar) in the impl, we just assume it works
-            }
-            (Ty::Infer(InferTy::TypeVar(v1)), _) => {
-                // type variable in the query and fixed type in the impl, record its value
-                solution_substs.resize_with(v1.0 as usize + 1, || Ty::Unknown);
-                solution_substs[v1.0 as usize] = t2.clone();
-            }
-            _ => {
-                // check that they're equal (actually we'd have to recurse etc.)
-                if t1 != t2 {
-                    return None;
-                }
-            }
+    match solution {
+        chalk_solve::Solution::Unique(constr_subst) => {
+            let subst = chalk_ir::Canonical {
+                value: constr_subst.value.subst,
+                binders: constr_subst.binders,
+            };
+            Solution::Unique(convert_subst(subst))
+        }
+        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Definite(subst)) => {
+            Solution::Ambig(Guidance::Definite(convert_subst(subst)))
+        }
+        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Suggested(subst)) => {
+            Solution::Ambig(Guidance::Suggested(convert_subst(subst)))
+        }
+        chalk_solve::Solution::Ambig(chalk_solve::Guidance::Unknown) => {
+            Solution::Ambig(Guidance::Unknown)
         }
     }
-    Some(Solution::Unique(solution_substs.into()))
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct SolutionVariables(pub Canonical<Vec<Ty>>);
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// A (possible) solution for a proposed goal.
+pub(crate) enum Solution {
+    /// The goal indeed holds, and there is a unique value for all existential
+    /// variables.
+    Unique(SolutionVariables),
+
+    /// The goal may be provable in multiple ways, but regardless we may have some guidance
+    /// for type inference. In this case, we don't return any lifetime
+    /// constraints, since we have not "committed" to any particular solution
+    /// yet.
+    Ambig(Guidance),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+/// When a goal holds ambiguously (e.g., because there are multiple possible
+/// solutions), we issue a set of *guidance* back to type inference.
+pub(crate) enum Guidance {
+    /// The existential variables *must* have the given values if the goal is
+    /// ever to hold, but that alone isn't enough to guarantee the goal will
+    /// actually hold.
+    Definite(SolutionVariables),
+
+    /// There are multiple plausible values for the existentials, but the ones
+    /// here are suggested as the preferred choice heuristically. These should
+    /// be used for inference fallback only.
+    Suggested(SolutionVariables),
+
+    /// There's no useful information to feed back to type inference
+    Unknown,
 }

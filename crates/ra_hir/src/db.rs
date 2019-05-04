@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use ra_syntax::{SyntaxNode, TreeArc, SourceFile, SmolStr, ast};
 use ra_db::{SourceDatabase, salsa};
@@ -8,16 +8,16 @@ use crate::{
     Function, FnSignature, ExprScopes, TypeAlias,
     Struct, Enum, StructField,
     Const, ConstSignature, Static,
-    DefWithBody,
+    DefWithBody, Trait,
+    ids,
     nameres::{Namespace, ImportSourceMap, RawItems, CrateDefMap},
-    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig},
+    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig, TypeCtor},
     adt::{StructData, EnumData},
-    impl_block::{ModuleImplBlocks, ImplSourceMap},
+    impl_block::{ModuleImplBlocks, ImplSourceMap, ImplBlock},
     generics::{GenericParams, GenericDef},
     type_ref::TypeRef,
-    traits::TraitData, Trait, ty::TraitRef,
+    traits::TraitData,
     lang_item::{LangItems, LangItemTarget},
-    ids
 };
 
 #[salsa::query_group(DefDatabaseStorage)]
@@ -38,6 +38,12 @@ pub trait DefDatabase: SourceDatabase {
     fn intern_trait(&self, loc: ids::ItemLoc<ast::TraitDef>) -> ids::TraitId;
     #[salsa::interned]
     fn intern_type_alias(&self, loc: ids::ItemLoc<ast::TypeAliasDef>) -> ids::TypeAliasId;
+
+    // Interned IDs for Chalk integration
+    #[salsa::interned]
+    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
+    #[salsa::interned]
+    fn intern_impl_block(&self, impl_block: ImplBlock) -> ids::GlobalImplId;
 
     #[salsa::invoke(crate::ids::macro_def_query)]
     fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
@@ -144,8 +150,17 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
 
-    #[salsa::invoke(crate::ty::traits::implements)]
-    fn implements(&self, trait_ref: TraitRef) -> Option<crate::ty::traits::Solution>;
+    #[salsa::invoke(crate::ty::traits::impls_for_trait)]
+    fn impls_for_trait(&self, krate: Crate, trait_: Trait) -> Arc<[ImplBlock]>;
+
+    /// This provides the Chalk trait solver instance. Because Chalk always
+    /// works from a specific crate, this query is keyed on the crate; and
+    /// because Chalk does its own internal caching, the solver is wrapped in a
+    /// Mutex and the query is marked volatile, to make sure the cached state is
+    /// thrown away when input facts change.
+    #[salsa::invoke(crate::ty::traits::solver)]
+    #[salsa::volatile]
+    fn solver(&self, krate: Crate) -> Arc<Mutex<crate::ty::traits::Solver>>;
 }
 
 #[test]

@@ -13,9 +13,10 @@ mod infer;
 pub(crate) mod display;
 
 use std::sync::Arc;
+use std::ops::Deref;
 use std::{fmt, mem};
 
-use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait};
+use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams};
 use display::{HirDisplay, HirFormatter};
 
 pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig};
@@ -81,13 +82,13 @@ pub enum TypeCtor {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr,
+    FnPtr { num_args: u16 },
 
     /// The never type `!`.
     Never,
 
     /// A tuple type.  For example, `(i32, bool)`.
-    Tuple,
+    Tuple { cardinality: u16 },
 }
 
 /// A nominal type with (maybe 0) type parameters. This might be a primitive
@@ -118,8 +119,13 @@ pub enum Ty {
         /// surrounding impl, then the current function).
         idx: u32,
         /// The name of the parameter, for displaying.
+        // FIXME get rid of this
         name: Name,
     },
+
+    /// A bound type variable. Only used during trait resolution to represent
+    /// Chalk variables.
+    Bound(u32),
 
     /// A type variable used during type checking. Not to be confused with a
     /// type parameter.
@@ -150,14 +156,6 @@ impl Substs {
         Substs(self.0.iter().cloned().take(n).collect::<Vec<_>>().into())
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Ty> {
-        self.0.iter()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
     pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
         // Without an Arc::make_mut_slice, we can't avoid the clone here:
         let mut v: Vec<_> = self.0.iter().cloned().collect();
@@ -173,11 +171,43 @@ impl Substs {
         }
         &self.0[0]
     }
+
+    /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
+    pub fn identity(generic_params: &GenericParams) -> Substs {
+        Substs(
+            generic_params
+                .params_including_parent()
+                .into_iter()
+                .map(|p| Ty::Param { idx: p.idx, name: p.name.clone() })
+                .collect::<Vec<_>>()
+                .into(),
+        )
+    }
+
+    /// Return Substs that replace each parameter by a bound variable.
+    pub fn bound_vars(generic_params: &GenericParams) -> Substs {
+        Substs(
+            generic_params
+                .params_including_parent()
+                .into_iter()
+                .map(|p| Ty::Bound(p.idx))
+                .collect::<Vec<_>>()
+                .into(),
+        )
+    }
 }
 
 impl From<Vec<Ty>> for Substs {
     fn from(v: Vec<Ty>) -> Self {
         Substs(v.into())
+    }
+}
+
+impl Deref for Substs {
+    type Target = [Ty];
+
+    fn deref(&self) -> &[Ty] {
+        &self.0
     }
 }
 
@@ -192,8 +222,27 @@ pub struct TraitRef {
 
 impl TraitRef {
     pub fn self_ty(&self) -> &Ty {
-        &self.substs.0[0]
+        &self.substs[0]
     }
+
+    pub fn subst(mut self, substs: &Substs) -> TraitRef {
+        self.substs.walk_mut(&mut |ty_mut| {
+            let ty = mem::replace(ty_mut, Ty::Unknown);
+            *ty_mut = ty.subst(substs);
+        });
+        self
+    }
+}
+
+/// Basically a claim (currently not validated / checked) that the contained
+/// type / trait ref contains no inference variables; any inference variables it
+/// contained have been replaced by bound variables, and `num_vars` tells us how
+/// many there are. This is used to erase irrelevant differences between types
+/// before using them in queries.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub(crate) struct Canonical<T> {
+    pub value: T,
+    pub num_vars: usize,
 }
 
 /// A function signature as seen by type inference: Several parameter types and
@@ -250,7 +299,7 @@ impl Ty {
         Ty::Apply(ApplicationTy { ctor, parameters })
     }
     pub fn unit() -> Self {
-        Ty::apply(TypeCtor::Tuple, Substs::empty())
+        Ty::apply(TypeCtor::Tuple { cardinality: 0 }, Substs::empty())
     }
 
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
@@ -260,7 +309,7 @@ impl Ty {
                     t.walk(f);
                 }
             }
-            Ty::Param { .. } | Ty::Infer(_) | Ty::Unknown => {}
+            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
     }
@@ -270,7 +319,7 @@ impl Ty {
             Ty::Apply(a_ty) => {
                 a_ty.parameters.walk_mut(f);
             }
-            Ty::Param { .. } | Ty::Infer(_) | Ty::Unknown => {}
+            Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
         f(self);
     }
@@ -303,7 +352,9 @@ impl Ty {
 
     pub fn as_tuple(&self) -> Option<&Substs> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple, parameters }) => Some(parameters),
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple { .. }, parameters }) => {
+                Some(parameters)
+            }
             _ => None,
         }
     }
@@ -331,7 +382,7 @@ impl Ty {
     fn callable_sig(&self, db: &impl HirDatabase) -> Option<FnSig> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::FnPtr => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
+                TypeCtor::FnPtr { .. } => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
                 TypeCtor::FnDef(def) => {
                     let sig = db.callable_item_signature(def);
                     Some(sig.subst(&a_ty.parameters))
@@ -362,12 +413,16 @@ impl Ty {
     pub fn subst(self, substs: &Substs) -> Ty {
         self.fold(&mut |ty| match ty {
             Ty::Param { idx, name } => {
-                if (idx as usize) < substs.0.len() {
-                    substs.0[idx as usize].clone()
-                } else {
-                    Ty::Param { idx, name }
-                }
+                substs.get(idx as usize).cloned().unwrap_or(Ty::Param { idx, name })
             }
+            ty => ty,
+        })
+    }
+
+    /// Substitutes `Ty::Bound` vars (as opposed to type parameters).
+    pub fn subst_bound_vars(self, substs: &Substs) -> Ty {
+        self.fold(&mut |ty| match ty {
+            Ty::Bound(idx) => substs.get(idx as usize).cloned().unwrap_or(Ty::Bound(idx)),
             ty => ty,
         })
     }
@@ -413,17 +468,17 @@ impl HirDisplay for ApplicationTy {
                 write!(f, "&{}{}", m.as_keyword_for_ref(), t.display(f.db))?;
             }
             TypeCtor::Never => write!(f, "!")?,
-            TypeCtor::Tuple => {
+            TypeCtor::Tuple { .. } => {
                 let ts = &self.parameters;
-                if ts.0.len() == 1 {
-                    write!(f, "({},)", ts.0[0].display(f.db))?;
+                if ts.len() == 1 {
+                    write!(f, "({},)", ts[0].display(f.db))?;
                 } else {
                     write!(f, "(")?;
                     f.write_joined(&*ts.0, ", ")?;
                     write!(f, ")")?;
                 }
             }
-            TypeCtor::FnPtr => {
+            TypeCtor::FnPtr { .. } => {
                 let sig = FnSig::from_fn_ptr_substs(&self.parameters);
                 write!(f, "fn(")?;
                 f.write_joined(sig.params(), ", ")?;
@@ -440,7 +495,7 @@ impl HirDisplay for ApplicationTy {
                     CallableDef::Function(_) => write!(f, "fn {}", name)?,
                     CallableDef::Struct(_) | CallableDef::EnumVariant(_) => write!(f, "{}", name)?,
                 }
-                if self.parameters.0.len() > 0 {
+                if self.parameters.len() > 0 {
                     write!(f, "<")?;
                     f.write_joined(&*self.parameters.0, ", ")?;
                     write!(f, ">")?;
@@ -456,7 +511,7 @@ impl HirDisplay for ApplicationTy {
                 }
                 .unwrap_or_else(Name::missing);
                 write!(f, "{}", name)?;
-                if self.parameters.0.len() > 0 {
+                if self.parameters.len() > 0 {
                     write!(f, "<")?;
                     f.write_joined(&*self.parameters.0, ", ")?;
                     write!(f, ">")?;
@@ -472,6 +527,7 @@ impl HirDisplay for Ty {
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Param { name, .. } => write!(f, "{}", name)?,
+            Ty::Bound(idx) => write!(f, "?{}", idx)?,
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
         }

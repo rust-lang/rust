@@ -354,3 +354,15 @@ impl MacroCallId {
         )
     }
 }
+
+/// This exists just for Chalk, because Chalk just has a single `StructId` where
+/// we have different kinds of ADTs, primitive types and special type
+/// constructors like tuples and function pointers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeCtorId(salsa::InternId);
+impl_intern_key!(TypeCtorId);
+
+/// This exists just for Chalk, because our ImplIds are only unique per module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GlobalImplId(salsa::InternId);
+impl_intern_key!(GlobalImplId);

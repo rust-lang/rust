@@ -44,8 +44,11 @@ use crate::{
 };
 use super::{
     Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
-    traits::{ Solution, Obligation, Guidance},
+    traits::{Solution, Obligation, Guidance},
+    method_resolution,
 };
+
+mod unify;
 
 /// The entry point of type inference.
 pub fn infer(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
@@ -321,30 +324,29 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn resolve_obligations_as_possible(&mut self) {
         let obligations = mem::replace(&mut self.obligations, Vec::new());
         for obligation in obligations {
-            // FIXME resolve types in the obligation first
-            let (solution, var_mapping) = match &obligation {
+            let (solution, canonicalized) = match &obligation {
                 Obligation::Trait(tr) => {
-                    let (tr, var_mapping) = super::traits::canonicalize(tr.clone());
-                    (self.db.implements(tr), var_mapping)
+                    let canonicalized = self.canonicalizer().canonicalize_trait_ref(tr.clone());
+                    (
+                        super::traits::implements(
+                            self.db,
+                            self.resolver.krate().unwrap(),
+                            canonicalized.value.clone(),
+                        ),
+                        canonicalized,
+                    )
                 }
             };
             match solution {
                 Some(Solution::Unique(substs)) => {
-                    for (i, subst) in substs.0.iter().enumerate() {
-                        let uncanonical = var_mapping[i];
-                        // FIXME the subst may contain type variables, which would need to be mapped back as well
-                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
-                    }
+                    canonicalized.apply_solution(self, substs.0);
                 }
                 Some(Solution::Ambig(Guidance::Definite(substs))) => {
-                    for (i, subst) in substs.0.iter().enumerate() {
-                        let uncanonical = var_mapping[i];
-                        // FIXME the subst may contain type variables, which would need to be mapped back as well
-                        self.unify(&Ty::Infer(InferTy::TypeVar(uncanonical)), subst);
-                    }
+                    canonicalized.apply_solution(self, substs.0);
                     self.obligations.push(obligation);
                 }
                 Some(_) => {
+                    // FIXME use this when trying to resolve everything at the end
                     self.obligations.push(obligation);
                 }
                 None => {
@@ -737,14 +739,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 let expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
 
-                let inner_tys = args
+                let inner_tys: Substs = args
                     .iter()
                     .zip(expectations_iter)
                     .map(|(&pat, ty)| self.infer_pat(pat, ty, default_bm))
                     .collect::<Vec<_>>()
                     .into();
 
-                Ty::apply(TypeCtor::Tuple, Substs(inner_tys))
+                Ty::apply(TypeCtor::Tuple { cardinality: inner_tys.len() as u16 }, inner_tys)
             }
             Pat::Ref { pat, mutability } => {
                 let expectation = match expected.as_reference() {
@@ -877,9 +879,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         generic_args: Option<&GenericArgs>,
     ) -> Ty {
         let receiver_ty = self.infer_expr(receiver, &Expectation::none());
-        let resolved = receiver_ty.clone().lookup_method(self.db, method_name, &self.resolver);
+        let canonicalized_receiver = self.canonicalizer().canonicalize_ty(receiver_ty.clone());
+        let resolved = method_resolution::lookup_method(
+            &canonicalized_receiver.value,
+            self.db,
+            method_name,
+            &self.resolver,
+        );
         let (derefed_receiver_ty, method_ty, def_generics) = match resolved {
             Some((ty, func)) => {
+                let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
                 (
                     ty,
@@ -1064,7 +1073,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .autoderef(self.db)
                     .find_map(|derefed_ty| match derefed_ty {
                         Ty::Apply(a_ty) => match a_ty.ctor {
-                            TypeCtor::Tuple => {
+                            TypeCtor::Tuple { .. } => {
                                 let i = name.to_string().parse::<usize>().ok();
                                 i.and_then(|i| a_ty.parameters.0.get(i).cloned())
                             }
@@ -1175,7 +1184,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
                 }
 
-                Ty::apply(TypeCtor::Tuple, Substs(ty_vec.into()))
+                Ty::apply(
+                    TypeCtor::Tuple { cardinality: ty_vec.len() as u16 },
+                    Substs(ty_vec.into()),
+                )
             }
             Expr::Array(array) => {
                 let elem_ty = match &expected.ty {

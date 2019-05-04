@@ -6,7 +6,7 @@ use ra_syntax::ast;
 use rustc_hash::FxHashMap;
 
 use crate::{
-    ModuleDef,
+    ModuleDef, Trait,
     code_model_api::Crate,
     MacroCallId,
     MacroCallLoc,
@@ -18,7 +18,6 @@ use crate::{
     expr::{scope::{ExprScopes, ScopeId}, PatId},
     impl_block::ImplBlock,
     path::Path,
-    Trait,
 };
 
 #[derive(Debug, Clone, Default)]
