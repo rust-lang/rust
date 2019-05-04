@@ -35,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidRef {
             if let ExprKind::Path(ref qpath) = path.node;
             if args.len() == 0;
             if let ty::Ref(..) = cx.tables.expr_ty(expr).sty;
-            if let Some(def_id) = cx.tables.qpath_def(qpath, path.hir_id).opt_def_id();
+            if let Some(def_id) = cx.tables.qpath_res(qpath, path.hir_id).opt_def_id();
             then {
                 let msg = if cx.match_def_path(def_id, &paths::MEM_ZEROED) |
                              cx.match_def_path(def_id, &paths::INIT)

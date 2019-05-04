@@ -2,7 +2,7 @@
 
 use crate::utils::{clip, sext, unsext};
 use if_chain::if_chain;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::*;
 use rustc::lint::LateContext;
 use rustc::ty::subst::{Subst, SubstsRef};
@@ -247,8 +247,8 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 if_chain! {
                     if args.is_empty();
                     if let ExprKind::Path(qpath) = &callee.node;
-                    let def = self.tables.qpath_def(qpath, callee.hir_id);
-                    if let Some(def_id) = def.opt_def_id();
+                    let res = self.tables.qpath_res(qpath, callee.hir_id);
+                    if let Some(def_id) = res.opt_def_id();
                     let def_path = self.lcx.get_def_path(def_id)
                         .iter()
                         .map(LocalInternedString::get)
@@ -322,9 +322,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     fn fetch_path(&mut self, qpath: &QPath, id: HirId) -> Option<Constant> {
         use rustc::mir::interpret::GlobalId;
 
-        let def = self.tables.qpath_def(qpath, id);
-        match def {
-            Def::Const(def_id) | Def::AssociatedConst(def_id) => {
+        let res = self.tables.qpath_res(qpath, id);
+        match res {
+            Res::Def(DefKind::Const, def_id) | Res::Def(DefKind::AssociatedConst, def_id) => {
                 let substs = self.tables.node_substs(id);
                 let substs = if self.substs.is_empty() {
                     substs
@@ -338,11 +338,11 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 };
 
                 let result = self.lcx.tcx.const_eval(self.param_env.and(gid)).ok()?;
-                let ret = miri_to_const(self.lcx.tcx, &result);
-                if ret.is_some() {
+                let result = miri_to_const(self.lcx.tcx, &result);
+                if result.is_some() {
                     self.needed_resolution = true;
                 }
-                ret
+                result
             },
             // FIXME: cover all usable cases.
             _ => None,

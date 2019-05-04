@@ -410,7 +410,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MiscLints {
                     binding != "_result" && // FIXME: #944
                     is_used(cx, expr) &&
                     // don't lint if the declaration is in a macro
-                    non_macro_local(cx, &cx.tables.qpath_def(qpath, expr.hir_id))
+                    non_macro_local(cx, cx.tables.qpath_res(qpath, expr.hir_id))
                 {
                     Some(binding)
                 } else {
@@ -599,10 +599,10 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
         .map_or(false, |info| matches!(info.format, ExpnFormat::MacroAttribute(_)))
 }
 
-/// Tests whether `def` is a variable defined outside a macro.
-fn non_macro_local(cx: &LateContext<'_, '_>, def: &def::Def) -> bool {
-    match *def {
-        def::Def::Local(id) | def::Def::Upvar(id, _, _) => !in_macro(cx.tcx.hir().span_by_hir_id(id)),
+/// Tests whether `res` is a variable defined outside a macro.
+fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
+    match res {
+        def::Res::Local(id) | def::Res::Upvar(id, ..) => !in_macro(cx.tcx.hir().span_by_hir_id(id)),
         _ => false,
     }
 }

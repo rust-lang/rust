@@ -1,5 +1,5 @@
 use matches::matches;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
@@ -310,14 +310,14 @@ impl<'v, 't> RefVisitor<'v, 't> {
                 })
             {
                 let hir_id = ty.hir_id;
-                match self.cx.tables.qpath_def(qpath, hir_id) {
-                    Def::TyAlias(def_id) | Def::Struct(def_id) => {
+                match self.cx.tables.qpath_res(qpath, hir_id) {
+                    Res::Def(DefKind::TyAlias, def_id) | Res::Def(DefKind::Struct, def_id) => {
                         let generics = self.cx.tcx.generics_of(def_id);
                         for _ in generics.params.as_slice() {
                             self.record(&None);
                         }
                     },
-                    Def::Trait(def_id) => {
+                    Res::Def(DefKind::Trait, def_id) => {
                         let trait_def = self.cx.tcx.trait_def(def_id);
                         for _ in &self.cx.tcx.generics_of(trait_def.def_id).params {
                             self.record(&None);

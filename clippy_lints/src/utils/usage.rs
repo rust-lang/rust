@@ -1,4 +1,4 @@
-use rustc::hir::def::Def;
+use rustc::hir::def::Res;
 use rustc::hir::*;
 use rustc::lint::LateContext;
 use rustc::middle::expr_use_visitor::*;
@@ -29,8 +29,8 @@ pub fn is_potentially_mutated<'a, 'tcx: 'a>(
     expr: &'tcx Expr,
     cx: &'a LateContext<'a, 'tcx>,
 ) -> bool {
-    let id = match variable.def {
-        Def::Local(id) | Def::Upvar(id, ..) => id,
+    let id = match variable.res {
+        Res::Local(id) | Res::Upvar(id, ..) => id,
         _ => return true,
     };
     mutated_variables(expr, cx).map_or(true, |mutated| mutated.contains(&id))

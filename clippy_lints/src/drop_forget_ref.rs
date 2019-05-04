@@ -114,7 +114,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DropForgetRef {
             if let ExprKind::Call(ref path, ref args) = expr.node;
             if let ExprKind::Path(ref qpath) = path.node;
             if args.len() == 1;
-            if let Some(def_id) = cx.tables.qpath_def(qpath, path.hir_id).opt_def_id();
+            if let Some(def_id) = cx.tables.qpath_res(qpath, path.hir_id).opt_def_id();
             then {
                 let lint;
                 let msg;

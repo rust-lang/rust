@@ -1,7 +1,7 @@
 use crate::utils::{snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir;
-use rustc::hir::def::Def;
+use rustc::hir::def::Res;
 use rustc::hir::BindingAnnotation;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -145,7 +145,7 @@ impl<'a, 'tcx> hir::intravisit::Visitor<'tcx> for UsedVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         if_chain! {
             if let hir::ExprKind::Path(ref qpath) = expr.node;
-            if let Def::Local(local_id) = self.cx.tables.qpath_def(qpath, expr.hir_id);
+            if let Res::Local(local_id) = self.cx.tables.qpath_res(qpath, expr.hir_id);
             if self.id == local_id;
             then {
                 self.used = true;
@@ -170,7 +170,7 @@ fn check_assign<'a, 'tcx>(
         if let hir::StmtKind::Semi(ref expr) = expr.node;
         if let hir::ExprKind::Assign(ref var, ref value) = expr.node;
         if let hir::ExprKind::Path(ref qpath) = var.node;
-        if let Def::Local(local_id) = cx.tables.qpath_def(qpath, var.hir_id);
+        if let Res::Local(local_id) = cx.tables.qpath_res(qpath, var.hir_id);
         if decl == local_id;
         then {
             let mut v = UsedVisitor {

@@ -1,7 +1,7 @@
 use crate::utils::span_lint_and_sugg;
 use if_chain::if_chain;
 use rustc::hir;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
@@ -35,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if_chain! {
             if let hir::ExprKind::Path(ref qp) = expr.node;
-            if let Def::Const(def_id) = cx.tables.qpath_def(qp, expr.hir_id);
+            if let Res::Def(DefKind::Const, def_id) = cx.tables.qpath_res(qp, expr.hir_id);
             then {
                 for &(const_path, repl_snip) in REPLACEMENTS {
                     if cx.match_def_path(def_id, const_path) {

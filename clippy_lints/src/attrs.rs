@@ -394,7 +394,7 @@ fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, exp
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
         ExprKind::Call(path_expr, _) => {
             if let ExprKind::Path(qpath) = &path_expr.node {
-                if let Some(fun_id) = tables.qpath_def(qpath, path_expr.hir_id).opt_def_id() {
+                if let Some(fun_id) = tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
                     !cx.match_def_path(fun_id, &paths::BEGIN_PANIC)
                 } else {
                     true

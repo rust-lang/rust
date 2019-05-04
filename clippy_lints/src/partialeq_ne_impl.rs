@@ -36,7 +36,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PartialEqNeImpl {
             if let ItemKind::Impl(_, _, _, _, Some(ref trait_ref), _, ref impl_items) = item.node;
             if !is_automatically_derived(&*item.attrs);
             if let Some(eq_trait) = cx.tcx.lang_items().eq_trait();
-            if trait_ref.path.def.def_id() == eq_trait;
+            if trait_ref.path.res.def_id() == eq_trait;
             then {
                 for impl_item in impl_items {
                     if impl_item.ident.name == "ne" {

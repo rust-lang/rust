@@ -8,7 +8,7 @@ use std::iter;
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Predicate, Ty};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -1504,7 +1504,7 @@ fn lint_cstring_as_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, new: &hir::Ex
         if let hir::ExprKind::Call(ref fun, ref args) = new.node;
         if args.len() == 1;
         if let hir::ExprKind::Path(ref path) = fun.node;
-        if let Def::Method(did) = cx.tables.qpath_def(path, fun.hir_id);
+        if let Res::Def(DefKind::Method, did) = cx.tables.qpath_res(path, fun.hir_id);
         if cx.match_def_path(did, &paths::CSTRING_NEW);
         then {
             span_lint_and_then(
