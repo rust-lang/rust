@@ -9,15 +9,17 @@ use polonius_engine::Atom;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, Kind, UnpackedKind};
-use crate::ty::{self, AdtDef, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
+use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
+use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, Pointer};
 
 use smallvec::SmallVec;
-use std::iter;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
+use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{keywords, InternedString};
@@ -298,14 +300,10 @@ static_assert!(MEM_SIZE_OF_TY_KIND: ::std::mem::size_of::<TyKind<'_>>() == 24);
 ///
 /// ## Generators
 ///
-/// Perhaps surprisingly, `ClosureSubsts` are also used for
-/// generators. In that case, what is written above is only half-true
-/// -- the set of type parameters is similar, but the role of CK and
-/// CS are different. CK represents the "yield type" and CS
-/// represents the "return type" of the generator.
-///
-/// It'd be nice to split this struct into ClosureSubsts and
-/// GeneratorSubsts, I believe. -nmatsakis
+/// Generators are handled similarly in `GeneratorSubsts`.  The set of
+/// type parameters is similar, but the role of CK and CS are
+/// different. CK represents the "yield type" and CS represents the
+/// "return type" of the generator.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
          Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ClosureSubsts<'tcx> {
@@ -391,6 +389,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
     }
 }
 
+/// Similar to `ClosureSubsts`; see the above documentation for more.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
          RustcEncodable, RustcDecodable, HashStable)]
 pub struct GeneratorSubsts<'tcx> {
@@ -470,33 +469,91 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> GeneratorSubsts<'tcx> {
+    /// Generator have not been resumed yet
+    pub const UNRESUMED: usize = 0;
+    /// Generator has returned / is completed
+    pub const RETURNED: usize = 1;
+    /// Generator has been poisoned
+    pub const POISONED: usize = 2;
+
+    const UNRESUMED_NAME: &'static str = "Unresumed";
+    const RETURNED_NAME: &'static str = "Returned";
+    const POISONED_NAME: &'static str = "Panicked";
+
+    /// The valid variant indices of this Generator.
+    #[inline]
+    pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Range<VariantIdx> {
+        // FIXME requires optimized MIR
+        let num_variants = tcx.generator_layout(def_id).variant_fields.len();
+        (VariantIdx::new(0)..VariantIdx::new(num_variants))
+    }
+
+    /// The discriminant for the given variant. Panics if the variant_index is
+    /// out of range.
+    #[inline]
+    pub fn discriminant_for_variant(
+        &self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>, variant_index: VariantIdx
+    ) -> Discr<'tcx> {
+        // Generators don't support explicit discriminant values, so they are
+        // the same as the variant index.
+        assert!(self.variant_range(def_id, tcx).contains(&variant_index));
+        Discr { val: variant_index.as_usize() as u128, ty: self.discr_ty(tcx) }
+    }
+
+    /// The set of all discriminants for the Generator, enumerated with their
+    /// variant indices.
+    #[inline]
+    pub fn discriminants(
+        &'a self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>
+    ) -> impl Iterator<Item=(VariantIdx, Discr<'tcx>)> + Captures<'gcx> + 'a {
+        self.variant_range(def_id, tcx).map(move |index| {
+            (index, Discr { val: index.as_usize() as u128, ty: self.discr_ty(tcx) })
+        })
+    }
+
+    /// Calls `f` with a reference to the name of the enumerator for the given
+    /// variant `v`.
+    #[inline]
+    pub fn variant_name(&self, v: VariantIdx) -> Cow<'static, str> {
+        match v.as_usize() {
+            Self::UNRESUMED => Cow::from(Self::UNRESUMED_NAME),
+            Self::RETURNED => Cow::from(Self::RETURNED_NAME),
+            Self::POISONED => Cow::from(Self::POISONED_NAME),
+            _ => Cow::from(format!("Suspend{}", v.as_usize() - 3))
+        }
+    }
+
+    /// The type of the state discriminant used in the generator type.
+    #[inline]
+    pub fn discr_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+        tcx.types.u32
+    }
+
     /// This returns the types of the MIR locals which had to be stored across suspension points.
     /// It is calculated in rustc_mir::transform::generator::StateTransform.
     /// All the types here must be in the tuple in GeneratorInterior.
-    pub fn state_tys(
-        self,
-        def_id: DefId,
-        tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    ) -> impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a {
-        let state = tcx.generator_layout(def_id).fields.iter();
-        state.map(move |d| d.ty.subst(tcx, self.substs))
+    ///
+    /// The locals are grouped by their variant number. Note that some locals may
+    /// be repeated in multiple variants.
+    #[inline]
+    pub fn state_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+        impl Iterator<Item=impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a>
+    {
+        let layout = tcx.generator_layout(def_id);
+        layout.variant_fields.iter().map(move |variant| {
+            variant.iter().map(move |field| {
+                layout.field_tys[*field].subst(tcx, self.substs)
+            })
+        })
     }
 
-    /// This is the types of the fields of a generate which
-    /// is available before the generator transformation.
-    /// It includes the upvars and the state discriminant which is u32.
-    pub fn pre_transforms_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
+    /// This is the types of the fields of a generator which are not stored in a
+    /// variant.
+    #[inline]
+    pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
         impl Iterator<Item=Ty<'tcx>> + 'a
     {
-        self.upvar_tys(def_id, tcx).chain(iter::once(tcx.types.u32))
-    }
-
-    /// This is the types of all the fields stored in a generator.
-    /// It includes the upvars, state types and the state discriminant which is u32.
-    pub fn field_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) ->
-        impl Iterator<Item=Ty<'tcx>> + Captures<'gcx> + 'a
-    {
-        self.pre_transforms_tys(def_id, tcx).chain(self.state_tys(def_id, tcx))
+        self.upvar_tys(def_id, tcx)
     }
 }
 
@@ -1992,6 +2049,34 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             Adt(adt, _) => Some(adt),
+            _ => None,
+        }
+    }
+
+    /// If the type contains variants, returns the valid range of variant indices.
+    /// FIXME This requires the optimized MIR in the case of generators.
+    #[inline]
+    pub fn variant_range(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Range<VariantIdx>> {
+        match self.sty {
+            TyKind::Adt(adt, _) => Some(adt.variant_range()),
+            TyKind::Generator(def_id, substs, _) => Some(substs.variant_range(def_id, tcx)),
+            _ => None,
+        }
+    }
+
+    /// If the type contains variants, returns the variant for `variant_index`.
+    /// Panics if `variant_index` is out of range.
+    /// FIXME This requires the optimized MIR in the case of generators.
+    #[inline]
+    pub fn discriminant_for_variant(
+        &self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        variant_index: VariantIdx
+    ) -> Option<Discr<'tcx>> {
+        match self.sty {
+            TyKind::Adt(adt, _) => Some(adt.discriminant_for_variant(tcx, variant_index)),
+            TyKind::Generator(def_id, substs, _) =>
+                Some(substs.discriminant_for_variant(def_id, tcx, variant_index)),
             _ => None,
         }
     }

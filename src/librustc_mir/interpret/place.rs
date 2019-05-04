@@ -984,11 +984,9 @@ where
                 discr_index,
                 ..
             } => {
-                let adt_def = dest.layout.ty.ty_adt_def().unwrap();
-                assert!(variant_index.as_usize() < adt_def.variants.len());
-                let discr_val = adt_def
-                    .discriminant_for_variant(*self.tcx, variant_index)
-                    .val;
+                assert!(dest.layout.ty.variant_range(*self.tcx).unwrap().contains(&variant_index));
+                let discr_val =
+                    dest.layout.ty.discriminant_for_variant(*self.tcx, variant_index).unwrap().val;
 
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible

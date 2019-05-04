@@ -567,9 +567,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
 
         let (discr_kind, discr_index) = match rval.layout.variants {
             layout::Variants::Single { index } => {
-                let discr_val = rval.layout.ty.ty_adt_def().map_or(
+                let discr_val = rval.layout.ty.discriminant_for_variant(*self.tcx, index).map_or(
                     index.as_u32() as u128,
-                    |def| def.discriminant_for_variant(*self.tcx, index).val);
+                    |discr| discr.val);
                 return Ok((discr_val, index));
             }
             layout::Variants::Multiple { ref discr_kind, discr_index, .. } =>
@@ -604,12 +604,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                     bits_discr
                 };
                 // Make sure we catch invalid discriminants
-                let index = rval.layout.ty
-                    .ty_adt_def()
-                    .expect("tagged layout for non adt")
-                    .discriminants(self.tcx.tcx)
-                    .find(|(_, var)| var.val == real_discr)
-                    .ok_or_else(|| InterpError::InvalidDiscriminant(raw_discr.erase_tag()))?;
+                let index = match &rval.layout.ty.sty {
+                    ty::Adt(adt, _) => adt
+                        .discriminants(self.tcx.tcx)
+                        .find(|(_, var)| var.val == real_discr),
+                    ty::Generator(def_id, substs, _) => substs
+                        .discriminants(*def_id, self.tcx.tcx)
+                        .find(|(_, var)| var.val == real_discr),
+                    _ => bug!("tagged layout for non-adt non-generator"),
+                }.ok_or_else(|| InterpError::InvalidDiscriminant(raw_discr.erase_tag()))?;
                 (real_discr, index.0)
             },
             layout::DiscriminantKind::Niche {

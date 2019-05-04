@@ -207,7 +207,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 movability,
             } => {
                 // see (*) above
-                let mut operands: Vec<_> = upvars
+                let operands: Vec<_> = upvars
                     .into_iter()
                     .map(|upvar| {
                         let upvar = this.hir.mirror(upvar);
@@ -248,21 +248,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }).collect();
                 let result = match substs {
                     UpvarSubsts::Generator(substs) => {
+                        // We implicitly set the discriminant to 0. See
+                        // librustc_mir/transform/deaggregator.rs for details.
                         let movability = movability.unwrap();
-                        // Add the state operand since it follows the upvars in the generator
-                        // struct. See librustc_mir/transform/generator.rs for more details.
-                        operands.push(Operand::Constant(box Constant {
-                            span: expr_span,
-                            ty: this.hir.tcx().types.u32,
-                            user_ty: None,
-                            literal: this.hir.tcx().mk_const(
-                                ty::Const::from_bits(
-                                    this.hir.tcx(),
-                                    0,
-                                    ty::ParamEnv::empty().and(this.hir.tcx().types.u32),
-                                ),
-                            ),
-                        }));
                         box AggregateKind::Generator(closure_id, substs, movability)
                     }
                     UpvarSubsts::Closure(substs) => box AggregateKind::Closure(closure_id, substs),

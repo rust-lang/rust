@@ -54,13 +54,14 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
+use rustc::ty::GeneratorSubsts;
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::SubstsRef;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::bit_set::BitSet;
 use std::borrow::Cow;
-use std::iter::once;
+use std::iter;
 use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
@@ -145,14 +146,14 @@ fn self_arg() -> Local {
 }
 
 /// Generator have not been resumed yet
-const UNRESUMED: u32 = 0;
+const UNRESUMED: usize = GeneratorSubsts::UNRESUMED;
 /// Generator has returned / is completed
-const RETURNED: u32 = 1;
+const RETURNED: usize = GeneratorSubsts::RETURNED;
 /// Generator has been poisoned
-const POISONED: u32 = 2;
+const POISONED: usize = GeneratorSubsts::POISONED;
 
 struct SuspensionPoint {
-    state: u32,
+    state: usize,
     resume: BasicBlock,
     drop: Option<BasicBlock>,
     storage_liveness: liveness::LiveVarSet,
@@ -163,12 +164,12 @@ struct TransformVisitor<'a, 'tcx: 'a> {
     state_adt_ref: &'tcx AdtDef,
     state_substs: SubstsRef<'tcx>,
 
-    // The index of the generator state in the generator struct
-    state_field: usize,
+    // The type of the discriminant in the generator struct
+    discr_ty: Ty<'tcx>,
 
     // Mapping from Local to (type of local, generator struct index)
     // FIXME(eddyb) This should use `IndexVec<Local, Option<_>>`.
-    remap: FxHashMap<Local, (Ty<'tcx>, usize)>,
+    remap: FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
 
     // A map from a suspension point in a block to the locals which have live storage at that point
     // FIXME(eddyb) This should use `IndexVec<BasicBlock, Option<_>>`.
@@ -189,8 +190,9 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
     }
 
     // Create a Place referencing a generator struct field
-    fn make_field(&self, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
-        let base = Place::Base(PlaceBase::Local(self_arg()));
+    fn make_field(&self, variant_index: VariantIdx, idx: usize, ty: Ty<'tcx>) -> Place<'tcx> {
+        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let base = self_place.downcast_unnamed(variant_index);
         let field = Projection {
             base: base,
             elem: ProjectionElem::Field(Field::new(idx), ty),
@@ -198,23 +200,27 @@ impl<'a, 'tcx> TransformVisitor<'a, 'tcx> {
         Place::Projection(Box::new(field))
     }
 
-    // Create a statement which changes the generator state
-    fn set_state(&self, state_disc: u32, source_info: SourceInfo) -> Statement<'tcx> {
-        let state = self.make_field(self.state_field, self.tcx.types.u32);
-        let val = Operand::Constant(box Constant {
-            span: source_info.span,
-            ty: self.tcx.types.u32,
-            user_ty: None,
-            literal: self.tcx.mk_const(ty::Const::from_bits(
-                self.tcx,
-                state_disc.into(),
-                ty::ParamEnv::empty().and(self.tcx.types.u32)
-            )),
-        });
+    // Create a statement which changes the discriminant
+    fn set_discr(&self, state_disc: VariantIdx, source_info: SourceInfo) -> Statement<'tcx> {
+        let self_place = Place::Base(PlaceBase::Local(self_arg()));
         Statement {
             source_info,
-            kind: StatementKind::Assign(state, box Rvalue::Use(val)),
+            kind: StatementKind::SetDiscriminant { place: self_place, variant_index: state_disc },
         }
+    }
+
+    // Create a statement which reads the discriminant into a temporary
+    fn get_discr(&self, mir: &mut Mir<'tcx>) -> (Statement<'tcx>, Place<'tcx>) {
+        let temp_decl = LocalDecl::new_internal(self.tcx.types.isize, mir.span);
+        let temp = Place::Base(PlaceBase::Local(Local::new(mir.local_decls.len())));
+        mir.local_decls.push(temp_decl);
+
+        let self_place = Place::Base(PlaceBase::Local(self_arg()));
+        let assign = Statement {
+            source_info: source_info(mir),
+            kind: StatementKind::Assign(temp.clone(), box Rvalue::Discriminant(self_place)),
+        };
+        (assign, temp)
     }
 }
 
@@ -232,8 +238,8 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                     location: Location) {
         if let Place::Base(PlaceBase::Local(l)) = *place {
             // Replace an Local in the remap with a generator struct access
-            if let Some(&(ty, idx)) = self.remap.get(&l) {
-                *place = self.make_field(idx, ty);
+            if let Some(&(ty, variant_index, idx)) = self.remap.get(&l) {
+                *place = self.make_field(variant_index, idx, ty);
             }
         } else {
             self.super_place(place, context, location);
@@ -274,7 +280,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                                             box self.make_state(state_idx, v)),
             });
             let state = if let Some(resume) = resume { // Yield
-                let state = 3 + self.suspension_points.len() as u32;
+                let state = 3 + self.suspension_points.len();
 
                 self.suspension_points.push(SuspensionPoint {
                     state,
@@ -283,11 +289,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for TransformVisitor<'a, 'tcx> {
                     storage_liveness: self.storage_liveness.get(&block).unwrap().clone(),
                 });
 
-                state
+                VariantIdx::new(state)
             } else { // Return
-                RETURNED // state for returned
+                VariantIdx::new(RETURNED) // state for returned
             };
-            data.statements.push(self.set_state(state, source_info));
+            data.statements.push(self.set_discr(state, source_info));
             data.terminator.as_mut().unwrap().kind = TerminatorKind::Return;
         }
 
@@ -387,6 +393,7 @@ fn locals_live_across_suspend_points(
 ) -> (
     liveness::LiveVarSet,
     FxHashMap<BasicBlock, liveness::LiveVarSet>,
+    BitSet<BasicBlock>,
 ) {
     let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
     let def_id = source.def_id();
@@ -431,8 +438,12 @@ fn locals_live_across_suspend_points(
 
     let mut storage_liveness_map = FxHashMap::default();
 
+    let mut suspending_blocks = BitSet::new_empty(mir.basic_blocks().len());
+
     for (block, data) in mir.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
+            suspending_blocks.insert(block);
+
             let loc = Location {
                 block: block,
                 statement_index: data.statements.len(),
@@ -484,7 +495,7 @@ fn locals_live_across_suspend_points(
     // The generator argument is ignored
     set.remove(self_arg());
 
-    (set, storage_liveness_map)
+    (set, storage_liveness_map, suspending_blocks)
 }
 
 fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -493,15 +504,14 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             interior: Ty<'tcx>,
                             movable: bool,
                             mir: &mut Mir<'tcx>)
-    -> (FxHashMap<Local, (Ty<'tcx>, usize)>,
+    -> (FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
         GeneratorLayout<'tcx>,
         FxHashMap<BasicBlock, liveness::LiveVarSet>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
-    let (live_locals, storage_liveness) = locals_live_across_suspend_points(tcx,
-                                                                            mir,
-                                                                            source,
-                                                                            movable);
+    let (live_locals, storage_liveness, suspending_blocks) =
+        locals_live_across_suspend_points(tcx, mir, source, movable);
+
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
     let allowed_upvars = tcx.erase_regions(upvars);
@@ -527,7 +537,6 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    let upvar_len = upvars.len();
     let dummy_local = LocalDecl::new_internal(tcx.mk_unit(), mir.span);
 
     // Gather live locals and their indices replacing values in mir.local_decls with a dummy
@@ -537,37 +546,52 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         (local, var)
     });
 
+    // For now we will access everything via variant #3, leaving empty variants
+    // for the UNRESUMED, RETURNED, and POISONED states.
+    // If there were a yield-less generator without a variant #3, it would not
+    // have any vars to remap, so we would never use this.
+    let variant_index = VariantIdx::new(3);
+
     // Create a map from local indices to generator struct indices.
-    // These are offset by (upvar_len + 1) because of fields which comes before locals.
     // We also create a vector of the LocalDecls of these locals.
-    let (remap, vars) = live_decls.enumerate().map(|(idx, (local, var))| {
-        ((local, (var.ty, upvar_len + 1 + idx)), var)
-    }).unzip();
+    let mut remap = FxHashMap::default();
+    let mut decls = IndexVec::new();
+    for (idx, (local, var)) in live_decls.enumerate() {
+        remap.insert(local, (var.ty, variant_index, idx));
+        decls.push(var);
+    }
+    let field_tys = decls.iter().map(|field| field.ty).collect::<IndexVec<_, _>>();
+
+    // Put every var in each variant, for now.
+    let all_vars = (0..field_tys.len()).map(GeneratorSavedLocal::from).collect();
+    let empty_variants = iter::repeat(IndexVec::new()).take(3);
+    let state_variants = iter::repeat(all_vars).take(suspending_blocks.count());
 
     let layout = GeneratorLayout {
-        fields: vars
+        field_tys,
+        variant_fields: empty_variants.chain(state_variants).collect(),
+        __local_debuginfo_codegen_only_do_not_use: decls,
     };
 
     (remap, layout, storage_liveness)
 }
 
-fn insert_switch<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           mir: &mut Mir<'tcx>,
-                           cases: Vec<(u32, BasicBlock)>,
+fn insert_switch<'a, 'tcx>(mir: &mut Mir<'tcx>,
+                           cases: Vec<(usize, BasicBlock)>,
                            transform: &TransformVisitor<'a, 'tcx>,
                            default: TerminatorKind<'tcx>) {
     let default_block = insert_term_block(mir, default);
-
+    let (assign, discr) = transform.get_discr(mir);
     let switch = TerminatorKind::SwitchInt {
-        discr: Operand::Copy(transform.make_field(transform.state_field, tcx.types.u32)),
-        switch_ty: tcx.types.u32,
-        values: Cow::from(cases.iter().map(|&(i, _)| i.into()).collect::<Vec<_>>()),
-        targets: cases.iter().map(|&(_, d)| d).chain(once(default_block)).collect(),
+        discr: Operand::Move(discr),
+        switch_ty: transform.discr_ty,
+        values: Cow::from(cases.iter().map(|&(i, _)| i as u128).collect::<Vec<_>>()),
+        targets: cases.iter().map(|&(_, d)| d).chain(iter::once(default_block)).collect(),
     };
 
     let source_info = source_info(mir);
     mir.basic_blocks_mut().raw.insert(0, BasicBlockData {
-        statements: Vec::new(),
+        statements: vec![assign],
         terminator: Some(Terminator {
             source_info,
             kind: switch,
@@ -652,7 +676,7 @@ fn create_generator_drop_shim<'a, 'tcx>(
     // The returned state and the poisoned state fall through to the default
     // case which is just to return
 
-    insert_switch(tcx, &mut mir, cases, &transform, TerminatorKind::Return);
+    insert_switch(&mut mir, cases, &transform, TerminatorKind::Return);
 
     for block in mir.basic_blocks_mut() {
         let kind = &mut block.terminator_mut().kind;
@@ -766,7 +790,8 @@ fn create_generator_resume_function<'a, 'tcx>(
     for block in mir.basic_blocks_mut() {
         let source_info = block.terminator().source_info;
         if let &TerminatorKind::Resume = &block.terminator().kind {
-            block.statements.push(transform.set_state(POISONED, source_info));
+            block.statements.push(
+                transform.set_discr(VariantIdx::new(POISONED), source_info));
         }
     }
 
@@ -784,7 +809,7 @@ fn create_generator_resume_function<'a, 'tcx>(
     // Panic when resumed on the poisoned state
     cases.insert(2, (POISONED, insert_panic_block(tcx, mir, GeneratorResumedAfterPanic)));
 
-    insert_switch(tcx, mir, cases, &transform, TerminatorKind::Unreachable);
+    insert_switch(mir, cases, &transform, TerminatorKind::Unreachable);
 
     make_generator_state_argument_indirect(tcx, def_id, mir);
     make_generator_state_argument_pinned(tcx, mir);
@@ -830,7 +855,7 @@ fn insert_clean_drop<'a, 'tcx>(mir: &mut Mir<'tcx>) -> BasicBlock {
 
 fn create_cases<'a, 'tcx, F>(mir: &mut Mir<'tcx>,
                           transform: &TransformVisitor<'a, 'tcx>,
-                          target: F) -> Vec<(u32, BasicBlock)>
+                          target: F) -> Vec<(usize, BasicBlock)>
     where F: Fn(&SuspensionPoint) -> Option<BasicBlock> {
     let source_info = source_info(mir);
 
@@ -888,10 +913,11 @@ impl MirPass for StateTransform {
         let gen_ty = mir.local_decls.raw[1].ty;
 
         // Get the interior types and substs which typeck computed
-        let (upvars, interior, movable) = match gen_ty.sty {
+        let (upvars, interior, discr_ty, movable) = match gen_ty.sty {
             ty::Generator(_, substs, movability) => {
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),
+                 substs.discr_ty(tcx),
                  movability == hir::GeneratorMovability::Movable)
             }
             _ => bug!(),
@@ -921,8 +947,6 @@ impl MirPass for StateTransform {
             movable,
             mir);
 
-        let state_field = upvars.len();
-
         // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
         // It also rewrites `return x` and `yield y` as writing a new generator state and returning
@@ -935,7 +959,7 @@ impl MirPass for StateTransform {
             storage_liveness,
             suspension_points: Vec::new(),
             new_ret_local,
-            state_field,
+            discr_ty,
         };
         transform.visit_mir(mir);
 

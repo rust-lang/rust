@@ -684,6 +684,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         }
                     }
                 }
+                // We do not need to handle generators here, because this runs
+                // before the generator transform stage.
                 _ => {
                     let ty = if let Some(name) = maybe_name {
                         span_mirbug_and_err!(
@@ -745,11 +747,26 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         let tcx = self.tcx();
 
         let (variant, substs) = match base_ty {
-            PlaceTy { ty, variant_index: Some(variant_index) } => {
-                match ty.sty {
-                    ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
-                    _ => bug!("can't have downcast of non-adt type"),
+            PlaceTy { ty, variant_index: Some(variant_index) } => match ty.sty {
+                ty::Adt(adt_def, substs) => (&adt_def.variants[variant_index], substs),
+                ty::Generator(def_id, substs, _) => {
+                    let mut variants = substs.state_tys(def_id, tcx);
+                    let mut variant = match variants.nth(variant_index.into()) {
+                        Some(v) => v,
+                        None => {
+                            bug!("variant_index of generator out of range: {:?}/{:?}",
+                                 variant_index,
+                                 substs.state_tys(def_id, tcx).count())
+                        }
+                    };
+                    return match variant.nth(field.index()) {
+                        Some(ty) => Ok(ty),
+                        None => Err(FieldAccessError::OutOfRange {
+                            field_count: variant.count(),
+                        }),
+                    }
                 }
+                _ => bug!("can't have downcast of non-adt non-generator type"),
             }
             PlaceTy { ty, variant_index: None } => match ty.sty {
                 ty::Adt(adt_def, substs) if !adt_def.is_enum() =>
@@ -763,19 +780,14 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                     }
                 }
                 ty::Generator(def_id, substs, _) => {
-                    // Try pre-transform fields first (upvars and current state)
-                    if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field.index()) {
-                        return Ok(ty);
-                    }
-
-                    // Then try `field_tys` which contains all the fields, but it
-                    // requires the final optimized MIR.
-                    return match substs.field_tys(def_id, tcx).nth(field.index()) {
+                    // Only prefix fields (upvars and current state) are
+                    // accessible without a variant index.
+                    return match substs.prefix_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.field_tys(def_id, tcx).count(),
+                            field_count: substs.prefix_tys(def_id, tcx).count(),
                         }),
-                    };
+                    }
                 }
                 ty::Tuple(tys) => {
                     return match tys.get(field.index()) {
@@ -1908,18 +1920,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             AggregateKind::Generator(def_id, substs, _) => {
-                // Try pre-transform fields first (upvars and current state)
-                if let Some(ty) = substs.pre_transforms_tys(def_id, tcx).nth(field_index) {
-                    Ok(ty)
-                } else {
-                    // Then try `field_tys` which contains all the fields, but it
-                    // requires the final optimized MIR.
-                    match substs.field_tys(def_id, tcx).nth(field_index) {
-                        Some(ty) => Ok(ty),
-                        None => Err(FieldAccessError::OutOfRange {
-                            field_count: substs.field_tys(def_id, tcx).count(),
-                        }),
-                    }
+                // It doesn't make sense to look at a field beyond the prefix;
+                // these require a variant index, and are not initialized in
+                // aggregate rvalues.
+                match substs.prefix_tys(def_id, tcx).nth(field_index) {
+                    Some(ty) => Ok(ty),
+                    None => Err(FieldAccessError::OutOfRange {
+                        field_count: substs.prefix_tys(def_id, tcx).count(),
+                    }),
                 }
             }
             AggregateKind::Array(ty) => Ok(ty),

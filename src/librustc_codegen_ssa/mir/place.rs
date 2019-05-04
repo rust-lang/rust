@@ -218,9 +218,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         }
         let (discr_scalar, discr_kind, discr_index) = match self.layout.variants {
             layout::Variants::Single { index } => {
-                let discr_val = self.layout.ty.ty_adt_def().map_or(
-                    index.as_u32() as u128,
-                    |def| def.discriminant_for_variant(bx.cx().tcx(), index).val);
+                let discr_val = self.layout.ty.discriminant_for_variant(bx.cx().tcx(), index)
+                    .map_or(index.as_u32() as u128, |discr| discr.val);
                 return bx.cx().const_uint_big(cast_to, discr_val);
             }
             layout::Variants::Multiple { ref discr, ref discr_kind, discr_index, .. } => {
@@ -296,9 +295,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                 ..
             } => {
                 let ptr = self.project_field(bx, discr_index);
-                let to = self.layout.ty.ty_adt_def().unwrap()
-                    .discriminant_for_variant(bx.tcx(), variant_index)
-                    .val;
+                let to =
+                    self.layout.ty.discriminant_for_variant(bx.tcx(), variant_index).unwrap().val;
                 bx.store(
                     bx.cx().const_uint_big(bx.cx().backend_type(ptr.layout), to),
                     ptr.llval,

@@ -43,6 +43,7 @@ use std::ops::Deref;
 use rustc_data_structures::sync::{self, Lrc, ParallelIterator, par_iter};
 use std::slice;
 use std::{mem, ptr};
+use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
@@ -2416,11 +2417,17 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         })
     }
 
+    #[inline]
+    pub fn variant_range(&self) -> Range<VariantIdx> {
+        (VariantIdx::new(0)..VariantIdx::new(self.variants.len()))
+    }
+
     /// Computes the discriminant value used by a specific variant.
     /// Unlike `discriminants`, this is (amortized) constant-time,
     /// only doing at most one query for evaluating an explicit
     /// discriminant (the last one before the requested variant),
     /// assuming there are no constant-evaluation errors there.
+    #[inline]
     pub fn discriminant_for_variant(&self,
                                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                     variant_index: VariantIdx)

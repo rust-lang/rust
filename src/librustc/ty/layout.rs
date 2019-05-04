@@ -604,12 +604,63 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 tcx.intern_layout(unit)
             }
 
-            // Tuples, generators and closures.
             ty::Generator(def_id, ref substs, _) => {
-                let tys = substs.field_tys(def_id, tcx);
-                univariant(&tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
+                // FIXME(tmandry): For fields that are repeated in multiple
+                // variants in the GeneratorLayout, we need code to ensure that
+                // the offset of these fields never change. Right now this is
+                // not an issue since every variant has every field, but once we
+                // optimize this we have to be more careful.
+
+                let discr_index = substs.prefix_tys(def_id, tcx).count();
+                let prefix_tys = substs.prefix_tys(def_id, tcx)
+                    .chain(iter::once(substs.discr_ty(tcx)));
+                let prefix = univariant_uninterned(
+                    &prefix_tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
                     &ReprOptions::default(),
-                    StructKind::AlwaysSized)?
+                    StructKind::AlwaysSized)?;
+
+                let mut size = prefix.size;
+                let mut align = prefix.align;
+                let variants_tys = substs.state_tys(def_id, tcx);
+                let variants = variants_tys.enumerate().map(|(i, variant_tys)| {
+                    let mut variant = univariant_uninterned(
+                        &variant_tys.map(|ty| self.layout_of(ty)).collect::<Result<Vec<_>, _>>()?,
+                        &ReprOptions::default(),
+                        StructKind::Prefixed(prefix.size, prefix.align.abi))?;
+
+                    variant.variants = Variants::Single { index: VariantIdx::new(i) };
+
+                    size = size.max(variant.size);
+                    align = align.max(variant.align);
+
+                    Ok(variant)
+                }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+
+                let abi = if prefix.abi.is_uninhabited() ||
+                             variants.iter().all(|v| v.abi.is_uninhabited()) {
+                    Abi::Uninhabited
+                } else {
+                    Abi::Aggregate { sized: true }
+                };
+                let discr = match &self.layout_of(substs.discr_ty(tcx))?.abi {
+                    Abi::Scalar(s) => s.clone(),
+                    _ => bug!(),
+                };
+
+                let layout = tcx.intern_layout(LayoutDetails {
+                    variants: Variants::Multiple {
+                        discr,
+                        discr_kind: DiscriminantKind::Tag,
+                        discr_index,
+                        variants,
+                    },
+                    fields: prefix.fields,
+                    abi,
+                    size,
+                    align,
+                });
+                debug!("generator layout: {:#?}", layout);
+                layout
             }
 
             ty::Closure(def_id, ref substs) => {
@@ -1647,6 +1698,14 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 
     fn field(this: TyLayout<'tcx>, cx: &C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
+        let discr_layout = |discr: &Scalar| -> C::TyLayout {
+            let layout = LayoutDetails::scalar(cx, discr.clone());
+            MaybeResult::from_ok(TyLayout {
+                details: tcx.intern_layout(layout),
+                ty: discr.value.to_ty(tcx)
+            })
+        };
+
         cx.layout_of(match this.ty.sty {
             ty::Bool |
             ty::Char |
@@ -1721,7 +1780,19 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             }
 
             ty::Generator(def_id, ref substs, _) => {
-                substs.field_tys(def_id, tcx).nth(i).unwrap()
+                match this.variants {
+                    Variants::Single { index } => {
+                        substs.state_tys(def_id, tcx)
+                            .nth(index.as_usize()).unwrap()
+                            .nth(i).unwrap()
+                    }
+                    Variants::Multiple { ref discr, discr_index, .. } => {
+                        if i == discr_index {
+                            return discr_layout(discr);
+                        }
+                        substs.prefix_tys(def_id, tcx).nth(i).unwrap()
+                    }
+                }
             }
 
             ty::Tuple(tys) => tys[i].expect_ty(),
@@ -1741,11 +1812,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     // Discriminant field for enums (where applicable).
                     Variants::Multiple { ref discr, .. } => {
                         assert_eq!(i, 0);
-                        let layout = LayoutDetails::scalar(cx, discr.clone());
-                        return MaybeResult::from_ok(TyLayout {
-                            details: tcx.intern_layout(layout),
-                            ty: discr.value.to_ty(tcx)
-                        });
+                        return discr_layout(discr);
                     }
                 }
             }

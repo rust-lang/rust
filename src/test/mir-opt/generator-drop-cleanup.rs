@@ -13,7 +13,8 @@ fn main() {
 
 // START rustc.main-{{closure}}.generator_drop.0.mir
 // bb0: {
-//     switchInt(((*_1).0: u32)) -> [0u32: bb4, 3u32: bb7, otherwise: bb8];
+//     _5 = discriminant((*_1));
+//     switchInt(move _5) -> [0u32: bb4, 3u32: bb7, otherwise: bb8];
 // }
 // bb1: {
 //     goto -> bb5;
