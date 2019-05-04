@@ -60,7 +60,7 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
-    #[salsa::invoke(crate::source_id::AstIdMap::ast_id_to_node_query)]
+    #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
     fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(RawItems::raw_items_query)]

@@ -674,7 +674,7 @@ Grammar(
         "LifetimeArg": (),
 
         "MacroItems": (
-            traits: [ "ModuleItemOwner", "FnDefOwner" ],
+            traits: [ "ModuleItemOwner", "FnDefOwner" ],            
         ),
 
         "MacroStmts" : (
