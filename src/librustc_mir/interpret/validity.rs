@@ -264,10 +264,11 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx> {
-        let name = match old_op.layout.ty.ty_adt_def() {
-            Some(def) => PathElem::Variant(def.variants[variant_id].ident.name),
-            // Generators also have variants but no def
-            None => PathElem::GeneratoreState(variant_id),
+        let name = match old_op.layout.ty.sty {
+            ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
+            // Generators also have variants
+            ty::Generator(..) => PathElem::GeneratoreState(variant_id),
+            _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
         };
         self.visit_elem(new_op, name)
     }
