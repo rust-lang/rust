@@ -113,9 +113,14 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         substs: SubstsRef<'tcx>) -> DefIdForest
     {
-        DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
-            v.uninhabited_from(tcx, substs, self.adt_kind())
-        }))
+        // Non-exhaustive ADTs from other crates are always considered inhabited.
+        if self.is_variant_list_non_exhaustive() && !self.did.is_local() {
+            DefIdForest::empty()
+        } else {
+            DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
+                v.uninhabited_from(tcx, substs, self.adt_kind())
+            }))
+        }
     }
 }
 

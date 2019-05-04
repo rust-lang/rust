@@ -1,59 +1,38 @@
 // aux-build:uninhabited.rs
-// compile-pass
-#![deny(unreachable_patterns)]
-#![feature(exhaustive_patterns)]
+#![feature(never_type)]
 
 extern crate uninhabited;
 
 use uninhabited::{
-    PartiallyInhabitedVariants,
     UninhabitedEnum,
     UninhabitedStruct,
     UninhabitedTupleStruct,
     UninhabitedVariants,
 };
 
-fn uninhabited_enum() -> Option<UninhabitedEnum> {
-    None
+// This test checks that uninhabited non-exhaustive types cannot coerce to any type, as the never
+// type can.
+
+struct A;
+
+fn can_coerce_never_type_to_anything(x: !) -> A {
+    x
 }
 
-fn uninhabited_variant() -> Option<UninhabitedVariants> {
-    None
+fn cannot_coerce_empty_enum_to_anything(x: UninhabitedEnum) -> A {
+    x //~ ERROR mismatched types
 }
 
-fn partially_inhabited_variant() -> PartiallyInhabitedVariants {
-    PartiallyInhabitedVariants::Tuple(3)
+fn cannot_coerce_empty_tuple_struct_to_anything(x: UninhabitedTupleStruct) -> A {
+    x //~ ERROR mismatched types
 }
 
-fn uninhabited_struct() -> Option<UninhabitedStruct> {
-    None
+fn cannot_coerce_empty_struct_to_anything(x: UninhabitedStruct) -> A {
+    x //~ ERROR mismatched types
 }
 
-fn uninhabited_tuple_struct() -> Option<UninhabitedTupleStruct> {
-    None
+fn cannot_coerce_enum_with_empty_variants_to_anything(x: UninhabitedVariants) -> A {
+    x //~ ERROR mismatched types
 }
 
-// This test checks that non-exhaustive types that would normally be considered uninhabited within
-// the defining crate are not considered uninhabited from extern crates.
-
-fn main() {
-    match uninhabited_enum() {
-        Some(_x) => (), // This line would normally error.
-        None => (),
-    }
-
-    match uninhabited_variant() {
-        Some(_x) => (), // This line would normally error.
-        None => (),
-    }
-
-    // This line would normally error.
-    while let PartiallyInhabitedVariants::Struct { x, .. } = partially_inhabited_variant() {
-    }
-
-    while let Some(_x) = uninhabited_struct() { // This line would normally error.
-    }
-
-    while let Some(_x) = uninhabited_tuple_struct() { // This line would normally error.
-    }
-}
+fn main() {}

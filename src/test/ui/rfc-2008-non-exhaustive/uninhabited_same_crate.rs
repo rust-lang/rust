@@ -1,5 +1,3 @@
-#![deny(unreachable_patterns)]
-#![feature(exhaustive_patterns)]
 #![feature(never_type)]
 #![feature(non_exhaustive)]
 
@@ -20,52 +18,29 @@ pub enum UninhabitedVariants {
     #[non_exhaustive] Struct { x: ! }
 }
 
-pub enum PartiallyInhabitedVariants {
-    Tuple(u8),
-    #[non_exhaustive] Struct { x: ! }
+struct A;
+
+// This test checks that uninhabited non-exhaustive types defined in the same crate cannot coerce
+// to any type, as the never type can.
+
+fn can_coerce_never_type_to_anything(x: !) -> A {
+    x
 }
 
-fn uninhabited_enum() -> Option<UninhabitedEnum> {
-    None
+fn cannot_coerce_empty_enum_to_anything(x: UninhabitedEnum) -> A {
+    x //~ ERROR mismatched types
 }
 
-fn uninhabited_variant() -> Option<UninhabitedVariants> {
-    None
+fn cannot_coerce_empty_tuple_struct_to_anything(x: UninhabitedTupleStruct) -> A {
+    x //~ ERROR mismatched types
 }
 
-fn partially_inhabited_variant() -> PartiallyInhabitedVariants {
-    PartiallyInhabitedVariants::Tuple(3)
+fn cannot_coerce_empty_struct_to_anything(x: UninhabitedStruct) -> A {
+    x //~ ERROR mismatched types
 }
 
-fn uninhabited_struct() -> Option<UninhabitedStruct> {
-    None
+fn cannot_coerce_enum_with_empty_variants_to_anything(x: UninhabitedVariants) -> A {
+    x //~ ERROR mismatched types
 }
 
-fn uninhabited_tuple_struct() -> Option<UninhabitedTupleStruct> {
-    None
-}
-
-// This test checks that non-exhaustive types that would normally be considered uninhabited within
-// the defining crate are still considered uninhabited.
-
-fn main() {
-    match uninhabited_enum() {
-        Some(_x) => (), //~ ERROR unreachable pattern
-        None => (),
-    }
-
-    match uninhabited_variant() {
-        Some(_x) => (), //~ ERROR unreachable pattern
-        None => (),
-    }
-
-    while let PartiallyInhabitedVariants::Struct { x } = partially_inhabited_variant() {
-        //~^ ERROR unreachable pattern
-    }
-
-    while let Some(_x) = uninhabited_struct() { //~ ERROR unreachable pattern
-    }
-
-    while let Some(_x) = uninhabited_tuple_struct() { //~ ERROR unreachable pattern
-    }
-}
+fn main() {}

@@ -1,0 +1,11 @@
+error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedEnum` is non-empty
+  --> $DIR/uninhabited_match_with_exhaustive_patterns.rs:19:11
+   |
+LL |     match x {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0004`.
