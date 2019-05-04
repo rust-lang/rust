@@ -118,6 +118,69 @@ impl TokenMap {
     }
 }
 
+/// Returns the textual content of a doc comment block as a quoted string
+/// That is, strips leading `///` (or `/**`, etc)
+/// and strips the ending `*/`
+/// And then quote the string, which is needed to convert to `tt::Literal`
+fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
+    use ast::AstToken;
+
+    let prefix_len = comment.prefix().len();
+    let mut text = &comment.text()[prefix_len..];
+
+    // Remove ending "*/"
+    if comment.kind().shape == ast::CommentShape::Block {
+        text = &text[0..text.len() - 2];
+    }
+
+    // Quote the string
+    // Note that `tt::Literal` expect an escaped string
+    let text = format!("{:?}", text);
+    text.into()
+}
+
+fn convert_doc_comment<'a>(token: &ra_syntax::SyntaxToken<'a>) -> Option<Vec<tt::TokenTree>> {
+    use ast::AstToken;
+    let comment = ast::Comment::cast(*token)?;
+    let doc = comment.kind().doc?;
+
+    // Make `doc="\" Comments\""
+    let mut meta_tkns = Vec::new();
+    meta_tkns.push(mk_ident("doc"));
+    meta_tkns.push(mk_punct('='));
+    meta_tkns.push(mk_doc_literal(&comment));
+
+    // Make `#![]`
+    let mut token_trees = Vec::new();
+    token_trees.push(mk_punct('#'));
+    if let ast::CommentPlacement::Inner = doc {
+        token_trees.push(mk_punct('!'));
+    }
+    token_trees.push(tt::TokenTree::from(tt::Subtree::from(
+        tt::Subtree { delimiter: tt::Delimiter::Bracket, token_trees: meta_tkns }.into(),
+    )));
+
+    return Some(token_trees);
+
+    // Helper functions
+    fn mk_ident(s: &str) -> tt::TokenTree {
+        tt::TokenTree::from(tt::Leaf::from(tt::Ident {
+            text: s.into(),
+            id: tt::TokenId::unspecified(),
+        }))
+    }
+
+    fn mk_punct(c: char) -> tt::TokenTree {
+        tt::TokenTree::from(tt::Leaf::from(tt::Punct { char: c, spacing: tt::Spacing::Alone }))
+    }
+
+    fn mk_doc_literal(comment: &ast::Comment) -> tt::TokenTree {
+        let lit = tt::Literal { text: doc_comment_text(comment) };
+
+        tt::TokenTree::from(tt::Leaf::from(lit))
+    }
+}
+
 fn convert_tt(
     token_map: &mut TokenMap,
     global_offset: TextUnit,
@@ -141,13 +204,17 @@ fn convert_tt(
     let mut child_iter = tt.children_with_tokens().skip(skip_first as usize).peekable();
 
     while let Some(child) = child_iter.next() {
-        if (skip_first && (child == first_child || child == last_child)) || child.kind().is_trivia()
-        {
+        if skip_first && (child == first_child || child == last_child) {
             continue;
         }
+
         match child {
             SyntaxElement::Token(token) => {
-                if token.kind().is_punct() {
+                if let Some(doc_tokens) = convert_doc_comment(&token) {
+                    token_trees.extend(doc_tokens);
+                } else if token.kind().is_trivia() {
+                    continue;
+                } else if token.kind().is_punct() {
                     assert!(token.text().len() == 1, "Input ast::token punct must be single char.");
                     let char = token.text().chars().next().unwrap();
 
