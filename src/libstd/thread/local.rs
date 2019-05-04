@@ -311,6 +311,7 @@ mod lazy {
             }
         }
 
+        #[allow(unused)]
         pub unsafe fn take(&mut self) -> Option<T> {
             (*self.inner.get()).take()
         }
