@@ -276,7 +276,7 @@ pub enum DefPathData {
     // they are treated specially by the `def_path` function.
     /// The crate root (marker)
     CrateRoot,
-    // Catch-all for random DefId things like DUMMY_NODE_ID
+    // Catch-all for random DefId things like `DUMMY_NODE_ID`
     Misc,
     // Different kinds of items and item-like things:
     /// An impl
@@ -298,9 +298,9 @@ pub enum DefPathData {
     AnonConst,
     /// An `impl Trait` type node
     ImplTrait,
-    /// GlobalMetaData identifies a piece of crate metadata that is global to
-    /// a whole crate (as opposed to just one item). GlobalMetaData components
-    /// are only supposed to show up right below the crate root.
+    /// Identifies a piece of crate metadata that is global to a whole crate
+    /// (as opposed to just one item). `GlobalMetaData` components are only
+    /// supposed to show up right below the crate root.
     GlobalMetaData(InternedString),
 }
 

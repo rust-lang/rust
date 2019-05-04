@@ -2533,7 +2533,7 @@ impl<'a> Resolver<'a> {
                 self.with_current_self_item(item, |this| {
                     this.with_generic_param_rib(HasGenericParams(generics, ItemRibKind), |this| {
                         let item_def_id = this.definitions.local_def_id(item.id);
-                        this.with_self_rib(Def::SelfTy(Some(item_def_id), None), |this| {
+                        this.with_self_rib(Res::SelfTy(Some(item_def_id), None), |this| {
                             visit::walk_item(this, item)
                         })
                     })

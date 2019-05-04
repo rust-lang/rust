@@ -1780,7 +1780,7 @@ pub struct ImplItem {
     pub span: Span,
 }
 
-/// Represents different contents within `impl`s
+/// Represents different contents within `impl`s.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum ImplItemKind {
     /// An associated constant of the given type, set to the constant result
@@ -1794,7 +1794,7 @@ pub enum ImplItemKind {
     Existential(GenericBounds),
 }
 
-// Bind a type to an associated type: `A=Foo`.
+// Bind a type to an associated type (`A = Foo`).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct TypeBinding {
     pub hir_id: HirId,

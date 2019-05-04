@@ -1650,24 +1650,23 @@ fn find_existential_constraints<'a, 'tcx>(
         }
     }
 
-    let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
-    let scope_node_id = tcx.hir()
-        .get_defining_scope(node_id)
+    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+    let scope = tcx.hir()
+        .get_defining_scope(hir_id)
         .expect("could not get defining scope");
-    let scope_id = tcx.hir().node_to_hir_id(scope_node_id);
     let mut locator = ConstraintLocator {
         def_id,
         tcx,
         found: None,
     };
 
-    debug!("find_existential_constraints: scope_id={:?}", scope_id);
+    debug!("find_existential_constraints: scope={:?}", scope);
 
-    if scope_id == hir::CRATE_HIR_ID {
+    if scope == hir::CRATE_HIR_ID {
         intravisit::walk_crate(&mut locator, tcx.hir().krate());
     } else {
-        debug!("find_existential_constraints: scope={:?}", tcx.hir().get_by_hir_id(scope_id));
-        match tcx.hir().get_by_hir_id(scope_id) {
+        debug!("find_existential_constraints: scope={:?}", tcx.hir().get_by_hir_id(scope));
+        match tcx.hir().get_by_hir_id(scope) {
             Node::Item(ref it) => intravisit::walk_item(&mut locator, it),
             Node::ImplItem(ref it) => intravisit::walk_impl_item(&mut locator, it),
             Node::TraitItem(ref it) => intravisit::walk_trait_item(&mut locator, it),

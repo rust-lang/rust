@@ -1,4 +1,12 @@
-error[E0503]: cannot use `*y.pointer` because it was mutably borrowed
+error[E0506]: cannot assign to `*y.pointer` because it is borrowed (Ast)
+  --> $DIR/issue-45697.rs:20:9
+   |
+LL |         let z = copy_borrowed_ptr(&mut y);
+   |                                        - borrow of `*y.pointer` occurs here
+LL |         *y.pointer += 1;
+   |         ^^^^^^^^^^^^^^^ assignment to borrowed `*y.pointer` occurs here
+
+error[E0503]: cannot use `*y.pointer` because it was mutably borrowed (Mir)
   --> $DIR/issue-45697.rs:20:9
    |
 LL |         let z = copy_borrowed_ptr(&mut y);
@@ -9,7 +17,7 @@ LL |         *y.pointer += 1;
 LL |         *z.pointer += 1;
    |         --------------- borrow later used here
 
-error[E0506]: cannot assign to `*y.pointer` because it is borrowed
+error[E0506]: cannot assign to `*y.pointer` because it is borrowed (Mir)
   --> $DIR/issue-45697.rs:20:9
    |
 LL |         let z = copy_borrowed_ptr(&mut y);
@@ -20,7 +28,7 @@ LL |         *y.pointer += 1;
 LL |         *z.pointer += 1;
    |         --------------- borrow later used here
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 Some errors have detailed explanations: E0503, E0506.
 For more information about an error, try `rustc --explain E0503`.

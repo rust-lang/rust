@@ -1382,12 +1382,12 @@ impl<'a> LoweringContext<'a> {
                 if existential_desugaring {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`.
 
-                    let impl_ty_node_id = self.sess.next_node_id();
+                    let impl_trait_node_id = self.sess.next_node_id();
                     let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
                     self.resolver.definitions().create_def_with_parent(
                         parent_def_index,
-                        impl_ty_node_id,
-                        DefPathData::Misc,
+                        impl_trait_node_id,
+                        DefPathData::ImplTrait,
                         DefIndexAddressSpace::High,
                         Mark::root(),
                         DUMMY_SP
@@ -1397,7 +1397,7 @@ impl<'a> LoweringContext<'a> {
                         this.lower_ty(
                             &Ty {
                                 id: this.sess.next_node_id(),
-                                node: TyKind::ImplTrait(impl_ty_node_id, bounds.clone()),
+                                node: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
                                 span: DUMMY_SP,
                             },
                             itctx,
@@ -1410,9 +1410,8 @@ impl<'a> LoweringContext<'a> {
                     let bounds = self.lower_param_bounds(bounds, itctx);
 
                     let id = self.sess.next_node_id();
-                    let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(id);
                     P(hir::Ty {
-                        hir_id,
+                        hir_id: self.lower_node_id(id),
                         node: hir::TyKind::AssocTyExistential(bounds),
                         span: DUMMY_SP,
                     })
@@ -1423,7 +1422,7 @@ impl<'a> LoweringContext<'a> {
         hir::TypeBinding {
             hir_id: self.lower_node_id(c.id),
             ident: c.ident,
-            ty
+            ty,
             span: c.span,
         }
     }
@@ -1647,7 +1646,7 @@ impl<'a> LoweringContext<'a> {
         // Not tracking it makes lints in rustc and clippy very fragile, as
         // frequently opened issues show.
         let exist_ty_span = self.mark_span_with_reason(
-            CompilerDesugaringKind::ExistentialReturnType,
+            CompilerDesugaringKind::ExistentialType,
             span,
             None,
         );

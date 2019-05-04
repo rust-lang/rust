@@ -764,7 +764,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
             // Specify type to assert that error was already reported in `Err` case.
-            let _ =
+            let _: Result<_, ErrorReported> =
                 self.add_predicates_for_ast_type_binding(
                     trait_ref.hir_ref_id,
                     poly_trait_ref,
@@ -933,8 +933,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     }
 
     /// Translates the AST's notion of ty param bounds (which are an enum consisting of a newtyped
-    /// `Ty` or a region) to ty's notion of ty param bounds, which can either be user-defined traits
-    /// or the built-in trait `Send`.
+    /// `Ty` or a region) to ty's notion of ty param bounds (which can either be user-defined traits
+    /// or the built-in trait `Sized`).
     pub fn compute_bounds(&self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound],

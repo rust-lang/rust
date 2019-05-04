@@ -842,7 +842,7 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the nearest enclosing scope. A scope is roughly an item or block.
-    pub fn get_enclosing_scope(&self, id: HirId) -> Option<HirId> {
+    pub fn get_enclosing_scope(&self, hir_id: HirId) -> Option<HirId> {
         self.walk_parent_nodes(hir_id, |node| match *node {
             Node::Item(i) => {
                 match i.node {
@@ -880,14 +880,14 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns the defining scope for an existential type definition.
-    pub fn get_defining_scope(&self, id: NodeId) -> Option<NodeId> {
+    pub fn get_defining_scope(&self, id: HirId) -> Option<HirId> {
         let mut scope = id;
         loop {
             scope = self.get_enclosing_scope(scope)?;
-            if scope == CRATE_NODE_ID {
-                return Some(CRATE_NODE_ID);
+            if scope == CRATE_HIR_ID {
+                return Some(CRATE_HIR_ID);
             }
-            match self.get(scope) {
+            match self.get_by_hir_id(scope) {
                 Node::Item(i) => {
                     match i.node {
                         ItemKind::Existential(ExistTy { impl_trait_fn: None, .. }) => {}

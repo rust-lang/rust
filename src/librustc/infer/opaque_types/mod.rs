@@ -953,14 +953,13 @@ pub fn may_define_existential_type(
     );
 
     // Named existential types can be defined by any siblings or children of siblings.
-    let scope_node_id = tcx.hir()
-        .get_defining_scope(tcx.hir().hir_to_node_id(opaque_hir_id))
+    let scope = tcx.hir()
+        .get_defining_scope(opaque_hir_id)
         .expect("could not get defining scope");
-    let scope_id = tcx.hir().node_to_hir_id(scope_node_id);
     // We walk up the node tree until we hit the root or the scope of the opaque type.
-    while hir_id != scope_id && hir_id != hir::CRATE_HIR_ID {
+    while hir_id != scope && hir_id != hir::CRATE_HIR_ID {
         hir_id = tcx.hir().get_parent_item(hir_id);
     }
     // Syntactically, we are allowed to define the concrete type if:
-    hir_id == scope_id
+    hir_id == scope
 }
