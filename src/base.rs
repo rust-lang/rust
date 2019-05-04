@@ -1052,6 +1052,7 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
     } else {
         let (lhs_ptr, lhs_extra) = lhs.load_scalar_pair(fx);
         let (rhs_ptr, rhs_extra) = rhs.load_scalar_pair(fx);
+
         let res = match bin_op {
             BinOp::Eq => {
                 let ptr_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_ptr, rhs_ptr);
@@ -1063,10 +1064,28 @@ fn trans_ptr_binop<'a, 'tcx: 'a>(
                 let extra_ne = fx.bcx.ins().icmp(IntCC::NotEqual, lhs_extra, rhs_extra);
                 fx.bcx.ins().bor(ptr_ne, extra_ne)
             }
-            _ => unimplemented!(
-                "trans_ptr_binop({:?}, <fat ptr>, <fat ptr>) not implemented",
-                bin_op
-            ),
+            BinOp::Lt | BinOp::Le | BinOp::Ge | BinOp::Gt => {
+                let ptr_eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_ptr, rhs_ptr);
+
+                let ptr_cmp = fx.bcx.ins().icmp(match bin_op {
+                    BinOp::Lt => IntCC::UnsignedLessThan,
+                    BinOp::Le => IntCC::UnsignedLessThanOrEqual,
+                    BinOp::Ge => IntCC::UnsignedGreaterThanOrEqual,
+                    BinOp::Gt => IntCC::UnsignedGreaterThan,
+                    _ => unreachable!(),
+                }, lhs_ptr, rhs_ptr);
+
+                let extra_cmp = fx.bcx.ins().icmp(match bin_op {
+                    BinOp::Lt => IntCC::UnsignedLessThan,
+                    BinOp::Le => IntCC::UnsignedLessThanOrEqual,
+                    BinOp::Ge => IntCC::UnsignedGreaterThanOrEqual,
+                    BinOp::Gt => IntCC::UnsignedGreaterThan,
+                    _ => unreachable!(),
+                }, lhs_extra, rhs_extra);
+
+                fx.bcx.ins().select(ptr_eq, extra_cmp, ptr_cmp)
+            }
+            _ => panic!("bin_op {:?} on ptr", bin_op),
         };
 
         assert_eq!(fx.tcx.types.bool, ret_ty);
