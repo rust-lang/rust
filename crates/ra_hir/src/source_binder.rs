@@ -351,7 +351,7 @@ impl SourceAnalyzer {
         callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
-        // TODO check that?
+        // FIXME check that?
         let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
         crate::ty::method_resolution::iterate_method_candidates(
             &canonical,

@@ -183,7 +183,7 @@ where
     fn struct_datum(&self, struct_id: chalk_ir::StructId) -> Arc<StructDatum> {
         debug!("struct_datum {:?}", struct_id);
         let type_ctor = from_chalk(self.db, struct_id);
-        // TODO might be nicer if we can create a fake GenericParams for the TypeCtor
+        // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
         let (num_params, upstream) = match type_ctor {
             TypeCtor::Bool
             | TypeCtor::Char

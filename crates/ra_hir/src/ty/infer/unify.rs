@@ -9,7 +9,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     where
         'a: 'b,
     {
-        Canonicalizer { ctx: self, free_vars: Vec::new() }
+        Canonicalizer { ctx: self, free_vars: Vec::new(), var_stack: Vec::new() }
     }
 }
 
@@ -19,6 +19,10 @@ where
 {
     ctx: &'b mut InferenceContext<'a, D>,
     free_vars: Vec<InferTy>,
+    /// A stack of type variables that is used to detect recursive types (which
+    /// are an error, but we need to protect against them to avoid stack
+    /// overflows).
+    var_stack: Vec<super::TypeVarId>,
 }
 
 pub(super) struct Canonicalized<T> {
@@ -42,9 +46,15 @@ where
         ty.fold(&mut |ty| match ty {
             Ty::Infer(tv) => {
                 let inner = tv.to_inner();
-                // TODO prevent infinite loops? => keep var stack
+                if self.var_stack.contains(&inner) {
+                    // recursive type
+                    return tv.fallback_value();
+                }
                 if let Some(known_ty) = self.ctx.var_unification_table.probe_value(inner).known() {
-                    self.do_canonicalize_ty(known_ty.clone())
+                    self.var_stack.push(inner);
+                    let result = self.do_canonicalize_ty(known_ty.clone());
+                    self.var_stack.pop();
+                    result
                 } else {
                     let free_var = InferTy::TypeVar(self.ctx.var_unification_table.find(inner));
                     let position = self.add(free_var);
