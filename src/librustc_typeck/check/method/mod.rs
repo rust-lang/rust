@@ -195,8 +195,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ProbeScope::TraitsInScope
         )?;
 
-        if let Some(import_id) = pick.import_id {
-            let import_def_id = self.tcx.hir().local_def_id_from_hir_id(import_id);
+        for import_id in &pick.import_ids {
+            let import_def_id = self.tcx.hir().local_def_id_from_hir_id(*import_id);
             debug!("used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)
                 .unwrap().insert(import_def_id);
@@ -434,7 +434,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let pick = self.probe_for_name(span, probe::Mode::Path, method_name, IsSuggestion(false),
                                        self_ty, expr_id, ProbeScope::TraitsInScope)?;
         debug!("resolve_ufcs: pick={:?}", pick);
-        if let Some(import_id) = pick.import_id {
+        for import_id in pick.import_ids {
             let import_def_id = tcx.hir().local_def_id_from_hir_id(import_id);
             debug!("resolve_ufcs: used_trait_import: {:?}", import_def_id);
             Lrc::get_mut(&mut self.tables.borrow_mut().used_trait_imports)

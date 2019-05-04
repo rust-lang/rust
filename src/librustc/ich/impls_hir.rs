@@ -7,6 +7,7 @@ use crate::hir::def_id::{DefId, LocalDefId, CrateNum, CRATE_DEF_INDEX};
 use crate::ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
+use smallvec::SmallVec;
 use std::mem;
 use syntax::ast;
 use syntax::attr;
@@ -393,30 +394,30 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitCandidate {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
             let hir::TraitCandidate {
                 def_id,
-                import_id,
-            } = *self;
+                import_ids,
+            } = self;
 
             def_id.hash_stable(hcx, hasher);
-            import_id.hash_stable(hcx, hasher);
+            import_ids.hash_stable(hcx, hasher);
         });
     }
 }
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
-    type KeyType = (DefPathHash, Option<(DefPathHash, hir::ItemLocalId)>);
+    type KeyType = (DefPathHash, SmallVec<[(DefPathHash, hir::ItemLocalId); 1]>);
 
     fn to_stable_hash_key(&self,
                           hcx: &StableHashingContext<'a>)
                           -> Self::KeyType {
         let hir::TraitCandidate {
             def_id,
-            import_id,
-        } = *self;
+            import_ids,
+        } = self;
 
-        let import_id = import_id.map(|node_id| hcx.node_to_hir_id(node_id))
-                                 .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
-                                                hir_id.local_id));
-        (hcx.def_path_hash(def_id), import_id)
+        let import_keys = import_ids.iter().map(|node_id| hcx.node_to_hir_id(*node_id))
+                                           .map(|hir_id| (hcx.local_def_path_hash(hir_id.owner),
+                                                          hir_id.local_id)).collect();
+        (hcx.def_path_hash(*def_id), import_keys)
     }
 }
 

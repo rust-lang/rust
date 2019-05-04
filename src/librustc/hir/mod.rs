@@ -37,6 +37,7 @@ use rustc_macros::HashStable;
 use serialize::{self, Encoder, Encodable, Decoder, Decodable};
 use std::collections::{BTreeSet, BTreeMap};
 use std::fmt;
+use smallvec::SmallVec;
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
 /// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
@@ -2505,10 +2506,13 @@ pub type FreevarMap = NodeMap<Vec<Freevar<ast::NodeId>>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 
+ // The TraitCandidate's import_ids is empty if the trait is defined in the same module, and
+ // has length > 0 if the trait is found through an chain of imports, starting with the
+ // import/use statement in the scope where the trait is used.
 #[derive(Clone, Debug)]
 pub struct TraitCandidate {
     pub def_id: DefId,
-    pub import_id: Option<NodeId>,
+    pub import_ids: SmallVec<[NodeId; 1]>,
 }
 
 // Trait method resolution
