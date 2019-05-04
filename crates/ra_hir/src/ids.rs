@@ -81,25 +81,6 @@ impl HirFileId {
     }
 }
 
-fn parse_macro(
-    db: &impl DefDatabase,
-    macro_call_id: MacroCallId,
-) -> Result<TreeArc<SourceFile>, String> {
-    let loc = macro_call_id.loc(db);
-    let macro_arg = db.macro_arg(macro_call_id).ok_or("Fail to args in to tt::TokenTree")?;
-
-    let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
-    let tt = macro_rules.expand(&macro_arg).map_err(|err| format!("{:?}", err))?;
-
-    // Set a hard limit for the expanded tt
-    let count = tt.count();
-    if count > 65536 {
-        return Err(format!("Total tokens count exceed limit : count = {}", count));
-    }
-
-    Ok(mbe::token_tree_to_ast_item_list(&tt))
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum HirFileIdRepr {
     File(FileId),
@@ -141,6 +122,25 @@ pub(crate) fn macro_arg_query(db: &impl DefDatabase, id: MacroCallId) -> Option<
     let arg = macro_call.token_tree()?;
     let (tt, _) = mbe::ast_to_token_tree(arg)?;
     Some(Arc::new(tt))
+}
+
+fn parse_macro(
+    db: &impl DefDatabase,
+    macro_call_id: MacroCallId,
+) -> Result<TreeArc<SourceFile>, String> {
+    let loc = macro_call_id.loc(db);
+    let macro_arg = db.macro_arg(macro_call_id).ok_or("Fail to args in to tt::TokenTree")?;
+
+    let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
+    let tt = macro_rules.expand(&macro_arg).map_err(|err| format!("{:?}", err))?;
+
+    // Set a hard limit for the expanded tt
+    let count = tt.count();
+    if count > 65536 {
+        return Err(format!("Total tokens count exceed limit : count = {}", count));
+    }
+
+    Ok(mbe::token_tree_to_ast_item_list(&tt))
 }
 
 macro_rules! impl_intern_key {
