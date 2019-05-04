@@ -947,11 +947,6 @@ pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
         offset: Size,
         param_env: Self::ParamEnv,
     ) -> Option<PointeeInfo>;
-    fn is_freeze(
-        this: TyLayout<'a, Self>,
-        cx: &C,
-        param_env: Self::ParamEnv,
-    )-> bool;
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
@@ -968,10 +963,6 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     ) -> Option<PointeeInfo>
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::pointee_info_at(self, cx, offset, param_env)
-    }
-    pub fn is_freeze<C>(self, cx: &C, param_env: Ty::ParamEnv) -> bool
-    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
-        Ty::is_freeze(self, cx, param_env)
     }
 }
 

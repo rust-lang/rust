@@ -175,6 +175,14 @@ impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for InterpretCx<'a, 'mir, 'tcx, 
     }
 }
 
+impl<'a, 'mir, 'tcx, M> layout::HasParamEnv<'tcx> for InterpretCx<'a, 'mir, 'tcx, M>
+    where M: Machine<'a, 'mir, 'tcx>
+{
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+}
+
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
     for InterpretCx<'a, 'mir, 'tcx, M>
 {

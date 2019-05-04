@@ -7,6 +7,7 @@ use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::layout::TargetDataLayout;
 use rustc::ty::layout::TyLayout;
+use rustc::ty::layout::HasParamEnv;
 use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
@@ -119,6 +120,12 @@ impl<'me, 'tcx> LayoutOf for UnwrapLayoutCx<'me, 'tcx> {
 impl<'me, 'tcx> HasTyCtxt<'tcx> for UnwrapLayoutCx<'me, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
+    }
+}
+
+impl<'me, 'tcx> HasParamEnv<'tcx> for UnwrapLayoutCx<'me, 'tcx> {
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        self.param_env
     }
 }
 

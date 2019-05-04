@@ -1662,9 +1662,20 @@ impl ty::query::TyCtxtAt<'a, 'tcx, '_> {
     }
 }
 
+pub trait HasParamEnv<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+}
+
+impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
+    }
+}
+
 impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
-          C::TyLayout: MaybeResult<TyLayout<'tcx>>
+          C::TyLayout: MaybeResult<TyLayout<'tcx>>,
+          C: HasParamEnv<'tcx>
 {
     type ParamEnv = ty::ParamEnv<'tcx>;
 
@@ -1960,15 +1971,6 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
             }
         }
     }
-
-    fn is_freeze(
-        this: TyLayout<'tcx>,
-        cx: &C,
-        param_env: Self::ParamEnv,
-    )-> bool {
-        this.ty.is_freeze(cx.tcx(), param_env, DUMMY_SP)
-    }
-
 }
 
 struct Niche {
