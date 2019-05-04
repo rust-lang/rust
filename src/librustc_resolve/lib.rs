@@ -1071,13 +1071,13 @@ enum RibKind<'a> {
 /// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
-struct Rib<'a> {
-    bindings: FxHashMap<Ident, Res>,
+struct Rib<'a, R = Res> {
+    bindings: FxHashMap<Ident, R>,
     kind: RibKind<'a>,
 }
 
-impl<'a> Rib<'a> {
-    fn new(kind: RibKind<'a>) -> Rib<'a> {
+impl<'a, R> Rib<'a, R> {
+    fn new(kind: RibKind<'a>) -> Rib<'a, R> {
         Rib {
             bindings: Default::default(),
             kind,
@@ -1638,7 +1638,7 @@ pub struct Resolver<'a> {
     ribs: PerNS<Vec<Rib<'a>>>,
 
     /// The current set of local scopes, for labels.
-    label_ribs: Vec<Rib<'a>>,
+    label_ribs: Vec<Rib<'a, NodeId>>,
 
     /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
@@ -1663,6 +1663,8 @@ pub struct Resolver<'a> {
     partial_res_map: NodeMap<PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     import_res_map: NodeMap<PerNS<Option<Res>>>,
+    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
+    label_res_map: NodeMap<NodeId>,
 
     pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
@@ -1839,6 +1841,10 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 
     fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res>> {
         self.import_res_map.get(&id).cloned().unwrap_or_default()
+    }
+
+    fn get_label_res(&mut self, id: NodeId) -> Option<NodeId> {
+        self.label_res_map.get(&id).cloned()
     }
 
     fn definitions(&mut self) -> &mut Definitions {
@@ -2024,6 +2030,7 @@ impl<'a> Resolver<'a> {
 
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
+            label_res_map: Default::default(),
             freevars: Default::default(),
             freevars_seen: Default::default(),
             export_map: FxHashMap::default(),
@@ -2490,7 +2497,7 @@ impl<'a> Resolver<'a> {
     ///
     /// Stops after meeting a closure.
     fn search_label<P, R>(&self, mut ident: Ident, pred: P) -> Option<R>
-        where P: Fn(&Rib<'_>, Ident) -> Option<R>
+        where P: Fn(&Rib<'_, NodeId>, Ident) -> Option<R>
     {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
@@ -4332,10 +4339,9 @@ impl<'a> Resolver<'a> {
     {
         if let Some(label) = label {
             self.unused_labels.insert(id, label.ident.span);
-            let res = Res::Label(id);
             self.with_label_rib(|this| {
                 let ident = label.ident.modern_and_legacy();
-                this.label_ribs.last_mut().unwrap().bindings.insert(ident, res);
+                this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
                 f(this);
             });
         } else {
@@ -4366,10 +4372,10 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                let res = self.search_label(label.ident, |rib, ident| {
+                let node_id = self.search_label(label.ident, |rib, ident| {
                     rib.bindings.get(&ident.modern_and_legacy()).cloned()
                 });
-                match res {
+                match node_id {
                     None => {
                         // Search again for close matches...
                         // Picks the first label that is "close enough", which is not necessarily
@@ -4390,13 +4396,10 @@ impl<'a> Resolver<'a> {
                                       ResolutionError::UndeclaredLabel(&label.ident.as_str(),
                                                                        close_match));
                     }
-                    Some(Res::Label(id)) => {
+                    Some(node_id) => {
                         // Since this res is a label, it is never read.
-                        self.record_partial_res(expr.id, PartialRes::new(Res::Label(id)));
-                        self.unused_labels.remove(&id);
-                    }
-                    Some(_) => {
-                        span_bug!(expr.span, "label wasn't mapped to a label res!");
+                        self.label_res_map.insert(expr.id, node_id);
+                        self.unused_labels.remove(&node_id);
                     }
                 }
 

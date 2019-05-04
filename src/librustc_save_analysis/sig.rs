@@ -579,7 +579,7 @@ impl Sig for ast::Path {
         let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
 
         let (name, start, end) = match res {
-            Res::Label(..) | Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => {
+            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => {
                 return Ok(Signature {
                     text: pprust::path_to_string(self),
                     defs: vec![],

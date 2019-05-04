@@ -142,7 +142,6 @@ pub enum Res<Id = hir::HirId> {
     Upvar(Id,           // `HirId` of closed over local
           usize,        // index in the `freevars` list of the closure
           ast::NodeId), // expr node that creates the closure
-    Label(ast::NodeId),
 
     // Macro namespace
     NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
@@ -349,7 +348,6 @@ impl<Id> Res<Id> {
 
             Res::Local(..) |
             Res::Upvar(..) |
-            Res::Label(..)  |
             Res::PrimTy(..) |
             Res::SelfTy(..) |
             Res::SelfCtor(..) |
@@ -377,7 +375,6 @@ impl<Id> Res<Id> {
             Res::PrimTy(..) => "builtin type",
             Res::Local(..) => "local variable",
             Res::Upvar(..) => "closure capture",
-            Res::Label(..) => "label",
             Res::SelfTy(..) => "self type",
             Res::ToolMod => "tool module",
             Res::NonMacroAttr(attr_kind) => attr_kind.descr(),
@@ -405,7 +402,6 @@ impl<Id> Res<Id> {
                 index,
                 closure
             ),
-            Res::Label(id) => Res::Label(id),
             Res::SelfTy(a, b) => Res::SelfTy(a, b),
             Res::ToolMod => Res::ToolMod,
             Res::NonMacroAttr(attr_kind) => Res::NonMacroAttr(attr_kind),

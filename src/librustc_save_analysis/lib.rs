@@ -796,7 +796,6 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             }
             Res::PrimTy(..) |
             Res::SelfTy(..) |
-            Res::Label(..) |
             Res::Def(HirDefKind::Macro(..), _) |
             Res::ToolMod |
             Res::NonMacroAttr(..) |

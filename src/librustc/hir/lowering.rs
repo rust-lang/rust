@@ -151,6 +151,9 @@ pub trait Resolver {
     /// Obtain per-namespace resolutions for `use` statement with the given `NoedId`.
     fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
 
+    /// Obtain resolution for a label with the given `NodeId`.
+    fn get_label_res(&mut self, id: NodeId) -> Option<NodeId>;
+
     /// We must keep the set of definitions up to date as we add nodes that weren't in the AST.
     /// This should only return `None` during testing.
     fn definitions(&mut self) -> &mut Definitions;
@@ -1246,7 +1249,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
-                if let Res::Label(loop_id) = self.expect_full_res(id) {
+                if let Some(loop_id) = self.resolver.get_label_res(id) {
                     Ok(self.lower_node_id(loop_id))
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
