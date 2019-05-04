@@ -1,13 +1,13 @@
 
 running 2 tests
-test $DIR/failed-doctest-output.rs - OtherStruct (line 17) ... FAILED
-test $DIR/failed-doctest-output.rs - SomeStruct (line 11) ... FAILED
+test $DIR/failed-doctest-output.rs - OtherStruct (line 20) ... FAILED
+test $DIR/failed-doctest-output.rs - SomeStruct (line 10) ... FAILED
 
 failures:
 
----- $DIR/failed-doctest-output.rs - OtherStruct (line 17) stdout ----
+---- $DIR/failed-doctest-output.rs - OtherStruct (line 20) stdout ----
 error[E0425]: cannot find value `no` in this scope
- --> $DIR/failed-doctest-output.rs:18:1
+ --> $DIR/failed-doctest-output.rs:21:1
   |
 3 | no
   | ^^ not found in this scope
@@ -15,21 +15,25 @@ error[E0425]: cannot find value `no` in this scope
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0425`.
-thread '$DIR/failed-doctest-output.rs - OtherStruct (line 17)' panicked at 'couldn't compile the test', src/librustdoc/test.rs:320:13
+Couldn't compile the test.
+---- $DIR/failed-doctest-output.rs - SomeStruct (line 10) stdout ----
+Test executable failed (exit code 101).
+
+stdout:
+stdout 1
+stdout 2
+
+stderr:
+stderr 1
+stderr 2
+thread 'main' panicked at 'oh no', $DIR/failed-doctest-output.rs:7:1
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
----- $DIR/failed-doctest-output.rs - SomeStruct (line 11) stdout ----
-thread '$DIR/failed-doctest-output.rs - SomeStruct (line 11)' panicked at 'test executable failed:
-
-thread 'main' panicked at 'oh no', $DIR/failed-doctest-output.rs:3:1
-note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
-
-', src/librustdoc/test.rs:342:17
 
 
 failures:
-    $DIR/failed-doctest-output.rs - OtherStruct (line 17)
-    $DIR/failed-doctest-output.rs - SomeStruct (line 11)
+    $DIR/failed-doctest-output.rs - OtherStruct (line 20)
+    $DIR/failed-doctest-output.rs - SomeStruct (line 10)
 
 test result: FAILED. 0 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out
 
