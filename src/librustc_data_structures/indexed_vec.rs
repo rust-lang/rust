@@ -212,6 +212,11 @@ macro_rules! newtype_index {
             fn add_usize(&self, u: usize) -> Option<Self> {
                 Idx::index(*self).checked_add(u).map(Self::new)
             }
+
+            #[inline]
+            fn sub_usize(&self, u: usize) -> Option<Self> {
+                Idx::index(*self).checked_sub(u).map(Self::new)
+            }
         }
 
         impl From<$type> for u32 {
