@@ -134,9 +134,14 @@ impl<'a, 'gcx, 'tcx> VariantDef {
             AdtKind::Enum => true,
             AdtKind::Struct => false,
         };
-        DefIdForest::union(tcx, self.fields.iter().map(|f| {
-            f.uninhabited_from(tcx, substs, is_enum)
-        }))
+        // Non-exhaustive variants from other crates are always considered inhabited.
+        if self.is_field_list_non_exhaustive() && !self.def_id.is_local() {
+            DefIdForest::empty()
+        } else {
+            DefIdForest::union(tcx, self.fields.iter().map(|f| {
+                f.uninhabited_from(tcx, substs, is_enum)
+            }))
+        }
     }
 }
 

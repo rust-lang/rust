@@ -388,6 +388,18 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
+    fn is_non_exhaustive_variant<'p>(&self, pattern: &'p Pattern<'tcx>) -> bool
+        where 'a: 'p
+    {
+        match *pattern.kind {
+            PatternKind::Variant { adt_def, variant_index, .. } => {
+                let ref variant = adt_def.variants[variant_index];
+                variant.is_field_list_non_exhaustive()
+            }
+            _ => false,
+        }
+    }
+
     fn is_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
             ty::Adt(adt_def, ..) => adt_def.is_variant_list_non_exhaustive(),
@@ -1097,10 +1109,17 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     debug!("is_useful_expand_first_col: pcx={:#?}, expanding {:#?}", pcx, v[0]);
 
     if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
-        debug!("is_useful - expanding constructors: {:#?}", constructors);
-        split_grouped_constructors(cx.tcx, constructors, matrix, pcx.ty).into_iter().map(|c|
-            is_useful_specialized(cx, matrix, v, c, pcx.ty, witness)
-        ).find(|result| result.is_useful()).unwrap_or(NotUseful)
+        let is_declared_nonexhaustive = cx.is_non_exhaustive_variant(v[0]) && !cx.is_local(pcx.ty);
+        debug!("is_useful - expanding constructors: {:#?}, is_declared_nonexhaustive: {:?}",
+               constructors, is_declared_nonexhaustive);
+
+        if is_declared_nonexhaustive {
+            Useful
+        } else {
+            split_grouped_constructors(cx.tcx, constructors, matrix, pcx.ty).into_iter().map(|c|
+                is_useful_specialized(cx, matrix, v, c, pcx.ty, witness)
+            ).find(|result| result.is_useful()).unwrap_or(NotUseful)
+        }
     } else {
         debug!("is_useful - expanding wildcard");
 
