@@ -28,6 +28,16 @@ fn parse_rule(p: &mut TtCursor) -> Result<crate::Rule, ParseError> {
     Ok(crate::Rule { lhs, rhs })
 }
 
+fn is_boolean_literal(lit: Option<&tt::TokenTree>) -> bool {
+    if let Some(tt::TokenTree::Leaf(tt::Leaf::Literal(lit))) = lit {
+        if lit.text == "true" || lit.text == "false" {
+            return true;
+        }
+    }
+
+    false
+}
+
 fn parse_subtree(tt: &tt::Subtree, transcriber: bool) -> Result<crate::Subtree, ParseError> {
     let mut token_trees = Vec::new();
     let mut p = TtCursor::new(tt);
@@ -35,7 +45,8 @@ fn parse_subtree(tt: &tt::Subtree, transcriber: bool) -> Result<crate::Subtree, 
         let child: crate::TokenTree = match tt {
             tt::TokenTree::Leaf(leaf) => match leaf {
                 tt::Leaf::Punct(tt::Punct { char: '$', spacing }) => {
-                    if p.at_ident().is_some() {
+                    // mbe var can be an ident or keyword, including `true` and `false`
+                    if p.at_ident().is_some() || is_boolean_literal(p.current()) {
                         crate::Leaf::from(parse_var(&mut p, transcriber)?).into()
                     } else if let Some(tt::TokenTree::Subtree(_)) = p.current() {
                         parse_repeat(&mut p, transcriber)?.into()
@@ -60,8 +71,16 @@ fn parse_subtree(tt: &tt::Subtree, transcriber: bool) -> Result<crate::Subtree, 
 }
 
 fn parse_var(p: &mut TtCursor, transcriber: bool) -> Result<crate::Var, ParseError> {
-    let ident = p.eat_ident().unwrap();
-    let text = ident.text.clone();
+    let text = {
+        if is_boolean_literal(p.current()) {
+            let lit = p.eat_literal().unwrap();
+            lit.text.clone()
+        } else {
+            let ident = p.eat_ident().unwrap();
+            ident.text.clone()
+        }
+    };
+
     let kind = if !transcriber && p.at_char(':') {
         p.bump();
         if let Some(ident) = p.eat_ident() {
@@ -125,6 +144,8 @@ mod tests {
 
         is_valid("($i:ident) => ()");
         is_valid("($($i:ident)*) => ($_)");
+        is_valid("($($true:ident)*) => ($true)");
+        is_valid("($($false:ident)*) => ($false)");
 
         expect_err("$i:ident => ()", "subtree");
         expect_err("($i:ident) ()", "`=`");
