@@ -34,11 +34,14 @@ fn parse_subtree(tt: &tt::Subtree, transcriber: bool) -> Result<crate::Subtree, 
     while let Some(tt) = p.eat() {
         let child: crate::TokenTree = match tt {
             tt::TokenTree::Leaf(leaf) => match leaf {
-                tt::Leaf::Punct(tt::Punct { char: '$', .. }) => {
+                tt::Leaf::Punct(tt::Punct { char: '$', spacing }) => {
                     if p.at_ident().is_some() {
                         crate::Leaf::from(parse_var(&mut p, transcriber)?).into()
-                    } else {
+                    } else if let Some(tt::TokenTree::Subtree(_)) = p.current() {
                         parse_repeat(&mut p, transcriber)?.into()
+                    } else {
+                        // Treat it as normal punct
+                        crate::Leaf::from(tt::Punct { char: '$', spacing: *spacing }).into()
                     }
                 }
                 tt::Leaf::Punct(punct) => crate::Leaf::from(*punct).into(),
@@ -89,7 +92,7 @@ fn mk_repeat(
 }
 
 fn parse_repeat(p: &mut TtCursor, transcriber: bool) -> Result<crate::Repeat, ParseError> {
-    let subtree = p.eat_subtree().unwrap();
+    let subtree = p.eat_subtree()?;
     let mut subtree = parse_subtree(subtree, transcriber)?;
     subtree.delimiter = crate::Delimiter::None;
 
@@ -121,6 +124,8 @@ mod tests {
         expect_err("invalid", "subtree");
 
         is_valid("($i:ident) => ()");
+        is_valid("($($i:ident)*) => ($_)");
+
         expect_err("$i:ident => ()", "subtree");
         expect_err("($i:ident) ()", "`=`");
         expect_err("($($i:ident)_) => ()", "repeat");
