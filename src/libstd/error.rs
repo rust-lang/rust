@@ -207,6 +207,8 @@ pub trait Error: Debug + Display {
 impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
     /// Converts a type of [`Error`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -243,6 +245,8 @@ impl<'a, E: Error + 'a> From<E> for Box<dyn Error + 'a> {
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a type of [`Error`] + [`Send`] + [`Sync`] into a box of dyn [`Error`] +
     /// [`Send`] + [`Sync`].
+    ///
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -285,6 +289,8 @@ impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<dyn Error + Send + Sync + 
 impl From<String> for Box<dyn Error + Send + Sync> {
     /// Converts a [`String`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -318,6 +324,8 @@ impl From<String> for Box<dyn Error + Send + Sync> {
 impl From<String> for Box<dyn Error> {
     /// Converts a [`String`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -339,6 +347,8 @@ impl From<String> for Box<dyn Error> {
 impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`str`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -359,6 +369,8 @@ impl<'a> From<&str> for Box<dyn Error + Send + Sync + 'a> {
 impl From<&str> for Box<dyn Error> {
     /// Converts a [`str`] into a box of dyn [`Error`].
     ///
+    /// [`Error`]: ../error/trait.Error.html
+    ///
     /// # Examples
     ///
     /// ```
@@ -377,6 +389,9 @@ impl From<&str> for Box<dyn Error> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
     /// Converts a [`Cow`] into a box of dyn [`Error`] + [`Send`] + [`Sync`].
+    ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///
@@ -398,6 +413,9 @@ impl<'a, 'b> From<Cow<'b, str>> for Box<dyn Error + Send + Sync + 'a> {
 #[stable(feature = "cow_box_error", since = "1.22.0")]
 impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     /// Converts a [`Cow`] into a box of dyn [`Error`].
+    ///
+    /// [`Cow`]: ../borrow/enum.Cow.html
+    /// [`Error`]: ../error/trait.Error.html
     ///
     /// # Examples
     ///

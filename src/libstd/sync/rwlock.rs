@@ -453,6 +453,8 @@ impl<T: Default> Default for RwLock<T> {
 impl<T> From<T> for RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     /// This is equivalent to [`RwLock::new`].
+    ///
+    /// [`RwLock::new`]: ../../std/sync/struct.RwLock.html#method.new
     fn from(t: T) -> Self {
         RwLock::new(t)
     }
