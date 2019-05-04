@@ -1,0 +1,6 @@
+# Currently, most of the code in the compiler uses historical style.
+#
+# For new code, consider running rustfmt with this config (it should
+# be picked up automatically).
+version = "Two"
+use_small_heuristics = "Max"
