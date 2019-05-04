@@ -1,6 +1,5 @@
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::middle::region::ScopeTree;
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory, Local,
     LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceProjection,
@@ -689,7 +688,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         );
 
         let drop_span = place_span.1;
-        let scope_tree = self.infcx.tcx.region_scope_tree(self.mir_def_id);
         let root_place = self.prefixes(&borrow.borrowed_place, PrefixSet::All)
             .last()
             .unwrap();
@@ -791,7 +789,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             (Some(name), explanation) => self.report_local_value_does_not_live_long_enough(
                 location,
                 &name,
-                &scope_tree,
                 &borrow,
                 drop_span,
                 borrow_spans,
@@ -799,7 +796,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             ),
             (None, explanation) => self.report_temporary_value_does_not_live_long_enough(
                 location,
-                &scope_tree,
                 &borrow,
                 drop_span,
                 borrow_spans,
@@ -815,7 +811,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         location: Location,
         name: &str,
-        scope_tree: &'tcx ScopeTree,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans,
@@ -823,9 +818,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}, {:?}, {:?}\
+             {:?}, {:?}, {:?}, {:?}, {:?}\
              )",
-            location, name, scope_tree, borrow, drop_span, borrow_spans
+            location, name, borrow, drop_span, borrow_spans
         );
 
         let borrow_span = borrow_spans.var_or_use();
@@ -1007,7 +1002,6 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_temporary_value_does_not_live_long_enough(
         &mut self,
         location: Location,
-        scope_tree: &'tcx ScopeTree,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans,
@@ -1016,9 +1010,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_temporary_value_does_not_live_long_enough(\
-             {:?}, {:?}, {:?}, {:?}, {:?}\
+             {:?}, {:?}, {:?}, {:?}\
              )",
-            location, scope_tree, borrow, drop_span, proper_span
+            location, borrow, drop_span, proper_span
         );
 
         if let BorrowExplanation::MustBeValidFor {
