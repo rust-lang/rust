@@ -7149,7 +7149,9 @@ impl<'a> Parser<'a> {
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
             // by the following tokens.
-            if self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) {
+            if self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) &&
+                self.look_ahead(2, |t| t != &token::ModSep) // account for `pub(crate::foo)`
+            {
                 // `pub(crate)`
                 self.bump(); // `(`
                 self.bump(); // `crate`
@@ -7192,7 +7194,7 @@ impl<'a> Parser<'a> {
 `pub(super)`: visible only in the current module's parent
 `pub(in path::to::module)`: visible only on the specified path"##;
                 let path = self.parse_path(PathStyle::Mod)?;
-                let sp = self.prev_span;
+                let sp = path.span;
                 let help_msg = format!("make this visible only to module `{}` with `in`", path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
                 let mut err = struct_span_err!(self.sess.span_diagnostic, sp, E0704, "{}", msg);
