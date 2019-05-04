@@ -2497,9 +2497,8 @@ pub struct Upvar<Id = HirId> {
     /// The variable being captured.
     pub var_id: Id,
 
-    /// The parent closure, if this is not a direct capture,
-    /// and the index within that closure's capture list.
-    pub parent: Option<(ast::NodeId, usize)>,
+    /// The parent closure, if this is not a direct capture.
+    pub parent: Option<ast::NodeId>,
 
     // First span where it is accessed (there can be multiple).
     pub span: Span

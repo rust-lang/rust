@@ -5,6 +5,7 @@
 use crate::hair::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::Node;
@@ -46,6 +47,9 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     /// See field with the same name on `mir::Body`.
     control_flow_destroyed: Vec<(Span, String)>,
+
+    /// Reverse map, from upvar variable `HirId`s to their indices.
+    upvar_indices: FxHashMap<hir::HirId, usize>,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -53,6 +57,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                src_id: hir::HirId) -> Cx<'a, 'gcx, 'tcx> {
         let tcx = infcx.tcx;
         let src_def_id = tcx.hir().local_def_id_from_hir_id(src_id);
+        let tables = tcx.typeck_tables_of(src_def_id);
         let body_owner_kind = tcx.hir().body_owner_kind_by_hir_id(src_id);
 
         let constness = match body_owner_kind {
@@ -75,6 +80,14 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Constants always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
+        // Compute reverse mapping, of uvpars to their indices.
+        let mut upvar_indices = FxHashMap::default();
+        if let Some(upvars) = tables.upvar_list.get(&src_def_id) {
+            upvar_indices.extend(
+                upvars.iter().enumerate().map(|(i, upvar_id)| (upvar_id.var_path.hir_id, i)),
+            );
+        }
+
         Cx {
             tcx,
             infcx,
@@ -82,11 +95,12 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             param_env: tcx.param_env(src_def_id),
             identity_substs: InternalSubsts::identity_for_item(tcx.global_tcx(), src_def_id),
             region_scope_tree: tcx.region_scope_tree(src_def_id),
-            tables: tcx.typeck_tables_of(src_def_id),
+            tables,
             constness,
             body_owner_kind,
             check_overflow,
             control_flow_destroyed: Vec::new(),
+            upvar_indices,
         }
     }
 

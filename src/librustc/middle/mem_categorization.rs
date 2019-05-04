@@ -737,7 +737,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 })
             }
 
-            Res::Upvar(var_id, _, fn_node_id) => {
+            Res::Upvar(var_id, fn_node_id) => {
                 let var_nid = self.tcx.hir().hir_to_node_id(var_id);
                 self.cat_upvar(hir_id, span, var_nid, fn_node_id)
             }

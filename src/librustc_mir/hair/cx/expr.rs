@@ -975,7 +975,9 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     match res {
         Res::Local(id) => ExprKind::VarRef { id },
 
-        Res::Upvar(var_hir_id, index, closure_expr_id) => {
+        Res::Upvar(var_hir_id, closure_expr_id) => {
+            let index = cx.upvar_indices[&var_hir_id];
+
             debug!("convert_var(upvar({:?}, {:?}, {:?}))",
                    var_hir_id,
                    index,
@@ -1190,7 +1192,7 @@ fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
     let var_ty = cx.tables().node_type(upvar.var_id);
     let upvar_res = upvar.parent.map_or(
         Res::Local(upvar.var_id),
-        |(closure_node_id, i)| Res::Upvar(upvar.var_id, i, closure_node_id),
+        |closure_node_id| Res::Upvar(upvar.var_id, closure_node_id),
     );
     let captured_var = Expr {
         temp_lifetime,

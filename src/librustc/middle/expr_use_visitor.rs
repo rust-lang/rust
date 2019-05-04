@@ -964,7 +964,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         let var_ty = self.mc.node_ty(upvar.var_id)?;
         let res = upvar.parent.map_or(
             Res::Local(upvar.var_id),
-            |(closure_node_id, i)| Res::Upvar(upvar.var_id, i, closure_node_id),
+            |closure_node_id| Res::Upvar(upvar.var_id, closure_node_id),
         );
         self.mc.cat_res(closure_hir_id, closure_span, var_ty, res)
     }

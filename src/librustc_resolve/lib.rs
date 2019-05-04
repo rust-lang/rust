@@ -1669,7 +1669,7 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
 
     pub upvars: UpvarMap,
-    upvars_seen: NodeMap<NodeMap<usize>>,
+    upvars_seen: NodeMap<NodeSet>,
     pub export_map: ExportMap<NodeId>,
     pub trait_map: TraitMap,
 
@@ -4052,22 +4052,21 @@ impl<'a> Resolver<'a> {
                         }
                         ClosureRibKind(function_id) => {
                             let parent = match res {
-                                Res::Upvar(_, i, closure) => Some((closure, i)),
+                                Res::Upvar(_, closure) => Some(closure),
                                 _ => None,
                             };
 
                             let seen = self.upvars_seen
                                            .entry(function_id)
                                            .or_default();
-                            if let Some(&index) = seen.get(&var_id) {
-                                res = Res::Upvar(var_id, index, function_id);
+                            if seen.contains(&var_id) {
+                                res = Res::Upvar(var_id, function_id);
                                 continue;
                             }
                             let vec = self.upvars
                                           .entry(function_id)
                                           .or_default();
-                            let depth = vec.len();
-                            res = Res::Upvar(var_id, depth, function_id);
+                            res = Res::Upvar(var_id, function_id);
 
                             if record_used {
                                 vec.push(Upvar {
@@ -4075,7 +4074,7 @@ impl<'a> Resolver<'a> {
                                     parent,
                                     span,
                                 });
-                                seen.insert(var_id, depth);
+                                seen.insert(var_id);
                             }
                         }
                         ItemRibKind | FnItemRibKind | AssocItemRibKind => {
