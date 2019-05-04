@@ -124,6 +124,8 @@ mod tests {
         expect_err("invalid", "subtree");
 
         is_valid("($i:ident) => ()");
+        is_valid("($($i:ident)*) => ($_)");
+
         expect_err("$i:ident => ()", "subtree");
         expect_err("($i:ident) ()", "`=`");
         expect_err("($($i:ident)_) => ()", "repeat");
