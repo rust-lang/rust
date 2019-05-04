@@ -1181,19 +1181,22 @@ fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    upvar: &hir::Upvar,
                                    upvar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_hir_id = upvar.var_id();
     let upvar_id = ty::UpvarId {
-        var_path: ty::UpvarPath { hir_id: var_hir_id },
+        var_path: ty::UpvarPath { hir_id: upvar.var_id },
         closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-    let var_ty = cx.tables().node_type(var_hir_id);
+    let var_ty = cx.tables().node_type(upvar.var_id);
+    let upvar_res = upvar.parent.map_or(
+        Res::Local(upvar.var_id),
+        |(closure_node_id, i)| Res::Upvar(upvar.var_id, i, closure_node_id),
+    );
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,
         span: closure_expr.span,
-        kind: convert_var(cx, closure_expr, upvar.res),
+        kind: convert_var(cx, closure_expr, upvar_res),
     };
     match upvar_capture {
         ty::UpvarCapture::ByValue => captured_var.to_ref(),

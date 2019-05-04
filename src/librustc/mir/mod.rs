@@ -2563,7 +2563,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             if let Some(upvars) = tcx.upvars(def_id) {
                                 for (upvar, place) in upvars.iter().zip(places) {
-                                    let var_name = tcx.hir().name_by_hir_id(upvar.var_id());
+                                    let var_name = tcx.hir().name_by_hir_id(upvar.var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                             }
@@ -2582,7 +2582,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                             if let Some(upvars) = tcx.upvars(def_id) {
                                 for (upvar, place) in upvars.iter().zip(places) {
-                                    let var_name = tcx.hir().name_by_hir_id(upvar.var_id());
+                                    let var_name = tcx.hir().name_by_hir_id(upvar.var_id);
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                             }

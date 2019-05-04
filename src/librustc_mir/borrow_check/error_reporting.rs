@@ -350,7 +350,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     // be borrowck'ing it, so we can just unwrap:
                     let upvar = self.infcx.tcx.upvars(def_id).unwrap()[field.index()];
 
-                    self.infcx.tcx.hir().name_by_hir_id(upvar.var_id()).to_string()
+                    self.infcx.tcx.hir().name_by_hir_id(upvar.var_id).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented

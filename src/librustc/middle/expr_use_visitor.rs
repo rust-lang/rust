@@ -925,9 +925,8 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
         if let Some(upvars) = self.tcx().upvars(closure_def_id) {
             for upvar in upvars.iter() {
-                let var_hir_id = upvar.var_id();
                 let upvar_id = ty::UpvarId {
-                    var_path: ty::UpvarPath { hir_id: var_hir_id },
+                    var_path: ty::UpvarPath { hir_id: upvar.var_id },
                     closure_expr_id: closure_def_id.to_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
@@ -962,9 +961,12 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_hir_id = upvar.var_id();
-        let var_ty = self.mc.node_ty(var_hir_id)?;
-        self.mc.cat_res(closure_hir_id, closure_span, var_ty, upvar.res)
+        let var_ty = self.mc.node_ty(upvar.var_id)?;
+        let res = upvar.parent.map_or(
+            Res::Local(upvar.var_id),
+            |(closure_node_id, i)| Res::Upvar(upvar.var_id, i, closure_node_id),
+        );
+        self.mc.cat_res(closure_hir_id, closure_span, var_ty, res)
     }
 }
 

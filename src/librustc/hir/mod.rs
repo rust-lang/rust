@@ -2495,24 +2495,22 @@ impl ForeignItemKind {
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct Upvar<Id = HirId> {
     /// The variable being captured.
-    pub res: Res<Id>,
+    pub var_id: Id,
+
+    /// The parent closure, if this is not a direct capture,
+    /// and the index within that closure's capture list.
+    pub parent: Option<(ast::NodeId, usize)>,
 
     // First span where it is accessed (there can be multiple).
     pub span: Span
 }
 
 impl<Id: fmt::Debug + Copy> Upvar<Id> {
-    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Upvar<R> {
+    pub fn map_id<R>(self, map: impl FnOnce(Id) -> R) -> Upvar<R> {
         Upvar {
-            res: self.res.map_id(map),
+            var_id: map(self.var_id),
+            parent: self.parent,
             span: self.span,
-        }
-    }
-
-    pub fn var_id(&self) -> Id {
-        match self.res {
-            Res::Local(id) | Res::Upvar(id, ..) => id,
-            _ => bug!("Upvar::var_id: bad res ({:?})", self.res)
         }
     }
 }

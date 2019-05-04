@@ -4040,7 +4040,7 @@ impl<'a> Resolver<'a> {
             Res::Upvar(..) => {
                 span_bug!(span, "unexpected {:?} in bindings", res)
             }
-            Res::Local(node_id) => {
+            Res::Local(var_id) => {
                 use ResolutionError::*;
                 let mut res_err = None;
 
@@ -4051,27 +4051,31 @@ impl<'a> Resolver<'a> {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
-                            let prev_res = res;
+                            let parent = match res {
+                                Res::Upvar(_, i, closure) => Some((closure, i)),
+                                _ => None,
+                            };
 
                             let seen = self.upvars_seen
                                            .entry(function_id)
                                            .or_default();
-                            if let Some(&index) = seen.get(&node_id) {
-                                res = Res::Upvar(node_id, index, function_id);
+                            if let Some(&index) = seen.get(&var_id) {
+                                res = Res::Upvar(var_id, index, function_id);
                                 continue;
                             }
                             let vec = self.upvars
                                           .entry(function_id)
                                           .or_default();
                             let depth = vec.len();
-                            res = Res::Upvar(node_id, depth, function_id);
+                            res = Res::Upvar(var_id, depth, function_id);
 
                             if record_used {
                                 vec.push(Upvar {
-                                    res: prev_res,
+                                    var_id,
+                                    parent,
                                     span,
                                 });
-                                seen.insert(node_id, depth);
+                                seen.insert(var_id, depth);
                             }
                         }
                         ItemRibKind | FnItemRibKind | AssocItemRibKind => {

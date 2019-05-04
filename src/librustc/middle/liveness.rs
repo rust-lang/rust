@@ -486,9 +486,9 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         let closure_def_id = ir.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
         if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
             call_caps.extend(upvars.iter().filter_map(|upvar| {
-                if let Res::Local(rv) = upvar.res {
+                if upvar.parent.is_none() {
                     let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
-                    Some(CaptureInfo { ln: upvar_ln, var_hid: rv })
+                    Some(CaptureInfo { ln: upvar_ln, var_hid: upvar.var_id })
                 } else {
                     None
                 }

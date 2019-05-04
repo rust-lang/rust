@@ -126,7 +126,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             for upvar in upvars.iter() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath {
-                        hir_id: upvar.var_id(),
+                        hir_id: upvar.var_id,
                     },
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
@@ -250,17 +250,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             upvars
                 .iter()
                 .map(|upvar| {
-                    let var_hir_id = upvar.var_id();
-                    let upvar_ty = self.node_ty(var_hir_id);
+                    let upvar_ty = self.node_ty(upvar.var_id);
                     let upvar_id = ty::UpvarId {
-                        var_path: ty::UpvarPath { hir_id: var_hir_id },
+                        var_path: ty::UpvarPath { hir_id: upvar.var_id },
                         closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
 
                     debug!(
                         "var_id={:?} upvar_ty={:?} capture={:?}",
-                        var_hir_id, upvar_ty, capture
+                        upvar.var_id, upvar_ty, capture
                     );
 
                     match capture {
