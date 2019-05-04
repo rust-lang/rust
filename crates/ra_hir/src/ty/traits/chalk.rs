@@ -32,7 +32,12 @@ impl ToChalk for Ty {
     type Chalk = chalk_ir::Ty;
     fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::Ty {
         match self {
-            Ty::Apply(apply_ty) => chalk_ir::Ty::Apply(apply_ty.to_chalk(db)),
+            Ty::Apply(apply_ty) => {
+                let struct_id = apply_ty.ctor.to_chalk(db);
+                let name = TypeName::TypeKindId(struct_id.into());
+                let parameters = apply_ty.parameters.to_chalk(db);
+                chalk_ir::ApplicationTy { name, parameters }.cast()
+            }
             Ty::Param { idx, .. } => {
                 PlaceholderIndex { ui: UniverseIndex::ROOT, idx: idx as usize }.to_ty()
             }
@@ -47,8 +52,13 @@ impl ToChalk for Ty {
         match chalk {
             chalk_ir::Ty::Apply(apply_ty) => {
                 match apply_ty.name {
+                    TypeName::TypeKindId(TypeKindId::StructId(struct_id)) => {
+                        let ctor = from_chalk(db, struct_id);
+                        let parameters = from_chalk(db, apply_ty.parameters);
+                        Ty::Apply(ApplicationTy { ctor, parameters })
+                    }
                     // FIXME handle TypeKindId::Trait/Type here
-                    TypeName::TypeKindId(_) => Ty::Apply(from_chalk(db, apply_ty)),
+                    TypeName::TypeKindId(_) => unimplemented!(),
                     TypeName::AssociatedType(_) => unimplemented!(),
                     TypeName::Placeholder(idx) => {
                         assert_eq!(idx.ui, UniverseIndex::ROOT);
@@ -62,29 +72,6 @@ impl ToChalk for Ty {
             chalk_ir::Ty::BoundVar(idx) => Ty::Bound(idx as u32),
             chalk_ir::Ty::InferenceVar(_iv) => panic!("unexpected chalk infer ty"),
         }
-    }
-}
-
-// TODO merge this into the ToChalk implementation for Ty
-impl ToChalk for ApplicationTy {
-    type Chalk = chalk_ir::ApplicationTy;
-
-    fn to_chalk(self: ApplicationTy, db: &impl HirDatabase) -> chalk_ir::ApplicationTy {
-        let struct_id = self.ctor.to_chalk(db);
-        let name = TypeName::TypeKindId(struct_id.into());
-        let parameters = self.parameters.to_chalk(db);
-        chalk_ir::ApplicationTy { name, parameters }
-    }
-
-    fn from_chalk(db: &impl HirDatabase, apply_ty: chalk_ir::ApplicationTy) -> ApplicationTy {
-        let ctor = match apply_ty.name {
-            TypeName::TypeKindId(TypeKindId::StructId(struct_id)) => from_chalk(db, struct_id),
-            TypeName::TypeKindId(_) => unimplemented!(),
-            TypeName::Placeholder(_) => unimplemented!(),
-            TypeName::AssociatedType(_) => unimplemented!(),
-        };
-        let parameters = from_chalk(db, apply_ty.parameters);
-        ApplicationTy { ctor, parameters }
     }
 }
 
@@ -221,12 +208,12 @@ where
             fundamental: false,
         };
         let where_clauses = Vec::new(); // FIXME add where clauses
-        let ty = ApplicationTy {
-            ctor: type_ctor,
-            parameters: (0..num_params).map(|i| Ty::Bound(i as u32)).collect::<Vec<_>>().into(),
+        let self_ty = chalk_ir::ApplicationTy {
+            name: TypeName::TypeKindId(type_ctor.to_chalk(self.db).into()),
+            parameters: (0..num_params).map(|i| chalk_ir::Ty::BoundVar(i).cast()).collect(),
         };
         let struct_datum_bound = chalk_rust_ir::StructDatumBound {
-            self_ty: ty.to_chalk(self.db),
+            self_ty,
             fields: Vec::new(), // FIXME add fields (only relevant for auto traits)
             where_clauses,
             flags,
