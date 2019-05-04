@@ -18,7 +18,7 @@ use std::path::Path;
 use regex::{Regex, escape};
 
 mod version;
-use self::version::Version;
+use version::Version;
 
 const FEATURE_GROUP_START_PREFIX: &str = "// feature-group-start";
 const FEATURE_GROUP_END_PREFIX: &str = "// feature-group-end";
