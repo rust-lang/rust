@@ -868,6 +868,31 @@ fn test_meta() {
 }
 
 #[test]
+fn test_meta_doc_comments() {
+    let rules = create_rules(
+        r#"
+        macro_rules! foo {
+            ($(#[$ i:meta])+) => (
+                $(#[$ i])+
+                fn bar() {}
+            )
+        }
+"#,
+    );
+    assert_expansion(
+        MacroKind::Items,
+        &rules,
+        r#"foo! { 
+            /// Single Line Doc 1
+            /** 
+                MultiLines Doc
+            */
+        }"#,
+        "# [doc = \" Single Line Doc 1\"] # [doc = \" \\\\n                MultiLines Doc\\\\n            \"] fn bar () {}",
+    );
+}
+
+#[test]
 fn test_tt_block() {
     let rules = create_rules(
         r#"
