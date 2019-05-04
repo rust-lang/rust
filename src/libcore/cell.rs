@@ -798,8 +798,6 @@ impl<T: ?Sized> RefCell<T> {
     /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
     /// taken out at the same time.
     ///
-    /// This is the non-panicking variant of [`borrow`](#method.borrow).
-    ///
     /// # Examples
     ///
     /// ```
@@ -879,8 +877,6 @@ impl<T: ?Sized> RefCell<T> {
     /// from it exit scope. The value cannot be borrowed while this borrow is
     /// active.
     ///
-    /// This is the non-panicking variant of [`borrow_mut`](#method.borrow_mut).
-    ///
     /// # Examples
     ///
     /// ```
@@ -935,8 +931,6 @@ impl<T: ?Sized> RefCell<T> {
     ///
     /// Also, please be aware that this method is only for special circumstances and is usually
     /// not what you want. In case of doubt, use [`borrow_mut`] instead.
-    ///
-    /// [`borrow_mut`]: #method.borrow_mut
     ///
     /// # Examples
     ///
