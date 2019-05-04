@@ -888,7 +888,7 @@ fn test_meta_doc_comments() {
                 MultiLines Doc
             */
         }"#,
-        "# [doc = \" Single Line Doc 1\"] # [doc = \" \\n                MultiLines Doc\\n            \"] fn bar () {}",
+        "# [doc = \" Single Line Doc 1\"] # [doc = \" \\\\n                MultiLines Doc\\\\n            \"] fn bar () {}",
     );
 }
 
