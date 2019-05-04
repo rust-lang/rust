@@ -66,6 +66,7 @@ macro_rules! try_validation {
 pub enum PathElem {
     Field(Symbol),
     Variant(Symbol),
+    GeneratoreState(VariantIdx),
     ClosureVar(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
@@ -100,6 +101,7 @@ fn path_format(path: &Vec<PathElem>) -> String {
         match elem {
             Field(name) => write!(out, ".{}", name),
             Variant(name) => write!(out, ".<downcast-variant({})>", name),
+            GeneratoreState(idx) => write!(out, ".<generator-state({})>", idx.index()),
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
@@ -262,8 +264,12 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx> {
-        let name = old_op.layout.ty.ty_adt_def().unwrap().variants[variant_id].ident.name;
-        self.visit_elem(new_op, PathElem::Variant(name))
+        let name = match old_op.layout.ty.ty_adt_def() {
+            Some(def) => PathElem::Variant(def.variants[variant_id].ident.name),
+            // Generators also have variants but no def
+            None => PathElem::GeneratoreState(variant_id),
+        };
+        self.visit_elem(new_op, name)
     }
 
     #[inline]

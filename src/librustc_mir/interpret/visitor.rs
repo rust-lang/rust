@@ -147,7 +147,7 @@ macro_rules! make_value_visitor {
             {
                 Ok(())
             }
-            /// Visits this vale as an aggregate, you are even getting an iterator yielding
+            /// Visits this value as an aggregate, you are getting an iterator yielding
             /// all the fields (still in an `EvalResult`, you have to do error handling yourself).
             /// Recurses into the fields.
             #[inline(always)]
@@ -160,7 +160,8 @@ macro_rules! make_value_visitor {
             }
 
             /// Called each time we recurse down to a field of a "product-like" aggregate
-            /// (structs, tuples, arrays and the like, but not enums), passing in old and new value.
+            /// (structs, tuples, arrays and the like, but not enums), passing in old (outer)
+            /// and new (inner) value.
             /// This gives the visitor the chance to track the stack of nested fields that
             /// we are descending through.
             #[inline(always)]
@@ -171,18 +172,6 @@ macro_rules! make_value_visitor {
                 new_val: Self::V,
             ) -> EvalResult<'tcx> {
                 self.visit_value(new_val)
-            }
-
-            /// Called for recursing into the field of a generator. These are not known to be
-            /// initialized, so we treat them like unions.
-            #[inline(always)]
-            fn visit_generator_field(
-                &mut self,
-                _old_val: Self::V,
-                _field: usize,
-                new_val: Self::V,
-            ) -> EvalResult<'tcx> {
-                self.visit_union(new_val)
             }
 
             /// Called when recursing into an enum variant.
@@ -238,7 +227,7 @@ macro_rules! make_value_visitor {
             fn walk_value(&mut self, v: Self::V) -> EvalResult<'tcx>
             {
                 trace!("walk_value: type: {}", v.layout().ty);
-                // If this is a multi-variant layout, we have find the right one and proceed with
+                // If this is a multi-variant layout, we have to find the right one and proceed with
                 // that.
                 match v.layout().variants {
                     layout::Variants::Multiple { .. } => {
@@ -263,6 +252,13 @@ macro_rules! make_value_visitor {
                         // recurse with the inner type
                         return self.visit_field(v, 0, Value::from_mem_place(inner));
                     },
+                    ty::Generator(..) => {
+                        // FIXME: Generator layout is lying: it claims a whole bunch of fields exist
+                        // when really many of them can be uninitialized.
+                        // Just treat them as a union for now, until hopefully the layout
+                        // computation is fixed.
+                        return self.visit_union(v);
+                    }
                     _ => {},
                 };
 
@@ -304,34 +300,18 @@ macro_rules! make_value_visitor {
                         // Empty unions are not accepted by rustc. That's great, it means we can
                         // use that as an unambiguous signal for detecting primitives.  Make sure
                         // we did not miss any primitive.
-                        debug_assert!(fields > 0);
+                        assert!(fields > 0);
                         self.visit_union(v)
                     },
                     layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                        // Special handling needed for generators: All but the first field
-                        // (which is the state) are actually implicitly `MaybeUninit`, i.e.,
-                        // they may or may not be initialized, so we cannot visit them.
-                        match v.layout().ty.sty {
-                            ty::Generator(..) => {
-                                let field = v.project_field(self.ecx(), 0)?;
-                                self.visit_aggregate(v, std::iter::once(Ok(field)))?;
-                                for i in 1..offsets.len() {
-                                    let field = v.project_field(self.ecx(), i as u64)?;
-                                    self.visit_generator_field(v, i, field)?;
-                                }
-                                Ok(())
-                            }
-                            _ => {
-                                // FIXME: We collect in a vec because otherwise there are lifetime
-                                // errors: Projecting to a field needs access to `ecx`.
-                                let fields: Vec<EvalResult<'tcx, Self::V>> =
-                                    (0..offsets.len()).map(|i| {
-                                        v.project_field(self.ecx(), i as u64)
-                                    })
-                                    .collect();
-                                self.visit_aggregate(v, fields.into_iter())
-                            }
-                        }
+                        // FIXME: We collect in a vec because otherwise there are lifetime
+                        // errors: Projecting to a field needs access to `ecx`.
+                        let fields: Vec<EvalResult<'tcx, Self::V>> =
+                            (0..offsets.len()).map(|i| {
+                                v.project_field(self.ecx(), i as u64)
+                            })
+                            .collect();
+                        self.visit_aggregate(v, fields.into_iter())
                     },
                     layout::FieldPlacement::Array { .. } => {
                         // Let's get an mplace first.
