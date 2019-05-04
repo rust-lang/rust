@@ -473,14 +473,11 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             }
 
             if binds_to.len() == 1 {
-                err.span_note(
-                    binding_span,
-                    &format!(
-                        "move occurs because `{}` has type `{}`, \
-                            which does not implement the `Copy` trait",
-                        bind_to.name.unwrap(),
-                        bind_to.ty
-                    ),
+                self.note_type_does_not_implement_copy(
+                    err,
+                    &format!("`{}`", bind_to.name.unwrap()),
+                    bind_to.ty,
+                    Some(binding_span)
                 );
             } else {
                 noncopy_var_spans.push(binding_span);

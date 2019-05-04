@@ -234,22 +234,18 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                         );
                     }
                 }
-                if let Place::Base(PlaceBase::Local(local)) = place {
+                let span = if let Place::Base(PlaceBase::Local(local)) = place {
                     let decl = &self.mir.local_decls[*local];
-                    err.span_label(
-                        decl.source_info.span,
-                        format!(
-                            "move occurs because {} has type `{}`, \
-                                which does not implement the `Copy` trait",
-                            note_msg, ty,
-                    ));
+                    Some(decl.source_info.span)
                 } else {
-                    err.note(&format!(
-                        "move occurs because {} has type `{}`, \
-                         which does not implement the `Copy` trait",
-                        note_msg, ty
-                    ));
-                }
+                    None
+                };
+                self.note_type_does_not_implement_copy(
+                    &mut err,
+                    &note_msg,
+                    ty,
+                    span,
+                );
             }
 
             if let Some((_, mut old_err)) = self.move_error_reported
