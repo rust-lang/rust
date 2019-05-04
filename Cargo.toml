@@ -19,7 +19,7 @@ target-lexicon = "0.4.0"
 faerie = "0.10.0"
 
 #goblin = "0.0.17"
-ar = "0.6.1"
+ar = "0.7.0"
 bitflags = "1.0.3"
 byteorder = "1.2.7"
 libc = "0.2.53"
@@ -37,9 +37,6 @@ indexmap = "1.0.2"
 
 #[patch."https://github.com/gimli-rs/gimli.git"]
 #gimli = { path = "../" }
-
-[patch.crates-io]
-ar = { git = "https://github.com/bjorn3/rust-ar.git", branch = "non_multiple_of_two_identifiers_gnu_format" }
 
 [profile.dev.overrides."*"]
 opt-level = 3
