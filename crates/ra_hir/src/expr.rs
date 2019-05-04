@@ -5,14 +5,13 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
-    SyntaxNodePtr, AstPtr, AstNode,TreeArc,
+    SyntaxNodePtr, AstPtr, AstNode,
     ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner}
 };
 
 use crate::{
     Path, Name, HirDatabase, Resolver,DefWithBody, Either, HirFileId,
     name::AsName,
-    ids::{MacroCallId},
     type_ref::{Mutability, TypeRef},
 };
 use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
@@ -826,21 +825,20 @@ where
                     .with_file_id(self.current_file_id);
 
                 if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, ast_id) {
-                    if let Some(expr) = expand_macro_to_expr(self.db, call_id, e.token_tree()) {
-                        log::debug!("macro expansion {}", expr.syntax().debug_dump());
-                        let old_file_id =
-                            std::mem::replace(&mut self.current_file_id, call_id.into());
-                        let id = self.collect_expr(&expr);
-                        self.current_file_id = old_file_id;
-                        id
-                    } else {
-                        // FIXME: Instead of just dropping the error from expansion
-                        // report it
-                        self.alloc_expr(Expr::Missing, syntax_ptr)
+                    if let Some(tt) = self.db.macro_expand(call_id).ok() {
+                        if let Some(expr) = mbe::token_tree_to_expr(&tt).ok() {
+                            log::debug!("macro expansion {}", expr.syntax().debug_dump());
+                            let old_file_id =
+                                std::mem::replace(&mut self.current_file_id, call_id.into());
+                            let id = self.collect_expr(&expr);
+                            self.current_file_id = old_file_id;
+                            return id;
+                        }
                     }
-                } else {
-                    self.alloc_expr(Expr::Missing, syntax_ptr)
                 }
+                // FIXME: Instead of just dropping the error from expansion
+                // report it
+                self.alloc_expr(Expr::Missing, syntax_ptr)
             }
         }
     }
@@ -997,20 +995,6 @@ where
         };
         (body, self.source_map)
     }
-}
-
-fn expand_macro_to_expr(
-    db: &impl HirDatabase,
-    macro_call: MacroCallId,
-    args: Option<&ast::TokenTree>,
-) -> Option<TreeArc<ast::Expr>> {
-    let rules = db.macro_def(macro_call.loc(db).def)?;
-
-    let args = mbe::ast_to_token_tree(args?)?.0;
-
-    let expanded = rules.expand(&args).ok()?;
-
-    mbe::token_tree_to_expr(&expanded).ok()
 }
 
 pub(crate) fn body_with_source_map_query(

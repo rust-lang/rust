@@ -42,7 +42,13 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::ids::macro_def_query)]
     fn macro_def(&self, macro_id: MacroDefId) -> Option<Arc<mbe::MacroRules>>;
 
-    #[salsa::invoke(HirFileId::hir_parse_query)]
+    #[salsa::invoke(crate::ids::macro_arg_query)]
+    fn macro_arg(&self, macro_call: ids::MacroCallId) -> Option<Arc<tt::Subtree>>;
+
+    #[salsa::invoke(crate::ids::macro_expand_query)]
+    fn macro_expand(&self, macro_call: ids::MacroCallId) -> Result<Arc<tt::Subtree>, String>;
+
+    #[salsa::invoke(crate::ids::HirFileId::hir_parse_query)]
     fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
@@ -60,7 +66,7 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::source_id::AstIdMap::ast_id_map_query)]
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
-    #[salsa::invoke(crate::source_id::AstIdMap::ast_id_to_node_query)]
+    #[salsa::invoke(crate::source_id::AstIdMap::file_item_query)]
     fn ast_id_to_node(&self, file_id: HirFileId, ast_id: ErasedFileAstId) -> TreeArc<SyntaxNode>;
 
     #[salsa::invoke(RawItems::raw_items_query)]
