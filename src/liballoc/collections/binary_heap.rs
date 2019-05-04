@@ -167,7 +167,7 @@ use super::SpecExtend;
 ///
 /// The costs of `push` and `pop` and `peek` can be performed in `O(1)` time.
 /// Note that these are non-amortized costs. The amortized cost for `push`
-/// and `pop` are `O(log(N)` due to re-allocations and maintaining the heap property.
+/// and `pop` are `O(log(N))` due to re-allocations and maintaining the heap property.
 ///
 /// # Examples
 ///
