@@ -82,13 +82,13 @@ pub enum TypeCtor {
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
-    FnPtr,
+    FnPtr { num_args: u16 },
 
     /// The never type `!`.
     Never,
 
     /// A tuple type.  For example, `(i32, bool)`.
-    Tuple,
+    Tuple { cardinality: u16 },
 }
 
 /// A nominal type with (maybe 0) type parameters. This might be a primitive
@@ -299,7 +299,7 @@ impl Ty {
         Ty::Apply(ApplicationTy { ctor, parameters })
     }
     pub fn unit() -> Self {
-        Ty::apply(TypeCtor::Tuple, Substs::empty())
+        Ty::apply(TypeCtor::Tuple { cardinality: 0 }, Substs::empty())
     }
 
     pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
@@ -352,7 +352,9 @@ impl Ty {
 
     pub fn as_tuple(&self) -> Option<&Substs> {
         match self {
-            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple, parameters }) => Some(parameters),
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Tuple { .. }, parameters }) => {
+                Some(parameters)
+            }
             _ => None,
         }
     }
@@ -380,7 +382,7 @@ impl Ty {
     fn callable_sig(&self, db: &impl HirDatabase) -> Option<FnSig> {
         match self {
             Ty::Apply(a_ty) => match a_ty.ctor {
-                TypeCtor::FnPtr => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
+                TypeCtor::FnPtr { .. } => Some(FnSig::from_fn_ptr_substs(&a_ty.parameters)),
                 TypeCtor::FnDef(def) => {
                     let sig = db.callable_item_signature(def);
                     Some(sig.subst(&a_ty.parameters))
@@ -466,7 +468,7 @@ impl HirDisplay for ApplicationTy {
                 write!(f, "&{}{}", m.as_keyword_for_ref(), t.display(f.db))?;
             }
             TypeCtor::Never => write!(f, "!")?,
-            TypeCtor::Tuple => {
+            TypeCtor::Tuple { .. } => {
                 let ts = &self.parameters;
                 if ts.len() == 1 {
                     write!(f, "({},)", ts[0].display(f.db))?;
@@ -476,7 +478,7 @@ impl HirDisplay for ApplicationTy {
                     write!(f, ")")?;
                 }
             }
-            TypeCtor::FnPtr => {
+            TypeCtor::FnPtr { .. } => {
                 let sig = FnSig::from_fn_ptr_substs(&self.parameters);
                 write!(f, "fn(")?;
                 f.write_joined(sig.params(), ", ")?;

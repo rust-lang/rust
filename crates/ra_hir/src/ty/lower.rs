@@ -29,7 +29,10 @@ impl Ty {
             TypeRef::Tuple(inner) => {
                 let inner_tys =
                     inner.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
-                Ty::apply(TypeCtor::Tuple, Substs(inner_tys.into()))
+                Ty::apply(
+                    TypeCtor::Tuple { cardinality: inner_tys.len() as u16 },
+                    Substs(inner_tys.into()),
+                )
             }
             TypeRef::Path(path) => Ty::from_hir_path(db, resolver, path),
             TypeRef::RawPtr(inner, mutability) => {
@@ -53,7 +56,7 @@ impl Ty {
                 let inner_tys =
                     params.iter().map(|tr| Ty::from_hir(db, resolver, tr)).collect::<Vec<_>>();
                 let sig = Substs(inner_tys.into());
-                Ty::apply(TypeCtor::FnPtr, sig)
+                Ty::apply(TypeCtor::FnPtr { num_args: sig.len() as u16 - 1 }, sig)
             }
             TypeRef::Error => Ty::Unknown,
         }

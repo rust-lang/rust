@@ -739,14 +739,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 let expectations_iter = expectations.iter().chain(repeat(&Ty::Unknown));
 
-                let inner_tys = args
+                let inner_tys: Substs = args
                     .iter()
                     .zip(expectations_iter)
                     .map(|(&pat, ty)| self.infer_pat(pat, ty, default_bm))
                     .collect::<Vec<_>>()
                     .into();
 
-                Ty::apply(TypeCtor::Tuple, Substs(inner_tys))
+                Ty::apply(TypeCtor::Tuple { cardinality: inner_tys.len() as u16 }, inner_tys)
             }
             Pat::Ref { pat, mutability } => {
                 let expectation = match expected.as_reference() {
@@ -1073,7 +1073,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     .autoderef(self.db)
                     .find_map(|derefed_ty| match derefed_ty {
                         Ty::Apply(a_ty) => match a_ty.ctor {
-                            TypeCtor::Tuple => {
+                            TypeCtor::Tuple { .. } => {
                                 let i = name.to_string().parse::<usize>().ok();
                                 i.and_then(|i| a_ty.parameters.0.get(i).cloned())
                             }
@@ -1184,7 +1184,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ty_vec.push(self.infer_expr(*arg, &Expectation::none()));
                 }
 
-                Ty::apply(TypeCtor::Tuple, Substs(ty_vec.into()))
+                Ty::apply(
+                    TypeCtor::Tuple { cardinality: ty_vec.len() as u16 },
+                    Substs(ty_vec.into()),
+                )
             }
             Expr::Array(array) => {
                 let elem_ty = match &expected.ty {

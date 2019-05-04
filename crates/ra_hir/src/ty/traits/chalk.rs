@@ -184,6 +184,7 @@ where
         debug!("struct_datum {:?}", struct_id);
         let type_ctor = from_chalk(self.db, struct_id);
         // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
+        // FIXME extract this to a method on Ty
         let (num_params, upstream) = match type_ctor {
             TypeCtor::Bool
             | TypeCtor::Char
@@ -192,7 +193,8 @@ where
             | TypeCtor::Never
             | TypeCtor::Str => (0, true),
             TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => (1, true),
-            TypeCtor::FnPtr | TypeCtor::Tuple => unimplemented!(), // FIXME tuples and FnPtr are currently variadic... we need to make the parameter number explicit
+            TypeCtor::FnPtr { num_args } => (num_args as usize + 1, true),
+            TypeCtor::Tuple { cardinality } => (cardinality as usize, true),
             TypeCtor::FnDef(_) => unimplemented!(),
             TypeCtor::Adt(adt) => {
                 let generic_params = adt.generic_params(self.db);
