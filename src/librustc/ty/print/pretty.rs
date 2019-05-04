@@ -582,7 +582,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                 if let Some(hir_id) = self.tcx().hir().as_local_hir_id(did) {
                     p!(write("@{:?}", self.tcx().hir().span_by_hir_id(hir_id)));
                     let mut sep = " ";
-                    for (freevar, upvar_ty) in self.tcx().freevars(did)
+                    for (upvar, upvar_ty) in self.tcx().upvars(did)
                         .as_ref()
                         .map_or(&[][..], |v| &v[..])
                         .iter()
@@ -591,7 +591,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                         p!(
                             write("{}{}:",
                                     sep,
-                                    self.tcx().hir().name_by_hir_id(freevar.var_id())),
+                                    self.tcx().hir().name_by_hir_id(upvar.var_id())),
                             print(upvar_ty));
                         sep = ", ";
                     }
@@ -625,7 +625,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                         p!(write("@{:?}", self.tcx().hir().span_by_hir_id(hir_id)));
                     }
                     let mut sep = " ";
-                    for (freevar, upvar_ty) in self.tcx().freevars(did)
+                    for (upvar, upvar_ty) in self.tcx().upvars(did)
                         .as_ref()
                         .map_or(&[][..], |v| &v[..])
                         .iter()
@@ -634,7 +634,7 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                         p!(
                             write("{}{}:",
                                     sep,
-                                    self.tcx().hir().name_by_hir_id(freevar.var_id())),
+                                    self.tcx().hir().name_by_hir_id(upvar.var_id())),
                             print(upvar_ty));
                         sep = ", ";
                     }

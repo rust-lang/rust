@@ -140,7 +140,7 @@ pub enum Res<Id = hir::HirId> {
     SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Local(Id),
     Upvar(Id,           // `HirId` of closed over local
-          usize,        // index in the `freevars` list of the closure
+          usize,        // index in the `upvars` list of the closure
           ast::NodeId), // expr node that creates the closure
 
     // Macro namespace

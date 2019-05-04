@@ -2572,9 +2572,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(freevars) = tcx.freevars(def_id) {
-                                for (freevar, place) in freevars.iter().zip(places) {
-                                    let var_name = tcx.hir().name_by_hir_id(freevar.var_id());
+                            if let Some(upvars) = tcx.upvars(def_id) {
+                                for (upvar, place) in upvars.iter().zip(places) {
+                                    let var_name = tcx.hir().name_by_hir_id(upvar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                             }
@@ -2591,9 +2591,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                                                tcx.hir().span_by_hir_id(hir_id));
                             let mut struct_fmt = fmt.debug_struct(&name);
 
-                            if let Some(freevars) = tcx.freevars(def_id) {
-                                for (freevar, place) in freevars.iter().zip(places) {
-                                    let var_name = tcx.hir().name_by_hir_id(freevar.var_id());
+                            if let Some(upvars) = tcx.upvars(def_id) {
+                                for (upvar, place) in upvars.iter().zip(places) {
+                                    let var_name = tcx.hir().name_by_hir_id(upvar.var_id());
                                     struct_fmt.field(&var_name.as_str(), place);
                                 }
                             }

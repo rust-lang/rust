@@ -1093,8 +1093,8 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                 }),
         );
 
-        if let Some(freevars) = tcx.freevars(def_id) {
-            params.extend(freevars.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
+        if let Some(upvars) = tcx.upvars(def_id) {
+            params.extend(upvars.iter().zip((dummy_args.len() as u32)..).map(|(_, i)| {
                 ty::GenericParamDef {
                     index: type_start + i,
                     name: Symbol::intern("<upvar>").as_interned_str(),

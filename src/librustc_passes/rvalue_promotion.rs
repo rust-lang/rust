@@ -450,7 +450,7 @@ fn check_expr_kind<'a, 'tcx>(
             // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
             let closure_def_id = v.tcx.hir().local_def_id_from_hir_id(e.hir_id);
-            if !v.tcx.freevars(closure_def_id).map_or(true, |v| v.is_empty()) {
+            if !v.tcx.upvars(closure_def_id).map_or(true, |v| v.is_empty()) {
                 NotPromotable
             } else {
                 nested_body_promotable

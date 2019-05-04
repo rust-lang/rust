@@ -180,7 +180,7 @@ impl ExpansionResult {
         ExpansionResult {
             defs: Steal::new(resolver.definitions),
             resolutions: Steal::new(Resolutions {
-                freevars: resolver.freevars,
+                upvars: resolver.upvars,
                 export_map: resolver.export_map,
                 trait_map: resolver.trait_map,
                 glob_map: resolver.glob_map,
@@ -199,7 +199,7 @@ impl ExpansionResult {
         ExpansionResult {
             defs: Steal::new(resolver.definitions.clone()),
             resolutions: Steal::new(Resolutions {
-                freevars: resolver.freevars.clone(),
+                upvars: resolver.upvars.clone(),
                 export_map: resolver.export_map.clone(),
                 trait_map: resolver.trait_map.clone(),
                 glob_map: resolver.glob_map.clone(),

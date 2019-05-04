@@ -1071,10 +1071,10 @@ pub struct GlobalCtxt<'tcx> {
 
     pub queries: query::Queries<'tcx>,
 
-    // Records the free variables referenced by every closure
+    // Records the captured variables referenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
-    freevars: FxHashMap<DefId, Lrc<Vec<hir::Freevar>>>,
+    upvars: FxHashMap<DefId, Lrc<Vec<hir::Upvar>>>,
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
@@ -1317,7 +1317,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }).collect();
                 (k, Lrc::new(exports))
             }).collect(),
-            freevars: resolutions.freevars.into_iter().map(|(k, v)| {
+            upvars: resolutions.upvars.into_iter().map(|(k, v)| {
                 let vars: Vec<_> = v.into_iter().map(|e| {
                     e.map_id(|id| hir.node_to_hir_id(id))
                 }).collect();
@@ -3055,7 +3055,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         Lrc::new(middle::lang_items::collect(tcx))
     };
-    providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).cloned();
+    providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id).cloned();
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)
     };

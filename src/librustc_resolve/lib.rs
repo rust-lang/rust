@@ -29,7 +29,7 @@ use rustc::hir::def::{
 };
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::hir::{Freevar, FreevarMap, TraitCandidate, TraitMap, GlobMap};
+use rustc::hir::{Upvar, UpvarMap, TraitCandidate, TraitMap, GlobMap};
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::{bug, span_bug};
@@ -1668,8 +1668,8 @@ pub struct Resolver<'a> {
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     label_res_map: NodeMap<NodeId>,
 
-    pub freevars: FreevarMap,
-    freevars_seen: NodeMap<NodeMap<usize>>,
+    pub upvars: UpvarMap,
+    upvars_seen: NodeMap<NodeMap<usize>>,
     pub export_map: ExportMap<NodeId>,
     pub trait_map: TraitMap,
 
@@ -2033,8 +2033,8 @@ impl<'a> Resolver<'a> {
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             label_res_map: Default::default(),
-            freevars: Default::default(),
-            freevars_seen: Default::default(),
+            upvars: Default::default(),
+            upvars_seen: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
             module_map,
@@ -4054,21 +4054,21 @@ impl<'a> Resolver<'a> {
                         ClosureRibKind(function_id) => {
                             let prev_res = res;
 
-                            let seen = self.freevars_seen
+                            let seen = self.upvars_seen
                                            .entry(function_id)
                                            .or_default();
                             if let Some(&index) = seen.get(&node_id) {
                                 res = Res::Upvar(node_id, index, function_id);
                                 continue;
                             }
-                            let vec = self.freevars
+                            let vec = self.upvars
                                           .entry(function_id)
                                           .or_default();
                             let depth = vec.len();
                             res = Res::Upvar(node_id, depth, function_id);
 
                             if record_used {
-                                vec.push(Freevar {
+                                vec.push(Upvar {
                                     res: prev_res,
                                     span,
                                 });

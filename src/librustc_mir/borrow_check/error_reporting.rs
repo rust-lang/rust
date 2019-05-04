@@ -1814,12 +1814,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ty::Array(ty, _) | ty::Slice(ty) =>
                     self.describe_field_from_ty(&ty, field, variant_index),
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                    // `tcx.freevars(def_id)` returns an `Option`, which is `None` in case
+                    // `tcx.upvars(def_id)` returns an `Option`, which is `None` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let freevar = self.infcx.tcx.freevars(def_id).unwrap()[field.index()];
+                    let upvar = self.infcx.tcx.upvars(def_id).unwrap()[field.index()];
 
-                    self.infcx.tcx.hir().name_by_hir_id(freevar.var_id()).to_string()
+                    self.infcx.tcx.hir().name_by_hir_id(upvar.var_id()).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -2609,7 +2609,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let hir::ExprKind::Closure(
             .., args_span, _
         ) = expr {
-            for (v, place) in self.infcx.tcx.freevars(def_id)?.iter().zip(places) {
+            for (v, place) in self.infcx.tcx.upvars(def_id)?.iter().zip(places) {
                 match place {
                     Operand::Copy(place) |
                     Operand::Move(place) if target_place == place => {

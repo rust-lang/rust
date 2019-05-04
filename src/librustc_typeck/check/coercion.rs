@@ -722,7 +722,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let b = self.shallow_resolve(b);
 
         match b.sty {
-            ty::FnPtr(fn_ty) if self.tcx.freevars(def_id_a).map_or(true, |v| v.is_empty()) => {
+            ty::FnPtr(fn_ty) if self.tcx.upvars(def_id_a).map_or(true, |v| v.is_empty()) => {
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
