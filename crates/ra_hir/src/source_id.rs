@@ -92,7 +92,7 @@ impl AstIdMap {
         Arc::new(AstIdMap::from_source_file(&source_file))
     }
 
-    pub(crate) fn file_item_query(
+    pub(crate) fn ast_id_to_node_query(
         db: &impl DefDatabase,
         file_id: HirFileId,
         ast_id: ErasedFileAstId,
