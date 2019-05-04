@@ -87,7 +87,6 @@
 #![feature(fundamental)]
 #![feature(lang_items)]
 #![feature(libc)]
-#![feature(needs_allocator)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
 #![feature(pattern)]
