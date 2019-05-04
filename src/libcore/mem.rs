@@ -1022,6 +1022,30 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///
 /// The compiler then knows to not make any incorrect assumptions or optimizations on this code.
 ///
+/// ## out-pointers
+///
+/// You can use `MaybeUninit<T>` to implement "out-pointers": instead of returning data
+/// from a function, pass it a pointer to some (uninitialized) memory to put the
+/// result into. This can be useful when it is important for the caller to control
+/// how the memory the result is stored in gets allocated, and you want to avoid
+/// unnecessary moves.
+///
+/// ```
+/// use std::mem::MaybeUninit;
+///
+/// unsafe fn make_vec(out: *mut Vec<i32>) {
+///     // `write` does not drop the old contents, which is important.
+///     out.write(vec![1, 2, 3]);
+/// }
+///
+/// let mut v: MaybeUninit<Vec<i32>> = MaybeUninit::uninit();
+/// unsafe { make_vec(v.as_mut_ptr()); }
+/// // Now we know `v` is initialized! This also makes sure the vector gets
+/// // properly dropped.
+/// let v = unsafe { v.assume_init() };
+/// assert_eq!(&v, &[1, 2, 3]);
+/// ```
+///
 /// ## Initializing an array element-by-element
 ///
 /// `MaybeUninit<T>` can be used to initialize a large array element-by-element:
@@ -1049,7 +1073,7 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 ///     unsafe { mem::transmute::<_, [Vec<u32>; 1000]>(data) }
 /// };
 ///
-/// println!("{:?}", &data[0]);
+/// assert_eq!(&data[0], &[42]);
 /// ```
 ///
 /// You can also work with partially initialized arrays, which could
