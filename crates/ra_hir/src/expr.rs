@@ -5,14 +5,13 @@ use rustc_hash::FxHashMap;
 
 use ra_arena::{Arena, RawId, impl_arena_id, map::ArenaMap};
 use ra_syntax::{
-    SyntaxNodePtr, AstPtr, AstNode,TreeArc,
+    SyntaxNodePtr, AstPtr, AstNode,
     ast::{self, LoopBodyOwner, ArgListOwner, NameOwner, LiteralKind,ArrayExprKind, TypeAscriptionOwner}
 };
 
 use crate::{
     Path, Name, HirDatabase, Resolver,DefWithBody, Either, HirFileId,
     name::AsName,
-    ids::{MacroCallId},
     type_ref::{Mutability, TypeRef},
 };
 use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, UncertainFloatTy}};
@@ -826,8 +825,8 @@ where
                     .with_file_id(self.current_file_id);
 
                 if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, ast_id) {
-                    if let Some(arg) = self.db.macro_arg(call_id) {
-                        if let Some(expr) = expand_macro_to_expr(self.db, call_id, &arg) {
+                    if let Some(tt) = self.db.macro_expand(call_id).ok() {
+                        if let Some(expr) = mbe::token_tree_to_expr(&tt).ok() {
                             log::debug!("macro expansion {}", expr.syntax().debug_dump());
                             let old_file_id =
                                 std::mem::replace(&mut self.current_file_id, call_id.into());
@@ -996,16 +995,6 @@ where
         };
         (body, self.source_map)
     }
-}
-
-fn expand_macro_to_expr(
-    db: &impl HirDatabase,
-    macro_call: MacroCallId,
-    arg: &tt::Subtree,
-) -> Option<TreeArc<ast::Expr>> {
-    let rules = db.macro_def(macro_call.loc(db).def)?;
-    let expanded = rules.expand(&arg).ok()?;
-    mbe::token_tree_to_expr(&expanded).ok()
 }
 
 pub(crate) fn body_with_source_map_query(
