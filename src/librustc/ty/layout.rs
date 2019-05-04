@@ -1677,8 +1677,6 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
           C::TyLayout: MaybeResult<TyLayout<'tcx>>,
           C: HasParamEnv<'tcx>
 {
-    type ParamEnv = ty::ParamEnv<'tcx>;
-
     fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: VariantIdx) -> TyLayout<'tcx> {
         let details = match this.variants {
             Variants::Single { index } if index == variant_index => this.details,
@@ -1850,7 +1848,6 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
         this: TyLayout<'tcx>,
         cx: &C,
         offset: Size,
-        param_env: Self::ParamEnv,
     ) -> Option<PointeeInfo> {
         match this.ty.sty {
             ty::RawPtr(mt) if offset.bytes() == 0 => {
@@ -1864,7 +1861,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 
             ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
                 let tcx = cx.tcx();
-                let is_freeze = ty.is_freeze(tcx, param_env, DUMMY_SP);
+                let is_freeze = ty.is_freeze(tcx, cx.param_env(), DUMMY_SP);
                 let kind = match mt {
                     hir::MutImmutable => if is_freeze {
                         PointerKind::Frozen
@@ -1945,7 +1942,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                                 .and_then(|field| {
                                     if ptr_end <= field_start + field.size {
                                         // We found the right field, look inside it.
-                                        field.pointee_info_at(cx, offset - field_start, param_env)
+                                        field.pointee_info_at(cx, offset - field_start)
                                     } else {
                                         None
                                     }

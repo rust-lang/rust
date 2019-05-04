@@ -12,7 +12,7 @@ use rustc_target::abi::call::ArgType;
 use rustc_codegen_ssa::traits::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
-use rustc::ty::{self, Ty, Instance, ParamEnv};
+use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout::{self, PointerKind};
 
 use libc::c_uint;
@@ -478,7 +478,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                 }
             }
 
-            if let Some(pointee) = layout.pointee_info_at(cx, offset, ParamEnv::reveal_all()) {
+            if let Some(pointee) = layout.pointee_info_at(cx, offset) {
                 if let Some(kind) = pointee.safe {
                     attrs.pointee_size = pointee.size;
                     attrs.pointee_align = Some(pointee.align);

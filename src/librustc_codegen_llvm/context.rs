@@ -15,7 +15,9 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc::mir::mono::Stats;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
-use rustc::ty::layout::{LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx, HasParamEnv};
+use rustc::ty::layout::{
+    LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx, HasParamEnv
+};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
@@ -864,6 +866,6 @@ impl LayoutOf for CodegenCx<'ll, 'tcx> {
 
 impl<'tcx, 'll> HasParamEnv<'tcx> for CodegenCx<'ll, 'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        panic!("asd")
+        ty::ParamEnv::reveal_all()
     }
 }

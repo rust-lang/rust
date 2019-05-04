@@ -383,7 +383,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
             return pointee;
         }
 
-        let result = Ty::pointee_info_at(*self, cx, offset, ty::ParamEnv::reveal_all());
+        let result = Ty::pointee_info_at(*self, cx, offset);
 
         cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
         result

@@ -933,8 +933,6 @@ pub struct PointeeInfo {
 }
 
 pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
-    type ParamEnv;
-
     fn for_variant(
         this: TyLayout<'a, Self>,
         cx: &C,
@@ -945,7 +943,6 @@ pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
         this: TyLayout<'a, Self>,
         cx: &C,
         offset: Size,
-        param_env: Self::ParamEnv,
     ) -> Option<PointeeInfo>;
 }
 
@@ -958,11 +955,9 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::field(self, cx, i)
     }
-    pub fn pointee_info_at<C>(
-        self, cx: &C, offset: Size, param_env: Ty::ParamEnv
-    ) -> Option<PointeeInfo>
+    pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
-        Ty::pointee_info_at(self, cx, offset, param_env)
+        Ty::pointee_info_at(self, cx, offset)
     }
 }
 
