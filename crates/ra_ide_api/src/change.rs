@@ -186,7 +186,6 @@ impl RootDatabase {
         if let Some(crate_graph) = change.crate_graph {
             self.set_crate_graph(Arc::new(crate_graph))
         }
-        self.collect_after_change()
     }
 
     fn apply_root_change(&mut self, root_id: SourceRootId, root_change: RootChange) {
@@ -216,6 +215,7 @@ impl RootDatabase {
     }
 
     pub(crate) fn collect_garbage(&mut self) {
+        let _p = profile("RootDatabase::collect_garbage");
         self.last_gc = time::Instant::now();
 
         let sweep = SweepStrategy::default().discard_values().sweep_all_revisions();
@@ -228,10 +228,5 @@ impl RootDatabase {
 
         self.query(hir::db::RawItemsWithSourceMapQuery).sweep(sweep);
         self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);
-    }
-
-    pub(crate) fn collect_after_change(&mut self) {
-        let sweep = SweepStrategy::default().discard_everything().sweep_all_revisions();
-        self.query(hir::db::AstIdToNodeQuery).sweep(sweep)
     }
 }
