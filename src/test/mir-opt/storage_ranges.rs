@@ -7,7 +7,7 @@ fn main() {
 }
 
 // END RUST SOURCE
-// START rustc.main.TypeckMir.before.mir
+// START rustc.main.nll.0.mir
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = const 0i32;
@@ -31,4 +31,4 @@ fn main() {
 //         StorageDead(_1);
 //         return;
 //      }
-// END rustc.main.TypeckMir.before.mir
+// END rustc.main.nll.0.mir
