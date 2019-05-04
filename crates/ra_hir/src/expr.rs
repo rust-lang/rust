@@ -826,21 +826,20 @@ where
                     .with_file_id(self.current_file_id);
 
                 if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, ast_id) {
-                    if let Some(expr) = expand_macro_to_expr(self.db, call_id, e.token_tree()) {
-                        log::debug!("macro expansion {}", expr.syntax().debug_dump());
-                        let old_file_id =
-                            std::mem::replace(&mut self.current_file_id, call_id.into());
-                        let id = self.collect_expr(&expr);
-                        self.current_file_id = old_file_id;
-                        id
-                    } else {
-                        // FIXME: Instead of just dropping the error from expansion
-                        // report it
-                        self.alloc_expr(Expr::Missing, syntax_ptr)
+                    if let Some(arg) = self.db.macro_arg(call_id) {
+                        if let Some(expr) = expand_macro_to_expr(self.db, call_id, &arg) {
+                            log::debug!("macro expansion {}", expr.syntax().debug_dump());
+                            let old_file_id =
+                                std::mem::replace(&mut self.current_file_id, call_id.into());
+                            let id = self.collect_expr(&expr);
+                            self.current_file_id = old_file_id;
+                            return id;
+                        }
                     }
-                } else {
-                    self.alloc_expr(Expr::Missing, syntax_ptr)
                 }
+                // FIXME: Instead of just dropping the error from expansion
+                // report it
+                self.alloc_expr(Expr::Missing, syntax_ptr)
             }
         }
     }
@@ -1002,14 +1001,10 @@ where
 fn expand_macro_to_expr(
     db: &impl HirDatabase,
     macro_call: MacroCallId,
-    args: Option<&ast::TokenTree>,
+    arg: &tt::Subtree,
 ) -> Option<TreeArc<ast::Expr>> {
     let rules = db.macro_def(macro_call.loc(db).def)?;
-
-    let args = mbe::ast_to_token_tree(args?)?.0;
-
-    let expanded = rules.expand(&args).ok()?;
-
+    let expanded = rules.expand(&arg).ok()?;
     mbe::token_tree_to_expr(&expanded).ok()
 }
 

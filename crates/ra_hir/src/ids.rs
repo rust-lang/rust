@@ -86,11 +86,7 @@ fn parse_macro(
     macro_call_id: MacroCallId,
 ) -> Result<TreeArc<SourceFile>, String> {
     let loc = macro_call_id.loc(db);
-    let macro_call = loc.ast_id.to_node(db);
-    let (macro_arg, _) = macro_call
-        .token_tree()
-        .and_then(mbe::ast_to_token_tree)
-        .ok_or("Fail to args in to tt::TokenTree")?;
+    let macro_arg = db.macro_arg(macro_call_id).ok_or("Fail to args in to tt::TokenTree")?;
 
     let macro_rules = db.macro_def(loc.def).ok_or("Fail to find macro definition")?;
     let tt = macro_rules.expand(&macro_arg).map_err(|err| format!("{:?}", err))?;
@@ -137,6 +133,14 @@ pub(crate) fn macro_def_query(db: &impl DefDatabase, id: MacroDefId) -> Option<A
         None
     })?;
     Some(Arc::new(rules))
+}
+
+pub(crate) fn macro_arg_query(db: &impl DefDatabase, id: MacroCallId) -> Option<Arc<tt::Subtree>> {
+    let loc = id.loc(db);
+    let macro_call = loc.ast_id.to_node(db);
+    let arg = macro_call.token_tree()?;
+    let (tt, _) = mbe::ast_to_token_tree(arg)?;
+    Some(Arc::new(tt))
 }
 
 macro_rules! impl_intern_key {
