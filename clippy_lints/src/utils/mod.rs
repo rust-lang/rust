@@ -23,7 +23,7 @@ use std::mem;
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::Node;
@@ -213,7 +213,7 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 }
 
 /// Gets the definition associated to a path.
-pub fn path_to_def(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Def> {
+pub fn path_to_res(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<(def::Res)> {
     let crates = cx.tcx.crates();
     let krate = crates.iter().find(|&&krate| cx.tcx.crate_name(krate) == path[0]);
     if let Some(krate) = krate {
@@ -233,10 +233,10 @@ pub fn path_to_def(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Def> 
             for item in mem::replace(&mut items, Lrc::new(vec![])).iter() {
                 if item.ident.name == *segment {
                     if path_it.peek().is_none() {
-                        return Some(item.def);
+                        return Some(item.res);
                     }
 
-                    items = cx.tcx.item_children(item.def.def_id());
+                    items = cx.tcx.item_children(item.res.def_id());
                     break;
                 }
             }
@@ -248,13 +248,13 @@ pub fn path_to_def(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Def> 
 
 /// Convenience function to get the `DefId` of a trait by path.
 pub fn get_trait_def_id(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<DefId> {
-    let def = match path_to_def(cx, path) {
-        Some(def) => def,
+    let res = match path_to_res(cx, path) {
+        Some(res) => res,
         None => return None,
     };
 
-    match def {
-        def::Def::Trait(trait_id) => Some(trait_id),
+    match res {
+        def::Res::Def(DefKind::Trait, trait_id) => Some(trait_id),
         _ => None,
     }
 }
@@ -317,8 +317,8 @@ pub fn has_drop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
 }
 
 /// Resolves the definition of a node from its `HirId`.
-pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> def::Def {
-    cx.tables.qpath_def(qpath, id)
+pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> Res {
+    cx.tables.qpath_res(qpath, id)
 }
 
 /// Returns the method names and argument list of nested method call expressions that make up
@@ -746,8 +746,8 @@ pub fn is_ctor_function(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     if let ExprKind::Call(ref fun, _) = expr.node {
         if let ExprKind::Path(ref qp) = fun.node {
             return matches!(
-                cx.tables.qpath_def(qp, fun.hir_id),
-                def::Def::Variant(..) | def::Def::Ctor(..)
+                cx.tables.qpath_res(qp, fun.hir_id),
+                def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _)
             );
         }
     }
@@ -758,8 +758,8 @@ pub fn is_ctor_function(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat) -> bool {
     fn is_enum_variant(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> bool {
         matches!(
-            cx.tables.qpath_def(qpath, id),
-            def::Def::Variant(..) | def::Def::Ctor(_, def::CtorOf::Variant, _)
+            cx.tables.qpath_res(qpath, id),
+            def::Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(def::CtorOf::Variant, _), _)
         )
     }
 
@@ -831,7 +831,7 @@ pub fn is_self_ty(slf: &hir::Ty) -> bool {
     if_chain! {
         if let TyKind::Path(ref qp) = slf.node;
         if let QPath::Resolved(None, ref path) = *qp;
-        if let Def::SelfTy(..) = path.def;
+        if let Res::SelfTy(..) = path.res;
         then {
             return true
         }
@@ -852,7 +852,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
             if match_qpath(path, &paths::RESULT_OK[1..]);
             if let PatKind::Binding(_, hir_id, _, None) = pat[0].node;
             if let ExprKind::Path(QPath::Resolved(None, ref path)) = arm.body.node;
-            if let Def::Local(lid) = path.def;
+            if let Res::Local(lid) = path.res;
             if lid == hir_id;
             then {
                 return true;

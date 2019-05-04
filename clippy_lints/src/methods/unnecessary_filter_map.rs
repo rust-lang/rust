@@ -2,7 +2,7 @@ use crate::utils::paths;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{match_qpath, match_trait_method, span_lint};
 use rustc::hir;
-use rustc::hir::def::Def;
+use rustc::hir::def::Res;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::lint::LateContext;
 
@@ -66,7 +66,7 @@ fn check_expression<'a, 'tcx: 'a>(
                     if match_qpath(path, &paths::OPTION_SOME) {
                         if_chain! {
                             if let hir::ExprKind::Path(path) = &args[0].node;
-                            if let Def::Local(ref local) = cx.tables.qpath_def(path, args[0].hir_id);
+                            if let Res::Local(ref local) = cx.tables.qpath_res(path, args[0].hir_id);
                             then {
                                 if arg_id == *local {
                                     return (false, false)

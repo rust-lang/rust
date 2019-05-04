@@ -35,7 +35,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
             if let ExprKind::Call(ref func, ref func_args) = expr.node;
             // is `mem::discriminant`
             if let ExprKind::Path(ref func_qpath) = func.node;
-            if let Some(def_id) = cx.tables.qpath_def(func_qpath, func.hir_id).opt_def_id();
+            if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
             if cx.match_def_path(def_id, &paths::MEM_DISCRIMINANT);
             // type is non-enum
             let ty_param = cx.tables.node_substs(func.hir_id).type_at(0);

@@ -1,7 +1,7 @@
 //! lint on `use`ing all variants of an enum
 
 use crate::utils::span_lint;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -43,7 +43,7 @@ impl EnumGlobUse {
             return; // re-exports are fine
         }
         if let ItemKind::Use(ref path, UseKind::Glob) = item.node {
-            if let Def::Enum(_) = path.def {
+            if let Res::Def(DefKind::Enum, _) = path.res {
                 span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
             }
         }

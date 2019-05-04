@@ -1,6 +1,6 @@
 use crate::utils::is_adjusted;
 use crate::utils::span_lint;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -27,7 +27,7 @@ fn is_temporary(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     match &expr.node {
         ExprKind::Struct(..) | ExprKind::Tup(..) => true,
         ExprKind::Path(qpath) => {
-            if let Def::Const(..) = cx.tables.qpath_def(qpath, expr.hir_id) {
+            if let Res::Def(DefKind::Const, ..) = cx.tables.qpath_res(qpath, expr.hir_id) {
                 true
             } else {
                 false

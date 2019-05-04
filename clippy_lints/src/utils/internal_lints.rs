@@ -1,7 +1,7 @@
 use crate::utils::{match_type, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
@@ -120,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
         } else if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
             if_chain! {
                 if let hir::TraitRef{path, ..} = trait_ref;
-                if let Def::Trait(def_id) = path.def;
+                if let Res::Def(DefKind::Trait, def_id) = path.res;
                 if cx.match_def_path(def_id, &paths::LINT_PASS);
                 then {
                     let mut collector = LintCollector {
@@ -178,7 +178,7 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
     ) = ty.node
     {
         if let TyKind::Path(ref path) = inner.node {
-            if let Def::Struct(def_id) = cx.tables.qpath_def(path, inner.hir_id) {
+            if let Res::Def(DefKind::Struct, def_id) = cx.tables.qpath_res(path, inner.hir_id) {
                 return cx.match_def_path(def_id, &paths::LINT);
             }
         }

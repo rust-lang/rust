@@ -1,5 +1,5 @@
 use crate::utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -70,9 +70,9 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         },
         ExprKind::Call(ref callee, ref args) => {
             if let ExprKind::Path(ref qpath) = callee.node {
-                let def = cx.tables.qpath_def(qpath, callee.hir_id);
-                match def {
-                    Def::Struct(..) | Def::Variant(..) | Def::Ctor(..) => {
+                let res = cx.tables.qpath_res(qpath, callee.hir_id);
+                match res {
+                    Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _) => {
                         !has_drop(cx, cx.tables.expr_ty(expr)) && args.iter().all(|arg| has_no_effect(cx, arg))
                     },
                     _ => false,
@@ -153,9 +153,11 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
         },
         ExprKind::Call(ref callee, ref args) => {
             if let ExprKind::Path(ref qpath) = callee.node {
-                let def = cx.tables.qpath_def(qpath, callee.hir_id);
-                match def {
-                    Def::Struct(..) | Def::Variant(..) | Def::Ctor(..) if !has_drop(cx, cx.tables.expr_ty(expr)) => {
+                let res = cx.tables.qpath_res(qpath, callee.hir_id);
+                match res {
+                    Res::Def(DefKind::Struct, ..) | Res::Def(DefKind::Variant, ..) | Res::Def(DefKind::Ctor(..), _)
+                        if !has_drop(cx, cx.tables.expr_ty(expr)) =>
+                    {
                         Some(args.iter().collect())
                     },
                     _ => None,

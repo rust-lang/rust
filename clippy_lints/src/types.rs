@@ -216,7 +216,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
             _ => None,
         });
         if let TyKind::Path(ref qpath) = ty.node;
-        if let Some(did) = cx.tables.qpath_def(qpath, ty.hir_id).opt_def_id();
+        if let Some(did) = cx.tables.qpath_res(qpath, ty.hir_id).opt_def_id();
         if cx.match_def_path(did, path);
         then {
             return true;
@@ -238,8 +238,8 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
     match hir_ty.node {
         TyKind::Path(ref qpath) if !is_local => {
             let hir_id = hir_ty.hir_id;
-            let def = cx.tables.qpath_def(qpath, hir_id);
-            if let Some(def_id) = def.opt_def_id() {
+            let res = cx.tables.qpath_res(qpath, hir_id);
+            if let Some(def_id) = res.opt_def_id() {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
                     if match_type_parameter(cx, qpath, &paths::VEC) {
                         span_help_and_lint(
@@ -261,8 +261,8 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         });
                         // ty is now _ at this point
                         if let TyKind::Path(ref ty_qpath) = ty.node;
-                        let def = cx.tables.qpath_def(ty_qpath, ty.hir_id);
-                        if let Some(def_id) = def.opt_def_id();
+                        let res = cx.tables.qpath_res(ty_qpath, ty.hir_id);
+                        if let Some(def_id) = res.opt_def_id();
                         if Some(def_id) == cx.tcx.lang_items().owned_box();
                         // At this point, we know ty is Box<T>, now get T
                         if let Some(ref last) = last_path_segment(ty_qpath).args;
@@ -367,7 +367,7 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool, lt:
     match mut_ty.ty.node {
         TyKind::Path(ref qpath) => {
             let hir_id = mut_ty.ty.hir_id;
-            let def = cx.tables.qpath_def(qpath, hir_id);
+            let def = cx.tables.qpath_res(qpath, hir_id);
             if_chain! {
                 if let Some(def_id) = def.opt_def_id();
                 if Some(def_id) == cx.tcx.lang_items().owned_box();

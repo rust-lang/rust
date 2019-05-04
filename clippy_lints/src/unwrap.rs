@@ -144,7 +144,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                 if ["unwrap", "unwrap_err"].contains(&&*method_name.ident.as_str());
                 let call_to_unwrap = method_name.ident.name == "unwrap";
                 if let Some(unwrappable) = self.unwrappables.iter()
-                    .find(|u| u.ident.def == path.def);
+                    .find(|u| u.ident.res == path.res);
                 then {
                     if call_to_unwrap == unwrappable.safe_to_unwrap {
                         span_lint_and_then(

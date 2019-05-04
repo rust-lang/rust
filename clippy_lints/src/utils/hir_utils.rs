@@ -634,7 +634,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_name(path.ident.name);
             },
         }
-        // self.cx.tables.qpath_def(p, id).hash(&mut self.s);
+        // self.cx.tables.qpath_res(p, id).hash(&mut self.s);
     }
 
     pub fn hash_path(&mut self, p: &Path) {

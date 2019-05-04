@@ -4,7 +4,7 @@
 
 use std::ptr;
 
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::ty::adjustment::Adjust;
@@ -194,8 +194,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             }
 
             // Make sure it is a const item.
-            match cx.tables.qpath_def(qpath, expr.hir_id) {
-                Def::Const(_) | Def::AssociatedConst(_) => {},
+            match cx.tables.qpath_res(qpath, expr.hir_id) {
+                Res::Def(DefKind::Const, _) | Res::Def(DefKind::AssociatedConst, _) => {},
                 _ => return,
             };
 

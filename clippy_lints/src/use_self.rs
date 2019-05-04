@@ -1,6 +1,6 @@
 use if_chain::if_chain;
 use rustc::hir;
-use rustc::hir::def::{CtorKind, Def};
+use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
@@ -86,7 +86,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
             if impl_ty != trait_ty {
                 if let Some(impl_ty) = impl_ty {
                     if self.item_type == impl_ty {
-                        let is_self_ty = if let def::Def::SelfTy(..) = path.def {
+                        let is_self_ty = if let def::Res::SelfTy(..) = path.res {
                             true
                         } else {
                             false
@@ -221,10 +221,10 @@ struct UseSelfVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     fn visit_path(&mut self, path: &'tcx Path, _id: HirId) {
         if path.segments.last().expect(SEGMENTS_MSG).ident.name != SelfUpper.name() {
-            if self.item_path.def == path.def {
+            if self.item_path.res == path.res {
                 span_use_self_lint(self.cx, path);
-            } else if let Def::Ctor(ctor_did, def::CtorOf::Struct, CtorKind::Fn) = path.def {
-                if self.item_path.def.opt_def_id() == self.cx.tcx.parent(ctor_did) {
+            } else if let Res::Def(DefKind::Ctor(def::CtorOf::Struct, CtorKind::Fn), ctor_did) = path.res {
+                if self.item_path.res.opt_def_id() == self.cx.tcx.parent(ctor_did) {
                     span_use_self_lint(self.cx, path);
                 }
             }

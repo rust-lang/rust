@@ -1,7 +1,7 @@
 use crate::reexport::*;
 use if_chain::if_chain;
 use itertools::Itertools;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id;
 use rustc::hir::intravisit::{walk_block, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::*;
@@ -778,7 +778,7 @@ fn same_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: HirId) -> bo
         if let ExprKind::Path(ref qpath) = expr.node;
         if let QPath::Resolved(None, ref path) = *qpath;
         if path.segments.len() == 1;
-        if let Def::Local(local_id) = cx.tables.qpath_def(qpath, expr.hir_id);
+        if let Res::Local(local_id) = cx.tables.qpath_res(qpath, expr.hir_id);
         // our variable!
         if local_id == var;
         then {
@@ -1637,8 +1637,8 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<HirId>
         if let ExprKind::Path(ref qpath) = bound.node;
         if let QPath::Resolved(None, _) = *qpath;
         then {
-            let def = cx.tables.qpath_def(qpath, bound.hir_id);
-            if let Def::Local(node_id) = def {
+            let res = cx.tables.qpath_res(qpath, bound.hir_id);
+            if let Res::Local(node_id) = res {
                 let node_str = cx.tcx.hir().get_by_hir_id(node_id);
                 if_chain! {
                     if let Node::Binding(pat) = node_str;
@@ -1772,9 +1772,9 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                     if self.prefer_mutable {
                         self.indexed_mut.insert(seqvar.segments[0].ident.name);
                     }
-                    let def = self.cx.tables.qpath_def(seqpath, seqexpr.hir_id);
-                    match def {
-                        Def::Local(hir_id) | Def::Upvar(hir_id, ..) => {
+                    let res = self.cx.tables.qpath_res(seqpath, seqexpr.hir_id);
+                    match res {
+                        Res::Local(hir_id) | Res::Upvar(hir_id, ..) => {
                             let parent_id = self.cx.tcx.hir().get_parent_item(expr.hir_id);
                             let parent_def_id = self.cx.tcx.hir().local_def_id_from_hir_id(parent_id);
                             let extent = self.cx.tcx.region_scope_tree(parent_def_id).var_scope(hir_id.local_id);
@@ -1789,7 +1789,7 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                             }
                             return false;  // no need to walk further *on the variable*
                         }
-                        Def::Static(..) | Def::Const(..) => {
+                        Res::Def(DefKind::Static, ..) | Res::Def(DefKind::Const, ..) => {
                             if indexed_indirectly {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
                             }
@@ -1834,14 +1834,14 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
             if let QPath::Resolved(None, ref path) = *qpath;
             if path.segments.len() == 1;
             then {
-                match self.cx.tables.qpath_def(qpath, expr.hir_id) {
-                    Def::Upvar(local_id, ..) => {
+                match self.cx.tables.qpath_res(qpath, expr.hir_id) {
+                    Res::Upvar(local_id, ..) => {
                         if local_id == self.var {
                             // we are not indexing anything, record that
                             self.nonindex = true;
                         }
                     }
-                    Def::Local(local_id) =>
+                    Res::Local(local_id) =>
                     {
 
                         if local_id == self.var {
@@ -2187,8 +2187,8 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
 
 fn var_def_id(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<HirId> {
     if let ExprKind::Path(ref qpath) = expr.node {
-        let path_res = cx.tables.qpath_def(qpath, expr.hir_id);
-        if let Def::Local(node_id) = path_res {
+        let path_res = cx.tables.qpath_res(qpath, expr.hir_id);
+        if let Res::Local(node_id) = path_res {
             return Some(node_id);
         }
     }
@@ -2380,13 +2380,13 @@ impl<'a, 'tcx> VarCollectorVisitor<'a, 'tcx> {
         if_chain! {
             if let ExprKind::Path(ref qpath) = ex.node;
             if let QPath::Resolved(None, _) = *qpath;
-            let def = self.cx.tables.qpath_def(qpath, ex.hir_id);
+            let res = self.cx.tables.qpath_res(qpath, ex.hir_id);
             then {
-                match def {
-                    Def::Local(node_id) | Def::Upvar(node_id, ..) => {
+                match res {
+                    Res::Local(node_id) | Res::Upvar(node_id, ..) => {
                         self.ids.insert(node_id);
                     },
-                    Def::Static(def_id) => {
+                    Res::Def(DefKind::Static, def_id) => {
                         let mutable = self.cx.tcx.is_mutable_static(def_id);
                         self.def_ids.insert(def_id, mutable);
                     },

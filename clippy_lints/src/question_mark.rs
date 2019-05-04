@@ -1,5 +1,5 @@
 use if_chain::if_chain;
-use rustc::hir::def::Def;
+use rustc::hir::def::{DefKind, Res};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -117,7 +117,9 @@ impl QuestionMark {
             },
             ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
-                if let Def::Ctor(def_id, def::CtorOf::Variant, _) = cx.tables.qpath_def(qp, expression.hir_id) {
+                if let Res::Def(DefKind::Ctor(def::CtorOf::Variant, def::CtorKind::Const), def_id) =
+                    cx.tables.qpath_res(qp, expression.hir_id)
+                {
                     return cx.match_def_path(def_id, &OPTION_NONE);
                 }
 

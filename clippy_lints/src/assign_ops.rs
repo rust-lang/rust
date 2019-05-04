@@ -99,7 +99,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                         let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id);
                                         if_chain! {
                                             if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
-                                            if trait_ref.path.def.def_id() == trait_id;
+                                            if trait_ref.path.res.def_id() == trait_id;
                                             then { return; }
                                         }
                                         implements_trait($cx, $ty, trait_id, &[$rty])

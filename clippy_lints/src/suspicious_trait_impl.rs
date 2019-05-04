@@ -169,7 +169,7 @@ fn check_binop<'a>(
 
     if_chain! {
         if let Some(trait_ref) = trait_ref_of_method(cx, parent_fn);
-        if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.def.def_id());
+        if let Some(idx) = trait_ids.iter().position(|&tid| tid == trait_ref.path.res.def_id());
         if binop != expected_ops[idx];
         then{
             return Some(traits[idx])
