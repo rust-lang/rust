@@ -3,13 +3,6 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
-#![deny(rust_2018_idioms)]
-
-extern crate regex;
-extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
-
 use std::fs;
 
 use std::path::Path;

@@ -462,7 +462,6 @@ pub enum PrintRequest {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BorrowckMode {
     Mir,
-    Compare,
     Migrate,
 }
 
@@ -471,7 +470,6 @@ impl BorrowckMode {
     /// on the AST borrow check if the MIR-based one errors.
     pub fn migrate(self) -> bool {
         match self {
-            BorrowckMode::Compare => false,
             BorrowckMode::Mir => false,
             BorrowckMode::Migrate => true,
         }
@@ -480,7 +478,6 @@ impl BorrowckMode {
     /// Should we emit the AST-based borrow checker errors?
     pub fn use_ast(self) -> bool {
         match self {
-            BorrowckMode::Compare => true,
             BorrowckMode::Mir => false,
             BorrowckMode::Migrate => false,
         }
@@ -1214,7 +1211,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
         "make unnamed regions display as '# (where # is some non-ident unique id)"),
     borrowck: Option<String> = (None, parse_opt_string, [UNTRACKED],
-        "select which borrowck is used (`ast`, `mir`, `migrate`, or `compare`)"),
+        "select which borrowck is used (`mir` or `migrate`)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass"),
     time: bool = (false, parse_bool, [UNTRACKED],
@@ -2315,7 +2312,6 @@ pub fn build_session_options_and_crate_config(
     let borrowck_mode = match debugging_opts.borrowck.as_ref().map(|s| &s[..]) {
         None | Some("migrate") => BorrowckMode::Migrate,
         Some("mir") => BorrowckMode::Mir,
-        Some("compare") => BorrowckMode::Compare,
         Some(m) => early_error(error_format, &format!("unknown borrowck mode `{}`", m)),
     };
 

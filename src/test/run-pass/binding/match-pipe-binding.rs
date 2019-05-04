@@ -1,5 +1,4 @@
 // run-pass
-// compile-flags: -Z borrowck=compare
 
 fn test1() {
     // from issue 6338

@@ -31,14 +31,12 @@ impl FromStr for Version {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut iter = s.split('.').map(|part| Ok(part.parse()?));
 
-        let parts = {
-            let mut part = || {
-                iter.next()
-                    .unwrap_or(Err(ParseVersionError::WrongNumberOfParts))
-            };
-
-            [part()?, part()?, part()?]
+        let mut part = || {
+            iter.next()
+                .unwrap_or(Err(ParseVersionError::WrongNumberOfParts))
         };
+
+        let parts = [part()?, part()?, part()?];
 
         if let Some(_) = iter.next() {
             // Ensure we don't have more than 3 parts.

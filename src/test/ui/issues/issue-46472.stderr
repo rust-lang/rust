@@ -1,20 +1,5 @@
-error[E0597]: borrowed value does not live long enough (Ast)
-  --> $DIR/issue-46472.rs:4:10
-   |
-LL |     &mut 4
-   |          ^ temporary value does not live long enough
-...
-LL | }
-   | - temporary value only lives until here
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 3:8...
-  --> $DIR/issue-46472.rs:3:8
-   |
-LL | fn bar<'a>() -> &'a mut u32 {
-   |        ^^
-
-error[E0515]: cannot return reference to temporary value (Mir)
-  --> $DIR/issue-46472.rs:4:5
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/issue-46472.rs:2:5
    |
 LL |     &mut 4
    |     ^^^^^-
@@ -22,7 +7,6 @@ LL |     &mut 4
    |     |    temporary value created here
    |     returns a reference to data owned by the current function
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0515, E0597.
-For more information about an error, try `rustc --explain E0515`.
+For more information about this error, try `rustc --explain E0515`.

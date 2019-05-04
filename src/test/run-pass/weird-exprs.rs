@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 #![allow(unreachable_code)]
 #![allow(unused_parens)]
-// compile-flags: -Z borrowck=compare
 
 #![recursion_limit = "256"]
 

@@ -20,7 +20,6 @@ use crate::borrow_check::nll::ToRegionVid;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
-use crate::transform::{MirPass, MirSource};
 use either::Either;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -159,16 +158,14 @@ pub(crate) fn type_check<'gcx, 'tcx>(
         param_env,
         mir,
         &region_bound_pairs,
-        Some(implicit_region_bound),
-        Some(&mut borrowck_context),
-        Some(&universal_region_relations),
-        |cx| {
+        implicit_region_bound,
+        &mut borrowck_context,
+        &universal_region_relations,
+        |mut cx| {
             cx.equate_inputs_and_outputs(mir, universal_regions, &normalized_inputs_and_output);
-            liveness::generate(cx, mir, elements, flow_inits, move_data, location_table);
+            liveness::generate(&mut cx, mir, elements, flow_inits, move_data, location_table);
 
-            cx.borrowck_context
-                .as_mut()
-                .map(|bcx| translate_outlives_facts(bcx));
+            translate_outlives_facts(cx.borrowck_context);
         },
     );
 
@@ -184,9 +181,9 @@ fn type_check_internal<'a, 'gcx, 'tcx, R>(
     param_env: ty::ParamEnv<'gcx>,
     mir: &'a Mir<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    implicit_region_bound: Option<ty::Region<'tcx>>,
-    borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
-    universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
+    implicit_region_bound: ty::Region<'tcx>,
+    borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
+    universal_region_relations: &'a UniversalRegionRelations<'tcx>,
     mut extra: impl FnMut(&mut TypeChecker<'a, 'gcx, 'tcx>) -> R,
 ) -> R where {
     let mut checker = TypeChecker::new(
@@ -548,15 +545,19 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         let all_facts = &mut None;
         let mut constraints = Default::default();
         let mut closure_bounds = Default::default();
-        if let Some(ref mut bcx) = self.cx.borrowck_context {
-            // Don't try to add borrow_region facts for the promoted MIR
-            mem::swap(bcx.all_facts, all_facts);
+        // Don't try to add borrow_region facts for the promoted MIR
+        mem::swap(self.cx.borrowck_context.all_facts, all_facts);
 
-            // Use a new sets of constraints and closure bounds so that we can
-            // modify their locations.
-            mem::swap(&mut bcx.constraints.outlives_constraints, &mut constraints);
-            mem::swap(&mut bcx.constraints.closure_bounds_mapping, &mut closure_bounds);
-        };
+        // Use a new sets of constraints and closure bounds so that we can
+        // modify their locations.
+        mem::swap(
+            &mut self.cx.borrowck_context.constraints.outlives_constraints,
+            &mut constraints
+        );
+        mem::swap(
+            &mut self.cx.borrowck_context.constraints.closure_bounds_mapping,
+            &mut closure_bounds
+        );
 
         self.visit_mir(promoted_mir);
 
@@ -567,40 +568,44 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
         self.mir = parent_mir;
         // Merge the outlives constraints back in, at the given location.
-        if let Some(ref mut base_bcx) = self.cx.borrowck_context {
-            mem::swap(base_bcx.all_facts, all_facts);
-            mem::swap(&mut base_bcx.constraints.outlives_constraints, &mut constraints);
-            mem::swap(&mut base_bcx.constraints.closure_bounds_mapping, &mut closure_bounds);
+        mem::swap(self.cx.borrowck_context.all_facts, all_facts);
+        mem::swap(
+            &mut self.cx.borrowck_context.constraints.outlives_constraints,
+            &mut constraints
+        );
+        mem::swap(
+            &mut self.cx.borrowck_context.constraints.closure_bounds_mapping,
+            &mut closure_bounds
+        );
 
-            let locations = location.to_locations();
-            for constraint in constraints.iter() {
-                let mut constraint = *constraint;
-                constraint.locations = locations;
-                if let ConstraintCategory::Return
-                    | ConstraintCategory::UseAsConst
-                    | ConstraintCategory::UseAsStatic = constraint.category
-                {
-                    // "Returning" from a promoted is an assigment to a
-                    // temporary from the user's point of view.
-                    constraint.category = ConstraintCategory::Boring;
-                }
-                base_bcx.constraints.outlives_constraints.push(constraint)
+        let locations = location.to_locations();
+        for constraint in constraints.iter() {
+            let mut constraint = *constraint;
+            constraint.locations = locations;
+            if let ConstraintCategory::Return
+                | ConstraintCategory::UseAsConst
+                | ConstraintCategory::UseAsStatic = constraint.category
+            {
+                // "Returning" from a promoted is an assigment to a
+                // temporary from the user's point of view.
+                constraint.category = ConstraintCategory::Boring;
             }
+            self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
+        }
 
-            if !closure_bounds.is_empty() {
-                let combined_bounds_mapping = closure_bounds
-                    .into_iter()
-                    .flat_map(|(_, value)| value)
-                    .collect();
-                let existing = base_bcx
-                    .constraints
-                    .closure_bounds_mapping
-                    .insert(location, combined_bounds_mapping);
-                assert!(
-                    existing.is_none(),
-                    "Multiple promoteds/closures at the same location."
-                );
-            }
+        if !closure_bounds.is_empty() {
+            let combined_bounds_mapping = closure_bounds
+                .into_iter()
+                .flat_map(|(_, value)| value)
+                .collect();
+            let existing = self.cx.borrowck_context
+                .constraints
+                .closure_bounds_mapping
+                .insert(location, combined_bounds_mapping);
+            assert!(
+                existing.is_none(),
+                "Multiple promoteds/closures at the same location."
+            );
         }
     }
 
@@ -831,10 +836,10 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     mir_def_id: DefId,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    implicit_region_bound: Option<ty::Region<'tcx>>,
+    implicit_region_bound: ty::Region<'tcx>,
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
-    borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
-    universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
+    borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
+    universal_region_relations: &'a UniversalRegionRelations<'tcx>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -976,9 +981,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         mir_def_id: DefId,
         param_env: ty::ParamEnv<'gcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        implicit_region_bound: Option<ty::Region<'tcx>>,
-        borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
-        universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
+        implicit_region_bound: ty::Region<'tcx>,
+        borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
+        universal_region_relations: &'a UniversalRegionRelations<'tcx>,
     ) -> Self {
         let mut checker = Self {
             infcx,
@@ -1092,18 +1097,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             locations, data
         );
 
-        if let Some(ref mut borrowck_context) = self.borrowck_context {
-            constraint_conversion::ConstraintConversion::new(
-                self.infcx,
-                borrowck_context.universal_regions,
-                self.region_bound_pairs,
-                self.implicit_region_bound,
-                self.param_env,
-                locations,
-                category,
-                &mut borrowck_context.constraints,
-            ).convert_all(&data);
-        }
+        constraint_conversion::ConstraintConversion::new(
+            self.infcx,
+            self.borrowck_context.universal_regions,
+            self.region_bound_pairs,
+            Some(self.implicit_region_bound),
+            self.param_env,
+            locations,
+            category,
+            &mut self.borrowck_context.constraints,
+        ).convert_all(&data);
     }
 
     /// Convenient wrapper around `relate_tys::relate_types` -- see
@@ -1123,7 +1126,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             b,
             locations,
             category,
-            self.borrowck_context.as_mut().map(|x| &mut **x),
+            Some(self.borrowck_context),
         )
     }
 
@@ -1276,10 +1279,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             ),
         )?;
 
-        let universal_region_relations = match self.universal_region_relations {
-            Some(rel) => rel,
-            None => return Ok(()),
-        };
+        let universal_region_relations = self.universal_region_relations;
 
         // Finally, if we instantiated the anon types successfully, we
         // have to solve any bounds (e.g., `-> impl Iterator` needs to
@@ -1324,14 +1324,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
                 let category = match *place {
-                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => if let Some(BorrowCheckContext {
+                    Place::Base(PlaceBase::Local(RETURN_PLACE)) => if let BorrowCheckContext {
                         universal_regions:
                             UniversalRegions {
                                 defining_ty: DefiningTy::Const(def_id, _),
                                 ..
                             },
                         ..
-                    }) = self.borrowck_context
+                    } = self.borrowck_context
                     {
                         if tcx.is_static(*def_id) {
                             ConstraintCategory::UseAsStatic
@@ -1559,15 +1559,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // output) types in the signature must be live, since
                 // all the inputs that fed into it were live.
                 for &late_bound_region in map.values() {
-                    if let Some(ref mut borrowck_context) = self.borrowck_context {
-                        let region_vid = borrowck_context
-                            .universal_regions
-                            .to_region_vid(late_bound_region);
-                        borrowck_context
-                            .constraints
-                            .liveness_constraints
-                            .add_element(region_vid, term_location);
-                    }
+                    let region_vid = self.borrowck_context
+                        .universal_regions
+                        .to_region_vid(late_bound_region);
+                    self.borrowck_context
+                        .constraints
+                        .liveness_constraints
+                        .add_element(region_vid, term_location);
                 }
 
                 self.check_call_inputs(mir, term, &sig, args, term_location, from_hir_call);
@@ -1629,14 +1627,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let dest_ty = dest.ty(mir, tcx).ty;
                 let category = match *dest {
                     Place::Base(PlaceBase::Local(RETURN_PLACE)) => {
-                        if let Some(BorrowCheckContext {
+                        if let BorrowCheckContext {
                             universal_regions:
                                 UniversalRegions {
                                     defining_ty: DefiningTy::Const(def_id, _),
                                     ..
                                 },
                             ..
-                        }) = self.borrowck_context
+                        } = self.borrowck_context
                         {
                             if tcx.is_static(*def_id) {
                                 ConstraintCategory::UseAsStatic
@@ -2343,10 +2341,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             all_facts,
             constraints,
             ..
-        } = match self.borrowck_context {
-            Some(ref mut borrowck_context) => borrowck_context,
-            None => return,
-        };
+        } = self.borrowck_context;
 
         // In Polonius mode, we also push a `borrow_region` fact
         // linking the loan to the region (in some cases, though,
@@ -2512,45 +2507,43 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             let closure_constraints =
                 closure_region_requirements.apply_requirements(tcx, def_id, substs);
 
-            if let Some(ref mut borrowck_context) = self.borrowck_context {
-                let bounds_mapping = closure_constraints
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(idx, constraint)| {
-                        let ty::OutlivesPredicate(k1, r2) =
-                            constraint.no_bound_vars().unwrap_or_else(|| {
-                                bug!("query_constraint {:?} contained bound vars", constraint,);
-                            });
+            let bounds_mapping = closure_constraints
+                .iter()
+                .enumerate()
+                .filter_map(|(idx, constraint)| {
+                    let ty::OutlivesPredicate(k1, r2) =
+                        constraint.no_bound_vars().unwrap_or_else(|| {
+                            bug!("query_constraint {:?} contained bound vars", constraint,);
+                        });
 
-                        match k1.unpack() {
-                            UnpackedKind::Lifetime(r1) => {
-                                // constraint is r1: r2
-                                let r1_vid = borrowck_context.universal_regions.to_region_vid(r1);
-                                let r2_vid = borrowck_context.universal_regions.to_region_vid(r2);
-                                let outlives_requirements =
-                                    &closure_region_requirements.outlives_requirements[idx];
-                                Some((
-                                    (r1_vid, r2_vid),
-                                    (
-                                        outlives_requirements.category,
-                                        outlives_requirements.blame_span,
-                                    ),
-                                ))
-                            }
-                            UnpackedKind::Type(_) | UnpackedKind::Const(_) => None,
+                    match k1.unpack() {
+                        UnpackedKind::Lifetime(r1) => {
+                            // constraint is r1: r2
+                            let r1_vid = self.borrowck_context.universal_regions.to_region_vid(r1);
+                            let r2_vid = self.borrowck_context.universal_regions.to_region_vid(r2);
+                            let outlives_requirements =
+                                &closure_region_requirements.outlives_requirements[idx];
+                            Some((
+                                (r1_vid, r2_vid),
+                                (
+                                    outlives_requirements.category,
+                                    outlives_requirements.blame_span,
+                                ),
+                            ))
                         }
-                    })
-                    .collect();
+                        UnpackedKind::Type(_) | UnpackedKind::Const(_) => None,
+                    }
+                })
+                .collect();
 
-                let existing = borrowck_context
-                    .constraints
-                    .closure_bounds_mapping
-                    .insert(location, bounds_mapping);
-                assert!(
-                    existing.is_none(),
-                    "Multiple closures at the same location."
-                );
-            }
+            let existing = self.borrowck_context
+                .constraints
+                .closure_bounds_mapping
+                .insert(location, bounds_mapping);
+            assert!(
+                existing.is_none(),
+                "Multiple closures at the same location."
+            );
 
             self.push_region_constraints(
                 location.to_locations(),
@@ -2665,56 +2658,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             span_mirbug!(self, NoSolution, "failed to normalize `{:?}`", value);
             value
         })
-    }
-}
-
-pub struct TypeckMir;
-
-impl MirPass for TypeckMir {
-    fn run_pass<'a, 'tcx>(
-        &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        src: MirSource<'tcx>,
-        mir: &mut Mir<'tcx>,
-    ) {
-        let def_id = src.def_id();
-        debug!("run_pass: {:?}", def_id);
-
-        // FIXME: We don't need this MIR pass anymore.
-        if true {
-            return;
-        }
-
-        if tcx.sess.err_count() > 0 {
-            // compiling a broken program can obviously result in a
-            // broken MIR, so try not to report duplicate errors.
-            return;
-        }
-
-        if tcx.is_constructor(def_id) {
-            // We just assume that the automatically generated struct/variant constructors are
-            // correct. See the comment in the `mir_borrowck` implementation for an
-            // explanation why we need this.
-            return;
-        }
-
-        let param_env = tcx.param_env(def_id);
-        tcx.infer_ctxt().enter(|infcx| {
-            type_check_internal(
-                &infcx,
-                def_id,
-                param_env,
-                mir,
-                &vec![],
-                None,
-                None,
-                None,
-                |_| (),
-            );
-
-            // For verification purposes, we just ignore the resulting
-            // region constraint sets. Not our problem. =)
-        });
     }
 }
 

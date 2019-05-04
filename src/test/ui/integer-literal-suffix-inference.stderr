@@ -3,7 +3,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i8(a16);
    |           ^^^ expected i8, found i16
-help: you can convert an `i16` to `i8` or panic if it the converted value wouldn't fit
+help: you can convert an `i16` to `i8` and panic if the converted value wouldn't fit
    |
 LL |     id_i8(a16.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i8(a32);
    |           ^^^ expected i8, found i32
-help: you can convert an `i32` to `i8` or panic if it the converted value wouldn't fit
+help: you can convert an `i32` to `i8` and panic if the converted value wouldn't fit
    |
 LL |     id_i8(a32.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i8(a64);
    |           ^^^ expected i8, found i64
-help: you can convert an `i64` to `i8` or panic if it the converted value wouldn't fit
+help: you can convert an `i64` to `i8` and panic if the converted value wouldn't fit
    |
 LL |     id_i8(a64.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i16(a32);
    |            ^^^ expected i16, found i32
-help: you can convert an `i32` to `i16` or panic if it the converted value wouldn't fit
+help: you can convert an `i32` to `i16` and panic if the converted value wouldn't fit
    |
 LL |     id_i16(a32.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -52,7 +52,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i16(a64);
    |            ^^^ expected i16, found i64
-help: you can convert an `i64` to `i16` or panic if it the converted value wouldn't fit
+help: you can convert an `i64` to `i16` and panic if the converted value wouldn't fit
    |
 LL |     id_i16(a64.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i32(a64);
    |            ^^^ expected i32, found i64
-help: you can convert an `i64` to `i32` or panic if it the converted value wouldn't fit
+help: you can convert an `i64` to `i32` and panic if the converted value wouldn't fit
    |
 LL |     id_i32(a64.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -117,7 +117,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i8(c16);
    |           ^^^ expected i8, found i16
-help: you can convert an `i16` to `i8` or panic if it the converted value wouldn't fit
+help: you can convert an `i16` to `i8` and panic if the converted value wouldn't fit
    |
 LL |     id_i8(c16.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -127,7 +127,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i8(c32);
    |           ^^^ expected i8, found i32
-help: you can convert an `i32` to `i8` or panic if it the converted value wouldn't fit
+help: you can convert an `i32` to `i8` and panic if the converted value wouldn't fit
    |
 LL |     id_i8(c32.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -137,7 +137,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i8(c64);
    |           ^^^ expected i8, found i64
-help: you can convert an `i64` to `i8` or panic if it the converted value wouldn't fit
+help: you can convert an `i64` to `i8` and panic if the converted value wouldn't fit
    |
 LL |     id_i8(c64.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -156,7 +156,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i16(c32);
    |            ^^^ expected i16, found i32
-help: you can convert an `i32` to `i16` or panic if it the converted value wouldn't fit
+help: you can convert an `i32` to `i16` and panic if the converted value wouldn't fit
    |
 LL |     id_i16(c32.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -166,7 +166,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i16(c64);
    |            ^^^ expected i16, found i64
-help: you can convert an `i64` to `i16` or panic if it the converted value wouldn't fit
+help: you can convert an `i64` to `i16` and panic if the converted value wouldn't fit
    |
 LL |     id_i16(c64.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -194,7 +194,7 @@ error[E0308]: mismatched types
    |
 LL |     id_i32(c64);
    |            ^^^ expected i32, found i64
-help: you can convert an `i64` to `i32` or panic if it the converted value wouldn't fit
+help: you can convert an `i64` to `i32` and panic if the converted value wouldn't fit
    |
 LL |     id_i32(c64.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -231,7 +231,7 @@ error[E0308]: mismatched types
    |
 LL |     id_u8(b16);
    |           ^^^ expected u8, found u16
-help: you can convert an `u16` to `u8` or panic if it the converted value wouldn't fit
+help: you can convert an `u16` to `u8` and panic if the converted value wouldn't fit
    |
 LL |     id_u8(b16.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -241,7 +241,7 @@ error[E0308]: mismatched types
    |
 LL |     id_u8(b32);
    |           ^^^ expected u8, found u32
-help: you can convert an `u32` to `u8` or panic if it the converted value wouldn't fit
+help: you can convert an `u32` to `u8` and panic if the converted value wouldn't fit
    |
 LL |     id_u8(b32.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -251,7 +251,7 @@ error[E0308]: mismatched types
    |
 LL |     id_u8(b64);
    |           ^^^ expected u8, found u64
-help: you can convert an `u64` to `u8` or panic if it the converted value wouldn't fit
+help: you can convert an `u64` to `u8` and panic if the converted value wouldn't fit
    |
 LL |     id_u8(b64.try_into().unwrap());
    |           ^^^^^^^^^^^^^^^^^^^^^^^
@@ -270,7 +270,7 @@ error[E0308]: mismatched types
    |
 LL |     id_u16(b32);
    |            ^^^ expected u16, found u32
-help: you can convert an `u32` to `u16` or panic if it the converted value wouldn't fit
+help: you can convert an `u32` to `u16` and panic if the converted value wouldn't fit
    |
 LL |     id_u16(b32.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -280,7 +280,7 @@ error[E0308]: mismatched types
    |
 LL |     id_u16(b64);
    |            ^^^ expected u16, found u64
-help: you can convert an `u64` to `u16` or panic if it the converted value wouldn't fit
+help: you can convert an `u64` to `u16` and panic if the converted value wouldn't fit
    |
 LL |     id_u16(b64.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^
@@ -308,7 +308,7 @@ error[E0308]: mismatched types
    |
 LL |     id_u32(b64);
    |            ^^^ expected u32, found u64
-help: you can convert an `u64` to `u32` or panic if it the converted value wouldn't fit
+help: you can convert an `u64` to `u32` and panic if the converted value wouldn't fit
    |
 LL |     id_u32(b64.try_into().unwrap());
    |            ^^^^^^^^^^^^^^^^^^^^^^^

@@ -522,7 +522,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let msg = format!("you can convert an `{}` to `{}`", checked_ty, expected_ty);
         let cast_msg = format!("you can cast an `{} to `{}`", checked_ty, expected_ty);
-        let try_msg = format!("{} or panic if it the converted value wouldn't fit", msg);
+        let try_msg = format!("{} and panic if the converted value wouldn't fit", msg);
         let lit_msg = format!(
             "change the type of the numeric literal from `{}` to `{}`",
             checked_ty,

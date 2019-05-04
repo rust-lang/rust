@@ -92,10 +92,12 @@ impl<'a> DefCollector<'a> {
             visit::walk_generics(this, generics);
 
             // Walk the generated arguments for the `async fn`.
-            for a in arguments {
+            for (i, a) in arguments.iter().enumerate() {
                 use visit::Visitor;
                 if let Some(arg) = &a.arg {
                     this.visit_ty(&arg.ty);
+                } else {
+                    this.visit_ty(&decl.inputs[i].ty);
                 }
             }
 

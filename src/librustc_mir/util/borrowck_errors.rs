@@ -12,26 +12,10 @@ pub enum Origin {
 }
 
 impl fmt::Display for Origin {
-    fn fmt(&self, w: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // If the user passed `-Z borrowck=compare`, then include
-        // origin info as part of the error report,
-        // otherwise
-        let display_origin = ty::tls::with_opt(|opt_tcx| {
-            if let Some(tcx) = opt_tcx {
-                tcx.sess.opts.borrowck_mode == BorrowckMode::Compare
-            } else {
-                false
-            }
-        });
-        if display_origin {
-            match *self {
-                Origin::Mir => write!(w, " (Mir)"),
-                Origin::Ast => write!(w, " (Ast)"),
-            }
-        } else {
-            // Print no origin info
-            Ok(())
-        }
+    fn fmt(&self, _w: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // FIXME(chrisvittal) remove Origin entirely
+        // Print no origin info
+        Ok(())
     }
 }
 

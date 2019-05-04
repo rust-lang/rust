@@ -2059,10 +2059,13 @@ impl<'tcx> Place<'tcx> {
 
     /// Finds the innermost `Local` from this `Place`.
     pub fn base_local(&self) -> Option<Local> {
-        match self {
-            Place::Base(PlaceBase::Local(local)) => Some(*local),
-            Place::Projection(box Projection { base, elem: _ }) => base.base_local(),
-            Place::Base(PlaceBase::Static(..)) => None,
+        let mut place = self;
+        loop {
+            match place {
+                Place::Projection(proj) => place = &proj.base,
+                Place::Base(PlaceBase::Static(_)) => return None,
+                Place::Base(PlaceBase::Local(local)) => return Some(*local),
+            }
         }
     }
 
