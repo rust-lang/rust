@@ -147,6 +147,20 @@ extern "C" {
     fn vmaxuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.ppc.altivec.vmaxuw"]
     fn vmaxuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.ppc.altivec.vminsb"]
+    fn vminsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.vminsh"]
+    fn vminsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vminsw"]
+    fn vminsw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vminub"]
+    fn vminub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.ppc.altivec.vminuh"]
+    fn vminuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.ppc.altivec.vminuw"]
+    fn vminuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
 mod sealed {
@@ -162,6 +176,57 @@ mod sealed {
             }
         }
     }
+
+    test_impl! { vec_vminsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vminsb, vminsb] }
+    test_impl! { vec_vminsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vminsh, vminsh] }
+    test_impl! { vec_vminsw (a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [vminsw, vminsw] }
+
+    test_impl! { vec_vminub (a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [vminub, vminub] }
+    test_impl! { vec_vminuh (a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [vminuh, vminuh] }
+    test_impl! { vec_vminuw (a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vminuw, vminuw] }
+
+    pub trait VectorMin<Other> {
+        type Result;
+        unsafe fn vec_min(self, b: Other) -> Self::Result;
+    }
+
+    macro_rules! impl_vec_min {
+        ($fun:ident ($a:ty, $b:ty) -> $r:ty) => {
+            impl VectorMin<$b> for $a {
+                type Result = $r;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_min(self, b: $b) -> Self::Result {
+                    $fun(transmute(self), transmute(b))
+                }
+            }
+        }
+    }
+
+    impl_vec_min!{ vminub (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+    impl_vec_min!{ vminub (vector_unsigned_char, vector_bool_char) -> vector_unsigned_char }
+    impl_vec_min!{ vminub (vector_bool_char, vector_unsigned_char) -> vector_unsigned_char }
+
+    impl_vec_min!{ vminsb (vector_signed_char, vector_signed_char) -> vector_signed_char }
+    impl_vec_min!{ vminsb (vector_signed_char, vector_bool_char) -> vector_signed_char }
+    impl_vec_min!{ vminsb (vector_bool_char, vector_signed_char) -> vector_signed_char }
+
+    impl_vec_min!{ vminuh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+    impl_vec_min!{ vminuh (vector_unsigned_short, vector_bool_short) -> vector_unsigned_short }
+    impl_vec_min!{ vminuh (vector_bool_short, vector_unsigned_short) -> vector_unsigned_short }
+
+    impl_vec_min!{ vminsh (vector_signed_short, vector_signed_short) -> vector_signed_short }
+    impl_vec_min!{ vminsh (vector_signed_short, vector_bool_short) -> vector_signed_short }
+    impl_vec_min!{ vminsh (vector_bool_short, vector_signed_short) -> vector_signed_short }
+
+    impl_vec_min!{ vminuw (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+    impl_vec_min!{ vminuw (vector_unsigned_int, vector_bool_int) -> vector_unsigned_int }
+    impl_vec_min!{ vminuw (vector_bool_int, vector_unsigned_int) -> vector_unsigned_int }
+
+    impl_vec_min!{ vminsw (vector_signed_int, vector_signed_int) -> vector_signed_int }
+    impl_vec_min!{ vminsw (vector_signed_int, vector_bool_int) -> vector_signed_int }
+    impl_vec_min!{ vminsw (vector_bool_int, vector_signed_int) -> vector_signed_int }
+
 
     test_impl! { vec_vmaxsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vmaxsb, vmaxsb] }
     test_impl! { vec_vmaxsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vmaxsh, vmaxsh] }
@@ -908,6 +973,15 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector min.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_min<T, U>(a: T, b: U) -> <T as sealed::VectorMin<U>>::Result
+where
+    T: sealed::VectorMin<U>,
+{
+    a.vec_min(b)
+}
 
 /// Vector max.
 #[inline]
@@ -1133,6 +1207,50 @@ mod tests {
 
         (f32x4) => ( vector_float );
     }
+
+    macro_rules! test_vec_min {
+        { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
+                let b: s_t_l!($ty) = transmute($ty::new($($b),+));
+
+                let d = $ty::new($($d),+);
+                let r : $ty = transmute(vec_min(a, b));
+                assert_eq!(d, r);
+            }
+         }
+    }
+
+    test_vec_min!{ test_vec_min_i32x4, i32x4,
+                  [-1, 0, 1, 2],
+                  [2, 1, -1, -2],
+                  [-1, 0, -1, -2] }
+
+    test_vec_min!{ test_vec_min_u32x4, u32x4,
+                  [0, 0, 1, 2],
+                  [2, 1, 0, 0],
+                  [0, 0, 0, 0] }
+
+    test_vec_min!{ test_vec_min_i16x8, i16x8,
+                  [-1, 0, 1, 2, -1, 0, 1, 2],
+                  [2, 1, -1, -2, 2, 1, -1, -2],
+                  [-1, 0, -1, -2, -1, 0, -1, -2] }
+
+    test_vec_min!{ test_vec_min_u16x8, u16x8,
+                  [0, 0, 1, 2, 0, 0, 1, 2],
+                  [2, 1, 0, 0, 2, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0] }
+
+    test_vec_min!{ test_vec_min_i8x16, i8x16,
+                  [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
+                  [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
+                  [-1, 0, -1, -2, -1, 0, -1, -2, -1, 0, -1, -2, -1, 0, -1, -2] }
+
+    test_vec_min!{ test_vec_min_u8x16, u8x16,
+                  [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
+                  [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
+                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
     macro_rules! test_vec_max {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
