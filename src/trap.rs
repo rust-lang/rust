@@ -12,7 +12,7 @@ fn codegen_print(fx: &mut FunctionCx<'_, '_, impl cranelift_module::Backend>, ms
     let msg_bytes = format!("trap at {:?} ({}): {}\0", fx.instance, symbol_name, msg).into_bytes().into_boxed_slice();
     let mut data_ctx = DataContext::new();
     data_ctx.define(msg_bytes);
-    let msg_id = fx.module.declare_data(&(symbol_name.as_str().to_string() + msg), Linkage::Local, false).unwrap();
+    let msg_id = fx.module.declare_data(&(symbol_name.as_str().to_string() + msg), Linkage::Local, false, None).unwrap();
 
     // Ignore DuplicateDefinition error, as the data will be the same
     let _ = fx.module.define_data(msg_id, &data_ctx);

@@ -57,6 +57,7 @@ mod vtable;
 mod prelude {
     pub use std::any::Any;
     pub use std::collections::{HashMap, HashSet};
+    pub use std::convert::TryInto;
 
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::source_map::{Pos, Span, DUMMY_SP};
@@ -213,7 +214,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
         };
 
         if std::env::var("SHOULD_RUN").is_ok() {
-            let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
+            let mut jit_module: Module<SimpleJITBackend> =
+                Module::new(SimpleJITBuilder::new(cranelift_module::default_libcall_names()));
             assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
             let sig = Signature {
@@ -263,7 +265,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                         build_isa(tcx.sess),
                         name + ".o",
                         FaerieTrapCollection::Disabled,
-                        FaerieBuilder::default_libcall_names(),
+                        cranelift_module::default_libcall_names(),
                     )
                     .unwrap(),
                 );

@@ -179,7 +179,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
 
 fn data_id_for_alloc_id<B: Backend>(module: &mut Module<B>, alloc_id: AllocId) -> DataId {
     module
-        .declare_data(&format!("__alloc_{}", alloc_id.0), Linkage::Local, false)
+        .declare_data(&format!("__alloc_{}", alloc_id.0), Linkage::Local, false, None)
         .unwrap()
 }
 
@@ -190,15 +190,16 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
     linkage: Linkage,
 ) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
+    let ty = tcx.type_of(def_id);
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true
     } else {
-        !tcx.type_of(def_id)
-            .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
+        !ty.is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
     };
+    let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
 
     let data_id = module
-        .declare_data(&*symbol_name, linkage, is_mutable)
+        .declare_data(&*symbol_name, linkage, is_mutable, Some(align.try_into().unwrap()))
         .unwrap();
 
     if linkage == Linkage::Preemptible {

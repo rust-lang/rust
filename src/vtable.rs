@@ -136,6 +136,7 @@ fn build_vtable<'a, 'tcx: 'a>(
             &format!("vtable.{:?}.for.{:?}", trait_ref, ty),
             Linkage::Local,
             false,
+            Some(fx.tcx.data_layout.pointer_align.pref.bytes().try_into().unwrap())
         )
         .unwrap();
 
