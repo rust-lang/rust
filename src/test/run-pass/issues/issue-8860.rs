@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-// compile-flags: -Z borrowck=compare
 
 static mut DROP: isize = 0;
 static mut DROP_S: isize = 0;

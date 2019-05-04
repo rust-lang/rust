@@ -1,59 +1,5 @@
-error[E0506]: cannot assign to `data.0` because it is borrowed (Ast)
-  --> $DIR/loan_ends_mid_block_pair.rs:14:5
-   |
-LL |     let c = &mut data.0;
-   |                  ------ borrow of `data.0` occurs here
-LL |     capitalize(c);
-LL |     data.0 = 'e';
-   |     ^^^^^^^^^^^^ assignment to borrowed `data.0` occurs here
-
-error[E0506]: cannot assign to `data.0` because it is borrowed (Ast)
-  --> $DIR/loan_ends_mid_block_pair.rs:17:5
-   |
-LL |     let c = &mut data.0;
-   |                  ------ borrow of `data.0` occurs here
-...
-LL |     data.0 = 'f';
-   |     ^^^^^^^^^^^^ assignment to borrowed `data.0` occurs here
-
-error[E0506]: cannot assign to `data.0` because it is borrowed (Ast)
-  --> $DIR/loan_ends_mid_block_pair.rs:19:5
-   |
-LL |     let c = &mut data.0;
-   |                  ------ borrow of `data.0` occurs here
-...
-LL |     data.0 = 'g';
-   |     ^^^^^^^^^^^^ assignment to borrowed `data.0` occurs here
-
-error[E0506]: cannot assign to `data.0` because it is borrowed (Ast)
-  --> $DIR/loan_ends_mid_block_pair.rs:28:5
-   |
-LL |     let c = &mut data.0;
-   |                  ------ borrow of `data.0` occurs here
-LL |     capitalize(c);
-LL |     data.0 = 'e';
-   |     ^^^^^^^^^^^^ assignment to borrowed `data.0` occurs here
-
-error[E0506]: cannot assign to `data.0` because it is borrowed (Ast)
-  --> $DIR/loan_ends_mid_block_pair.rs:30:5
-   |
-LL |     let c = &mut data.0;
-   |                  ------ borrow of `data.0` occurs here
-...
-LL |     data.0 = 'f';
-   |     ^^^^^^^^^^^^ assignment to borrowed `data.0` occurs here
-
-error[E0506]: cannot assign to `data.0` because it is borrowed (Ast)
-  --> $DIR/loan_ends_mid_block_pair.rs:32:5
-   |
-LL |     let c = &mut data.0;
-   |                  ------ borrow of `data.0` occurs here
-...
-LL |     data.0 = 'g';
-   |     ^^^^^^^^^^^^ assignment to borrowed `data.0` occurs here
-
-error[E0506]: cannot assign to `data.0` because it is borrowed (Mir)
-  --> $DIR/loan_ends_mid_block_pair.rs:14:5
+error[E0506]: cannot assign to `data.0` because it is borrowed
+  --> $DIR/loan_ends_mid_block_pair.rs:12:5
    |
 LL |     let c = &mut data.0;
    |             ----------- borrow of `data.0` occurs here
@@ -64,6 +10,6 @@ LL |     data.0 = 'e';
 LL |     capitalize(c);
    |                - borrow later used here
 
-error: aborting due to 7 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0506`.

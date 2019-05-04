@@ -1,7 +1,6 @@
 // run-pass
 // ignore-emscripten u128 not supported
 
-// compile-flags: -Z borrowck=compare
 
 #![feature(test)]
 

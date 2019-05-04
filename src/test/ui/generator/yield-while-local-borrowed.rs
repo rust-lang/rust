@@ -1,5 +1,3 @@
-// compile-flags: -Z borrowck=compare
-
 #![feature(generators, generator_trait)]
 
 use std::ops::{GeneratorState, Generator};
@@ -13,8 +11,7 @@ fn borrow_local_inline() {
     // `b` and gets extended by region inference.)
     let mut b = move || {
         let a = &mut 3;
-        //~^ ERROR borrow may still be in use when generator yields (Ast)
-        //~| ERROR borrow may still be in use when generator yields (Mir)
+        //~^ ERROR borrow may still be in use when generator yields
         yield();
         println!("{}", a);
     };
@@ -41,8 +38,7 @@ fn borrow_local() {
         let a = 3;
         {
             let b = &a;
-            //~^ ERROR borrow may still be in use when generator yields (Ast)
-            //~| ERROR borrow may still be in use when generator yields (Mir)
+            //~^ ERROR borrow may still be in use when generator yields
             yield();
             println!("{}", b);
         }

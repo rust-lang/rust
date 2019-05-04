@@ -1,36 +1,5 @@
-error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:13:9
-   |
-LL |         x = 2;
-   |         ----- first assignment to `x`
-LL |         x = 3;
-   |         ^^^^^ cannot assign twice to immutable variable
-
-error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:25:13
-   |
-LL |             x = 2;
-   |             ----- first assignment to `x`
-LL |             x = 3;
-   |             ^^^^^ cannot assign twice to immutable variable
-
-error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:35:13
-   |
-LL |             x = 1;
-   |             ^^^^^ cannot assign twice to immutable variable
-
-error[E0384]: cannot assign twice to immutable variable `x` (Ast)
-  --> $DIR/liveness-assign-imm-local-notes.rs:38:13
-   |
-LL |             x = 1;
-   |             ----- first assignment to `x`
-...
-LL |             x = 2;
-   |             ^^^^^ cannot assign twice to immutable variable
-
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:13:9
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/liveness-assign-imm-local-notes.rs:10:9
    |
 LL |     let x;
    |         - help: make this binding mutable: `mut x`
@@ -40,8 +9,8 @@ LL |         x = 2;
 LL |         x = 3;
    |         ^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:25:13
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/liveness-assign-imm-local-notes.rs:21:13
    |
 LL |         let x;
    |             - help: make this binding mutable: `mut x`
@@ -51,8 +20,8 @@ LL |             x = 2;
 LL |             x = 3;
    |             ^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:35:13
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/liveness-assign-imm-local-notes.rs:30:13
    |
 LL |     let x;
    |         - help: make this binding mutable: `mut x`
@@ -60,18 +29,18 @@ LL |     let x;
 LL |             x = 1;
    |             ^^^^^ cannot assign twice to immutable variable
 
-error[E0384]: cannot assign twice to immutable variable `x` (Mir)
-  --> $DIR/liveness-assign-imm-local-notes.rs:38:13
+error[E0384]: cannot assign twice to immutable variable `x`
+  --> $DIR/liveness-assign-imm-local-notes.rs:32:13
    |
 LL |     let x;
    |         - help: make this binding mutable: `mut x`
 ...
 LL |             x = 1;
    |             ----- first assignment to `x`
-...
+LL |         } else {
 LL |             x = 2;
    |             ^^^^^ cannot assign twice to immutable variable
 
-error: aborting due to 8 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0384`.
