@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedEnum` is non-empty
-  --> $DIR/uninhabited_match_with_exhaustive_patterns.rs:19:11
+  --> $DIR/match_with_exhaustive_patterns.rs:19:11
    |
 LL |     match x {}
    |           ^
