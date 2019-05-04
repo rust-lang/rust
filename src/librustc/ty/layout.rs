@@ -1720,10 +1720,9 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
         let tcx = cx.tcx();
         let discr_layout = |discr: &Scalar| -> C::TyLayout {
             let layout = LayoutDetails::scalar(cx, discr.clone());
-            MaybeResult::from_ok(TyLayout {
-                details: tcx.intern_layout(layout),
-                ty: discr.value.to_ty(tcx)
-            })
+            MaybeResult::from(Ok(
+                TyLayout {details: tcx.intern_layout(layout),ty: discr.value.to_ty(tcx)}
+            ))
         };
 
         cx.layout_of(match this.ty.sty {
