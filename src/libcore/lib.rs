@@ -190,6 +190,7 @@ pub mod borrow;
 /* Core types and methods on primitives */
 
 pub mod any;
+#[cfg_attr(stage0, path = "array_stage0.rs")]
 pub mod array;
 pub mod ascii;
 pub mod sync;
