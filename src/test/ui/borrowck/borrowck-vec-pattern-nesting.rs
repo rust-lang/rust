@@ -46,6 +46,7 @@ fn c() {
     }
     let a = vec[0]; //~ ERROR cannot move out
     //~| NOTE cannot move out of here
+    //~| NOTE move occurs because
     //~| HELP consider borrowing here
 }
 
@@ -64,6 +65,7 @@ fn d() {
     }
     let a = vec[0]; //~ ERROR cannot move out
     //~| NOTE cannot move out of here
+    //~| NOTE move occurs because
     //~| HELP consider borrowing here
 }
 
@@ -83,6 +85,7 @@ fn e() {
     }
     let a = vec[0]; //~ ERROR cannot move out
     //~| NOTE cannot move out of here
+    //~| NOTE move occurs because
     //~| HELP consider borrowing here
 }
 

@@ -1,11 +1,11 @@
-error[E0507]: cannot move out of captured variable in an `Fn` closure
+error[E0507]: cannot move out of `y`, a captured variable in an `Fn` closure
   --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:11:9
    |
 LL |     let y = vec![format!("World")];
    |         - captured outer variable
 LL |     call(|| {
 LL |         y.into_iter();
-   |         ^ cannot move out of captured variable in an `Fn` closure
+   |         ^ move occurs because `y` has type `std::vec::Vec<std::string::String>`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

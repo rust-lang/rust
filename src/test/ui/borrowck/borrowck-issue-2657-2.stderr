@@ -1,10 +1,10 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of `*y` which is behind a shared reference
   --> $DIR/borrowck-issue-2657-2.rs:7:18
    |
 LL |         let _b = *y;
    |                  ^^
    |                  |
-   |                  cannot move out of borrowed content
+   |                  move occurs because `*y` has type `std::boxed::Box<i32>`, which does not implement the `Copy` trait
    |                  help: consider removing the `*`: `y`
 
 error: aborting due to previous error

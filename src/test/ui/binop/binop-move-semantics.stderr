@@ -47,17 +47,17 @@ LL |     y;
 LL |     use_mut(n); use_imm(m);
    |             - borrow later used here
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of `*m` which is behind a mutable reference
   --> $DIR/binop-move-semantics.rs:30:5
    |
 LL |     *m
-   |     ^^ cannot move out of borrowed content
+   |     ^^ move occurs because `*m` has type `T`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/binop-move-semantics.rs:32:5
    |
 LL |     *n;
-   |     ^^ cannot move out of borrowed content
+   |     ^^ move occurs because `*n` has type `T`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `f` as immutable because it is also borrowed as mutable
   --> $DIR/binop-move-semantics.rs:54:5

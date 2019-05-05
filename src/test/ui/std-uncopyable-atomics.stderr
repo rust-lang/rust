@@ -1,37 +1,37 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:9:13
    |
 LL |     let x = *&x;
    |             ^^^
    |             |
-   |             cannot move out of borrowed content
+   |             move occurs because value has type `std::sync::atomic::AtomicBool`, which does not implement the `Copy` trait
    |             help: consider removing the `*`: `&x`
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:11:13
    |
 LL |     let x = *&x;
    |             ^^^
    |             |
-   |             cannot move out of borrowed content
+   |             move occurs because value has type `std::sync::atomic::AtomicIsize`, which does not implement the `Copy` trait
    |             help: consider removing the `*`: `&x`
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:13:13
    |
 LL |     let x = *&x;
    |             ^^^
    |             |
-   |             cannot move out of borrowed content
+   |             move occurs because value has type `std::sync::atomic::AtomicUsize`, which does not implement the `Copy` trait
    |             help: consider removing the `*`: `&x`
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of a shared reference
   --> $DIR/std-uncopyable-atomics.rs:15:13
    |
 LL |     let x = *&x;
    |             ^^^
    |             |
-   |             cannot move out of borrowed content
+   |             move occurs because value has type `std::sync::atomic::AtomicPtr<usize>`, which does not implement the `Copy` trait
    |             help: consider removing the `*`: `&x`
 
 error: aborting due to 4 previous errors

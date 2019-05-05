@@ -1,8 +1,8 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of dereference of `std::cell::Ref<'_, TheDarkKnight>`
   --> $DIR/E0507.rs:12:5
    |
 LL |     x.borrow().nothing_is_true();
-   |     ^^^^^^^^^^ cannot move out of borrowed content
+   |     ^^^^^^^^^^ move occurs because value has type `TheDarkKnight`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

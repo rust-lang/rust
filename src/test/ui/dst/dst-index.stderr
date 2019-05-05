@@ -10,17 +10,17 @@ error[E0161]: cannot move a value of type dyn std::fmt::Debug: the size of dyn s
 LL |     T[0];
    |     ^^^^
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of index of `S`
   --> $DIR/dst-index.rs:31:5
    |
 LL |     S[0];
-   |     ^^^^ cannot move out of borrowed content
+   |     ^^^^ move occurs because value has type `str`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of index of `T`
   --> $DIR/dst-index.rs:34:5
    |
 LL |     T[0];
-   |     ^^^^ cannot move out of borrowed content
+   |     ^^^^ move occurs because value has type `dyn std::fmt::Debug`, which does not implement the `Copy` trait
 
 error: aborting due to 4 previous errors
 

@@ -55,7 +55,7 @@ fn test7() {
     f(Box::new(|a| {
         //~^ ERROR cannot move out of `f` because it is borrowed
         foo(f);
-        //~^ ERROR cannot move out of captured variable in an `FnMut` closure
+        //~^ ERROR cannot move out of `f`, a captured variable in an `FnMut` closure
     }), 3);
 }
 

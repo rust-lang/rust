@@ -6,7 +6,7 @@ enum VecWrapper { A(Vec<i32>) }
 fn foo(x: VecWrapper) -> usize {
     match x {
         VecWrapper::A(v) if { drop(v); false } => 1,
-        //~^ ERROR cannot move out of borrowed content
+        //~^ ERROR cannot move out of `v` in pattern guard
         VecWrapper::A(v) => v.len()
     }
 }

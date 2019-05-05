@@ -5,13 +5,10 @@ LL |     match x {
    |           ^ cannot move out of here
 LL |
 LL |         X { x: y } => println!("contents: {}", y)
-   |                - data moved here
-   |
-note: move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
-  --> $DIR/disallowed-deconstructing-destructing-struct-match.rs:16:16
-   |
-LL |         X { x: y } => println!("contents: {}", y)
-   |                ^
+   |                -
+   |                |
+   |                data moved here
+   |                move occurs because `y` has type `std::string::String`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

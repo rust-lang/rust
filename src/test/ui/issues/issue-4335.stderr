@@ -1,10 +1,10 @@
-error[E0507]: cannot move out of captured variable in an `FnMut` closure
+error[E0507]: cannot move out of `*v`, as `v` is a captured variable in an `FnMut` closure
   --> $DIR/issue-4335.rs:6:20
    |
 LL | fn f<'r, T>(v: &'r T) -> Box<dyn FnMut() -> T + 'r> {
    |             - captured outer variable
 LL |     id(Box::new(|| *v))
-   |                    ^^ cannot move out of captured variable in an `FnMut` closure
+   |                    ^^ move occurs because `*v` has type `T`, which does not implement the `Copy` trait
 
 error[E0373]: closure may outlive the current function, but it borrows `v`, which is owned by the current function
   --> $DIR/issue-4335.rs:6:17

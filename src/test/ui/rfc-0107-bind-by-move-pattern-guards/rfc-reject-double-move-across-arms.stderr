@@ -1,8 +1,10 @@
-error[E0507]: cannot move out of borrowed content
+error[E0507]: cannot move out of `v` in pattern guard
   --> $DIR/rfc-reject-double-move-across-arms.rs:8:36
    |
 LL |         VecWrapper::A(v) if { drop(v); false } => 1,
-   |                                    ^ cannot move out of borrowed content
+   |                                    ^ move occurs because `v` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
 
 error: aborting due to previous error
 

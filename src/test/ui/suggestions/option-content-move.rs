@@ -9,7 +9,7 @@ impl LipogramCorpora {
         for selection in &self.selections {
             if selection.1.is_some() {
                 if selection.1.unwrap().contains(selection.0) {
-                //~^ ERROR cannot move out of borrowed content
+                //~^ ERROR cannot move out of `selection.1`
                     return Err(selection.0);
                 }
             }
@@ -27,7 +27,7 @@ impl LipogramCorpora2 {
         for selection in &self.selections {
             if selection.1.is_ok() {
                 if selection.1.unwrap().contains(selection.0) {
-                //~^ ERROR cannot move out of borrowed content
+                //~^ ERROR cannot move out of `selection.1`
                     return Err(selection.0);
                 }
             }

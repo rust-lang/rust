@@ -26,14 +26,14 @@ LL | fn test4(f: &Test) {
 LL |     f.f.call_mut(())
    |     ^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error[E0507]: cannot move out of captured variable in an `FnMut` closure
+error[E0507]: cannot move out of `f`, a captured variable in an `FnMut` closure
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:57:13
    |
 LL |     let mut f = move |g: Box<dyn FnMut(isize)>, b: isize| {
    |         ----- captured outer variable
 ...
 LL |         foo(f);
-   |             ^ cannot move out of captured variable in an `FnMut` closure
+   |             ^ move occurs because `f` has type `[closure@$DIR/borrowck-call-is-borrow-issue-12224.rs:52:17: 54:6 s:std::string::String]`, which does not implement the `Copy` trait
 
 error[E0505]: cannot move out of `f` because it is borrowed
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:55:16

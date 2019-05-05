@@ -1,8 +1,8 @@
-error[E0507]: cannot move out of static item
+error[E0507]: cannot move out of static item `BAR`
   --> $DIR/static-items-cant-move.rs:18:10
    |
 LL |     test(BAR);
-   |          ^^^ cannot move out of static item
+   |          ^^^ move occurs because `BAR` has type `Foo`, which does not implement the `Copy` trait
 
 error: aborting due to previous error
 

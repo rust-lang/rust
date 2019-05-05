@@ -5,6 +5,7 @@ LL |     let fancy_field = drop_struct.fancy;
    |                       ^^^^^^^^^^^^^^^^^
    |                       |
    |                       cannot move out of here
+   |                       move occurs because `drop_struct.fancy` has type `FancyNum`, which does not implement the `Copy` trait
    |                       help: consider borrowing here: `&drop_struct.fancy`
 
 error: aborting due to previous error

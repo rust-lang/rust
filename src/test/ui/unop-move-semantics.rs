@@ -21,9 +21,9 @@ fn illegal_dereference<T: Not<Output=T>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
 
-    !*m;  //~ ERROR: cannot move out of borrowed content
+    !*m;  //~ ERROR: cannot move out of `*m`
 
-    !*n;  //~ ERROR: cannot move out of borrowed content
+    !*n;  //~ ERROR: cannot move out of `*n`
     use_imm(n); use_mut(m);
 }
 fn main() {}

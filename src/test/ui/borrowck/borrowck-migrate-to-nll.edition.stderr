@@ -1,9 +1,14 @@
-warning[E0507]: cannot move out of borrowed content
-  --> $DIR/borrowck-migrate-to-nll.rs:25:17
+warning[E0507]: cannot move out of `foo` in pattern guard
+  --> $DIR/borrowck-migrate-to-nll.rs:25:18
    |
 LL |                 (|| { let bar = foo; bar.take() })();
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot move out of borrowed content
+   |                  ^^             ---
+   |                  |              |
+   |                  |              move occurs because `foo` has type `&mut std::option::Option<&i32>`, which does not implement the `Copy` trait
+   |                  |              move occurs due to use in closure
+   |                  move out of `foo` occurs here
    |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
    = note: for more information, try `rustc --explain E0729`

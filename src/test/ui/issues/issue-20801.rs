@@ -24,14 +24,14 @@ fn const_ptr() -> *const T {
 
 pub fn main() {
     let a = unsafe { *mut_ref() };
-    //~^ ERROR cannot move out of borrowed content
+    //~^ ERROR cannot move out of a mutable reference
 
     let b = unsafe { *imm_ref() };
-    //~^ ERROR cannot move out of borrowed content
+    //~^ ERROR cannot move out of a shared reference
 
     let c = unsafe { *mut_ptr() };
-    //~^ ERROR cannot move out of dereference of raw pointer
+    //~^ ERROR cannot move out of a raw pointer
 
     let d = unsafe { *const_ptr() };
-    //~^ ERROR cannot move out of dereference of raw pointer
+    //~^ ERROR cannot move out of a raw pointer
 }

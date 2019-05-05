@@ -5,6 +5,7 @@ LL |     let _value = array[0];
    |                  ^^^^^^^^
    |                  |
    |                  cannot move out of here
+   |                  move occurs because `array[_]` has type `NonCopy`, which does not implement the `Copy` trait
    |                  help: consider borrowing here: `&array[0]`
 
 error: aborting due to previous error
