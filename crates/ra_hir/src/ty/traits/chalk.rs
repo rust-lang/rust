@@ -15,6 +15,10 @@ use crate::{
 };
 use super::ChalkContext;
 
+/// This represents a trait whose name we could not resolve.
+const UNKNOWN_TRAIT: chalk_ir::TraitId =
+    chalk_ir::TraitId(chalk_ir::RawId { index: u32::max_value() });
+
 pub(super) trait ToChalk {
     type Chalk;
     fn to_chalk(self, db: &impl HirDatabase) -> Self::Chalk;
@@ -45,7 +49,10 @@ impl ToChalk for Ty {
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             // FIXME this is clearly incorrect, but probably not too incorrect
             // and I'm not sure what to actually do with Ty::Unknown
-            Ty::Unknown => PlaceholderIndex { ui: UniverseIndex::ROOT, idx: 0 }.to_ty(),
+            // maybe an alternative would be `for<T> T`? (meaningless in rust, but expressible in chalk's Ty)
+            Ty::Unknown => {
+                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: usize::max_value() }.to_ty()
+            }
         }
     }
     fn from_chalk(db: &impl HirDatabase, chalk: chalk_ir::Ty) -> Self {
@@ -154,7 +161,13 @@ impl ToChalk for GenericPredicate {
             GenericPredicate::Implemented(trait_ref) => {
                 make_binders(chalk_ir::WhereClause::Implemented(trait_ref.to_chalk(db)), 0)
             }
-            GenericPredicate::Error => panic!("Trying to pass errored where clause to Chalk"),
+            GenericPredicate::Error => {
+                let impossible_trait_ref = chalk_ir::TraitRef {
+                    trait_id: UNKNOWN_TRAIT,
+                    parameters: vec![Ty::Unknown.to_chalk(db).cast()],
+                };
+                make_binders(chalk_ir::WhereClause::Implemented(impossible_trait_ref), 0)
+            }
         }
     }
 
@@ -178,19 +191,13 @@ fn convert_where_clauses(
     db: &impl HirDatabase,
     def: GenericDef,
     substs: &Substs,
-) -> (Vec<chalk_ir::QuantifiedWhereClause>, bool) {
+) -> Vec<chalk_ir::QuantifiedWhereClause> {
     let generic_predicates = db.generic_predicates(def);
     let mut result = Vec::with_capacity(generic_predicates.len());
-    let mut has_error = false;
     for pred in generic_predicates.iter() {
-        // FIXME: it would probably be nicer if we could just convert errored predicates to a where clause that is never true...
-        if pred.is_error() {
-            has_error = true;
-        } else {
-            result.push(pred.clone().subst(substs).to_chalk(db));
-        }
+        result.push(pred.clone().subst(substs).to_chalk(db));
     }
-    (result, has_error)
+    result
 }
 
 impl<'a, DB> chalk_solve::RustIrDatabase for ChalkContext<'a, DB>
@@ -202,6 +209,23 @@ where
     }
     fn trait_datum(&self, trait_id: chalk_ir::TraitId) -> Arc<TraitDatum> {
         debug!("trait_datum {:?}", trait_id);
+        if trait_id == UNKNOWN_TRAIT {
+            let trait_datum_bound = chalk_rust_ir::TraitDatumBound {
+                trait_ref: chalk_ir::TraitRef {
+                    trait_id: UNKNOWN_TRAIT,
+                    parameters: vec![chalk_ir::Ty::BoundVar(0).cast()],
+                },
+                associated_ty_ids: Vec::new(),
+                where_clauses: Vec::new(),
+                flags: chalk_rust_ir::TraitFlags {
+                    auto: false,
+                    marker: false,
+                    upstream: true,
+                    fundamental: false,
+                },
+            };
+            return Arc::new(TraitDatum { binders: make_binders(trait_datum_bound, 1) });
+        }
         let trait_: Trait = from_chalk(self.db, trait_id);
         let generic_params = trait_.generic_params(self.db);
         let bound_vars = Substs::bound_vars(&generic_params);
@@ -213,7 +237,7 @@ where
             upstream: trait_.module(self.db).krate(self.db) != Some(self.krate),
             fundamental: false,
         };
-        let (where_clauses, _) = convert_where_clauses(self.db, trait_.into(), &bound_vars);
+        let where_clauses = convert_where_clauses(self.db, trait_.into(), &bound_vars);
         let associated_ty_ids = Vec::new(); // FIXME add associated tys
         let trait_datum_bound =
             chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
@@ -241,7 +265,7 @@ where
             TypeCtor::Adt(adt) => {
                 let generic_params = adt.generic_params(self.db);
                 let bound_vars = Substs::bound_vars(&generic_params);
-                let (where_clauses, _) = convert_where_clauses(self.db, adt.into(), &bound_vars);
+                let where_clauses = convert_where_clauses(self.db, adt.into(), &bound_vars);
                 (
                     generic_params.count_params_including_parent(),
                     where_clauses,
@@ -281,8 +305,7 @@ where
         } else {
             chalk_rust_ir::ImplType::External
         };
-        let (where_clauses, where_clause_error) =
-            convert_where_clauses(self.db, impl_block.into(), &bound_vars);
+        let where_clauses = convert_where_clauses(self.db, impl_block.into(), &bound_vars);
         let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
             // FIXME handle negative impls (impl !Sync for Foo)
             trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref.to_chalk(self.db)),
@@ -295,6 +318,9 @@ where
     }
     fn impls_for_trait(&self, trait_id: chalk_ir::TraitId) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
+        if trait_id == UNKNOWN_TRAIT {
+            return Vec::new();
+        }
         let trait_ = from_chalk(self.db, trait_id);
         self.db
             .impls_for_trait(self.krate, trait_)

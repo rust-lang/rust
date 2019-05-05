@@ -2502,6 +2502,21 @@ fn test() { (&S).foo()<|>; }
 }
 
 #[test]
+fn method_resolution_where_clause_for_unknown_trait() {
+    // The blanket impl shouldn't apply because we can't even resolve UnknownTrait
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl<T> Trait for T where T: UnknownTrait {}
+fn test() { (&S).foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
 fn method_resolution_where_clause_not_met() {
     // The blanket impl shouldn't apply because we can't prove S: Clone
     let t = type_at(
