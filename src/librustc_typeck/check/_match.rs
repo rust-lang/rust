@@ -540,7 +540,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         err.help(&format!("did you mean `{}: &{}`?", snippet, expected));
                     }
                 }
-                hir::Node::Expr(hir::Expr { node: hir::ExprKind::Match(..), .. }) |
+                hir::Node::Arm(_) |
                 hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
