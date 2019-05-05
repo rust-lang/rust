@@ -26,7 +26,7 @@ Compiler
 
 Libraries
 ---------
-- [`Thread` will now show its id in `Debug` output.][59460]
+- [`Thread` will now show its ID in `Debug` output.][59460]
 - [`StdinLock`, `StdoutLock`, and `StderrLock` now implement `AsRawFd`.][59512]
 - [`alloc::System` now implements `Default`.][59451]
 - [Expanded `Debug` output (`{:#?}`) for structs now has a trailing comma on the
