@@ -25,7 +25,7 @@ use rustc::middle::cstore::CrateStore;
 use rustc::session::Session;
 use rustc::lint;
 use rustc::hir::def::{
-    self, DefKind, PathResolution, CtorKind, CtorOf, NonMacroAttrKind, ResMap, ImportMap, ExportMap
+    self, DefKind, PartialRes, CtorKind, CtorOf, NonMacroAttrKind, ExportMap
 };
 use rustc::hir::def::Namespace::*;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
@@ -823,7 +823,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Resolver<'a> {
                 let self_ty = keywords::SelfUpper.ident();
                 let res = self.resolve_ident_in_lexical_scope(self_ty, TypeNS, Some(ty.id), ty.span)
                               .map_or(Res::Err, |d| d.res());
-                self.record_res(ty.id, PathResolution::new(res));
+                self.record_partial_res(ty.id, PartialRes::new(res));
             }
             _ => (),
         }
@@ -1073,13 +1073,13 @@ enum RibKind<'a> {
 /// The resolution keeps a separate stack of ribs as it traverses the AST for each namespace. When
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
-struct Rib<'a> {
-    bindings: FxHashMap<Ident, Res>,
+struct Rib<'a, R = Res> {
+    bindings: FxHashMap<Ident, R>,
     kind: RibKind<'a>,
 }
 
-impl<'a> Rib<'a> {
-    fn new(kind: RibKind<'a>) -> Rib<'a> {
+impl<'a, R> Rib<'a, R> {
+    fn new(kind: RibKind<'a>) -> Rib<'a, R> {
         Rib {
             bindings: Default::default(),
             kind,
@@ -1148,7 +1148,7 @@ impl ModuleOrUniformRoot<'_> {
 #[derive(Clone, Debug)]
 enum PathResult<'a> {
     Module(ModuleOrUniformRoot<'a>),
-    NonModule(PathResolution),
+    NonModule(PartialRes),
     Indeterminate,
     Failed {
         span: Span,
@@ -1534,7 +1534,7 @@ impl<'a> NameBinding<'a> {
     }
 
     fn descr(&self) -> &'static str {
-        if self.is_extern_crate() { "extern crate" } else { self.res().kind_name() }
+        if self.is_extern_crate() { "extern crate" } else { self.res().descr() }
     }
 
     fn article(&self) -> &'static str {
@@ -1640,7 +1640,7 @@ pub struct Resolver<'a> {
     ribs: PerNS<Vec<Rib<'a>>>,
 
     /// The current set of local scopes, for labels.
-    label_ribs: Vec<Rib<'a>>,
+    label_ribs: Vec<Rib<'a, NodeId>>,
 
     /// The trait that the current context can refer to.
     current_trait_ref: Option<(Module<'a>, TraitRef)>,
@@ -1661,8 +1661,13 @@ pub struct Resolver<'a> {
     /// The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
-    res_map: ResMap,
-    import_map: ImportMap,
+    /// Resolutions for nodes that have a single resolution.
+    partial_res_map: NodeMap<PartialRes>,
+    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
+    import_res_map: NodeMap<PerNS<Option<Res>>>,
+    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
+    label_res_map: NodeMap<NodeId>,
+
     pub freevars: FreevarMap,
     freevars_seen: NodeMap<NodeMap<usize>>,
     pub export_map: ExportMap<NodeId>,
@@ -1832,12 +1837,16 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         self.resolve_hir_path(&path, is_value)
     }
 
-    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
-        self.res_map.get(&id).cloned()
+    fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes> {
+        self.partial_res_map.get(&id).cloned()
     }
 
-    fn get_import(&mut self, id: NodeId) -> PerNS<Option<PathResolution>> {
-        self.import_map.get(&id).cloned().unwrap_or_default()
+    fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res>> {
+        self.import_res_map.get(&id).cloned().unwrap_or_default()
+    }
+
+    fn get_label_res(&mut self, id: NodeId) -> Option<NodeId> {
+        self.label_res_map.get(&id).cloned()
     }
 
     fn definitions(&mut self) -> &mut Definitions {
@@ -1921,7 +1930,7 @@ impl<'a> Resolver<'a> {
 
         let segments: Vec<_> = segments.iter().map(|seg| {
             let mut hir_seg = hir::PathSegment::from_ident(seg.ident);
-            hir_seg.res = Some(self.res_map.get(&seg.id).map_or(def::Res::Err, |p| {
+            hir_seg.res = Some(self.partial_res_map.get(&seg.id).map_or(def::Res::Err, |p| {
                 p.base_res().map_id(|_| panic!("unexpected node_id"))
             }));
             hir_seg
@@ -2021,8 +2030,9 @@ impl<'a> Resolver<'a> {
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
-            res_map: Default::default(),
-            import_map: Default::default(),
+            partial_res_map: Default::default(),
+            import_res_map: Default::default(),
+            label_res_map: Default::default(),
             freevars: Default::default(),
             freevars_seen: Default::default(),
             export_map: FxHashMap::default(),
@@ -2489,7 +2499,7 @@ impl<'a> Resolver<'a> {
     ///
     /// Stops after meeting a closure.
     fn search_label<P, R>(&self, mut ident: Ident, pred: P) -> Option<R>
-        where P: Fn(&Rib<'_>, Ident) -> Option<R>
+        where P: Fn(&Rib<'_, NodeId>, Ident) -> Option<R>
     {
         for rib in self.label_ribs.iter().rev() {
             match rib.kind {
@@ -2707,7 +2717,7 @@ impl<'a> Resolver<'a> {
                                 self.definitions.local_def_id(param.id),
                             );
                             function_type_rib.bindings.insert(ident, res);
-                            self.record_res(param.id, PathResolution::new(res));
+                            self.record_partial_res(param.id, PartialRes::new(res));
                         }
                         GenericParamKind::Const { .. } => {
                             let ident = param.ident.modern();
@@ -2728,7 +2738,7 @@ impl<'a> Resolver<'a> {
                                 self.definitions.local_def_id(param.id),
                             );
                             function_value_rib.bindings.insert(ident, res);
-                            self.record_res(param.id, PathResolution::new(res));
+                            self.record_partial_res(param.id, PartialRes::new(res));
                         }
                     }
                 }
@@ -2996,7 +3006,8 @@ impl<'a> Resolver<'a> {
 
         pat.walk(&mut |pat| {
             if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
-                if sub_pat.is_some() || match self.res_map.get(&pat.id).map(|res| res.base_res()) {
+                if sub_pat.is_some() || match self.partial_res_map.get(&pat.id)
+                                                                  .map(|res| res.base_res()) {
                     Some(Res::Local(..)) => true,
                     _ => false,
                 } {
@@ -3148,7 +3159,7 @@ impl<'a> Resolver<'a> {
                      outer_pat_id: NodeId,
                      pat_src: PatternSource,
                      bindings: &mut FxHashMap<Ident, NodeId>)
-                     -> PathResolution {
+                     -> Res {
         // Add the binding to the local ribs, if it
         // doesn't already exist in the bindings map. (We
         // must not add it if it's in the bindings map
@@ -3195,7 +3206,7 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        PathResolution::new(res)
+        res
     }
 
     fn resolve_pattern(&mut self,
@@ -3215,7 +3226,7 @@ impl<'a> Resolver<'a> {
                     let binding = self.resolve_ident_in_lexical_scope(ident, ValueNS,
                                                                       None, pat.span)
                                       .and_then(LexicalScopeBinding::item);
-                    let resolution = binding.map(NameBinding::res).and_then(|res| {
+                    let res = binding.map(NameBinding::res).and_then(|res| {
                         let is_syntactic_ambiguity = opt_pat.is_none() &&
                             bmode == BindingMode::ByValue(Mutability::Immutable);
                         match res {
@@ -3224,7 +3235,7 @@ impl<'a> Resolver<'a> {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
                                 self.record_use(ident, ValueNS, binding.unwrap(), false);
-                                Some(PathResolution::new(res))
+                                Some(res)
                             }
                             Res::Def(DefKind::Ctor(..), _)
                             | Res::Def(DefKind::Const, _)
@@ -3256,7 +3267,7 @@ impl<'a> Resolver<'a> {
                         self.fresh_binding(ident, pat.id, outer_pat_id, pat_src, bindings)
                     });
 
-                    self.record_res(pat.id, resolution);
+                    self.record_partial_res(pat.id, PartialRes::new(res));
                 }
 
                 PatKind::TupleStruct(ref path, ..) => {
@@ -3288,35 +3299,15 @@ impl<'a> Resolver<'a> {
                           id: NodeId,
                           qself: Option<&QSelf>,
                           path: &Path,
-                          source: PathSource<'_>)
-                          -> PathResolution {
-        self.smart_resolve_path_with_crate_lint(id, qself, path, source, CrateLint::SimplePath(id))
-    }
-
-    /// A variant of `smart_resolve_path` where you also specify extra
-    /// information about where the path came from; this extra info is
-    /// sometimes needed for the lint that recommends rewriting
-    /// absolute paths to `crate`, so that it knows how to frame the
-    /// suggestion. If you are just resolving a path like `foo::bar`
-    /// that appears in an arbitrary location, then you just want
-    /// `CrateLint::SimplePath`, which is what `smart_resolve_path`
-    /// already provides.
-    fn smart_resolve_path_with_crate_lint(
-        &mut self,
-        id: NodeId,
-        qself: Option<&QSelf>,
-        path: &Path,
-        source: PathSource<'_>,
-        crate_lint: CrateLint
-    ) -> PathResolution {
+                          source: PathSource<'_>) {
         self.smart_resolve_path_fragment(
             id,
             qself,
             &Segment::from_path(path),
             path.span,
             source,
-            crate_lint,
-        )
+            CrateLint::SimplePath(id),
+        );
     }
 
     fn smart_resolve_path_fragment(&mut self,
@@ -3326,7 +3317,7 @@ impl<'a> Resolver<'a> {
                                    span: Span,
                                    source: PathSource<'_>,
                                    crate_lint: CrateLint)
-                                   -> PathResolution {
+                                   -> PartialRes {
         let ns = source.namespace();
         let is_expected = &|res| source.is_expected(res);
 
@@ -3336,10 +3327,10 @@ impl<'a> Resolver<'a> {
             let node_id = this.definitions.as_local_node_id(def_id).unwrap();
             let better = res.is_some();
             this.use_injections.push(UseError { err, candidates, node_id, better });
-            err_path_resolution()
+            PartialRes::new(Res::Err)
         };
 
-        let resolution = match self.resolve_qpath_anywhere(
+        let partial_res = match self.resolve_qpath_anywhere(
             id,
             qself,
             path,
@@ -3349,14 +3340,14 @@ impl<'a> Resolver<'a> {
             source.global_by_default(),
             crate_lint,
         ) {
-            Some(resolution) if resolution.unresolved_segments() == 0 => {
-                if is_expected(resolution.base_res()) || resolution.base_res() == Res::Err {
-                    resolution
+            Some(partial_res) if partial_res.unresolved_segments() == 0 => {
+                if is_expected(partial_res.base_res()) || partial_res.base_res() == Res::Err {
+                    partial_res
                 } else {
                     // Add a temporary hack to smooth the transition to new struct ctor
                     // visibility rules. See #38932 for more details.
                     let mut res = None;
-                    if let Res::Def(DefKind::Struct, def_id) = resolution.base_res() {
+                    if let Res::Def(DefKind::Struct, def_id) = partial_res.base_res() {
                         if let Some((ctor_res, ctor_vis))
                                 = self.struct_constructors.get(&def_id).cloned() {
                             if is_expected(ctor_res) && self.is_accessible(ctor_vis) {
@@ -3365,15 +3356,15 @@ impl<'a> Resolver<'a> {
                                     "private struct constructors are not usable through \
                                      re-exports in outer modules",
                                 );
-                                res = Some(PathResolution::new(ctor_res));
+                                res = Some(PartialRes::new(ctor_res));
                             }
                         }
                     }
 
-                    res.unwrap_or_else(|| report_errors(self, Some(resolution.base_res())))
+                    res.unwrap_or_else(|| report_errors(self, Some(partial_res.base_res())))
                 }
             }
-            Some(resolution) if source.defer_to_typeck() => {
+            Some(partial_res) if source.defer_to_typeck() => {
                 // Not fully resolved associated item `T::A::B` or `<T as Tr>::A::B`
                 // or `<T>::A::B`. If `B` should be resolved in value namespace then
                 // it needs to be added to the trait map.
@@ -3401,16 +3392,16 @@ impl<'a> Resolver<'a> {
                         hm.insert(span, span);
                     }
                 }
-                resolution
+                partial_res
             }
             _ => report_errors(self, None)
         };
 
         if let PathSource::TraitItem(..) = source {} else {
             // Avoid recording definition of `A::B` in `<T as A>::B::C`.
-            self.record_res(id, resolution);
+            self.record_partial_res(id, partial_res);
         }
-        resolution
+        partial_res
     }
 
     /// Only used in a specific case of type ascription suggestions
@@ -3525,7 +3516,7 @@ impl<'a> Resolver<'a> {
         defer_to_typeck: bool,
         global_by_default: bool,
         crate_lint: CrateLint,
-    ) -> Option<PathResolution> {
+    ) -> Option<PartialRes> {
         let mut fin_res = None;
         // FIXME: can't resolve paths in macro namespace yet, macros are
         // processed by the little special hack below.
@@ -3534,9 +3525,10 @@ impl<'a> Resolver<'a> {
                 match self.resolve_qpath(id, qself, path, ns, span, global_by_default, crate_lint) {
                     // If defer_to_typeck, then resolution > no resolution,
                     // otherwise full resolution > partial resolution > no resolution.
-                    Some(res) if res.unresolved_segments() == 0 || defer_to_typeck =>
-                        return Some(res),
-                    res => if fin_res.is_none() { fin_res = res },
+                    Some(partial_res) if partial_res.unresolved_segments() == 0 ||
+                                         defer_to_typeck =>
+                        return Some(partial_res),
+                    partial_res => if fin_res.is_none() { fin_res = partial_res },
                 };
             }
         }
@@ -3547,7 +3539,7 @@ impl<'a> Resolver<'a> {
             self.macro_use_prelude.get(&path[0].ident.name).cloned()
                                   .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang)) {
             // Return some dummy definition, it's enough for error reporting.
-            return Some(PathResolution::new(Res::Def(
+            return Some(PartialRes::new(Res::Def(
                 DefKind::Macro(MacroKind::Bang),
                 DefId::local(CRATE_DEF_INDEX),
             )));
@@ -3565,7 +3557,7 @@ impl<'a> Resolver<'a> {
         span: Span,
         global_by_default: bool,
         crate_lint: CrateLint,
-    ) -> Option<PathResolution> {
+    ) -> Option<PartialRes> {
         debug!(
             "resolve_qpath(id={:?}, qself={:?}, path={:?}, \
              ns={:?}, span={:?}, global_by_default={:?})",
@@ -3582,7 +3574,7 @@ impl<'a> Resolver<'a> {
                 // This is a case like `<T>::B`, where there is no
                 // trait to resolve.  In that case, we leave the `B`
                 // segment to be resolved by type-check.
-                return Some(PathResolution::with_unresolved_segments(
+                return Some(PartialRes::with_unresolved_segments(
                     Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX)), path.len()
                 ));
             }
@@ -3602,7 +3594,7 @@ impl<'a> Resolver<'a> {
             // name from a fully qualified path, and this also
             // contains the full span (the `CrateLint::QPathTrait`).
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
-            let res = self.smart_resolve_path_fragment(
+            let partial_res = self.smart_resolve_path_fragment(
                 id,
                 None,
                 &path[..=qself.position],
@@ -3617,8 +3609,9 @@ impl<'a> Resolver<'a> {
             // The remaining segments (the `C` in our example) will
             // have to be resolved by type-check, since that requires doing
             // trait resolution.
-            return Some(PathResolution::with_unresolved_segments(
-                res.base_res(), res.unresolved_segments() + path.len() - qself.position - 1
+            return Some(PartialRes::with_unresolved_segments(
+                partial_res.base_res(),
+                partial_res.unresolved_segments() + path.len() - qself.position - 1,
             ));
         }
 
@@ -3631,7 +3624,7 @@ impl<'a> Resolver<'a> {
         ) {
             PathResult::NonModule(path_res) => path_res,
             PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
-                PathResolution::new(module.res().unwrap())
+                PartialRes::new(module.res().unwrap())
             }
             // In `a(::assoc_item)*` `a` cannot be a module. If `a` does resolve to a module we
             // don't report an error right away, but try to fallback to a primitive type.
@@ -3651,13 +3644,13 @@ impl<'a> Resolver<'a> {
                        self.primitive_type_table.primitive_types
                            .contains_key(&path[0].ident.name) => {
                 let prim = self.primitive_type_table.primitive_types[&path[0].ident.name];
-                PathResolution::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
+                PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
-                PathResolution::new(module.res().unwrap()),
+                PartialRes::new(module.res().unwrap()),
             PathResult::Failed { is_error_from_last_segment: false, span, label, suggestion } => {
                 resolve_error(self, span, ResolutionError::FailedToResolve { label, suggestion });
-                err_path_resolution()
+                PartialRes::new(Res::Err)
             }
             PathResult::Module(..) | PathResult::Failed { .. } => return None,
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
@@ -3733,9 +3726,9 @@ impl<'a> Resolver<'a> {
             let record_segment_res = |this: &mut Self, res| {
                 if record_used {
                     if let Some(id) = id {
-                        if !this.res_map.contains_key(&id) {
+                        if !this.partial_res_map.contains_key(&id) {
                             assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
-                            this.record_res(id, PathResolution::new(res));
+                            this.record_partial_res(id, PartialRes::new(res));
                         }
                     }
                 }
@@ -3839,7 +3832,7 @@ impl<'a> Resolver<'a> {
                     Some(LexicalScopeBinding::Res(res))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
                         record_segment_res(self, res);
-                        return PathResult::NonModule(PathResolution::with_unresolved_segments(
+                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
                             res, path.len() - 1
                         ));
                     }
@@ -3866,9 +3859,9 @@ impl<'a> Resolver<'a> {
                             ).emit();
                         }
                         let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
-                        return PathResult::NonModule(PathResolution::new(res));
+                        return PathResult::NonModule(PartialRes::new(res));
                     } else if res == Res::Err {
-                        return PathResult::NonModule(err_path_resolution());
+                        return PathResult::NonModule(PartialRes::new(Res::Err));
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
                         self.lint_if_path_starts_with_module(
                             crate_lint,
@@ -3876,7 +3869,7 @@ impl<'a> Resolver<'a> {
                             path_span,
                             second_binding,
                         );
-                        return PathResult::NonModule(PathResolution::with_unresolved_segments(
+                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
                             res, path.len() - i - 1
                         ));
                     } else {
@@ -3884,7 +3877,7 @@ impl<'a> Resolver<'a> {
                             "`{}` is {} {}, not a module",
                             ident,
                             res.article(),
-                            res.kind_name(),
+                            res.descr(),
                         );
 
                         return PathResult::Failed {
@@ -3899,7 +3892,7 @@ impl<'a> Resolver<'a> {
                 Err(Determined) => {
                     if let Some(ModuleOrUniformRoot::Module(module)) = module {
                         if opt_ns.is_some() && !module.is_normal() {
-                            return PathResult::NonModule(PathResolution::with_unresolved_segments(
+                            return PathResult::NonModule(PartialRes::with_unresolved_segments(
                                 module.res().unwrap(), path.len() - i
                             ));
                         }
@@ -3930,7 +3923,7 @@ impl<'a> Resolver<'a> {
                             (format!("maybe a missing `extern crate {};`?", ident), None)
                         } else {
                             // the parser will already have complained about the keyword being used
-                            return PathResult::NonModule(err_path_resolution());
+                            return PathResult::NonModule(PartialRes::new(Res::Err));
                         }
                     } else if i == 0 {
                         (format!("use of undeclared type or module `{}`", ident), None)
@@ -4179,7 +4172,7 @@ impl<'a> Resolver<'a> {
         if filter_fn(Res::Local(ast::DUMMY_NODE_ID)) {
             if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
                 // Look for a field with the same name in the current self_type.
-                if let Some(resolution) = self.res_map.get(&node_id) {
+                if let Some(resolution) = self.partial_res_map.get(&node_id) {
                     match resolution.base_res() {
                         Res::Def(DefKind::Struct, did) | Res::Def(DefKind::Union, did)
                                 if resolution.unresolved_segments() == 0 => {
@@ -4236,7 +4229,7 @@ impl<'a> Resolver<'a> {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: binding.res().article(),
-                            kind: binding.res().kind_name(),
+                            kind: binding.res().descr(),
                         });
                     }
                 }
@@ -4254,7 +4247,7 @@ impl<'a> Resolver<'a> {
                         names.push(TypoSuggestion {
                             candidate: ident.name,
                             article: res.article(),
-                            kind: res.kind_name(),
+                            kind: res.descr(),
                         });
                     }
                 }
@@ -4348,10 +4341,9 @@ impl<'a> Resolver<'a> {
     {
         if let Some(label) = label {
             self.unused_labels.insert(id, label.ident.span);
-            let res = Res::Label(id);
             self.with_label_rib(|this| {
                 let ident = label.ident.modern_and_legacy();
-                this.label_ribs.last_mut().unwrap().bindings.insert(ident, res);
+                this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
                 f(this);
             });
         } else {
@@ -4382,10 +4374,10 @@ impl<'a> Resolver<'a> {
             }
 
             ExprKind::Break(Some(label), _) | ExprKind::Continue(Some(label)) => {
-                let res = self.search_label(label.ident, |rib, ident| {
+                let node_id = self.search_label(label.ident, |rib, ident| {
                     rib.bindings.get(&ident.modern_and_legacy()).cloned()
                 });
-                match res {
+                match node_id {
                     None => {
                         // Search again for close matches...
                         // Picks the first label that is "close enough", which is not necessarily
@@ -4400,19 +4392,16 @@ impl<'a> Resolver<'a> {
                             });
                             find_best_match_for_name(names, &*ident.as_str(), None)
                         });
-                        self.record_res(expr.id, err_path_resolution());
+                        self.record_partial_res(expr.id, PartialRes::new(Res::Err));
                         resolve_error(self,
                                       label.ident.span,
                                       ResolutionError::UndeclaredLabel(&label.ident.as_str(),
                                                                        close_match));
                     }
-                    Some(Res::Label(id)) => {
+                    Some(node_id) => {
                         // Since this res is a label, it is never read.
-                        self.record_res(expr.id, PathResolution::new(Res::Label(id)));
-                        self.unused_labels.remove(&id);
-                    }
-                    Some(_) => {
-                        span_bug!(expr.span, "label wasn't mapped to a label res!");
+                        self.label_res_map.insert(expr.id, node_id);
+                        self.unused_labels.remove(&node_id);
                     }
                 }
 
@@ -4857,9 +4846,9 @@ impl<'a> Resolver<'a> {
         })
     }
 
-    fn record_res(&mut self, node_id: NodeId, resolution: PathResolution) {
+    fn record_partial_res(&mut self, node_id: NodeId, resolution: PartialRes) {
         debug!("(recording res) recording {:?} for {}", resolution, node_id);
-        if let Some(prev_res) = self.res_map.insert(node_id, resolution) {
+        if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
         }
     }
@@ -5480,10 +5469,6 @@ fn module_to_string(module: Module<'_>) -> Option<String> {
     Some(names_to_string(&names.into_iter()
                         .rev()
                         .collect::<Vec<_>>()))
-}
-
-fn err_path_resolution() -> PathResolution {
-    PathResolution::new(Res::Err)
 }
 
 #[derive(Copy, Clone, Debug)]

@@ -21,7 +21,7 @@ use rustc::lint::builtin::{
     UNUSED_IMPORTS,
 };
 use rustc::hir::def_id::{CrateNum, DefId};
-use rustc::hir::def::{self, DefKind, PathResolution, Export};
+use rustc::hir::def::{self, DefKind, PartialRes, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
@@ -1233,8 +1233,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     res = Res::Err;
                 }
             }
-            let import = this.import_map.entry(directive.id).or_default();
-            import[ns] = Some(PathResolution::new(res));
+            this.import_res_map.entry(directive.id).or_default()[ns] = Some(res);
         });
 
         self.check_for_redundant_imports(
@@ -1371,7 +1370,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         }
 
         // Record the destination of this import
-        self.record_res(directive.id, PathResolution::new(module.res().unwrap()));
+        self.record_partial_res(directive.id, PartialRes::new(module.res().unwrap()));
     }
 
     // Miscellaneous post-processing, including recording re-exports,

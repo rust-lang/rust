@@ -37,7 +37,7 @@ use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
 use crate::hir::map::{DefKey, DefPathData, Definitions};
 use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
-use crate::hir::def::{Res, DefKind, PathResolution, PerNS};
+use crate::hir::def::{Res, DefKind, PartialRes, PerNS};
 use crate::hir::{GenericArg, ConstArg};
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
                     ELIDED_LIFETIMES_IN_PATHS};
@@ -145,11 +145,14 @@ pub trait Resolver {
         is_value: bool,
     ) -> hir::Path;
 
-    /// Obtain the resolution for a `NodeId`.
-    fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution>;
+    /// Obtain resolution for a `NodeId` with a single resolution.
+    fn get_partial_res(&mut self, id: NodeId) -> Option<PartialRes>;
 
-    /// Obtain the possible resolutions for the given `use` statement.
-    fn get_import(&mut self, id: NodeId) -> PerNS<Option<PathResolution>>;
+    /// Obtain per-namespace resolutions for `use` statement with the given `NoedId`.
+    fn get_import_res(&mut self, id: NodeId) -> PerNS<Option<Res<NodeId>>>;
+
+    /// Obtain resolution for a label with the given `NodeId`.
+    fn get_label_res(&mut self, id: NodeId) -> Option<NodeId>;
 
     /// We must keep the set of definitions up to date as we add nodes that weren't in the AST.
     /// This should only return `None` during testing.
@@ -821,7 +824,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expect_full_res(&mut self, id: NodeId) -> Res<NodeId> {
-        self.resolver.get_resolution(id).map_or(Res::Err, |pr| {
+        self.resolver.get_partial_res(id).map_or(Res::Err, |pr| {
             if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
             }
@@ -830,12 +833,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
-        self.resolver.get_import(id).present_items().map(|pr| {
-            if pr.unresolved_segments() != 0 {
-                bug!("path not fully resolved: {:?}", pr);
-            }
-            pr.base_res()
-        })
+        self.resolver.get_import_res(id).present_items()
     }
 
     fn diagnostic(&self) -> &errors::Handler {
@@ -1251,7 +1249,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
             Some((id, _)) => {
-                if let Res::Label(loop_id) = self.expect_full_res(id) {
+                if let Some(loop_id) = self.resolver.get_label_res(id) {
                     Ok(self.lower_node_id(loop_id))
                 } else {
                     Err(hir::LoopIdError::UnresolvedLabel)
@@ -1842,13 +1840,13 @@ impl<'a> LoweringContext<'a> {
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx.reborrow()));
 
-        let resolution = self.resolver
-            .get_resolution(id)
-            .unwrap_or_else(|| PathResolution::new(Res::Err));
+        let partial_res = self.resolver
+            .get_partial_res(id)
+            .unwrap_or_else(|| PartialRes::new(Res::Err));
 
-        let proj_start = p.segments.len() - resolution.unresolved_segments();
+        let proj_start = p.segments.len() - partial_res.unresolved_segments();
         let path = P(hir::Path {
-            res: self.lower_res(resolution.base_res()),
+            res: self.lower_res(partial_res.base_res()),
             segments: p.segments[..proj_start]
                 .iter()
                 .enumerate()
@@ -1869,7 +1867,7 @@ impl<'a> LoweringContext<'a> {
                         krate: def_id.krate,
                         index: this.def_key(def_id).parent.expect("missing parent"),
                     };
-                    let type_def_id = match resolution.base_res() {
+                    let type_def_id = match partial_res.base_res() {
                         Res::Def(DefKind::AssociatedTy, def_id) if i + 2 == proj_start => {
                             Some(parent_def_id(self, def_id))
                         }
@@ -1886,7 +1884,7 @@ impl<'a> LoweringContext<'a> {
                         }
                         _ => None,
                     };
-                    let parenthesized_generic_args = match resolution.base_res() {
+                    let parenthesized_generic_args = match partial_res.base_res() {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _)
                             if i + 1 == proj_start => ParenthesizedGenericArgs::Ok,
@@ -1940,7 +1938,7 @@ impl<'a> LoweringContext<'a> {
 
         // Simple case, either no projections, or only fully-qualified.
         // E.g., `std::mem::size_of` or `<I as Iterator>::Item`.
-        if resolution.unresolved_segments() == 0 {
+        if partial_res.unresolved_segments() == 0 {
             return hir::QPath::Resolved(qself, path);
         }
 
@@ -2792,7 +2790,7 @@ impl<'a> LoweringContext<'a> {
                                     && bound_pred.bound_generic_params.is_empty() =>
                             {
                                 if let Some(Res::Def(DefKind::TyParam, def_id)) = self.resolver
-                                    .get_resolution(bound_pred.bounded_ty.id)
+                                    .get_partial_res(bound_pred.bounded_ty.id)
                                     .map(|d| d.base_res())
                                 {
                                     if let Some(node_id) =
@@ -3946,7 +3944,7 @@ impl<'a> LoweringContext<'a> {
         let node = match p.node {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
-                match self.resolver.get_resolution(p.id).map(|d| d.base_res()) {
+                match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
                     // `None` can occur in body-less function signatures
                     res @ None | res @ Some(Res::Local(_)) => {
                         let canonical_id = match res {

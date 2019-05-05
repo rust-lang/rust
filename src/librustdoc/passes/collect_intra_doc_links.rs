@@ -513,18 +513,18 @@ fn ambiguity_error(
             msg += &format!(
                 "both {} {} and {} {}",
                 first_def.article(),
-                first_def.kind_name(),
+                first_def.descr(),
                 second_def.article(),
-                second_def.kind_name(),
+                second_def.descr(),
             );
         }
         _ => {
             let mut candidates = candidates.iter().peekable();
             while let Some((res, _)) = candidates.next() {
                 if candidates.peek().is_some() {
-                    msg += &format!("{} {}, ", res.article(), res.kind_name());
+                    msg += &format!("{} {}, ", res.article(), res.descr());
                 } else {
-                    msg += &format!("and {} {}", res.article(), res.kind_name());
+                    msg += &format!("and {} {}", res.article(), res.descr());
                 }
             }
         }
@@ -575,7 +575,7 @@ fn ambiguity_error(
 
                 diag.span_suggestion(
                     sp,
-                    &format!("to link to the {}, {}", res.kind_name(), action),
+                    &format!("to link to the {}, {}", res.descr(), action),
                     suggestion,
                     Applicability::MaybeIncorrect,
                 );

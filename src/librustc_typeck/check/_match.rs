@@ -884,7 +884,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         };
         let report_unexpected_res = |res: Res| {
             let msg = format!("expected tuple struct/variant, found {} `{}`",
-                              res.kind_name(),
+                              res.descr(),
                               hir::print::to_string(tcx.hir(), |s| s.print_qpath(qpath, false)));
             struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg)
                 .span_label(pat.span, "not a tuple variant or struct").emit();
@@ -947,7 +947,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             let fields_ending = if variant.fields.len() == 1 { "" } else { "s" };
             struct_span_err!(tcx.sess, pat.span, E0023,
                              "this pattern has {} field{}, but the corresponding {} has {} field{}",
-                             subpats.len(), subpats_ending, res.kind_name(),
+                             subpats.len(), subpats_ending, res.descr(),
                              variant.fields.len(),  fields_ending)
                 .span_label(pat.span, format!("expected {} field{}, found {}",
                                               variant.fields.len(), fields_ending, subpats.len()))

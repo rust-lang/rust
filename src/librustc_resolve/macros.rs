@@ -333,7 +333,7 @@ impl<'a> Resolver<'a> {
                     // Not only attributes, but anything in macro namespace can result in
                     // `Res::NonMacroAttr` definition (e.g., `inline!()`), so we must report
                     // an error for those cases.
-                    let msg = format!("expected a macro, found {}", res.kind_name());
+                    let msg = format!("expected a macro, found {}", res.descr());
                     self.session.span_err(path.span, &msg);
                     return Err(Determinacy::Determined);
                 }
@@ -913,7 +913,7 @@ impl<'a> Resolver<'a> {
                         // (which is a best effort error recovery tool, basically), so we can't
                         // promise their resolution won't change later.
                         let msg = format!("inconsistent resolution for a macro: first {}, then {}",
-                                          initial_res.kind_name(), res.kind_name());
+                                          initial_res.descr(), res.descr());
                         this.session.span_err(span, &msg);
                     } else {
                         span_bug!(span, "inconsistent resolution for a macro");
