@@ -125,11 +125,11 @@ fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct SolutionVariables(pub Canonical<Vec<Ty>>);
+pub struct SolutionVariables(pub Canonical<Vec<Ty>>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A (possible) solution for a proposed goal.
-pub(crate) enum Solution {
+pub enum Solution {
     /// The goal indeed holds, and there is a unique value for all existential
     /// variables.
     Unique(SolutionVariables),
@@ -144,7 +144,7 @@ pub(crate) enum Solution {
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// When a goal holds ambiguously (e.g., because there are multiple possible
 /// solutions), we issue a set of *guidance* back to type inference.
-pub(crate) enum Guidance {
+pub enum Guidance {
     /// The existential variables *must* have the given values if the goal is
     /// ever to hold, but that alone isn't enough to guarantee the goal will
     /// actually hold.

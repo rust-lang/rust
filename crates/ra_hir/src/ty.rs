@@ -240,7 +240,7 @@ impl TraitRef {
 /// many there are. This is used to erase irrelevant differences between types
 /// before using them in queries.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Canonical<T> {
+pub struct Canonical<T> {
     pub value: T,
     pub num_vars: usize,
 }
