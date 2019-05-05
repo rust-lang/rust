@@ -9,7 +9,6 @@
 use std::{
     ops::RangeInclusive,
     fmt::{self, Write},
-    any::Any,
     borrow::Borrow,
     iter::successors,
 };
@@ -133,10 +132,8 @@ pub enum Direction {
 }
 
 impl SyntaxNode {
-    pub(crate) fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreeArc<SyntaxNode> {
-        let errors: Option<Box<Any + Send + Sync>> =
-            if errors.is_empty() { None } else { Some(Box::new(errors)) };
-        let ptr = TreeArc(rowan::SyntaxNode::new(green, errors));
+    pub(crate) fn new(green: GreenNode) -> TreeArc<SyntaxNode> {
+        let ptr = TreeArc(rowan::SyntaxNode::new(green, None));
         TreeArc::cast(ptr)
     }
 
@@ -630,8 +627,8 @@ impl SyntaxTreeBuilder {
     }
 
     pub fn finish(self) -> TreeArc<SyntaxNode> {
-        let (green, errors) = self.finish_raw();
-        let node = SyntaxNode::new(green, errors);
+        let (green, _errors) = self.finish_raw();
+        let node = SyntaxNode::new(green);
         if cfg!(debug_assertions) {
             crate::validation::validate_block_structure(&node);
         }

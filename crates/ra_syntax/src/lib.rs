@@ -74,8 +74,8 @@ impl Parse {
 pub use crate::ast::SourceFile;
 
 impl SourceFile {
-    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> TreeArc<SourceFile> {
-        let root = SyntaxNode::new(green, errors);
+    fn new(green: GreenNode, _errors: Vec<SyntaxError>) -> TreeArc<SourceFile> {
+        let root = SyntaxNode::new(green);
         if cfg!(debug_assertions) {
             validation::validate_block_structure(&root);
         }
