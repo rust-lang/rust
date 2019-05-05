@@ -212,7 +212,7 @@ mod sealed {
         unsafe fn vec_sub(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_trait!{ [VectorSub vec_sub] (simd_sub, simd_sub, simd_sub, simd_sub, simd_sub, simd_sub) }
+    impl_vec_trait! { [VectorSub vec_sub] (simd_sub, simd_sub, simd_sub, simd_sub, simd_sub, simd_sub) }
 
     test_impl! { vec_vminsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vminsb, vminsb] }
     test_impl! { vec_vminsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vminsh, vminsh] }
@@ -227,7 +227,7 @@ mod sealed {
         unsafe fn vec_min(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_trait!{ [VectorMin vec_min] (vminub, vminsb, vminuh, vminsh, vminuw, vminsw) }
+    impl_vec_trait! { [VectorMin vec_min] (vminub, vminsb, vminuh, vminsh, vminuw, vminsw) }
 
     test_impl! { vec_vmaxsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vmaxsb, vmaxsb] }
     test_impl! { vec_vmaxsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vmaxsh, vmaxsh] }
@@ -242,7 +242,7 @@ mod sealed {
         unsafe fn vec_max(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_trait!{ [VectorMax vec_max] (vmaxub, vmaxsb, vmaxuh, vmaxsh, vmaxuw, vmaxsw) }
+    impl_vec_trait! { [VectorMax vec_max] (vmaxub, vmaxsb, vmaxuh, vmaxsh, vmaxuw, vmaxsw) }
 
     #[inline]
     #[target_feature(enable = "altivec")]
@@ -1173,15 +1173,29 @@ mod tests {
     use stdsimd_test::simd_test;
 
     macro_rules! s_t_l {
-        (i32x4) => ( vector_signed_int );
-        (i16x8) => ( vector_signed_short );
-        (i8x16) => ( vector_signed_char );
+        (i32x4) => {
+            vector_signed_int
+        };
+        (i16x8) => {
+            vector_signed_short
+        };
+        (i8x16) => {
+            vector_signed_char
+        };
 
-        (u32x4) => ( vector_unsigned_int );
-        (u16x8) => ( vector_unsigned_short );
-        (u8x16) => ( vector_unsigned_char );
+        (u32x4) => {
+            vector_unsigned_int
+        };
+        (u16x8) => {
+            vector_unsigned_short
+        };
+        (u8x16) => {
+            vector_unsigned_char
+        };
 
-        (f32x4) => ( vector_float );
+        (f32x4) => {
+            vector_float
+        };
     }
 
     macro_rules! test_vec_sub {
@@ -1198,35 +1212,35 @@ mod tests {
          }
     }
 
-    test_vec_sub!{ test_vec_sub_i32x4, i32x4,
-                  [-1, 0, 1, 2],
-                  [2, 1, -1, -2],
-                  [-3, -1, 2, 4] }
+    test_vec_sub! { test_vec_sub_i32x4, i32x4,
+    [-1, 0, 1, 2],
+    [2, 1, -1, -2],
+    [-3, -1, 2, 4] }
 
-    test_vec_sub!{ test_vec_sub_u32x4, u32x4,
-                  [0, 0, 1, 2],
-                  [2, 1, 0, 0],
-                  [4294967294, 4294967295, 1, 2] }
+    test_vec_sub! { test_vec_sub_u32x4, u32x4,
+    [0, 0, 1, 2],
+    [2, 1, 0, 0],
+    [4294967294, 4294967295, 1, 2] }
 
-    test_vec_sub!{ test_vec_sub_i16x8, i16x8,
-                  [-1, 0, 1, 2, -1, 0, 1, 2],
-                  [2, 1, -1, -2, 2, 1, -1, -2],
-                  [-3, -1, 2, 4, -3, -1, 2, 4] }
+    test_vec_sub! { test_vec_sub_i16x8, i16x8,
+    [-1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2],
+    [-3, -1, 2, 4, -3, -1, 2, 4] }
 
-    test_vec_sub!{ test_vec_sub_u16x8, u16x8,
-                  [0, 0, 1, 2, 0, 0, 1, 2],
-                  [2, 1, 0, 0, 2, 1, 0, 0],
-                  [65534, 65535, 1, 2, 65534, 65535, 1, 2] }
+    test_vec_sub! { test_vec_sub_u16x8, u16x8,
+    [0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0],
+    [65534, 65535, 1, 2, 65534, 65535, 1, 2] }
 
-    test_vec_sub!{ test_vec_sub_i8x16, i8x16,
-                  [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
-                  [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
-                  [-3, -1, 2, 4, -3, -1, 2, 4, -3, -1, 2, 4, -3, -1, 2, 4] }
+    test_vec_sub! { test_vec_sub_i8x16, i8x16,
+    [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
+    [-3, -1, 2, 4, -3, -1, 2, 4, -3, -1, 2, 4, -3, -1, 2, 4] }
 
-    test_vec_sub!{ test_vec_sub_u8x16, u8x16,
-                  [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
-                  [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
-                  [254, 255, 1, 2, 254, 255, 1, 2, 254, 255, 1, 2, 254, 255, 1, 2] }
+    test_vec_sub! { test_vec_sub_u8x16, u8x16,
+    [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
+    [254, 255, 1, 2, 254, 255, 1, 2, 254, 255, 1, 2, 254, 255, 1, 2] }
 
     macro_rules! test_vec_min {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
@@ -1242,35 +1256,35 @@ mod tests {
          }
     }
 
-    test_vec_min!{ test_vec_min_i32x4, i32x4,
-                  [-1, 0, 1, 2],
-                  [2, 1, -1, -2],
-                  [-1, 0, -1, -2] }
+    test_vec_min! { test_vec_min_i32x4, i32x4,
+    [-1, 0, 1, 2],
+    [2, 1, -1, -2],
+    [-1, 0, -1, -2] }
 
-    test_vec_min!{ test_vec_min_u32x4, u32x4,
-                  [0, 0, 1, 2],
-                  [2, 1, 0, 0],
-                  [0, 0, 0, 0] }
+    test_vec_min! { test_vec_min_u32x4, u32x4,
+    [0, 0, 1, 2],
+    [2, 1, 0, 0],
+    [0, 0, 0, 0] }
 
-    test_vec_min!{ test_vec_min_i16x8, i16x8,
-                  [-1, 0, 1, 2, -1, 0, 1, 2],
-                  [2, 1, -1, -2, 2, 1, -1, -2],
-                  [-1, 0, -1, -2, -1, 0, -1, -2] }
+    test_vec_min! { test_vec_min_i16x8, i16x8,
+    [-1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2],
+    [-1, 0, -1, -2, -1, 0, -1, -2] }
 
-    test_vec_min!{ test_vec_min_u16x8, u16x8,
-                  [0, 0, 1, 2, 0, 0, 1, 2],
-                  [2, 1, 0, 0, 2, 1, 0, 0],
-                  [0, 0, 0, 0, 0, 0, 0, 0] }
+    test_vec_min! { test_vec_min_u16x8, u16x8,
+    [0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0] }
 
-    test_vec_min!{ test_vec_min_i8x16, i8x16,
-                  [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
-                  [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
-                  [-1, 0, -1, -2, -1, 0, -1, -2, -1, 0, -1, -2, -1, 0, -1, -2] }
+    test_vec_min! { test_vec_min_i8x16, i8x16,
+    [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
+    [-1, 0, -1, -2, -1, 0, -1, -2, -1, 0, -1, -2, -1, 0, -1, -2] }
 
-    test_vec_min!{ test_vec_min_u8x16, u8x16,
-                  [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
-                  [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
-                  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+    test_vec_min! { test_vec_min_u8x16, u8x16,
+    [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
     macro_rules! test_vec_max {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
@@ -1286,35 +1300,35 @@ mod tests {
          }
     }
 
-    test_vec_max!{ test_vec_max_i32x4, i32x4,
-                  [-1, 0, 1, 2],
-                  [2, 1, -1, -2],
-                  [2, 1, 1, 2] }
+    test_vec_max! { test_vec_max_i32x4, i32x4,
+    [-1, 0, 1, 2],
+    [2, 1, -1, -2],
+    [2, 1, 1, 2] }
 
-    test_vec_max!{ test_vec_max_u32x4, u32x4,
-                  [0, 0, 1, 2],
-                  [2, 1, 0, 0],
-                  [2, 1, 1, 2] }
+    test_vec_max! { test_vec_max_u32x4, u32x4,
+    [0, 0, 1, 2],
+    [2, 1, 0, 0],
+    [2, 1, 1, 2] }
 
-    test_vec_max!{ test_vec_max_i16x8, i16x8,
-                  [-1, 0, 1, 2, -1, 0, 1, 2],
-                  [2, 1, -1, -2, 2, 1, -1, -2],
-                  [2, 1, 1, 2, 2, 1, 1, 2] }
+    test_vec_max! { test_vec_max_i16x8, i16x8,
+    [-1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2],
+    [2, 1, 1, 2, 2, 1, 1, 2] }
 
-    test_vec_max!{ test_vec_max_u16x8, u16x8,
-                  [0, 0, 1, 2, 0, 0, 1, 2],
-                  [2, 1, 0, 0, 2, 1, 0, 0],
-                  [2, 1, 1, 2, 2, 1, 1, 2] }
+    test_vec_max! { test_vec_max_u16x8, u16x8,
+    [0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0],
+    [2, 1, 1, 2, 2, 1, 1, 2] }
 
-    test_vec_max!{ test_vec_max_i8x16, i8x16,
-                  [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
-                  [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
-                  [2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2] }
+    test_vec_max! { test_vec_max_i8x16, i8x16,
+    [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
+    [2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2] }
 
-    test_vec_max!{ test_vec_max_u8x16, u8x16,
-                  [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
-                  [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
-                  [2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2] }
+    test_vec_max! { test_vec_max_u8x16, u8x16,
+    [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
+    [2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 2] }
 
     macro_rules! test_vec_perm {
         {$name:ident,
