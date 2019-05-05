@@ -8,6 +8,7 @@ use ra_syntax::{
     ast::{self, AstNode},
 };
 use ra_text_edit::{TextEdit, TextEditBuilder};
+use ra_prof::profile;
 
 use crate::{Diagnostic, FileId, FileSystemEdit, SourceChange, SourceFileEdit, db::RootDatabase};
 
@@ -18,6 +19,7 @@ pub enum Severity {
 }
 
 pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic> {
+    let _p = profile("diagnostics");
     let source_file = db.parse(file_id);
     let mut res = Vec::new();
 
