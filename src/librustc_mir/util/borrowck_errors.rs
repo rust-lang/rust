@@ -399,17 +399,13 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
         move_from_desc: &str,
         o: Origin,
     ) -> DiagnosticBuilder<'cx> {
-        let mut err = struct_span_err!(
+        let err = struct_span_err!(
             self,
             move_from_span,
             E0507,
             "cannot move out of {}{OGN}",
             move_from_desc,
             OGN = o
-        );
-        err.span_label(
-            move_from_span,
-            format!("cannot move out of {}", move_from_desc),
         );
 
         self.cancel_if_wrong_origin(err, o)
@@ -434,8 +430,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             self,
             move_from_span,
             E0508,
-            "cannot move out of type `{}`, \
-             a non-copy {}{OGN}",
+            "cannot move out of type `{}`, a non-copy {}{OGN}",
             ty,
             type_name,
             OGN = o
@@ -455,8 +450,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             self,
             move_from_span,
             E0509,
-            "cannot move out of type `{}`, \
-             which implements the `Drop` trait{OGN}",
+            "cannot move out of type `{}`, which implements the `Drop` trait{OGN}",
             container_ty,
             OGN = o
         );
