@@ -810,7 +810,7 @@ impl ConfigCodeBlock {
 
     fn get_block_config(&self) -> Config {
         let mut config = Config::default();
-        if self.config_value.is_some() && self.config_value.is_some() {
+        if self.config_name.is_some() && self.config_value.is_some() {
             config.override_value(
                 self.config_name.as_ref().unwrap(),
                 self.config_value.as_ref().unwrap(),
