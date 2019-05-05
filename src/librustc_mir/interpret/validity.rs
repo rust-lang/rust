@@ -66,7 +66,7 @@ macro_rules! try_validation {
 pub enum PathElem {
     Field(Symbol),
     Variant(Symbol),
-    GeneratoreState(VariantIdx),
+    GeneratorState(VariantIdx),
     ClosureVar(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
@@ -101,7 +101,7 @@ fn path_format(path: &Vec<PathElem>) -> String {
         match elem {
             Field(name) => write!(out, ".{}", name),
             Variant(name) => write!(out, ".<downcast-variant({})>", name),
-            GeneratoreState(idx) => write!(out, ".<generator-state({})>", idx.index()),
+            GeneratorState(idx) => write!(out, ".<generator-state({})>", idx.index()),
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
@@ -267,7 +267,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         let name = match old_op.layout.ty.sty {
             ty::Adt(adt, _) => PathElem::Variant(adt.variants[variant_id].ident.name),
             // Generators also have variants
-            ty::Generator(..) => PathElem::GeneratoreState(variant_id),
+            ty::Generator(..) => PathElem::GeneratorState(variant_id),
             _ => bug!("Unexpected type with variant: {:?}", old_op.layout.ty),
         };
         self.visit_elem(new_op, name)
