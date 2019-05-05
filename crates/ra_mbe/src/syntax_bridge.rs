@@ -56,8 +56,9 @@ where
     if tree_sink.roots.len() != 1 {
         return Err(ExpandError::ConversionError);
     }
-
-    Ok(tree_sink.inner.finish())
+    //FIXME: would be cool to report errors
+    let (tree, _errors) = tree_sink.inner.finish();
+    Ok(tree)
 }
 
 /// Parses the token tree (result of macro expansion) to an expression

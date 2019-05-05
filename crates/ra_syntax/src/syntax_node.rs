@@ -626,13 +626,13 @@ impl SyntaxTreeBuilder {
         (green, self.errors)
     }
 
-    pub fn finish(self) -> TreeArc<SyntaxNode> {
-        let (green, _errors) = self.finish_raw();
+    pub fn finish(self) -> (TreeArc<SyntaxNode>, Vec<SyntaxError>) {
+        let (green, errors) = self.finish_raw();
         let node = SyntaxNode::new(green);
         if cfg!(debug_assertions) {
             crate::validation::validate_block_structure(&node);
         }
-        node
+        (node, errors)
     }
 
     pub fn token(&mut self, kind: SyntaxKind, text: SmolStr) {
