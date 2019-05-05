@@ -313,9 +313,42 @@ impl<T:Ord, const N: usize> Ord for [T; N] {
     }
 }
 
+/*
+
 #[stable(since = "1.4.0", feature = "array_default")]
 impl<T, const N: usize> Default for [T; N] where T: Default {
     fn default() -> [T; N] {
         [T::default(); N]
     }
 }
+
+// FIXME: This doesn't work now because it's using negative bound.
+
+#[stable(since = "1.4.0", feature = "array_default")]
+impl<T> Default for [T; 0] where T: !Default {
+    fn default() -> [T; 0] {
+        []
+    }
+}
+
+*/
+
+macro_rules! array_impl_default {
+    {$n:expr, $t:ident $($ts:ident)*} => {
+        #[stable(since = "1.4.0", feature = "array_default")]
+        impl<T> Default for [T; $n] where T: Default {
+            fn default() -> [T; $n] {
+                [$t::default(), $($ts::default()),*]
+            }
+        }
+        array_impl_default!{($n - 1), $($ts)*}
+    };
+    {$n:expr,} => {
+        #[stable(since = "1.4.0", feature = "array_default")]
+        impl<T> Default for [T; $n] {
+            fn default() -> [T; $n] { [] }
+        }
+    };
+}
+
+array_impl_default!{32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
