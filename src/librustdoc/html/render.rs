@@ -3410,7 +3410,7 @@ fn render_stability_since_raw<'a, T: fmt::Write>(
 ) -> fmt::Result {
     if let Some(v) = ver {
         if containing_ver != ver && v.len() > 0 {
-            write!(w, "<div class='since' title='Stable since Rust version {0}'>{0}</div>", v)?
+            write!(w, "<span class='since' title='Stable since Rust version {0}'>{0}</span>", v)?
         }
     }
     Ok(())
