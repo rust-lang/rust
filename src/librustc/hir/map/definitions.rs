@@ -337,35 +337,17 @@ pub enum DefPathData {
     // Different kinds of items and item-like things:
     /// An impl
     Impl,
-    /// A trait
-    Trait(InternedString),
-    /// An associated type **declaration** (i.e., in a trait)
-    AssocTypeInTrait(InternedString),
-    /// An associated type **value** (i.e., in an impl)
-    AssocTypeInImpl(InternedString),
-    /// An existential associated type **value** (i.e., in an impl)
-    AssocExistentialInImpl(InternedString),
     /// Something in the type NS
     TypeNs(InternedString),
     /// Something in the value NS
     ValueNs(InternedString),
-    /// A module declaration
-    Module(InternedString),
-    /// A macro rule
-    MacroDef(InternedString),
+    /// Something in the macro NS
+    MacroNs(InternedString),
+    /// Something in the lifetime NS
+    LifetimeNs(InternedString),
     /// A closure expression
     ClosureExpr,
     // Subportions of items
-    /// A type (generic) parameter
-    TypeParam(InternedString),
-    /// A lifetime (generic) parameter
-    LifetimeParam(InternedString),
-    /// A const (generic) parameter
-    ConstParam(InternedString),
-    /// A variant of a enum
-    EnumVariant(InternedString),
-    /// A struct field
-    Field(InternedString),
     /// Implicit ctor for a unit or tuple-like struct or enum variant.
     Ctor,
     /// A constant expression (see {ast,hir}::AnonConst).
@@ -376,8 +358,6 @@ pub enum DefPathData {
     /// a whole crate (as opposed to just one item). GlobalMetaData components
     /// are only supposed to show up right below the crate root.
     GlobalMetaData(InternedString),
-    /// A trait alias.
-    TraitAlias(InternedString),
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Debug,
@@ -633,19 +613,9 @@ impl DefPathData {
         use self::DefPathData::*;
         match *self {
             TypeNs(name) |
-            Trait(name) |
-            TraitAlias(name) |
-            AssocTypeInTrait(name) |
-            AssocTypeInImpl(name) |
-            AssocExistentialInImpl(name) |
             ValueNs(name) |
-            Module(name) |
-            MacroDef(name) |
-            TypeParam(name) |
-            LifetimeParam(name) |
-            ConstParam(name) |
-            EnumVariant(name) |
-            Field(name) |
+            MacroNs(name) |
+            LifetimeNs(name) |
             GlobalMetaData(name) => Some(name),
 
             Impl |
@@ -662,19 +632,9 @@ impl DefPathData {
         use self::DefPathData::*;
         let s = match *self {
             TypeNs(name) |
-            Trait(name) |
-            TraitAlias(name) |
-            AssocTypeInTrait(name) |
-            AssocTypeInImpl(name) |
-            AssocExistentialInImpl(name) |
             ValueNs(name) |
-            Module(name) |
-            MacroDef(name) |
-            TypeParam(name) |
-            LifetimeParam(name) |
-            ConstParam(name) |
-            EnumVariant(name) |
-            Field(name) |
+            MacroNs(name) |
+            LifetimeNs(name) |
             GlobalMetaData(name) => {
                 return name
             }

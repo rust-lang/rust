@@ -1,6 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::hir;
+use crate::hir::def::DefKind;
 use crate::hir::def_id::DefId;
 use crate::hir::map::DefPathData;
 use crate::mir::interpret::{sign_extend, truncate};
@@ -529,21 +530,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
     pub fn is_trait(self, def_id: DefId) -> bool {
-        if let DefPathData::Trait(_) = self.def_key(def_id).disambiguated_data.data {
-            true
-        } else {
-            false
-        }
+        self.def_kind(def_id) == Some(DefKind::Trait)
     }
 
     /// Returns `true` if `def_id` refers to a trait alias (i.e., `trait Foo = ...;`),
     /// and `false` otherwise.
     pub fn is_trait_alias(self, def_id: DefId) -> bool {
-        if let DefPathData::TraitAlias(_) = self.def_key(def_id).disambiguated_data.data {
-            true
-        } else {
-            false
-        }
+        self.def_kind(def_id) == Some(DefKind::TraitAlias)
     }
 
     /// Returns `true` if this `DefId` refers to the implicit constructor for

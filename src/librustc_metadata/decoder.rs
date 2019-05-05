@@ -459,7 +459,7 @@ crate fn proc_macro_def_path_table(crate_root: &CrateRoot,
         let def_index = definitions.create_def_with_parent(
             crate_root,
             ast::DUMMY_NODE_ID,
-            DefPathData::MacroDef(name.as_interned_str()),
+            DefPathData::MacroNs(name.as_interned_str()),
             DefIndexAddressSpace::High,
             Mark::root(),
             DUMMY_SP);
