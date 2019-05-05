@@ -177,6 +177,9 @@ fn collect_vars(subtree: &crate::Subtree) -> Vec<SmolStr> {
             crate::TokenTree::Subtree(subtree) => {
                 res.extend(collect_vars(subtree));
             }
+            crate::TokenTree::Repeat(crate::Repeat { subtree, .. }) => {
+                res.extend(collect_vars(subtree));
+            }
             _ => {}
         }
     }

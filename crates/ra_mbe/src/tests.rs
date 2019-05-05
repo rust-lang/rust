@@ -1397,3 +1397,55 @@ quick_error ! (SORT [enum Wrapped # [derive (Debug)]] items [
 
     assert_eq!(expanded.to_string(), "quick_error ! (ENUM_DEFINITION [enum Wrapped # [derive (Debug)]] body [] queue [=> One : UNIT [] => Two : TUPLE [s : String]]) ;");
 }
+
+#[test]
+fn test_empty_repeat_vars_in_empty_repeat_vars() {
+    let rules = create_rules(r#"
+macro_rules! delegate_impl {
+    ([$self_type:ident, $self_wrap:ty, $self_map:ident]
+     pub trait $name:ident $(: $sup:ident)* $(+ $more_sup:ident)* {
+
+        // "Escaped" associated types. Stripped before making the `trait`
+        // itself, but forwarded when delegating impls.
+        $(
+        @escape [type $assoc_name_ext:ident]
+        // Associated types. Forwarded.
+        )*
+        $(
+        @section type
+        $(
+            $(#[$_assoc_attr:meta])*
+            type $assoc_name:ident $(: $assoc_bound:ty)*;
+        )+
+        )*
+        // Methods. Forwarded. Using $self_map!(self) around the self argument.
+        // Methods must use receiver `self` or explicit type like `self: &Self`
+        // &self and &mut self are _not_ supported.
+        $(
+        @section self
+        $(
+            $(#[$_method_attr:meta])*
+            fn $method_name:ident(self $(: $self_selftype:ty)* $(,$marg:ident : $marg_ty:ty)*) -> $mret:ty;
+        )+
+        )*
+        // Arbitrary tail that is ignored when forwarding.
+        $(
+        @section nodelegate
+        $($tail:tt)*
+        )*
+    }) => {
+        impl<> $name for $self_wrap where $self_type: $name {
+            $(
+            $(
+                fn $method_name(self $(: $self_selftype)* $(,$marg: $marg_ty)*) -> $mret {
+                    $self_map!(self).$method_name($($marg),*)
+                }
+            )*
+            )*
+        }
+    }
+}
+"#);
+
+    assert_expansion(MacroKind::Items, &rules, r#"delegate_impl ! {[G , & 'a mut G , deref] pub trait Data : GraphBase {@ section type type NodeWeight ;}}"#, "impl <> Data for & \'a mut G where G : Data {}");
+}
