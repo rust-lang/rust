@@ -53,11 +53,10 @@ fn add_missing_impl_members_inner(
             trait_def.syntax().descendants().find_map(ast::ItemList::cast)?.impl_items();
         let impl_items = impl_item_list.impl_items();
 
-        let trait_fns = trait_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
+        let trait_fns = trait_items.map(ImplItem::kind).filter_map(fn_def_opt);
         let impl_fns = impl_items.map(ImplItem::kind).filter_map(fn_def_opt).collect::<Vec<_>>();
 
         trait_fns
-            .into_iter()
             .filter(|t| def_name(t).is_some())
             .filter(|t| match mode {
                 AddMissingImplMembersMode::DefaultMethodsOnly => t.body().is_some(),
