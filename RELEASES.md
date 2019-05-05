@@ -7,7 +7,7 @@ Language
   `Box<FnMut>`, and `Box<Fn>` respectively.][59500]
 - [You can now coerce closures into unsafe function pointers.][59580] e.g.
   ```rust
-  unsafe fn call_unsafe(func: unsafe fn() -> ()) -> () {
+  unsafe fn call_unsafe(func: unsafe fn()) {
       func()
   }
 
