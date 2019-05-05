@@ -2568,6 +2568,19 @@ fn test() { S2.into()<|>; }
     assert_eq!(t, "S1");
 }
 
+#[test]
+fn method_resolution_encountering_fn_type() {
+    covers!(trait_resolution_on_fn_type);
+    type_at(
+        r#"
+//- /main.rs
+fn foo() {}
+trait FnOnce { fn call(self); }
+fn test() { foo.call()<|>; }
+"#,
+    );
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id);
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

@@ -6,12 +6,13 @@ use log::debug;
 use chalk_ir::{TypeId, ImplId, TypeKindId, ProjectionTy, Parameter, Identifier, cast::Cast, PlaceholderIndex, UniverseIndex, TypeName};
 use chalk_rust_ir::{AssociatedTyDatum, TraitDatum, StructDatum, ImplDatum};
 
+use test_utils::tested_by;
 use ra_db::salsa::{InternId, InternKey};
 
 use crate::{
     Trait, HasGenericParams, ImplBlock,
     db::HirDatabase,
-    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate}, generics::GenericDef,
+    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate}, generics::GenericDef, ty::CallableDef,
 };
 use super::ChalkContext;
 
@@ -261,7 +262,29 @@ where
             }
             TypeCtor::FnPtr { num_args } => (num_args as usize + 1, vec![], true),
             TypeCtor::Tuple { cardinality } => (cardinality as usize, vec![], true),
-            TypeCtor::FnDef(_) => unimplemented!(),
+            TypeCtor::FnDef(callable) => {
+                tested_by!(trait_resolution_on_fn_type);
+                let krate = match callable {
+                    CallableDef::Function(f) => f.module(self.db).krate(self.db),
+                    CallableDef::Struct(s) => s.module(self.db).krate(self.db),
+                    CallableDef::EnumVariant(v) => {
+                        v.parent_enum(self.db).module(self.db).krate(self.db)
+                    }
+                };
+                let generic_def: GenericDef = match callable {
+                    CallableDef::Function(f) => f.into(),
+                    CallableDef::Struct(s) => s.into(),
+                    CallableDef::EnumVariant(v) => v.parent_enum(self.db).into(),
+                };
+                let generic_params = generic_def.generic_params(self.db);
+                let bound_vars = Substs::bound_vars(&generic_params);
+                let where_clauses = convert_where_clauses(self.db, generic_def, &bound_vars);
+                (
+                    generic_params.count_params_including_parent(),
+                    where_clauses,
+                    krate != Some(self.krate),
+                )
+            }
             TypeCtor::Adt(adt) => {
                 let generic_params = adt.generic_params(self.db);
                 let bound_vars = Substs::bound_vars(&generic_params);

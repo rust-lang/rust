@@ -9,4 +9,5 @@ test_utils::marks!(
     glob_across_crates
     std_prelude
     match_ergonomics_ref
+    trait_resolution_on_fn_type
 );
