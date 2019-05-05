@@ -144,7 +144,7 @@ impl LiveNode {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 enum LiveNodeKind {
-    FreeVarNode(Span),
+    UpvarNode(Span),
     ExprNode(Span),
     VarDefNode(Span),
     ExitNode
@@ -153,8 +153,8 @@ enum LiveNodeKind {
 fn live_node_kind_to_string(lnk: LiveNodeKind, tcx: TyCtxt<'_, '_, '_>) -> String {
     let cm = tcx.sess.source_map();
     match lnk {
-        FreeVarNode(s) => {
-            format!("Free var node [{}]", cm.span_to_string(s))
+        UpvarNode(s) => {
+            format!("Upvar node [{}]", cm.span_to_string(s))
         }
         ExprNode(s) => {
             format!("Expr node [{}]", cm.span_to_string(s))
@@ -483,16 +483,17 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
         // in better error messages than just pointing at the closure
         // construction site.
         let mut call_caps = Vec::new();
-        ir.tcx.with_freevars(expr.hir_id, |freevars| {
-            call_caps.extend(freevars.iter().filter_map(|fv| {
-                if let Res::Local(rv) = fv.res {
-                    let fv_ln = ir.add_live_node(FreeVarNode(fv.span));
-                    Some(CaptureInfo { ln: fv_ln, var_hid: rv })
+        let closure_def_id = ir.tcx.hir().local_def_id_from_hir_id(expr.hir_id);
+        if let Some(upvars) = ir.tcx.upvars(closure_def_id) {
+            call_caps.extend(upvars.iter().filter_map(|upvar| {
+                if let Res::Local(rv) = upvar.res {
+                    let upvar_ln = ir.add_live_node(UpvarNode(upvar.span));
+                    Some(CaptureInfo { ln: upvar_ln, var_hid: rv })
                 } else {
                     None
                 }
             }));
-        });
+        }
         ir.set_captures(expr.hir_id, call_caps);
 
         intravisit::walk_expr(ir, expr);

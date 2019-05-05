@@ -121,28 +121,28 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             None
         };
 
-        self.tcx.with_freevars(closure_hir_id, |freevars| {
-            let mut freevar_list: Vec<ty::UpvarId> = Vec::with_capacity(freevars.len());
-            for freevar in freevars {
+        if let Some(upvars) = self.tcx.upvars(closure_def_id) {
+            let mut upvar_list: Vec<ty::UpvarId> = Vec::with_capacity(upvars.len());
+            for upvar in upvars.iter() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath {
-                        hir_id: freevar.var_id(),
+                        hir_id: upvar.var_id(),
                     },
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
                 // Adding the upvar Id to the list of Upvars, which will be added
                 // to the map for the closure at the end of the for loop.
-                freevar_list.push(upvar_id);
+                upvar_list.push(upvar_id);
 
                 let capture_kind = match capture_clause {
                     hir::CaptureByValue => ty::UpvarCapture::ByValue,
                     hir::CaptureByRef => {
                         let origin = UpvarRegion(upvar_id, span);
-                        let freevar_region = self.next_region_var(origin);
+                        let upvar_region = self.next_region_var(origin);
                         let upvar_borrow = ty::UpvarBorrow {
                             kind: ty::ImmBorrow,
-                            region: freevar_region,
+                            region: upvar_region,
                         };
                         ty::UpvarCapture::ByRef(upvar_borrow)
                     }
@@ -153,16 +153,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .upvar_capture_map
                     .insert(upvar_id, capture_kind);
             }
-            // Add the vector of freevars to the map keyed with the closure id.
+            // Add the vector of upvars to the map keyed with the closure id.
             // This gives us an easier access to them without having to call
-            // with_freevars again..
-            if !freevar_list.is_empty() {
+            // tcx.upvars again..
+            if !upvar_list.is_empty() {
                 self.tables
                     .borrow_mut()
                     .upvar_list
-                    .insert(closure_def_id, freevar_list);
+                    .insert(closure_def_id, upvar_list);
             }
-        });
+        }
 
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
         let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
@@ -244,38 +244,38 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // This may change if abstract return types of some sort are
         // implemented.
         let tcx = self.tcx;
-        let closure_def_index = tcx.hir().local_def_id_from_hir_id(closure_id);
+        let closure_def_id = tcx.hir().local_def_id_from_hir_id(closure_id);
 
-        tcx.with_freevars(closure_id, |freevars| {
-            freevars
+        tcx.upvars(closure_def_id).iter().flat_map(|upvars| {
+            upvars
                 .iter()
-                .map(|freevar| {
-                    let var_hir_id = freevar.var_id();
-                    let freevar_ty = self.node_ty(var_hir_id);
+                .map(|upvar| {
+                    let var_hir_id = upvar.var_id();
+                    let upvar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
                         var_path: ty::UpvarPath { hir_id: var_hir_id },
-                        closure_expr_id: LocalDefId::from_def_id(closure_def_index),
+                        closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
 
                     debug!(
-                        "var_id={:?} freevar_ty={:?} capture={:?}",
-                        var_hir_id, freevar_ty, capture
+                        "var_id={:?} upvar_ty={:?} capture={:?}",
+                        var_hir_id, upvar_ty, capture
                     );
 
                     match capture {
-                        ty::UpvarCapture::ByValue => freevar_ty,
+                        ty::UpvarCapture::ByValue => upvar_ty,
                         ty::UpvarCapture::ByRef(borrow) => tcx.mk_ref(
                             borrow.region,
                             ty::TypeAndMut {
-                                ty: freevar_ty,
+                                ty: upvar_ty,
                                 mutbl: borrow.kind.to_mutbl_lossy(),
                             },
                         ),
                     }
                 })
-                .collect()
         })
+            .collect()
     }
 }
 

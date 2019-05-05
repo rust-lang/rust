@@ -172,7 +172,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
                 if def_id.is_local() {
                     let tables = self.ecx.tcx.typeck_tables_of(def_id);
                     if let Some(upvars) = tables.upvar_list.get(&def_id) {
-                        // Sometimes the index is beyond the number of freevars (seen
+                        // Sometimes the index is beyond the number of upvars (seen
                         // for a generator).
                         if let Some(upvar_id) = upvars.get(field) {
                             let var_hir_id = upvar_id.var_path.hir_id;

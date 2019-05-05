@@ -931,9 +931,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
-        self.tcx().with_freevars(closure_expr.hir_id, |freevars| {
-            for freevar in freevars {
-                let var_hir_id = freevar.var_id();
+        if let Some(upvars) = self.tcx().upvars(closure_def_id) {
+            for upvar in upvars.iter() {
+                let var_hir_id = upvar.var_id();
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath { hir_id: var_hir_id },
                     closure_expr_id: closure_def_id.to_local(),
@@ -941,14 +941,14 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,
                                                                    fn_decl_span,
-                                                                   freevar));
+                                                                   upvar));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
                         let mode = copy_or_move(&self.mc,
                                                 self.param_env,
                                                 &cmt_var,
                                                 CaptureMove);
-                        self.delegate.consume(closure_expr.hir_id, freevar.span, &cmt_var, mode);
+                        self.delegate.consume(closure_expr.hir_id, upvar.span, &cmt_var, mode);
                     }
                     ty::UpvarCapture::ByRef(upvar_borrow) => {
                         self.delegate.borrow(closure_expr.hir_id,
@@ -956,17 +956,17 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                                              &cmt_var,
                                              upvar_borrow.region,
                                              upvar_borrow.kind,
-                                             ClosureCapture(freevar.span));
+                                             ClosureCapture(upvar.span));
                     }
                 }
             }
-        });
+        }
     }
 
     fn cat_captured_var(&mut self,
                         closure_hir_id: hir::HirId,
                         closure_span: Span,
-                        upvar: &hir::Freevar)
+                        upvar: &hir::Upvar)
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective

@@ -824,7 +824,7 @@ rustc_queries! {
             desc { "generating a postorder list of CrateNums" }
         }
 
-        query freevars(_: DefId) -> Option<Lrc<Vec<hir::Freevar>>> {
+        query upvars(_: DefId) -> Option<Lrc<Vec<hir::Upvar>>> {
             eval_always
         }
         query maybe_unused_trait_import(_: DefId) -> bool {

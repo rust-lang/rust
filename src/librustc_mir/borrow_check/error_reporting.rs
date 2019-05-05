@@ -1814,16 +1814,12 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ty::Array(ty, _) | ty::Slice(ty) =>
                     self.describe_field_from_ty(&ty, field, variant_index),
                 ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-                    // Convert the def-id into a node-id. node-ids are only valid for
-                    // the local code in the current crate, so this returns an `Option` in case
+                    // `tcx.upvars(def_id)` returns an `Option`, which is `None` in case
                     // the closure comes from another crate. But in that case we wouldn't
                     // be borrowck'ing it, so we can just unwrap:
-                    let hir_id = self.infcx.tcx.hir().as_local_hir_id(def_id).unwrap();
-                    let freevar = self.infcx
-                        .tcx
-                        .with_freevars(hir_id, |fv| fv[field.index()]);
+                    let upvar = self.infcx.tcx.upvars(def_id).unwrap()[field.index()];
 
-                    self.infcx.tcx.hir().name_by_hir_id(freevar.var_id()).to_string()
+                    self.infcx.tcx.hir().name_by_hir_id(upvar.var_id()).to_string()
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -2613,28 +2609,19 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         if let hir::ExprKind::Closure(
             .., args_span, _
         ) = expr {
-            let var_span = self.infcx.tcx.with_freevars(
-                hir_id,
-                |freevars| {
-                    for (v, place) in freevars.iter().zip(places) {
-                        match place {
-                            Operand::Copy(place) |
-                            Operand::Move(place) if target_place == place => {
-                                debug!("closure_span: found captured local {:?}", place);
-                                return Some(v.span);
-                            },
-                            _ => {}
-                        }
-                    }
+            for (v, place) in self.infcx.tcx.upvars(def_id)?.iter().zip(places) {
+                match place {
+                    Operand::Copy(place) |
+                    Operand::Move(place) if target_place == place => {
+                        debug!("closure_span: found captured local {:?}", place);
+                        return Some((*args_span, v.span));
+                    },
+                    _ => {}
+                }
+            }
 
-                    None
-                },
-            )?;
-
-            Some((*args_span, var_span))
-        } else {
-            None
         }
+        None
     }
 
     /// Helper to retrieve span(s) of given borrow from the current MIR
