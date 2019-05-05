@@ -31,6 +31,12 @@ pub mod ast;
 #[doc(hidden)]
 pub mod fuzz;
 
+use std::sync::Arc;
+
+use ra_text_edit::AtomTextEdit;
+
+use crate::syntax_node::GreenNode;
+
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use ra_parser::SyntaxKind;
 pub use ra_parser::T;
@@ -43,8 +49,26 @@ pub use crate::{
     parsing::{tokenize, classify_literal, Token},
 };
 
-use ra_text_edit::AtomTextEdit;
-use crate::syntax_node::GreenNode;
+/// `Parse` is the result of the parsing: a syntax tree and a collection of
+/// errors.
+///
+/// Note that we always produce a syntax tree, even for completely invalid
+/// files.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Parse {
+    pub tree: TreeArc<SourceFile>,
+    pub errors: Arc<Vec<SyntaxError>>,
+}
+
+impl Parse {
+    pub fn ok(self) -> Result<TreeArc<SourceFile>, Arc<Vec<SyntaxError>>> {
+        if self.errors.is_empty() {
+            Ok(self.tree)
+        } else {
+            Err(self.errors)
+        }
+    }
+}
 
 /// `SourceFile` represents a parse tree for a single Rust file.
 pub use crate::ast::SourceFile;
