@@ -2,8 +2,8 @@ use crate::llvm::{self, AttributePlace};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
 use crate::type_::Type;
-use crate::type_of::{LayoutLlvmExt, PointerKind};
 use crate::value::Value;
+use crate::type_of::{LayoutLlvmExt};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
@@ -13,7 +13,7 @@ use rustc_codegen_ssa::traits::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty, Instance};
-use rustc::ty::layout;
+use rustc::ty::layout::{self, PointerKind};
 
 use libc::c_uint;
 

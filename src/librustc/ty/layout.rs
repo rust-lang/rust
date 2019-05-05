@@ -12,6 +12,7 @@ use std::iter;
 use std::mem;
 use std::ops::Bound;
 
+use crate::hir;
 use crate::ich::StableHashingContext;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
@@ -1518,6 +1519,10 @@ pub trait HasTyCtxt<'tcx>: HasDataLayout {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
 }
 
+pub trait HasParamEnv<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+}
+
 impl<'a, 'gcx, 'tcx> HasDataLayout for TyCtxt<'a, 'gcx, 'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
         &self.data_layout
@@ -1527,6 +1532,12 @@ impl<'a, 'gcx, 'tcx> HasDataLayout for TyCtxt<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> HasTyCtxt<'gcx> for TyCtxt<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'gcx> {
         self.global_tcx()
+    }
+}
+
+impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
     }
 }
 
@@ -1543,25 +1554,32 @@ impl<'gcx, 'tcx, T: HasTyCtxt<'gcx>> HasTyCtxt<'gcx> for LayoutCx<'tcx, T> {
 }
 
 pub trait MaybeResult<T> {
-    fn from_ok(x: T) -> Self;
-    fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self;
+    type Error;
+
+    fn from(x: Result<T, Self::Error>) -> Self;
+    fn to_result(self) -> Result<T, Self::Error>;
 }
 
 impl<T> MaybeResult<T> for T {
-    fn from_ok(x: T) -> Self {
+    type Error = !;
+
+    fn from(x: Result<T, Self::Error>) -> Self {
+        let Ok(x) = x;
         x
     }
-    fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
-        f(self)
+    fn to_result(self) -> Result<T, Self::Error> {
+        Ok(self)
     }
 }
 
 impl<T, E> MaybeResult<T> for Result<T, E> {
-    fn from_ok(x: T) -> Self {
-        Ok(x)
+    type Error = E;
+
+    fn from(x: Result<T, Self::Error>) -> Self {
+        x
     }
-    fn map_same<F: FnOnce(T) -> T>(self, f: F) -> Self {
-        self.map(f)
+    fn to_result(self) -> Result<T, Self::Error> {
+        self
     }
 }
 
@@ -1656,7 +1674,8 @@ impl ty::query::TyCtxtAt<'a, 'tcx, '_> {
 
 impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
-          C::TyLayout: MaybeResult<TyLayout<'tcx>>
+          C::TyLayout: MaybeResult<TyLayout<'tcx>>,
+          C: HasParamEnv<'tcx>
 {
     fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: VariantIdx) -> TyLayout<'tcx> {
         let details = match this.variants {
@@ -1664,10 +1683,9 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
 
             Variants::Single { index } => {
                 // Deny calling for_variant more than once for non-Single enums.
-                cx.layout_of(this.ty).map_same(|layout| {
+                if let Ok(layout) = cx.layout_of(this.ty).to_result() {
                     assert_eq!(layout.variants, Variants::Single { index });
-                    layout
-                });
+                }
 
                 let fields = match this.ty.sty {
                     ty::Adt(def, _) => def.variants[variant_index].fields.len(),
@@ -1700,10 +1718,10 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
         let tcx = cx.tcx();
         let discr_layout = |discr: &Scalar| -> C::TyLayout {
             let layout = LayoutDetails::scalar(cx, discr.clone());
-            MaybeResult::from_ok(TyLayout {
+            MaybeResult::from(Ok(TyLayout {
                 details: tcx.intern_layout(layout),
-                ty: discr.value.to_ty(tcx)
-            })
+                ty: discr.value.to_ty(tcx),
+            }))
         };
 
         cx.layout_of(match this.ty.sty {
@@ -1737,10 +1755,10 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     } else {
                         tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
                     };
-                    return cx.layout_of(ptr_ty).map_same(|mut ptr_layout| {
+                    return MaybeResult::from(cx.layout_of(ptr_ty).to_result().map(|mut ptr_layout| {
                         ptr_layout.ty = this.ty;
                         ptr_layout
-                    });
+                    }));
                 }
 
                 match tcx.struct_tail(pointee).sty {
@@ -1823,6 +1841,130 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                 bug!("TyLayout::field_type: unexpected type `{}`", this.ty)
             }
         })
+    }
+
+    fn pointee_info_at(
+        this: TyLayout<'tcx>,
+        cx: &C,
+        offset: Size,
+    ) -> Option<PointeeInfo> {
+        match this.ty.sty {
+            ty::RawPtr(mt) if offset.bytes() == 0 => {
+                cx.layout_of(mt.ty).to_result().ok()
+                    .map(|layout| PointeeInfo {
+                        size: layout.size,
+                        align: layout.align.abi,
+                        safe: None,
+                    })
+            }
+
+            ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
+                let tcx = cx.tcx();
+                let is_freeze = ty.is_freeze(tcx, cx.param_env(), DUMMY_SP);
+                let kind = match mt {
+                    hir::MutImmutable => if is_freeze {
+                        PointerKind::Frozen
+                    } else {
+                        PointerKind::Shared
+                    },
+                    hir::MutMutable => {
+                        // Previously we would only emit noalias annotations for LLVM >= 6 or in
+                        // panic=abort mode. That was deemed right, as prior versions had many bugs
+                        // in conjunction with unwinding, but later versions didn’t seem to have
+                        // said issues. See issue #31681.
+                        //
+                        // Alas, later on we encountered a case where noalias would generate wrong
+                        // code altogether even with recent versions of LLVM in *safe* code with no
+                        // unwinding involved. See #54462.
+                        //
+                        // For now, do not enable mutable_noalias by default at all, while the
+                        // issue is being figured out.
+                        let mutable_noalias = tcx.sess.opts.debugging_opts.mutable_noalias
+                            .unwrap_or(false);
+                        if mutable_noalias {
+                            PointerKind::UniqueBorrowed
+                        } else {
+                            PointerKind::Shared
+                        }
+                    }
+                };
+
+                cx.layout_of(ty).to_result().ok()
+                    .map(|layout| PointeeInfo {
+                        size: layout.size,
+                        align: layout.align.abi,
+                        safe: Some(kind),
+                    })
+            }
+
+            _ => {
+                let mut data_variant = match this.variants {
+                    // Within the discriminant field, only the niche itself is
+                    // always initialized, so we only check for a pointer at its
+                    // offset.
+                    //
+                    // If the niche is a pointer, it's either valid (according
+                    // to its type), or null (which the niche field's scalar
+                    // validity range encodes).  This allows using
+                    // `dereferenceable_or_null` for e.g., `Option<&T>`, and
+                    // this will continue to work as long as we don't start
+                    // using more niches than just null (e.g., the first page of
+                    // the address space, or unaligned pointers).
+                    Variants::Multiple {
+                        discr_kind: DiscriminantKind::Niche {
+                            dataful_variant,
+                            ..
+                        },
+                        discr_index,
+                        ..
+                    } if this.fields.offset(discr_index) == offset =>
+                        Some(this.for_variant(cx, dataful_variant)),
+                    _ => Some(this),
+                };
+
+                if let Some(variant) = data_variant {
+                    // We're not interested in any unions.
+                    if let FieldPlacement::Union(_) = variant.fields {
+                        data_variant = None;
+                    }
+                }
+
+                let mut result = None;
+
+                if let Some(variant) = data_variant {
+                    let ptr_end = offset + Pointer.size(cx);
+                    for i in 0..variant.fields.count() {
+                        let field_start = variant.fields.offset(i);
+                        if field_start <= offset {
+                            let field = variant.field(cx, i);
+                            result = field.to_result().ok()
+                                .and_then(|field| {
+                                    if ptr_end <= field_start + field.size {
+                                        // We found the right field, look inside it.
+                                        field.pointee_info_at(cx, offset - field_start)
+                                    } else {
+                                        None
+                                    }
+                                });
+                            if result.is_some() {
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // FIXME(eddyb) This should be for `ptr::Unique<T>`, not `Box<T>`.
+                if let Some(ref mut pointee) = result {
+                    if let ty::Adt(def, _) = this.ty.sty {
+                        if def.is_box() && offset.bytes() == 0 {
+                            pointee.safe = Some(PointerKind::UniqueOwned);
+                        }
+                    }
+                }
+
+                result
+            }
+        }
     }
 }
 

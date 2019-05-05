@@ -66,6 +66,12 @@ impl ty::layout::HasTyCtxt<'tcx> for Builder<'_, '_, 'tcx> {
     }
 }
 
+impl ty::layout::HasParamEnv<'tcx> for Builder<'_, '_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.cx.param_env()
+    }
+}
+
 impl ty::layout::LayoutOf for Builder<'_, '_, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;

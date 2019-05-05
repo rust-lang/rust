@@ -41,6 +41,8 @@ pub use self::type_::{
     ArgTypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
 };
 pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
+use rustc::ty::layout::{HasParamEnv};
+
 
 use std::fmt;
 
@@ -58,6 +60,7 @@ pub trait CodegenMethods<'tcx>:
     + DeclareMethods<'tcx>
     + AsmMethods<'tcx>
     + PreDefineMethods<'tcx>
+    + HasParamEnv<'tcx>
 {
 }
 
@@ -72,6 +75,7 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + DeclareMethods<'tcx>
         + AsmMethods<'tcx>
         + PreDefineMethods<'tcx>
+        + HasParamEnv<'tcx>
 {
 }
 

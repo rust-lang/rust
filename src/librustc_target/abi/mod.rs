@@ -910,6 +910,28 @@ pub trait LayoutOf {
     fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum PointerKind {
+    /// Most general case, we know no restrictions to tell LLVM.
+    Shared,
+
+    /// `&T` where `T` contains no `UnsafeCell`, is `noalias` and `readonly`.
+    Frozen,
+
+    /// `&mut T`, when we know `noalias` is safe for LLVM.
+    UniqueBorrowed,
+
+    /// `Box<T>`, unlike `UniqueBorrowed`, it also has `noalias` on returns.
+    UniqueOwned
+}
+
+#[derive(Copy, Clone)]
+pub struct PointeeInfo {
+    pub size: Size,
+    pub align: Align,
+    pub safe: Option<PointerKind>,
+}
+
 pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
     fn for_variant(
         this: TyLayout<'a, Self>,
@@ -917,6 +939,11 @@ pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
         variant_index: VariantIdx,
     ) -> TyLayout<'a, Self>;
     fn field(this: TyLayout<'a, Self>, cx: &C, i: usize) -> C::TyLayout;
+    fn pointee_info_at(
+        this: TyLayout<'a, Self>,
+        cx: &C,
+        offset: Size,
+    ) -> Option<PointeeInfo>;
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
@@ -927,6 +954,10 @@ impl<'a, Ty> TyLayout<'a, Ty> {
     pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::field(self, cx, i)
+    }
+    pub fn pointee_info_at<C>(self, cx: &C, offset: Size) -> Option<PointeeInfo>
+    where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
+        Ty::pointee_info_at(self, cx, offset)
     }
 }
 
