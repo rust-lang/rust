@@ -11,7 +11,7 @@ use ra_db::salsa::{InternId, InternKey};
 use crate::{
     Trait, HasGenericParams, ImplBlock,
     db::HirDatabase,
-    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs},
+    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate}, generics::GenericDef,
 };
 use super::ChalkContext;
 
@@ -146,11 +146,51 @@ impl ToChalk for ImplBlock {
     }
 }
 
+impl ToChalk for GenericPredicate {
+    type Chalk = chalk_ir::QuantifiedWhereClause;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::QuantifiedWhereClause {
+        match self {
+            GenericPredicate::Implemented(trait_ref) => {
+                make_binders(chalk_ir::WhereClause::Implemented(trait_ref.to_chalk(db)), 0)
+            }
+            GenericPredicate::Error => panic!("Trying to pass errored where clause to Chalk"),
+        }
+    }
+
+    fn from_chalk(
+        _db: &impl HirDatabase,
+        _where_clause: chalk_ir::QuantifiedWhereClause,
+    ) -> GenericPredicate {
+        // This should never need to be called
+        unimplemented!()
+    }
+}
+
 fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
     chalk_ir::Binders {
         value,
         binders: std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars).collect(),
     }
+}
+
+fn convert_where_clauses(
+    db: &impl HirDatabase,
+    def: GenericDef,
+    substs: &Substs,
+) -> (Vec<chalk_ir::QuantifiedWhereClause>, bool) {
+    let generic_predicates = db.generic_predicates(def);
+    let mut result = Vec::with_capacity(generic_predicates.len());
+    let mut has_error = false;
+    for pred in generic_predicates.iter() {
+        // FIXME: it would probably be nicer if we could just convert errored predicates to a where clause that is never true...
+        if pred.is_error() {
+            has_error = true;
+        } else {
+            result.push(pred.clone().subst(substs).to_chalk(db));
+        }
+    }
+    (result, has_error)
 }
 
 impl<'a, DB> chalk_solve::RustIrDatabase for ChalkContext<'a, DB>
@@ -173,7 +213,7 @@ where
             upstream: trait_.module(self.db).krate(self.db) != Some(self.krate),
             fundamental: false,
         };
-        let where_clauses = Vec::new(); // FIXME add where clauses
+        let (where_clauses, _) = convert_where_clauses(self.db, trait_.into(), &bound_vars);
         let associated_ty_ids = Vec::new(); // FIXME add associated tys
         let trait_datum_bound =
             chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
@@ -185,21 +225,26 @@ where
         let type_ctor = from_chalk(self.db, struct_id);
         // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
         // FIXME extract this to a method on Ty
-        let (num_params, upstream) = match type_ctor {
+        let (num_params, where_clauses, upstream) = match type_ctor {
             TypeCtor::Bool
             | TypeCtor::Char
             | TypeCtor::Int(_)
             | TypeCtor::Float(_)
             | TypeCtor::Never
-            | TypeCtor::Str => (0, true),
-            TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => (1, true),
-            TypeCtor::FnPtr { num_args } => (num_args as usize + 1, true),
-            TypeCtor::Tuple { cardinality } => (cardinality as usize, true),
+            | TypeCtor::Str => (0, vec![], true),
+            TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => {
+                (1, vec![], true)
+            }
+            TypeCtor::FnPtr { num_args } => (num_args as usize + 1, vec![], true),
+            TypeCtor::Tuple { cardinality } => (cardinality as usize, vec![], true),
             TypeCtor::FnDef(_) => unimplemented!(),
             TypeCtor::Adt(adt) => {
                 let generic_params = adt.generic_params(self.db);
+                let bound_vars = Substs::bound_vars(&generic_params);
+                let (where_clauses, _) = convert_where_clauses(self.db, adt.into(), &bound_vars);
                 (
                     generic_params.count_params_including_parent(),
+                    where_clauses,
                     adt.krate(self.db) != Some(self.krate),
                 )
             }
@@ -209,7 +254,6 @@ where
             // FIXME set fundamental flag correctly
             fundamental: false,
         };
-        let where_clauses = Vec::new(); // FIXME add where clauses
         let self_ty = chalk_ir::ApplicationTy {
             name: TypeName::TypeKindId(type_ctor.to_chalk(self.db).into()),
             parameters: (0..num_params).map(|i| chalk_ir::Ty::BoundVar(i).cast()).collect(),
@@ -237,10 +281,12 @@ where
         } else {
             chalk_rust_ir::ImplType::External
         };
+        let (where_clauses, where_clause_error) =
+            convert_where_clauses(self.db, impl_block.into(), &bound_vars);
         let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
             // FIXME handle negative impls (impl !Sync for Foo)
             trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref.to_chalk(self.db)),
-            where_clauses: Vec::new(),        // FIXME add where clauses
+            where_clauses,
             associated_ty_values: Vec::new(), // FIXME add associated type values
             impl_type,
         };
@@ -253,10 +299,6 @@ where
         self.db
             .impls_for_trait(self.krate, trait_)
             .iter()
-            // FIXME temporary hack -- as long as we're not lowering where clauses
-            // correctly, ignore impls with them completely so as to not treat
-            // impl<T> Trait for T where T: ... as a blanket impl on all types
-            .filter(|impl_block| impl_block.generic_params(self.db).where_predicates.is_empty())
             .map(|impl_block| impl_block.to_chalk(self.db))
             .collect()
     }

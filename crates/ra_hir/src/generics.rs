@@ -8,7 +8,7 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner};
 
 use crate::{
-    db::DefDatabase,
+    db::{ HirDatabase, DefDatabase},
     Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef, AdtDef
 };
 
@@ -32,8 +32,8 @@ pub struct GenericParams {
 /// where clauses like `where T: Foo + Bar` are turned into multiple of these.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WherePredicate {
-    type_ref: TypeRef,
-    trait_ref: Path,
+    pub(crate) type_ref: TypeRef,
+    pub(crate) trait_ref: Path,
 }
 
 // FIXME: consts can have type parameters from their parents (i.e. associated consts of traits)
@@ -145,6 +145,19 @@ impl GenericParams {
         let mut vec = Vec::with_capacity(self.count_params_including_parent());
         self.for_each_param(&mut |p| vec.push(p));
         vec
+    }
+}
+
+impl GenericDef {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> crate::Resolver {
+        match self {
+            GenericDef::Function(inner) => inner.resolver(db),
+            GenericDef::Struct(inner) => inner.resolver(db),
+            GenericDef::Enum(inner) => inner.resolver(db),
+            GenericDef::Trait(inner) => inner.resolver(db),
+            GenericDef::TypeAlias(inner) => inner.resolver(db),
+            GenericDef::ImplBlock(inner) => inner.resolver(db),
+        }
     }
 }
 

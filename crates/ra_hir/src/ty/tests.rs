@@ -2510,12 +2510,47 @@ fn method_resolution_where_clause_not_met() {
 trait Clone {}
 trait Trait { fn foo(self) -> u128; }
 struct S;
-impl S { fn foo(self) -> i8 { 0 } }
-impl<T> Trait for T where T: Clone { fn foo(self) -> u128 { 0 } }
+impl<T> Trait for T where T: Clone {}
 fn test() { (&S).foo()<|>; }
 "#,
     );
-    assert_eq!(t, "i8");
+    // This is also to make sure that we don't resolve to the foo method just
+    // because that's the only method named foo we can find, which would make
+    // the below tests not work
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn method_resolution_where_clause_1() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone {}
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl Clone for S {};
+impl<T> Trait for T where T: Clone {}
+fn test() { S.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
+#[test]
+fn method_resolution_where_clause_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Into<T> { fn into(self) -> T; }
+trait From<T> { fn from(other: T) -> Self; }
+struct S1;
+struct S2;
+impl From<S2> for S1 {};
+impl<T, U> Into<U> for T where U: From<T> {}
+fn test() { S2.into()<|>; }
+"#,
+    );
+    assert_eq!(t, "S1");
 }
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
