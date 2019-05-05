@@ -1519,6 +1519,10 @@ pub trait HasTyCtxt<'tcx>: HasDataLayout {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
 }
 
+pub trait HasParamEnv<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+}
+
 impl<'a, 'gcx, 'tcx> HasDataLayout for TyCtxt<'a, 'gcx, 'tcx> {
     fn data_layout(&self) -> &TargetDataLayout {
         &self.data_layout
@@ -1528,6 +1532,12 @@ impl<'a, 'gcx, 'tcx> HasDataLayout for TyCtxt<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> HasTyCtxt<'gcx> for TyCtxt<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'gcx> {
         self.global_tcx()
+    }
+}
+
+impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.param_env
     }
 }
 
@@ -1662,16 +1672,6 @@ impl ty::query::TyCtxtAt<'a, 'tcx, '_> {
     }
 }
 
-pub trait HasParamEnv<'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-}
-
-impl<'tcx, C> HasParamEnv<'tcx> for LayoutCx<'tcx, C> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
-    }
-}
-
 impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
           C::TyLayout: MaybeResult<TyLayout<'tcx>>,
@@ -1718,9 +1718,10 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
         let tcx = cx.tcx();
         let discr_layout = |discr: &Scalar| -> C::TyLayout {
             let layout = LayoutDetails::scalar(cx, discr.clone());
-            MaybeResult::from(Ok(
-                TyLayout {details: tcx.intern_layout(layout),ty: discr.value.to_ty(tcx)}
-            ))
+            MaybeResult::from(Ok(TyLayout {
+                details: tcx.intern_layout(layout),
+                ty: discr.value.to_ty(tcx),
+            }))
         };
 
         cx.layout_of(match this.ty.sty {
@@ -1754,12 +1755,10 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     } else {
                         tcx.mk_mut_ref(tcx.lifetimes.re_static, nil)
                     };
-                    return MaybeResult::from(
-                        cx.layout_of(ptr_ty).to_result().map(|mut ptr_layout| {
-                            ptr_layout.ty = this.ty;
-                            ptr_layout
-                        })
-                    );
+                    return MaybeResult::from(cx.layout_of(ptr_ty).to_result().map(|mut ptr_layout| {
+                        ptr_layout.ty = this.ty;
+                        ptr_layout
+                    }));
                 }
 
                 match tcx.struct_tail(pointee).sty {
