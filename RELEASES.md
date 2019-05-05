@@ -31,7 +31,7 @@ Libraries
 - [`alloc::System` now implements `Default`.][59451]
 - [Expanded `Debug` output (`{:#?}`) for structs now has a trailing comma on the
   last field.][59076]
-- [`char::{ToLowercase, ToUppercaseImplement}` now
+- [`char::{ToLowercase, ToUppercase}` now
   implement `ExactSizeIterator`.][58778]
 - [All `NonZero` numeric types now implement `FromStr`.][58717]
 - [Removed the `Read` trait bounds
