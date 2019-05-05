@@ -7,6 +7,7 @@ use syntax_pos::Span;
 
 use crate::borrow_check::MirBorrowckCtxt;
 use crate::borrow_check::prefixes::PrefixSet;
+use crate::borrow_check::error_reporting::UseSpans;
 use crate::dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind, InitLocation,
     LookupResult, MoveError, MovePathIndex,
@@ -49,7 +50,7 @@ enum GroupedMoveError<'tcx> {
     // Everything that isn't from pattern matching.
     OtherIllegalMove {
         original_path: Place<'tcx>,
-        span: Span,
+        use_spans: UseSpans,
         kind: IllegalMoveOriginKind<'tcx>,
     },
 }
@@ -150,7 +151,6 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             MoveError::IllegalMove {
                 cannot_move_out_of: IllegalMoveOrigin { location, kind },
             } => {
-                let stmt_source_info = self.mir.source_info(location);
                 // Note: that the only time we assign a place isn't a temporary
                 // to a user variable is when initializing it.
                 // If that ever stops being the case, then the ever initialized
@@ -178,6 +178,7 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         pat_span: _,
                     }))) = local_decl.is_user_variable
                     {
+                        let stmt_source_info = self.mir.source_info(location);
                         self.append_binding_error(
                             grouped_errors,
                             kind,
@@ -191,8 +192,10 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 }
+
+                let move_spans = self.move_spans(&original_path, location);
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
-                    span: stmt_source_info.span,
+                    use_spans: move_spans,
                     original_path,
                     kind,
                 });
@@ -288,9 +291,15 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             let (span, original_path, kind): (Span, &Place<'tcx>, &IllegalMoveOriginKind<'_>) =
                 match error {
                     GroupedMoveError::MovesFromPlace { span, ref original_path, ref kind, .. } |
-                    GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } |
-                    GroupedMoveError::OtherIllegalMove { span, ref original_path, ref kind } => {
+                    GroupedMoveError::MovesFromValue { span, ref original_path, ref kind, .. } => {
                         (span, original_path, kind)
+                    }
+                    GroupedMoveError::OtherIllegalMove {
+                        use_spans,
+                        ref original_path,
+                        ref kind
+                    } => {
+                        (use_spans.args_or_use(), original_path, kind)
                     },
                 };
             debug!("report: original_path={:?} span={:?}, kind={:?} \
@@ -548,7 +557,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 self.add_move_error_details(err, &binds_to);
             }
             // No binding. Nothing to suggest.
-            GroupedMoveError::OtherIllegalMove { ref original_path, span, .. } => {
+            GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
+                let span = use_spans.var_or_use();
                 let place_ty = original_path.ty(self.mir, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path) {
                     Some(desc) => format!("`{}`", desc),
@@ -559,6 +569,12 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     &place_desc,
                     place_ty,
                     Some(span),
+                );
+
+                use_spans.args_span_label(err, format!("move out of {} occurs here", place_desc));
+                use_spans.var_span_label(
+                    err,
+                    format!("move occurs due to use{}", use_spans.describe()),
                 );
             },
         }
