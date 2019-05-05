@@ -84,6 +84,7 @@
         - [Updating LLVM](./codegen/updating-llvm.md)
         - [Debugging LLVM](./codegen/debugging.md)
     - [Profile-guided Optimization](./profile-guided-optimization.md)
+    - [Debugging Support in Rust Compiler](./debugging-support-in-rustc.md)
 
 ---
 
