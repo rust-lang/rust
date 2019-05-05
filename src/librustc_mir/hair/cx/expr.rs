@@ -516,12 +516,11 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);
                 }
             };
-            let upvars = cx.tcx.with_freevars(expr.hir_id, |freevars| {
-                freevars.iter()
-                    .zip(substs.upvar_tys(def_id, cx.tcx))
-                    .map(|(fv, ty)| capture_freevar(cx, expr, fv, ty))
-                    .collect()
-            });
+            let upvars = cx.tcx.upvars(def_id).iter()
+                .flat_map(|upvars| upvars.iter())
+                .zip(substs.upvar_tys(def_id, cx.tcx))
+                .map(|(upvar, ty)| capture_upvar(cx, expr, upvar, ty))
+                .collect();
             ExprKind::Closure {
                 closure_id: def_id,
                 substs,
@@ -1185,12 +1184,12 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
     ExprKind::Deref { arg: ref_expr.to_ref() }
 }
 
-fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
+fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    closure_expr: &'tcx hir::Expr,
-                                   freevar: &hir::Freevar,
-                                   freevar_ty: Ty<'tcx>)
+                                   upvar: &hir::Upvar,
+                                   upvar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
-    let var_hir_id = freevar.var_id();
+    let var_hir_id = upvar.var_id();
     let upvar_id = ty::UpvarId {
         var_path: ty::UpvarPath { hir_id: var_hir_id },
         closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
@@ -1202,7 +1201,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         temp_lifetime,
         ty: var_ty,
         span: closure_expr.span,
-        kind: convert_var(cx, closure_expr, freevar.res),
+        kind: convert_var(cx, closure_expr, upvar.res),
     };
     match upvar_capture {
         ty::UpvarCapture::ByValue => captured_var.to_ref(),
@@ -1214,7 +1213,7 @@ fn capture_freevar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             };
             Expr {
                 temp_lifetime,
-                ty: freevar_ty,
+                ty: upvar_ty,
                 span: closure_expr.span,
                 kind: ExprKind::Borrow {
                     borrow_kind,

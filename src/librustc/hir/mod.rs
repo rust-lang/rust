@@ -2476,19 +2476,19 @@ impl ForeignItemKind {
     }
 }
 
-/// A free variable referred to in a function.
+/// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Freevar<Id = HirId> {
-    /// The variable being accessed free.
+pub struct Upvar<Id = HirId> {
+    /// The variable being captured.
     pub res: Res<Id>,
 
     // First span where it is accessed (there can be multiple).
     pub span: Span
 }
 
-impl<Id: fmt::Debug + Copy> Freevar<Id> {
-    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Freevar<R> {
-        Freevar {
+impl<Id: fmt::Debug + Copy> Upvar<Id> {
+    pub fn map_id<R>(self, map: impl FnMut(Id) -> R) -> Upvar<R> {
+        Upvar {
             res: self.res.map_id(map),
             span: self.span,
         }
@@ -2497,12 +2497,12 @@ impl<Id: fmt::Debug + Copy> Freevar<Id> {
     pub fn var_id(&self) -> Id {
         match self.res {
             Res::Local(id) | Res::Upvar(id, ..) => id,
-            _ => bug!("Freevar::var_id: bad res ({:?})", self.res)
+            _ => bug!("Upvar::var_id: bad res ({:?})", self.res)
         }
     }
 }
 
-pub type FreevarMap = NodeMap<Vec<Freevar<ast::NodeId>>>;
+pub type UpvarMap = NodeMap<Vec<Upvar<ast::NodeId>>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 

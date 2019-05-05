@@ -46,7 +46,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 err.span_note(span,
                               "...so that pointer is not dereferenced outside its lifetime");
             }
-            infer::FreeVariable(span, id) => {
+            infer::ClosureCapture(span, id) => {
                 err.span_note(span,
                               &format!("...so that captured variable `{}` does not outlive the \
                                         enclosing closure",
@@ -214,7 +214,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     "the reference is only valid for ", sup, "");
                 err
             }
-            infer::FreeVariable(span, id) => {
+            infer::ClosureCapture(span, id) => {
                 let mut err = struct_span_err!(self.tcx.sess,
                                                span,
                                                E0474,

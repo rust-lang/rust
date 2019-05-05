@@ -914,7 +914,7 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	height: 12px;
 }
 
-span.since {
+.out-of-band > span.since {
 	position: initial;
 	font-size: 20px;
 	margin-right: 5px;

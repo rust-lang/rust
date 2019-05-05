@@ -264,8 +264,8 @@ pub enum SubregionOrigin<'tcx> {
     /// Dereference of reference must be within its lifetime
     DerefPointer(Span),
 
-    /// Closure bound must not outlive captured free variables
-    FreeVariable(Span, ast::NodeId),
+    /// Closure bound must not outlive captured variables
+    ClosureCapture(Span, ast::NodeId),
 
     /// Index into slice must be within its lifetime
     IndexSlice(Span),
@@ -1660,7 +1660,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             InfStackClosure(a) => a,
             InvokeClosure(a) => a,
             DerefPointer(a) => a,
-            FreeVariable(a, _) => a,
+            ClosureCapture(a, _) => a,
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             RelateParamBound(a, _) => a,

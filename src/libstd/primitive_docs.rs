@@ -279,7 +279,7 @@ mod prim_never { }
 ///
 /// As always, remember that a human intuition for 'character' may not map to
 /// Unicode's definitions. For example, despite looking similar, the 'é'
-/// character is one Unicode code point while 'é' is two Unicode code points:
+/// character is one Unicode code point while 'é' is two Unicode code points:
 ///
 /// ```
 /// let mut chars = "é".chars();
