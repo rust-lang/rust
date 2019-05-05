@@ -1078,10 +1078,8 @@ impl Step for Compiletest {
             if builder.config.rust_optimize_tests {
                 flags.push("-O".to_string());
             }
-            if builder.config.rust_debuginfo_tests {
-                flags.push("-g".to_string());
-            }
         }
+        flags.push(format!("-Cdebuginfo={}", builder.config.rust_debuginfo_level_tests));
         flags.push("-Zunstable-options".to_string());
         flags.push(builder.config.cmd.rustc_args().join(" "));
 

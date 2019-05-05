@@ -586,13 +586,6 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Command) {
     let libdir_relative = builder.config.libdir_relative().unwrap_or(Path::new("lib"));
     cargo.env("CFG_LIBDIR_RELATIVE", libdir_relative);
 
-    // If we're not building a compiler with debugging information then remove
-    // these two env vars which would be set otherwise.
-    if builder.config.rust_debuginfo_only_std {
-        cargo.env_remove("RUSTC_DEBUGINFO");
-        cargo.env_remove("RUSTC_DEBUGINFO_LINES");
-    }
-
     if let Some(ref ver_date) = builder.rust_info.commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
