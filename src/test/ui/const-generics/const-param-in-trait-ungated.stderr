@@ -1,0 +1,12 @@
+error[E0658]: const generics are unstable
+  --> $DIR/const-param-in-trait-ungated.rs:1:19
+   |
+LL | trait Trait<const T: ()> {}
+   |                   ^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44580
+   = help: add #![feature(const_generics)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

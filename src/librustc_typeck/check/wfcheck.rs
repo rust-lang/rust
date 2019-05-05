@@ -421,8 +421,8 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
     return_ty: Option<Ty<'tcx>>,
 ) {
     let predicates = fcx.tcx.predicates_of(def_id);
-
     let generics = tcx.generics_of(def_id);
+
     let is_our_default = |def: &ty::GenericParamDef| {
         match def.kind {
             GenericParamDefKind::Type { has_default, .. } => {
@@ -465,6 +465,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                 // All regions are identity.
                 fcx.tcx.mk_param_from_def(param)
             }
+
             GenericParamDefKind::Type { .. } => {
                 // If the param has a default,
                 if is_our_default(param) {
@@ -478,25 +479,24 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
                 // Mark unwanted params as err.
                 fcx.tcx.types.err.into()
             }
+
             GenericParamDefKind::Const => {
                 // FIXME(const_generics:defaults)
-                fcx.tcx.types.err.into()
+                fcx.tcx.consts.err.into()
             }
         }
     });
+
     // Now we build the substituted predicates.
     let default_obligations = predicates.predicates.iter().flat_map(|&(pred, _)| {
         #[derive(Default)]
         struct CountParams { params: FxHashSet<u32> }
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
-                match t.sty {
-                    ty::Param(p) => {
-                        self.params.insert(p.idx);
-                        t.super_visit_with(self)
-                    }
-                    _ => t.super_visit_with(self)
+                if let ty::Param(param) = t.sty {
+                    self.params.insert(param.idx);
                 }
+                t.super_visit_with(self)
             }
 
             fn visit_region(&mut self, _: ty::Region<'tcx>) -> bool {

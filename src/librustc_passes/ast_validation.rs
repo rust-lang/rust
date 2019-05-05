@@ -21,7 +21,7 @@ use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
 use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::{Span, MultiSpan};
-use errors::Applicability;
+use errors::{Applicability, FatalError};
 use log::debug;
 
 #[derive(Copy, Clone, Debug)]
@@ -368,6 +368,8 @@ fn validate_generics_order<'a>(
     let mut max_param: Option<ParamKindOrd> = None;
     let mut out_of_order = FxHashMap::default();
     let mut param_idents = vec![];
+    let mut found_type = false;
+    let mut found_const = false;
 
     for (kind, bounds, span, ident) in generics {
         if let Some(ident) = ident {
@@ -381,6 +383,11 @@ fn validate_generics_order<'a>(
             }
             Some(_) | None => *max_param = Some(kind),
         };
+        match kind {
+            ParamKindOrd::Type => found_type = true,
+            ParamKindOrd::Const => found_const = true,
+            _ => {}
+        }
     }
 
     let mut ordered_params = "<".to_string();
@@ -408,8 +415,8 @@ fn validate_generics_order<'a>(
         GenericPosition::Arg => "argument",
     };
 
-    for (param_ord, (max_param, spans)) in out_of_order {
-        let mut err = handler.struct_span_err(spans,
+    for (param_ord, (max_param, spans)) in &out_of_order {
+        let mut err = handler.struct_span_err(spans.clone(),
             &format!(
                 "{} {pos}s must be declared prior to {} {pos}s",
                 param_ord,
@@ -429,6 +436,13 @@ fn validate_generics_order<'a>(
             );
         }
         err.emit();
+    }
+
+    // FIXME(const_generics): we shouldn't have to abort here at all, but we currently get ICEs
+    // if we don't. Const parameters and type parameters can currently conflict if they
+    // are out-of-order.
+    if !out_of_order.is_empty() && found_type && found_const {
+        FatalError.raise();
     }
 }
 
