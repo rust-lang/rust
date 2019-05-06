@@ -1706,9 +1706,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
                 }
                 Some(param.clean(cx))
             }
-            ty::GenericParamDefKind::Const { .. } => {
-                unimplemented!() // FIXME(const_generics)
-            }
+            ty::GenericParamDefKind::Const { .. } => None,
         }).collect::<Vec<GenericParamDef>>();
 
         let mut where_predicates = preds.predicates.iter()
