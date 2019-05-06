@@ -2715,10 +2715,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     #[inline]
-    pub fn mk_ty_param(self,
-                       index: u32,
-                       name: InternedString) -> Ty<'tcx> {
-        self.mk_ty(Param(ParamTy { idx: index, name: name }))
+    pub fn mk_ty_param(self, index: u32, name: InternedString) -> Ty<'tcx> {
+        self.mk_ty(Param(ParamTy { index, name: name }))
     }
 
     #[inline]

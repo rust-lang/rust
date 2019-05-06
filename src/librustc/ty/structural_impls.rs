@@ -240,7 +240,7 @@ impl fmt::Debug for Ty<'tcx> {
 
 impl fmt::Debug for ty::ParamTy {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}/#{}", self.name, self.idx)
+        write!(f, "{}/#{}", self.name, self.index)
     }
 }
 

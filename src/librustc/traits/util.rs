@@ -204,7 +204,7 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                            },
 
                            Component::Param(p) => {
-                               let ty = tcx.mk_ty_param(p.idx, p.name);
+                               let ty = tcx.mk_ty_param(p.index, p.name);
                                Some(ty::Predicate::TypeOutlives(
                                    ty::Binder::dummy(ty::OutlivesPredicate(ty, r_min))))
                            },

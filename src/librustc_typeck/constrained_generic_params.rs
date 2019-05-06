@@ -8,7 +8,7 @@ use syntax::source_map::Span;
 pub struct Parameter(pub u32);
 
 impl From<ty::ParamTy> for Parameter {
-    fn from(param: ty::ParamTy) -> Self { Parameter(param.idx) }
+    fn from(param: ty::ParamTy) -> Self { Parameter(param.index) }
 }
 
 impl From<ty::EarlyBoundRegion> for Parameter {
