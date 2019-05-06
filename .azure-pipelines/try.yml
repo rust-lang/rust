@@ -1,0 +1,29 @@
+#
+# Azure Pipelines "try" branch build for Rust
+# 
+
+pr: none
+trigger:
+- try
+
+variables:
+- group: caching
+
+jobs:
+- job: Linux
+  timeoutInMinutes: 300
+  pool:
+    vmImage: ubuntu-16.04
+  strategy:
+    matrix:
+      dist-x86_64-linux:
+        DEPLOY: 1
+
+      # "alternate" deployments, these are "nightlies" but have LLVM assertions
+      # turned on, they're deployed to a different location primarily for
+      # additional testing.
+      dist-x86_64-linux-alt:
+        IMAGE: dist-x86_64-linux
+        DEPLOY_ALT: 1
+  steps:
+  - template: steps/linux.yml

@@ -3,6 +3,7 @@
 // ignore-cloudabi no processes
 // ignore-emscripten no processes
 // ignore-haiku
+// ignore-macos
 
 #![feature(rustc_private)]
 

@@ -39,8 +39,7 @@ The script accepts commands, flags, and arguments to determine what to do:
   ```
 
   If files are dirty that would normally be rebuilt from stage 0, that can be
-  overridden using `--keep-stage 0`. Using `--keep-stage n` will skip all steps
-  that belong to stage n or earlier:
+  overridden using `--keep-stage 0`.
 
   ```
   # keep old build products for stage 0 and build stage 1

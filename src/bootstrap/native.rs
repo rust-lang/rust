@@ -81,6 +81,13 @@ impl Step for Llvm {
             (info, "src/llvm-project/llvm", builder.llvm_out(target), dir.join("bin"))
         };
 
+        let build_llvm_config = llvm_config_ret_dir
+            .join(exe("llvm-config", &*builder.config.build));
+
+        if env::var_os("SKIP_LLVM_BUILD").is_some() {
+            return build_llvm_config
+        }
+
         if !llvm_info.is_git() {
             println!(
                 "git could not determine the LLVM submodule commit hash. \
@@ -88,8 +95,6 @@ impl Step for Llvm {
             );
         }
 
-        let build_llvm_config = llvm_config_ret_dir
-            .join(exe("llvm-config", &*builder.config.build));
         let done_stamp = out_dir.join("llvm-finished-building");
 
         if let Some(llvm_commit) = llvm_info.sha() {

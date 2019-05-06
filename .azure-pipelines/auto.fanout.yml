@@ -1,0 +1,521 @@
+#
+# Azure Pipelines "auto" branch build for Rust on Linux, macOS, and Windows.
+# 
+# Notes:
+# To get sccache working, I (John Erickson) had to build it with the Azure feature enabled
+# and with openssl statically-linked for Linux.
+# Here's the build (with a backpointer to source) of where the bits came from:
+# https://dev.azure.com/johnterickson/rust-lang/_build/results?buildId=275
+
+name: fanout 
+pr: none
+trigger:
+- auto
+
+variables:
+- group: caching
+
+jobs:
+# WINDOWS JOBS
+- job: Windows
+  timeoutInMinutes: 600
+  variables:
+    TAR_COMMAND: tar
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - template: steps/windows.yml
+  strategy:
+    matrix:
+      # 32/64 bit MSVC tests
+      x86_64-msvc-1:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-1
+      x86_64-msvc-2:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-subset-2
+
+- job: Windows_build  
+  timeoutInMinutes: 600
+  variables:
+    TAR_COMMAND: tar
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - template: steps/windows.yml
+  - script: |
+      echo on
+      echo "##vso[task.setvariable variable=TAR_PATH]%TEMP%\drop.tar"
+  - bash: |
+      set -x
+      $TAR_COMMAND --dereference --exclude=.git --exclude=citools $SUBMODULES_EXCLUDES -cf $TEMP/drop.tar .
+      $TAR_COMMAND --append --file=$TEMP/drop.tar citools
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: $(System.JobDisplayName)
+      targetPath: $(TAR_PATH)
+  strategy:
+    matrix:
+      # 32/64 bit MSVC tests
+      x86_64-msvc-build:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        SCRIPT: make ci-test-prepare
+
+- job: Windows_test
+  dependsOn: Windows_build
+  timeoutInMinutes: 600
+  variables:
+    TAR_COMMAND: tar
+    SKIP_PREP: 1
+    KEEP_STAGE: '--keep-stage 0 --keep-stage 1'
+    SKIP_LLVM_BUILD: 1
+  pool:
+    vmImage: 'vs2017-win2016'
+  steps:
+  - checkout: self
+    fetchDepth: 2
+  - script: |
+      set MSYS_PATH=%CD%\citools\msys64
+      set PATH=%MSYS_PATH%\usr\bin;%PATH%
+      where rev
+      rev --help
+      where make
+      echo ##vso[task.prependpath]%MSYS_PATH%\usr\bin
+    displayName: Install msys2
+
+  # # If we need to download a custom MinGW, do so here and set the path
+  # # appropriately.
+  # #
+  # # Note that this *also* means that we're not using what is typically
+  # # /mingw32/bin/python2.7.exe, which is a "correct" python interpreter where
+  # # /usr/bin/python2.7.exe is not. To ensure we use the right interpreter we
+  # # move `C:\Python27` ahead in PATH and then also make sure the `python2.7.exe`
+  # # file exists in there (which it doesn't by default).
+  # - script: |
+  #     powershell -Command "iwr -outf %MINGW_ARCHIVE% %MINGW_URL%/%MINGW_ARCHIVE%"
+  #     7z x -y %MINGW_ARCHIVE% > nul
+  #     echo ##vso[task.prependpath]%CD%\%MINGW_DIR%\bin
+  #   condition: and(succeeded(), ne(variables['MINGW_URL'],''))
+  #   displayName: Download custom MinGW
+
+  # If we're compiling for MSVC then we, like most other distribution builders,
+  # switch to clang as the compiler. This'll allow us eventually to enable LTO
+  # amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
+  # clang has an output mode compatible with MinGW that we need. If it does we
+  # should switch to clang for MinGW as well!
+  #
+  # Note that the LLVM installer is an NSIS installer
+  #
+  # Original downloaded here came from
+  # http://releases.llvm.org/7.0.0/LLVM-7.0.0-win64.exe
+  - script: |
+      # powershell -Command "iwr -outf LLVM-7.0.0-win64.exe https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-7.0.0-win64.exe"
+      # .\LLVM-7.0.0-win64.exe /S /NCRC /D=C:\clang-rust
+      set CLANG_DIR=%CD%\citools\clang-rust
+      set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=%CLANG_DIR%\bin\clang-cl.exe
+      echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
+    condition: and(succeeded(), eq(variables['MINGW_URL'],''))
+    displayName: Download clang
+
+  # # Here we do a pretty heinous thing which is to mangle the MinGW installation
+  # # we just had above. Currently, as of this writing, we're using MinGW-w64
+  # # builds of gcc, and that's currently at 6.3.0. We use 6.3.0 as it appears to
+  # # be the first version which contains a fix for #40546, builds randomly
+  # # failing during LLVM due to ar.exe/ranlib.exe failures.
+  # #
+  # # Unfortunately, though, 6.3.0 *also* is the first version of MinGW-w64 builds
+  # # to contain a regression in gdb (#40184). As a result if we were to use the
+  # # gdb provided (7.11.1) then we would fail all debuginfo tests.
+  # #
+  # # In order to fix spurious failures (pretty high priority) we use 6.3.0. To
+  # # avoid disabling gdb tests we download an *old* version of gdb, specifically
+  # # that found inside the 6.2.0 distribution. We then overwrite the 6.3.0 gdb
+  # # with the 6.2.0 gdb to get tests passing.
+  # #
+  # # Note that we don't literally overwrite the gdb.exe binary because it appears
+  # # to just use gdborig.exe, so that's the binary we deal with instead.
+  # - script: |
+  #     echo ON
+  #     powershell -Command "iwr -outf 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_URL%/2017-04-20-%MSYS_BITS%bit-gdborig.exe"
+  #     mv 2017-04-20-%MSYS_BITS%bit-gdborig.exe %MINGW_DIR%\bin\gdborig.exe
+  #   condition: and(succeeded(), ne(variables['MINGW_URL'],''))
+  #   displayName: Override with 6.3.0 gdb with 6.2.0 gdb
+
+  # Otherwise pull in the MinGW installed on appveyor
+  - script: |
+      echo Find mingw
+      set PATH | findstr /i msys
+      set PATH | findstr /i mingw
+      echo ##vso[task.prependpath]C:\msys64\mingw%MSYS_BITS%\bin
+    condition: and(succeeded(), eq(variables['MINGW_URL'],''))
+    displayName: Add MinGW to path
+
+  - script: |
+      copy C:\Python27amd64\python.exe C:\Python27amd64\python2.7.exe
+      echo ##vso[task.prependpath]C:\Python27amd64
+    displayName: Prefer the "native" Python as LLVM has trouble building with MSYS sometimes
+
+  - script: |
+      REM md sccache
+      REM powershell -Command "iwr -outf sccache\sccache.exe https://rustlangtools.blob.core.windows.net/public/stable-x86_64-pc-windows-msvc.sccache.exe"
+      echo ##vso[task.prependpath]%CD%\sccache
+    displayName: Download and install sccache
+
+  # Note that this is originally from the github releases patch of Ninja
+  - script: |
+      REM md ninja
+      REM powershell -Command "iwr -outf 2017-03-15-ninja-win.zip https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-15-ninja-win.zip"
+      REM 7z x -oninja 2017-03-15-ninja-win.zip
+      REM del 2017-03-15-ninja-win.zip
+      set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --enable-ninja
+      echo ##vso[task.setvariable variable=RUST_CONFIGURE_ARGS]%RUST_CONFIGURE_ARGS%
+      echo ##vso[task.prependpath]%CD%\ninja
+    displayName: Download and install ninja
+  
+  - script: |
+      IF NOT "%DISABLE_DISK_SPACE_HACK%"=="1" (
+        IF NOT EXIST build (
+          mkdir c:\MORE_SPACE
+          mklink /J build c:\MORE_SPACE
+        )
+      )
+  - script: |
+      echo on
+      echo ##vso[task.setvariable variable=TAR_FOLDER_PATH]%TEMP%
+  - template: steps/show-environment-variables.yml
+  - task: DownloadPipelineArtifact@1
+    inputs:
+      artifactName: $(ARTIFACT_NAME)
+      downloadPath: $(TAR_FOLDER_PATH)
+  # - task: DownloadPipelineArtifact@1
+  #   inputs:
+  #     artifactName: $(ARTIFACT_NAME)
+  #     downloadPath: $(TAR_FOLDER_PATH)
+  #     buildType: specific
+  #     project: rust
+  #     pipeline: 8
+  #     buildVersionToDownload: specific
+  #     buildId: 200
+  #     # https://dev.azure.com/rust-lang-azure/rust/_build/results?buildId=145
+
+  # - template: steps/macos.yml 
+  - bash: $TAR_COMMAND -tvf $TEMP/drop.tar
+  - bash: $TAR_COMMAND --touch -xf $TEMP/drop.tar
+  - bash: rm $TEMP/drop.tar
+  - script: |
+      REM mkdir handle
+      REM powershell -Command "iwr -outf 2017-05-15-Handle.zip https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-05-15-Handle.zip"
+      REM 7z x -ohandle 2017-05-15-Handle.zip
+      REM del 2017-05-15-Handle.zip
+      set PATH=%PATH%;%CD%\handle
+      handle.exe -accepteula -help
+      echo ##vso[task.setvariable variable=PATH]%PATH%
+    displayName: Help debug handle issues
+  - script: |
+      REM echo force the specific VS version https://github.com/johnterickson/rust/issues/8
+      IF "%VCVARS_BAT%" NEQ "" ( 
+        CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\%VCVARS_BAT%"
+      )
+
+      where sccache
+      where rev
+      set | findstr /v SCCACHE_AZURE_CONNECTION_STRING
+
+      if not exist D:\cache\rustsrc\NUL mkdir D:\cache\rustsrc
+      
+      sh src/ci/run.sh
+    env:      
+      CI: true
+      CI_JOB_NAME: $(System.JobDisplayName)
+      SRC: .
+      NO_CCACHE: 1
+
+      # explicitly decrypt secret variables
+      # see https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch
+      SCCACHE_AZURE_CONNECTION_STRING: $(SCCACHE_AZURE_CONNECTION_STRING_SECRET)
+      DOCKER_LAYER_CACHE_AZURE_STORAGE_ACCOUNT_KEY: $(DOCKER_LAYER_CACHE_AZURE_STORAGE_ACCOUNT_KEY_SECRET)
+    displayName: Run script
+  
+  strategy:
+    matrix:
+      # 32/64 bit MSVC tests
+      x86_64-msvc-A:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-A
+      x86_64-msvc-B:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-B
+      x86_64-msvc-C:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-C
+      x86_64-msvc-D:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-D
+      x86_64-msvc-E:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-E
+      x86_64-msvc-F:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-F
+      x86_64-msvc-G:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-G
+      x86_64-msvc-H:
+        MSYS_BITS: 64
+        RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+        ARTIFACT_NAME: x86_64-msvc-build
+        SCRIPT: make ci-resume-subset-H
+
+# macOS JOBS
+- job: macOS
+  timeoutInMinutes: 600
+  variables:
+    TAR_COMMAND: gtar
+  pool:
+    vmImage: macos-10.13
+  steps:
+  - checkout: self
+    fetchDepth: 2
+  - template: steps/macos.yml  
+  strategy:
+    matrix:
+      x86_64-apple:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+
+- job: macOS_build
+  timeoutInMinutes: 600
+  variables:
+    TAR_COMMAND: gtar
+  pool:
+    vmImage: macos-10.13
+  steps:
+  - checkout: self
+    fetchDepth: 2
+  - template: steps/macos.yml
+  - script: |
+      set -x
+
+      git submodule
+      export SUBMODULES_EXCLUDES=$(git submodule | grep -Eow 'src/[^ ]+' | sed 's/\(.*\)/--exclude=\1\/\.git/')
+      echo $SUBMODULES_EXCLUDES
+
+      $TAR_COMMAND --exclude=.git $SUBMODULES_EXCLUDES -cf /tmp/drop.tar .
+  - task: PublishPipelineArtifact@0
+    inputs:
+      artifactName: $(System.JobDisplayName)
+      targetPath: '/tmp/drop.tar'
+
+  strategy:
+    matrix:
+      # macOS builders. These are placed near the beginning because they are very
+      # slow to run.
+
+      # OSX builders running tests, these run the full test suite.
+      # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
+      # runners that run `//ignore-debug` tests.
+      #
+      # Note that the compiler is compiled to target 10.8 here because the Xcode
+      # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
+      x86_64-apple-build:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        SCRIPT: make ci-test-prepare
+
+- job: macOS_test
+  dependsOn: macOS_build
+  timeoutInMinutes: 600
+  variables:
+    TAR_COMMAND: gtar
+    SKIP_PREP: 1
+    KEEP_STAGE: '--keep-stage 0 --keep-stage 1'
+    SKIP_LLVM_BUILD: 1
+  pool:
+    vmImage: macos-10.13
+  steps:
+  - checkout: self
+    fetchDepth: 2
+  - bash: brew install gnu-tar
+    displayName: install a tar that works well
+
+  - template: steps/show-disk-usage.yml
+
+  - task: DownloadPipelineArtifact@1
+    inputs:
+      artifactName: $(ARTIFACT_NAME)
+      downloadPath: $(System.DefaultWorkingDirectory)
+  # - task: DownloadPipelineArtifact@1
+  #   inputs:
+  #     artifactName: $(ARTIFACT_NAME)
+  #     downloadPath: $(System.DefaultWorkingDirectory)
+  #     buildType: specific
+  #     project: rust
+  #     pipeline: 8
+  #     buildVersionToDownload: specific
+  #     buildId: 200
+
+  # - template: steps/macos.yml 
+  - template: steps/show-disk-usage.yml
+  - bash: $TAR_COMMAND -tvf ./drop.tar
+  - bash: $TAR_COMMAND -xf ./drop.tar
+  - bash: rm ./drop.tar
+  - template: steps/show-disk-usage.yml
+  - bash: |
+      export PATH=$PATH:$HOME/.local/bin:$HOME/Library/Python/2.7/bin/
+      mkdir -p $HOME/rustsrc    
+      echo "##vso[task.setvariable variable=PATH;]$PATH"
+
+      curl -fo /usr/local/bin/sccache https://rustlangtools.blob.core.windows.net/public/stable-x86_64-apple-darwin.sccache
+      chmod +x /usr/local/bin/sccache
+
+      curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin
+      chmod +x /usr/local/bin/stamp
+      
+      export CC=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang
+      echo "##vso[task.setvariable variable=CC]$CC"
+      
+      export CXX=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang++
+      echo "##vso[task.setvariable variable=CXX]$CXX"
+      
+      echo "##vso[task.setvariable variable=AR]ar"
+    displayName: Prep
+
+  - bash: brew install gnu-tar
+    displayName: install a tar that works well
+
+  - bash: |
+      brew update
+      brew install xz
+      brew install swig
+    condition: and(succeeded(), eq(variables['RUST_CHECK_TARGET'],'dist'))
+    displayName: Install xz and swigw
+
+  - bash: |
+      export RUN_SCRIPT="src/ci/run.sh"
+      echo "##vso[task.setvariable variable=RUN_SCRIPT]$RUN_SCRIPT"
+    displayName: Prepare run script (init and run)
+
+  - template: steps/show-environment-variables.yml
+
+  - template: steps/verify-publish-toolstate.yml
+
+  - template: steps/run-script.yml
+
+  strategy:
+    matrix:
+      # macOS builders. These are placed near the beginning because they are very
+      # slow to run.
+
+      # OSX builders running tests, these run the full test suite.
+      # NO_DEBUG_ASSERTIONS=1 to make them go faster, but also do have some
+      # runners that run `//ignore-debug` tests.
+      #
+      # Note that the compiler is compiled to target 10.8 here because the Xcode
+      # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
+      x86_64-apple-A:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-A
+      x86_64-apple-B:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-B
+      x86_64-apple-C:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-C
+      x86_64-apple-D:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-D
+      x86_64-apple-E:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-E
+      x86_64-apple-F:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-F
+      x86_64-apple-G:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-G
+      x86_64-apple-H:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        ARTIFACT_NAME: x86_64-apple-build
+        SCRIPT: make ci-resume-subset-H

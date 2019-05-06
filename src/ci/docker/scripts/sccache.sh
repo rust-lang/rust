@@ -1,6 +1,7 @@
 set -ex
 
+echo Use sccache built with Azure Storage support
 curl -fo /usr/local/bin/sccache \
-  https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-unknown-linux-musl
+  https://rustlangtools.blob.core.windows.net/public/stable-x86_64-unknown-linux-musl.sccache
 
 chmod +x /usr/local/bin/sccache

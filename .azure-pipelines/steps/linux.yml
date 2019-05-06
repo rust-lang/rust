@@ -1,0 +1,42 @@
+steps:
+- checkout: self
+  fetchDepth: 2
+
+- template: show-environment-variables.yml
+- template: show-disk-usage.yml
+
+- bash: |
+    sudo apt install gdb
+        
+    curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl
+    chmod +x $HOME/stamp
+    
+    export PATH=$PATH:$HOME/.local/bin:$HOME/Library/Python/2.7/bin/:$HOME
+    echo "##vso[task.setvariable variable=PATH;]$PATH"
+
+    mkdir -p $HOME/rustsrc
+  displayName:  Prep
+
+# FIXME(#46924): these two commands are required to enable IPv6,
+# they shouldn't exist, please revert once more official solutions appeared.
+# see https://github.com/travis-ci/travis-ci/issues/8891#issuecomment-353403729
+- bash: |
+    echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
+    sudo service docker restart
+  displayName: Enable IPv6  
+
+# FIXME: using the job display name feels brittle. Is there a better variable that represents the current matrix key?
+- bash: |
+    export RUN_SCRIPT="$BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc && src/ci/docker/run.sh $IMAGE"
+    echo "##vso[task.setvariable variable=IMAGE]$IMAGE"
+    echo "##vso[task.setvariable variable=RUN_SCRIPT]$RUN_SCRIPT"
+  displayName: Prepare run script
+
+- template: show-environment-variables.yml
+
+- bash: sudo sh -c 'echo "/checkout/obj/cores/core.%p.%E" > /proc/sys/kernel/core_pattern'
+  displayName: Enable core dump
+
+- template: verify-publish-toolstate.yml
+
+- template: run-script.yml
