@@ -185,7 +185,7 @@ macro_rules! read_hir {
     ($t:ty) => {
         impl<'tcx> DepGraphRead for &'tcx $t {
             fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
-                tcx.hir().read_by_hir_id(self.hir_id);
+                tcx.hir().read(self.hir_id);
             }
         }
     }
@@ -219,6 +219,6 @@ pub struct FromId<T>(pub hir::HirId, pub T);
 
 impl<T> DepGraphRead for FromId<T> {
     fn read(&self, tcx: TyCtxt<'_, '_, '_>) {
-        tcx.hir().read_by_hir_id(self.0);
+        tcx.hir().read(self.0);
     }
 }

@@ -174,15 +174,6 @@ pub struct Map<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    /// `NodeId`s are sequential integers from 0, so we can be
-    /// super-compact by storing them in a vector. Not everything with
-    /// a `NodeId` is in the map, but empirically the occupancy is about
-    /// 75-80%, so there's not too much overhead (certainly less than
-    /// a hashmap, since they (at the time of writing) have a maximum
-    /// of 75% occupancy).
-    ///
-    /// Also, indexing is pretty quick when you've got a vector and
-    /// plain old integers.
     map: FxHashMap<HirId, Entry<'hir>>,
 
     definitions: &'hir Definitions,
@@ -199,13 +190,7 @@ impl<'hir> Map<'hir> {
     /// otherwise have had access to those contents, and hence needs a
     /// read recorded). If the function just returns a DefId or
     /// NodeId, no actual content was returned, so no read is needed.
-    pub fn read(&self, id: NodeId) {
-        let hir_id = self.node_to_hir_id(id);
-        self.read_by_hir_id(hir_id);
-    }
-
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn read_by_hir_id(&self, hir_id: HirId) {
+    pub fn read(&self, hir_id: HirId) {
         if let Some(entry) = self.map.get(&hir_id) {
             self.dep_graph.read_index(entry.dep_node);
         } else {
@@ -223,15 +208,10 @@ impl<'hir> Map<'hir> {
         self.definitions.def_key(def_id.index)
     }
 
-    pub fn def_path_from_id(&self, id: NodeId) -> Option<DefPath> {
-        self.opt_local_def_id(id).map(|def_id| {
+    pub fn def_path_from_hir_id(&self, id: HirId) -> Option<DefPath> {
+        self.opt_local_def_id_from_hir_id(id).map(|def_id| {
             self.def_path(def_id)
         })
-    }
-
-    // FIXME(@ljedrz): replace the NodeId variant
-    pub fn def_path_from_hir_id(&self, id: HirId) -> DefPath {
-        self.def_path(self.local_def_id_from_hir_id(id))
     }
 
     pub fn def_path(&self, def_id: DefId) -> DefPath {
@@ -411,7 +391,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem {
-        self.read_by_hir_id(id.hir_id);
+        self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -419,7 +399,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem {
-        self.read_by_hir_id(id.hir_id);
+        self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -427,7 +407,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn body(&self, id: BodyId) -> &'hir Body {
-        self.read_by_hir_id(id.hir_id);
+        self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
         // do not trigger a read of the whole krate here
@@ -560,7 +540,7 @@ impl<'hir> Map<'hir> {
     pub fn get_module(&self, module: DefId) -> (&'hir Mod, Span, HirId)
     {
         let hir_id = self.as_local_hir_id(module).unwrap();
-        self.read_by_hir_id(hir_id);
+        self.read(hir_id);
         match self.find_entry(hir_id).unwrap().node {
             Node::Item(&Item {
                 span,
@@ -575,13 +555,15 @@ impl<'hir> Map<'hir> {
     pub fn visit_item_likes_in_module<V>(&self, module: DefId, visitor: &mut V)
         where V: ItemLikeVisitor<'hir>
     {
-        let node_id = self.as_local_node_id(module).unwrap();
+        let hir_id = self.as_local_hir_id(module).unwrap();
 
         // Read the module so we'll be re-executed if new items
         // appear immediately under in the module. If some new item appears
         // in some nested item in the module, we'll be re-executed due to reads
         // in the expect_* calls the loops below
-        self.read(node_id);
+        self.read(hir_id);
+
+        let node_id = self.hir_to_node_id[&hir_id];
 
         let module = &self.forest.krate.modules[&node_id];
 
@@ -659,7 +641,7 @@ impl<'hir> Map<'hir> {
             }
         });
         if result.is_some() {
-            self.read_by_hir_id(hir_id);
+            self.read(hir_id);
         }
         result
     }
@@ -893,7 +875,7 @@ impl<'hir> Map<'hir> {
             if let Entry {
                 node: Node::Item(Item { node: ItemKind::ForeignMod(ref nm), .. }), .. } = entry
             {
-                self.read_by_hir_id(hir_id); // reveals some of the content of a node
+                self.read(hir_id); // reveals some of the content of a node
                 return nm.abi;
             }
         }
@@ -1001,7 +983,7 @@ impl<'hir> Map<'hir> {
 
     // FIXME(@ljedrz): replace the NodeId variant
     pub fn attrs_by_hir_id(&self, id: HirId) -> &'hir [ast::Attribute] {
-        self.read_by_hir_id(id); // reveals attributes on the node
+        self.read(id); // reveals attributes on the node
         let attrs = match self.find_entry(id).map(|entry| entry.node) {
             Some(Node::Local(l)) => Some(&l.attrs[..]),
             Some(Node::Item(i)) => Some(&i.attrs[..]),
@@ -1046,7 +1028,7 @@ impl<'hir> Map<'hir> {
 
     // FIXME(@ljedrz): replace the NodeId variant
     pub fn span_by_hir_id(&self, hir_id: HirId) -> Span {
-        self.read_by_hir_id(hir_id); // reveals span from node
+        self.read(hir_id); // reveals span from node
         match self.find_entry(hir_id).map(|entry| entry.node) {
             Some(Node::Item(item)) => item.span,
             Some(Node::ForeignItem(foreign_item)) => foreign_item.span,
@@ -1088,7 +1070,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn node_to_string(&self, id: NodeId) -> String {
-        node_id_to_string(self, id, true)
+        hir_id_to_string(self, self.node_to_hir_id(id), true)
     }
 
     // FIXME(@ljedrz): replace the NodeId variant
@@ -1097,7 +1079,7 @@ impl<'hir> Map<'hir> {
     }
 
     pub fn node_to_user_string(&self, id: NodeId) -> String {
-        node_id_to_string(self, id, false)
+        hir_id_to_string(self, self.node_to_hir_id(id), false)
     }
 
     // FIXME(@ljedrz): replace the NodeId variant
@@ -1316,8 +1298,8 @@ impl<'a> print::State<'a> {
     }
 }
 
-fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
-    let id_str = format!(" (id={})", id);
+fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
+    let id_str = format!(" (hir_id={})", id);
     let id_str = if include_id { &id_str[..] } else { "" };
 
     let path_str = || {
@@ -1325,9 +1307,9 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         // the user-friendly path, otherwise fall back to stringifying DefPath.
         crate::ty::tls::with_opt(|tcx| {
             if let Some(tcx) = tcx {
-                let def_id = map.local_def_id(id);
+                let def_id = map.local_def_id_from_hir_id(id);
                 tcx.def_path_str(def_id)
-            } else if let Some(path) = map.def_path_from_id(id) {
+            } else if let Some(path) = map.def_path_from_hir_id(id) {
                 path.data.into_iter().map(|elem| {
                     elem.data.to_string()
                 }).collect::<Vec<_>>().join("::")
@@ -1337,7 +1319,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         })
     };
 
-    match map.find(id) {
+    match map.find_by_hir_id(id) {
         Some(Node::Item(item)) => {
             let item_str = match item.node {
                 ItemKind::ExternCrate(..) => "extern crate",
@@ -1398,40 +1380,40 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
                     path_str(), id_str)
         }
         Some(Node::AnonConst(_)) => {
-            format!("const {}{}", map.node_to_pretty_string(id), id_str)
+            format!("const {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Expr(_)) => {
-            format!("expr {}{}", map.node_to_pretty_string(id), id_str)
+            format!("expr {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Stmt(_)) => {
-            format!("stmt {}{}", map.node_to_pretty_string(id), id_str)
+            format!("stmt {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::PathSegment(_)) => {
-            format!("path segment {}{}", map.node_to_pretty_string(id), id_str)
+            format!("path segment {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Ty(_)) => {
-            format!("type {}{}", map.node_to_pretty_string(id), id_str)
+            format!("type {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::TraitRef(_)) => {
-            format!("trait_ref {}{}", map.node_to_pretty_string(id), id_str)
+            format!("trait_ref {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Binding(_)) => {
-            format!("local {}{}", map.node_to_pretty_string(id), id_str)
+            format!("local {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Pat(_)) => {
-            format!("pat {}{}", map.node_to_pretty_string(id), id_str)
+            format!("pat {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Block(_)) => {
-            format!("block {}{}", map.node_to_pretty_string(id), id_str)
+            format!("block {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Local(_)) => {
-            format!("local {}{}", map.node_to_pretty_string(id), id_str)
+            format!("local {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::Ctor(..)) => {
             format!("ctor {}{}", path_str(), id_str)
         }
         Some(Node::Lifetime(_)) => {
-            format!("lifetime {}{}", map.node_to_pretty_string(id), id_str)
+            format!("lifetime {}{}", map.hir_to_pretty_string(id), id_str)
         }
         Some(Node::GenericParam(ref param)) => {
             format!("generic_param {:?}{}", param, id_str)
@@ -1445,12 +1427,6 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         Some(Node::Crate) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
-}
-
-// FIXME(@ljedrz): replace the NodeId variant
-fn hir_id_to_string(map: &Map<'_>, id: HirId, include_id: bool) -> String {
-    let node_id = map.hir_to_node_id(id);
-    node_id_to_string(map, node_id, include_id)
 }
 
 pub fn def_kind(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefKind> {

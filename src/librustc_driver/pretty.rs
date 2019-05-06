@@ -255,7 +255,10 @@ trait HirPrinterSupport<'hir>: pprust_hir::PpAnn {
 
     /// Computes an user-readable representation of a path, if possible.
     fn node_path(&self, id: ast::NodeId) -> Option<String> {
-        self.hir_map().and_then(|map| map.def_path_from_id(id)).map(|path| {
+        self.hir_map().and_then(|map| {
+            let hir_id = map.node_to_hir_id(id);
+            map.def_path_from_hir_id(hir_id)
+        }).map(|path| {
             path.data
                 .into_iter()
                 .map(|elem| elem.data.to_string())
