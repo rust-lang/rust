@@ -38,8 +38,8 @@ use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::util::common::{ErrorReported, install_panic_hook, print_time_passes_entry};
-use rustc::util::common::{set_time_depth, time};
+use rustc::ty::TyCtxt;
+use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
 use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
@@ -163,8 +163,6 @@ pub fn run_compiler(
         Some(matches) => matches,
         None => return Ok(()),
     };
-
-    install_panic_hook();
 
     let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
 
@@ -1169,9 +1167,10 @@ lazy_static! {
 }
 
 pub fn report_ice(info: &panic::PanicInfo<'_>) {
+    // Invoke the default handler, which prints the actual panic message and optionally a backtrace
     (*DEFAULT_HOOK)(info);
 
-    // Thread panicked without emitting a fatal diagnostic
+    // Print the infamous ICE message
     eprintln!();
 
     let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
@@ -1211,6 +1210,24 @@ pub fn report_ice(info: &panic::PanicInfo<'_>) {
         handler.emit(&MultiSpan::new(),
                      note,
                      errors::Level::Note);
+    }
+
+    // If backtraces are enabled, also print the query stack
+    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+
+    if backtrace {
+        TyCtxt::try_print_query_stack();
+    }
+
+    #[cfg(windows)]
+    unsafe {
+        if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
+            extern "system" {
+                fn DebugBreak();
+            }
+            // Trigger a debugger if we crashed during bootstrap
+            DebugBreak();
+        }
     }
 }
 
