@@ -1053,6 +1053,28 @@ impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
 /// to its fields.
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
+///
+/// # Layout
+///
+/// `MaybeUninit<T>` is guaranteed to have the same size and alignment as `T`:
+///
+/// ```rust
+/// use std::mem::{MaybeUninit, size_of, align_of};
+/// assert_eq!(size_of::<MaybeUninit<u64>>(), size_of::<u64>());
+/// assert_eq!(align_of::<MaybeUninit<u64>>(), align_of::<u64>());
+/// ```
+///
+/// However remember that a type *containing* a `MaybeUninit<T>` is not necessarily the same
+/// layout; Rust does not in general guarantee that the fields of a `Foo<T>` have the same order as
+/// a `Foo<U>` even if `T` and `U` have the same size and alignment. Furthermore because any bit
+/// value is valid for a `MaybeUninit<T>` the compiler can't apply non-zero/niche-filling
+/// optimizations, potentially resulting in a larger size:
+///
+/// ```rust
+/// # use std::mem::{MaybeUninit, size_of, align_of};
+/// assert_eq!(size_of::<Option<bool>>(), 1);
+/// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
+/// ```
 #[allow(missing_debug_implementations)]
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 #[derive(Copy)]
