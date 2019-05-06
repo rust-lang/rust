@@ -36,7 +36,7 @@ use core::mem::{self, MaybeUninit};
 use core::ptr::{self, Unique, NonNull};
 use core::slice;
 
-use crate::alloc::{Global, Alloc, Layout};
+use crate::alloc::{Global, AllocHandle, Layout};
 use crate::boxed::Box;
 
 const B: usize = 6;

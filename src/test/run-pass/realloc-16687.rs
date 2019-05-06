@@ -5,7 +5,7 @@
 
 #![feature(allocator_api)]
 
-use std::alloc::{Global, Alloc, Layout, handle_alloc_error};
+use std::alloc::{Global, AllocHandle, Layout, handle_alloc_error};
 use std::ptr::{self, NonNull};
 
 fn main() {

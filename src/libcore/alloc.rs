@@ -579,7 +579,7 @@ pub unsafe trait GlobalAlloc {
     }
 }
 
-/// An implementation of `Alloc` can allocate, reallocate, and
+/// A handle to a memory allocator that can allocate, reallocate, and
 /// deallocate arbitrary blocks of data described via `Layout`.
 ///
 /// Some of the methods require that a memory block be *currently
@@ -645,11 +645,11 @@ pub unsafe trait GlobalAlloc {
 ///
 /// # Safety
 ///
-/// The `Alloc` trait is an `unsafe` trait for a number of reasons, and
+/// The `AllocHandle` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
 ///
 /// * Pointers returned from allocation functions must point to valid memory and
-///   retain their validity until at least the instance of `Alloc` is dropped
+///   retain their validity until at least the instance of `AllocHandle` is dropped
 ///   itself.
 ///
 /// * `Layout` queries and calculations in general must be correct. Callers of
@@ -659,7 +659,7 @@ pub unsafe trait GlobalAlloc {
 /// Note that this list may get tweaked over time as clarifications are made in
 /// the future.
 #[unstable(feature = "allocator_api", issue = "32838")]
-pub unsafe trait Alloc {
+pub unsafe trait AllocHandle {
 
     // (Note: some existing allocators have unspecified but well-defined
     // behavior in response to a zero size allocation request ;
@@ -1046,7 +1046,7 @@ pub unsafe trait Alloc {
     /// must be considered "currently allocated" and must be
     /// acceptable input to methods such as `realloc` or `dealloc`,
     /// *even if* `T` is a zero-sized type. In other words, if your
-    /// `Alloc` implementation overrides this method in a manner
+    /// `AllocHandle` implementation overrides this method in a manner
     /// that can return a zero-sized `ptr`, then all reallocation and
     /// deallocation methods need to be similarly overridden to accept
     /// such values as input.
@@ -1112,7 +1112,7 @@ pub unsafe trait Alloc {
     /// must be considered "currently allocated" and must be
     /// acceptable input to methods such as `realloc` or `dealloc`,
     /// *even if* `T` is a zero-sized type. In other words, if your
-    /// `Alloc` implementation overrides this method in a manner
+    /// `AllocHandle` implementation overrides this method in a manner
     /// that can return a zero-sized `ptr`, then all reallocation and
     /// deallocation methods need to be similarly overridden to accept
     /// such values as input.

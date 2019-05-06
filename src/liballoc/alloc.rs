@@ -31,7 +31,7 @@ extern "Rust" {
 
 /// The global memory allocator.
 ///
-/// This type implements the [`Alloc`] trait by forwarding calls
+/// This type implements the [`AllocHandle`] trait by forwarding calls
 /// to the allocator registered with the `#[global_allocator]` attribute
 /// if there is one, or the `std` crate’s default.
 ///
@@ -48,7 +48,7 @@ pub struct Global;
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `alloc` method
-/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+/// of the [`Global`] type when it and the [`AllocHandle`] trait become stable.
 ///
 /// # Safety
 ///
@@ -82,7 +82,7 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `dealloc` method
-/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+/// of the [`Global`] type when it and the [`AllocHandle`] trait become stable.
 ///
 /// # Safety
 ///
@@ -100,7 +100,7 @@ pub unsafe fn dealloc(ptr: *mut u8, layout: Layout) {
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `realloc` method
-/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+/// of the [`Global`] type when it and the [`AllocHandle`] trait become stable.
 ///
 /// # Safety
 ///
@@ -118,7 +118,7 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
 /// if there is one, or the `std` crate’s default.
 ///
 /// This function is expected to be deprecated in favor of the `alloc_zeroed` method
-/// of the [`Global`] type when it and the [`Alloc`] trait become stable.
+/// of the [`Global`] type when it and the [`AllocHandle`] trait become stable.
 ///
 /// # Safety
 ///
@@ -145,7 +145,7 @@ pub unsafe fn alloc_zeroed(layout: Layout) -> *mut u8 {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl Alloc for Global {
+unsafe impl AllocHandle for Global {
     #[inline]
     unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
         NonNull::new(alloc(layout)).ok_or(AllocErr)
@@ -232,7 +232,7 @@ mod tests {
     extern crate test;
     use test::Bencher;
     use crate::boxed::Box;
-    use crate::alloc::{Global, Alloc, Layout, handle_alloc_error};
+    use crate::alloc::{Global, AllocHandle, Layout, handle_alloc_error};
 
     #[test]
     fn allocate_zeroed() {

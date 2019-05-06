@@ -247,7 +247,7 @@ use core::slice::from_raw_parts_mut;
 use core::convert::From;
 use core::usize;
 
-use crate::alloc::{Global, Alloc, Layout, box_free, handle_alloc_error};
+use crate::alloc::{Global, AllocHandle, Layout, box_free, handle_alloc_error};
 use crate::string::String;
 use crate::vec::Vec;
 

@@ -7,7 +7,7 @@ use core::ops::Drop;
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
 
-use crate::alloc::{Alloc, Layout, Global, handle_alloc_error};
+use crate::alloc::{AllocHandle, Layout, Global, handle_alloc_error};
 use crate::collections::CollectionAllocErr::{self, *};
 use crate::boxed::Box;
 
@@ -39,13 +39,13 @@ use crate::boxed::Box;
 /// field. This allows zero-sized types to not be special-cased by consumers of
 /// this type.
 #[allow(missing_debug_implementations)]
-pub struct RawVec<T, A: Alloc = Global> {
+pub struct RawVec<T, A: AllocHandle = Global> {
     ptr: Unique<T>,
     cap: usize,
     a: A,
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: AllocHandle> RawVec<T, A> {
     /// Like `new` but parameterized over the choice of allocator for
     /// the returned RawVec.
     pub const fn new_in(a: A) -> Self {
@@ -146,7 +146,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: AllocHandle> RawVec<T, A> {
     /// Reconstitutes a RawVec from a pointer, capacity, and allocator.
     ///
     /// # Undefined Behavior
@@ -189,7 +189,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: AllocHandle> RawVec<T, A> {
     /// Gets a raw pointer to the start of the allocation. Note that this is
     /// Unique::empty() if `cap = 0` or T is zero-sized. In the former case, you must
     /// be careful.
@@ -629,7 +629,7 @@ enum ReserveStrategy {
 
 use ReserveStrategy::*;
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: AllocHandle> RawVec<T, A> {
     fn reserve_internal(
         &mut self,
         used_cap: usize,
@@ -700,7 +700,7 @@ impl<T> RawVec<T, Global> {
     }
 }
 
-impl<T, A: Alloc> RawVec<T, A> {
+impl<T, A: AllocHandle> RawVec<T, A> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     pub unsafe fn dealloc_buffer(&mut self) {
         let elem_size = mem::size_of::<T>();
@@ -712,7 +712,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     }
 }
 
-unsafe impl<#[may_dangle] T, A: Alloc> Drop for RawVec<T, A> {
+unsafe impl<#[may_dangle] T, A: AllocHandle> Drop for RawVec<T, A> {
     /// Frees the memory owned by the RawVec *without* trying to Drop its contents.
     fn drop(&mut self) {
         unsafe { self.dealloc_buffer(); }
@@ -767,7 +767,7 @@ mod tests {
         // A dumb allocator that consumes a fixed amount of fuel
         // before allocation attempts start failing.
         struct BoundedAlloc { fuel: usize }
-        unsafe impl Alloc for BoundedAlloc {
+        unsafe impl AllocHandle for BoundedAlloc {
             unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, AllocErr> {
                 let size = layout.size();
                 if size > self.fuel {

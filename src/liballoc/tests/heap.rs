@@ -1,4 +1,4 @@
-use std::alloc::{Global, Alloc, Layout, System};
+use std::alloc::{Global, AllocHandle, Layout, System};
 
 /// Issue #45955.
 #[test]
@@ -11,7 +11,7 @@ fn std_heap_overaligned_request() {
     check_overalign_requests(Global)
 }
 
-fn check_overalign_requests<T: Alloc>(mut allocator: T) {
+fn check_overalign_requests<T: AllocHandle>(mut allocator: T) {
     let size = 8;
     let align = 16; // greater than size
     let iterations = 100;
