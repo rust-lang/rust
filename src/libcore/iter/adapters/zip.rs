@@ -62,6 +62,17 @@ impl<A, B> DoubleEndedIterator for Zip<A, B> where
     fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
         ZipImpl::next_back(self)
     }
+
+    #[inline]
+    fn nth_back(&mut self, mut n: usize) -> Option<(A::Item, B::Item)> {
+        while let Some(x) = ZipImpl::next_back(self) {
+            if n == 0 {
+                return Some(x)
+            }
+            n -= 1;
+        }
+        None
+    }
 }
 
 // Zip specialization trait

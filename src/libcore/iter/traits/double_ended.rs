@@ -69,7 +69,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// Returns the `n`th element from the end of the iterator.
     ///
     /// This is essentially the reversed version of [`nth`]. Although like most indexing
-    /// operations, the count starts from zero, so `nth_back(0)` returns the first value fro
+    /// operations, the count starts from zero, so `nth_back(0)` returns the first value from
     /// the end, `nth_back(1)` the second, and so on.
     ///
     /// Note that all elements between the end and the returned element will be

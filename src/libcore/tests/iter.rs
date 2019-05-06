@@ -154,6 +154,22 @@ fn test_zip_nth() {
 }
 
 #[test]
+fn test_zip_nth_back() {
+    let xs = [0, 1, 2, 4, 5];
+    let ys = [10, 11, 12];
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth_back(0), Some((&2, &12)));
+    assert_eq!(it.nth_back(1), Some((&0, &10)));
+    assert_eq!(it.nth_back(0), None);
+
+    let mut it = xs.iter().zip(&ys);
+    assert_eq!(it.nth_back(3), None);
+
+    let mut it = ys.iter().zip(&xs);
+    assert_eq!(it.nth_back(3), None);
+}
+
+#[test]
 fn test_zip_nth_side_effects() {
     let mut a = Vec::new();
     let mut b = Vec::new();
