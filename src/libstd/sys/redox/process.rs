@@ -150,7 +150,7 @@ impl Command {
              match cvt(syscall::clone(0))? {
                  0 => {
                      drop(input);
-                     let err = self.do_exec(theirs);
+                     let Err(err) = self.do_exec(theirs);
                      let errno = err.raw_os_error().unwrap_or(syscall::EINVAL) as u32;
                      let bytes = [
                          (errno >> 24) as u8,
@@ -218,7 +218,10 @@ impl Command {
         }
 
         match self.setup_io(default, true) {
-            Ok((_, theirs)) => unsafe { self.do_exec(theirs) },
+            Ok((_, theirs)) => unsafe {
+                let Err(e) = self.do_exec(theirs);
+                e
+            },
             Err(e) => e,
         }
     }
@@ -253,7 +256,7 @@ impl Command {
     // allocation). Instead we just close it manually. This will never
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke syscall::exit)
-    unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
+    unsafe fn do_exec(&mut self, stdio: ChildPipes) -> Result<!, io::Error> {
         if let Some(fd) = stdio.stderr.fd() {
             cvt(syscall::dup2(fd, 2, &[]))?;
             let mut flags = cvt(syscall::fcntl(2, syscall::F_GETFD, 0))?;
@@ -308,7 +311,7 @@ impl Command {
         let mut file = if let Some(program) = program {
             File::open(program.as_os_str())?
         } else {
-            return io::Error::from_raw_os_error(syscall::ENOENT);
+            return Err(io::Error::from_raw_os_error(syscall::ENOENT));
         };
 
         // Push all the arguments
@@ -343,7 +346,7 @@ impl Command {
                     meta.mode() & 0o7
                 };
                 if mode & 1 == 0 {
-                    return io::Error::from_raw_os_error(syscall::EPERM);
+                    return Err(io::Error::from_raw_os_error(syscall::EPERM));
                 }
 
                 // Second of all, we need to actually read which interpreter it wants
@@ -389,12 +392,11 @@ impl Command {
         }
 
         if let Err(err) = syscall::fexec(file.as_raw_fd(), &args, &vars) {
-            io::Error::from_raw_os_error(err.errno as i32)
+            Err(io::Error::from_raw_os_error(err.errno as i32))
         } else {
             panic!("return from exec without err");
         }
     }
-
 
     fn setup_io(&self, default: Stdio, needs_stdin: bool)
                 -> io::Result<(StdioPipes, ChildPipes)> {

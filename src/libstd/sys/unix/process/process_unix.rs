@@ -47,7 +47,7 @@ impl Command {
             match result {
                 0 => {
                     drop(input);
-                    let err = self.do_exec(theirs, envp.as_ref());
+                    let Err(err) = self.do_exec(theirs, envp.as_ref());
                     let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
                     let bytes = [
                         (errno >> 24) as u8,
@@ -123,7 +123,8 @@ impl Command {
                     // environment lock before we try to exec.
                     let _lock = sys::os::env_lock();
 
-                    self.do_exec(theirs, envp.as_ref())
+                    let Err(e) = self.do_exec(theirs, envp.as_ref());
+                    e
                 }
             }
             Err(e) => e,
@@ -164,7 +165,7 @@ impl Command {
         &mut self,
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>
-    ) -> io::Error {
+    ) -> Result<!, io::Error> {
         use crate::sys::{self, cvt_r};
 
         if let Some(fd) = stdio.stdin.fd() {
@@ -224,7 +225,7 @@ impl Command {
                                          ptr::null_mut()))?;
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
             if ret == libc::SIG_ERR {
-                return io::Error::last_os_error()
+                return Err(io::Error::last_os_error())
             }
         }
 
@@ -254,7 +255,7 @@ impl Command {
         }
 
         libc::execvp(self.get_argv()[0], self.get_argv().as_ptr());
-        io::Error::last_os_error()
+        Err(io::Error::last_os_error())
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "freebsd",
