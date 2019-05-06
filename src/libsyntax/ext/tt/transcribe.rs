@@ -98,16 +98,11 @@ pub fn transcribe(
         };
 
         match tree {
-            quoted::TokenTree::Sequence(sp, seq) => {
-                // FIXME(pcwalton): Bad copy.
-                match lockstep_iter_size(
-                    &quoted::TokenTree::Sequence(sp, seq.clone()),
-                    &interpolations,
-                    &repeats,
-                ) {
+            seq @ quoted::TokenTree::Sequence(..) => {
+                match lockstep_iter_size(&seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
                         cx.span_fatal(
-                            sp.entire(), /* blame macro writer */
+                            seq.span(), /* blame macro writer */
                             "attempted to repeat an expression \
                              containing no syntax \
                              variables matched as repeating at this depth",
@@ -115,9 +110,15 @@ pub fn transcribe(
                     }
                     LockstepIterSize::Contradiction(ref msg) => {
                         // FIXME #2887 blame macro invoker instead
-                        cx.span_fatal(sp.entire(), &msg[..]);
+                        cx.span_fatal(seq.span(), &msg[..]);
                     }
                     LockstepIterSize::Constraint(len, _) => {
+                        let (sp, seq) = if let quoted::TokenTree::Sequence(sp, seq) = seq {
+                            (sp, seq)
+                        } else {
+                            unreachable!()
+                        };
+
                         if len == 0 {
                             if seq.op == quoted::KleeneOp::OneOrMore {
                                 // FIXME #2887 blame invoker
@@ -201,10 +202,8 @@ enum LockstepIterSize {
     Contradiction(String),
 }
 
-impl Add for LockstepIterSize {
-    type Output = LockstepIterSize;
-
-    fn add(self, other: LockstepIterSize) -> LockstepIterSize {
+impl LockstepIterSize {
+    fn with(self, other: LockstepIterSize) -> LockstepIterSize {
         match self {
             LockstepIterSize::Unconstrained => other,
             LockstepIterSize::Contradiction(_) => self,
