@@ -3,7 +3,7 @@ use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::interpret::ConstValue;
 use rustc::session::config::OptLevel;
-use rustc::ty::{self, Ty, TyCtxt, Const, ClosureSubsts, GeneratorSubsts, ParamConst};
+use rustc::ty::{self, Ty, TyCtxt, Const, ClosureSubsts, GeneratorSubsts};
 use rustc::ty::subst::{SubstsRef, InternalSubsts};
 use syntax::ast;
 use syntax::attr::InlineAttr;
@@ -240,11 +240,11 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     }
 
     // Pushes the type name of the specified type to the provided string.
-    // If 'debug' is true, printing normally unprintable types is allowed
-    // (e.g. ty::GeneratorWitness). This parameter should only be set when
-    // this method is being used for logging purposes (e.g. with debug! or info!)
-    // When being used for codegen purposes, 'debug' should be set to 'false'
-    // in order to catch unexpected types that should never end up in a type name
+    // If `debug` is true, printing normally unprintable types is allowed
+    // (e.g. `ty::GeneratorWitness`). This parameter should only be set when
+    // this method is being used for logging purposes (e.g. with `debug!` or `info!`)
+    // When being used for codegen purposes, `debug` should be set to `false`
+    // in order to catch unexpected types that should never end up in a type name.
     pub fn push_type_name(&self, t: Ty<'tcx>, output: &mut String, debug: bool) {
         match t.sty {
             ty::Bool              => output.push_str("bool"),
@@ -387,22 +387,34 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 if debug {
                     output.push_str(&format!("`{:?}`", t));
                 } else {
-                    bug!("DefPathBasedNames: Trying to create type name for \
-                                         unexpected type: {:?}", t);
+                    bug!(
+                        "DefPathBasedNames: trying to create type name for unexpected type: {:?}",
+                        t,
+                    );
                 }
             }
         }
     }
 
-    // FIXME(const_generics): handle debug printing.
+    // Pushes the the name of the specified const to the provided string.
+    // If `debug` is true, usually-unprintable consts (such as `Infer`) will be printed,
+    // as well as the unprintable types of constants (see `push_type_name` for more details).
     pub fn push_const_name(&self, c: &Const<'tcx>, output: &mut String, debug: bool) {
         match c.val {
-            ConstValue::Infer(..) | ConstValue::Placeholder(_) => output.push_str("_"),
-            ConstValue::Param(ParamConst { name, .. }) => {
-                write!(output, "{}", name).unwrap();
+            ConstValue::Scalar(..) | ConstValue::Slice(..) | ConstValue::ByRef(..) => {
+                // FIXME(const_generics): we could probably do a better job here.
+                write!(output, "{:?}", c).unwrap()
             }
-            ConstValue::Unevaluated(..) => output.push_str("_: _"),
-            _ => write!(output, "{:?}", c).unwrap(),
+            _ => {
+                if debug {
+                    write!(output, "{:?}", c).unwrap()
+                } else {
+                    bug!(
+                        "DefPathBasedNames: trying to create const name for unexpected const: {:?}",
+                        c,
+                    );
+                }
+            }
         }
         output.push_str(": ");
         self.push_type_name(c.ty, output, debug);
