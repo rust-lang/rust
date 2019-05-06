@@ -167,26 +167,19 @@ impl Command {
     ) -> io::Error {
         use crate::sys::{self, cvt_r};
 
-        macro_rules! t {
-            ($e:expr) => (match $e {
-                Ok(e) => e,
-                Err(e) => return e,
-            })
-        }
-
         if let Some(fd) = stdio.stdin.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDIN_FILENO))?;
         }
         if let Some(fd) = stdio.stdout.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDOUT_FILENO))?;
         }
         if let Some(fd) = stdio.stderr.fd() {
-            t!(cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO)));
+            cvt_r(|| libc::dup2(fd, libc::STDERR_FILENO))?;
         }
 
         if cfg!(not(any(target_os = "l4re"))) {
             if let Some(u) = self.get_gid() {
-                t!(cvt(libc::setgid(u as gid_t)));
+                cvt(libc::setgid(u as gid_t))?;
             }
             if let Some(u) = self.get_uid() {
                 // When dropping privileges from root, the `setgroups` call
@@ -198,11 +191,11 @@ impl Command {
                 // privilege dropping function.
                 let _ = libc::setgroups(0, ptr::null());
 
-                t!(cvt(libc::setuid(u as uid_t)));
+                cvt(libc::setuid(u as uid_t))?;
             }
         }
         if let Some(ref cwd) = *self.get_cwd() {
-            t!(cvt(libc::chdir(cwd.as_ptr())));
+            cvt(libc::chdir(cwd.as_ptr()))?;
         }
 
         // emscripten has no signal support.
@@ -225,10 +218,10 @@ impl Command {
                              0,
                              mem::size_of::<libc::sigset_t>());
             } else {
-                t!(cvt(libc::sigemptyset(&mut set)));
+                cvt(libc::sigemptyset(&mut set))?;
             }
-            t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
-                                         ptr::null_mut())));
+            cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
+                                         ptr::null_mut()))?;
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
             if ret == libc::SIG_ERR {
                 return io::Error::last_os_error()
@@ -236,7 +229,7 @@ impl Command {
         }
 
         for callback in self.get_closures().iter_mut() {
-            t!(callback());
+            callback()?;
         }
 
         // Although we're performing an exec here we may also return with an

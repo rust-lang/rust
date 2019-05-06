@@ -254,44 +254,37 @@ impl Command {
     // have the drop glue anyway because this code never returns (the
     // child will either exec() or invoke syscall::exit)
     unsafe fn do_exec(&mut self, stdio: ChildPipes) -> io::Error {
-        macro_rules! t {
-            ($e:expr) => (match $e {
-                Ok(e) => e,
-                Err(e) => return e,
-            })
-        }
-
         if let Some(fd) = stdio.stderr.fd() {
-            t!(cvt(syscall::dup2(fd, 2, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(2, syscall::F_GETFD, 0)));
+            cvt(syscall::dup2(fd, 2, &[]))?;
+            let mut flags = cvt(syscall::fcntl(2, syscall::F_GETFD, 0))?;
             flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(2, syscall::F_SETFD, flags)));
+            cvt(syscall::fcntl(2, syscall::F_SETFD, flags))?;
         }
         if let Some(fd) = stdio.stdout.fd() {
-            t!(cvt(syscall::dup2(fd, 1, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(1, syscall::F_GETFD, 0)));
+            cvt(syscall::dup2(fd, 1, &[]))?;
+            let mut flags = cvt(syscall::fcntl(1, syscall::F_GETFD, 0))?;
             flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(1, syscall::F_SETFD, flags)));
+            cvt(syscall::fcntl(1, syscall::F_SETFD, flags))?;
         }
         if let Some(fd) = stdio.stdin.fd() {
-            t!(cvt(syscall::dup2(fd, 0, &[])));
-            let mut flags = t!(cvt(syscall::fcntl(0, syscall::F_GETFD, 0)));
+            cvt(syscall::dup2(fd, 0, &[]))?;
+            let mut flags = cvt(syscall::fcntl(0, syscall::F_GETFD, 0))?;
             flags &= ! syscall::O_CLOEXEC;
-            t!(cvt(syscall::fcntl(0, syscall::F_SETFD, flags)));
+            cvt(syscall::fcntl(0, syscall::F_SETFD, flags))?;
         }
 
         if let Some(g) = self.gid {
-            t!(cvt(syscall::setregid(g as usize, g as usize)));
+            cvt(syscall::setregid(g as usize, g as usize))?;
         }
         if let Some(u) = self.uid {
-            t!(cvt(syscall::setreuid(u as usize, u as usize)));
+            cvt(syscall::setreuid(u as usize, u as usize))?;
         }
         if let Some(ref cwd) = self.cwd {
-            t!(cvt(syscall::chdir(cwd)));
+            cvt(syscall::chdir(cwd))?;
         }
 
         for callback in self.closures.iter_mut() {
-            t!(callback());
+            callback()?;
         }
 
         self.env.apply();
@@ -313,7 +306,7 @@ impl Command {
         };
 
         let mut file = if let Some(program) = program {
-            t!(File::open(program.as_os_str()))
+            File::open(program.as_os_str())?
         } else {
             return io::Error::from_raw_os_error(syscall::ENOENT);
         };
@@ -327,7 +320,7 @@ impl Command {
             let mut shebang = [0; 2];
             let mut read = 0;
             loop {
-                match t!(reader.read(&mut shebang[read..])) {
+                match reader.read(&mut shebang[read..])? {
                     0 => break,
                     n => read += n,
                 }
@@ -338,9 +331,9 @@ impl Command {
                 // First of all, since we'll be passing another file to
                 // fexec(), we need to manually check that we have permission
                 // to execute this file:
-                let uid = t!(cvt(syscall::getuid()));
-                let gid = t!(cvt(syscall::getgid()));
-                let meta = t!(file.metadata());
+                let uid = cvt(syscall::getuid())?;
+                let gid = cvt(syscall::getgid())?;
+                let meta = file.metadata()?;
 
                 let mode = if uid == meta.uid() as usize {
                     meta.mode() >> 3*2 & 0o7
@@ -355,7 +348,7 @@ impl Command {
 
                 // Second of all, we need to actually read which interpreter it wants
                 let mut interpreter = Vec::new();
-                t!(reader.read_until(b'\n', &mut interpreter));
+                reader.read_until(b'\n', &mut interpreter)?;
                 // Pop one trailing newline, if any
                 if interpreter.ends_with(&[b'\n']) {
                     interpreter.pop().unwrap();
@@ -373,11 +366,11 @@ impl Command {
         };
         if let Some(ref interpreter) = interpreter {
             let path: &OsStr = OsStr::from_bytes(&interpreter);
-            file = t!(File::open(path));
+            file = File::open(path)?;
 
             args.push([interpreter.as_ptr() as usize, interpreter.len()]);
         } else {
-            t!(file.seek(SeekFrom::Start(0)));
+            file.seek(SeekFrom::Start(0))?;
         }
 
         args.push([self.program.as_ptr() as usize, self.program.len()]);
