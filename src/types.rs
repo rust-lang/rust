@@ -320,7 +320,7 @@ where
     let list_lo = context.snippet_provider.span_after(span, "(");
     let (list_str, tactic) = if inputs.len() == 0 {
         let tactic = get_tactics(&[], &output, shape);
-        let list_hi = context.snippet_provider.span_before_last(span, ")");
+        let list_hi = context.snippet_provider.span_before(span, ")");
         let comment = context
             .snippet_provider
             .span_to_snippet(mk_sp(list_lo, list_hi))?
