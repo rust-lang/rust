@@ -6,7 +6,7 @@ fn i32_identity<const X: i32>() -> i32 {
 }
 
 fn foo_a() {
-    i32_identity::<-1>(); //~ ERROR expected identifier, found `<-`
+    i32_identity::<-1>(); // ok
 }
 
 fn foo_b() {
