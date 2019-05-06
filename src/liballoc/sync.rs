@@ -17,7 +17,7 @@ use core::mem::{self, align_of_val, size_of_val};
 use core::ops::{Deref, Receiver, CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
-use core::marker::{Unpin, Unsize, PhantomData};
+use core::marker::{Unpin, Unsize};
 use core::hash::{Hash, Hasher};
 use core::{isize, usize};
 use core::convert::From;
@@ -192,7 +192,6 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T: ?Sized> {
     ptr: NonNull<ArcInner<T>>,
-    phantom: PhantomData<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -290,7 +289,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data,
         };
-        Arc { ptr: Box::into_raw_non_null(x), phantom: PhantomData }
+        Arc { ptr: Box::into_raw_non_null(x) }
     }
 
     /// Constructs a new `Pin<Arc<T>>`. If `T` does not implement `Unpin`, then
@@ -409,7 +408,6 @@ impl<T: ?Sized> Arc<T> {
 
         Arc {
             ptr: NonNull::new_unchecked(arc_ptr),
-            phantom: PhantomData,
         }
     }
 
@@ -621,7 +619,7 @@ impl<T: ?Sized> Arc<T> {
             // Free the allocation without dropping its contents
             box_free(box_unique);
 
-            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Arc { ptr: NonNull::new_unchecked(ptr) }
         }
     }
 }
@@ -648,7 +646,7 @@ impl<T> Arc<[T]> {
             &mut (*ptr).data as *mut [T] as *mut T,
             v.len());
 
-        Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+        Arc { ptr: NonNull::new_unchecked(ptr) }
     }
 }
 
@@ -706,7 +704,7 @@ impl<T: Clone> ArcFromSlice<T> for Arc<[T]> {
             // All clear. Forget the guard so it doesn't free the new ArcInner.
             mem::forget(guard);
 
-            Arc { ptr: NonNull::new_unchecked(ptr), phantom: PhantomData }
+            Arc { ptr: NonNull::new_unchecked(ptr) }
         }
     }
 }
@@ -764,7 +762,7 @@ impl<T: ?Sized> Clone for Arc<T> {
             }
         }
 
-        Arc { ptr: self.ptr, phantom: PhantomData }
+        Arc { ptr: self.ptr }
     }
 }
 
@@ -1043,7 +1041,7 @@ impl Arc<dyn Any + Send + Sync> {
         if (*self).is::<T>() {
             let ptr = self.ptr.cast::<ArcInner<T>>();
             mem::forget(self);
-            Ok(Arc { ptr, phantom: PhantomData })
+            Ok(Arc { ptr })
         } else {
             Err(self)
         }
@@ -1129,7 +1127,6 @@ impl<T: ?Sized> Weak<T> {
                 Ok(_) => return Some(Arc {
                     // null checked above
                     ptr: self.ptr,
-                    phantom: PhantomData,
                 }),
                 Err(old) => n = old,
             }
