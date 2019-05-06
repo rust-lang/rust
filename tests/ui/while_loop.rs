@@ -169,7 +169,10 @@ fn refutable() {
     for &(1, 2, 3) in b {}
     for &Option::None in b.next() {}
     // */
+}
 
+fn nested_loops() {
+    let a = [42, 1337];
     let mut y = a.iter();
     loop {
         // x is reused, so don't lint here
@@ -189,7 +192,9 @@ fn refutable() {
             // use a for loop here
         }
     }
+}
 
+fn issue1948() {
     // should not trigger clippy::while_let_loop lint because break passes an expression
     let a = Some(10);
     let b = loop {
@@ -199,7 +204,9 @@ fn refutable() {
             break None;
         }
     };
+}
 
+fn issue1121() {
     use std::collections::HashSet;
     let mut values = HashSet::new();
     values.insert(1);
@@ -207,23 +214,27 @@ fn refutable() {
     while let Some(&value) = values.iter().next() {
         values.remove(&value);
     }
+}
 
+fn issue2965() {
     // This should not cause an ICE and suggest:
     //
     // for _ in values.iter() {}
     //
-    // See #2965
+    use std::collections::HashSet;
+    let mut values = HashSet::new();
+    values.insert(1);
+
     while let Some(..) = values.iter().next() {
         values.remove(&1);
     }
+}
 
-    // Issue 3670
-    {
-        let array = [Some(0), None, Some(1)];
-        let mut iter = array.iter();
+fn issue3670() {
+    let array = [Some(0), None, Some(1)];
+    let mut iter = array.iter();
 
-        while let Some(elem) = iter.next() {
-            let _ = elem.or_else(|| *iter.next()?);
-        }
+    while let Some(elem) = iter.next() {
+        let _ = elem.or_else(|| *iter.next()?);
     }
 }
