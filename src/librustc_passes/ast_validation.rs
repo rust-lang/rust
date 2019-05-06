@@ -454,29 +454,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
-            ExprKind::ObsoleteInPlace(ref place, ref val) => {
-                let mut err = self.err_handler().struct_span_err(
-                    expr.span,
-                    "emplacement syntax is obsolete (for now, anyway)",
-                );
-                err.note(
-                    "for more information, see \
-                     <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>"
-                );
-                match val.node {
-                    ExprKind::Lit(ref v) if v.node.is_numeric() => {
-                        err.span_suggestion(
-                            place.span.between(val.span),
-                            "if you meant to write a comparison against a negative value, add a \
-                             space in between `<` and `-`",
-                            "< -".to_string(),
-                            Applicability::MaybeIncorrect
-                        );
-                    }
-                    _ => {}
-                }
-                err.emit();
-            }
             _ => {}
         }
 

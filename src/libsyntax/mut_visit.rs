@@ -1099,10 +1099,6 @@ pub fn noop_visit_anon_const<T: MutVisitor>(AnonConst { id, value }: &mut AnonCo
 pub fn noop_visit_expr<T: MutVisitor>(Expr { node, id, span, attrs }: &mut Expr, vis: &mut T) {
     match node {
         ExprKind::Box(expr) => vis.visit_expr(expr),
-        ExprKind::ObsoleteInPlace(a, b) => {
-            vis.visit_expr(a);
-            vis.visit_expr(b);
-        }
         ExprKind::Array(exprs) => visit_exprs(exprs, vis),
         ExprKind::Repeat(expr, count) => {
             vis.visit_expr(expr);
