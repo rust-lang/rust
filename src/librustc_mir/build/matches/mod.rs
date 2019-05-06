@@ -961,9 +961,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         source_info,
                         TerminatorKind::FalseEdges {
                             real_target: second_candidate.pre_binding_block,
-                            imaginary_targets: vec![
-                                first_candidate.next_candidate_pre_binding_block
-                            ],
+                            imaginary_target: first_candidate.next_candidate_pre_binding_block,
                         }
                     )
                 } else {
@@ -984,7 +982,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     source_info,
                     TerminatorKind::FalseEdges {
                         real_target: unreachable,
-                        imaginary_targets: vec![candidate.next_candidate_pre_binding_block],
+                        imaginary_targets: candidate.next_candidate_pre_binding_block,
                     }
                 );
                 self.cfg.terminate(unreachable, source_info, TerminatorKind::Unreachable);
@@ -1001,7 +999,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 source_info,
                 TerminatorKind::FalseEdges {
                     real_target: block,
-                    imaginary_targets: vec![last_candidate.next_candidate_pre_binding_block]
+                    imaginary_target: last_candidate.next_candidate_pre_binding_block,
                 }
             );
             Some(block)
@@ -1330,7 +1328,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             candidate_source_info,
             TerminatorKind::FalseEdges {
                 real_target: block,
-                imaginary_targets: vec![candidate.next_candidate_pre_binding_block],
+                imaginary_target: candidate.next_candidate_pre_binding_block,
             },
         );
         self.ascribe_types(block, &candidate.ascriptions);
