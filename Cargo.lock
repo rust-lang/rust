@@ -3204,6 +3204,7 @@ version = "0.0.0"
 dependencies = [
  "env_logger 0.5.13",
  "graphviz",
+ "lazy_static 1.3.0",
  "log",
  "rustc",
  "rustc_ast_borrowck",

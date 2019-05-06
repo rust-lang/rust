@@ -21,6 +21,8 @@ pub extern crate getopts;
 extern crate libc;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
@@ -1143,61 +1145,77 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
     }
 }
 
-/// Runs a procedure which will detect panics in the compiler and print nicer
-/// error messages rather than just failing the test.
+/// Runs a closure and catches unwinds triggered by fatal errors.
 ///
-/// The diagnostic emitter yielded to the procedure should be used for reporting
-/// errors of the compiler.
-pub fn report_ices_to_stderr_if_any<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
+/// The compiler currently panics with a special sentinel value to abort
+/// compilation on fatal errors. This function catches that sentinel and turns
+/// the panic into a `Result` instead.
+pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
     catch_unwind(panic::AssertUnwindSafe(f)).map_err(|value| {
         if value.is::<errors::FatalErrorMarker>() {
             ErrorReported
         } else {
-            // Thread panicked without emitting a fatal diagnostic
-            eprintln!("");
-
-            let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
-                errors::ColorConfig::Auto,
-                None,
-                false,
-                false,
-                None,
-            ));
-            let handler = errors::Handler::with_emitter(true, None, emitter);
-
-            // a .span_bug or .bug call has already printed what
-            // it wants to print.
-            if !value.is::<errors::ExplicitBug>() {
-                handler.emit(&MultiSpan::new(),
-                             "unexpected panic",
-                             errors::Level::Bug);
-            }
-
-            let mut xs: Vec<Cow<'static, str>> = vec![
-                "the compiler unexpectedly panicked. this is a bug.".into(),
-                format!("we would appreciate a bug report: {}", BUG_REPORT_URL).into(),
-                format!("rustc {} running on {}",
-                        option_env!("CFG_VERSION").unwrap_or("unknown_version"),
-                        config::host_triple()).into(),
-            ];
-
-            if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
-                xs.push(format!("compiler flags: {}", flags.join(" ")).into());
-
-                if excluded_cargo_defaults {
-                    xs.push("some of the compiler flags provided by cargo are hidden".into());
-                }
-            }
-
-            for note in &xs {
-                handler.emit(&MultiSpan::new(),
-                             note,
-                             errors::Level::Note);
-            }
-
-            panic::resume_unwind(Box::new(errors::FatalErrorMarker));
+            panic::resume_unwind(value);
         }
     })
+}
+
+lazy_static! {
+    static ref DEFAULT_HOOK: Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 'static> = {
+        let hook = panic::take_hook();
+        panic::set_hook(Box::new(report_ice));
+        hook
+    };
+}
+
+pub fn report_ice(info: &panic::PanicInfo<'_>) {
+    (*DEFAULT_HOOK)(info);
+
+    // Thread panicked without emitting a fatal diagnostic
+    eprintln!();
+
+    let emitter = Box::new(errors::emitter::EmitterWriter::stderr(
+        errors::ColorConfig::Auto,
+        None,
+        false,
+        false,
+        None,
+    ));
+    let handler = errors::Handler::with_emitter(true, None, emitter);
+
+    // a .span_bug or .bug call has already printed what
+    // it wants to print.
+    if !info.payload().is::<errors::ExplicitBug>() {
+        handler.emit(&MultiSpan::new(),
+                     "unexpected panic",
+                     errors::Level::Bug);
+    }
+
+    let mut xs: Vec<Cow<'static, str>> = vec![
+        "the compiler unexpectedly panicked. this is a bug.".into(),
+        format!("we would appreciate a bug report: {}", BUG_REPORT_URL).into(),
+        format!("rustc {} running on {}",
+                option_env!("CFG_VERSION").unwrap_or("unknown_version"),
+                config::host_triple()).into(),
+    ];
+
+    if let Some((flags, excluded_cargo_defaults)) = extra_compiler_flags() {
+        xs.push(format!("compiler flags: {}", flags.join(" ")).into());
+
+        if excluded_cargo_defaults {
+            xs.push("some of the compiler flags provided by cargo are hidden".into());
+        }
+    }
+
+    for note in &xs {
+        handler.emit(&MultiSpan::new(),
+                     note,
+                     errors::Level::Note);
+    }
+}
+
+pub fn install_ice_hook() {
+    lazy_static::initialize(&DEFAULT_HOOK);
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
@@ -1210,7 +1228,8 @@ pub fn main() {
     let start = Instant::now();
     init_rustc_env_logger();
     let mut callbacks = TimePassesCallbacks::default();
-    let result = report_ices_to_stderr_if_any(|| {
+    install_ice_hook();
+    let result = catch_fatal_errors(|| {
         let args = env::args_os().enumerate()
             .map(|(i, arg)| arg.into_string().unwrap_or_else(|arg| {
                     early_error(ErrorOutputType::default(),
