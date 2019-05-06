@@ -232,6 +232,7 @@ pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
     Regions(ExpectedFound<ty::Region<'tcx>>),
+    Consts(ExpectedFound<&'tcx ty::Const<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
 }
@@ -1730,6 +1731,7 @@ EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
         (ValuePairs::Types)(a),
         (ValuePairs::Regions)(a),
+        (ValuePairs::Consts)(a),
         (ValuePairs::TraitRefs)(a),
         (ValuePairs::PolyTraitRefs)(a),
     }
