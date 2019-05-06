@@ -6045,10 +6045,6 @@ impl<'a> Parser<'a> {
                 });
                 assoc_ty_bindings.push(span);
             } else if self.check_const_arg() {
-                // FIXME(const_generics): to distinguish between idents for types and consts,
-                // we should introduce a GenericArg::Ident in the AST and distinguish when
-                // lowering to the HIR. For now, idents for const args are not permitted.
-
                 // Parse const argument.
                 let expr = if let token::OpenDelim(token::Brace) = self.token {
                     self.parse_block_expr(None, self.span, BlockCheckMode::Default, ThinVec::new())?
