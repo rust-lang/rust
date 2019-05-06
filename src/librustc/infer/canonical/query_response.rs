@@ -318,8 +318,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     obligations.extend(ok.into_obligations());
                 }
 
-                (UnpackedKind::Const(..), UnpackedKind::Const(..)) => {
-                    unimplemented!() // FIXME(const_generics)
+                (UnpackedKind::Const(v1), UnpackedKind::Const(v2)) => {
+                    let ok = self.at(cause, param_env).eq(v1, v2)?;
+                    obligations.extend(ok.into_obligations());
                 }
 
                 _ => {
@@ -626,8 +627,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                         obligations
                             .extend(self.at(cause, param_env).eq(v1, v2)?.into_obligations());
                     }
-                    (UnpackedKind::Const(..), UnpackedKind::Const(..)) => {
-                        unimplemented!() // FIXME(const_generics)
+                    (UnpackedKind::Const(v1), UnpackedKind::Const(v2)) => {
+                        let ok = self.at(cause, param_env).eq(v1, v2)?;
+                        obligations.extend(ok.into_obligations());
                     }
                     _ => {
                         bug!("kind mismatch, cannot unify {:?} and {:?}", value1, value2,);
