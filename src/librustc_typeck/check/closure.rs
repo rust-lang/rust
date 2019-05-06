@@ -246,7 +246,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Given a projection like "<F as Fn(X)>::Result == Y", we can deduce
-    /// everything we need to know about a closure.
+    /// everything we need to know about a closure or generator.
     ///
     /// The `cause_span` should be the span that caused us to
     /// have this expected signature, or `None` if we can't readily
@@ -262,37 +262,50 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let trait_ref = projection.to_poly_trait_ref(tcx);
 
-        if tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_none() {
+        let is_fn = tcx.lang_items().fn_trait_kind(trait_ref.def_id()).is_some();
+        let gen_trait = tcx.lang_items().gen_trait().unwrap();
+        let is_gen = gen_trait == trait_ref.def_id();
+        if !is_fn && !is_gen {
+            debug!("deduce_sig_from_projection: not fn or generator");
             return None;
         }
 
-        let arg_param_ty = trait_ref.skip_binder().substs.type_at(1);
-        let arg_param_ty = self.resolve_type_vars_if_possible(&arg_param_ty);
-        debug!(
-            "deduce_sig_from_projection: arg_param_ty {:?}",
-            arg_param_ty
-        );
+        if is_gen {
+            // Check that we deduce the signature from the `<_ as std::ops::Generator>::Return`
+            // associated item and not yield.
+            let return_assoc_item = self.tcx.associated_items(gen_trait).nth(1).unwrap().def_id;
+            if return_assoc_item != projection.projection_def_id() {
+                debug!("deduce_sig_from_projection: not return assoc item of generator");
+                return None;
+            }
+        }
 
-        let input_tys = match arg_param_ty.sty {
-            ty::Tuple(tys) => tys.into_iter().map(|k| k.expect_ty()),
-            _ => return None,
+        let input_tys = if is_fn {
+            let arg_param_ty = trait_ref.skip_binder().substs.type_at(1);
+            let arg_param_ty = self.resolve_type_vars_if_possible(&arg_param_ty);
+            debug!("deduce_sig_from_projection: arg_param_ty={:?}", arg_param_ty);
+
+            match arg_param_ty.sty {
+                ty::Tuple(tys) => tys.into_iter().map(|k| k.expect_ty()).collect::<Vec<_>>(),
+                _ => return None,
+            }
+        } else {
+            // Generators cannot have explicit arguments.
+            vec![]
         };
 
         let ret_param_ty = projection.skip_binder().ty;
         let ret_param_ty = self.resolve_type_vars_if_possible(&ret_param_ty);
-        debug!(
-            "deduce_sig_from_projection: ret_param_ty {:?}",
-            ret_param_ty
-        );
+        debug!("deduce_sig_from_projection: ret_param_ty={:?}", ret_param_ty);
 
         let sig = self.tcx.mk_fn_sig(
-            input_tys,
-            ret_param_ty,
+            input_tys.iter(),
+            &ret_param_ty,
             false,
             hir::Unsafety::Normal,
             Abi::Rust,
         );
-        debug!("deduce_sig_from_projection: sig {:?}", sig);
+        debug!("deduce_sig_from_projection: sig={:?}", sig);
 
         Some(ExpectedSig { cause_span, sig })
     }
