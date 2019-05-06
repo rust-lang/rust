@@ -5785,8 +5785,6 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         ty
     );
 
-    // FIXME(const_generics): we probably want to check the bounds for const parameters too.
-
     if own_counts.types == 0 {
         return;
     }

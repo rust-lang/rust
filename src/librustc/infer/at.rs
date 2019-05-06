@@ -27,6 +27,7 @@
 
 use super::*;
 
+use crate::ty::Const;
 use crate::ty::relate::{Relate, TypeRelation};
 
 pub struct At<'a, 'gcx: 'tcx, 'tcx: 'a> {
@@ -304,6 +305,20 @@ impl<'tcx> ToTrace<'tcx> for ty::Region<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: Regions(ExpectedFound::new(a_is_expected, a, b))
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for &'tcx Const<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>,
+                a_is_expected: bool,
+                a: Self,
+                b: Self)
+                -> TypeTrace<'tcx>
+    {
+        TypeTrace {
+            cause: cause.clone(),
+            values: Consts(ExpectedFound::new(a_is_expected, a, b))
         }
     }
 }

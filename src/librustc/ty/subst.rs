@@ -618,8 +618,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
             }
         };
 
-        // FIXME(const_generics): shift const through binders
-        ct
+        self.shift_vars_through_binders(ct)
     }
 
     /// It is sometimes necessary to adjust the De Bruijn indices during substitution. This occurs
@@ -664,15 +663,15 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     /// As indicated in the diagram, here the same type `&'a int` is substituted once, but in the
     /// first case we do not increase the De Bruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
-    fn shift_vars_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        debug!("shift_vars(ty={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
-               ty, self.binders_passed, ty.has_escaping_bound_vars());
+    fn shift_vars_through_binders<T: TypeFoldable<'tcx>>(&self, val: T) -> T {
+        debug!("shift_vars(val={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
+               val, self.binders_passed, val.has_escaping_bound_vars());
 
-        if self.binders_passed == 0 || !ty.has_escaping_bound_vars() {
-            return ty;
+        if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
+            return val;
         }
 
-        let result = ty::fold::shift_vars(self.tcx(), &ty, self.binders_passed);
+        let result = ty::fold::shift_vars(self.tcx(), &val, self.binders_passed);
         debug!("shift_vars: shifted result = {:?}", result);
 
         result
