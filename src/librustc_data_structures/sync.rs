@@ -77,6 +77,11 @@ cfg_if! {
             pub fn new(v: T) -> Self {
                 AtomicCell(Cell::new(v))
             }
+
+            #[inline]
+            pub fn get_mut(&mut self) -> &mut T {
+                self.0.get_mut()
+            }
         }
 
         impl<T: Copy> AtomicCell<T> {
