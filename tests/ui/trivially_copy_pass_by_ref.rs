@@ -1,3 +1,6 @@
+// normalize-stderr-test "\(\d+ byte\)" -> "(N byte)"
+// normalize-stderr-test "\(limit: \d+ byte\)" -> "(limit: N byte)"
+
 #![allow(
     clippy::many_single_char_names,
     clippy::blacklisted_name,

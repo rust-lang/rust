@@ -1,13 +1,13 @@
-error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/test.rs:11:11
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/test.rs:14:11
    |
 LL | fn bad(x: &u16, y: &Foo) {}
    |           ^^^^ help: consider passing by value instead: `u16`
    |
    = note: `-D clippy::trivially-copy-pass-by-ref` implied by `-D warnings`
 
-error: this argument is passed by reference, but would be more efficient if passed by value
-  --> $DIR/test.rs:11:20
+error: this argument (N byte) is passed by reference, but would be more efficient if passed by value (limit: N byte)
+  --> $DIR/test.rs:14:20
    |
 LL | fn bad(x: &u16, y: &Foo) {}
    |                    ^^^^ help: consider passing by value instead: `Foo`
