@@ -2371,6 +2371,10 @@ impl NamedFieldList {
     pub fn fields(&self) -> impl Iterator<Item = &NamedField> {
         super::children(self)
     }
+
+    pub fn spread(&self) -> Option<&Expr> {
+        super::child_opt(self)
+    }
 }
 
 // NeverType
@@ -3562,10 +3566,6 @@ impl StructLit {
     }
 
     pub fn named_field_list(&self) -> Option<&NamedFieldList> {
-        super::child_opt(self)
-    }
-
-    pub fn spread(&self) -> Option<&Expr> {
         super::child_opt(self)
     }
 }

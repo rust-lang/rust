@@ -3,7 +3,7 @@ use std::{fmt, any::Any};
 use ra_syntax::{SyntaxNodePtr, TreeArc, AstPtr, TextRange, ast, SyntaxNode};
 use relative_path::RelativePathBuf;
 
-use crate::{HirFileId, HirDatabase};
+use crate::{HirFileId, HirDatabase, Name};
 
 /// Diagnostic defines hir API for errors and warnings.
 ///
@@ -110,6 +110,28 @@ impl Diagnostic for UnresolvedModule {
         self.decl.into()
     }
     fn as_any(&self) -> &(Any + Send + 'static) {
+        self
+    }
+}
+
+#[derive(Debug)]
+pub struct MissingFields {
+    pub file: HirFileId,
+    pub field_list: AstPtr<ast::NamedFieldList>,
+    pub missed_fields: Vec<Name>,
+}
+
+impl Diagnostic for MissingFields {
+    fn message(&self) -> String {
+        "fill structure fields".to_string()
+    }
+    fn file(&self) -> HirFileId {
+        self.file
+    }
+    fn syntax_node_ptr(&self) -> SyntaxNodePtr {
+        self.field_list.into()
+    }
+    fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
     }
 }

@@ -2662,6 +2662,7 @@ fn no_such_field_diagnostics() {
 
     assert_snapshot_matches!(diagnostics, @r###"
 "baz: 62": no such field
+"{\n            foo: 92,\n            baz: 62,\n        }": fill structure fields
 "###
     );
 }

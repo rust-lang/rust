@@ -19,6 +19,7 @@ use crate::{path::GenericArgs, ty::primitive::{IntTy, UncertainIntTy, FloatTy, U
 pub use self::scope::ExprScopes;
 
 pub(crate) mod scope;
+pub(crate) mod validation;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ExprId(RawId);
@@ -670,8 +671,9 @@ where
             ast::ExprKind::StructLit(e) => {
                 let path = e.path().and_then(Path::from_ast);
                 let mut field_ptrs = Vec::new();
-                let fields = if let Some(nfl) = e.named_field_list() {
-                    nfl.fields()
+                let struct_lit = if let Some(nfl) = e.named_field_list() {
+                    let fields = nfl
+                        .fields()
                         .inspect(|field| field_ptrs.push(AstPtr::new(*field)))
                         .map(|field| StructLitField {
                             name: field
@@ -694,12 +696,14 @@ where
                                 self.exprs.alloc(Expr::Missing)
                             },
                         })
-                        .collect()
+                        .collect();
+                    let spread = nfl.spread().map(|s| self.collect_expr(s));
+                    Expr::StructLit { path, fields, spread }
                 } else {
-                    Vec::new()
+                    Expr::StructLit { path, fields: Vec::new(), spread: None }
                 };
-                let spread = e.spread().map(|s| self.collect_expr(s));
-                let res = self.alloc_expr(Expr::StructLit { path, fields, spread }, syntax_ptr);
+
+                let res = self.alloc_expr(struct_lit, syntax_ptr);
                 for (i, ptr) in field_ptrs.into_iter().enumerate() {
                     self.source_map.field_map.insert((res, i), ptr);
                 }

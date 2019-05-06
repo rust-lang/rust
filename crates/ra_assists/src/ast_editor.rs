@@ -4,6 +4,7 @@ use arrayvec::ArrayVec;
 use ra_text_edit::TextEditBuilder;
 use ra_syntax::{AstNode, TreeArc, ast, SyntaxKind::*, SyntaxElement, SourceFile, InsertPosition, Direction};
 use ra_fmt::leading_indent;
+use hir::Name;
 
 pub struct AstEditor<N: AstNode> {
     original_ast: TreeArc<N>,
@@ -235,6 +236,10 @@ pub struct AstBuilder<N: AstNode> {
 }
 
 impl AstBuilder<ast::NamedField> {
+    pub fn from_name(name: &Name) -> TreeArc<ast::NamedField> {
+        ast_node_from_file_text(&format!("fn f() {{ S {{ {}: (), }} }}", name))
+    }
+
     fn from_text(text: &str) -> TreeArc<ast::NamedField> {
         ast_node_from_file_text(&format!("fn f() {{ S {{ {}, }} }}", text))
     }
