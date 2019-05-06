@@ -45,7 +45,7 @@ pub fn dep_graph_from_future(sess: &Session, future: DepGraphFuture) -> DepGraph
             DepGraphArgs {
                 prev_graph: Default::default(),
                 prev_work_products: Default::default(),
-                file,
+                file: Some(file),
                 state: Default::default(),
                 invalidated: Vec::new(),
                 model: if use_model {
@@ -169,6 +169,28 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     let time_passes = sess.time_passes();
 
+    let use_model = sess.reconstruct_dep_graph() || cfg!(debug_assertions);
+
+    if sess.opts.incremental.is_none() {
+        let args = DepGraphArgs {
+            prev_graph: Default::default(),
+            prev_work_products: Default::default(),
+            file: None,
+            state: Default::default(),
+            invalidated: Vec::new(),
+            model: if use_model {
+                Some(Default::default())
+            } else {
+                None
+            },
+        };
+
+        // No incremental compilation.
+        return MaybeAsync::Sync(LoadResult::Ok {
+            data: args,
+        });
+    }
+
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
     let dir = &sess.incr_comp_session_dir();
@@ -187,7 +209,6 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
 
     let report_incremental_info = sess.opts.debugging_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash();
-    let use_model = sess.reconstruct_dep_graph() || cfg!(debug_assertions);
 
     let mut prev_work_products = FxHashMap::default();
 
@@ -285,7 +306,7 @@ pub fn load_dep_graph(sess: &Session) -> DepGraphFuture {
                 data: DepGraphArgs {
                     prev_graph: result.prev_graph,
                     prev_work_products,
-                    file,
+                    file: Some(file),
                     state: result.state,
                     invalidated: result.invalidated,
                     model: result.model,

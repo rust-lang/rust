@@ -484,7 +484,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // If -Zincremental-verify-ich is specified, re-hash results from
         // the cache and make sure that they have the expected fingerprint.
         if unlikely!(self.sess.opts.debugging_opts.incremental_verify_ich) {
-            self.incremental_verify_ich::<Q>(&result, dep_node, dep_node_index);
+            self.incremental_verify_ich::<Q>(&result, dep_node);
         }
 
         if unlikely!(self.sess.opts.debugging_opts.query_dep_graph) {
@@ -498,17 +498,10 @@ impl<'tcx> TyCtxt<'tcx> {
     #[cold]
     fn incremental_verify_ich<Q: QueryDescription<'tcx>>(
         self,
-        _result: &Q::Value,
-        _dep_node: &DepNode,
-        _dep_node_index: DepNodeIndex,
+        result: &Q::Value,
+        dep_node: &DepNode,
     ) {
-        panic!()/*
         use crate::ich::Fingerprint;
-
-        assert!(Some(self.dep_graph.fingerprint_of(dep_node_index)) ==
-                self.dep_graph.prev_fingerprint_of(dep_node),
-                "Fingerprint for green query instance not loaded \
-                    from cache: {:?}", dep_node);
 
         debug!("BEGIN verify_ich({:?})", dep_node);
         let mut hcx = self.create_stable_hashing_context();
@@ -516,10 +509,10 @@ impl<'tcx> TyCtxt<'tcx> {
         let new_hash = Q::hash_result(&mut hcx, result).unwrap_or(Fingerprint::ZERO);
         debug!("END verify_ich({:?})", dep_node);
 
-        let old_hash = self.dep_graph.fingerprint_of(dep_node_index);
+        let old_hash = self.dep_graph.prev_fingerprint_of(dep_node);
 
-        assert!(new_hash == old_hash, "Found unstable fingerprints \
-            for {:?}", dep_node);*/
+        assert!(Some(new_hash) == old_hash, "Found unstable fingerprints \
+            for {:?}", dep_node);
     }
 
     #[inline(always)]

@@ -164,7 +164,7 @@ where
 pub struct DepGraphArgs {
     pub prev_graph: PreviousDepGraph,
     pub prev_work_products: FxHashMap<WorkProductId, WorkProduct>,
-    pub file: File,
+    pub file: Option<File>,
     pub state: IndexVec<DepNodeIndex, AtomicCell<DepNodeState>>,
     pub invalidated: Vec<DepNodeIndex>,
     pub model: Option<DepGraphModel>,
@@ -712,8 +712,18 @@ impl DepGraph {
                 DepNodeState::Invalid |
                 DepNodeState::UnknownEvalAlways |
                 DepNodeState::Unknown => {
-                    bug!("try_force_previous_green() - Forcing the DepNode \
+                    if !tcx.sess.has_errors() {
+                        bug!("try_force_previous_green() - Forcing the DepNode \
                             should have set its color")
+                    } else {
+                        // If the query we just forced has resulted
+                        // in some kind of compilation error, we
+                        // don't expect that the corresponding
+                        // dep-node color has been updated.
+                        // A query cycle which does not panic is one
+                        // such error.
+                        false
+                    }
                 }
             }
         } else {
@@ -1061,7 +1071,7 @@ pub(super) struct CurrentDepGraph {
 impl CurrentDepGraph {
     fn new(
         prev_graph: Lrc<PreviousDepGraph>,
-        file: File,
+        file: Option<File>,
         invalidated: Vec<DepNodeIndex>,
         model: Option<DepGraphModel>,
     ) -> CurrentDepGraph {

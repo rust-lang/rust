@@ -352,7 +352,7 @@ enum Action {
 struct SerializerWorker {
     fingerprints: IndexVec<DepNodeIndex, Fingerprint>,
     previous: Lrc<PreviousDepGraph>,
-    file: File,
+    file: Option<File>,
     model: Option<DepGraphModel>,
 }
 
@@ -495,7 +495,9 @@ impl Worker for SerializerWorker {
             },
         };
         action.encode(&mut encoder).ok();
-        self.file.write_all(&encoder.into_inner()).expect("unable to write to temp dep graph");
+        self.file.as_mut().map(|file| {
+            file.write_all(&encoder.into_inner()).expect("unable to write to temp dep graph");
+        });
     }
 
     fn complete(self) -> CompletedDepGraph {
@@ -520,7 +522,7 @@ pub struct Serializer {
 
 impl Serializer {
     pub fn new(
-        file: File,
+        file: Option<File>,
         previous: Lrc<PreviousDepGraph>,
         invalidated: Vec<DepNodeIndex>,
         model: Option<DepGraphModel>,

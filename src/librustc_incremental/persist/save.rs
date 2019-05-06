@@ -21,7 +21,20 @@ pub fn save_dep_graph<'tcx>(tcx: TyCtxt<'tcx>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
         let sess = tcx.sess;
+
         if sess.opts.incremental.is_none() {
+            if !tcx.sess.opts.build_dep_graph() {
+                return;
+            }
+
+            let results = time(tcx.sess, "finish dep graph", || {
+                tcx.dep_graph.complete()
+            });
+
+            time(tcx.sess,
+                "assert dep graph",
+                || assert_dep_graph(tcx, &results));
+
             return;
         }
 
@@ -42,8 +55,6 @@ pub fn save_dep_graph<'tcx>(tcx: TyCtxt<'tcx>) {
                 finish_dep_graph(tcx, &results_path)
             });
         });
-
-        dirty_clean::check_dirty_clean_annotations(tcx);
     })
 }
 
@@ -141,6 +152,9 @@ fn finish_dep_graph(tcx: TyCtxt<'_>, results_path: &Path) {
     time(tcx.sess,
          "assert dep graph",
          || assert_dep_graph(tcx, &results));
+
+
+    dirty_clean::check_dirty_clean_annotations(tcx, &results);
 
     if tcx.sess.opts.debugging_opts.incremental_info {
         let data = &results.model.as_ref().unwrap().data;
