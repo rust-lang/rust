@@ -372,6 +372,11 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
+        // Symbol visibility in object files typically takes care of this.
+        if crate_type == CrateType::Executable {
+            return;
+        }
+
         // If we're compiling a dylib, then we let symbol visibility in object
         // files to take care of whether they're exported or not.
         //
@@ -645,6 +650,11 @@ impl<'a> Linker for MsvcLinker<'a> {
     fn export_symbols(&mut self,
                       tmpdir: &Path,
                       crate_type: CrateType) {
+        // Symbol visibility takes care of this typically
+        if crate_type == CrateType::Executable {
+            return;
+        }
+
         let path = tmpdir.join("lib.def");
         let res: io::Result<()> = try {
             let mut f = BufWriter::new(File::create(&path)?);
