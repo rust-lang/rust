@@ -34,11 +34,11 @@ error: byte constant must be ASCII. Use a \xHH escape for a non-ASCII byte
 LL |     b'é';
    |       ^
 
-error: unterminated byte constant: b'a
-  --> $DIR/byte-literals.rs:14:5
+error: unterminated byte constant
+  --> $DIR/byte-literals.rs:14:6
    |
 LL |     b'a
-   |     ^^^
+   |      ^^^^
 
 error: aborting due to 7 previous errors
 

@@ -18,7 +18,6 @@ use log::debug;
 
 use rustc_data_structures::fx::FxHashSet;
 use std::borrow::Cow;
-use std::iter;
 use std::path::{Path, PathBuf};
 use std::str;
 
@@ -33,6 +32,11 @@ pub mod attr;
 pub mod diagnostics;
 
 pub mod classify;
+
+pub(crate) mod unescape;
+use unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
+
+pub(crate) mod unescape_error_reporting;
 
 /// Info about a parsing session.
 pub struct ParseSess {
@@ -307,133 +311,6 @@ pub fn stream_to_parser(sess: &ParseSess, stream: TokenStream) -> Parser<'_> {
     Parser::new(sess, stream, None, true, false)
 }
 
-/// Parses a string representing a character literal into its final form.
-/// Rather than just accepting/rejecting a given literal, unescapes it as
-/// well. Can take any slice prefixed by a character escape. Returns the
-/// character and the number of characters consumed.
-fn char_lit(lit: &str, diag: Option<(Span, &Handler)>) -> (char, isize) {
-    use std::char;
-
-    // Handle non-escaped chars first.
-    if lit.as_bytes()[0] != b'\\' {
-        // If the first byte isn't '\\' it might part of a multi-byte char, so
-        // get the char with chars().
-        let c = lit.chars().next().unwrap();
-        return (c, 1);
-    }
-
-    // Handle escaped chars.
-    match lit.as_bytes()[1] as char {
-        '"' => ('"', 2),
-        'n' => ('\n', 2),
-        'r' => ('\r', 2),
-        't' => ('\t', 2),
-        '\\' => ('\\', 2),
-        '\'' => ('\'', 2),
-        '0' => ('\0', 2),
-        'x' => {
-            let v = u32::from_str_radix(&lit[2..4], 16).unwrap();
-            let c = char::from_u32(v).unwrap();
-            (c, 4)
-        }
-        'u' => {
-            assert_eq!(lit.as_bytes()[2], b'{');
-            let idx = lit.find('}').unwrap();
-
-            // All digits and '_' are ascii, so treat each byte as a char.
-            let mut v: u32 = 0;
-            for c in lit[3..idx].bytes() {
-                let c = char::from(c);
-                if c != '_' {
-                    let x = c.to_digit(16).unwrap();
-                    v = v.checked_mul(16).unwrap().checked_add(x).unwrap();
-                }
-            }
-            let c = char::from_u32(v).unwrap_or_else(|| {
-                if let Some((span, diag)) = diag {
-                    let mut diag = diag.struct_span_err(span, "invalid unicode character escape");
-                    if v > 0x10FFFF {
-                        diag.help("unicode escape must be at most 10FFFF").emit();
-                    } else {
-                        diag.help("unicode escape must not be a surrogate").emit();
-                    }
-                }
-                '\u{FFFD}'
-            });
-            (c, (idx + 1) as isize)
-        }
-        _ => panic!("lexer should have rejected a bad character escape {}", lit)
-    }
-}
-
-/// Parses a string representing a string literal into its final form. Does unescaping.
-fn str_lit(lit: &str, diag: Option<(Span, &Handler)>) -> String {
-    debug!("str_lit: given {}", lit.escape_default());
-    let mut res = String::with_capacity(lit.len());
-
-    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
-
-    /// Eat everything up to a non-whitespace.
-    fn eat<'a>(it: &mut iter::Peekable<str::CharIndices<'a>>) {
-        loop {
-            match it.peek().map(|x| x.1) {
-                Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
-                    it.next();
-                },
-                _ => { break; }
-            }
-        }
-    }
-
-    let mut chars = lit.char_indices().peekable();
-    while let Some((i, c)) = chars.next() {
-        match c {
-            '\\' => {
-                let ch = chars.peek().unwrap_or_else(|| {
-                    panic!("{}", error(i))
-                }).1;
-
-                if ch == '\n' {
-                    eat(&mut chars);
-                } else if ch == '\r' {
-                    chars.next();
-                    let ch = chars.peek().unwrap_or_else(|| {
-                        panic!("{}", error(i))
-                    }).1;
-
-                    if ch != '\n' {
-                        panic!("lexer accepted bare CR");
-                    }
-                    eat(&mut chars);
-                } else {
-                    // otherwise, a normal escape
-                    let (c, n) = char_lit(&lit[i..], diag);
-                    for _ in 0..n - 1 { // we don't need to move past the first \
-                        chars.next();
-                    }
-                    res.push(c);
-                }
-            },
-            '\r' => {
-                let ch = chars.peek().unwrap_or_else(|| {
-                    panic!("{}", error(i))
-                }).1;
-
-                if ch != '\n' {
-                    panic!("lexer accepted bare CR");
-                }
-                chars.next();
-                res.push('\n');
-            }
-            c => res.push(c),
-        }
-    }
-
-    res.shrink_to_fit(); // probably not going to do anything, unless there was an escape.
-    debug!("parse_str_lit: returning {}", res);
-    res
-}
-
 /// Parses a string representing a raw string literal into its final form. The
 /// only operation this does is convert embedded CRLF into a single LF.
 fn raw_str_lit(lit: &str) -> String {
@@ -476,9 +353,21 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
     use ast::LitKind;
 
     match lit {
-       token::Byte(i) => (true, Some(LitKind::Byte(byte_lit(&i.as_str()).0))),
-       token::Char(i) => (true, Some(LitKind::Char(char_lit(&i.as_str(), diag).0))),
-       token::Err(i) => (true, Some(LitKind::Err(i))),
+        token::Byte(i) => {
+            let lit_kind = match unescape_byte(&i.as_str()) {
+                Ok(c) => LitKind::Byte(c),
+                Err(_) => LitKind::Err(i),
+            };
+            (true, Some(lit_kind))
+        },
+        token::Char(i) => {
+            let lit_kind = match unescape_char(&i.as_str()) {
+                Ok(c) => LitKind::Char(c),
+                Err(_) => LitKind::Err(i),
+            };
+            (true, Some(lit_kind))
+        },
+        token::Err(i) => (true, Some(LitKind::Err(i))),
 
         // There are some valid suffixes for integer and float literals,
         // so all the handling is done internally.
@@ -490,10 +379,22 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
             // reuse the symbol from the Token. Otherwise, we must generate a
             // new symbol because the string in the LitKind is different to the
             // string in the Token.
+            let mut has_error = false;
             let s = &sym.as_str();
             if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
-                sym = Symbol::intern(&str_lit(s, diag));
+                let mut buf = String::with_capacity(s.len());
+                unescape_str(s, &mut |_, unescaped_char| {
+                    match unescaped_char {
+                        Ok(c) => buf.push(c),
+                        Err(_) => has_error = true,
+                    }
+                });
+                if has_error {
+                    return (true, Some(LitKind::Err(sym)));
+                }
+                sym = Symbol::intern(&buf)
             }
+
             (true, Some(LitKind::Str(sym, ast::StrStyle::Cooked)))
         }
         token::StrRaw(mut sym, n) => {
@@ -505,7 +406,20 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
             (true, Some(LitKind::Str(sym, ast::StrStyle::Raw(n))))
         }
         token::ByteStr(i) => {
-            (true, Some(LitKind::ByteStr(byte_str_lit(&i.as_str()))))
+            let s = &i.as_str();
+            let mut buf = Vec::with_capacity(s.len());
+            let mut has_error = false;
+            unescape_byte_str(s, &mut |_, unescaped_byte| {
+                match unescaped_byte {
+                    Ok(c) => buf.push(c),
+                    Err(_) => has_error = true,
+                }
+            });
+            if has_error {
+                return (true, Some(LitKind::Err(i)));
+            }
+            buf.shrink_to_fit();
+            (true, Some(LitKind::ByteStr(Lrc::new(buf))))
         }
         token::ByteStrRaw(i, _) => {
             (true, Some(LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))))
@@ -558,95 +472,6 @@ fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
     };
 
     filtered_float_lit(Symbol::intern(s), suffix, diag)
-}
-
-/// Parses a string representing a byte literal into its final form. Similar to `char_lit`.
-fn byte_lit(lit: &str) -> (u8, usize) {
-    let err = |i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
-
-    if lit.len() == 1 {
-        (lit.as_bytes()[0], 1)
-    } else {
-        assert_eq!(lit.as_bytes()[0], b'\\', "{}", err(0));
-        let b = match lit.as_bytes()[1] {
-            b'"' => b'"',
-            b'n' => b'\n',
-            b'r' => b'\r',
-            b't' => b'\t',
-            b'\\' => b'\\',
-            b'\'' => b'\'',
-            b'0' => b'\0',
-            _ => {
-                match u64::from_str_radix(&lit[2..4], 16).ok() {
-                    Some(c) =>
-                        if c > 0xFF {
-                            panic!(err(2))
-                        } else {
-                            return (c as u8, 4)
-                        },
-                    None => panic!(err(3))
-                }
-            }
-        };
-        (b, 2)
-    }
-}
-
-fn byte_str_lit(lit: &str) -> Lrc<Vec<u8>> {
-    let mut res = Vec::with_capacity(lit.len());
-
-    let error = |i| panic!("lexer should have rejected {} at {}", lit, i);
-
-    /// Eat everything up to a non-whitespace.
-    fn eat<I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<I>) {
-        loop {
-            match it.peek().map(|x| x.1) {
-                Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
-                    it.next();
-                },
-                _ => { break; }
-            }
-        }
-    }
-
-    // byte string literals *must* be ASCII, but the escapes don't have to be
-    let mut chars = lit.bytes().enumerate().peekable();
-    loop {
-        match chars.next() {
-            Some((i, b'\\')) => {
-                match chars.peek().unwrap_or_else(|| error(i)).1 {
-                    b'\n' => eat(&mut chars),
-                    b'\r' => {
-                        chars.next();
-                        if chars.peek().unwrap_or_else(|| error(i)).1 != b'\n' {
-                            panic!("lexer accepted bare CR");
-                        }
-                        eat(&mut chars);
-                    }
-                    _ => {
-                        // otherwise, a normal escape
-                        let (c, n) = byte_lit(&lit[i..]);
-                        // we don't need to move past the first \
-                        for _ in 0..n - 1 {
-                            chars.next();
-                        }
-                        res.push(c);
-                    }
-                }
-            },
-            Some((i, b'\r')) => {
-                if chars.peek().unwrap_or_else(|| error(i)).1 != b'\n' {
-                    panic!("lexer accepted bare CR");
-                }
-                chars.next();
-                res.push(b'\n');
-            }
-            Some((_, c)) => res.push(c),
-            None => break,
-        }
-    }
-
-    Lrc::new(res)
 }
 
 fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)

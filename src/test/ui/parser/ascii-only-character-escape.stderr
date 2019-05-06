@@ -1,20 +1,20 @@
 error: this form of character escape may only be used with characters in the range [\x00-\x7f]
-  --> $DIR/ascii-only-character-escape.rs:4:16
+  --> $DIR/ascii-only-character-escape.rs:4:14
    |
 LL |     let x = "\x80";
-   |                ^^
+   |              ^^^^
 
 error: this form of character escape may only be used with characters in the range [\x00-\x7f]
-  --> $DIR/ascii-only-character-escape.rs:5:16
+  --> $DIR/ascii-only-character-escape.rs:5:14
    |
 LL |     let y = "\xff";
-   |                ^^
+   |              ^^^^
 
 error: this form of character escape may only be used with characters in the range [\x00-\x7f]
-  --> $DIR/ascii-only-character-escape.rs:6:16
+  --> $DIR/ascii-only-character-escape.rs:6:14
    |
 LL |     let z = "\xe2";
-   |                ^^
+   |              ^^^^
 
 error: aborting due to 3 previous errors
 

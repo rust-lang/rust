@@ -1,3 +1,4 @@
+// compile-flags: -Z continue-parse-after-error
 // ignore-tidy-tab
 
 fn main() {
@@ -76,7 +77,6 @@ raw  { \n
 
     println!("\x7B}\u8 {", 1);
     //~^ ERROR incorrect unicode escape sequence
-    //~| ERROR argument never used
 
     // note: raw strings don't escape `\xFF` and `\u{FF}` sequences
     println!(r#"\x7B}\u{8} {"#, 1);
