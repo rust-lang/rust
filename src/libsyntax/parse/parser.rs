@@ -6061,8 +6061,6 @@ impl<'a> Parser<'a> {
                         self.fatal("identifiers may currently not be used for const generics")
                     );
                 } else {
-                    // FIXME(const_generics): this currently conflicts with emplacement syntax
-                    // with negative integer literals.
                     self.parse_literal_maybe_minus()?
                 };
                 let value = AnonConst {
