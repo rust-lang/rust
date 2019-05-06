@@ -2973,6 +2973,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_lexer"
+version = "0.1.0"
+dependencies = [
+ "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
@@ -3622,6 +3629,7 @@ dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_lexer 0.1.0",
  "rustc_macros 0.1.0",
  "rustc_target 0.0.0",
  "scoped-tls 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",

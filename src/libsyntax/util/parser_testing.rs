@@ -1,7 +1,7 @@
 use crate::ast::{self, Ident};
 use crate::source_map::FilePathMapping;
 use crate::parse::{ParseSess, PResult, source_file_to_stream};
-use crate::parse::{lexer, new_parser_from_source_str};
+use crate::parse::new_parser_from_source_str;
 use crate::parse::parser::Parser;
 use crate::ptr::P;
 use crate::tokenstream::TokenStream;
@@ -113,14 +113,14 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
 }
 
 /// Advances the given peekable `Iterator` until it reaches a non-whitespace character
-fn scan_for_non_ws_or_end<I: Iterator<Item= char>>(iter: &mut Peekable<I>) {
-    while lexer::is_pattern_whitespace(iter.peek().cloned()) {
+fn scan_for_non_ws_or_end<I: Iterator<Item = char>>(iter: &mut Peekable<I>) {
+    while iter.peek().copied().map(|c| is_pattern_whitespace(c)) == Some(true) {
         iter.next();
     }
 }
 
 pub fn is_pattern_whitespace(c: char) -> bool {
-    lexer::is_pattern_whitespace(Some(c))
+    rustc_lexer::character_properties::is_whitespace(c)
 }
 
 #[cfg(test)]
