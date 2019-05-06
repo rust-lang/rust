@@ -50,7 +50,7 @@ pub struct ParseSess {
     /// Contains the spans of block expressions that could have been incomplete based on the
     /// operation token that followed it, but that the parser cannot identify without further
     /// analysis.
-    pub abiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
+    pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
 }
 
 impl ParseSess {
@@ -74,7 +74,7 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
-            abiguous_block_expr_parse: Lock::new(FxHashMap::default()),
+            ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
         }
     }
 

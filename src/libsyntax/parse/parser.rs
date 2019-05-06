@@ -2928,7 +2928,7 @@ impl<'a> Parser<'a> {
                                               self.this_token_descr());
                             let mut err = self.fatal(&msg);
                             let sp = self.sess.source_map().start_point(self.span);
-                            if let Some(sp) = self.sess.abiguous_block_expr_parse.borrow()
+                            if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow()
                                 .get(&sp)
                             {
                                 self.sess.expr_parentheses_needed(&mut err, *sp, None);
@@ -3630,12 +3630,15 @@ impl<'a> Parser<'a> {
                 return Ok(lhs);
             }
             (false, _) => {} // continue parsing the expression
-            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;`
+            // An exhaustive check is done in the following block, but these are checked first
+            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
+            // want to keep their span info to improve diagnostics in these cases in a later stage.
+            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
             (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
             (true, Some(AssocOp::Add)) => { // `{ 42 } + 42
                 // These cases are ambiguous and can't be identified in the parser alone
                 let sp = self.sess.source_map().start_point(self.span);
-                self.sess.abiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
+                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
                 return Ok(lhs);
             }
             (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => {
@@ -4968,7 +4971,7 @@ impl<'a> Parser<'a> {
                         let mut err = self.fatal(&msg);
                         err.span_label(self.span, format!("expected {}", expected));
                         let sp = self.sess.source_map().start_point(self.span);
-                        if let Some(sp) = self.sess.abiguous_block_expr_parse.borrow().get(&sp) {
+                        if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
                             self.sess.expr_parentheses_needed(&mut err, *sp, None);
                         }
                         return Err(err);

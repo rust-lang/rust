@@ -208,6 +208,10 @@ impl AssocOp {
         }
     }
 
+    /// This operator could be used to follow a block unambiguously.
+    ///
+    /// This is used for error recovery at the moment, providing a suggestion to wrap blocks with
+    /// parentheses while having a high degree of confidence on the correctness of the suggestion.
     pub fn can_continue_expr_unambiguously(&self) -> bool {
         use AssocOp::*;
         match self {
@@ -227,7 +231,6 @@ impl AssocOp {
             Colon => true, // `{ 42 }: usize`
             _ => false,
         }
-
     }
 }
 

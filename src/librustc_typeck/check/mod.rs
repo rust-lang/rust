@@ -4174,7 +4174,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     oprnd_t,
                                 );
                                 let sp = tcx.sess.source_map().start_point(expr.span);
-                                if let Some(sp) = tcx.sess.parse_sess.abiguous_block_expr_parse
+                                if let Some(sp) = tcx.sess.parse_sess.ambiguous_block_expr_parse
                                     .borrow().get(&sp)
                                 {
                                     tcx.sess.parse_sess.expr_parentheses_needed(

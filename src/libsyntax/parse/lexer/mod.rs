@@ -1918,7 +1918,7 @@ mod tests {
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             buffered_lints: Lock::new(vec![]),
-            abiguous_block_expr_parse: Lock::new(FxHashMap::default()),
+            ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
         }
     }
 
