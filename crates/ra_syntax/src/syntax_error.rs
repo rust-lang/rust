@@ -2,7 +2,10 @@ use std::fmt;
 
 use ra_parser::ParseError;
 
-use crate::{TextRange, TextUnit};
+use crate::{
+    TextRange, TextUnit,
+    validation::EscapeError,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxError {
@@ -67,32 +70,7 @@ impl fmt::Display for SyntaxError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SyntaxErrorKind {
     ParseError(ParseError),
-    UnescapedCodepoint,
-    EmptyChar,
-    UnclosedChar,
-    OverlongChar,
-    EmptyByte,
-    UnclosedByte,
-    OverlongByte,
-    ByteOutOfRange,
-    UnescapedByte,
-    EmptyByteEscape,
-    InvalidByteEscape,
-    TooShortByteCodeEscape,
-    MalformedByteCodeEscape,
-    UnicodeEscapeForbidden,
-    EmptyAsciiEscape,
-    InvalidAsciiEscape,
-    TooShortAsciiCodeEscape,
-    AsciiCodeEscapeOutOfRange,
-    MalformedAsciiCodeEscape,
-    UnclosedUnicodeEscape,
-    MalformedUnicodeEscape,
-    EmptyUnicodeEcape,
-    OverlongUnicodeEscape,
-    UnicodeEscapeOutOfRange,
-    UnclosedString,
-    InvalidSuffix,
+    EscapeError(EscapeError),
     InvalidBlockAttr,
     InvalidMatchInnerAttr,
     InvalidTupleIndexFormat,
@@ -102,38 +80,6 @@ impl fmt::Display for SyntaxErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::SyntaxErrorKind::*;
         match self {
-            UnescapedCodepoint => write!(f, "This codepoint should always be escaped"),
-            EmptyAsciiEscape => write!(f, "Empty escape sequence"),
-            InvalidAsciiEscape => write!(f, "Invalid escape sequence"),
-            EmptyChar => write!(f, "Empty char literal"),
-            UnclosedChar => write!(f, "Unclosed char literal"),
-            OverlongChar => write!(f, "Char literal should be one character long"),
-            EmptyByte => write!(f, "Empty byte literal"),
-            UnclosedByte => write!(f, "Unclosed byte literal"),
-            OverlongByte => write!(f, "Byte literal should be one character long"),
-            ByteOutOfRange => write!(f, "Byte should be a valid ASCII character"),
-            UnescapedByte => write!(f, "This byte should always be escaped"),
-            EmptyByteEscape => write!(f, "Empty escape sequence"),
-            InvalidByteEscape => write!(f, "Invalid escape sequence"),
-            TooShortByteCodeEscape => write!(f, "Escape sequence should have two digits"),
-            MalformedByteCodeEscape => write!(f, "Escape sequence should be a hexadecimal number"),
-            UnicodeEscapeForbidden => {
-                write!(f, "Unicode escapes are not allowed in byte literals or byte strings")
-            }
-            TooShortAsciiCodeEscape => write!(f, "Escape sequence should have two digits"),
-            AsciiCodeEscapeOutOfRange => {
-                write!(f, "Escape sequence should be between \\x00 and \\x7F")
-            }
-            MalformedAsciiCodeEscape => write!(f, "Escape sequence should be a hexadecimal number"),
-            UnclosedUnicodeEscape => write!(f, "Missing `}}`"),
-            MalformedUnicodeEscape => write!(f, "Malformed unicode escape sequence"),
-            EmptyUnicodeEcape => write!(f, "Empty unicode escape sequence"),
-            OverlongUnicodeEscape => {
-                write!(f, "Unicode escape sequence should have at most 6 digits")
-            }
-            UnicodeEscapeOutOfRange => write!(f, "Unicode escape code should be at most 0x10FFFF"),
-            UnclosedString => write!(f, "Unclosed string literal"),
-            InvalidSuffix => write!(f, "Invalid literal suffix"),
             InvalidBlockAttr => {
                 write!(f, "A block in this position cannot accept inner attributes")
             }
@@ -144,6 +90,46 @@ impl fmt::Display for SyntaxErrorKind {
                 write!(f, "Tuple (struct) field access is only allowed through decimal integers with no underscores or suffix")
             }
             ParseError(msg) => write!(f, "{}", msg.0),
+            EscapeError(err) => write!(f, "{}", err),
         }
+    }
+}
+
+impl fmt::Display for EscapeError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let msg = match self {
+            EscapeError::ZeroChars => "Empty literal",
+            EscapeError::MoreThanOneChar => "Literal should be one character long",
+            EscapeError::LoneSlash => "Character must be escaped: '\\'",
+            EscapeError::InvalidEscape => "Invalid escape sequence",
+            EscapeError::BareCarriageReturn => "Character must be escaped: '\r'",
+            EscapeError::EscapeOnlyChar => "Character must be escaped",
+            EscapeError::TooShortHexEscape => "Escape sequence should have two digits",
+            EscapeError::InvalidCharInHexEscape => "Escape sequence should be a hexadecimal number",
+            EscapeError::OutOfRangeHexEscape => "Escape sequence should be ASCII",
+            EscapeError::NoBraceInUnicodeEscape => "Invalid escape sequence",
+            EscapeError::InvalidCharInUnicodeEscape => "Invalid escape sequence",
+            EscapeError::EmptyUnicodeEscape => "Invalid escape sequence",
+            EscapeError::UnclosedUnicodeEscape => "Missing '}'",
+            EscapeError::LeadingUnderscoreUnicodeEscape => "Invalid escape sequence",
+            EscapeError::OverlongUnicodeEscape => {
+                "Unicode escape sequence should have at most 6 digits"
+            }
+            EscapeError::LoneSurrogateUnicodeEscape => {
+                "Unicode escape code should not be a surrogate"
+            }
+            EscapeError::OutOfRangeUnicodeEscape => {
+                "Unicode escape code should be at most 0x10FFFF"
+            }
+            EscapeError::UnicodeEscapeInByte => "Unicode escapes are not allowed in bytes",
+            EscapeError::NonAsciiCharInByte => "Non ASCII characters are not allowed in bytes",
+        };
+        write!(f, "{}", msg)
+    }
+}
+
+impl From<EscapeError> for SyntaxErrorKind {
+    fn from(err: EscapeError) -> Self {
+        SyntaxErrorKind::EscapeError(err)
     }
 }
