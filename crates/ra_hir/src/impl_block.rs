@@ -93,6 +93,10 @@ impl ImplBlock {
         db.impls_in_module(self.module).impls[self.impl_id].items().to_vec()
     }
 
+    pub fn is_negative(&self, db: &impl DefDatabase) -> bool {
+        db.impls_in_module(self.module).impls[self.impl_id].negative
+    }
+
     pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
         let r = self.module().resolver(db);
         // add generic params, if present
@@ -108,6 +112,7 @@ pub struct ImplData {
     target_trait: Option<TypeRef>,
     target_type: TypeRef,
     items: Vec<ImplItem>,
+    negative: bool,
 }
 
 impl ImplData {
@@ -120,6 +125,7 @@ impl ImplData {
         let target_trait = node.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(node.target_type());
         let ctx = LocationCtx::new(db, module, file_id);
+        let negative = node.is_negative();
         let items = if let Some(item_list) = node.item_list() {
             item_list
                 .impl_items()
@@ -132,7 +138,7 @@ impl ImplData {
         } else {
             Vec::new()
         };
-        ImplData { target_trait, target_type, items }
+        ImplData { target_trait, target_type, items, negative }
     }
 
     pub fn target_trait(&self) -> Option<&TypeRef> {

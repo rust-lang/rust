@@ -12,7 +12,9 @@ use ra_db::salsa::{InternId, InternKey};
 use crate::{
     Trait, HasGenericParams, ImplBlock,
     db::HirDatabase,
-    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate}, generics::GenericDef, ty::CallableDef,
+    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate, CallableDef},
+    ty::display::HirDisplay,
+    generics::GenericDef,
 };
 use super::ChalkContext;
 
@@ -232,10 +234,10 @@ where
         let bound_vars = Substs::bound_vars(&generic_params);
         let trait_ref = trait_.trait_ref(self.db).subst(&bound_vars).to_chalk(self.db);
         let flags = chalk_rust_ir::TraitFlags {
-            // FIXME set these flags correctly
-            auto: false,
-            marker: false,
+            auto: trait_.is_auto(self.db),
             upstream: trait_.module(self.db).krate(self.db) != Some(self.krate),
+            // FIXME set these flags correctly
+            marker: false,
             fundamental: false,
         };
         let where_clauses = convert_where_clauses(self.db, trait_.into(), &bound_vars);
@@ -329,9 +331,21 @@ where
             chalk_rust_ir::ImplType::External
         };
         let where_clauses = convert_where_clauses(self.db, impl_block.into(), &bound_vars);
+        let negative = impl_block.is_negative(self.db);
+        debug!(
+            "impl {:?}: {}{} where {:?}",
+            impl_id,
+            if negative { "!" } else { "" },
+            trait_ref.display(self.db),
+            where_clauses
+        );
+        let trait_ref = trait_ref.to_chalk(self.db);
         let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
-            // FIXME handle negative impls (impl !Sync for Foo)
-            trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref.to_chalk(self.db)),
+            trait_ref: if negative {
+                chalk_rust_ir::PolarizedTraitRef::Negative(trait_ref)
+            } else {
+                chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref)
+            },
             where_clauses,
             associated_ty_values: Vec::new(), // FIXME add associated type values
             impl_type,
