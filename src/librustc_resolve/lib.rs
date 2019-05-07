@@ -4051,9 +4051,9 @@ impl<'a> Resolver<'a> {
                             // Nothing to do. Continue.
                         }
                         ClosureRibKind(function_id) => {
-                            let parent = match res {
-                                Res::Upvar(_, closure) => Some(closure),
-                                _ => None,
+                            let has_parent = match res {
+                                Res::Upvar(..) => true,
+                                _ => false,
                             };
 
                             let seen = self.upvars_seen
@@ -4071,7 +4071,7 @@ impl<'a> Resolver<'a> {
                             if record_used {
                                 vec.push(Upvar {
                                     var_id,
-                                    parent,
+                                    has_parent,
                                     span,
                                 });
                                 seen.insert(var_id);

@@ -2497,8 +2497,8 @@ pub struct Upvar<Id = HirId> {
     /// The variable being captured.
     pub var_id: Id,
 
-    /// The parent closure, if this is not a direct capture.
-    pub parent: Option<ast::NodeId>,
+    /// Whether this is not a direct capture (comes from parent closure).
+    pub has_parent: bool,
 
     // First span where it is accessed (there can be multiple).
     pub span: Span
@@ -2508,7 +2508,7 @@ impl<Id: fmt::Debug + Copy> Upvar<Id> {
     pub fn map_id<R>(self, map: impl FnOnce(Id) -> R) -> Upvar<R> {
         Upvar {
             var_id: map(self.var_id),
-            parent: self.parent,
+            has_parent: self.has_parent,
             span: self.span,
         }
     }

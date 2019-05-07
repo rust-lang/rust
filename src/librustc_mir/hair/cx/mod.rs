@@ -39,6 +39,9 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// `const`, or the body of a `const fn`.
     constness: hir::Constness,
 
+    /// The `DefId` of the owner of this body.
+    body_owner: DefId,
+
     /// What kind of body is being compiled.
     pub body_owner_kind: hir::BodyOwnerKind,
 
@@ -97,6 +100,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             region_scope_tree: tcx.region_scope_tree(src_def_id),
             tables,
             constness,
+            body_owner: src_def_id,
             body_owner_kind,
             check_overflow,
             control_flow_destroyed: Vec::new(),

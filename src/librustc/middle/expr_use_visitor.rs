@@ -961,12 +961,16 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
         // caller's perspective
-        let var_ty = self.mc.node_ty(upvar.var_id)?;
-        let res = upvar.parent.map_or(
-            Res::Local(upvar.var_id),
-            |closure_node_id| Res::Upvar(upvar.var_id, closure_node_id),
-        );
-        self.mc.cat_res(closure_hir_id, closure_span, var_ty, res)
+        if upvar.has_parent {
+            let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_hir_id);
+            let parent_def_id = self.tcx().parent(closure_def_id).unwrap();
+            assert!(self.tcx().is_closure(parent_def_id));
+            let var_nid = self.tcx().hir().hir_to_node_id(upvar.var_id);
+            self.mc.cat_upvar(closure_hir_id, closure_span, var_nid, parent_def_id)
+        } else {
+            let var_ty = self.mc.node_ty(upvar.var_id)?;
+            self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(upvar.var_id))
+        }
     }
 }
 

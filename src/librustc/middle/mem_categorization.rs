@@ -737,9 +737,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                 })
             }
 
-            Res::Upvar(var_id, fn_node_id) => {
+            Res::Upvar(var_id, closure_node_id) => {
                 let var_nid = self.tcx.hir().hir_to_node_id(var_id);
-                self.cat_upvar(hir_id, span, var_nid, fn_node_id)
+                let closure_expr_def_id = self.tcx.hir().local_def_id(closure_node_id);
+                self.cat_upvar(hir_id, span, var_nid, closure_expr_def_id)
             }
 
             Res::Local(vid) => {
@@ -760,15 +761,13 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     // Categorize an upvar, complete with invisible derefs of closure
     // environment and upvar reference as appropriate.
-    fn cat_upvar(&self,
-                 hir_id: hir::HirId,
-                 span: Span,
-                 var_id: ast::NodeId,
-                 fn_node_id: ast::NodeId)
-                 -> McResult<cmt_<'tcx>>
-    {
-        let fn_hir_id = self.tcx.hir().node_to_hir_id(fn_node_id);
-
+    pub fn cat_upvar(
+        &self,
+        hir_id: hir::HirId,
+        span: Span,
+        var_id: ast::NodeId,
+        closure_expr_def_id: DefId,
+    ) -> McResult<cmt_<'tcx>> {
         // An upvar can have up to 3 components. We translate first to a
         // `Categorization::Upvar`, which is itself a fiction -- it represents the reference to the
         // field from the environment.
@@ -792,6 +791,9 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
 
+        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(
+            LocalDefId::from_def_id(closure_expr_def_id),
+        );
         let ty = self.node_ty(fn_hir_id)?;
         let kind = match ty.sty {
             ty::Generator(..) => ty::ClosureKind::FnOnce,
@@ -813,7 +815,6 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             _ => span_bug!(span, "unexpected type for fn in mem_categorization: {:?}", ty),
         };
 
-        let closure_expr_def_id = self.tcx.hir().local_def_id(fn_node_id);
         let var_hir_id = self.tcx.hir().node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
             var_path: ty::UpvarPath { hir_id: var_hir_id },
