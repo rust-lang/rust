@@ -24,10 +24,18 @@ union U2<A: Copy, B: Copy> {
     b: B,
 }
 
+// Option<E> uses a value other than 0 and 1 as None
+#[derive(Clone,Copy)]
+enum E {
+    A = 0,
+    B = 1,
+}
+
 fn main() {
     // Unions do not participate in niche-filling/non-zero optimization...
     assert!(size_of::<Option<U2<&u8, u8>>>() > size_of::<U2<&u8, u8>>());
     assert!(size_of::<Option<U2<&u8, ()>>>() > size_of::<U2<&u8, ()>>());
+    assert!(size_of::<Option<U2<u8, E>>>() > size_of::<U2<u8, E>>());
 
     // ...even when theoretically possible:
     assert!(size_of::<Option<U1<&u8>>>() > size_of::<U1<&u8>>());
