@@ -4,7 +4,7 @@
 use crate::errors::{Error, ErrorKind};
 use crate::runtest::ProcRes;
 use serde_json;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 #[derive(Deserialize)]
@@ -18,9 +18,9 @@ struct Diagnostic {
 }
 
 #[derive(Deserialize)]
-struct Directive {
+struct ArtifactNotification {
     #[allow(dead_code)]
-    directive: String,
+    artifact: PathBuf,
 }
 
 #[derive(Deserialize, Clone)]
@@ -75,8 +75,8 @@ pub fn extract_rendered(output: &str) -> String {
             if line.starts_with('{') {
                 if let Ok(diagnostic) = serde_json::from_str::<Diagnostic>(line) {
                     diagnostic.rendered
-                } else if let Ok(_directive) = serde_json::from_str::<Directive>(line) {
-                    // Swallow the directive.
+                } else if let Ok(_) = serde_json::from_str::<ArtifactNotification>(line) {
+                    // Ignore the notification.
                     None
                 } else {
                     print!(

@@ -1422,10 +1422,21 @@ impl<'test> TestCx<'test> {
     }
 
     fn compile_test(&self) -> ProcRes {
-        let mut rustc = self.make_compile_args(
-            &self.testpaths.file,
-            TargetLocation::ThisFile(self.make_exe_name()),
-        );
+        // Only use `make_exe_name` when the test ends up being executed.
+        let will_execute = match self.config.mode {
+            RunPass | Ui => self.should_run_successfully(),
+            Incremental => self.revision.unwrap().starts_with("r"),
+            RunFail | RunPassValgrind | MirOpt |
+            DebugInfoBoth | DebugInfoGdb | DebugInfoLldb => true,
+            _ => false,
+        };
+        let output_file = if will_execute {
+            TargetLocation::ThisFile(self.make_exe_name())
+        } else {
+            TargetLocation::ThisDirectory(self.output_base_dir())
+        };
+
+        let mut rustc = self.make_compile_args(&self.testpaths.file, output_file);
 
         rustc.arg("-L").arg(&self.aux_output_dir_name());
 
@@ -1882,7 +1893,12 @@ impl<'test> TestCx<'test> {
                 rustc.arg("-o").arg(path);
             }
             TargetLocation::ThisDirectory(path) => {
-                rustc.arg("--out-dir").arg(path);
+                if is_rustdoc {
+                    // `rustdoc` uses `-o` for the output directory.
+                    rustc.arg("-o").arg(path);
+                } else {
+                    rustc.arg("--out-dir").arg(path);
+                }
             }
         }
 
@@ -3138,42 +3154,40 @@ impl<'test> TestCx<'test> {
     }
 
     fn normalize_output(&self, output: &str, custom_rules: &[(String, String)]) -> String {
-        let parent_dir = self.testpaths.file.parent().unwrap();
         let cflags = self.props.compile_flags.join(" ");
         let json = cflags.contains("--error-format json")
             || cflags.contains("--error-format pretty-json")
             || cflags.contains("--error-format=json")
             || cflags.contains("--error-format=pretty-json");
-        let parent_dir_str = if json {
-            parent_dir.display().to_string().replace("\\", "\\\\")
-        } else {
-            parent_dir.display().to_string()
+
+        let mut normalized = output.to_string();
+
+        let mut normalize_path = |from: &Path, to: &str| {
+            let mut from = from.display().to_string();
+            if json {
+                from = from.replace("\\", "\\\\");
+            }
+            normalized = normalized.replace(&from, to);
         };
 
-        let mut normalized = output.replace(&parent_dir_str, "$DIR");
+        let parent_dir = self.testpaths.file.parent().unwrap();
+        normalize_path(parent_dir, "$DIR");
 
         // Paths into the libstd/libcore
         let src_dir = self.config.src_base.parent().unwrap().parent().unwrap();
-        let src_dir_str = if json {
-            src_dir.display().to_string().replace("\\", "\\\\")
-        } else {
-            src_dir.display().to_string()
-        };
-        normalized = normalized.replace(&src_dir_str, "$SRC_DIR");
+        normalize_path(src_dir, "$SRC_DIR");
 
         // Paths into the build directory
         let test_build_dir = &self.config.build_base;
         let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
 
         // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
-        normalized = normalized.replace(test_build_dir.to_str().unwrap(), "$TEST_BUILD_DIR");
+        normalize_path(test_build_dir, "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
-        normalized = normalized.replace(&parent_build_dir.to_str().unwrap(), "$BUILD_DIR");
+        normalize_path(parent_build_dir, "$BUILD_DIR");
 
         // Paths into lib directory.
-        let mut lib_dir = parent_build_dir.parent().unwrap().to_path_buf();
-        lib_dir.push("lib");
-        normalized = normalized.replace(&lib_dir.to_str().unwrap(), "$LIB_DIR");
+        normalize_path(&parent_build_dir.parent().unwrap().join("lib"), "$LIB_DIR");
 
         if json {
             // escaped newlines in json strings should be readable

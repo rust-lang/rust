@@ -1,5 +1,8 @@
 // compile-pass
 
+// FIXME(eddyb) shorten the name so windows doesn't choke on it.
+#![crate_name = "trait_test"]
+
 // Regression test related to #56288. Check that a supertrait projection (of
 // `Output`) that references `Self` is ok if there is another occurence of
 // the same supertrait that specifies the projection explicitly, even if

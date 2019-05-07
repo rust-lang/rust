@@ -1048,14 +1048,11 @@ fn encode_and_write_metadata<'tcx>(
                 tcx.sess.fatal(&format!("couldn't create a temp dir: {}", err))
             });
         let metadata_filename = emit_metadata(tcx.sess, &metadata, &metadata_tmpdir);
-        match std::fs::rename(&metadata_filename, &out_filename) {
-            Ok(_) => {
-                if tcx.sess.opts.debugging_opts.emit_directives {
-                    tcx.sess.parse_sess.span_diagnostic.maybe_emit_json_directive(
-                        format!("metadata file written: {}", out_filename.display()));
-                }
-            }
-            Err(e) => tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e)),
+        if let Err(e) = fs::rename(&metadata_filename, &out_filename) {
+            tcx.sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
+        }
+        if tcx.sess.opts.debugging_opts.emit_artifact_notifications {
+            tcx.sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename);
         }
     }
 

@@ -1,5 +1,3 @@
-warning: due to multiple output types requested, the explicitly specified output file name will be adapted for each output type
-
 error: any use of this value will cause an error
   --> $DIR/unused-broken-const.rs:5:18
    |

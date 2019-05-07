@@ -19,6 +19,7 @@ use errors::emitter::{Emitter, HumanReadableErrorType};
 use syntax_pos::{MacroBacktrace, Span, SpanLabel, MultiSpan};
 use rustc_data_structures::sync::{self, Lrc};
 use std::io::{self, Write};
+use std::path::Path;
 use std::vec;
 use std::sync::{Arc, Mutex};
 
@@ -91,15 +92,15 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn maybe_emit_json_directive(&mut self, directive: String) {
-        let data = Directive { directive };
+    fn emit_artifact_notification(&mut self, path: &Path) {
+        let data = ArtifactNotification { artifact: path };
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
         } else {
             writeln!(&mut self.dst, "{}", as_json(&data))
         };
         if let Err(e) = result {
-            panic!("failed to print message: {:?}", e);
+            panic!("failed to print notification: {:?}", e);
         }
     }
 }
@@ -181,9 +182,9 @@ struct DiagnosticCode {
 }
 
 #[derive(RustcEncodable)]
-struct Directive {
-    /// The directive itself.
-    directive: String,
+struct ArtifactNotification<'a> {
+    /// The path of the artifact.
+    artifact: &'a Path,
 }
 
 impl Diagnostic {
