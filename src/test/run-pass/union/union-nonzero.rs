@@ -1,6 +1,18 @@
 // run-pass
 #![allow(dead_code)]
 
+// Tests that unions aren't subject to unsafe non-zero/niche-filling optimizations.
+//
+// For example, if a union `U` can contain both a `&T` and a `*const T`, there's definitely no
+// bit-value that an `Option<U>` could reuse as `None`; this test makes sure that isn't done.
+//
+// Secondly, this tests the status quo to not apply such optimizations to types containing unions
+// even if they're theoretically possible. (discussion: https://github.com/rust-lang/rust/issues/36394)
+//
+// Notably this nails down part of the behavior that `MaybeUninit` assumes: that a
+// `Option<MaybeUninit<&u8>>` does not take advantage of non-zero optimization, and thus is a safe
+// construct.
+
 use std::mem::{size_of, transmute};
 
 union U1<A: Copy> {
