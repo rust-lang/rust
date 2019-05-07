@@ -1,13 +1,14 @@
-use std::cell::RefCell;
-use std::time::{Duration, Instant};
-use std::mem;
-use std::io::{stderr, Write};
-use std::iter::repeat;
-use std::collections::{HashSet};
-use std::default::Default;
-use std::iter::FromIterator;
-use std::sync::{RwLock, atomic::{AtomicBool, Ordering}};
-use lazy_static::lazy_static;
+use std::{
+    cell::RefCell,
+    time::{Duration, Instant},
+    mem,
+    io::{stderr, Write},
+    iter::repeat,
+    collections::HashSet,
+    sync::{RwLock, atomic::{AtomicBool, Ordering}},
+};
+
+use once_cell::sync::Lazy;
 
 /// Set profiling filter. It specifies descriptions allowed to profile.
 /// This is helpful when call stack has too many nested profiling scopes.
@@ -21,7 +22,7 @@ use lazy_static::lazy_static;
 /// ```
 pub fn set_filter(f: Filter) {
     PROFILING_ENABLED.store(f.depth > 0, Ordering::SeqCst);
-    let set = HashSet::from_iter(f.allowed.iter().cloned());
+    let set: HashSet<_> = f.allowed.iter().cloned().collect();
     let mut old = FILTER.write().unwrap();
     let filter_data = FilterData {
         depth: f.depth,
@@ -161,9 +162,7 @@ struct FilterData {
 
 static PROFILING_ENABLED: AtomicBool = AtomicBool::new(false);
 
-lazy_static! {
-    static ref FILTER: RwLock<FilterData> = RwLock::new(Default::default());
-}
+static FILTER: Lazy<RwLock<FilterData>> = Lazy::new(Default::default);
 
 thread_local!(static PROFILE_STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
 

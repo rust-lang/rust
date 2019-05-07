@@ -289,12 +289,10 @@ fn ast_node_from_file_text<N: AstNode>(text: &str) -> TreeArc<N> {
 }
 
 mod tokens {
-    use lazy_static::lazy_static;
+    use once_cell::sync::Lazy;
     use ra_syntax::{AstNode, SourceFile, TreeArc, SyntaxToken, SyntaxKind::*};
 
-    lazy_static! {
-        static ref SOURCE_FILE: TreeArc<SourceFile> = SourceFile::parse(",\n; ;");
-    }
+    static SOURCE_FILE: Lazy<TreeArc<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;"));
 
     pub(crate) fn comma() -> SyntaxToken<'static> {
         SOURCE_FILE
