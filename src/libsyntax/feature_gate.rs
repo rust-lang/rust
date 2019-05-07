@@ -108,8 +108,8 @@ macro_rules! declare_features {
 // was set. This is most important for knowing when a particular feature became
 // stable (active).
 //
-// Note that the features should be grouped into internal/user-facing
-// and then sorted by version inside those groups. This is inforced with tidy.
+// Note that the features are grouped into internal/user-facing and then
+// sorted by version inside those groups. This is inforced with tidy.
 //
 // N.B., `tools/tidy/src/features.rs` parses this information directly out of the
 // source, so take care when modifying it.
@@ -119,7 +119,7 @@ declare_features! (
     // feature-group-start: internal feature gates
     // -------------------------------------------------------------------------
 
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows using the `rust-intrinsic`'s "ABI".
     (active, intrinsics, "1.0.0", None, None),
@@ -152,7 +152,7 @@ declare_features! (
     // lets a function to be `const` when opted into with `#![feature(foo)]`.
     (active, rustc_const_unstable, "1.0.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Allows using `#[link_name="llvm.*"]`.
     (active, link_llvm_intrinsics, "1.0.0", Some(29602), None),
@@ -187,20 +187,17 @@ declare_features! (
     // Allows using `box` in patterns (RFC 469).
     (active, box_patterns, "1.0.0", Some(29641), None),
 
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows using `#[prelude_import]` on glob `use` items.
     (active, prelude_import, "1.2.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Allows using `#[unsafe_destructor_blind_to_params]` (RFC 1238).
     (active, dropck_parametricity, "1.3.0", Some(28498), None),
 
-    // FIXME(Centril): Investigate whether this gate actually has any effect.
-    (active, needs_allocator, "1.4.0", Some(27389), None),
-
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows using `#[omit_gdb_pretty_printer_section]`.
     (active, omit_gdb_pretty_printer_section, "1.5.0", None, None),
@@ -208,7 +205,7 @@ declare_features! (
     // Allows using the `vectorcall` ABI.
     (active, abi_vectorcall, "1.7.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Allows using `#[structural_match]` which indicates that a type is structurally matchable.
     (active, structural_match, "1.8.0", Some(31434), None),
@@ -222,7 +219,7 @@ declare_features! (
     // Allows declaring with `#![needs_panic_runtime]` that a panic runtime is needed.
     (active, needs_panic_runtime, "1.10.0", Some(32837), None),
 
-    // no tracking issue START
+    // no-tracking-issue-start
 
     // Allows identifying the `compiler_builtins` crate.
     (active, compiler_builtins, "1.13.0", None, None),
@@ -245,7 +242,7 @@ declare_features! (
     // Allows using the `format_args_nl` macro.
     (active, format_args_nl, "1.29.0", None, None),
 
-    // no tracking issue END
+    // no-tracking-issue-end
 
     // Added for testing E0705; perma-unstable.
     (active, test_2018_feature, "1.31.0", Some(0), Some(Edition::Edition2018)),
@@ -567,6 +564,10 @@ const INCOMPLETE_FEATURES: &[&str] = &[
 ];
 
 declare_features! (
+    // -------------------------------------------------------------------------
+    // feature-group-start: removed features
+    // -------------------------------------------------------------------------
+
     (removed, import_shadowing, "1.0.0", None, None, None),
     (removed, managed_boxes, "1.0.0", None, None, None),
     // Allows use of unary negate on unsigned integers, e.g., -e for e: u8
@@ -581,7 +582,6 @@ declare_features! (
     (removed, unsafe_no_drop_flag, "1.0.0", None, None, None),
     // Allows using items which are missing stability attributes
     (removed, unmarked_api, "1.0.0", None, None, None),
-    (removed, pushpop_unsafe, "1.2.0", None, None, None),
     (removed, allocator, "1.0.0", None, None, None),
     (removed, simd, "1.0.0", Some(27731), None,
      Some("removed in favor of `#[repr(simd)]`")),
@@ -589,6 +589,9 @@ declare_features! (
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, macro_reexport, "1.0.0", Some(29638), None,
      Some("subsumed by `pub use`")),
+    (removed, pushpop_unsafe, "1.2.0", None, None, None),
+    (removed, needs_allocator, "1.4.0", Some(27389), None,
+     Some("subsumed by `#![feature(allocator_internals)]`")),
     (removed, proc_macro_mod, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_expr, "1.27.0", Some(54727), None,
@@ -600,12 +603,16 @@ declare_features! (
     (removed, panic_implementation, "1.28.0", Some(44489), None,
      Some("subsumed by `#[panic_handler]`")),
     // Allows the use of `#[derive(Anything)]` as sugar for `#[derive_Anything]`.
-    (removed, custom_derive, "1.0.0", Some(29644), None,
+    (removed, custom_derive, "1.32.0", Some(29644), None,
      Some("subsumed by `#[proc_macro_derive]`")),
     // Paths of the form: `extern::foo::bar`
     (removed, extern_in_paths, "1.33.0", Some(55600), None,
      Some("subsumed by `::foo::bar` paths")),
-    (removed, quote, "1.0.0", Some(29601), None, None),
+    (removed, quote, "1.33.0", Some(29601), None, None),
+
+    // -------------------------------------------------------------------------
+    // feature-group-end: removed features
+    // -------------------------------------------------------------------------
 );
 
 declare_features! (
@@ -613,12 +620,24 @@ declare_features! (
 );
 
 declare_features! (
+    // -------------------------------------------------------------------------
+    // feature-group-start: for testing purposes
+    // -------------------------------------------------------------------------
+
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
     (accepted, issue_5723_bootstrap, "1.0.0", None, None),
     // These are used to test this portion of the compiler,
     // they don't actually mean anything.
     (accepted, test_accepted_feature, "1.0.0", None, None),
+
+    // -------------------------------------------------------------------------
+    // feature-group-end: for testing purposes
+    // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // feature-group-start: accepted features
+    // -------------------------------------------------------------------------
 
     // Allows using associated `type`s in `trait`s.
     (accepted, associated_types, "1.0.0", None, None),
@@ -809,6 +828,10 @@ declare_features! (
     (accepted, extern_crate_self, "1.34.0", Some(56409), None),
     // Allows arbitrary delimited token streams in non-macro attributes.
     (accepted, unrestricted_attribute_tokens, "1.34.0", Some(55208), None),
+
+    // -------------------------------------------------------------------------
+    // feature-group-end: accepted features
+    // -------------------------------------------------------------------------
 );
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
