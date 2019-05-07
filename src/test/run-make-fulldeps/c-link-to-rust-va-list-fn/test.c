@@ -11,6 +11,9 @@ extern size_t check_list_copy_0(va_list ap);
 extern size_t check_varargs_0(int fixed, ...);
 extern size_t check_varargs_1(int fixed, ...);
 extern size_t check_varargs_2(int fixed, ...);
+extern size_t check_varargs_3(int fixed, ...);
+
+struct opaque_t;
 
 int test_rust(size_t (*fn)(va_list), ...) {
     size_t ret = 0;
@@ -35,6 +38,10 @@ int main(int argc, char* argv[]) {
     assert(check_varargs_1(0, 3.14, 12l, 'A', 0x1LL) == 0);
 
     assert(check_varargs_2(0, "All", "of", "these", "are", "ignored", ".") == 0);
+
+    // Test pointer-to-unsized-type values
+    struct opaque_t *op = (struct opaque_t*) 0x1234;
+    assert(check_varargs_3(0, op) == 0);
 
     return 0;
 }

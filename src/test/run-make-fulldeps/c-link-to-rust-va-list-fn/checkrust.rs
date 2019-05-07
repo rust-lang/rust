@@ -1,12 +1,18 @@
 #![crate_type = "staticlib"]
 #![feature(c_variadic)]
 #![feature(rustc_private)]
+#![feature(extern_types)]
 
 extern crate libc;
 
 use libc::{c_char, c_double, c_int, c_long, c_longlong};
 use std::ffi::VaList;
 use std::ffi::{CString, CStr};
+
+extern {
+    // This is an unsized type, used to test pointer-to-unsized-types
+    type Opaque;
+}
 
 macro_rules! continue_if {
     ($cond:expr) => {
@@ -89,5 +95,11 @@ pub unsafe extern "C" fn check_varargs_1(_: c_int, mut ap: ...) -> usize {
 
 #[no_mangle]
 pub unsafe extern "C" fn check_varargs_2(_: c_int, _ap: ...) -> usize {
+    0
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn check_varargs_3(_: c_int, mut ap: ...) -> usize {
+    continue_if!(ap.arg::<*const Opaque>() as usize == 0x1234usize);
     0
 }

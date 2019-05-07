@@ -290,16 +290,20 @@ impl_va_arg_safe!{i8, i16, i32, i64, usize}
 impl_va_arg_safe!{u8, u16, u32, u64, isize}
 impl_va_arg_safe!{f64}
 
+// FIXME(ahomescu): this also enables VaArgSafe for fat pointers,
+// which we'd like to avoid. There is no way to currently implement
+// a trait exclusively for thin pointers, but RFC #2580 changes this
+// so we can fix our implementation once 2580 is implemented.
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-impl<T> sealed_trait::VaArgSafe for *mut T {}
+impl<T: ?Sized> sealed_trait::VaArgSafe for *mut T {}
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
                      all supported platforms",
            issue = "44930")]
-impl<T> sealed_trait::VaArgSafe for *const T {}
+impl<T: ?Sized> sealed_trait::VaArgSafe for *const T {}
 
 #[unstable(feature = "c_variadic",
            reason = "the `c_variadic` feature has not been properly tested on \
