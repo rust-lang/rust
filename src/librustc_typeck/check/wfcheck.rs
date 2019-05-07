@@ -494,7 +494,7 @@ fn check_where_clauses<'a, 'gcx, 'fcx, 'tcx>(
         impl<'tcx> ty::fold::TypeVisitor<'tcx> for CountParams {
             fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
                 if let ty::Param(param) = t.sty {
-                    self.params.insert(param.idx);
+                    self.params.insert(param.index);
                 }
                 t.super_visit_with(self)
             }

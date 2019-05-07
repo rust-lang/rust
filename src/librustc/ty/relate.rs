@@ -390,7 +390,7 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         }
 
         (&ty::Param(ref a_p), &ty::Param(ref b_p))
-            if a_p.idx == b_p.idx =>
+            if a_p.index == b_p.index =>
         {
             Ok(a)
         }

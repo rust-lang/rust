@@ -757,8 +757,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         });
     }
 
-    fn assemble_inherent_candidates_from_param(&mut self,
-                                               param_ty: ty::ParamTy) {
+    fn assemble_inherent_candidates_from_param(&mut self, param_ty: ty::ParamTy) {
         // FIXME -- Do we want to commit to this behavior for param bounds?
 
         let bounds = self.param_env

@@ -547,7 +547,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
 impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     fn ty_for_param(&self, p: ty::ParamTy, source_ty: Ty<'tcx>) -> Ty<'tcx> {
         // Look up the type in the substitutions. It really should be in there.
-        let opt_ty = self.substs.get(p.idx as usize).map(|k| k.unpack());
+        let opt_ty = self.substs.get(p.index as usize).map(|k| k.unpack());
         let ty = match opt_ty {
             Some(UnpackedKind::Type(ty)) => ty,
             Some(kind) => {
@@ -558,7 +558,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
                      when substituting (root type={:?}) substs={:?}",
                     p,
                     source_ty,
-                    p.idx,
+                    p.index,
                     kind,
                     self.root_ty,
                     self.substs,
@@ -572,7 +572,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
                      when substituting (root type={:?}) substs={:?}",
                     p,
                     source_ty,
-                    p.idx,
+                    p.index,
                     self.root_ty,
                     self.substs,
                 );

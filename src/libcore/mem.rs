@@ -665,8 +665,8 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// let mut v: Vec<i32> = vec![1, 2];
 ///
 /// let old_v = mem::replace(&mut v, vec![3, 4, 5]);
-/// assert_eq!(2, old_v.len());
-/// assert_eq!(3, v.len());
+/// assert_eq!(vec![1, 2], old_v);
+/// assert_eq!(vec![3, 4, 5], v);
 /// ```
 ///
 /// `replace` allows consumption of a struct field by replacing it with another value.

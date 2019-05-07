@@ -1052,6 +1052,10 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 		height: 45px;
 	}
 
+	.rustdoc.source > .sidebar > .sidebar-menu {
+		display: none;
+	}
+
 	.sidebar-elems {
 		position: fixed;
 		z-index: 1;
