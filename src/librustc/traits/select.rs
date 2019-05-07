@@ -3424,7 +3424,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let mut found = false;
                 for ty in field.walk() {
                     if let ty::Param(p) = ty.sty {
-                        ty_params.insert(p.idx as usize);
+                        ty_params.insert(p.index as usize);
                         found = true;
                     }
                 }

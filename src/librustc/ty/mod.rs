@@ -979,7 +979,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                       param: &ParamTy,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>)
                       -> &'tcx GenericParamDef {
-        if let Some(index) = param.idx.checked_sub(self.parent_count as u32) {
+        if let Some(index) = param.index.checked_sub(self.parent_count as u32) {
             let param = &self.params[index as usize];
             match param.kind {
                 GenericParamDefKind::Type { .. } => param,

@@ -1111,13 +1111,13 @@ pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
          Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ParamTy {
-    pub idx: u32,
+    pub index: u32,
     pub name: InternedString,
 }
 
 impl<'a, 'gcx, 'tcx> ParamTy {
     pub fn new(index: u32, name: InternedString) -> ParamTy {
-        ParamTy { idx: index, name: name }
+        ParamTy { index, name: name }
     }
 
     pub fn for_self() -> ParamTy {
@@ -1129,14 +1129,14 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn to_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        tcx.mk_ty_param(self.idx, self.name)
+        tcx.mk_ty_param(self.index, self.name)
     }
 
     pub fn is_self(&self) -> bool {
-        // FIXME(#50125): Ignoring `Self` with `idx != 0` might lead to weird behavior elsewhere,
+        // FIXME(#50125): Ignoring `Self` with `index != 0` might lead to weird behavior elsewhere,
         // but this should only be possible when using `-Z continue-parse-after-error` like
         // `compile-fail/issue-36638.rs`.
-        self.name == keywords::SelfUpper.name().as_str() && self.idx == 0
+        self.name == keywords::SelfUpper.name().as_str() && self.index == 0
     }
 }
 
@@ -1763,7 +1763,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
     pub fn is_param(&self, index: u32) -> bool {
         match self.sty {
-            ty::Param(ref data) => data.idx == index,
+            ty::Param(ref data) => data.index == index,
             _ => false,
         }
     }
