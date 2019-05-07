@@ -389,9 +389,17 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     #[allow(clippy::many_single_char_names, clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr) {
-        if let Some(e) = constant_simple(self.cx, self.tables, e) {
+        let simple_const = constant_simple(self.cx, self.tables, e);
+
+        // const hashing may result in the same hash as some unrelated node, so add a sort of
+        // discriminant depending on which path we're choosing next
+        simple_const.is_some().hash(&mut self.s);
+
+        if let Some(e) = simple_const {
             return e.hash(&mut self.s);
         }
+
+        std::mem::discriminant(&e.node).hash(&mut self.s);
 
         match e.node {
             ExprKind::AddrOf(m, ref e) => {
