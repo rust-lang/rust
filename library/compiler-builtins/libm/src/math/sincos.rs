@@ -12,8 +12,7 @@
 
 use super::{get_high_word, k_cos, k_sin, rem_pio2};
 
-pub fn sincos(x: f64) -> (f64, f64)
-{
+pub fn sincos(x: f64) -> (f64, f64) {
     let s: f64;
     let c: f64;
     let mut ix: u32;
@@ -28,9 +27,9 @@ pub fn sincos(x: f64) -> (f64, f64)
             /* raise inexact if x!=0 and underflow if subnormal */
             let x1p120 = f64::from_bits(0x4770000000000000); // 0x1p120 == 2^120
             if ix < 0x00100000 {
-                force_eval!(x/x1p120);
+                force_eval!(x / x1p120);
             } else {
-                force_eval!(x+x1p120);
+                force_eval!(x + x1p120);
             }
             return (x, 1.0);
         }
@@ -47,7 +46,7 @@ pub fn sincos(x: f64) -> (f64, f64)
     let (n, y0, y1) = rem_pio2(x);
     s = k_sin(y0, y1, 1);
     c = k_cos(y0, y1);
-    match n&3 {
+    match n & 3 {
         0 => (s, c),
         1 => (c, -s),
         2 => (-s, -c),

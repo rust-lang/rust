@@ -1,11 +1,11 @@
-pub fn frexp(x: f64) -> (f64, isize) {
+pub fn frexp(x: f64) -> (f64, i32) {
     let mut y = x.to_bits();
-    let ee = ((y>>52) & 0x7ff) as isize;
+    let ee = ((y >> 52) & 0x7ff) as i32;
 
     if ee == 0 {
         if x != 0.0 {
             let x1p64 = f64::from_bits(0x43f0000000000000);
-            let (x, e) = frexp(x*x1p64);
+            let (x, e) = frexp(x * x1p64);
             return (x, e - 64);
         }
         return (x, 0);

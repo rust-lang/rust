@@ -46,7 +46,7 @@ pub fn fmod(x: f64, y: f64) -> f64 {
 
     /* x mod y */
     while ex > ey {
-        i = uxi - uyi;
+        i = uxi.wrapping_sub(uyi);
         if i >> 63 == 0 {
             if i == 0 {
                 return 0.0 * x;
@@ -56,7 +56,7 @@ pub fn fmod(x: f64, y: f64) -> f64 {
         uxi <<= 1;
         ex -= 1;
     }
-    i = uxi - uyi;
+    i = uxi.wrapping_sub(uyi);
     if i >> 63 == 0 {
         if i == 0 {
             return 0.0 * x;

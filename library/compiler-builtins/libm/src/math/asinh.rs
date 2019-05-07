@@ -17,10 +17,10 @@ pub fn asinh(mut x: f64) -> f64 {
         x = log(x) + LN2;
     } else if e >= 0x3ff + 1 {
         /* |x| >= 2 */
-        x = log(2.0*x + 1.0/(sqrt(x*x+1.0)+x));
+        x = log(2.0 * x + 1.0 / (sqrt(x * x + 1.0) + x));
     } else if e >= 0x3ff - 26 {
         /* |x| >= 0x1p-26, up to 1.6ulp error in [0.125,0.5] */
-        x = log1p(x + x*x/(sqrt(x*x+1.0)+1.0));
+        x = log1p(x + x * x / (sqrt(x * x + 1.0) + 1.0));
     } else {
         /* |x| < 0x1p-26, raise inexact if x != 0 */
         let x1p120 = f64::from_bits(0x4770000000000000);

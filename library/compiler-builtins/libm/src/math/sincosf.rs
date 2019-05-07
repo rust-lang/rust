@@ -18,13 +18,12 @@ use super::{k_cosf, k_sinf, rem_pio2f};
 
 /* Small multiples of pi/2 rounded to double precision. */
 const PI_2: f32 = 0.5 * 3.1415926535897931160E+00;
-const S1PIO2: f32 = 1.0*PI_2; /* 0x3FF921FB, 0x54442D18 */
-const S2PIO2: f32 = 2.0*PI_2; /* 0x400921FB, 0x54442D18 */
-const S3PIO2: f32 = 3.0*PI_2; /* 0x4012D97C, 0x7F3321D2 */
-const S4PIO2: f32 = 4.0*PI_2; /* 0x401921FB, 0x54442D18 */
+const S1PIO2: f32 = 1.0 * PI_2; /* 0x3FF921FB, 0x54442D18 */
+const S2PIO2: f32 = 2.0 * PI_2; /* 0x400921FB, 0x54442D18 */
+const S3PIO2: f32 = 3.0 * PI_2; /* 0x4012D97C, 0x7F3321D2 */
+const S4PIO2: f32 = 4.0 * PI_2; /* 0x401921FB, 0x54442D18 */
 
-pub fn sincosf(x: f32) -> (f32, f32)
-{
+pub fn sincosf(x: f32) -> (f32, f32) {
     let s: f32;
     let c: f32;
     let mut ix: u32;
@@ -42,9 +41,9 @@ pub fn sincosf(x: f32) -> (f32, f32)
 
             let x1p120 = f32::from_bits(0x7b800000); // 0x1p120 == 2^120
             if ix < 0x00100000 {
-                force_eval!(x/x1p120);
+                force_eval!(x / x1p120);
             } else {
-                force_eval!(x+x1p120);
+                force_eval!(x + x1p120);
             }
             return (x, 1.0);
         }
@@ -53,7 +52,8 @@ pub fn sincosf(x: f32) -> (f32, f32)
 
     /* |x| ~<= 5*pi/4 */
     if ix <= 0x407b53d1 {
-        if ix <= 0x4016cbe3 {  /* |x| ~<= 3pi/4 */
+        if ix <= 0x4016cbe3 {
+            /* |x| ~<= 3pi/4 */
             if sign {
                 s = -k_cosf((x + S1PIO2) as f64);
                 c = k_sinf((x + S1PIO2) as f64);
@@ -78,7 +78,8 @@ pub fn sincosf(x: f32) -> (f32, f32)
 
     /* |x| ~<= 9*pi/4 */
     if ix <= 0x40e231d5 {
-        if ix <= 0x40afeddf {  /* |x| ~<= 7*pi/4 */
+        if ix <= 0x40afeddf {
+            /* |x| ~<= 7*pi/4 */
             if sign {
                 s = k_cosf((x + S3PIO2) as f64);
                 c = -k_sinf((x + S3PIO2) as f64);
@@ -109,7 +110,7 @@ pub fn sincosf(x: f32) -> (f32, f32)
     let (n, y) = rem_pio2f(x);
     s = k_sinf(y);
     c = k_cosf(y);
-    match n&3 {
+    match n & 3 {
         0 => (s, c),
         1 => (c, -s),
         2 => (-s, -c),

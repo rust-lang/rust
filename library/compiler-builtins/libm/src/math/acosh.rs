@@ -11,11 +11,11 @@ pub fn acosh(x: f64) -> f64 {
 
     if e < 0x3ff + 1 {
         /* |x| < 2, up to 2ulp error in [1,1.125] */
-        return log1p(x-1.0+sqrt((x-1.0)*(x-1.0)+2.0*(x-1.0)));
+        return log1p(x - 1.0 + sqrt((x - 1.0) * (x - 1.0) + 2.0 * (x - 1.0)));
     }
     if e < 0x3ff + 26 {
         /* |x| < 0x1p26 */
-        return log(2.0*x-1.0/(x+sqrt(x*x-1.0)));
+        return log(2.0 * x - 1.0 / (x + sqrt(x * x - 1.0)));
     }
     /* |x| >= 0x1p26 or nan */
     return log(x) + LN2;

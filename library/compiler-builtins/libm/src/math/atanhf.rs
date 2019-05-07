@@ -1,4 +1,4 @@
-use super::{log1pf};
+use super::log1pf;
 
 /* atanh(x) = log((1+x)/(1-x))/2 = log1p(2x/(1-x))/2 ~= x + x^3/3 + o(x^5) */
 pub fn atanhf(mut x: f32) -> f32 {
@@ -9,19 +9,19 @@ pub fn atanhf(mut x: f32) -> f32 {
     u &= 0x7fffffff;
     x = f32::from_bits(u);
 
-    if u < 0x3f800000 - (1<<23) {
-        if u < 0x3f800000 - (32<<23) {
+    if u < 0x3f800000 - (1 << 23) {
+        if u < 0x3f800000 - (32 << 23) {
             /* handle underflow */
-            if u < (1<<23) {
-                force_eval!((x*x) as f32);
+            if u < (1 << 23) {
+                force_eval!((x * x) as f32);
             }
         } else {
             /* |x| < 0.5, up to 1.7ulp error */
-            x = 0.5*log1pf(2.0*x + 2.0*x*x/(1.0-x));
+            x = 0.5 * log1pf(2.0 * x + 2.0 * x * x / (1.0 - x));
         }
     } else {
         /* avoid overflow */
-        x = 0.5*log1pf(2.0*(x/(1.0-x)));
+        x = 0.5 * log1pf(2.0 * (x / (1.0 - x)));
     }
 
     if sign {

@@ -41,6 +41,19 @@ mod musl_reference_tests {
         "rem_pio2.rs",
         "rem_pio2_large.rs",
         "rem_pio2f.rs",
+        "remquo.rs",
+        "remquof.rs",
+        "lgamma.rs",  // lgamma passed, lgamma_r has more than 1 result
+        "lgammaf.rs", // lgammaf passed, lgammaf_r has more than 1 result
+        "frexp.rs",   // more than 1 result
+        "frexpf.rs",  // more than 1 result
+        "sincos.rs",  // more than 1 result
+        "sincosf.rs", // more than 1 result
+        "modf.rs",    // more than 1 result
+        "modff.rs",   // more than 1 result
+        "asinef.rs",  // not exists
+        "jn.rs",      // passed, but very slow
+        "jnf.rs",     // passed, but very slow
     ];
 
     struct Function {
@@ -78,12 +91,9 @@ mod musl_reference_tests {
 
             let contents = fs::read_to_string(file).unwrap();
             let mut functions = contents.lines().filter(|f| f.starts_with("pub fn"));
-            let function_to_test = functions.next().unwrap();
-            if functions.next().is_some() {
-                panic!("more than one function in");
+            while let Some(function_to_test) = functions.next() {
+                math.push(parse(function_to_test));
             }
-
-            math.push(parse(function_to_test));
         }
 
         // Generate a bunch of random inputs for each function. This will
@@ -330,7 +340,7 @@ mod musl_reference_tests {
             src.push_str(match function.ret {
                 Ty::F32 => "if _eqf(output, f32::from_bits(*expected as u32)).is_ok() { continue }",
                 Ty::F64 => "if _eq(output, f64::from_bits(*expected as u64)).is_ok() { continue }",
-                Ty::I32 => "if output as i64 == expected { continue }",
+                Ty::I32 => "if output as i64 == *expected { continue }",
                 Ty::Bool => unreachable!(),
             });
 

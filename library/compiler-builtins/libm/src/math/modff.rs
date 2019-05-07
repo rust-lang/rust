@@ -2,12 +2,13 @@ pub fn modff(x: f32) -> (f32, f32) {
     let rv2: f32;
     let mut u: u32 = x.to_bits();
     let mask: u32;
-    let e = ((u>>23 & 0xff) as isize) - 0x7f;
+    let e = ((u >> 23 & 0xff) as isize) - 0x7f;
 
     /* no fractional part */
     if e >= 23 {
         rv2 = x;
-        if e == 0x80 && (u<<9) != 0 { /* nan */
+        if e == 0x80 && (u << 9) != 0 {
+            /* nan */
             return (x, rv2);
         }
         u &= 0x80000000;
@@ -20,7 +21,7 @@ pub fn modff(x: f32) -> (f32, f32) {
         return (x, rv2);
     }
 
-    mask = 0x007fffff>>e;
+    mask = 0x007fffff >> e;
     if (u & mask) == 0 {
         rv2 = x;
         u &= 0x80000000;

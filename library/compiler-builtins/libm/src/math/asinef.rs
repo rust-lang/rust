@@ -28,9 +28,7 @@ const A: [f32; 2] = [ 0.0, 0.785398163 ];
 const B: [f32; 2] = [ 1.570796326, 0.785398163 ];
 const Z_ROOTEPS_F: f32 = 1.7263349182589107e-4;
 
-pub fn asinef(x: f32, acosine: usize) -> f32
-{
-    let flag: usize;
+pub fn asinef(x: f32, acosine: bool) -> f32 {
     let i: usize;
     let mut branch: bool = false;
     let g: f32;
@@ -45,10 +43,10 @@ pub fn asinef(x: f32, acosine: usize) -> f32
     }
 
     y = fabsf(x);
-    flag = acosine;
+    let flag = acosine;
 
     if y > 0.5 {
-        i = 1 - flag;
+        i = (!flag) as usize;
 
         /* Check for range error. */
         if y > 1.0 {

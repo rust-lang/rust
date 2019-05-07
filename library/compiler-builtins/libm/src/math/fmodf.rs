@@ -52,7 +52,7 @@ pub fn fmodf(x: f32, y: f32) -> f32 {
 
     /* x mod y */
     while ex > ey {
-        i = uxi - uyi;
+        i = uxi.wrapping_sub(uyi);
         if i >> 31 == 0 {
             if i == 0 {
                 return 0.0 * x;
@@ -64,7 +64,7 @@ pub fn fmodf(x: f32, y: f32) -> f32 {
         ex -= 1;
     }
 
-    i = uxi - uyi;
+    i = uxi.wrapping_sub(uyi);
     if i >> 31 == 0 {
         if i == 0 {
             return 0.0 * x;
