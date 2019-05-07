@@ -534,3 +534,20 @@ impl HirDisplay for Ty {
         Ok(())
     }
 }
+
+impl HirDisplay for TraitRef {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.substs[0].display(f.db),
+            self.trait_.name(f.db).unwrap_or_else(Name::missing)
+        )?;
+        if self.substs.len() > 1 {
+            write!(f, "<")?;
+            f.write_joined(&self.substs[1..], ", ")?;
+            write!(f, ">")?;
+        }
+        Ok(())
+    }
+}
