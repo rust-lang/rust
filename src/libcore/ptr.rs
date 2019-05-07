@@ -974,6 +974,13 @@ impl<T: ?Sized> *const T {
         (self as *const u8) == null()
     }
 
+    /// Cast to a pointer to a different type
+    #[unstable(feature = "ptr_cast", issue = "60602")]
+    #[inline]
+    pub const fn cast<U>(self) -> *const U {
+        self as _
+    }
+
     /// Returns `None` if the pointer is null, or else returns a reference to
     /// the value wrapped in `Some`.
     ///
@@ -1591,6 +1598,13 @@ impl<T: ?Sized> *mut T {
         // Compare via a cast to a thin pointer, so fat pointers are only
         // considering their "data" part for null-ness.
         (self as *mut u8) == null_mut()
+    }
+
+    /// Cast to a pointer to a different type
+    #[unstable(feature = "ptr_cast", issue = "60602")]
+    #[inline]
+    pub const fn cast<U>(self) -> *mut U {
+        self as _
     }
 
     /// Returns `None` if the pointer is null, or else returns a reference to
