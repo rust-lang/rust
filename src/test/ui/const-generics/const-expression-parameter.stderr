@@ -1,9 +1,3 @@
-error: expected identifier, found `<-`
-  --> $DIR/const-expression-parameter.rs:9:19
-   |
-LL |     i32_identity::<-1>();
-   |                   ^^ expected identifier
-
 error: expected one of `,` or `>`, found `+`
   --> $DIR/const-expression-parameter.rs:13:22
    |
@@ -16,5 +10,5 @@ warning: the feature `const_generics` is incomplete and may cause the compiler t
 LL | #![feature(const_generics)]
    |            ^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

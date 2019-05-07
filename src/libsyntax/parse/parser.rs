@@ -2319,7 +2319,8 @@ impl<'a> Parser<'a> {
         let ident = self.parse_path_segment_ident()?;
 
         let is_args_start = |token: &token::Token| match *token {
-            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren) => true,
+            token::Lt | token::BinOp(token::Shl) | token::OpenDelim(token::Paren)
+            | token::LArrow => true,
             _ => false,
         };
         let check_args_start = |this: &mut Self| {
@@ -6056,8 +6057,6 @@ impl<'a> Parser<'a> {
                         self.fatal("identifiers may currently not be used for const generics")
                     );
                 } else {
-                    // FIXME(const_generics): this currently conflicts with emplacement syntax
-                    // with negative integer literals.
                     self.parse_literal_maybe_minus()?
                 };
                 let value = AnonConst {
