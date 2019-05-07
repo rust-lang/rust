@@ -345,11 +345,14 @@ where
             return Vec::new();
         }
         let trait_ = from_chalk(self.db, trait_id);
-        self.db
+        let result: Vec<_> = self
+            .db
             .impls_for_trait(self.krate, trait_)
             .iter()
             .map(|impl_block| impl_block.to_chalk(self.db))
-            .collect()
+            .collect();
+        debug!("impls_for_trait returned {} impls", result.len());
+        result
     }
     fn impl_provided_for(
         &self,

@@ -2581,6 +2581,35 @@ fn test() { foo.call()<|>; }
     );
 }
 
+#[test]
+fn method_resolution_slow() {
+    // this can get quite slow if we set the solver size limit too high
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Send {}
+
+struct S1; impl Send for S1;
+struct S2; impl Send for S2;
+struct U1;
+
+trait Trait { fn method(self); }
+
+struct X1<A, B> {}
+impl<A, B> Send for X1<A, B> where A: Send, B: Send {}
+
+struct S<B, C> {}
+
+trait Fn {}
+
+impl<B, C> Trait for S<B, C> where C: Fn, B: Send {}
+
+fn test() { (S {}).method()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id);
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();

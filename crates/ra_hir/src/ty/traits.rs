@@ -14,6 +14,11 @@ mod chalk;
 
 pub(crate) type Solver = chalk_solve::Solver;
 
+/// This controls the maximum size of types Chalk considers. If we set this too
+/// high, we can run into slow edge cases; if we set it too low, Chalk won't
+/// find some solutions.
+const CHALK_SOLVER_MAX_SIZE: usize = 2;
+
 #[derive(Debug, Copy, Clone)]
 struct ChalkContext<'a, DB> {
     db: &'a DB,
@@ -22,7 +27,8 @@ struct ChalkContext<'a, DB> {
 
 pub(crate) fn solver(_db: &impl HirDatabase, _krate: Crate) -> Arc<Mutex<Solver>> {
     // krate parameter is just so we cache a unique solver per crate
-    let solver_choice = chalk_solve::SolverChoice::SLG { max_size: 10 };
+    let solver_choice = chalk_solve::SolverChoice::SLG { max_size: CHALK_SOLVER_MAX_SIZE };
+    debug!("Creating new solver for crate {:?}", _krate);
     Arc::new(Mutex::new(solver_choice.into_solver()))
 }
 
@@ -53,6 +59,7 @@ fn solve(
 ) -> Option<chalk_solve::Solution> {
     let context = ChalkContext { db, krate };
     let solver = db.solver(krate);
+    debug!("solve goal: {:?}", goal);
     let solution = solver.lock().unwrap().solve(&context, goal);
     debug!("solve({:?}) => {:?}", goal, solution);
     solution
