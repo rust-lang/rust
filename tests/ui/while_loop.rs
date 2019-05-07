@@ -238,3 +238,18 @@ fn issue3670() {
         let _ = elem.or_else(|| *iter.next()?);
     }
 }
+
+fn issue771() {
+    let mut a = 100;
+    let b = Some(true);
+    loop {
+        if a > 10 {
+            break;
+        }
+
+        match b {
+            Some(_) => a = 0,
+            None => break,
+        }
+    }
+}
