@@ -1,5 +1,5 @@
 use crate::hir;
-use crate::hir::def::{Namespace, Def};
+use crate::hir::def::{Namespace, DefKind};
 use crate::hir::map::{DefPathData, DisambiguatedDefPathData};
 use crate::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::middle::cstore::{ExternCrate, ExternCrateSource};
@@ -820,10 +820,10 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             return Ok(self);
         }
         if let ConstValue::Unevaluated(did, substs) = ct.val {
-            match self.tcx().describe_def(did) {
-                | Some(Def::Static(_))
-                | Some(Def::Const(_))
-                | Some(Def::AssociatedConst(_)) => p!(print_value_path(did, substs)),
+            match self.tcx().def_kind(did) {
+                | Some(DefKind::Static)
+                | Some(DefKind::Const)
+                | Some(DefKind::AssociatedConst) => p!(print_value_path(did, substs)),
                 _ => if did.is_local() {
                     let span = self.tcx().def_span(did);
                     if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
