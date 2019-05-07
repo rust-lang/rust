@@ -393,7 +393,7 @@ impl Span {
             Some(info) => info
                 .allow_internal_unstable
                 .map_or(false, |features| features.iter().any(|&f|
-                    f == feature || f == "allow_internal_unstable_backcompat_hack"
+                    f == feature || f == sym::allow_internal_unstable_backcompat_hack
                 )),
             None => false,
         }

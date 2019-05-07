@@ -369,7 +369,7 @@ impl<'a> Resolver<'a> {
                 };
 
                 self.populate_module_if_necessary(module);
-                if injected_crate_name().map_or(false, |name| ident.name == name) {
+                if injected_crate_name().map_or(false, |name| ident.name.as_str() == name) {
                     self.injected_crate = Some(module);
                 }
 

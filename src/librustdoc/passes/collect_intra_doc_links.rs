@@ -99,7 +99,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             // Try looking for methods and associated items.
             let mut split = path_str.rsplitn(2, "::");
             let item_name = if let Some(first) = split.next() {
-                first
+                Symbol::intern(first)
             } else {
                 return Err(())
             };

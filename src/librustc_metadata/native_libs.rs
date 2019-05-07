@@ -181,7 +181,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                 let any_duplicate = self.libs
                     .iter()
                     .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| n == name);
+                    .any(|n| n.as_str() == *name);
                 if new_name.is_empty() {
                     self.tcx.sess.err(
                         &format!("an empty renaming target was specified for library `{}`",name));
@@ -212,7 +212,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             // can move them to the end of the list below.
             let mut existing = self.libs.drain_filter(|lib| {
                 if let Some(lib_name) = lib.name {
-                    if lib_name == name as &str {
+                    if lib_name.as_str() == *name {
                         if let Some(k) = kind {
                             lib.kind = k;
                         }

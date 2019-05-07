@@ -6,7 +6,7 @@ use crate::middle::lang_items;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{Visitor, NestedVisitorMap};
@@ -46,8 +46,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn link_name(attrs: &[ast::Attribute]) -> Option<Symbol> {
     lang_items::extract(attrs).and_then(|(name, _)| {
-        $(if name == stringify!($name) {
-            Some(Symbol::intern(stringify!($sym)))
+        $(if name == sym::$name {
+            Some(sym::$sym)
         } else)* {
             None
         }

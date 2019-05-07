@@ -35,6 +35,9 @@ pub fn injected_crate_name() -> Option<&'static str> {
 }
 
 thread_local! {
+    // A `Symbol` might make more sense here, but it doesn't work, probably for
+    // reasons relating to the use of thread-local storage for the Symbol
+    // interner.
     static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
 }
 

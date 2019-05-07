@@ -81,12 +81,6 @@ impl PartialEq<Symbol> for Path {
     }
 }
 
-impl<'a> PartialEq<&'a str> for Path {
-    fn eq(&self, string: &&'a str) -> bool {
-        self.segments.len() == 1 && self.segments[0].ident.name == *string
-    }
-}
-
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "path({})", pprust::path_to_string(self))

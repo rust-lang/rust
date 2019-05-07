@@ -221,7 +221,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 match item.node {
                     ast::MetaItemKind::Word => {}  // actual lint names handled later
                     ast::MetaItemKind::NameValue(ref name_value) => {
-                        if item.path == "reason" {
+                        if item.path == sym::reason {
                             // found reason, reslice meta list to exclude it
                             metas = &metas[0..metas.len()-1];
                             // FIXME (#55112): issue unused-attributes lint if we thereby
@@ -261,7 +261,7 @@ impl<'a> LintLevelsBuilder<'a> {
                         let mut err = bad_attr(li.span());
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.node {
-                                if item.path == "reason" {
+                                if item.path == sym::reason {
                                     err.help("reason in lint attribute must come last");
                                 }
                             }

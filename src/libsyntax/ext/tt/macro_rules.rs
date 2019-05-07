@@ -13,7 +13,7 @@ use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::Parser;
 use crate::parse::token::{self, NtTT};
 use crate::parse::token::Token::*;
-use crate::symbol::{Symbol, sym};
+use crate::symbol::{Symbol, keywords, sym};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use errors::FatalError;
@@ -467,7 +467,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
             TokenTree::Sequence(span, ref seq) => {
                 if seq.separator.is_none() && seq.tts.iter().all(|seq_tt| {
                     match *seq_tt {
-                        TokenTree::MetaVarDecl(_, _, id) => id.name == "vis",
+                        TokenTree::MetaVarDecl(_, _, id) => id.name == sym::vis,
                         TokenTree::Sequence(_, ref sub_seq) =>
                             sub_seq.op == quoted::KleeneOp::ZeroOrMore
                             || sub_seq.op == quoted::KleeneOp::ZeroOrOne,
@@ -1046,7 +1046,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == "if" || i.name == "in" => IsInFollow::Yes,
+                        Ident(i, false) if i.name == keywords::If.name() ||
+                                           i.name == keywords::In.name() => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
                     _ => IsInFollow::No(tokens),
@@ -1063,10 +1064,12 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                         OpenDelim(token::DelimToken::Bracket) |
                         Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
                         BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == "as" || i.name == "where" => IsInFollow::Yes,
+                        Ident(i, false) if i.name == keywords::As.name() ||
+                                           i.name == keywords::Where.name() => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
-                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => IsInFollow::Yes,
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block =>
+                        IsInFollow::Yes,
                     _ => IsInFollow::No(tokens),
                 }
             },
@@ -1089,16 +1092,18 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         Comma => IsInFollow::Yes,
-                        Ident(i, is_raw) if is_raw || i.name != "priv" => IsInFollow::Yes,
+                        Ident(i, is_raw) if is_raw || i.name != keywords::Priv.name() =>
+                            IsInFollow::Yes,
                         ref tok => if tok.can_begin_type() {
                             IsInFollow::Yes
                         } else {
                             IsInFollow::No(tokens)
                         }
                     },
-                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == "ident"
-                                                       || frag.name == "ty"
-                                                       || frag.name == "path" => IsInFollow::Yes,
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::ident
+                                                       || frag.name == sym::ty
+                                                       || frag.name == sym::path =>
+                        IsInFollow::Yes,
                     _ => IsInFollow::No(tokens),
                 }
             },

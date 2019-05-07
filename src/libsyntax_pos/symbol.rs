@@ -822,12 +822,6 @@ impl Decodable for Symbol {
     }
 }
 
-impl<T: std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
-    fn eq(&self, other: &T) -> bool {
-        self.as_str() == other.deref()
-    }
-}
-
 // The `&'static str`s in this type actually point into the arena.
 //
 // Note that normal symbols are indexed upward from 0, and gensyms are indexed

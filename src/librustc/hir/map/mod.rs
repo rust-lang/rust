@@ -1146,7 +1146,7 @@ impl<'a> NodesMatchingSuffix<'a> {
                 None => return false,
                 Some((node_id, name)) => (node_id, name),
             };
-            if mod_name != &**part {
+            if mod_name.as_str() != *part {
                 return false;
             }
             cursor = self.map.get_parent_item(mod_id);
@@ -1183,7 +1183,7 @@ impl<'a> NodesMatchingSuffix<'a> {
     // We are looking at some node `n` with a given name and parent
     // id; do their names match what I am seeking?
     fn matches_names(&self, parent_of_n: HirId, name: Name) -> bool {
-        name == &**self.item_name && self.suffix_matches(parent_of_n)
+        name.as_str() == *self.item_name && self.suffix_matches(parent_of_n)
     }
 
     fn matches_suffix(&self, hir: HirId) -> bool {

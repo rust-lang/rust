@@ -39,7 +39,7 @@ impl State {
     }
 }
 
-const OPTIONS: &[&str] = &["volatile", "alignstack", "intel"];
+const OPTIONS: &[Symbol] = &[sym::volatile, sym::alignstack, sym::intel];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
@@ -233,13 +233,13 @@ fn parse_inline_asm<'a>(
             Options => {
                 let (option, _) = p.parse_str()?;
 
-                if option == "volatile" {
+                if option == sym::volatile {
                     // Indicates that the inline assembly has side effects
                     // and must not be optimized out along with its outputs.
                     volatile = true;
-                } else if option == "alignstack" {
+                } else if option == sym::alignstack {
                     alignstack = true;
-                } else if option == "intel" {
+                } else if option == sym::intel {
                     dialect = AsmDialect::Intel;
                 } else {
                     cx.span_warn(p.prev_span, "unrecognized option");

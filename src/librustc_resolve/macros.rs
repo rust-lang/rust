@@ -982,7 +982,7 @@ impl<'a> Resolver<'a> {
                     let msg =
                         format!("cannot find {} `{}{}` in this scope", kind.descr(), ident, bang);
                     let mut err = self.session.struct_span_err(ident.span, &msg);
-                    self.suggest_macro_name(&ident.as_str(), kind, &mut err, ident.span);
+                    self.suggest_macro_name(ident.name, kind, &mut err, ident.span);
                     err.emit();
                 }
             }
@@ -1010,11 +1010,12 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn suggest_macro_name(&mut self, name: &str, kind: MacroKind,
+    fn suggest_macro_name(&mut self, name: Symbol, kind: MacroKind,
                           err: &mut DiagnosticBuilder<'a>, span: Span) {
         // First check if this is a locally-defined bang macro.
         let suggestion = if let MacroKind::Bang = kind {
-            find_best_match_for_name(self.macro_names.iter().map(|ident| &ident.name), name, None)
+            find_best_match_for_name(
+                self.macro_names.iter().map(|ident| &ident.name), &name.as_str(), None)
         } else {
             None
         // Then check global macros.
@@ -1023,7 +1024,7 @@ impl<'a> Resolver<'a> {
                                                   .filter_map(|(name, binding)| {
                 if binding.macro_kind() == Some(kind) { Some(name) } else { None }
             });
-            find_best_match_for_name(names, name, None)
+            find_best_match_for_name(names, &name.as_str(), None)
         // Then check modules.
         }).or_else(|| {
             let is_macro = |res| {
@@ -1033,7 +1034,7 @@ impl<'a> Resolver<'a> {
                     false
                 }
             };
-            let ident = Ident::new(Symbol::intern(name), span);
+            let ident = Ident::new(name, span);
             self.lookup_typo_candidate(&[Segment::from_ident(ident)], MacroNS, is_macro, span)
                 .map(|suggestion| suggestion.candidate)
         });
@@ -1092,7 +1093,7 @@ impl<'a> Resolver<'a> {
                         current_legacy_scope: &mut LegacyScope<'a>) {
         self.local_macro_def_scopes.insert(item.id, self.current_module);
         let ident = item.ident;
-        if ident.name == "macro_rules" {
+        if ident.name == sym::macro_rules {
             self.session.span_err(item.span, "user-defined macros may not be named `macro_rules`");
         }
 

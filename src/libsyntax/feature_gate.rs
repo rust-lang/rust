@@ -22,13 +22,13 @@ use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
 use crate::parse::{token, ParseSess};
-use crate::symbol::Symbol;
+use crate::symbol::{Symbol, keywords, sym};
 use crate::tokenstream::TokenTree;
 
 use errors::{DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
-use syntax_pos::{Span, DUMMY_SP, sym};
+use syntax_pos::{Span, DUMMY_SP};
 use log::debug;
 use lazy_static::lazy_static;
 
@@ -562,9 +562,9 @@ declare_features! (
 // Some features are known to be incomplete and using them is likely to have
 // unanticipated results, such as compiler crashes. We warn the user about these
 // to alert them.
-const INCOMPLETE_FEATURES: &[&str] = &[
-    "generic_associated_types",
-    "const_generics"
+const INCOMPLETE_FEATURES: &[Symbol] = &[
+    sym::generic_associated_types,
+    sym::const_generics
 ];
 
 declare_features! (
@@ -1947,7 +1947,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.node {
             ast::ItemKind::Const(_,_) => {
-                if i.ident.name == "_" {
+                if i.ident.name == keywords::Underscore.name() {
                     gate_feature_post!(&self, underscore_const_names, i.span,
                                         "naming constants with `_` is unstable");
                 }
@@ -2304,7 +2304,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         if edition <= crate_edition {
             // The `crate_edition` implies its respective umbrella feature-gate
             // (i.e., `#![feature(rust_20XX_preview)]` isn't needed on edition 20XX).
-            edition_enabled_features.insert(Symbol::intern(edition.feature_name()), edition);
+            edition_enabled_features.insert(edition.feature_name(), edition);
         }
     }
 
@@ -2335,7 +2335,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             let name = mi.name_or_empty();
-            if INCOMPLETE_FEATURES.iter().any(|f| name == *f) {
+            if INCOMPLETE_FEATURES.iter().any(|f| name == f.as_str()) {
                 span_handler.struct_span_warn(
                     mi.span(),
                     &format!(
@@ -2345,7 +2345,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 ).emit();
             }
 
-            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
+            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name().as_str()) {
                 if *edition <= crate_edition {
                     continue;
                 }

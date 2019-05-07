@@ -837,7 +837,7 @@ impl<'a> CrateLoader<'a> {
 
             let mut uses_std = false;
             self.cstore.iter_crate_data(|_, data| {
-                if data.name == "std" {
+                if data.name == sym::std {
                     uses_std = true;
                 }
             });

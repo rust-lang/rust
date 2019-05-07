@@ -4383,7 +4383,7 @@ where
 
 // Start of code copied from rust-clippy
 
-pub fn path_to_def_local(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
+pub fn path_to_def_local(tcx: TyCtxt<'_, '_, '_>, path: &[Symbol]) -> Option<DefId> {
     let krate = tcx.hir().krate();
     let mut items = krate.module.item_ids.clone();
     let mut path_it = path.iter().peekable();
@@ -4408,7 +4408,7 @@ pub fn path_to_def_local(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId
     }
 }
 
-pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
+pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[Symbol]) -> Option<DefId> {
     let crates = tcx.crates();
 
     let krate = crates

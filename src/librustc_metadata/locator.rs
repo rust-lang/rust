@@ -225,7 +225,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::util::nodemap::FxHashMap;
 
 use errors::DiagnosticBuilder;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::struct_span_err;
 use syntax_pos::Span;
 use rustc_target::spec::{Target, TargetTriple};
@@ -408,7 +408,7 @@ impl<'a> Context<'a> {
                                            self.ident,
                                            add);
 
-            if (self.ident == "std" || self.ident == "core")
+            if (self.ident == sym::std || self.ident == sym::core)
                 && self.triple != TargetTriple::from_triple(config::host_triple()) {
                 err.note(&format!("the `{}` target may not be installed", self.triple));
             }

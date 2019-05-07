@@ -7,7 +7,7 @@ use std::mem;
 use std::fmt::{self, Write};
 use std::ops;
 
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, LitKind};
 use syntax::parse::ParseSess;
 use syntax::feature_gate::Features;
@@ -186,7 +186,7 @@ impl Cfg {
 
     fn should_use_with_in_description(&self) -> bool {
         match *self {
-            Cfg::Cfg(ref name, _) if name == &"target_feature" => true,
+            Cfg::Cfg(name, _) if name == sym::target_feature => true,
             _ => false,
         }
     }

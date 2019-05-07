@@ -376,7 +376,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
 
                     let mut item = self.fully_configure(item);
-                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != "derive"));
+                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
                     let mut item_with_markers = item.clone();
                     add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
                     let derives = derives.entry(invoc.expansion_data.mark).or_default();
@@ -1109,7 +1109,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                        -> Option<ast::Attribute> {
         let attr = attrs.iter()
                         .position(|a| {
-                            if a.path == "derive" {
+                            if a.path == sym::derive {
                                 *after_derive = true;
                             }
                             !attr::is_known(a) && !is_builtin_attr(a)
@@ -1117,7 +1117,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
             if !self.cx.ecfg.enable_custom_inner_attributes() &&
-               attr.style == ast::AttrStyle::Inner && attr.path != "test" {
+               attr.style == ast::AttrStyle::Inner && attr.path != sym::test {
                 emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
                                  attr.span, GateIssue::Language,
                                  "non-builtin inner attributes are unstable");
@@ -1167,7 +1167,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             self.check_attribute_inner(attr, features);
 
             // macros are expanded before any lint passes so this warning has to be hardcoded
-            if attr.path == "derive" {
+            if attr.path == sym::derive {
                 self.cx.struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();

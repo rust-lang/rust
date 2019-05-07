@@ -1812,8 +1812,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_str_path(
         &mut self,
         span: Span,
-        crate_root: Option<&str>,
-        components: &[&str],
+        crate_root: Option<Symbol>,
+        components: &[Symbol],
         is_value: bool
     ) -> hir::Path {
         let root = if crate_root.is_some() {
@@ -1825,7 +1825,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
-                    .map(Ident::from_str)
+                    .map(Ident::with_empty_ctxt)
             ).map(|i| self.new_ast_path_segment(i)).collect::<Vec<_>>();
 
 

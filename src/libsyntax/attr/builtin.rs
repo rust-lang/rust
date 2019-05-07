@@ -185,12 +185,12 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 
     'outer: for attr in attrs_iter {
         if ![
-            "rustc_deprecated",
-            "rustc_const_unstable",
-            "unstable",
-            "stable",
-            "rustc_promotable",
-            "rustc_allow_const_fn_ptr",
+            sym::rustc_deprecated,
+            sym::rustc_const_unstable,
+            sym::unstable,
+            sym::stable,
+            sym::rustc_promotable,
+            sym::rustc_allow_const_fn_ptr,
         ].iter().any(|&s| attr.path == s) {
             continue // not a stability level
         }
@@ -199,10 +199,10 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 
         let meta = attr.meta();
 
-        if attr.path == "rustc_promotable" {
+        if attr.path == sym::rustc_promotable {
             promotable = true;
         }
-        if attr.path == "rustc_allow_const_fn_ptr" {
+        if attr.path == sym::rustc_allow_const_fn_ptr {
             allow_const_fn_ptr = true;
         }
         // attributes with data
@@ -721,7 +721,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
 
     let mut acc = Vec::new();
     let diagnostic = &sess.span_diagnostic;
-    if attr.path == "repr" {
+    if attr.path == sym::repr {
         if let Some(items) = attr.meta_item_list() {
             mark_used(attr);
             for item in items {
@@ -770,14 +770,14 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     };
 
                     let mut literal_error = None;
-                    if name == "align" {
+                    if name == sym::align {
                         recognised = true;
                         match parse_alignment(&value.node) {
                             Ok(literal) => acc.push(ReprAlign(literal)),
                             Err(message) => literal_error = Some(message)
                         };
                     }
-                    else if name == "packed" {
+                    else if name == sym::packed {
                         recognised = true;
                         match parse_alignment(&value.node) {
                             Ok(literal) => acc.push(ReprPacked(literal)),

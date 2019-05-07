@@ -29,7 +29,7 @@ use rustc::{bug, span_bug};
 use syntax::ast::{self, Ident, Name, NodeId, CRATE_NODE_ID};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
 use syntax_pos::{MultiSpan, Span};
@@ -496,7 +496,8 @@ impl<'a> Resolver<'a> {
         // Reserve some names that are not quite covered by the general check
         // performed on `Resolver::builtin_attrs`.
         if ns == MacroNS &&
-           (ident.name == "cfg" || ident.name == "cfg_attr" || ident.name == "derive") {
+           (ident.name == sym::cfg || ident.name == sym::cfg_attr ||
+            ident.name == sym::derive) {
             self.session.span_err(ident.span,
                                   &format!("name `{}` is reserved in macro namespace", ident));
         }
@@ -706,7 +707,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 has_errors = true;
 
                 if let SingleImport { source, ref source_bindings, .. } = import.subclass {
-                    if source.name == "self" {
+                    if source.name == keywords::SelfLower.name() {
                         // Silence `unresolved import` error if E0429 is already emitted
                         if let Err(Determined) = source_bindings.value_ns.get() {
                             continue;
@@ -1041,7 +1042,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     let initial_res = source_bindings[ns].get().map(|initial_binding| {
                         all_ns_err = false;
                         if let Some(target_binding) = target_bindings[ns].get() {
-                            if target.name == "_" &&
+                            // Note that as_str() de-gensyms the Symbol
+                            if target.name.as_str() == "_" &&
                                initial_binding.is_extern_crate() && !initial_binding.is_import() {
                                 this.record_use(ident, ns, target_binding,
                                                 directive.module_path.is_empty());
@@ -1392,7 +1394,8 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             // (e.g. implicitly injected `std`) cannot be properly encoded in metadata,
             // so they can cause name conflict errors downstream.
             let is_good_import = binding.is_import() && !binding.is_ambiguity() &&
-                                 !(ident.name.is_gensymed() && ident.name != "_");
+                                 // Note that as_str() de-gensyms the Symbol
+                                 !(ident.name.is_gensymed() && ident.name.as_str() != "_");
             if is_good_import || binding.is_macro_def() {
                 let res = binding.res();
                 if res != Res::Err {

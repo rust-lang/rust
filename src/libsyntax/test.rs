@@ -272,7 +272,8 @@ fn generate_test_harness(sess: &ParseSess,
         test_cases: Vec::new(),
         reexport_test_harness_main,
         // N.B., doesn't consider the value of `--crate-name` passed on the command line.
-        is_libtest: attr::find_crate_name(&krate.attrs).map(|s| s == "test").unwrap_or(false),
+        is_libtest: attr::find_crate_name(&krate.attrs)
+            .map(|s| s == sym::test).unwrap_or(false),
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
         features,

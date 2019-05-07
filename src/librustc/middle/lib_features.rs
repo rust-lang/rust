@@ -76,7 +76,7 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
                     // This additional check for stability is to make sure we
                     // don't emit additional, irrelevant errors for malformed
                     // attributes.
-                    if *stab_attr != "stable" || since.is_some() {
+                    if *stab_attr != sym::stable || since.is_some() {
                         return Some((feature, since, attr.span));
                     }
                 }
