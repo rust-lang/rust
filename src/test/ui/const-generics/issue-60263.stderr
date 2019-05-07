@@ -1,0 +1,12 @@
+error[E0658]: const generics are unstable
+  --> $DIR/issue-60263.rs:1:16
+   |
+LL | struct B<const I: u8>;
+   |                ^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/44580
+   = help: add #![feature(const_generics)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.
