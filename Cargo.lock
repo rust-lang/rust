@@ -271,9 +271,10 @@ dependencies = [
  "libc 0.2.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "libgit2-sys 0.7.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "memchr 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "miow 0.3.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "opener 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "opener 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "pretty_env_logger 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "proptest 0.9.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1688,11 +1689,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "opener"
-version = "0.3.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
- "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -4202,7 +4201,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0b3a5d7cc97d6d30d8b9bc8fa19bf45349ffe46241e8816f50f62f6d6aaabee1"
 "checksum num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c51a3322e4bca9d212ad9a158a02abc6934d005490c054a2778df73a70aa0a30"
 "checksum open 1.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "c281318d992e4432cfa799969467003d05921582a7489a8325e37f8a450d5113"
-"checksum opener 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "04b1d6b086d9b3009550f9b6f81b10ad9428cf14f404b8e1a3a06f6f012c8ec9"
+"checksum opener 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "998c59e83d9474c01127a96e023b7a04bb061dd286bf8bb939d31dc8d31a7448"
 "checksum openssl 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)" = "ec7bd7ca4cce6dbdc77e7c1230682740d307d1218a87fb0349a571272be749f9"
 "checksum openssl-probe 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "77af24da69f9d9341038eba93a073b1fdaaa1b788221b00a69bce9e762cb32de"
 "checksum openssl-src 111.1.0+1.1.1a (registry+https://github.com/rust-lang/crates.io-index)" = "26bb632127731bf4ac49bf86a5dde12d2ca0918c2234fc39d79d4da2ccbc6da7"
