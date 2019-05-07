@@ -23,7 +23,9 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("parse").arg(Arg::with_name("no-dump").long("--no-dump")))
         .subcommand(SubCommand::with_name("symbols"))
         .subcommand(
-            SubCommand::with_name("analysis-stats").arg(Arg::with_name("verbose").short("v")),
+            SubCommand::with_name("analysis-stats")
+                .arg(Arg::with_name("verbose").short("v"))
+                .arg(Arg::with_name("only").short("o").takes_value(true)),
         )
         .get_matches();
     match matches.subcommand() {
@@ -51,7 +53,8 @@ fn main() -> Result<()> {
         }
         ("analysis-stats", Some(matches)) => {
             let verbose = matches.is_present("verbose");
-            analysis_stats::run(verbose)?;
+            let only = matches.value_of("only");
+            analysis_stats::run(verbose, only)?;
         }
         _ => unreachable!(),
     }

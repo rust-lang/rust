@@ -7,7 +7,7 @@ use ra_syntax::AstNode;
 
 use crate::Result;
 
-pub fn run(verbose: bool) -> Result<()> {
+pub fn run(verbose: bool, only: Option<&str>) -> Result<()> {
     let db_load_time = Instant::now();
     let (db, roots) = BatchDatabase::load_cargo(".")?;
     println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
@@ -57,13 +57,18 @@ pub fn run(verbose: bool) -> Result<()> {
     let mut num_exprs_unknown = 0;
     let mut num_exprs_partially_unknown = 0;
     for f in funcs {
+        let name = f.name(&db);
         if verbose {
             let (file_id, source) = f.source(&db);
             let original_file = file_id.original_file(&db);
             let path = db.file_relative_path(original_file);
             let syntax_range = source.syntax().range();
-            let name = f.name(&db);
             println!("{} ({:?} {})", name, path, syntax_range);
+        }
+        if let Some(only_name) = only {
+            if name.to_string() != only_name {
+                continue;
+            }
         }
         let body = f.body(&db);
         let inference_result = f.infer(&db);
