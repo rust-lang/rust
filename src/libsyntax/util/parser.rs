@@ -267,6 +267,7 @@ pub enum ExprPrecedence {
     TryBlock,
     Struct,
     Async,
+    Await,
     Err,
 }
 
@@ -301,6 +302,7 @@ impl ExprPrecedence {
             ExprPrecedence::Unary => PREC_PREFIX,
 
             // Unary, postfix
+            ExprPrecedence::Await |
             ExprPrecedence::Call |
             ExprPrecedence::MethodCall |
             ExprPrecedence::Field |
@@ -346,6 +348,7 @@ pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
             // X { y: 1 } + X { y: 2 }
             contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
         }
+        ast::ExprKind::Await(_, ref x) |
         ast::ExprKind::Unary(_, ref x) |
         ast::ExprKind::Cast(ref x, _) |
         ast::ExprKind::Type(ref x, _) |

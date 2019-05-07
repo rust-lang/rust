@@ -2205,4 +2205,6 @@ register_diagnostics! {
     E0711, // a feature has been declared with conflicting stability attributes
 //  E0702, // replaced with a generic attribute input check
     E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
+    E0727, // `async` generators are not yet supported
+    E0728, // `await` must be in an `async` function or block
 }

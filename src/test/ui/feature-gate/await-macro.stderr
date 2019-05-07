@@ -1,0 +1,12 @@
+error[E0658]: `await!(<expr>)` macro syntax is unstable, and will soon be removed in favor of `<expr>.await` syntax.
+  --> $DIR/await-macro.rs:9:5
+   |
+LL |     await!(bar());
+   |     ^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/50547
+   = help: add #![feature(await_macro)] to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

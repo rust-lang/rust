@@ -1606,6 +1606,8 @@ pub enum LocalSource {
     /// }
     /// ```
     AsyncFn,
+    /// A desugared `<expr>.await`.
+    AwaitDesugar,
 }
 
 /// Hints at the original code for a `match _ { .. }`.
@@ -1624,6 +1626,8 @@ pub enum MatchSource {
     ForLoopDesugar,
     /// A desugared `?` operator.
     TryDesugar,
+    /// A desugared `<expr>.await`.
+    AwaitDesugar,
 }
 
 /// The loop type that yielded an `ExprKind::Loop`.

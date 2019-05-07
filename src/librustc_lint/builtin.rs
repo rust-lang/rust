@@ -46,7 +46,6 @@ use syntax::symbol::{Symbol, keywords};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
 use syntax::visit::FnKind;
-use syntax::struct_span_err;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
 
@@ -1438,15 +1437,10 @@ impl KeywordIdents {
                          UnderMacro(under_macro): UnderMacro,
                          ident: ast::Ident)
     {
-        let ident_str = &ident.as_str()[..];
-        let cur_edition = cx.sess.edition();
-        let is_raw_ident = |ident: ast::Ident| {
-            cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span)
-        };
-        let next_edition = match cur_edition {
+        let next_edition = match cx.sess.edition() {
             Edition::Edition2015 => {
-                match ident_str {
-                    "async" | "try" => Edition::Edition2018,
+                match &ident.as_str()[..] {
+                    "async" | "await" | "try" => Edition::Edition2018,
 
                     // rust-lang/rust#56327: Conservatively do not
                     // attempt to report occurrences of `dyn` within
@@ -1462,43 +1456,16 @@ impl KeywordIdents {
                     // an identifier.
                     "dyn" if !under_macro => Edition::Edition2018,
 
-                    // Only issue warnings for `await` if the `async_await`
-                    // feature isn't being used. Otherwise, users need
-                    // to keep using `await` for the macro exposed by std.
-                    "await" if !cx.sess.features_untracked().async_await => Edition::Edition2018,
                     _ => return,
                 }
             }
 
             // There are no new keywords yet for the 2018 edition and beyond.
-            // However, `await` is a "false" keyword in the 2018 edition,
-            // and can only be used if the `async_await` feature is enabled.
-            // Otherwise, we emit an error.
-            _ => {
-                if "await" == ident_str
-                    && !cx.sess.features_untracked().async_await
-                    && !is_raw_ident(ident)
-                {
-                    let mut err = struct_span_err!(
-                        cx.sess,
-                        ident.span,
-                        E0721,
-                        "`await` is a keyword in the {} edition", cur_edition,
-                    );
-                    err.span_suggestion(
-                        ident.span,
-                        "you can use a raw identifier to stay compatible",
-                        "r#await".to_string(),
-                        Applicability::MachineApplicable,
-                    );
-                    err.emit();
-                }
-                return
-            },
+            _ => return,
         };
 
         // don't lint `r#foo`
-        if is_raw_ident(ident) {
+        if cx.sess.parse_sess.raw_identifier_spans.borrow().contains(&ident.span) {
             return;
         }
 

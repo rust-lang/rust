@@ -2752,6 +2752,14 @@ impl<'a> Parser<'a> {
                     db.span_label(self.span, "expected expression");
                     db.note("variable declaration using `let` is a statement");
                     return Err(db);
+                } else if self.span.rust_2018() && self.eat_keyword(keywords::Await) {
+                    // FIXME: remove this branch when `await!` is no longer supported
+                    // https://github.com/rust-lang/rust/issues/60610
+                    self.expect(&token::Not)?;
+                    self.expect(&token::OpenDelim(token::Paren))?;
+                    let expr = self.parse_expr()?;
+                    self.expect(&token::CloseDelim(token::Paren))?;
+                    ex = ExprKind::Await(ast::AwaitOrigin::MacroLike, expr);
                 } else if self.token.is_path_start() {
                     let path = self.parse_path(PathStyle::Expr)?;
 
@@ -3015,6 +3023,15 @@ impl<'a> Parser<'a> {
 
     // Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
+        if self.span.rust_2018() && self.eat_keyword(keywords::Await) {
+            let span = lo.to(self.prev_span);
+            let await_expr = self.mk_expr(
+                span,
+                ExprKind::Await(ast::AwaitOrigin::FieldLike, self_arg),
+                ThinVec::new(),
+            );
+            return Ok(await_expr);
+        }
         let segment = self.parse_path_segment(PathStyle::Expr)?;
         self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
 

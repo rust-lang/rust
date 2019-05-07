@@ -77,6 +77,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
             hir::LocalSource::Normal => "local binding",
             hir::LocalSource::ForLoopDesugar => "`for` loop binding",
             hir::LocalSource::AsyncFn => "async fn binding",
+            hir::LocalSource::AwaitDesugar => "`await` future binding",
         });
 
         // Check legality of move bindings and `@` patterns.
@@ -412,8 +413,9 @@ fn check_arms<'a, 'tcx>(
                             err.emit();
                         }
 
-                        // Unreachable patterns in try expressions occur when one of the arms
-                        // are an uninhabited type. Which is OK.
+                        // Unreachable patterns in try and await expressions occur when one of
+                        // the arms are an uninhabited type. Which is OK.
+                        hir::MatchSource::AwaitDesugar |
                         hir::MatchSource::TryDesugar => {}
                     }
                 }

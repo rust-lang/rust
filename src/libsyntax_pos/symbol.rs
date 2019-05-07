@@ -84,6 +84,7 @@ symbols! {
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
         Async:              "async", // >= 2018 Edition only
+        Await:              "await", // >= 2018 Edition only
         Try:                "try", // >= 2018 Edition only
 
         // Special lifetime names

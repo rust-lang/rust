@@ -95,6 +95,7 @@ pub struct LoweringContext<'a> {
     modules: BTreeMap<NodeId, hir::ModuleItems>,
 
     is_generator: bool,
+    is_async_body: bool,
 
     catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
@@ -248,6 +249,7 @@ pub fn lower_crate(
         item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
+        is_async_body: false,
         is_in_trait_impl: false,
         lifetimes_to_define: Vec::new(),
         is_collecting_in_band_lifetimes: false,
@@ -801,8 +803,17 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn record_body(&mut self, value: hir::Expr, arguments: HirVec<hir::Arg>) -> hir::BodyId {
+        if self.is_generator && self.is_async_body {
+            span_err!(
+                self.sess,
+                value.span,
+                E0727,
+                "`async` generators are not yet supported",
+            );
+            self.sess.abort_if_errors();
+        }
         let body = hir::Body {
-            is_generator: self.is_generator,
+            is_generator: self.is_generator || self.is_async_body,
             arguments,
             value,
         };
@@ -1124,7 +1135,8 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     ) -> hir::ExprKind {
-        let prev_is_generator = mem::replace(&mut self.is_generator, true);
+        let prev_is_generator = mem::replace(&mut self.is_generator, false);
+        let prev_is_async_body = mem::replace(&mut self.is_async_body, true);
         let output = match ret_ty {
             Some(ty) => FunctionRetTy::Ty(P(ty.clone())),
             None => FunctionRetTy::Default(span),
@@ -1140,6 +1152,7 @@ impl<'a> LoweringContext<'a> {
         let body_expr = body(self);
         let body_id = self.record_body(body_expr, arguments);
         self.is_generator = prev_is_generator;
+        self.is_async_body = prev_is_async_body;
 
         let capture_clause = self.lower_capture_clause(capture_clause);
         let decl = self.lower_fn_decl(&decl, None, /* impl trait allowed */ false, None);
@@ -1167,11 +1180,13 @@ impl<'a> LoweringContext<'a> {
     where
         F: FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
     {
-        let prev = mem::replace(&mut self.is_generator, false);
+        let prev_generator = mem::replace(&mut self.is_generator, false);
+        let prev_async = mem::replace(&mut self.is_async_body, false);
         let arguments = self.lower_args(decl);
         let result = f(self);
         let r = self.record_body(result, arguments);
-        self.is_generator = prev;
+        self.is_generator = prev_generator;
+        self.is_async_body = prev_async;
         return r;
     }
 
@@ -4205,6 +4220,7 @@ impl<'a> LoweringContext<'a> {
                     })
                 })
             }
+            ExprKind::Await(_origin, ref expr) => self.lower_await(e.span, expr),
             ExprKind::Closure(
                 capture_clause, ref asyncness, movability, ref decl, ref body, fn_decl_span
             ) => {
@@ -4326,12 +4342,13 @@ impl<'a> LoweringContext<'a> {
                 let id = self.next_id();
                 let e1 = self.lower_expr(e1);
                 let e2 = self.lower_expr(e2);
-                let ty_path = P(self.std_path(e.span, &["ops", "RangeInclusive"], None, false));
-                let ty = P(self.ty_path(id, e.span, hir::QPath::Resolved(None, ty_path)));
-                let new_seg = P(hir::PathSegment::from_ident(Ident::from_str("new")));
-                let new_path = hir::QPath::TypeRelative(ty, new_seg);
-                let new = P(self.expr(e.span, hir::ExprKind::Path(new_path), ThinVec::new()));
-                hir::ExprKind::Call(new, hir_vec![e1, e2])
+                self.expr_call_std_assoc_fn(
+                    id,
+                    e.span,
+                    &["ops", "RangeInclusive"],
+                    "new",
+                    hir_vec![e1, e2],
+                )
             }
             ExprKind::Range(ref e1, ref e2, lims) => {
                 use syntax::ast::RangeLimits::*;
@@ -4468,9 +4485,7 @@ impl<'a> LoweringContext<'a> {
                 let expr = opt_expr
                     .as_ref()
                     .map(|x| self.lower_expr(x))
-                    .unwrap_or_else(||
-                    self.expr(e.span, hir::ExprKind::Tup(hir_vec![]), ThinVec::new())
-                );
+                    .unwrap_or_else(|| self.expr_unit(e.span));
                 hir::ExprKind::Yield(P(expr))
             }
 
@@ -4503,7 +4518,7 @@ impl<'a> LoweringContext<'a> {
                     let body = if let Some(else_expr) = wildcard_arm {
                         P(self.lower_expr(else_expr))
                     } else {
-                        self.expr_tuple(e.span, hir_vec![])
+                        P(self.expr_tuple(e.span, hir_vec![]))
                     };
                     arms.push(self.arm(hir_vec![wildcard_pattern], body));
                 }
@@ -4651,8 +4666,11 @@ impl<'a> LoweringContext<'a> {
                     let iter = P(self.expr_ident(head_sp, iter, iter_pat_nid));
                     let ref_mut_iter = self.expr_mut_addr_of(head_sp, iter);
                     let next_path = &["iter", "Iterator", "next"];
-                    let next_path = P(self.expr_std_path(head_sp, next_path, None, ThinVec::new()));
-                    let next_expr = P(self.expr_call(head_sp, next_path, hir_vec![ref_mut_iter]));
+                    let next_expr = P(self.expr_call_std_path(
+                        head_sp,
+                        next_path,
+                        hir_vec![ref_mut_iter],
+                    ));
                     let arms = hir_vec![pat_arm, break_arm];
 
                     P(self.expr(
@@ -4723,9 +4741,11 @@ impl<'a> LoweringContext<'a> {
                 // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
                 let into_iter_expr = {
                     let into_iter_path = &["iter", "IntoIterator", "into_iter"];
-                    let into_iter = P(self.expr_std_path(
-                            head_sp, into_iter_path, None, ThinVec::new()));
-                    P(self.expr_call(head_sp, into_iter, hir_vec![head]))
+                    P(self.expr_call_std_path(
+                        head_sp,
+                        into_iter_path,
+                        hir_vec![head],
+                    ))
                 };
 
                 let match_expr = P(self.expr_match(
@@ -4778,9 +4798,11 @@ impl<'a> LoweringContext<'a> {
                     let sub_expr = self.lower_expr(sub_expr);
 
                     let path = &["ops", "Try", "into_result"];
-                    let path = P(self.expr_std_path(
-                            unstable_span, path, None, ThinVec::new()));
-                    P(self.expr_call(e.span, path, hir_vec![sub_expr]))
+                    P(self.expr_call_std_path(
+                        unstable_span,
+                        path,
+                        hir_vec![sub_expr],
+                    ))
                 };
 
                 // `#[allow(unreachable_code)]`
@@ -4817,12 +4839,9 @@ impl<'a> LoweringContext<'a> {
                     let err_ident = self.str_to_ident("err");
                     let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
                     let from_expr = {
-                        let path = &["convert", "From", "from"];
-                        let from = P(self.expr_std_path(
-                                try_span, path, None, ThinVec::new()));
+                        let from_path = &["convert", "From", "from"];
                         let err_expr = self.expr_ident(try_span, err_ident, err_local_nid);
-
-                        self.expr_call(try_span, from, hir_vec![err_expr])
+                        self.expr_call_std_path(try_span, from_path, hir_vec![err_expr])
                     };
                     let from_err_expr =
                         self.wrap_in_try_constructor("from_error", from_expr, unstable_span);
@@ -5056,6 +5075,42 @@ impl<'a> LoweringContext<'a> {
         self.expr(span, hir::ExprKind::Call(e, args), ThinVec::new())
     }
 
+    // Note: associated functions must use `expr_call_std_path`.
+    fn expr_call_std_path(
+        &mut self,
+        span: Span,
+        path_components: &[&str],
+        args: hir::HirVec<hir::Expr>,
+    ) -> hir::Expr {
+        let path = P(self.expr_std_path(span, path_components, None, ThinVec::new()));
+        self.expr_call(span, path, args)
+    }
+
+    // Create an expression calling an associated function of an std type.
+    //
+    // Associated functions cannot be resolved through the normal `std_path` function,
+    // as they are resolved differently and so cannot use `expr_call_std_path`.
+    //
+    // This function accepts the path component (`ty_path_components`) separately from
+    // the name of the associated function (`assoc_fn_name`) in order to facilitate
+    // separate resolution of the type and creation of a path referring to its associated
+    // function.
+    fn expr_call_std_assoc_fn(
+        &mut self,
+        ty_path_id: hir::HirId,
+        span: Span,
+        ty_path_components: &[&str],
+        assoc_fn_name: &str,
+        args: hir::HirVec<hir::Expr>,
+    ) -> hir::ExprKind {
+        let ty_path = P(self.std_path(span, ty_path_components, None, false));
+        let ty = P(self.ty_path(ty_path_id, span, hir::QPath::Resolved(None, ty_path)));
+        let fn_seg = P(hir::PathSegment::from_ident(Ident::from_str(assoc_fn_name)));
+        let fn_path = hir::QPath::TypeRelative(ty, fn_seg);
+        let fn_expr = P(self.expr(span, hir::ExprKind::Path(fn_path), ThinVec::new()));
+        hir::ExprKind::Call(fn_expr, args)
+    }
+
     fn expr_ident(&mut self, span: Span, ident: Ident, binding: hir::HirId) -> hir::Expr {
         self.expr_ident_with_attrs(span, ident, binding, ThinVec::new())
     }
@@ -5127,8 +5182,12 @@ impl<'a> LoweringContext<'a> {
         self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
     }
 
-    fn expr_tuple(&mut self, sp: Span, exprs: hir::HirVec<hir::Expr>) -> P<hir::Expr> {
-        P(self.expr(sp, hir::ExprKind::Tup(exprs), ThinVec::new()))
+    fn expr_unit(&mut self, sp: Span) -> hir::Expr {
+        self.expr_tuple(sp, hir_vec![])
+    }
+
+    fn expr_tuple(&mut self, sp: Span, exprs: hir::HirVec<hir::Expr>) -> hir::Expr {
+        self.expr(sp, hir::ExprKind::Tup(exprs), ThinVec::new())
     }
 
     fn expr(&mut self, span: Span, node: hir::ExprKind, attrs: ThinVec<Attribute>) -> hir::Expr {
@@ -5182,6 +5241,23 @@ impl<'a> LoweringContext<'a> {
             span,
             targeted_by_break: false,
         }
+    }
+
+    fn expr_unsafe(&mut self, expr: P<hir::Expr>) -> hir::Expr {
+        let hir_id = self.next_id();
+        let span = expr.span;
+        self.expr(
+            span,
+            hir::ExprKind::Block(P(hir::Block {
+                stmts: hir_vec![],
+                expr: Some(expr),
+                hir_id,
+                rules: hir::UnsafeBlock(hir::CompilerGenerated),
+                span,
+                targeted_by_break: false,
+            }), None),
+            ThinVec::new(),
+        )
     }
 
     fn pat_ok(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
@@ -5258,12 +5334,11 @@ impl<'a> LoweringContext<'a> {
         span: Span,
         components: &[&str],
         params: Option<P<hir::GenericArgs>>,
-        is_value: bool
+        is_value: bool,
     ) -> hir::Path {
         let mut path = self.resolver
             .resolve_str_path(span, self.crate_root, components, is_value);
         path.segments.last_mut().unwrap().args = params;
-
 
         for seg in path.segments.iter_mut() {
             if seg.hir_id.is_some() {
@@ -5464,6 +5539,175 @@ impl<'a> LoweringContext<'a> {
         let from_err = P(self.expr_std_path(unstable_span, path, None,
                                             ThinVec::new()));
         P(self.expr_call(e.span, from_err, hir_vec![e]))
+    }
+
+    fn lower_await(
+        &mut self,
+        await_span: Span,
+        expr: &ast::Expr,
+    ) -> hir::ExprKind {
+        // to:
+        //
+        // {
+        //     let mut pinned = <expr>;
+        //     loop {
+        //         match ::std::future::poll_with_tls_context(unsafe {
+        //             ::std::pin::Pin::new_unchecked(&mut pinned)
+        //         }) {
+        //             ::std::task::Poll::Ready(x) => break x,
+        //             ::std::task::Poll::Pending => {},
+        //         }
+        //         yield ();
+        //     }
+        // }
+        if !self.is_async_body {
+            span_err!(
+                self.sess,
+                await_span,
+                E0728,
+                "`await` is only allowed inside `async` functions and blocks"
+            );
+            self.sess.abort_if_errors();
+        }
+        let span = self.mark_span_with_reason(
+            CompilerDesugaringKind::Await,
+            await_span,
+            None,
+        );
+        let gen_future_span = self.mark_span_with_reason(
+            CompilerDesugaringKind::Await,
+            await_span,
+            Some(vec![Symbol::intern("gen_future")].into()),
+        );
+
+        // let mut pinned = <expr>;
+        let expr = P(self.lower_expr(expr));
+        let pinned_ident = self.str_to_ident("pinned");
+        let (pinned_pat, pinned_pat_hid) = self.pat_ident_binding_mode(
+            span,
+            pinned_ident,
+            hir::BindingAnnotation::Mutable,
+        );
+        let pinned_let = self.stmt_let_pat(
+            span,
+            Some(expr),
+            pinned_pat,
+            hir::LocalSource::AwaitDesugar,
+        );
+
+        // ::std::future::poll_with_tls_context(unsafe {
+        //     ::std::pin::Pin::new_unchecked(&mut pinned)
+        // })`
+        let poll_expr = {
+            let pinned = P(self.expr_ident(span, pinned_ident, pinned_pat_hid));
+            let ref_mut_pinned = self.expr_mut_addr_of(span, pinned);
+            let pin_ty_id = self.next_id();
+            let new_unchecked_expr_kind = self.expr_call_std_assoc_fn(
+                pin_ty_id,
+                span,
+                &["pin", "Pin"],
+                "new_unchecked",
+                hir_vec![ref_mut_pinned],
+            );
+            let new_unchecked = P(self.expr(span, new_unchecked_expr_kind, ThinVec::new()));
+            let unsafe_expr = self.expr_unsafe(new_unchecked);
+            P(self.expr_call_std_path(
+                gen_future_span,
+                &["future", "poll_with_tls_context"],
+                hir_vec![unsafe_expr],
+            ))
+        };
+
+        // `::std::task::Poll::Ready(x) => break x`
+        let loop_node_id = self.sess.next_node_id();
+        let loop_hir_id = self.lower_node_id(loop_node_id);
+        let ready_arm = {
+            let x_ident = self.str_to_ident("x");
+            let (x_pat, x_pat_hid) = self.pat_ident(span, x_ident);
+            let x_expr = P(self.expr_ident(span, x_ident, x_pat_hid));
+            let ready_pat = self.pat_std_enum(
+                span,
+                &["task", "Poll", "Ready"],
+                hir_vec![x_pat],
+            );
+            let break_x = self.with_loop_scope(loop_node_id, |this| {
+                let expr_break = hir::ExprKind::Break(
+                    this.lower_loop_destination(None),
+                    Some(x_expr),
+                );
+                P(this.expr(await_span, expr_break, ThinVec::new()))
+            });
+            self.arm(hir_vec![ready_pat], break_x)
+        };
+
+        // `::std::task::Poll::Pending => {}`
+        let pending_arm = {
+            let pending_pat = self.pat_std_enum(
+                span,
+                &["task", "Poll", "Pending"],
+                hir_vec![],
+            );
+            let empty_block = P(hir::Block {
+                stmts: hir_vec![],
+                expr: None,
+                hir_id: self.next_id(),
+                rules: hir::DefaultBlock,
+                span,
+                targeted_by_break: false,
+            });
+            let empty_block = P(self.expr_block(empty_block, ThinVec::new()));
+            self.arm(hir_vec![pending_pat], empty_block)
+        };
+
+        let match_stmt = {
+            let match_expr = P(self.expr_match(
+                span,
+                poll_expr,
+                hir_vec![ready_arm, pending_arm],
+                hir::MatchSource::AwaitDesugar,
+            ));
+            hir::Stmt {
+                hir_id: self.next_id(),
+                node: hir::StmtKind::Expr(match_expr),
+                span,
+            }
+        };
+
+        let yield_stmt = {
+            let unit = self.expr_unit(span);
+            let yield_expr = P(self.expr(
+                span,
+                hir::ExprKind::Yield(P(unit)),
+                ThinVec::new(),
+            ));
+            hir::Stmt {
+                hir_id: self.next_id(),
+                node: hir::StmtKind::Expr(yield_expr),
+                span,
+            }
+        };
+
+        let loop_block = P(self.block_all(
+            span,
+            hir_vec![match_stmt, yield_stmt],
+            None,
+        ));
+
+        let loop_expr = P(hir::Expr {
+            hir_id: loop_hir_id,
+            node: hir::ExprKind::Loop(
+                loop_block,
+                None,
+                hir::LoopSource::Loop,
+            ),
+            span,
+            attrs: ThinVec::new(),
+        });
+
+        hir::ExprKind::Block(
+            P(self.block_all(span, hir_vec![pinned_let], Some(loop_expr))),
+            None,
+        )
     }
 }
 

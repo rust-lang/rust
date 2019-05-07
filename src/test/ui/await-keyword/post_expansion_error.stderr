@@ -1,8 +1,8 @@
-error[E0721]: `await` is a keyword in the 2018 edition
-  --> $DIR/post_expansion_error.rs:8:5
+error: expected expression, found `)`
+  --> $DIR/post_expansion_error.rs:8:12
    |
 LL |     await!()
-   |     ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
+   |            ^ expected expression
 
 error: aborting due to previous error
 

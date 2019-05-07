@@ -482,6 +482,10 @@ declare_features! (
     // Allows async and await syntax.
     (active, async_await, "1.28.0", Some(50547), None),
 
+    // Allows await! macro-like syntax.
+    // This will likely be removed prior to stabilization of async/await.
+    (active, await_macro, "1.28.0", Some(50547), None),
+
     // Allows reinterpretation of the bits of a value of one type as another type during const eval.
     (active, const_transmute, "1.29.0", Some(53605), None),
 
@@ -2126,6 +2130,20 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::Async(..) => {
                 gate_feature_post!(&self, async_await, e.span, "async blocks are unstable");
+            }
+            ast::ExprKind::Await(origin, _) => {
+                match origin {
+                    ast::AwaitOrigin::FieldLike =>
+                        gate_feature_post!(&self, async_await, e.span, "async/await is unstable"),
+                    ast::AwaitOrigin::MacroLike =>
+                        gate_feature_post!(
+                            &self,
+                            await_macro,
+                            e.span,
+                            "`await!(<expr>)` macro syntax is unstable, and will soon be removed \
+                            in favor of `<expr>.await` syntax."
+                        ),
+                }
             }
             _ => {}
         }
