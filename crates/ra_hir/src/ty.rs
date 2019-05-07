@@ -240,7 +240,7 @@ impl TraitRef {
 /// many there are. This is used to erase irrelevant differences between types
 /// before using them in queries.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct Canonical<T> {
+pub struct Canonical<T> {
     pub value: T,
     pub num_vars: usize,
 }
@@ -530,6 +530,23 @@ impl HirDisplay for Ty {
             Ty::Bound(idx) => write!(f, "?{}", idx)?,
             Ty::Unknown => write!(f, "{{unknown}}")?,
             Ty::Infer(..) => write!(f, "_")?,
+        }
+        Ok(())
+    }
+}
+
+impl HirDisplay for TraitRef {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        write!(
+            f,
+            "{}: {}",
+            self.substs[0].display(f.db),
+            self.trait_.name(f.db).unwrap_or_else(Name::missing)
+        )?;
+        if self.substs.len() > 1 {
+            write!(f, "<")?;
+            f.write_joined(&self.substs[1..], ", ")?;
+            write!(f, ">")?;
         }
         Ok(())
     }

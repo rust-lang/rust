@@ -328,8 +328,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Obligation::Trait(tr) => {
                     let canonicalized = self.canonicalizer().canonicalize_trait_ref(tr.clone());
                     (
-                        super::traits::implements(
-                            self.db,
+                        self.db.implements(
                             self.resolver.krate().unwrap(),
                             canonicalized.value.clone(),
                         ),

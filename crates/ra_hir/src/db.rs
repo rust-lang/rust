@@ -161,6 +161,13 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::traits::solver)]
     #[salsa::volatile]
     fn solver(&self, krate: Crate) -> Arc<Mutex<crate::ty::traits::Solver>>;
+
+    #[salsa::invoke(crate::ty::traits::implements)]
+    fn implements(
+        &self,
+        krate: Crate,
+        goal: crate::ty::Canonical<crate::ty::TraitRef>,
+    ) -> Option<crate::ty::traits::Solution>;
 }
 
 #[test]

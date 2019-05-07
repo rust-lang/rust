@@ -196,8 +196,7 @@ fn iterate_trait_method_candidates<T>(
                     if name.map_or(true, |name| sig.name() == name) && sig.has_self_param() {
                         if !known_implemented {
                             let trait_ref = canonical_trait_ref(db, t, ty.clone());
-                            // FIXME cache this implements check (without solution) in a query?
-                            if super::traits::implements(db, krate, trait_ref).is_none() {
+                            if db.implements(krate, trait_ref).is_none() {
                                 continue 'traits;
                             }
                         }

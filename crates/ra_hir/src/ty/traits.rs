@@ -1,6 +1,7 @@
 //! Trait solving using Chalk.
 use std::sync::{Arc, Mutex};
 
+use rustc_hash::FxHashSet;
 use log::debug;
 use chalk_ir::cast::Cast;
 
@@ -31,7 +32,7 @@ pub(crate) fn impls_for_trait(
     krate: Crate,
     trait_: Trait,
 ) -> Arc<[ImplBlock]> {
-    let mut impls = Vec::new();
+    let mut impls = FxHashSet::default();
     // We call the query recursively here. On the one hand, this means we can
     // reuse results from queries for different crates; on the other hand, this
     // will only ever get called for a few crates near the root of the tree (the
@@ -42,7 +43,7 @@ pub(crate) fn impls_for_trait(
     }
     let crate_impl_blocks = db.impls_in_crate(krate);
     impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(&trait_));
-    impls.into()
+    impls.into_iter().collect::<Vec<_>>().into()
 }
 
 fn solve(
@@ -125,11 +126,11 @@ fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct SolutionVariables(pub Canonical<Vec<Ty>>);
+pub struct SolutionVariables(pub Canonical<Vec<Ty>>);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// A (possible) solution for a proposed goal.
-pub(crate) enum Solution {
+pub enum Solution {
     /// The goal indeed holds, and there is a unique value for all existential
     /// variables.
     Unique(SolutionVariables),
@@ -144,7 +145,7 @@ pub(crate) enum Solution {
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// When a goal holds ambiguously (e.g., because there are multiple possible
 /// solutions), we issue a set of *guidance* back to type inference.
-pub(crate) enum Guidance {
+pub enum Guidance {
     /// The existential variables *must* have the given values if the goal is
     /// ever to hold, but that alone isn't enough to guarantee the goal will
     /// actually hold.
