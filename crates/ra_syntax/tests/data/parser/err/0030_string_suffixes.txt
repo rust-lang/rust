@@ -40,7 +40,6 @@ SOURCE_FILE@[0; 112)
         WHITESPACE@[43; 44) " "
         LITERAL@[44; 59)
           STRING@[44; 59) "\"string\"invalid"
-          err: `Invalid literal suffix`
         SEMI@[59; 60) ";"
       WHITESPACE@[60; 65) "\n    "
       LET_STMT@[65; 83)
@@ -53,7 +52,6 @@ SOURCE_FILE@[0; 112)
         WHITESPACE@[72; 73) " "
         LITERAL@[73; 82)
           BYTE@[73; 82) "b\'b\'_suff"
-          err: `Invalid literal suffix`
         SEMI@[82; 83) ";"
       WHITESPACE@[83; 88) "\n    "
       LET_STMT@[88; 109)
@@ -66,7 +64,6 @@ SOURCE_FILE@[0; 112)
         WHITESPACE@[95; 96) " "
         LITERAL@[96; 108)
           BYTE_STRING@[96; 108) "b\"bs\"invalid"
-          err: `Invalid literal suffix`
         SEMI@[108; 109) ";"
       WHITESPACE@[109; 110) "\n"
       R_CURLY@[110; 111) "}"

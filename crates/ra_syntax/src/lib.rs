@@ -23,7 +23,6 @@ mod syntax_node;
 mod syntax_text;
 mod syntax_error;
 mod parsing;
-mod string_lexing;
 mod validation;
 mod ptr;
 
