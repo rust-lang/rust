@@ -71,7 +71,10 @@ pub fn transcribe(
     interp: &FxHashMap<Ident, Rc<NamedMatch>>,
     src: Vec<quoted::TokenTree>,
 ) -> TokenStream {
-    assert!(src.len() > 0);
+    // Nothing for us to transcribe...
+    if src.is_empty() {
+        return TokenStream::empty();
+    }
 
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
     // we have yet to expand/are still expanding. We start the stack off with the whole RHS.
