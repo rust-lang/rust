@@ -63,62 +63,6 @@ pub use crate::intrinsics::transmute;
 /// The practical use cases for `forget` are rather specialized and mainly come
 /// up in unsafe or FFI code.
 ///
-/// ## Use case 1
-///
-/// You have created an uninitialized value using [`mem::uninitialized`][uninit].
-/// You must either initialize or `forget` it on every computation path before
-/// Rust drops it automatically, like at the end of a scope or after a panic.
-/// Running the destructor on an uninitialized value would be [undefined behavior][ub].
-///
-/// ```
-/// use std::mem;
-/// use std::ptr;
-///
-/// # let some_condition = false;
-/// unsafe {
-///     let mut uninit_vec: Vec<u32> = mem::uninitialized();
-///
-///     if some_condition {
-///         // Initialize the variable.
-///         ptr::write(&mut uninit_vec, Vec::new());
-///     } else {
-///         // Forget the uninitialized value so its destructor doesn't run.
-///         mem::forget(uninit_vec);
-///     }
-/// }
-/// ```
-///
-/// ## Use case 2
-///
-/// You have duplicated the bytes making up a value, without doing a proper
-/// [`Clone`][clone]. You need the value's destructor to run only once,
-/// because a double `free` is undefined behavior.
-///
-/// An example is a possible implementation of [`mem::swap`][swap]:
-///
-/// ```
-/// use std::mem;
-/// use std::ptr;
-///
-/// # #[allow(dead_code)]
-/// fn swap<T>(x: &mut T, y: &mut T) {
-///     unsafe {
-///         // Give ourselves some scratch space to work with
-///         let mut t: T = mem::uninitialized();
-///
-///         // Perform the swap, `&mut` pointers never alias
-///         ptr::copy_nonoverlapping(&*x, &mut t, 1);
-///         ptr::copy_nonoverlapping(&*y, x, 1);
-///         ptr::copy_nonoverlapping(&t, y, 1);
-///
-///         // y and t now point to the same thing, but we need to completely
-///         // forget `t` because we do not want to run the destructor for `T`
-///         // on its value, which is still owned somewhere outside this function.
-///         mem::forget(t);
-///     }
-/// }
-/// ```
-///
 /// [drop]: fn.drop.html
 /// [uninit]: fn.uninitialized.html
 /// [clone]: ../clone/trait.Clone.html

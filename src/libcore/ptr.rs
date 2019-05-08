@@ -155,12 +155,12 @@ pub use crate::intrinsics::write_bytes;
 /// location first:
 /// ```
 /// use std::ptr;
-/// use std::mem;
+/// use std::mem::{self, MaybeUninit};
 ///
 /// unsafe fn drop_after_copy<T>(to_drop: *mut T) {
-///     let mut copy: T = mem::uninitialized();
-///     ptr::copy(to_drop, &mut copy, 1);
-///     drop(copy);
+///     let mut copy: MaybeUninit<T> = MaybeUninit::uninit();
+///     ptr::copy(to_drop, copy.as_mut_ptr(), 1);
+///     drop(copy.assume_init());
 /// }
 ///
 /// #[repr(packed, C)]
