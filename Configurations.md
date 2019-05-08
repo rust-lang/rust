@@ -1980,7 +1980,7 @@ fn main() {
 
 ## `format_doc_comments`
 
-Format doc comments.
+Format code snippet in doc comments.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
