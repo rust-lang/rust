@@ -332,11 +332,10 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
             syn::NestedMeta::Meta(m) => Some(m),
             syn::NestedMeta::Literal(_) => None,
         })
-        .filter_map(|m| match m {
+        .find_map(|m| match m {
             syn::Meta::NameValue(ref i) if i.ident == "enable" => Some(i.clone().lit),
             _ => None,
         })
-        .next()
 }
 
 fn find_required_const(attrs: &[syn::Attribute]) -> Vec<usize> {
