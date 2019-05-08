@@ -162,7 +162,11 @@ impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
     Unsuffixed
 });
 
-impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
+impl_stable_hash_for!(struct ::syntax::ast::Lit {
+    node,
+    span
+});
+
 impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Str(value, style),
     Err(value),

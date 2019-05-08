@@ -16,7 +16,7 @@ use crate::ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
-use crate::source_map::{BytePos, Spanned, respan, dummy_spanned};
+use crate::source_map::{BytePos, Spanned, dummy_spanned};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::parser::Parser;
 use crate::parse::{self, ParseSess, PResult};
@@ -350,11 +350,11 @@ impl Attribute {
 /* Constructors */
 
 pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem {
-    let value = respan(value.span, LitKind::Str(value.node, ast::StrStyle::Cooked));
+    let value = Lit { node: LitKind::Str(value.node, ast::StrStyle::Cooked), span: value.span };
     mk_name_value_item(ident.span.to(value.span), ident, value)
 }
 
-pub fn mk_name_value_item(span: Span, ident: Ident, value: ast::Lit) -> MetaItem {
+pub fn mk_name_value_item(span: Span, ident: Ident, value: Lit) -> MetaItem {
     MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
 }
 
@@ -417,7 +417,7 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
 
 pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
-    let lit = respan(span, LitKind::Str(text, ast::StrStyle::Cooked));
+    let lit = Lit { node: LitKind::Str(text, ast::StrStyle::Cooked), span };
     Attribute {
         id,
         style,
@@ -562,7 +562,7 @@ impl MetaItemKind {
                 tokens.next();
                 return if let Some(TokenTree::Token(span, token)) = tokens.next() {
                     LitKind::from_token(token)
-                        .map(|lit| MetaItemKind::NameValue(Spanned { node: lit, span: span }))
+                        .map(|node| MetaItemKind::NameValue(Lit { node, span }))
                 } else {
                     None
                 };
@@ -609,7 +609,7 @@ impl NestedMetaItem {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
             if let Some(node) = LitKind::from_token(token) {
                 tokens.next();
-                return Some(NestedMetaItem::Literal(respan(span, node)));
+                return Some(NestedMetaItem::Literal(Lit { node, span }));
             }
         }
 

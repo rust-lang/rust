@@ -1351,7 +1351,11 @@ pub enum StrStyle {
 }
 
 /// A literal.
-pub type Lit = Spanned<LitKind>;
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+pub struct Lit {
+    pub node: LitKind,
+    pub span: Span,
+}
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
 pub enum LitIntType {

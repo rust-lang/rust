@@ -2140,15 +2140,14 @@ impl<'a> Parser<'a> {
     /// Matches `lit = true | false | token_lit`.
     crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
         let lo = self.span;
-        let lit = if self.eat_keyword(keywords::True) {
+        let node = if self.eat_keyword(keywords::True) {
             LitKind::Bool(true)
         } else if self.eat_keyword(keywords::False) {
             LitKind::Bool(false)
         } else {
-            let lit = self.parse_lit_token()?;
-            lit
+            self.parse_lit_token()?
         };
-        Ok(source_map::Spanned { node: lit, span: lo.to(self.prev_span) })
+        Ok(Lit { node, span: lo.to(self.prev_span) })
     }
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
