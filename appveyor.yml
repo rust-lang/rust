@@ -158,9 +158,9 @@ install:
   # Note that the LLVM installer is an NSIS installer
   #
   # Original downloaded here came from
-  # http://releases.llvm.org/7.0.0/LLVM-7.0.0-win64.exe
-  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-7.0.0-win64.exe
-  - if NOT defined MINGW_URL .\LLVM-7.0.0-win64.exe /S /NCRC /D=C:\clang-rust
+  # http://releases.llvm.org/8.0.0/LLVM-8.0.0-win64.exe
+  - if NOT defined MINGW_URL appveyor-retry appveyor DownloadFile https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/LLVM-8.0.0-win64.exe
+  - if NOT defined MINGW_URL .\LLVM-8.0.0-win64.exe /S /NCRC /D=C:\clang-rust
   - if NOT defined MINGW_URL set RUST_CONFIGURE_ARGS=%RUST_CONFIGURE_ARGS% --set llvm.clang-cl=C:\clang-rust\bin\clang-cl.exe
 
   # Here we do a pretty heinous thing which is to mangle the MinGW installation
