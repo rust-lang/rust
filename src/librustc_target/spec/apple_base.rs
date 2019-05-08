@@ -14,13 +14,7 @@ pub fn opts() -> TargetOptions {
     //
     // Here we detect what version is being requested, defaulting to 10.7. ELF
     // TLS is flagged as enabled if it looks to be supported.
-    let deployment_target = env::var("MACOSX_DEPLOYMENT_TARGET").ok();
-    let version = deployment_target.as_ref().and_then(|s| {
-        let mut i = s.splitn(2, '.');
-        i.next().and_then(|a| i.next().map(|b| (a, b)))
-    }).and_then(|(a, b)| {
-        a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok()
-    }).unwrap_or((10, 7));
+    let version = macos_deployment_target().unwrap_or((10, 7));
 
     TargetOptions {
         // macOS has -dead_strip, which doesn't rely on function_sections
@@ -39,4 +33,28 @@ pub fn opts() -> TargetOptions {
         emit_debug_gdb_scripts: false,
         .. Default::default()
     }
+}
+
+fn macos_deployment_target() -> Option<(u32, u32)> {
+    let deployment_target = env::var("MACOSX_DEPLOYMENT_TARGET").ok();
+    let version = deployment_target.as_ref().and_then(|s| {
+        let mut i = s.splitn(2, '.');
+        i.next().and_then(|a| i.next().map(|b| (a, b)))
+    }).and_then(|(a, b)| {
+        a.parse::<u32>().and_then(|a| b.parse::<u32>().map(|b| (a, b))).ok()
+    });
+
+    version
+}
+
+pub fn macos_llvm_target(arch: &str) -> String {
+    let version = macos_deployment_target();
+    let llvm_target = match version {
+        Some((major, minor)) => {
+            format!("{}-apple-macosx{}.{}.0", arch, major, minor)
+        },
+        None => format!("{}-apple-darwin", arch)
+    };
+
+    llvm_target
 }

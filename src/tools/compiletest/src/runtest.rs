@@ -1703,6 +1703,9 @@ impl<'test> TestCx<'test> {
             add_extern_priv(&private_lib, true);
         }
 
+        self.props.unset_rustc_env.clone()
+            .iter()
+            .fold(&mut rustc, |rustc, v| rustc.env_remove(v));
         rustc.envs(self.props.rustc_env.clone());
         self.compose_and_run(
             rustc,
