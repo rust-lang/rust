@@ -178,9 +178,9 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         let mut is_transparent = false;
 
         for hint in &hints {
-            let (article, allowed_targets) = match hint.name_or_empty().get() {
-                name @ "C" | name @ "align" => {
-                    is_c |= name == "C";
+            let (article, allowed_targets) = match hint.name_or_empty() {
+                name @ sym::C | name @ sym::align => {
+                    is_c |= name == sym::C;
                     if target != Target::Struct &&
                             target != Target::Union &&
                             target != Target::Enum {
@@ -189,7 +189,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
-                "packed" => {
+                sym::packed => {
                     if target != Target::Struct &&
                             target != Target::Union {
                                 ("a", "struct or union")
@@ -197,7 +197,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
-                "simd" => {
+                sym::simd => {
                     is_simd = true;
                     if target != Target::Struct {
                         ("a", "struct")
@@ -205,7 +205,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
-                "transparent" => {
+                sym::transparent => {
                     is_transparent = true;
                     if target != Target::Struct {
                         ("a", "struct")
@@ -213,9 +213,9 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
                         continue
                     }
                 }
-                "i8"  | "u8"  | "i16" | "u16" |
-                "i32" | "u32" | "i64" | "u64" |
-                "isize" | "usize" => {
+                sym::i8  | sym::u8  | sym::i16 | sym::u16 |
+                sym::i32 | sym::u32 | sym::i64 | sym::u64 |
+                sym::isize | sym::usize => {
                     int_reprs += 1;
                     if target != Target::Enum {
                         ("an", "enum")

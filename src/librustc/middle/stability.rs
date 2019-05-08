@@ -195,7 +195,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
             // Emit errors for non-staged-api crates.
             for attr in attrs {
                 let name = attr.name_or_empty();
-                if ["unstable", "stable", "rustc_deprecated"].contains(&name.get()) {
+                if [sym::unstable, sym::stable, sym::rustc_deprecated].contains(&name) {
                     attr::mark_used(attr);
                     self.tcx.sess.span_err(attr.span, "stability attributes may not be used \
                                                         outside of the standard library");

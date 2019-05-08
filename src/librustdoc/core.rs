@@ -421,19 +421,19 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
                 let name = attr.name_or_empty();
                 if attr.is_word() {
-                    if name == "no_default_passes" {
+                    if name == sym::no_default_passes {
                         report_deprecated_attr("no_default_passes", diag);
                         if default_passes == passes::DefaultPassOption::Default {
                             default_passes = passes::DefaultPassOption::None;
                         }
                     }
                 } else if let Some(value) = attr.value_str() {
-                    let sink = match name.get() {
-                        "passes" => {
+                    let sink = match name {
+                        sym::passes => {
                             report_deprecated_attr("passes = \"...\"", diag);
                             &mut manual_passes
                         },
-                        "plugins" => {
+                        sym::plugins => {
                             report_deprecated_attr("plugins = \"...\"", diag);
                             eprintln!("WARNING: #![doc(plugins = \"...\")] no longer functions; \
                                       see CVE-2018-1000622");
@@ -446,7 +446,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
                 }
 
-                if attr.is_word() && name == "document_private_items" {
+                if attr.is_word() && name == sym::document_private_items {
                     if default_passes == passes::DefaultPassOption::Default {
                         default_passes = passes::DefaultPassOption::Private;
                     }

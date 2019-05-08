@@ -50,7 +50,7 @@ use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::symbol::sym;
+use syntax::symbol::{Symbol, sym};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -573,23 +573,23 @@ pub fn run(mut krate: clean::Crate,
     // going to emit HTML
     if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
         for attr in attrs.lists(sym::doc) {
-            match (attr.name_or_empty().get(), attr.value_str()) {
-                ("html_favicon_url", Some(s)) => {
+            match (attr.name_or_empty(), attr.value_str()) {
+                (sym::html_favicon_url, Some(s)) => {
                     scx.layout.favicon = s.to_string();
                 }
-                ("html_logo_url", Some(s)) => {
+                (sym::html_logo_url, Some(s)) => {
                     scx.layout.logo = s.to_string();
                 }
-                ("html_playground_url", Some(s)) => {
+                (sym::html_playground_url, Some(s)) => {
                     markdown::PLAYGROUND.with(|slot| {
                         let name = krate.name.clone();
                         *slot.borrow_mut() = Some((Some(name), s.to_string()));
                     });
                 }
-                ("issue_tracker_base_url", Some(s)) => {
+                (sym::issue_tracker_base_url, Some(s)) => {
                     scx.issue_tracker_base_url = Some(s.to_string());
                 }
-                ("html_no_source", None) if attr.is_word() => {
+                (sym::html_no_source, None) if attr.is_word() => {
                     scx.include_sources = false;
                 }
                 _ => {}
@@ -3762,22 +3762,22 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     }
 }
 
-const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
-    "export_name",
-    "lang",
-    "link_section",
-    "must_use",
-    "no_mangle",
-    "repr",
-    "unsafe_destructor_blind_to_params",
-    "non_exhaustive"
+const ATTRIBUTE_WHITELIST: &'static [Symbol] = &[
+    sym::export_name,
+    sym::lang,
+    sym::link_section,
+    sym::must_use,
+    sym::no_mangle,
+    sym::repr,
+    sym::unsafe_destructor_blind_to_params,
+    sym::non_exhaustive
 ];
 
 fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item) -> fmt::Result {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty().get()) {
+        if !ATTRIBUTE_WHITELIST.contains(&attr.name_or_empty()) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {

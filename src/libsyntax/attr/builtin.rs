@@ -229,10 +229,9 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     )+
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match mi.name_or_empty().get() {
+                            match mi.name_or_empty() {
                                 $(
-                                    stringify!($name)
-                                        => if !get(mi, &mut $name) { continue 'outer },
+                                    sym::$name => if !get(mi, &mut $name) { continue 'outer },
                                 )+
                                 _ => {
                                     let expected = &[ $( stringify!($name) ),+ ];
@@ -259,8 +258,8 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                 }
             }
 
-            match meta.name_or_empty().get() {
-                "rustc_deprecated" => {
+            match meta.name_or_empty() {
+                sym::rustc_deprecated => {
                     if rustc_depr.is_some() {
                         span_err!(diagnostic, item_sp, E0540,
                                   "multiple rustc_deprecated attributes");
@@ -287,7 +286,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         }
                     }
                 }
-                "rustc_const_unstable" => {
+                sym::rustc_const_unstable => {
                     if rustc_const_unstable.is_some() {
                         span_err!(diagnostic, item_sp, E0553,
                                   "multiple rustc_const_unstable attributes");
@@ -302,7 +301,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         continue
                     }
                 }
-                "unstable" => {
+                sym::unstable => {
                     if stab.is_some() {
                         handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
                         break
@@ -313,10 +312,10 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     let mut issue = None;
                     for meta in metas {
                         if let Some(mi) = meta.meta_item() {
-                            match mi.name_or_empty().get() {
-                                "feature" => if !get(mi, &mut feature) { continue 'outer },
-                                "reason" => if !get(mi, &mut reason) { continue 'outer },
-                                "issue" => if !get(mi, &mut issue) { continue 'outer },
+                            match mi.name_or_empty() {
+                                sym::feature => if !get(mi, &mut feature) { continue 'outer },
+                                sym::reason => if !get(mi, &mut reason) { continue 'outer },
+                                sym::issue => if !get(mi, &mut issue) { continue 'outer },
                                 _ => {
                                     handle_errors(
                                         sess,
@@ -374,7 +373,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         }
                     }
                 }
-                "stable" => {
+                sym::stable => {
                     if stab.is_some() {
                         handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
                         break
@@ -385,11 +384,9 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     for meta in metas {
                         match meta {
                             NestedMetaItem::MetaItem(mi) => {
-                                match mi.name_or_empty().get() {
-                                    "feature" =>
-                                        if !get(mi, &mut feature) { continue 'outer },
-                                    "since" =>
-                                        if !get(mi, &mut since) { continue 'outer },
+                                match mi.name_or_empty() {
+                                    sym::feature => if !get(mi, &mut feature) { continue 'outer },
+                                    sym::since => if !get(mi, &mut since) { continue 'outer },
                                     _ => {
                                         handle_errors(
                                             sess,
@@ -542,14 +539,14 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
 
             // The unwraps below may look dangerous, but we've already asserted
             // that they won't fail with the loop above.
-            match cfg.name_or_empty().get() {
-                "any" => mis.iter().any(|mi| {
+            match cfg.name_or_empty() {
+                sym::any => mis.iter().any(|mi| {
                     eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
-                "all" => mis.iter().all(|mi| {
+                sym::all => mis.iter().all(|mi| {
                     eval_condition(mi.meta_item().unwrap(), sess, eval)
                 }),
-                "not" => {
+                sym::not => {
                     if mis.len() != 1 {
                         span_err!(sess.span_diagnostic, cfg.span, E0536, "expected 1 cfg-pattern");
                         return false;
@@ -645,9 +642,9 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
                 for meta in list {
                     match meta {
                         NestedMetaItem::MetaItem(mi) => {
-                            match mi.name_or_empty().get() {
-                                "since" => if !get(mi, &mut since) { continue 'outer },
-                                "note" => if !get(mi, &mut note) { continue 'outer },
+                            match mi.name_or_empty() {
+                                sym::since => if !get(mi, &mut since) { continue 'outer },
+                                sym::note => if !get(mi, &mut note) { continue 'outer },
                                 _ => {
                                     handle_errors(
                                         sess,
@@ -739,11 +736,11 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
 
                 let mut recognised = false;
                 if item.is_word() {
-                    let hint = match item.name_or_empty().get() {
-                        "C" => Some(ReprC),
-                        "packed" => Some(ReprPacked(1)),
-                        "simd" => Some(ReprSimd),
-                        "transparent" => Some(ReprTransparent),
+                    let hint = match item.name_or_empty() {
+                        sym::C => Some(ReprC),
+                        sym::packed => Some(ReprPacked(1)),
+                        sym::simd => Some(ReprSimd),
+                        sym::transparent => Some(ReprTransparent),
                         name => int_type_of_word(name).map(ReprInt),
                     };
 
@@ -830,22 +827,22 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
     acc
 }
 
-fn int_type_of_word(s: &str) -> Option<IntType> {
+fn int_type_of_word(s: Symbol) -> Option<IntType> {
     use IntType::*;
 
     match s {
-        "i8" => Some(SignedInt(ast::IntTy::I8)),
-        "u8" => Some(UnsignedInt(ast::UintTy::U8)),
-        "i16" => Some(SignedInt(ast::IntTy::I16)),
-        "u16" => Some(UnsignedInt(ast::UintTy::U16)),
-        "i32" => Some(SignedInt(ast::IntTy::I32)),
-        "u32" => Some(UnsignedInt(ast::UintTy::U32)),
-        "i64" => Some(SignedInt(ast::IntTy::I64)),
-        "u64" => Some(UnsignedInt(ast::UintTy::U64)),
-        "i128" => Some(SignedInt(ast::IntTy::I128)),
-        "u128" => Some(UnsignedInt(ast::UintTy::U128)),
-        "isize" => Some(SignedInt(ast::IntTy::Isize)),
-        "usize" => Some(UnsignedInt(ast::UintTy::Usize)),
+        sym::i8 => Some(SignedInt(ast::IntTy::I8)),
+        sym::u8 => Some(UnsignedInt(ast::UintTy::U8)),
+        sym::i16 => Some(SignedInt(ast::IntTy::I16)),
+        sym::u16 => Some(UnsignedInt(ast::UintTy::U16)),
+        sym::i32 => Some(SignedInt(ast::IntTy::I32)),
+        sym::u32 => Some(UnsignedInt(ast::UintTy::U32)),
+        sym::i64 => Some(SignedInt(ast::IntTy::I64)),
+        sym::u64 => Some(UnsignedInt(ast::UintTy::U64)),
+        sym::i128 => Some(SignedInt(ast::IntTy::I128)),
+        sym::u128 => Some(UnsignedInt(ast::UintTy::U128)),
+        sym::isize => Some(SignedInt(ast::IntTy::Isize)),
+        sym::usize => Some(UnsignedInt(ast::UintTy::Usize)),
         _ => None
     }
 }

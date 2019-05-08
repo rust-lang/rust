@@ -650,9 +650,8 @@ impl<'a> CrateLoader<'a> {
     /// SVH and DefIndex of the registrar function.
     pub fn find_plugin_registrar(&mut self,
                                  span: Span,
-                                 name: &str)
+                                 name: Symbol)
                                  -> Option<(PathBuf, CrateDisambiguator)> {
-        let name = Symbol::intern(name);
         let ekrate = self.read_extension_crate(span, name, name);
 
         if ekrate.target_only {

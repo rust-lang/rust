@@ -38,7 +38,7 @@ use syntax::ast;
 use syntax::source_map::{MultiSpan, ExpnFormat};
 use syntax::early_buffered_lints::BufferedEarlyLintId;
 use syntax::edition::Edition;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 
 pub use crate::lint::context::{LateContext, EarlyContext, LintContext, LintStore,
@@ -570,6 +570,17 @@ impl Level {
             _ => None,
         }
     }
+
+    /// Converts a symbol to a level.
+    pub fn from_symbol(x: Symbol) -> Option<Level> {
+        match x {
+            sym::allow => Some(Allow),
+            sym::warn => Some(Warn),
+            sym::deny => Some(Deny),
+            sym::forbid => Some(Forbid),
+            _ => None,
+        }
+    }
 }
 
 /// How a lint level was set.
@@ -752,7 +763,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 
 pub fn maybe_lint_level_root(tcx: TyCtxt<'_, '_, '_>, id: hir::HirId) -> bool {
     let attrs = tcx.hir().attrs_by_hir_id(id);
-    attrs.iter().any(|attr| Level::from_str(&attr.name_or_empty()).is_some())
+    attrs.iter().any(|attr| Level::from_symbol(attr.name_or_empty()).is_some())
 }
 
 fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)

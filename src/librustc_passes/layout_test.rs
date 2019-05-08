@@ -55,26 +55,26 @@ impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
                 // The `..` are the names of fields to dump.
                 let meta_items = attr.meta_item_list().unwrap_or_default();
                 for meta_item in meta_items {
-                    match meta_item.name_or_empty().get() {
-                        "abi" => {
+                    match meta_item.name_or_empty() {
+                        sym::abi => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("abi: {:?}", ty_layout.abi));
                         }
 
-                        "align" => {
+                        sym::align => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("align: {:?}", ty_layout.align));
                         }
 
-                        "size" => {
+                        sym::size => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("size: {:?}", ty_layout.size));
                         }
 
-                        "homogeneous_aggregate" => {
+                        sym::homogeneous_aggregate => {
                             self.tcx.sess.span_err(
                                 item.span,
                                 &format!(

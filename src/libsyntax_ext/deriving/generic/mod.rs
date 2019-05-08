@@ -464,8 +464,8 @@ impl<'a> TraitDef<'a> {
                 attrs.extend(item.attrs
                     .iter()
                     .filter(|a| {
-                        ["allow", "warn", "deny", "forbid", "stable", "unstable"]
-                            .contains(&a.name_or_empty().get())
+                        [sym::allow, sym::warn, sym::deny, sym::forbid, sym::stable, sym::unstable]
+                            .contains(&a.name_or_empty())
                     })
                     .cloned());
                 push(Annotatable::Item(P(ast::Item { attrs: attrs, ..(*newitem).clone() })))

@@ -1605,7 +1605,7 @@ impl<'a> Context<'a> {
             }
         }
         if !attr::is_known(attr) {
-            if attr.name_or_empty().starts_with("rustc_") {
+            if attr.name_or_empty().as_str().starts_with("rustc_") {
                 let msg = "unless otherwise specified, attributes with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics";
                 gate_feature!(self, rustc_attrs, attr.span, msg);
@@ -2335,7 +2335,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
             }
 
             let name = mi.name_or_empty();
-            if INCOMPLETE_FEATURES.iter().any(|f| name == f.as_str()) {
+            if INCOMPLETE_FEATURES.iter().any(|f| name == *f) {
                 span_handler.struct_span_warn(
                     mi.span(),
                     &format!(
@@ -2345,7 +2345,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                 ).emit();
             }
 
-            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name().as_str()) {
+            if let Some(edition) = ALL_EDITIONS.iter().find(|e| name == e.feature_name()) {
                 if *edition <= crate_edition {
                     continue;
                 }
