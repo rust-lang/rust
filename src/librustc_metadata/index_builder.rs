@@ -80,7 +80,7 @@ impl<'a, 'b, 'tcx> DerefMut for IndexBuilder<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     pub fn new(ecx: &'a mut EncodeContext<'b, 'tcx>) -> Self {
         IndexBuilder {
-            items: Index::new(ecx.tcx.hir().definitions().def_index_counts_lo_hi()),
+            items: Index::new(ecx.tcx.hir().definitions().def_index_count()),
             ecx,
         }
     }

@@ -36,7 +36,7 @@ use crate::dep_graph::DepGraph;
 use crate::hir::{self, ParamName};
 use crate::hir::HirVec;
 use crate::hir::map::{DefKey, DefPathData, Definitions};
-use crate::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CRATE_DEF_INDEX};
+use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::def::{Res, DefKind, PartialRes, PerNS};
 use crate::hir::{GenericArg, ConstArg};
 use crate::lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
@@ -418,7 +418,6 @@ impl<'a> LoweringContext<'a> {
                                 owner,
                                 id,
                                 DefPathData::Misc,
-                                DefIndexAddressSpace::High,
                                 Mark::root(),
                                 tree.prefix.span,
                             );
@@ -962,7 +961,6 @@ impl<'a> LoweringContext<'a> {
             parent_index,
             node_id,
             DefPathData::LifetimeNs(str_name),
-            DefIndexAddressSpace::High,
             Mark::root(),
             span,
         );
@@ -1763,7 +1761,6 @@ impl<'a> LoweringContext<'a> {
                         self.parent,
                         def_node_id,
                         DefPathData::LifetimeNs(name.ident().as_interned_str()),
-                        DefIndexAddressSpace::High,
                         Mark::root(),
                         lifetime.span,
                     );

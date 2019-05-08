@@ -4,7 +4,7 @@ note: No external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0/1:19 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_late[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:28 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_late[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                T,
                i32,
@@ -23,7 +23,7 @@ LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0/0:8 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_late[0]) with substs [
+   = note: defining type: DefId(0:24 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_late[0]) with substs [
                '_#1r,
                T,
            ]
@@ -34,7 +34,7 @@ note: No external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0/1:23 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_early[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:33 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_early[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                '_#2r,
                T,
@@ -54,7 +54,7 @@ LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0/0:9 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_early[0]) with substs [
+   = note: defining type: DefId(0:29 ~ projection_one_region_trait_bound_static_closure[317d]::no_relationships_early[0]) with substs [
                '_#1r,
                '_#2r,
                T,
@@ -66,7 +66,7 @@ note: No external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0/1:27 ~ projection_one_region_trait_bound_static_closure[317d]::projection_outlives[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:38 ~ projection_one_region_trait_bound_static_closure[317d]::projection_outlives[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                '_#2r,
                T,
@@ -86,7 +86,7 @@ LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0/0:10 ~ projection_one_region_trait_bound_static_closure[317d]::projection_outlives[0]) with substs [
+   = note: defining type: DefId(0:34 ~ projection_one_region_trait_bound_static_closure[317d]::projection_outlives[0]) with substs [
                '_#1r,
                '_#2r,
                T,
@@ -98,7 +98,7 @@ note: No external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0/1:31 ~ projection_one_region_trait_bound_static_closure[317d]::elements_outlive[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:43 ~ projection_one_region_trait_bound_static_closure[317d]::elements_outlive[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                '_#2r,
                T,
@@ -118,7 +118,7 @@ LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0/0:11 ~ projection_one_region_trait_bound_static_closure[317d]::elements_outlive[0]) with substs [
+   = note: defining type: DefId(0:39 ~ projection_one_region_trait_bound_static_closure[317d]::elements_outlive[0]) with substs [
                '_#1r,
                '_#2r,
                T,
@@ -130,7 +130,7 @@ note: No external requirements
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0/1:34 ~ projection_one_region_trait_bound_static_closure[317d]::one_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:47 ~ projection_one_region_trait_bound_static_closure[317d]::one_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                T,
                i32,
@@ -149,7 +149,7 @@ LL | |     with_signature(cell, t, |cell, t| require(cell, t));
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0/0:12 ~ projection_one_region_trait_bound_static_closure[317d]::one_region[0]) with substs [
+   = note: defining type: DefId(0:44 ~ projection_one_region_trait_bound_static_closure[317d]::one_region[0]) with substs [
                '_#1r,
                T,
            ]

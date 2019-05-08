@@ -1,6 +1,6 @@
 use crate::schema::*;
 
-use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace};
+use rustc::hir::def_id::{DefId, DefIndex};
 use rustc_serialize::opaque::Encoder;
 use std::u32;
 use log::debug;
@@ -75,14 +75,13 @@ impl FixedSizeEncoding for u32 {
 /// appropriate spot by calling `record_position`. We should never
 /// visit the same index twice.
 pub struct Index {
-    positions: [Vec<u8>; 2]
+    positions: Vec<u8>,
 }
 
 impl Index {
-    pub fn new((max_index_lo, max_index_hi): (usize, usize)) -> Index {
+    pub fn new(max_index: usize) -> Index {
         Index {
-            positions: [vec![0xff; max_index_lo * 4],
-                        vec![0xff; max_index_hi * 4]],
+            positions: vec![0xff; max_index * 4],
         }
     }
 
@@ -94,10 +93,9 @@ impl Index {
     pub fn record_index(&mut self, item: DefIndex, entry: Lazy<Entry<'_>>) {
         assert!(entry.position < (u32::MAX as usize));
         let position = entry.position as u32;
-        let space_index = item.address_space().index();
         let array_index = item.as_array_index();
 
-        let positions = &mut self.positions[space_index];
+        let positions = &mut self.positions;
         assert!(u32::read_from_bytes_at(positions, array_index) == u32::MAX,
                 "recorded position for item {:?} twice, first at {:?} and now at {:?}",
                 item,
@@ -111,13 +109,10 @@ impl Index {
         let pos = buf.position();
 
         // First we write the length of the lower range ...
-        buf.emit_raw_bytes(&(self.positions[0].len() as u32 / 4).to_le_bytes());
-        // ... then the values in the lower range ...
-        buf.emit_raw_bytes(&self.positions[0]);
-        // ... then the values in the higher range.
-        buf.emit_raw_bytes(&self.positions[1]);
-        LazySeq::with_position_and_length(pos as usize,
-            (self.positions[0].len() + self.positions[1].len()) / 4 + 1)
+        buf.emit_raw_bytes(&(self.positions.len() as u32 / 4).to_le_bytes());
+        // ... then the values.
+        buf.emit_raw_bytes(&self.positions);
+        LazySeq::with_position_and_length(pos as usize, self.positions.len() / 4 + 1)
     }
 }
 
@@ -131,16 +126,7 @@ impl<'tcx> LazySeq<Index> {
                def_index,
                self.len);
 
-        let i = def_index.as_array_index() + match def_index.address_space() {
-            DefIndexAddressSpace::Low => 0,
-            DefIndexAddressSpace::High => {
-                // This is a DefIndex in the higher range, so find out where
-                // that starts:
-                u32::read_from_bytes_at(bytes, 0) as usize
-            }
-        };
-
-        let position = u32::read_from_bytes_at(bytes, 1 + i);
+        let position = u32::read_from_bytes_at(bytes, 1 + def_index.as_array_index());
         if position == u32::MAX {
             debug!("Index::lookup: position=u32::MAX");
             None
