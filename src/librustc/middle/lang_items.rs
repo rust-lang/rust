@@ -1,13 +1,13 @@
-// Detecting language items.
-//
-// Language items are items that represent concepts intrinsic to the language
-// itself. Examples are:
-//
-// * Traits that specify "kinds"; e.g., "Sync", "Send".
-//
-// * Traits that represent operators; e.g., "Add", "Sub", "Index".
-//
-// * Functions called by the compiler itself.
+//! Detecting language items.
+//!
+//! Language items are items that represent concepts intrinsic to the language
+//! itself. Examples are:
+//!
+//! * Traits that specify "kinds"; e.g., "Sync", "Send".
+//!
+//! * Traits that represent operators; e.g., "Add", "Sub", "Index".
+//!
+//! * Functions called by the compiler itself.
 
 pub use self::LangItem::*;
 
@@ -32,6 +32,7 @@ macro_rules! language_item_table {
     ) => {
 
 enum_from_u32! {
+    /// A representation of all the valid language items in Rust.
     #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
     pub enum LangItem {
         $($variant,)*
@@ -39,6 +40,9 @@ enum_from_u32! {
 }
 
 impl LangItem {
+    /// Returns the `name` in `#[lang = "$name"]`.
+    /// For example, `LangItem::EqTraitLangItem`,
+    /// that is `#[lang = "eq"]` would result in `"eq"`.
     fn name(self) -> &'static str {
         match self {
             $( $variant => $name, )*
@@ -48,28 +52,38 @@ impl LangItem {
 
 #[derive(HashStable)]
 pub struct LanguageItems {
+    /// Mappings from lang items to their possibly found `DefId`s.
+    /// The index corresponds to the order in `LangItem`.
     pub items: Vec<Option<DefId>>,
+    /// Lang items that were not found during collection.
     pub missing: Vec<LangItem>,
 }
 
 impl LanguageItems {
-    pub fn new() -> LanguageItems {
-        fn foo(_: LangItem) -> Option<DefId> { None }
+    /// Construct an empty collection of lang items and no missing ones.
+    pub fn new() -> Self {
+        fn init_none(_: LangItem) -> Option<DefId> { None }
 
-        LanguageItems {
-            items: vec![$(foo($variant)),*],
+        Self {
+            items: vec![$(init_none($variant)),*],
             missing: Vec::new(),
         }
     }
 
+    /// Returns the mappings to the possibly found `DefId`s for each lang item.
     pub fn items(&self) -> &[Option<DefId>] {
         &*self.items
     }
 
+    /// Requires that a given `LangItem` was bound and returns the corresponding `DefId`.
+    /// If it wasn't bound, e.g. due to a missing `#[lang = "<it.name()>"]`,
+    /// returns an error message as a string.
     pub fn require(&self, it: LangItem) -> Result<DefId, String> {
         self.items[it as usize].ok_or_else(|| format!("requires `{}` lang_item", it.name()))
     }
 
+    /// Returns the kind of closure that `id`, which is one of the `Fn*` traits, corresponds to.
+    /// If `id` is not one of the `Fn*` traits, `None` is returned.
     pub fn fn_trait_kind(&self, id: DefId) -> Option<ty::ClosureKind> {
         match Some(id) {
             x if x == self.fn_trait() => Some(ty::ClosureKind::Fn),
@@ -80,6 +94,9 @@ impl LanguageItems {
     }
 
     $(
+        /// Returns the corresponding `DefId` for the lang item
+        #[doc = $name]
+        /// if it exists.
         #[allow(dead_code)]
         pub fn $method(&self) -> Option<DefId> {
             self.items[$variant as usize]
@@ -90,6 +107,7 @@ impl LanguageItems {
 struct LanguageItemCollector<'a, 'tcx: 'a> {
     items: LanguageItems,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    /// A mapping from the name of the lang item to its order and the form it must be of.
     item_refs: FxHashMap<&'static str, (usize, Target)>,
 }
 
@@ -105,32 +123,28 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
                 },
                 // Known lang item with attribute on incorrect target.
                 Some((_, expected_target)) => {
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.tcx.sess, span, E0718,
                         "`{}` language item must be applied to a {}",
                         value, expected_target,
-                    );
-                    err.span_label(
+                    ).span_label(
                         span,
                         format!(
                             "attribute should be applied to a {}, not a {}",
                             expected_target, actual_target,
                         ),
-                    );
-                    err.emit();
+                    ).emit();
                 },
                 // Unknown lang item.
                 _ => {
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.tcx.sess, span, E0522,
                         "definition of an unknown language item: `{}`",
                         value
-                    );
-                    err.span_label(
+                    ).span_label(
                         span,
                         format!("definition of unknown language item `{}`", value)
-                    );
-                    err.emit();
+                    ).emit();
                 },
             }
         }
@@ -190,32 +204,39 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     }
 }
 
+/// Extract the first `lang = "$name"` out of a list of attributes.
+/// The attributes `#[panic_handler]` and `#[alloc_error_handler]`
+/// are also extracted out when found.
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
-    for attribute in attrs {
-        if attribute.check_name("lang") {
-            if let Some(value) = attribute.value_str() {
-                return Some((value, attribute.span));
-            }
-        } else if attribute.check_name("panic_handler") {
-            return Some((Symbol::intern("panic_impl"), attribute.span))
-        } else if attribute.check_name("alloc_error_handler") {
-            return Some((Symbol::intern("oom"), attribute.span))
-        }
-    }
-
-    None
+    attrs.iter().find_map(|attr| Some(match attr {
+        _ if attr.check_name("lang") => (attr.value_str()?, attr.span),
+        _ if attr.check_name("panic_handler") => (Symbol::intern("panic_impl"), attr.span),
+        _ if attr.check_name("alloc_error_handler") => (Symbol::intern("oom"), attr.span),
+        _ => return None,
+    }))
 }
 
+/// Traverse and collect all the lang items in all crates.
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItems {
+    // Initialize the collector.
     let mut collector = LanguageItemCollector::new(tcx);
+
+    // Collect lang items in other crates.
     for &cnum in tcx.crates().iter() {
         for &(def_id, item_index) in tcx.defined_lang_items(cnum).iter() {
             collector.collect_item(item_index, def_id);
         }
     }
+
+    // Collect lang items in this crate.
     tcx.hir().krate().visit_all_item_likes(&mut collector);
+
+    // Extract out the found lang items.
     let LanguageItemCollector { mut items, .. } = collector;
+
+    // Find all required but not-yet-defined lang items.
     weak_lang_items::check_crate(tcx, &mut items);
+
     items
 }
 
@@ -382,6 +403,8 @@ language_item_table! {
 }
 
 impl<'a, 'tcx, 'gcx> TyCtxt<'a, 'tcx, 'gcx> {
+    /// Returns the `DefId` for a given `LangItem`.
+    /// If not found, fatally abort compilation.
     pub fn require_lang_item(&self, lang_item: LangItem) -> DefId {
         self.lang_items().require(lang_item).unwrap_or_else(|msg| {
             self.sess.fatal(&msg)
