@@ -12,6 +12,7 @@ use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use std::fmt::{self, Display};
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 #[derive(Copy, Clone, PartialEq)]
@@ -95,18 +96,18 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
     fn check_attributes(&self, item: &hir::Item, target: Target) {
         if target == Target::Fn || target == Target::Const {
             self.tcx.codegen_fn_attrs(self.tcx.hir().local_def_id_from_hir_id(item.hir_id));
-        } else if let Some(a) = item.attrs.iter().find(|a| a.check_name("target_feature")) {
+        } else if let Some(a) = item.attrs.iter().find(|a| a.check_name(sym::target_feature)) {
             self.tcx.sess.struct_span_err(a.span, "attribute should be applied to a function")
                 .span_label(item.span, "not a function")
                 .emit();
         }
 
         for attr in &item.attrs {
-            if attr.check_name("inline") {
+            if attr.check_name(sym::inline) {
                 self.check_inline(attr, &item.span, target)
-            } else if attr.check_name("non_exhaustive") {
+            } else if attr.check_name(sym::non_exhaustive) {
                 self.check_non_exhaustive(attr, item, target)
-            } else if attr.check_name("marker") {
+            } else if attr.check_name(sym::marker) {
                 self.check_marker(attr, item, target)
             }
         }
@@ -166,7 +167,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // ```
         let hints: Vec<_> = item.attrs
             .iter()
-            .filter(|attr| attr.check_name("repr"))
+            .filter(|attr| attr.check_name(sym::repr))
             .filter_map(|attr| attr.meta_item_list())
             .flatten()
             .collect();
@@ -268,10 +269,10 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
         // When checking statements ignore expressions, they will be checked later
         if let hir::StmtKind::Local(ref l) = stmt.node {
             for attr in l.attrs.iter() {
-                if attr.check_name("inline") {
+                if attr.check_name(sym::inline) {
                     self.check_inline(attr, &stmt.span, Target::Statement);
                 }
-                if attr.check_name("repr") {
+                if attr.check_name(sym::repr) {
                     self.emit_repr_error(
                         attr.span,
                         stmt.span,
@@ -289,10 +290,10 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
             _ => Target::Expression,
         };
         for attr in expr.attrs.iter() {
-            if attr.check_name("inline") {
+            if attr.check_name(sym::inline) {
                 self.check_inline(attr, &expr.span, target);
             }
-            if attr.check_name("repr") {
+            if attr.check_name(sym::repr) {
                 self.emit_repr_error(
                     attr.span,
                     expr.span,
@@ -305,7 +306,7 @@ impl<'a, 'tcx> CheckAttrVisitor<'a, 'tcx> {
 
     fn check_used(&self, item: &hir::Item, target: Target) {
         for attr in &item.attrs {
-            if attr.check_name("used") && target != Target::Static {
+            if attr.check_name(sym::used) && target != Target::Static {
                 self.tcx.sess
                     .span_err(attr.span, "attribute must be applied to a `static` variable");
             }

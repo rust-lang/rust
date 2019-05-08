@@ -230,7 +230,7 @@ impl BoxedResolver {
 
 pub struct PluginInfo {
     syntax_exts: Vec<NamedSyntaxExtension>,
-    attributes: Vec<(String, AttributeType)>,
+    attributes: Vec<(Symbol, AttributeType)>,
 }
 
 pub fn register_plugins<'a>(

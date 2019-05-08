@@ -12,7 +12,7 @@ use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSA
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 
 use std::ops::Bound;
 
@@ -612,7 +612,7 @@ fn report_unused_unsafe(tcx: TyCtxt<'_, '_, '_>,
 fn builtin_derive_def_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option<DefId> {
     debug!("builtin_derive_def_id({:?})", def_id);
     if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
-        if tcx.has_attr(impl_def_id, "automatically_derived") {
+        if tcx.has_attr(impl_def_id, sym::automatically_derived) {
             debug!("builtin_derive_def_id({:?}) - is {:?}", def_id, impl_def_id);
             Some(impl_def_id)
         } else {

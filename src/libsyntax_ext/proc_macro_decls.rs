@@ -13,12 +13,16 @@ use syntax::mut_visit::MutVisitor;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
 
-const PROC_MACRO_KINDS: [&str; 3] = ["proc_macro_derive", "proc_macro_attribute", "proc_macro"];
+const PROC_MACRO_KINDS: [Symbol; 3] = [
+    sym::proc_macro_derive,
+    sym::proc_macro_attribute,
+    sym::proc_macro
+];
 
 struct ProcMacroDerive {
     trait_name: ast::Name,
@@ -139,7 +143,7 @@ impl<'a> CollectProcMacros<'a> {
 
         let attributes_attr = list.get(1);
         let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
-            if !attr.check_name("attributes") {
+            if !attr.check_name(sym::attributes) {
                 self.handler.span_err(attr.span(), "second argument must be `attributes`")
             }
             attr.meta_item_list().unwrap_or_else(|| {
@@ -231,7 +235,7 @@ impl<'a> CollectProcMacros<'a> {
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.node {
-            if self.is_proc_macro_crate && attr::contains_name(&item.attrs, "macro_export") {
+            if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
                 self.handler.span_err(item.span, msg);
@@ -304,11 +308,11 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
             return;
         }
 
-        if attr.check_name("proc_macro_derive") {
+        if attr.check_name(sym::proc_macro_derive) {
             self.collect_custom_derive(item, attr);
-        } else if attr.check_name("proc_macro_attribute") {
+        } else if attr.check_name(sym::proc_macro_attribute) {
             self.collect_attr_proc_macro(item);
-        } else if attr.check_name("proc_macro") {
+        } else if attr.check_name(sym::proc_macro) {
             self.collect_bang_proc_macro(item);
         };
 

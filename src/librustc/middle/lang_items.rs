@@ -18,7 +18,7 @@ use crate::middle::weak_lang_items;
 use crate::util::nodemap::FxHashMap;
 
 use syntax::ast;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use rustc_macros::HashStable;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
@@ -209,9 +209,9 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 /// are also extracted out when found.
 pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
     attrs.iter().find_map(|attr| Some(match attr {
-        _ if attr.check_name("lang") => (attr.value_str()?, attr.span),
-        _ if attr.check_name("panic_handler") => (Symbol::intern("panic_impl"), attr.span),
-        _ if attr.check_name("alloc_error_handler") => (Symbol::intern("oom"), attr.span),
+        _ if attr.check_name(sym::lang) => (attr.value_str()?, attr.span),
+        _ if attr.check_name(sym::panic_handler) => (Symbol::intern("panic_impl"), attr.span),
+        _ if attr.check_name(sym::alloc_error_handler) => (Symbol::intern("oom"), attr.span),
         _ => return None,
     }))
 }

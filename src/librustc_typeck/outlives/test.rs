@@ -1,6 +1,7 @@
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
+use syntax::symbol::sym;
 
 pub fn test_inferred_outlives<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir()
@@ -18,7 +19,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for OutlivesTest<'a, 'tcx> {
 
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.
-        if self.tcx.has_attr(item_def_id, "rustc_outlives") {
+        if self.tcx.has_attr(item_def_id, sym::rustc_outlives) {
             let inferred_outlives_of = self.tcx.inferred_outlives_of(item_def_id);
             span_err!(
                 self.tcx.sess,

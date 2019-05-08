@@ -19,7 +19,7 @@ use syntax::{
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
     ptr::P,
-    symbol::Symbol
+    symbol::{Symbol, sym}
 };
 use syntax_pos::Span;
 
@@ -58,7 +58,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
     fn flat_map_item(&mut self, item: P<Item>) -> SmallVec<[P<Item>; 1]> {
         debug!("in submodule {}", self.in_submod);
 
-        let name = if attr::contains_name(&item.attrs, "global_allocator") {
+        let name = if attr::contains_name(&item.attrs, sym::global_allocator) {
             "global_allocator"
         } else {
             return mut_visit::noop_flat_map_item(item, self);

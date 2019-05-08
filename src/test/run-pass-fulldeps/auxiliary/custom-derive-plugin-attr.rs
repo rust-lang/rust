@@ -14,7 +14,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::{MultiDecorator, ExtCtxt, Annotatable};
 use syntax::ext::build::AstBuilder;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::ptr::P;
 use syntax_ext::deriving::generic::{TraitDef, MethodDef, combine_substructure};
 use syntax_ext::deriving::generic::{Substructure, Struct, EnumMatching};
@@ -71,7 +71,7 @@ fn totalsum_substructure(cx: &mut ExtCtxt, trait_span: Span,
     };
 
     fields.iter().fold(cx.expr_isize(trait_span, 0), |acc, ref item| {
-        if attr::contains_name(&item.attrs, "ignore") {
+        if attr::contains_name(&item.attrs, sym::ignore) {
             acc
         } else {
             cx.expr_binary(item.span, ast::BinOpKind::Add, acc,

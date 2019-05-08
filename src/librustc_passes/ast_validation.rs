@@ -15,7 +15,7 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
@@ -565,7 +565,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.has_proc_macro_decls = true;
         }
 
-        if attr::contains_name(&item.attrs, "global_allocator") {
+        if attr::contains_name(&item.attrs, sym::global_allocator) {
             self.has_global_allocator = true;
         }
 
@@ -676,8 +676,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
-                attr::first_attr_value_str_by_name(&item.attrs, "path");
-                if attr::contains_name(&item.attrs, "warn_directory_ownership") {
+                attr::first_attr_value_str_by_name(&item.attrs, sym::path);
+                if attr::contains_name(&item.attrs, sym::warn_directory_ownership) {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
                     self.session.buffer_lint(lint, item.id, item.span, msg);

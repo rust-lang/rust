@@ -50,6 +50,7 @@ use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::symbol::sym;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
@@ -571,7 +572,7 @@ pub fn run(mut krate: clean::Crate,
     // Crawl the crate attributes looking for attributes which control how we're
     // going to emit HTML
     if let Some(attrs) = krate.module.as_ref().map(|m| &m.attrs) {
-        for attr in attrs.lists("doc") {
+        for attr in attrs.lists(sym::doc) {
             match (attr.name_or_empty().get(), attr.value_str()) {
                 ("html_favicon_url", Some(s)) => {
                     scx.layout.favicon = s.to_string();
@@ -1388,8 +1389,8 @@ fn extern_location(e: &clean::ExternalCrate, extern_url: Option<&str>, dst: &Pat
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    e.attrs.lists("doc")
-     .filter(|a| a.check_name("html_root_url"))
+    e.attrs.lists(sym::doc)
+     .filter(|a| a.check_name(sym::html_root_url))
      .filter_map(|a| a.value_str())
      .map(|url| {
         let mut url = url.to_string();
@@ -1779,8 +1780,8 @@ impl<'a> Cache {
             let path = self.paths.get(&item.def_id)
                                  .map(|p| p.0[..p.0.len() - 1].join("::"))
                                  .unwrap_or("std".to_owned());
-            for alias in item.attrs.lists("doc")
-                                   .filter(|a| a.check_name("alias"))
+            for alias in item.attrs.lists(sym::doc)
+                                   .filter(|a| a.check_name(sym::alias))
                                    .filter_map(|a| a.value_str()
                                                     .map(|s| s.to_string().replace("\"", "")))
                                    .filter(|v| !v.is_empty())

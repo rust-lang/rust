@@ -27,6 +27,7 @@ use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
 use syntax::ptr::P;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
@@ -978,7 +979,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 self.tcx.sess.span_err(span, "cannot use unions in constant patterns");
                 PatternKind::Wild
             }
-            ty::Adt(adt_def, _) if !self.tcx.has_attr(adt_def.did, "structural_match") => {
+            ty::Adt(adt_def, _) if !self.tcx.has_attr(adt_def.did, sym::structural_match) => {
                 let path = self.tcx.def_path_str(adt_def.did);
                 let msg = format!(
                     "to use a constant of type `{}` in a pattern, \
@@ -990,7 +991,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 PatternKind::Wild
             }
             ty::Ref(_, ty::TyS { sty: ty::Adt(adt_def, _), .. }, _)
-            if !self.tcx.has_attr(adt_def.did, "structural_match") => {
+            if !self.tcx.has_attr(adt_def.did, sym::structural_match) => {
                 // HACK(estebank): Side-step ICE #53708, but anything other than erroring here
                 // would be wrong. Returnging `PatternKind::Wild` is not technically correct.
                 let path = self.tcx.def_path_str(adt_def.did);

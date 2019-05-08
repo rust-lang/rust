@@ -49,7 +49,7 @@ pub struct Registry<'a> {
     pub llvm_passes: Vec<String>,
 
     #[doc(hidden)]
-    pub attributes: Vec<(String, AttributeType)>,
+    pub attributes: Vec<(Symbol, AttributeType)>,
 }
 
 impl<'a> Registry<'a> {
@@ -169,7 +169,7 @@ impl<'a> Registry<'a> {
     /// Registered attributes will bypass the `custom_attribute` feature gate.
     /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
     /// lint. `CrateLevel` attributes will not be allowed on anything other than a crate.
-    pub fn register_attribute(&mut self, name: String, ty: AttributeType) {
+    pub fn register_attribute(&mut self, name: Symbol, ty: AttributeType) {
         self.attributes.push((name, ty));
     }
 }

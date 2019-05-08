@@ -35,6 +35,7 @@ use crate::util::nodemap::{FxHashMap, FxHashSet};
 use errors::{Applicability, DiagnosticBuilder};
 use std::fmt;
 use syntax::ast;
+use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, ExpnInfo, ExpnFormat};
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
@@ -329,7 +330,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return None
         };
 
-        if tcx.has_attr(impl_def_id, "rustc_on_unimplemented") {
+        if tcx.has_attr(impl_def_id, sym::rustc_on_unimplemented) {
             Some(impl_def_id)
         } else {
             None

@@ -25,6 +25,7 @@ use syntax::ast;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::FxHashMap;
@@ -802,7 +803,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             } else {
                 "parenthetical notation is only stable when used with `Fn`-family traits"
             };
-            emit_feature_err(&self.tcx().sess.parse_sess, "unboxed_closures",
+            emit_feature_err(&self.tcx().sess.parse_sess, sym::unboxed_closures,
                              span, GateIssue::Language, msg);
         }
 

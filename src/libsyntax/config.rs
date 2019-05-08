@@ -12,6 +12,7 @@ use crate::edition::Edition;
 use crate::mut_visit::*;
 use crate::parse::{token, ParseSess};
 use crate::ptr::P;
+use crate::symbol::sym;
 use crate::util::map_in_place::MapInPlace;
 
 use errors::Applicability;
@@ -90,7 +91,7 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
-        if !attr.check_name("cfg_attr") {
+        if !attr.check_name(sym::cfg_attr) {
             return vec![attr];
         }
 
@@ -205,7 +206,7 @@ impl<'a> StripUnconfigured<'a> {
     pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
         if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
             let mut err = feature_err(self.sess,
-                                      "stmt_expr_attributes",
+                                      sym::stmt_expr_attributes,
                                       attr.span,
                                       GateIssue::Language,
                                       EXPLAIN_STMT_ATTR_SYNTAX);
@@ -285,9 +286,9 @@ impl<'a> StripUnconfigured<'a> {
     /// See issue #51279.
     pub fn disallow_cfg_on_generic_param(&mut self, param: &ast::GenericParam) {
         for attr in param.attrs() {
-            let offending_attr = if attr.check_name("cfg") {
+            let offending_attr = if attr.check_name(sym::cfg) {
                 "cfg"
-            } else if attr.check_name("cfg_attr") {
+            } else if attr.check_name(sym::cfg_attr) {
                 "cfg_attr"
             } else {
                 continue;
@@ -350,5 +351,5 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
 }
 
 fn is_cfg(attr: &ast::Attribute) -> bool {
-    attr.check_name("cfg")
+    attr.check_name(sym::cfg)
 }

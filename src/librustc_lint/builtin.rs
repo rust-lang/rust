@@ -42,7 +42,7 @@ use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeTemplate, AttributeType};
 use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, keywords, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
 use syntax::visit::FnKind;
@@ -207,7 +207,7 @@ impl UnsafeCode {
 
 impl EarlyLintPass for UnsafeCode {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
-        if attr.check_name("allow_internal_unsafe") {
+        if attr.check_name(sym::allow_internal_unsafe) {
             self.report_unsafe(cx, attr.span, "`allow_internal_unsafe` allows defining \
                                                macros using unsafe without triggering \
                                                the `unsafe_code` lint at their call site");
@@ -285,7 +285,7 @@ pub struct MissingDoc {
 impl_lint_pass!(MissingDoc => [MISSING_DOCS]);
 
 fn has_doc(attr: &ast::Attribute) -> bool {
-    if !attr.check_name("doc") {
+    if !attr.check_name(sym::doc) {
         return false;
     }
 
@@ -295,7 +295,7 @@ fn has_doc(attr: &ast::Attribute) -> bool {
 
     if let Some(list) = attr.meta_item_list() {
         for meta in list {
-            if meta.check_name("include") || meta.check_name("hidden") {
+            if meta.check_name(sym::include) || meta.check_name(sym::hidden) {
                 return true;
             }
         }
@@ -355,10 +355,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'_, '_>, attrs: &[ast::Attribute]) {
         let doc_hidden = self.doc_hidden() ||
                          attrs.iter().any(|attr| {
-            attr.check_name("doc") &&
+            attr.check_name(sym::doc) &&
             match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::list_contains_name(&l, "hidden"),
+                Some(l) => attr::list_contains_name(&l, sym::hidden),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);
@@ -723,7 +723,7 @@ impl UnusedDocComment {
 
             let span = sugared_span.take().unwrap_or_else(|| attr.span);
 
-            if attr.check_name("doc") {
+            if attr.check_name(sym::doc) {
                 let mut err = cx.struct_span_lint(UNUSED_DOC_COMMENTS, span, "unused doc comment");
 
                 err.span_label(
@@ -829,7 +829,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
         match it.node {
             hir::ItemKind::Fn(.., ref generics, _) => {
-                if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, "no_mangle") {
+                if let Some(no_mangle_attr) = attr::find_by_name(&it.attrs, sym::no_mangle) {
                     for param in &generics.params {
                         match param.kind {
                             GenericParamKind::Lifetime { .. } => {}
@@ -856,7 +856,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InvalidNoMangleItems {
                 }
             }
             hir::ItemKind::Const(..) => {
-                if attr::contains_name(&it.attrs, "no_mangle") {
+                if attr::contains_name(&it.attrs, sym::no_mangle) {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
                     let msg = "const items should never be #[no_mangle]";
@@ -947,7 +947,7 @@ declare_lint_pass!(
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnstableFeatures {
     fn check_attribute(&mut self, ctx: &LateContext<'_, '_>, attr: &ast::Attribute) {
-        if attr.check_name("feature") {
+        if attr.check_name(sym::feature) {
             if let Some(items) = attr.meta_item_list() {
                 for item in items {
                     ctx.span_lint(UNSTABLE_FEATURES, item.span(), "unstable feature");
@@ -1382,7 +1382,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnnameableTestItems {
             return;
         }
 
-        if let Some(attr) = attr::find_by_name(&it.attrs, "rustc_test_marker") {
+        if let Some(attr) = attr::find_by_name(&it.attrs, sym::rustc_test_marker) {
             cx.struct_span_lint(
                 UNNAMEABLE_TEST_ITEMS,
                 attr.span,

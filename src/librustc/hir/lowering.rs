@@ -64,7 +64,7 @@ use syntax::ptr::P;
 use syntax::source_map::{respan, CompilerDesugaringKind, Spanned};
 use syntax::source_map::CompilerDesugaringKind::IfTemporary;
 use syntax::std_inject;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::{keywords, Symbol, sym};
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::parse::token::Token;
 use syntax::visit::{self, Visitor};
@@ -2727,7 +2727,7 @@ impl<'a> LoweringContext<'a> {
                         self.lower_ty(x, ImplTraitContext::disallowed())
                     }),
                     synthetic: param.attrs.iter()
-                                          .filter(|attr| attr.check_name("rustc_synthetic"))
+                                          .filter(|attr| attr.check_name(sym::rustc_synthetic))
                                           .map(|_| hir::SyntheticTyParamKind::ImplTrait)
                                           .next(),
                 };
@@ -2745,7 +2745,7 @@ impl<'a> LoweringContext<'a> {
             hir_id: self.lower_node_id(param.id),
             name,
             span: param.ident.span,
-            pure_wrt_drop: attr::contains_name(&param.attrs, "may_dangle"),
+            pure_wrt_drop: attr::contains_name(&param.attrs, sym::may_dangle),
             attrs: self.lower_attrs(&param.attrs),
             bounds,
             kind,
@@ -3773,8 +3773,8 @@ impl<'a> LoweringContext<'a> {
         let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
-            if !def.legacy || attr::contains_name(&i.attrs, "macro_export") ||
-                              attr::contains_name(&i.attrs, "rustc_doc_only_macro") {
+            if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) ||
+                              attr::contains_name(&i.attrs, sym::rustc_doc_only_macro) {
                 let body = self.lower_token_stream(def.stream());
                 let hir_id = self.lower_node_id(i.id);
                 self.exported_macros.push(hir::MacroDef {

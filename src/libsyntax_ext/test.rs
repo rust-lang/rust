@@ -7,7 +7,7 @@ use syntax::ext::hygiene::{self, Mark, SyntaxContext};
 use syntax::attr;
 use syntax::ast;
 use syntax::print::pprust;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::{DUMMY_SP, Span};
 use syntax::source_map::{ExpnInfo, MacroAttribute};
 use std::iter;
@@ -206,15 +206,15 @@ enum ShouldPanic {
 }
 
 fn should_ignore(i: &ast::Item) -> bool {
-    attr::contains_name(&i.attrs, "ignore")
+    attr::contains_name(&i.attrs, sym::ignore)
 }
 
 fn should_fail(i: &ast::Item) -> bool {
-    attr::contains_name(&i.attrs, "allow_fail")
+    attr::contains_name(&i.attrs, sym::allow_fail)
 }
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
-    match attr::find_by_name(&i.attrs, "should_panic") {
+    match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
             let ref sd = cx.parse_sess.span_diagnostic;
 
@@ -222,7 +222,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                 // Handle #[should_panic(expected = "foo")]
                 Some(list) => {
                     let msg = list.iter()
-                        .find(|mi| mi.check_name("expected"))
+                        .find(|mi| mi.check_name(sym::expected))
                         .and_then(|mi| mi.meta_item())
                         .and_then(|mi| mi.value_str());
                     if list.len() != 1 || msg.is_none() {
@@ -247,7 +247,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
 }
 
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_should_panic_attr = attr::contains_name(&i.attrs, "should_panic");
+    let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let ref sd = cx.parse_sess.span_diagnostic;
     if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.node {
         if header.unsafety == ast::Unsafety::Unsafe {

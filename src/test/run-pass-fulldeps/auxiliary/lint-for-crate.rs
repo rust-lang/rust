@@ -11,6 +11,7 @@ use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPass
 use rustc_plugin::Registry;
 use rustc::hir;
 use syntax::attr;
+use syntax::symbol::Symbol;
 
 macro_rules! fake_lint_pass {
     ($struct:ident, $lints:expr, $($attr:expr),*) => {
@@ -49,19 +50,19 @@ declare_lint!(CRATE_NOT_GREEN, Warn, "crate not marked with #![crate_green]");
 fake_lint_pass! {
     PassOkay,
     lint_array!(CRATE_NOT_OKAY), // Single lint
-    "rustc_crate_okay"
+    Symbol::intern("rustc_crate_okay")
 }
 
 fake_lint_pass! {
     PassRedBlue,
     lint_array!(CRATE_NOT_RED, CRATE_NOT_BLUE), // Multiple lints
-    "rustc_crate_red", "rustc_crate_blue"
+    Symbol::intern("rustc_crate_red"), Symbol::intern("rustc_crate_blue")
 }
 
 fake_lint_pass! {
     PassGreyGreen,
     lint_array!(CRATE_NOT_GREY, CRATE_NOT_GREEN, ), // Trailing comma
-    "rustc_crate_grey", "rustc_crate_green"
+    Symbol::intern("rustc_crate_grey"), Symbol::intern("rustc_crate_green")
 }
 
 #[plugin_registrar]

@@ -81,10 +81,7 @@ impl NestedMetaItem {
     }
 
     /// Returns `true` if this list item is a MetaItem with a name of `name`.
-    pub fn check_name<T>(&self, name: T) -> bool
-    where
-        Path: PartialEq<T>,
-    {
+    pub fn check_name(&self, name: Symbol) -> bool {
         self.meta_item().map_or(false, |meta_item| meta_item.check_name(name))
     }
 
@@ -154,10 +151,7 @@ impl Attribute {
     /// attribute is marked as used.
     ///
     /// To check the attribute name without marking it used, use the `path` field directly.
-    pub fn check_name<T>(&self, name: T) -> bool
-    where
-        Path: PartialEq<T>,
-    {
+    pub fn check_name(&self, name: Symbol) -> bool {
         let matches = self.path == name;
         if matches {
             mark_used(self);
@@ -250,10 +244,7 @@ impl MetaItem {
         }
     }
 
-    pub fn check_name<T>(&self, name: T) -> bool
-    where
-        Path: PartialEq<T>,
-    {
+    pub fn check_name(&self, name: Symbol) -> bool {
         self.path == name
     }
 
@@ -430,28 +421,28 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     }
 }
 
-pub fn list_contains_name(items: &[NestedMetaItem], name: &str) -> bool {
+pub fn list_contains_name(items: &[NestedMetaItem], name: Symbol) -> bool {
     items.iter().any(|item| {
         item.check_name(name)
     })
 }
 
-pub fn contains_name(attrs: &[Attribute], name: &str) -> bool {
+pub fn contains_name(attrs: &[Attribute], name: Symbol) -> bool {
     attrs.iter().any(|item| {
         item.check_name(name)
     })
 }
 
-pub fn find_by_name<'a>(attrs: &'a [Attribute], name: &str) -> Option<&'a Attribute> {
+pub fn find_by_name<'a>(attrs: &'a [Attribute], name: Symbol) -> Option<&'a Attribute> {
     attrs.iter().find(|attr| attr.check_name(name))
 }
 
-pub fn filter_by_name<'a>(attrs: &'a [Attribute], name: &'a str)
+pub fn filter_by_name<'a>(attrs: &'a [Attribute], name: Symbol)
     -> impl Iterator<Item = &'a Attribute> {
     attrs.iter().filter(move |attr| attr.check_name(name))
 }
 
-pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str) -> Option<Symbol> {
+pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: Symbol) -> Option<Symbol> {
     attrs.iter()
         .find(|at| at.check_name(name))
         .and_then(|at| at.value_str())

@@ -11,7 +11,7 @@ use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::ty::query::Providers;
 use crate::middle::privacy::AccessLevels;
 use crate::session::{DiagnosticMessageId, Session};
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast::Attribute;
 use syntax::errors::Applicability;
@@ -669,7 +669,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         match stability {
             Some(&Stability { level: attr::Unstable { reason, issue }, feature, .. }) => {
-                if span.allows_unstable(&feature.as_str()) {
+                if span.allows_unstable(feature) {
                     debug!("stability: skipping span={:?} since it is internal", span);
                     return EvalResult::Allow;
                 }
@@ -739,7 +739,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let error_id = (DiagnosticMessageId::StabilityId(issue), span_key, msg.clone());
                 let fresh = self.sess.one_time_diagnostics.borrow_mut().insert(error_id);
                 if fresh {
-                    emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,
+                    emit_feature_err(&self.sess.parse_sess, feature, span,
                                      GateIssue::Library(Some(issue)), &msg);
                 }
             }
@@ -802,13 +802,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
                 if adt_def.has_dtor(self.tcx) {
                     emit_feature_err(&self.tcx.sess.parse_sess,
-                                     "untagged_unions", item.span, GateIssue::Language,
+                                     sym::untagged_unions, item.span, GateIssue::Language,
                                      "unions with `Drop` implementations are unstable");
                 } else {
                     let param_env = self.tcx.param_env(def_id);
                     if !param_env.can_type_implement_copy(self.tcx, ty).is_ok() {
                         emit_feature_err(&self.tcx.sess.parse_sess,
-                                         "untagged_unions", item.span, GateIssue::Language,
+                                         sym::untagged_unions, item.span, GateIssue::Language,
                                          "unions with non-`Copy` fields are unstable");
                     }
                 }

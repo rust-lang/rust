@@ -5,7 +5,7 @@ use crate::feature_gate::{Features, GatedCfg};
 use crate::parse::ParseSess;
 
 use errors::{Applicability, Handler};
-use syntax_pos::{symbol::Symbol, Span};
+use syntax_pos::{symbol::Symbol, symbol::sym, Span};
 
 use super::{mark_used, MetaItemKind};
 
@@ -80,13 +80,13 @@ pub enum UnwindAttr {
 /// Determine what `#[unwind]` attribute is present in `attrs`, if any.
 pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Option<UnwindAttr> {
     attrs.iter().fold(None, |ia, attr| {
-        if attr.check_name("unwind") {
+        if attr.check_name(sym::unwind) {
             if let Some(meta) = attr.meta() {
                 if let MetaItemKind::List(items) = meta.node {
                     if items.len() == 1 {
-                        if items[0].check_name("allowed") {
+                        if items[0].check_name(sym::allowed) {
                             return Some(UnwindAttr::Allowed);
-                        } else if items[0].check_name("aborts") {
+                        } else if items[0].check_name(sym::aborts) {
                             return Some(UnwindAttr::Aborts);
                         }
                     }
@@ -153,9 +153,9 @@ pub struct RustcDeprecation {
 
 /// Checks if `attrs` contains an attribute like `#![feature(feature_name)]`.
 /// This will not perform any "sanity checks" on the form of the attributes.
-pub fn contains_feature_attr(attrs: &[Attribute], feature_name: &str) -> bool {
+pub fn contains_feature_attr(attrs: &[Attribute], feature_name: Symbol) -> bool {
     attrs.iter().any(|item| {
-        item.check_name("feature") &&
+        item.check_name(sym::feature) &&
         item.meta_item_list().map(|list| {
             list.iter().any(|mi| mi.is_word() && mi.check_name(feature_name))
         }).unwrap_or(false)
@@ -482,7 +482,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 }
 
 pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
-    super::first_attr_value_str_by_name(attrs, "crate_name")
+    super::first_attr_value_str_by_name(attrs, sym::crate_name)
 }
 
 /// Tests if a cfg-pattern matches the cfg set
@@ -593,7 +593,7 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
     let diagnostic = &sess.span_diagnostic;
 
     'outer: for attr in attrs_iter {
-        if !attr.check_name("deprecated") {
+        if !attr.check_name(sym::deprecated) {
             continue;
         }
 
@@ -790,7 +790,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     }
                 } else {
                     if let Some(meta_item) = item.meta_item() {
-                        if meta_item.check_name("align") {
+                        if meta_item.check_name(sym::align) {
                             if let MetaItemKind::NameValue(ref value) = meta_item.node {
                                 recognised = true;
                                 let mut err = struct_span_err!(diagnostic, item.span(), E0693,

@@ -22,7 +22,7 @@ use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{
     feature_err, is_builtin_attr_name, AttributeGate, GateIssue, Stability, BUILTIN_ATTRIBUTES,
 };
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, keywords, sym};
 use syntax::visit::Visitor;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
@@ -313,7 +313,8 @@ impl<'a> Resolver<'a> {
                             if !features.rustc_attrs {
                                 let msg = "unless otherwise specified, attributes with the prefix \
                                            `rustc_` are reserved for internal compiler diagnostics";
-                                self.report_unknown_attribute(path.span, &name, msg, "rustc_attrs");
+                                self.report_unknown_attribute(path.span, &name, msg,
+                                                              sym::rustc_attrs);
                             }
                         } else if !features.custom_attribute {
                             let msg = format!("The attribute `{}` is currently unknown to the \
@@ -323,7 +324,7 @@ impl<'a> Resolver<'a> {
                                 path.span,
                                 &name,
                                 &msg,
-                                "custom_attribute",
+                                sym::custom_attribute,
                             );
                         }
                     }
@@ -345,7 +346,7 @@ impl<'a> Resolver<'a> {
         Ok((res, self.get_macro(res)))
     }
 
-    fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: &str) {
+    fn report_unknown_attribute(&self, span: Span, name: &str, msg: &str, feature: Symbol) {
         let mut err = feature_err(
             &self.session.parse_sess,
             feature,
@@ -693,7 +694,7 @@ impl<'a> Resolver<'a> {
                 WhereToResolve::LegacyPluginHelpers => {
                     if (use_prelude || rust_2015) &&
                        self.session.plugin_attributes.borrow().iter()
-                                                     .any(|(name, _)| ident.name == &**name) {
+                                                     .any(|(name, _)| ident.name == *name) {
                         let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
                                        ty::Visibility::Public, DUMMY_SP, Mark::root())
                                        .to_name_binding(self.arenas);
@@ -1106,7 +1107,7 @@ impl<'a> Resolver<'a> {
             let ident = ident.modern();
             self.macro_names.insert(ident);
             let res = Res::Def(DefKind::Macro(MacroKind::Bang), def_id);
-            let is_macro_export = attr::contains_name(&item.attrs, "macro_export");
+            let is_macro_export = attr::contains_name(&item.attrs, sym::macro_export);
             let vis = if is_macro_export {
                 ty::Visibility::Public
             } else {
@@ -1124,7 +1125,7 @@ impl<'a> Resolver<'a> {
                 self.define(module, ident, MacroNS,
                             (res, vis, item.span, expansion, IsMacroExport));
             } else {
-                if !attr::contains_name(&item.attrs, "rustc_doc_only_macro") {
+                if !attr::contains_name(&item.attrs, sym::rustc_doc_only_macro) {
                     self.check_reserved_macro_name(ident, MacroNS);
                 }
                 self.unused_macros.insert(def_id);

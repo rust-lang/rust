@@ -11,6 +11,7 @@ use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
 use syntax::span_err;
+use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
 /// Pointer to a registrar function.
@@ -45,7 +46,7 @@ pub fn load_plugins(sess: &Session,
     // the feature enabled will result in an error later...
     if sess.features_untracked().plugin {
         for attr in &krate.attrs {
-            if !attr.check_name("plugin") {
+            if !attr.check_name(sym::plugin) {
                 continue;
             }
 

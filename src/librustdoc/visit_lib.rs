@@ -3,6 +3,7 @@ use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
 use rustc::ty::Visibility;
 use rustc::util::nodemap::FxHashSet;
+use syntax::symbol::sym;
 
 use std::cell::RefMut;
 
@@ -42,7 +43,7 @@ impl<'a, 'tcx> LibEmbargoVisitor<'a, 'tcx> {
 
     // Updates node level and returns the updated level
     fn update(&mut self, did: DefId, level: Option<AccessLevel>) -> Option<AccessLevel> {
-        let is_hidden = self.cx.tcx.get_attrs(did).lists("doc").has_word("hidden");
+        let is_hidden = self.cx.tcx.get_attrs(did).lists(sym::doc).has_word(sym::hidden);
 
         let old_level = self.access_levels.map.get(&did).cloned();
         // Accessibility levels can only grow

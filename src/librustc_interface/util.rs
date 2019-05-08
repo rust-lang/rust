@@ -35,7 +35,7 @@ use syntax::mut_visit::{*, MutVisitor, visit_clobber};
 use syntax::ast::BlockCheckMode;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::{self, ast, attr};
 #[cfg(not(parallel_compiler))]
 use std::{thread, panic};
@@ -495,7 +495,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
     let attr_types: Vec<config::CrateType> = attrs
         .iter()
         .filter_map(|a| {
-            if a.check_name("crate_type") {
+            if a.check_name(sym::crate_type) {
                 match a.value_str() {
                     Some(ref n) if *n == "rlib" => Some(config::CrateType::Rlib),
                     Some(ref n) if *n == "dylib" => Some(config::CrateType::Dylib),

@@ -33,7 +33,7 @@ use std::u32;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::Spanned;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax_pos::{self, hygiene, FileName, SourceFile, Span};
 use log::{debug, trace};
 
@@ -469,7 +469,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let attrs = tcx.hir().krate_attrs();
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateType::ProcMacro);
-        let has_default_lib_allocator = attr::contains_name(&attrs, "default_lib_allocator");
+        let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
         let has_global_allocator = *tcx.sess.has_global_allocator.get();
         let has_panic_handler = *tcx.sess.has_panic_handler.try_get().unwrap_or(&false);
 
@@ -496,13 +496,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             } else {
                 None
             },
-            compiler_builtins: attr::contains_name(&attrs, "compiler_builtins"),
-            needs_allocator: attr::contains_name(&attrs, "needs_allocator"),
-            needs_panic_runtime: attr::contains_name(&attrs, "needs_panic_runtime"),
-            no_builtins: attr::contains_name(&attrs, "no_builtins"),
-            panic_runtime: attr::contains_name(&attrs, "panic_runtime"),
-            profiler_runtime: attr::contains_name(&attrs, "profiler_runtime"),
-            sanitizer_runtime: attr::contains_name(&attrs, "sanitizer_runtime"),
+            compiler_builtins: attr::contains_name(&attrs, sym::compiler_builtins),
+            needs_allocator: attr::contains_name(&attrs, sym::needs_allocator),
+            needs_panic_runtime: attr::contains_name(&attrs, sym::needs_panic_runtime),
+            no_builtins: attr::contains_name(&attrs, sym::no_builtins),
+            panic_runtime: attr::contains_name(&attrs, sym::panic_runtime),
+            profiler_runtime: attr::contains_name(&attrs, sym::profiler_runtime),
+            sanitizer_runtime: attr::contains_name(&attrs, sym::sanitizer_runtime),
 
             crate_deps,
             dylib_dependency_formats,

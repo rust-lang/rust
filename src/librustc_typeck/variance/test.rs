@@ -1,6 +1,7 @@
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
+use syntax::symbol::sym;
 
 pub fn test_variance<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.hir().krate().visit_all_item_likes(&mut VarianceTest { tcx });
@@ -16,7 +17,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
 
         // For unit testing: check for a special "rustc_variance"
         // attribute and report an error with various results if found.
-        if self.tcx.has_attr(item_def_id, "rustc_variance") {
+        if self.tcx.has_attr(item_def_id, sym::rustc_variance) {
             let variances_of = self.tcx.variances_of(item_def_id);
             span_err!(self.tcx.sess,
                       item.span,

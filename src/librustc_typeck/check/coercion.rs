@@ -68,6 +68,7 @@ use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
 use syntax::ptr::P;
+use syntax::symbol::sym;
 use syntax_pos;
 
 struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -620,7 +621,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           "unsized_tuple_coercion",
+                                           sym::unsized_tuple_coercion,
                                            self.cause.span,
                                            feature_gate::GateIssue::Language,
                                            feature_gate::EXPLAIN_UNSIZED_TUPLE_COERCION);

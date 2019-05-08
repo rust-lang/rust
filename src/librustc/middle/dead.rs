@@ -19,6 +19,7 @@ use rustc_data_structures::fx::FxHashMap;
 
 use syntax::{ast, source_map};
 use syntax::attr;
+use syntax::symbol::sym;
 use syntax_pos;
 
 // Any local node that may call something in its body block should be
@@ -304,22 +305,22 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
 fn has_allow_dead_code_or_lang_attr(tcx: TyCtxt<'_, '_, '_>,
                                     id: hir::HirId,
                                     attrs: &[ast::Attribute]) -> bool {
-    if attr::contains_name(attrs, "lang") {
+    if attr::contains_name(attrs, sym::lang) {
         return true;
     }
 
     // Stable attribute for #[lang = "panic_impl"]
-    if attr::contains_name(attrs, "panic_handler") {
+    if attr::contains_name(attrs, sym::panic_handler) {
         return true;
     }
 
     // (To be) stable attribute for #[lang = "oom"]
-    if attr::contains_name(attrs, "alloc_error_handler") {
+    if attr::contains_name(attrs, sym::alloc_error_handler) {
         return true;
     }
 
     // Don't lint about global allocators
-    if attr::contains_name(attrs, "global_allocator") {
+    if attr::contains_name(attrs, sym::global_allocator) {
         return true;
     }
 

@@ -13,7 +13,7 @@ use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::Parser;
 use crate::parse::token::{self, NtTT};
 use crate::parse::token::Token::*;
-use crate::symbol::Symbol;
+use crate::symbol::{Symbol, sym};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use errors::FatalError;
@@ -376,7 +376,7 @@ pub fn compile(
     });
 
     if body.legacy {
-        let allow_internal_unstable = attr::find_by_name(&def.attrs, "allow_internal_unstable")
+        let allow_internal_unstable = attr::find_by_name(&def.attrs, sym::allow_internal_unstable)
             .map(|attr| attr
                 .meta_item_list()
                 .map(|list| list.iter()
@@ -399,11 +399,11 @@ pub fn compile(
                     vec![Symbol::intern("allow_internal_unstable_backcompat_hack")].into()
                 })
             );
-        let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
+        let allow_internal_unsafe = attr::contains_name(&def.attrs, sym::allow_internal_unsafe);
         let mut local_inner_macros = false;
-        if let Some(macro_export) = attr::find_by_name(&def.attrs, "macro_export") {
+        if let Some(macro_export) = attr::find_by_name(&def.attrs, sym::macro_export) {
             if let Some(l) = macro_export.meta_item_list() {
-                local_inner_macros = attr::list_contains_name(&l, "local_inner_macros");
+                local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
             }
         }
 
@@ -426,7 +426,7 @@ pub fn compile(
             edition,
         }
     } else {
-        let is_transparent = attr::contains_name(&def.attrs, "rustc_transparent_macro");
+        let is_transparent = attr::contains_name(&def.attrs, sym::rustc_transparent_macro);
 
         SyntaxExtension::DeclMacro {
             expander,

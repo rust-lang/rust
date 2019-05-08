@@ -18,6 +18,7 @@ use rustc_target::spec::TargetTriple;
 use syntax::source_map;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
+use syntax::symbol::sym;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 use parking_lot::ReentrantMutex;
@@ -415,7 +416,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             // Process all of the crate attributes, extracting plugin metadata along
             // with the passes which we are supposed to run.
-            for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
+            for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
                 let diag = ctxt.sess().diagnostic();
 
                 let name = attr.name_or_empty();

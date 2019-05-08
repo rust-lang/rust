@@ -12,6 +12,7 @@ use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
+use syntax::symbol::sym;
 
 pub fn test_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     if tcx.features().rustc_attrs {
@@ -32,7 +33,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
 
         if let ItemKind::Ty(..) = item.node {
             for attr in self.tcx.get_attrs(item_def_id).iter() {
-                if attr.check_name("rustc_layout") {
+                if attr.check_name(sym::rustc_layout) {
                     self.dump_layout_of(item_def_id, item, attr);
                 }
             }

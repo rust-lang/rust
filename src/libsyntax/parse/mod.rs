@@ -575,13 +575,15 @@ mod tests {
 
     #[test] fn crlf_doc_comments() {
         with_globals(|| {
+            use crate::symbol::sym;
+
             let sess = ParseSess::new(FilePathMapping::empty());
 
             let name_1 = FileName::Custom("crlf_source_1".to_string());
             let source = "/// doc comment\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_1, source, &sess)
                 .unwrap().unwrap();
-            let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
+            let doc = first_attr_value_str_by_name(&item.attrs, sym::doc).unwrap();
             assert_eq!(doc, "/// doc comment");
 
             let name_2 = FileName::Custom("crlf_source_2".to_string());
@@ -596,7 +598,7 @@ mod tests {
             let name_3 = FileName::Custom("clrf_source_3".to_string());
             let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_3, source, &sess).unwrap().unwrap();
-            let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
+            let doc = first_attr_value_str_by_name(&item.attrs, sym::doc).unwrap();
             assert_eq!(doc, "/** doc comment\n *  with CRLF */");
         });
     }

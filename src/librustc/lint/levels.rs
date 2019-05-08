@@ -14,7 +14,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
 use syntax::source_map::MultiSpan;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 
 pub struct LintLevelSets {
     list: Vec<LintSet>,
@@ -230,7 +230,7 @@ impl<'a> LintLevelsBuilder<'a> {
                                 if !self.sess.features_untracked().lint_reasons {
                                     feature_gate::emit_feature_err(
                                         &self.sess.parse_sess,
-                                        "lint_reasons",
+                                        sym::lint_reasons,
                                         item.span,
                                         feature_gate::GateIssue::Language,
                                         "lint reasons are experimental"

@@ -1,6 +1,7 @@
 //! Used by `rustc` when compiling a plugin crate.
 
 use syntax::attr;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
@@ -15,8 +16,7 @@ struct RegistrarFinder {
 impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
     fn visit_item(&mut self, item: &hir::Item) {
         if let hir::ItemKind::Fn(..) = item.node {
-            if attr::contains_name(&item.attrs,
-                                   "plugin_registrar") {
+            if attr::contains_name(&item.attrs, sym::plugin_registrar) {
                 self.registrars.push((item.hir_id, item.span));
             }
         }

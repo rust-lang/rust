@@ -27,7 +27,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use syntax::ast::Ident;
 use syntax::attr;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax_pos::Span;
 
 use std::{cmp, fmt, mem};
@@ -260,7 +260,8 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                                 ctor_vis = ty::Visibility::Restricted(
                                     DefId::local(CRATE_DEF_INDEX));
                                 let attrs = tcx.get_attrs(variant.def_id);
-                                span = attr::find_by_name(&attrs, "non_exhaustive").unwrap().span;
+                                span = attr::find_by_name(&attrs, sym::non_exhaustive)
+                                    .unwrap().span;
                                 descr = "crate-visible";
                             }
 
@@ -291,7 +292,7 @@ fn def_id_visibility<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                                 if adt_def.non_enum_variant().is_field_list_non_exhaustive() {
                                     ctor_vis =
                                         ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-                                    span = attr::find_by_name(&item.attrs, "non_exhaustive")
+                                    span = attr::find_by_name(&item.attrs, sym::non_exhaustive)
                                                 .unwrap().span;
                                     descr = "crate-visible";
                                 }
