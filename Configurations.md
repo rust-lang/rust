@@ -1978,9 +1978,9 @@ fn main() {
 }
 ```
 
-## `format_code_in_doc_comments`
+## `format_doc_comments`
 
-Format code snippet included in doc comments.
+Format doc comments.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
