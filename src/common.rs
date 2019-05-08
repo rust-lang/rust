@@ -622,6 +622,12 @@ impl<'a, 'tcx, B: Backend + 'a> layout::HasDataLayout for FunctionCx<'a, 'tcx, B
     }
 }
 
+impl<'a, 'tcx, B: Backend + 'a> layout::HasParamEnv<'tcx> for FunctionCx<'a, 'tcx, B> {
+    fn param_env(&self) -> ParamEnv<'tcx> {
+        ParamEnv::reveal_all()
+    }
+}
+
 impl<'a, 'tcx, B: Backend + 'a> HasTargetSpec for FunctionCx<'a, 'tcx, B> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
