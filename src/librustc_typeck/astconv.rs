@@ -699,6 +699,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             },
         );
 
+        // Convert associated-type bindings or constraints into a separate vector.
+        // Example: Given this:
+        //
+        //     T: Iterator<Item = u32>
+        //
+        // The `T` is passed in as a self-type; the `Item = u32` is
+        // not a "type parameter" of the `Iterator` trait, but rather
+        // a restriction on `<T as Iterator>::Item`, so it is passed
+        // back separately.
         let assoc_bindings = generic_args.bindings.iter()
             .map(|binding| {
                 let kind = if let hir::TyKind::AssocTyExistential(ref bounds) = binding.ty.node {
@@ -899,7 +908,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         true
     }
 
-    pub fn add_bounds(&self,
+    fn add_bounds(&self,
         param_ty: Ty<'tcx>,
         ast_bounds: &[hir::GenericBound],
         bounds: &mut Bounds<'tcx>,
@@ -1065,6 +1074,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         match binding.kind {
             ConvertedBindingKind::Equality(ref ty) => {
+                // "Desugar" a constraint like `T: Iterator<Item = u32>` this to
+                // the "projection predicate" for:
+                //
+                // `<T as Iterator>::Item = u32`
                 bounds.projection_bounds.push((candidate.map_bound(|trait_ref| {
                     ty::ProjectionPredicate {
                         projection_ty: ty::ProjectionTy::from_ref_and_name(
