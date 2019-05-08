@@ -639,7 +639,7 @@ impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             assert!(self.places[local].is_none());
                             self.places[local] = Some(value);
 
-                            if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 3 {
+                            if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
                                 self.replace_with_const(rval, value, statement.source_info.span);
                             }
                         }
