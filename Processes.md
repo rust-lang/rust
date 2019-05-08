@@ -6,6 +6,7 @@ In this Section, we describe how to stabilise an option of the rustfmt's configr
 
 ## Conditions
 
+- The design and implementation of the option are sound and clean.
 - The option is well tested, both in unit tests and, optimally, in real usage.
 - There is no open bug about the option that prevents its use.
 
