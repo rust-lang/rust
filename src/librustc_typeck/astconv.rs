@@ -571,6 +571,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Given the type/lifetime/const arguments provided to some path (along with
     /// an implicit `Self`, if this is a trait reference), returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
+    /// Also returns back constriants on associated types.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
     fn create_substs_for_ast_path<'a>(&self,
@@ -1091,6 +1092,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 }), binding.span));
             }
             ConvertedBindingKind::Constraint(ref ast_bounds) => {
+                // "Desugar" a constraint like `T: Iterator<Item: Debug>` to
+                //
+                // `<T as Iterator>::Item: Debug`
+                //
                 // Calling `skip_binder` is okay, because the predicates are re-bound later by
                 // `instantiate_poly_trait_ref`.
                 let param_ty = tcx.mk_projection(assoc_ty.def_id, candidate.skip_binder().substs);
