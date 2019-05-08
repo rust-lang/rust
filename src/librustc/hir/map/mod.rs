@@ -162,7 +162,12 @@ impl Forest {
     }
 }
 
-pub(super) type HirMap<'hir> = [Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>; 2];
+/// This type is effectively a `HashMap<HirId, Entry<'hir>>`,
+/// but is implemented by 3 layers of arrays.
+/// - the outer layer is `[A; 2]` and correspond to the 2 address spaces `DefIndex`es can be in
+/// - then we have `A = Vec<Option<B>>` mapping a `DefIndex`'s index to a inner value
+/// - which is `B = IndexVec<ItemLocalId, Option<Entry<'hir>>` which finally gives you the `Entry`.
+pub(super) type HirEntryMap<'hir> = [Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>; 2];
 
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
@@ -177,7 +182,7 @@ pub struct Map<'hir> {
     /// The SVH of the local crate.
     pub crate_hash: Svh,
 
-    map: HirMap<'hir>,
+    map: HirEntryMap<'hir>,
 
     definitions: &'hir Definitions,
 
@@ -1011,15 +1016,25 @@ impl<'hir> Map<'hir> {
 
     /// Returns an iterator that yields all the hir ids in the map.
     fn all_ids<'a>(&'a self) -> impl Iterator<Item = HirId> + 'a {
+        // This code is a bit awkward because the map is implemented as 3 levels of arrays,
+        // see the comment on `HirEntryMap`.
         let map = &self.map;
+
+        // Look at both the def index address spaces
         let spaces = [DefIndexAddressSpace::Low, DefIndexAddressSpace::High].iter().cloned();
         spaces.flat_map(move |space| {
-            map[space.index()].iter().enumerate().filter_map(|(i, local_map)| {
+            // Iterate over all the indices in the address space and return a reference to
+            // local maps and their index given that they exist.
+            let local_maps = map[space.index()].iter().enumerate().filter_map(|(i, local_map)| {
                 local_map.as_ref().map(|m| (i, m))
-            }).flat_map(move |(def_index, local_map)| {
+            });
+
+            local_maps.flat_map(move |(array_index, local_map)| {
+                // Iterate over each valid entry in the local map
                 local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
+                    // Reconstruct the HirId based on the 3 indices we used to find it
                     HirId {
-                        owner: DefIndex::from_array_index(def_index, space),
+                        owner: DefIndex::from_array_index(array_index, space),
                         local_id: i,
                     }
                 }))
