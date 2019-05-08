@@ -1,9 +1,11 @@
 use super::*;
 use crate::dep_graph::{DepGraph, DepKind, DepNodeIndex};
 use crate::hir;
+use crate::hir::map::HirEntryMap;
 use crate::hir::def_id::{LOCAL_CRATE, CrateNum};
 use crate::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::indexed_vec::IndexVec;
 use crate::ich::Fingerprint;
 use crate::middle::cstore::CrateStore;
 use crate::session::CrateDisambiguator;
@@ -12,6 +14,7 @@ use crate::util::nodemap::FxHashMap;
 use syntax::ast::NodeId;
 use syntax::source_map::SourceMap;
 use syntax_pos::Span;
+use std::iter::repeat;
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableHasherResult};
@@ -25,7 +28,7 @@ pub(super) struct NodeCollector<'a, 'hir> {
     source_map: &'a SourceMap,
 
     /// The node map
-    map: FxHashMap<HirId, Entry<'hir>>,
+    map: HirEntryMap<'hir>,
     /// The parent of this node
     parent_node: hir::HirId,
 
@@ -142,11 +145,15 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             );
         }
 
+        let (lo, hi) = definitions.def_index_counts_lo_hi();
+
         let mut collector = NodeCollector {
             krate,
             source_map: sess.source_map(),
-            map: FxHashMap::with_capacity_and_hasher(sess.current_node_id_count(),
-                Default::default()),
+            map: [
+                repeat(None).take(lo).collect(),
+                repeat(None).take(hi).collect(),
+            ],
             parent_node: hir::CRATE_HIR_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
@@ -171,7 +178,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                                                   crate_disambiguator: CrateDisambiguator,
                                                   cstore: &dyn CrateStore,
                                                   commandline_args_hash: u64)
-                                                  -> (FxHashMap<HirId, Entry<'hir>>, Svh)
+                                                  -> (HirEntryMap<'hir>, Svh)
     {
         self.hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
 
@@ -224,7 +231,17 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        self.map.insert(id, entry);
+        let local_map = &mut self.map[id.owner.address_space().index()][id.owner.as_array_index()];
+        let i = id.local_id.as_u32() as usize;
+        if local_map.is_none() {
+            *local_map = Some(IndexVec::with_capacity(i + 1));
+        }
+        let local_map = local_map.as_mut().unwrap();
+        let len = local_map.len();
+        if i >= len {
+            local_map.extend(repeat(None).take(i - len + 1));
+        }
+        local_map[id.local_id] = Some(entry);
     }
 
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
