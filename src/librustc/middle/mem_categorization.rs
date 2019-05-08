@@ -1300,8 +1300,16 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                         }
                     }
                     def => {
-                        span_bug!(pat.span, "tuple struct pattern didn't resolve \
-                                             to variant or struct {:?}", def);
+                        debug!(
+                            "tuple struct pattern didn't resolve to variant or struct {:?} at {:?}",
+                            def,
+                            pat.span,
+                        );
+                        self.tcx.sess.delay_span_bug(pat.span, &format!(
+                            "tuple struct pattern didn't resolve to variant or struct {:?}",
+                            def,
+                        ));
+                        return Err(());
                     }
                 };
 
