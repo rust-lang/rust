@@ -225,6 +225,7 @@ pub fn token_to_string(tok: &Token) -> String {
         /* Literals */
         token::Literal(lit, suf) => {
             let mut out = match lit {
+                token::Bool(_)          => panic!("literal token contains `Lit::Bool`"),
                 token::Byte(b)           => format!("b'{}'", b),
                 token::Char(c)           => format!("'{}'", c),
                 token::Err(c)            => format!("'{}'", c),

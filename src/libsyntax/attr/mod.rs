@@ -350,7 +350,9 @@ impl Attribute {
 /* Constructors */
 
 pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem {
-    let value = Lit { node: LitKind::Str(value.node, ast::StrStyle::Cooked), span: value.span };
+    let node = LitKind::Str(value.node, ast::StrStyle::Cooked);
+    let (token, suffix) = node.lit_token();
+    let value = Lit { node, token, suffix, span: value.span };
     mk_name_value_item(ident.span.to(value.span), ident, value)
 }
 
@@ -417,7 +419,9 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
 
 pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
-    let lit = Lit { node: LitKind::Str(text, ast::StrStyle::Cooked), span };
+    let node = LitKind::Str(text, ast::StrStyle::Cooked);
+    let (token, suffix) = node.lit_token();
+    let lit = Lit { node, token, suffix, span };
     Attribute {
         id,
         style,
@@ -562,7 +566,7 @@ impl MetaItemKind {
                 tokens.next();
                 return if let Some(TokenTree::Token(span, token)) = tokens.next() {
                     LitKind::from_token(token)
-                        .map(|node| MetaItemKind::NameValue(Lit { node, span }))
+                        .map(|(node, token, suffix)| MetaItemKind::NameValue(Lit { node, token, suffix, span }))
                 } else {
                     None
                 };
@@ -607,9 +611,9 @@ impl NestedMetaItem {
         where I: Iterator<Item = TokenTree>,
     {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
-            if let Some(node) = LitKind::from_token(token) {
+            if let Some((node, token, suffix)) = LitKind::from_token(token) {
                 tokens.next();
-                return Some(NestedMetaItem::Literal(Lit { node, span }));
+                return Some(NestedMetaItem::Literal(Lit { node, token, suffix, span }));
             }
         }
 
@@ -625,28 +629,35 @@ impl Lit {
 
 impl LitKind {
     fn token(&self) -> Token {
+        match self.lit_token() {
+            (token::Bool(symbol), _) => Token::Ident(Ident::with_empty_ctxt(symbol), false),
+            (lit, suffix) => Token::Literal(lit, suffix),
+        }
+    }
+
+    pub(crate) fn lit_token(&self) -> (token::Lit, Option<Symbol>) {
         use std::ascii;
 
         match *self {
             LitKind::Str(string, ast::StrStyle::Cooked) => {
                 let escaped = string.as_str().escape_default().to_string();
-                Token::Literal(token::Lit::Str_(Symbol::intern(&escaped)), None)
+                (token::Lit::Str_(Symbol::intern(&escaped)), None)
             }
             LitKind::Str(string, ast::StrStyle::Raw(n)) => {
-                Token::Literal(token::Lit::StrRaw(string, n), None)
+                (token::Lit::StrRaw(string, n), None)
             }
             LitKind::ByteStr(ref bytes) => {
                 let string = bytes.iter().cloned().flat_map(ascii::escape_default)
                     .map(Into::<char>::into).collect::<String>();
-                Token::Literal(token::Lit::ByteStr(Symbol::intern(&string)), None)
+                (token::Lit::ByteStr(Symbol::intern(&string)), None)
             }
             LitKind::Byte(byte) => {
                 let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
-                Token::Literal(token::Lit::Byte(Symbol::intern(&string)), None)
+                (token::Lit::Byte(Symbol::intern(&string)), None)
             }
             LitKind::Char(ch) => {
                 let string: String = ch.escape_default().map(Into::<char>::into).collect();
-                Token::Literal(token::Lit::Char(Symbol::intern(&string)), None)
+                (token::Lit::Char(Symbol::intern(&string)), None)
             }
             LitKind::Int(n, ty) => {
                 let suffix = match ty {
@@ -654,38 +665,39 @@ impl LitKind {
                     ast::LitIntType::Signed(ty) => Some(Symbol::intern(ty.ty_to_string())),
                     ast::LitIntType::Unsuffixed => None,
                 };
-                Token::Literal(token::Lit::Integer(Symbol::intern(&n.to_string())), suffix)
+                (token::Lit::Integer(Symbol::intern(&n.to_string())), suffix)
             }
             LitKind::Float(symbol, ty) => {
-                Token::Literal(token::Lit::Float(symbol), Some(Symbol::intern(ty.ty_to_string())))
+                (token::Lit::Float(symbol), Some(Symbol::intern(ty.ty_to_string())))
             }
-            LitKind::FloatUnsuffixed(symbol) => Token::Literal(token::Lit::Float(symbol), None),
-            LitKind::Bool(value) => Token::Ident(Ident::with_empty_ctxt(Symbol::intern(if value {
-                "true"
-            } else {
-                "false"
-            })), false),
-            LitKind::Err(val) => Token::Literal(token::Lit::Err(val), None),
+            LitKind::FloatUnsuffixed(symbol) => (token::Lit::Float(symbol), None),
+            LitKind::Bool(value) => {
+                let kw = if value { keywords::True } else { keywords::False };
+                (token::Lit::Bool(kw.name()), None)
+            }
+            LitKind::Err(val) => (token::Lit::Err(val), None),
         }
     }
 
-    fn from_token(token: Token) -> Option<LitKind> {
+    fn from_token(token: Token) -> Option<(LitKind, token::Lit, Option<Symbol>)> {
         match token {
-            Token::Ident(ident, false) if ident.name == "true" => Some(LitKind::Bool(true)),
-            Token::Ident(ident, false) if ident.name == "false" => Some(LitKind::Bool(false)),
+            Token::Ident(ident, false) if ident.name == keywords::True.name() =>
+                Some((LitKind::Bool(true), token::Bool(ident.name), None)),
+            Token::Ident(ident, false) if ident.name == keywords::False.name() =>
+                Some((LitKind::Bool(false), token::Bool(ident.name), None)),
             Token::Interpolated(nt) => match *nt {
                 token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
-                    ExprKind::Lit(ref lit) => Some(lit.node.clone()),
+                    ExprKind::Lit(ref lit) => Some((lit.node.clone(), lit.token, lit.suffix)),
                     _ => None,
                 },
                 _ => None,
             },
             Token::Literal(lit, suf) => {
                 let (suffix_illegal, result) = parse::lit_token(lit, suf, None);
-                if suffix_illegal && suf.is_some() {
+                if result.is_none() || suffix_illegal && suf.is_some() {
                     return None;
                 }
-                result
+                Some((result.unwrap(), lit, suf))
             }
             _ => None,
         }

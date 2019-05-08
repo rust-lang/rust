@@ -164,6 +164,8 @@ impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
 
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     node,
+    token,
+    suffix,
     span
 });
 
@@ -284,6 +286,19 @@ for tokenstream::TokenStream {
     }
 }
 
+impl_stable_hash_for!(enum token::Lit {
+    Bool(val),
+    Byte(val),
+    Char(val),
+    Err(val),
+    Integer(val),
+    Float(val),
+    Str_(val),
+    ByteStr(val),
+    StrRaw(val, n),
+    ByteStrRaw(val, n)
+});
+
 fn hash_token<'a, 'gcx, W: StableHasherResult>(
     token: &token::Token,
     hcx: &mut StableHashingContext<'a>,
@@ -331,22 +346,8 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
         token::Token::CloseDelim(delim_token) => {
             std_hash::Hash::hash(&delim_token, hasher);
         }
-        token::Token::Literal(ref lit, ref opt_name) => {
-            mem::discriminant(lit).hash_stable(hcx, hasher);
-            match *lit {
-                token::Lit::Byte(val) |
-                token::Lit::Char(val) |
-                token::Lit::Err(val) |
-                token::Lit::Integer(val) |
-                token::Lit::Float(val) |
-                token::Lit::Str_(val) |
-                token::Lit::ByteStr(val) => val.hash_stable(hcx, hasher),
-                token::Lit::StrRaw(val, n) |
-                token::Lit::ByteStrRaw(val, n) => {
-                    val.hash_stable(hcx, hasher);
-                    n.hash_stable(hcx, hasher);
-                }
-            };
+        token::Token::Literal(lit, opt_name) => {
+            lit.hash_stable(hcx, hasher);
             opt_name.hash_stable(hcx, hasher);
         }
 

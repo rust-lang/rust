@@ -2070,11 +2070,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches `token_lit = LIT_INTEGER | ...`.
-    fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
+    fn parse_lit_token(&mut self) -> PResult<'a, (LitKind, token::Lit, Option<Symbol>)> {
         let out = match self.token {
             token::Interpolated(ref nt) => match **nt {
                 token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
-                    ExprKind::Lit(ref lit) => { lit.node.clone() }
+                    ExprKind::Lit(ref lit) => { (lit.node.clone(), lit.token, lit.suffix) }
                     _ => { return self.unexpected_last(&self.token); }
                 },
                 _ => { return self.unexpected_last(&self.token); }
@@ -2088,19 +2088,19 @@ impl<'a> Parser<'a> {
                     self.expect_no_suffix(sp, &format!("a {}", lit.literal_name()), suf)
                 }
 
-                result.unwrap()
+                (result.unwrap(), lit, suf)
             }
             token::Dot if self.look_ahead(1, |t| match t {
-                token::Literal(parse::token::Lit::Integer(_) , _) => true,
+                token::Literal(token::Lit::Integer(_) , _) => true,
                 _ => false,
             }) => { // recover from `let x = .4;`
                 let lo = self.span;
                 self.bump();
                 if let token::Literal(
-                    parse::token::Lit::Integer(val),
+                    token::Lit::Integer(val),
                     suffix,
                 ) = self.token {
-                    let suffix = suffix.and_then(|s| {
+                    let float_suffix = suffix.and_then(|s| {
                         let s = s.as_str();
                         if s == "f32" {
                             Some("f32")
@@ -2117,14 +2117,14 @@ impl<'a> Parser<'a> {
                     err.span_suggestion(
                         sp,
                         "must have an integer part",
-                        format!("0.{}{}", val, suffix),
+                        format!("0.{}{}", val, float_suffix),
                         Applicability::MachineApplicable,
                     );
                     err.emit();
-                    return Ok(match suffix {
-                        "f32" => ast::LitKind::Float(val, ast::FloatTy::F32),
-                        "f64" => ast::LitKind::Float(val, ast::FloatTy::F64),
-                        _ => ast::LitKind::FloatUnsuffixed(val),
+                    return Ok(match float_suffix {
+                        "f32" => (ast::LitKind::Float(val, ast::FloatTy::F32), token::Float(val), suffix),
+                        "f64" => (ast::LitKind::Float(val, ast::FloatTy::F64), token::Float(val), suffix),
+                        _ => (ast::LitKind::FloatUnsuffixed(val), token::Float(val), suffix),
                     });
                 } else {
                     unreachable!();
@@ -2140,14 +2140,14 @@ impl<'a> Parser<'a> {
     /// Matches `lit = true | false | token_lit`.
     crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
         let lo = self.span;
-        let node = if self.eat_keyword(keywords::True) {
-            LitKind::Bool(true)
+        let (node, token, suffix) = if self.eat_keyword(keywords::True) {
+            (LitKind::Bool(true), token::Bool(keywords::True.name()), None)
         } else if self.eat_keyword(keywords::False) {
-            LitKind::Bool(false)
+            (LitKind::Bool(false), token::Bool(keywords::False.name()), None)
         } else {
             self.parse_lit_token()?
         };
-        Ok(Lit { node, span: lo.to(self.prev_span) })
+        Ok(Lit { node, token, suffix, span: lo.to(self.prev_span) })
     }
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).

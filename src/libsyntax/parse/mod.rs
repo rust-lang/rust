@@ -376,6 +376,7 @@ crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Ha
     use ast::LitKind;
 
     match lit {
+        token::Bool(_) => panic!("literal token contains `Lit::Bool`"),
         token::Byte(i) => {
             let lit_kind = match unescape_byte(&i.as_str()) {
                 Ok(c) => LitKind::Byte(c),
