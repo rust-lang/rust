@@ -163,6 +163,32 @@ extern "C" {
     fn vminuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
+macro_rules! s_t_l {
+    (i32x4) => {
+        vector_signed_int
+    };
+    (i16x8) => {
+        vector_signed_short
+    };
+    (i8x16) => {
+        vector_signed_char
+    };
+
+    (u32x4) => {
+        vector_unsigned_int
+    };
+    (u16x8) => {
+        vector_unsigned_short
+    };
+    (u8x16) => {
+        vector_unsigned_char
+    };
+
+    (f32x4) => {
+        vector_float
+    };
+}
+
 mod sealed {
     use super::*;
 
@@ -174,10 +200,39 @@ mod sealed {
             unsafe fn $fun ($($v : $ty),*) -> $r {
                 $call ($($v),*)
             }
+        };
+        ($fun:ident ($($v:ident : $ty:ty),*) -> $r:ty [$call:ident, $instr_altivec:ident / $instr_vsx:ident]) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(all(test, not(target_feature="vsx")), assert_instr($instr_altivec))]
+            #[cfg_attr(all(test, target_feature="vsx"), assert_instr($instr_vsx))]
+            unsafe fn $fun ($($v : $ty),*) -> $r {
+                $call ($($v),*)
+            }
         }
+
     }
 
     macro_rules! impl_vec_trait {
+        ([$Trait:ident $m:ident] $fun:ident ($a:ty) -> $r:ty) => {
+            impl $Trait for $a {
+                type Result = $r;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn $m(self) -> Self::Result {
+                    $fun(transmute(self))
+                }
+            }
+        };
+        ([$Trait:ident $m:ident] ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident, $sf: ident)) => {
+            impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m] $sh (vector_signed_short) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int) -> vector_signed_int }
+            impl_vec_trait!{ [$Trait $m] $sf (vector_float) -> vector_float }
+        };
         ([$Trait:ident $m:ident] $fun:ident ($a:ty, $b:ty) -> $r:ty) => {
             impl $Trait<$b> for $a {
                 type Result = $r;
@@ -193,7 +248,7 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $fun ($a, $b) -> $r }
             impl_vec_trait!{ [$Trait $m] $fun ($b, $a) -> $r }
         };
-        ([$Trait:ident $m:ident] ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
+        ([$Trait:ident $m:ident] ~($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
             impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char, ~vector_bool_char) -> vector_unsigned_char }
             impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char, ~vector_bool_char) -> vector_signed_char }
             impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short, ~vector_bool_short) -> vector_unsigned_short }
@@ -201,6 +256,55 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int, ~vector_bool_int) -> vector_unsigned_int }
             impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
         }
+    }
+
+    macro_rules! splats {
+        ($name:ident, $v:ident, $r:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            unsafe fn $name(v: $v) -> s_t_l!($r) {
+                transmute($r::splat(v))
+            }
+        };
+    }
+
+    splats! { splats_u8, u8, u8x16 }
+    splats! { splats_u16, u16, u16x8 }
+    splats! { splats_u32, u32, u32x4 }
+    splats! { splats_i8, i8, i8x16 }
+    splats! { splats_i16, i16, i16x8 }
+    splats! { splats_i32, i32, i32x4 }
+    splats! { splats_f32, f32, f32x4 }
+
+    test_impl! { vec_splats_u8 (v: u8) -> vector_unsigned_char [splats_u8, vspltb] }
+    test_impl! { vec_splats_u16 (v: u16) -> vector_unsigned_short [splats_u16, vsplth] }
+    test_impl! { vec_splats_u32 (v: u32) -> vector_unsigned_int [splats_u32, vspltw / xxspltw] }
+    test_impl! { vec_splats_i8 (v: i8) -> vector_signed_char [splats_i8, vspltb] }
+    test_impl! { vec_splats_i16 (v: i16) -> vector_signed_short [splats_i16, vsplth] }
+    test_impl! { vec_splats_i32 (v: i32) -> vector_signed_int [splats_i32, vspltw / xxspltw] }
+    test_impl! { vec_splats_f32 (v: f32) -> vector_float [splats_f32, vspltw / xxspltw] }
+
+    pub trait VectorSplats {
+        type Result;
+        unsafe fn vec_splats(self) -> Self::Result;
+    }
+
+    macro_rules! impl_vec_splats {
+        ($(($fn:ident ($ty:ty) -> $r:ty)),*) => {
+            $(
+                impl_vec_trait!{ [VectorSplats vec_splats] $fn ($ty) -> $r }
+            )*
+        }
+    }
+
+    impl_vec_splats! {
+        (vec_splats_u8 (u8) -> vector_unsigned_char),
+        (vec_splats_i8 (i8) -> vector_signed_char),
+        (vec_splats_u16 (u16) -> vector_unsigned_short),
+        (vec_splats_i16 (i16) -> vector_signed_short),
+        (vec_splats_u32 (u32) -> vector_unsigned_int),
+        (vec_splats_i32 (i32) -> vector_signed_int),
+        (vec_splats_f32 (f32) -> vector_float)
     }
 
     test_impl! { vec_vsububm (a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [simd_sub, vsububm] }
@@ -212,7 +316,7 @@ mod sealed {
         unsafe fn vec_sub(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_trait! { [VectorSub vec_sub] (simd_sub, simd_sub, simd_sub, simd_sub, simd_sub, simd_sub) }
+    impl_vec_trait! { [VectorSub vec_sub] ~(simd_sub, simd_sub, simd_sub, simd_sub, simd_sub, simd_sub) }
 
     test_impl! { vec_vminsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vminsb, vminsb] }
     test_impl! { vec_vminsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vminsh, vminsh] }
@@ -227,7 +331,7 @@ mod sealed {
         unsafe fn vec_min(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_trait! { [VectorMin vec_min] (vminub, vminsb, vminuh, vminsh, vminuw, vminsw) }
+    impl_vec_trait! { [VectorMin vec_min] ~(vminub, vminsb, vminuh, vminsh, vminuw, vminsw) }
 
     test_impl! { vec_vmaxsb (a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [vmaxsb, vmaxsb] }
     test_impl! { vec_vmaxsh (a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [vmaxsh, vmaxsh] }
@@ -242,7 +346,7 @@ mod sealed {
         unsafe fn vec_max(self, b: Other) -> Self::Result;
     }
 
-    impl_vec_trait! { [VectorMax vec_max] (vmaxub, vmaxsb, vmaxuh, vmaxsh, vmaxuw, vmaxsw) }
+    impl_vec_trait! { [VectorMax vec_max] ~(vmaxub, vmaxsb, vmaxuh, vmaxsh, vmaxuw, vmaxsw) }
 
     #[inline]
     #[target_feature(enable = "altivec")]
@@ -939,6 +1043,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector splats.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_splats<T>(a: T) -> <T as sealed::VectorSplats>::Result
+where
+    T: sealed::VectorSplats,
+{
+    a.vec_splats()
+}
+
 /// Vector sub.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1172,31 +1286,24 @@ mod tests {
     use crate::core_arch::simd::*;
     use stdsimd_test::simd_test;
 
-    macro_rules! s_t_l {
-        (i32x4) => {
-            vector_signed_int
-        };
-        (i16x8) => {
-            vector_signed_short
-        };
-        (i8x16) => {
-            vector_signed_char
-        };
-
-        (u32x4) => {
-            vector_unsigned_int
-        };
-        (u16x8) => {
-            vector_unsigned_short
-        };
-        (u8x16) => {
-            vector_unsigned_char
-        };
-
-        (f32x4) => {
-            vector_float
-        };
+    macro_rules! test_vec_splats {
+        { $name: ident, $ty: ident, $a: expr } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a: s_t_l!($ty) = vec_splats($a);
+                let d = $ty::splat($a);
+                assert_eq!(d, transmute(a));
+            }
+        }
     }
+
+    test_vec_splats! { test_vec_splats_u8, u8x16, 42u8 }
+    test_vec_splats! { test_vec_splats_u16, u16x8, 42u16 }
+    test_vec_splats! { test_vec_splats_u32, u32x4, 42u32 }
+    test_vec_splats! { test_vec_splats_i8, i8x16, 42i8 }
+    test_vec_splats! { test_vec_splats_i16, i16x8, 42i16 }
+    test_vec_splats! { test_vec_splats_i32, i32x4, 42i32 }
+    test_vec_splats! { test_vec_splats_f32, f32x4, 42f32 }
 
     macro_rules! test_vec_sub {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
