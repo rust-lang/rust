@@ -1979,7 +1979,7 @@ impl FnDecl {
                 match &bounds[0] {
                     GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
                         let bindings = trait_.bindings().unwrap();
-                        FunctionRetTy::Return(bindings[0].ty.clone())
+                        FunctionRetTy::Return(bindings[0].ty().clone())
                     }
                     _ => panic!("unexpected desugaring of async function"),
                 }
@@ -2937,11 +2937,8 @@ impl Clean<Type> for hir::Ty {
             }
             TyKind::BareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyKind::Infer | TyKind::Err => Infer,
-            TyKind::Typeof(..) => panic!("Unimplemented type {:?}", self.node),
+            TyKind::Typeof(..) => panic!("unimplemented type {:?}", self.node),
             TyKind::CVarArgs(_) => CVarArgs,
-            TyKind::AssocTyExistential(ref bounds) => {
-                ImplTrait(bounds.into_iter().map(|b| b.clean(cx)).collect())
-            }
         }
     }
 }
@@ -3057,7 +3054,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                 for pb in obj.projection_bounds() {
                     bindings.push(TypeBinding {
                         name: cx.tcx.associated_item(pb.item_def_id()).ident.name.clean(cx),
-                        ty: pb.skip_binder().ty.clean(cx)
+                        kind: TypeBindingKind::Equality {
+                            ty: pb.skip_binder().ty.clean(cx)
+                        },
                     });
                 }
 
@@ -3113,7 +3112,9 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
                                 Some(TypeBinding {
                                     name: cx.tcx.associated_item(proj.projection_ty.item_def_id)
                                                 .ident.name.clean(cx),
-                                    ty: proj.ty.clean(cx),
+                                    kind: TypeBindingKind::Equality {
+                                        ty: proj.ty.clean(cx),
+                                    },
                                 })
                             } else {
                                 None
@@ -3498,7 +3499,7 @@ pub enum GenericArgs {
 impl Clean<GenericArgs> for hir::GenericArgs {
     fn clean(&self, cx: &DocContext<'_>) -> GenericArgs {
         if self.parenthesized {
-            let output = self.bindings[0].ty.clean(cx);
+            let output = self.bindings[0].ty().clean(cx);
             GenericArgs::Parenthesized {
                 inputs: self.inputs().clean(cx),
                 output: if output != Type::Tuple(Vec::new()) { Some(output) } else { None }
@@ -4346,18 +4347,53 @@ impl Clean<Deprecation> for attr::Deprecation {
     }
 }
 
-/// An equality constraint on an associated type, e.g., `A = Bar` in `Foo<A = Bar>`
+/// An type binding on an associated type (e.g., `A = Bar` in `Foo<A = Bar>` or
+/// `A: Send + Sync` in `Foo<A: Send + Sync>`).
 #[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
 pub struct TypeBinding {
     pub name: String,
-    pub ty: Type
+    pub kind: TypeBindingKind,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
+pub enum TypeBindingKind {
+    Equality {
+        ty: Type,
+    },
+    Constraint {
+        bounds: Vec<GenericBound>,
+    },
+}
+
+impl TypeBinding {
+    pub fn ty(&self) -> &Type {
+        match self.kind {
+            TypeBindingKind::Equality { ref ty } => ty,
+            _ => panic!("expected equality type binding for parenthesized generic args"),
+        }
+    }
 }
 
 impl Clean<TypeBinding> for hir::TypeBinding {
     fn clean(&self, cx: &DocContext<'_>) -> TypeBinding {
         TypeBinding {
             name: self.ident.name.clean(cx),
-            ty: self.ty.clean(cx)
+            kind: self.kind.clean(cx),
+        }
+    }
+}
+
+impl Clean<TypeBindingKind> for hir::TypeBindingKind {
+    fn clean(&self, cx: &DocContext<'_>) -> TypeBindingKind {
+        match *self {
+            hir::TypeBindingKind::Equality { ref ty } =>
+                TypeBindingKind::Equality {
+                    ty: ty.clean(cx),
+                },
+            hir::TypeBindingKind::Constraint { ref bounds } =>
+                TypeBindingKind::Constraint {
+                    bounds: bounds.into_iter().map(|b| b.clean(cx)).collect(),
+                },
         }
     }
 }

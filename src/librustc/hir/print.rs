@@ -409,9 +409,6 @@ impl<'a> State<'a> {
             hir::TyKind::CVarArgs(_) => {
                 self.s.word("...")?;
             }
-            hir::TyKind::AssocTyExistential(ref bounds) => {
-                self.print_bounds(":", bounds)?;
-            }
         }
         self.end()
     }
@@ -1648,7 +1645,7 @@ impl<'a> State<'a> {
 
             self.space_if_not_bol()?;
             self.word_space("->")?;
-            self.print_type(&generic_args.bindings[0].ty)?;
+            self.print_type(generic_args.bindings[0].ty())?;
         } else {
             let start = if colons_before_params { "::<" } else { "<" };
             let empty = Cell::new(true);
@@ -1693,8 +1690,15 @@ impl<'a> State<'a> {
                 start_or_comma(self)?;
                 self.print_ident(binding.ident)?;
                 self.s.space()?;
-                self.word_space("=")?;
-                self.print_type(&binding.ty)?;
+                match generic_args.bindings[0].kind {
+                    hir::TypeBindingKind::Equality { ref ty } => {
+                        self.word_space("=")?;
+                        self.print_type(ty)?;
+                    }
+                    hir::TypeBindingKind::Constraint { ref bounds } => {
+                        self.print_bounds(":", bounds)?;
+                    }
+                }
             }
 
             if !empty.get() {

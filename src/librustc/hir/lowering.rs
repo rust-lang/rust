@@ -1377,9 +1377,10 @@ impl<'a> LoweringContext<'a> {
                                  -> hir::TypeBinding {
         debug!("lower_assoc_ty_constraint(constraint={:?}, itctx={:?})", c, itctx);
 
-        // Convert to a type representing the `T::Item` value.
-        let ty = match c.kind {
-            AssocTyConstraintKind::Equality { ref ty } => self.lower_ty(ty, itctx),
+        let kind = match c.kind {
+            AssocTyConstraintKind::Equality { ref ty } => hir::TypeBindingKind::Equality {
+                ty: self.lower_ty(ty, itctx)
+            },
             AssocTyConstraintKind::Bound { ref bounds } => {
                 // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let (desugar_to_impl_trait, itctx) = match itctx {
@@ -1422,7 +1423,7 @@ impl<'a> LoweringContext<'a> {
 
                 if desugar_to_impl_trait {
                     // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
-                    // constructing the HIR for "impl bounds" and then lowering that.
+                    // constructing the HIR for `impl bounds...` and then lowering that.
 
                     let impl_trait_node_id = self.sess.next_node_id();
                     let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
@@ -1436,27 +1437,27 @@ impl<'a> LoweringContext<'a> {
                     );
 
                     self.with_dyn_type_scope(false, |this| {
-                        this.lower_ty(
+                        let ty = this.lower_ty(
                             &Ty {
                                 id: this.sess.next_node_id(),
                                 node: TyKind::ImplTrait(impl_trait_node_id, bounds.clone()),
                                 span: DUMMY_SP,
                             },
                             itctx,
-                        )
+                        );
+
+                        hir::TypeBindingKind::Equality {
+                            ty
+                        }
                     })
                 } else {
-                    // Desugar `AssocTy: Bounds` into `AssocTy = ∃ T (T: Bounds)`, where the
-                    // "false existential" later desugars into a trait predicate.
-
+                    // Desugar `AssocTy: Bounds` into a type binding where the
+                    // later desugars into a trait predicate.
                     let bounds = self.lower_param_bounds(bounds, itctx);
 
-                    let id = self.sess.next_node_id();
-                    P(hir::Ty {
-                        hir_id: self.lower_node_id(id),
-                        node: hir::TyKind::AssocTyExistential(bounds),
-                        span: DUMMY_SP,
-                    })
+                    hir::TypeBindingKind::Constraint {
+                        bounds
+                    }
                 }
             }
         };
@@ -1464,7 +1465,7 @@ impl<'a> LoweringContext<'a> {
         hir::TypeBinding {
             hir_id: self.lower_node_id(c.id),
             ident: c.ident,
-            ty,
+            kind,
             span: c.span,
         }
     }
@@ -2359,10 +2360,17 @@ impl<'a> LoweringContext<'a> {
                             hir::TypeBinding {
                                 hir_id: this.next_id(),
                                 ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
-                                ty: output
-                                    .as_ref()
-                                    .map(|ty| this.lower_ty(&ty, ImplTraitContext::disallowed()))
-                                    .unwrap_or_else(|| P(mk_tup(this, hir::HirVec::new(), span))),
+                                kind: hir::TypeBindingKind::Equality {
+                                    ty: output
+                                        .as_ref()
+                                        .map(|ty| this.lower_ty(
+                                            &ty,
+                                            ImplTraitContext::disallowed()
+                                        ))
+                                        .unwrap_or_else(||
+                                            P(mk_tup(this, hir::HirVec::new(), span))
+                                        ),
+                                },
                                 span: output.as_ref().map_or(span, |ty| ty.span),
                             }
                         ],
@@ -2666,7 +2674,9 @@ impl<'a> LoweringContext<'a> {
             args: hir_vec![],
             bindings: hir_vec![hir::TypeBinding {
                 ident: Ident::with_empty_ctxt(FN_OUTPUT_NAME),
-                ty: output_ty,
+                kind: hir::TypeBindingKind::Equality {
+                    ty: output_ty,
+                },
                 hir_id: self.next_id(),
                 span,
             }],

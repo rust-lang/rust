@@ -1780,7 +1780,7 @@ pub struct ImplItem {
     pub span: Span,
 }
 
-/// Represents different contents within `impl`s.
+/// Represents various kinds of content within an `impl`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum ImplItemKind {
     /// An associated constant of the given type, set to the constant result
@@ -1794,14 +1794,49 @@ pub enum ImplItemKind {
     Existential(GenericBounds),
 }
 
-// Bind a type to an associated type (`A = Foo`).
+/// Bind a type to an associated type (i.e., `A = Foo`).
+///
+/// Bindings like `A: Debug` are represented as a special type `A =
+/// $::Debug` that is understood by the astconv code.
+///
+/// FIXME(alexreg) -- why have a separate type for the binding case,
+/// wouldn't it be better to make the `ty` field an enum like:
+///
+/// ```
+/// enum TypeBindingKind {
+///    Equals(...),
+///    Binding(...),
+/// }
+/// ```
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct TypeBinding {
     pub hir_id: HirId,
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    pub ty: P<Ty>,
+    pub kind: TypeBindingKind,
     pub span: Span,
+}
+
+// Represents the two kinds of type bindings.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub enum TypeBindingKind {
+    /// E.g., `Foo<Bar: Send>`.
+    Constraint {
+        bounds: HirVec<GenericBound>,
+    },
+    /// E.g., `Foo<Bar = ()>`.
+    Equality {
+        ty: P<Ty>,
+    },
+}
+
+impl TypeBinding {
+    pub fn ty(&self) -> &Ty {
+        match self.kind {
+            TypeBindingKind::Equality { ref ty } => ty,
+            _ => bug!("expected equality type binding for parenthesized generic args"),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -1898,8 +1933,6 @@ pub enum TyKind {
     /// Placeholder for C-variadic arguments. We "spoof" the `VaList` created
     /// from the variadic arguments. This type is only valid up to typeck.
     CVarArgs(Lifetime),
-    /// The existential type (i.e., `impl Trait`) that constrains an associated type.
-    AssocTyExistential(HirVec<GenericBound>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2236,18 +2269,18 @@ impl StructField {
     }
 }
 
-/// Fields and constructor ids of enum variants and structs
+/// Fields and constructor IDs of enum variants and structs.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum VariantData {
-    /// Struct variant.
+    /// A struct variant.
     ///
-    /// e.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
+    /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
     Struct(HirVec<StructField>, /* recovered */ bool),
-    /// Tuple variant.
+    /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
     Tuple(HirVec<StructField>, HirId),
-    /// Unit variant.
+    /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
     Unit(HirId),

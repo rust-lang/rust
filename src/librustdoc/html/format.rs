@@ -1019,11 +1019,26 @@ impl fmt::Display for clean::ImportSource {
 
 impl fmt::Display for clean::TypeBinding {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if f.alternate() {
-            write!(f, "{} = {:#}", self.name, self.ty)
-        } else {
-            write!(f, "{} = {}", self.name, self.ty)
+        f.write_str(&self.name)?;
+        match self.kind {
+            clean::TypeBindingKind::Equality { ref ty } => {
+                if f.alternate() {
+                    write!(f, " = {:#}", ty)?;
+                } else {
+                    write!(f, " = {}", ty)?;
+                }
+            }
+            clean::TypeBindingKind::Constraint { ref bounds } => {
+                if !bounds.is_empty() {
+                    if f.alternate() {
+                        write!(f, ": {:#}", GenericBounds(bounds))?;
+                    } else {
+                        write!(f, ":&nbsp;{}", GenericBounds(bounds))?;
+                    }
+                }
+            }
         }
+        Ok(())
     }
 }
 

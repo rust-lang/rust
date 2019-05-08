@@ -710,10 +710,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         // back separately.
         let assoc_bindings = generic_args.bindings.iter()
             .map(|binding| {
-                let kind = if let hir::TyKind::AssocTyExistential(ref bounds) = binding.ty.node {
-                    ConvertedBindingKind::Constraint(bounds.clone())
-                } else {
-                    ConvertedBindingKind::Equality(self.ast_ty_to_ty(&binding.ty))
+                let kind = match binding.kind {
+                    hir::TypeBindingKind::Equality { ref ty } =>
+                        ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty)),
+                    hir::TypeBindingKind::Constraint { ref bounds } =>
+                        ConvertedBindingKind::Constraint(bounds.clone()),
                 };
                 ConvertedBinding {
                     item_name: binding.ident,
@@ -2059,10 +2060,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                 };
                 let region = self.ast_region_to_region(&lt, None);
                 tcx.type_of(va_list_did).subst(tcx, &[region.into()])
-            }
-            hir::TyKind::AssocTyExistential(..) => {
-                // Type is never actually used.
-                tcx.types.err
             }
             hir::TyKind::Err => {
                 tcx.types.err

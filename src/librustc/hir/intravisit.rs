@@ -626,9 +626,6 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyKind::CVarArgs(ref lt) => {
             visitor.visit_lifetime(lt)
         }
-        TyKind::AssocTyExistential(ref bounds) => {
-            walk_list!(visitor, visit_param_bound, bounds);
-        }
         TyKind::Infer | TyKind::Err => {}
     }
 }
@@ -677,7 +674,14 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V,
                                                    type_binding: &'v TypeBinding) {
     visitor.visit_id(type_binding.hir_id);
     visitor.visit_ident(type_binding.ident);
-    visitor.visit_ty(&type_binding.ty);
+    match type_binding.kind {
+        TypeBindingKind::Equality { ref ty } => {
+            visitor.visit_ty(ty);
+        }
+        TypeBindingKind::Constraint { ref bounds } => {
+            walk_list!(visitor, visit_param_bound, bounds);
+        }
+    }
 }
 
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {

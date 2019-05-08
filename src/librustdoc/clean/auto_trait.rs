@@ -626,7 +626,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                             } => {
                                                 bindings.push(TypeBinding {
                                                     name: left_name.clone(),
-                                                    ty: rhs,
+                                                    kind: TypeBindingKind::Equality {
+                                                        ty: rhs,
+                                                    },
                                                 });
                                             }
                                             &mut GenericArgs::Parenthesized { .. } => {
