@@ -72,7 +72,7 @@ use core::convert::TryInto;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Cursor<T> {
     inner: T,
     pos: u64,
