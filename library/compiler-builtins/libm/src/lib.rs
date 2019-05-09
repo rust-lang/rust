@@ -119,13 +119,7 @@ pub trait F32Ext: private::Sealed + Sized {
 
     fn atan2(self, other: Self) -> Self;
 
-    #[inline]
-    fn sin_cos(self) -> (Self, Self)
-    where
-        Self: Copy,
-    {
-        (self.sin(), self.cos())
-    }
+    fn sin_cos(self) -> (Self, Self);
 
     fn exp_m1(self) -> Self;
 
@@ -290,6 +284,11 @@ impl F32Ext for f32 {
     }
 
     #[inline]
+    fn sin_cos(self) -> (Self, Self) {
+        sincosf(self)
+    }
+
+    #[inline]
     fn exp_m1(self) -> Self {
         expm1f(self)
     }
@@ -316,24 +315,17 @@ impl F32Ext for f32 {
 
     #[inline]
     fn asinh(self) -> Self {
-        if self == f32::NEG_INFINITY {
-            f32::NEG_INFINITY
-        } else {
-            (self + ((self * self) + 1.0).sqrt()).ln()
-        }
+        asinhf(self)
     }
 
     #[inline]
     fn acosh(self) -> Self {
-        match self {
-            x if x < 1.0 => f32::NAN,
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
-        }
+        acoshf(self)
     }
 
     #[inline]
     fn atanh(self) -> Self {
-        0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
+        atanhf(self)
     }
 }
 
@@ -401,13 +393,7 @@ pub trait F64Ext: private::Sealed + Sized {
 
     fn atan2(self, other: Self) -> Self;
 
-    #[inline]
-    fn sin_cos(self) -> (Self, Self)
-    where
-        Self: Copy,
-    {
-        (self.sin(), self.cos())
-    }
+    fn sin_cos(self) -> (Self, Self);
 
     fn exp_m1(self) -> Self;
 
@@ -572,6 +558,11 @@ impl F64Ext for f64 {
     }
 
     #[inline]
+    fn sin_cos(self) -> (Self, Self) {
+        sincos(self)
+    }
+
+    #[inline]
     fn exp_m1(self) -> Self {
         expm1(self)
     }
@@ -598,24 +589,17 @@ impl F64Ext for f64 {
 
     #[inline]
     fn asinh(self) -> Self {
-        if self == f64::NEG_INFINITY {
-            f64::NEG_INFINITY
-        } else {
-            (self + ((self * self) + 1.0).sqrt()).ln()
-        }
+        asinh(self)
     }
 
     #[inline]
     fn acosh(self) -> Self {
-        match self {
-            x if x < 1.0 => f64::NAN,
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
-        }
+        acosh(self)
     }
 
     #[inline]
     fn atanh(self) -> Self {
-        0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
+        atanh(self)
     }
 }
 
