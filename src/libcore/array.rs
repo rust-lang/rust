@@ -4,10 +4,7 @@
 //!
 //! *[See also the array primitive type](../../std/primitive.array.html).*
 
-#![unstable(feature = "fixed_size_array",
-            reason = "traits and impls are better expressed through generic \
-                      integer constants",
-            issue = "27778")]
+#![stable(feature = "core_array", since = "1.36.0")]
 
 use crate::borrow::{Borrow, BorrowMut};
 use crate::cmp::Ordering;
@@ -30,13 +27,17 @@ use crate::slice::{Iter, IterMut};
 /// Note that the traits AsRef and AsMut provide similar methods for types that
 /// may not be fixed-size arrays. Implementors should prefer those traits
 /// instead.
+#[unstable(feature = "fixed_size_array", issue = "27778")]
 pub unsafe trait FixedSizeArray<T> {
     /// Converts the array to immutable slice
+    #[unstable(feature = "fixed_size_array", issue = "27778")]
     fn as_slice(&self) -> &[T];
     /// Converts the array to mutable slice
+    #[unstable(feature = "fixed_size_array", issue = "27778")]
     fn as_mut_slice(&mut self) -> &mut [T];
 }
 
+#[unstable(feature = "fixed_size_array", issue = "27778")]
 unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
     #[inline]
     fn as_slice(&self) -> &[T] {
@@ -53,6 +54,7 @@ unsafe impl<T, A: Unsize<[T]>> FixedSizeArray<T> for A {
 #[derive(Debug, Copy, Clone)]
 pub struct TryFromSliceError(());
 
+#[stable(feature = "core_array", since = "1.36.0")]
 impl fmt::Display for TryFromSliceError {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
