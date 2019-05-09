@@ -1,4 +1,4 @@
-const FP_ILOGBNAN: i32 = -1 - ((!0) >> 1);
+const FP_ILOGBNAN: i32 = -1 - 0x7fffffff;
 const FP_ILOGB0: i32 = FP_ILOGBNAN;
 
 pub fn ilogb(x: f64) -> i32 {
@@ -17,15 +17,15 @@ pub fn ilogb(x: f64) -> i32 {
             e -= 1;
             i <<= 1;
         }
-        return e;
-    }
-    if e == 0x7ff {
+        e
+    } else if e == 0x7ff {
         force_eval!(0.0 / 0.0);
         if (i << 12) != 0 {
-            return FP_ILOGBNAN;
+            FP_ILOGBNAN
         } else {
-            return i32::max_value();
+            i32::max_value()
         }
+    } else {
+        e - 0x3ff
     }
-    return e - 0x3ff;
 }

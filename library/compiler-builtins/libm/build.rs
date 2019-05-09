@@ -26,9 +26,7 @@ mod musl_reference_tests {
 
     // These files are all internal functions or otherwise miscellaneous, not
     // defining a function we want to test.
-    const IGNORED_FILES: &[&str] = &[
-        "fenv.rs",
-    ];
+    const IGNORED_FILES: &[&str] = &["fenv.rs"];
 
     struct Function {
         name: String,
