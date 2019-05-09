@@ -50,7 +50,10 @@ use crate::symbol::{Symbol, keywords};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
-use syntax_pos::{Span, MultiSpan, BytePos, FileName};
+use syntax_pos::{
+    Span, MultiSpan, BytePos, FileName,
+    hygiene::CompilerDesugaringKind,
+};
 use log::{debug, trace};
 
 use std::borrow::Cow;
@@ -8741,6 +8744,15 @@ impl<'a> Parser<'a> {
                 // statement.
                 let (binding_mode, ident, is_simple_pattern) = match input.pat.node {
                     PatKind::Ident(binding_mode @ BindingMode::ByValue(_), ident, _) => {
+                        // Simple patterns like this don't have a generated argument, but they are
+                        // moved into the closure with a statement, so any `mut` bindings on the
+                        // argument will be unused. This binding mode can't be removed, because
+                        // this would affect the input to procedural macros, but they can have
+                        // their span marked as being the result of a compiler desugaring so
+                        // that they aren't linted against.
+                        input.pat.span = self.sess.source_map().mark_span_with_reason(
+                            CompilerDesugaringKind::Async, span, None);
+
                         (binding_mode, ident, true)
                     }
                     _ => (BindingMode::ByValue(Mutability::Mutable), ident, false),
@@ -8809,15 +8821,6 @@ impl<'a> Parser<'a> {
                         span,
                     })
                 };
-
-                // Remove mutability from arguments. If this is not a simple pattern,
-                // those arguments are replaced by `__argN`, so there is no need to do this.
-                if let PatKind::Ident(BindingMode::ByValue(mutability @ Mutability::Mutable), ..) =
-                    &mut input.pat.node
-                {
-                    assert!(is_simple_pattern);
-                    *mutability = Mutability::Immutable;
-                }
 
                 let move_stmt = Stmt { id, node: StmtKind::Local(P(move_local)), span };
                 arguments.push(AsyncArgument { ident, arg, pat_stmt, move_stmt });
