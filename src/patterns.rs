@@ -30,7 +30,7 @@ use crate::utils::{format_mutability, mk_sp, rewrite_ident};
 ///     - `[small, ntp]`
 ///     - unary tuple constructor `([small, ntp])`
 ///     - `&[small]`
-pub fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
+pub(crate) fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
     // We also require that the pattern is reasonably 'small' with its literal width.
     pat_str.len() <= 20 && !pat_str.contains('\n') && is_short_pattern_inner(pat)
 }
@@ -256,7 +256,7 @@ impl Rewrite for FieldPat {
 }
 
 #[derive(Debug)]
-pub enum TuplePatField<'a> {
+pub(crate) enum TuplePatField<'a> {
     Pat(&'a ptr::P<ast::Pat>),
     Dotdot(Span),
 }
@@ -279,7 +279,7 @@ impl<'a> Spanned for TuplePatField<'a> {
     }
 }
 
-pub fn can_be_overflowed_pat(
+pub(crate) fn can_be_overflowed_pat(
     context: &RewriteContext<'_>,
     pat: &TuplePatField<'_>,
     len: usize,

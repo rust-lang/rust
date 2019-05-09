@@ -347,7 +347,7 @@ pub(crate) struct ReportedErrors {
 
 impl ReportedErrors {
     /// Combine two summaries together.
-    pub fn add(&mut self, other: &ReportedErrors) {
+    pub(crate) fn add(&mut self, other: &ReportedErrors) {
         self.has_operational_errors |= other.has_operational_errors;
         self.has_parsing_errors |= other.has_parsing_errors;
         self.has_formatting_errors |= other.has_formatting_errors;

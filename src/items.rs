@@ -157,7 +157,7 @@ enum BodyElement<'a> {
 }
 
 /// Represents a fn's signature.
-pub struct FnSig<'a> {
+pub(crate) struct FnSig<'a> {
     decl: &'a ast::FnDecl,
     generics: &'a ast::Generics,
     abi: abi::Abi,
@@ -169,7 +169,7 @@ pub struct FnSig<'a> {
 }
 
 impl<'a> FnSig<'a> {
-    pub fn new(
+    pub(crate) fn new(
         decl: &'a ast::FnDecl,
         generics: &'a ast::Generics,
         vis: ast::Visibility,
@@ -186,7 +186,7 @@ impl<'a> FnSig<'a> {
         }
     }
 
-    pub fn from_method_sig(
+    pub(crate) fn from_method_sig(
         method_sig: &'a ast::MethodSig,
         generics: &'a ast::Generics,
     ) -> FnSig<'a> {
@@ -202,7 +202,7 @@ impl<'a> FnSig<'a> {
         }
     }
 
-    pub fn from_fn_kind(
+    pub(crate) fn from_fn_kind(
         fn_kind: &'a visit::FnKind<'_>,
         generics: &'a ast::Generics,
         decl: &'a ast::FnDecl,
@@ -287,7 +287,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
+    pub(crate) fn format_foreign_mod(&mut self, fm: &ast::ForeignMod, span: Span) {
         let item = Item::from_foreign_mod(fm, span, self.config);
         self.format_item(&item);
     }
@@ -298,7 +298,7 @@ impl<'a> FmtVisitor<'a> {
         self.last_pos = item.span.hi();
     }
 
-    pub fn rewrite_fn(
+    pub(crate) fn rewrite_fn(
         &mut self,
         indent: Indent,
         ident: ast::Ident,
@@ -341,7 +341,7 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn rewrite_required_fn(
+    pub(crate) fn rewrite_required_fn(
         &mut self,
         indent: Indent,
         ident: ast::Ident,
@@ -416,19 +416,19 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    pub fn visit_static(&mut self, static_parts: &StaticParts<'_>) {
+    pub(crate) fn visit_static(&mut self, static_parts: &StaticParts<'_>) {
         let rewrite = rewrite_static(&self.get_context(), static_parts, self.block_indent);
         self.push_rewrite(static_parts.span, rewrite);
     }
 
-    pub fn visit_struct(&mut self, struct_parts: &StructParts<'_>) {
+    pub(crate) fn visit_struct(&mut self, struct_parts: &StructParts<'_>) {
         let is_tuple = struct_parts.def.is_tuple();
         let rewrite = format_struct(&self.get_context(), struct_parts, self.block_indent, None)
             .map(|s| if is_tuple { s + ";" } else { s });
         self.push_rewrite(struct_parts.span, rewrite);
     }
 
-    pub fn visit_enum(
+    pub(crate) fn visit_enum(
         &mut self,
         ident: ast::Ident,
         vis: &ast::Visibility,
@@ -660,7 +660,7 @@ impl<'a> FmtVisitor<'a> {
     }
 }
 
-pub fn format_impl(
+pub(crate) fn format_impl(
     context: &RewriteContext<'_>,
     item: &ast::Item,
     offset: Indent,
@@ -928,7 +928,7 @@ fn rewrite_trait_ref(
     ))
 }
 
-pub struct StructParts<'a> {
+pub(crate) struct StructParts<'a> {
     prefix: &'a str,
     ident: ast::Ident,
     vis: &'a ast::Visibility,
@@ -953,7 +953,7 @@ impl<'a> StructParts<'a> {
         }
     }
 
-    pub fn from_item(item: &'a ast::Item) -> Self {
+    pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (prefix, def, generics) = match item.node {
             ast::ItemKind::Struct(ref def, ref generics) => ("struct ", def, generics),
             ast::ItemKind::Union(ref def, ref generics) => ("union ", def, generics),
@@ -987,7 +987,7 @@ fn format_struct(
     }
 }
 
-pub fn format_trait(
+pub(crate) fn format_trait(
     context: &RewriteContext<'_>,
     item: &ast::Item,
     offset: Indent,
@@ -1149,7 +1149,7 @@ pub fn format_trait(
     }
 }
 
-pub fn format_trait_alias(
+pub(crate) fn format_trait_alias(
     context: &RewriteContext<'_>,
     ident: ast::Ident,
     vis: &ast::Visibility,
@@ -1191,7 +1191,7 @@ fn format_unit_struct(
     Some(format!("{}{};", header_str, generics_str))
 }
 
-pub fn format_struct_struct(
+pub(crate) fn format_struct_struct(
     context: &RewriteContext<'_>,
     struct_parts: &StructParts<'_>,
     fields: &[ast::StructField],
@@ -1495,7 +1495,7 @@ fn rewrite_type_item<R: Rewrite>(
     rewrite_assign_rhs(context, result, rhs, rhs_shape).map(|s| s + ";")
 }
 
-pub fn rewrite_type_alias(
+pub(crate) fn rewrite_type_alias(
     context: &RewriteContext<'_>,
     indent: Indent,
     ident: ast::Ident,
@@ -1506,7 +1506,7 @@ pub fn rewrite_type_alias(
     rewrite_type_item(context, indent, "type", " =", ident, ty, generics, vis)
 }
 
-pub fn rewrite_existential_type(
+pub(crate) fn rewrite_existential_type(
     context: &RewriteContext<'_>,
     indent: Indent,
     ident: ast::Ident,
@@ -1533,7 +1533,7 @@ fn type_annotation_spacing(config: &Config) -> (&str, &str) {
     )
 }
 
-pub fn rewrite_struct_field_prefix(
+pub(crate) fn rewrite_struct_field_prefix(
     context: &RewriteContext<'_>,
     field: &ast::StructField,
 ) -> Option<String> {
@@ -1556,7 +1556,7 @@ impl Rewrite for ast::StructField {
     }
 }
 
-pub fn rewrite_struct_field(
+pub(crate) fn rewrite_struct_field(
     context: &RewriteContext<'_>,
     field: &ast::StructField,
     shape: Shape,
@@ -1620,7 +1620,7 @@ pub fn rewrite_struct_field(
     combine_strs_with_missing_comments(context, &attrs_str, field_str, missing_span, shape, false)
 }
 
-pub struct StaticParts<'a> {
+pub(crate) struct StaticParts<'a> {
     prefix: &'a str,
     vis: &'a ast::Visibility,
     ident: ast::Ident,
@@ -1632,7 +1632,7 @@ pub struct StaticParts<'a> {
 }
 
 impl<'a> StaticParts<'a> {
-    pub fn from_item(item: &'a ast::Item) -> Self {
+    pub(crate) fn from_item(item: &'a ast::Item) -> Self {
         let (prefix, ty, mutability, expr) = match item.node {
             ast::ItemKind::Static(ref ty, mutability, ref expr) => ("static", ty, mutability, expr),
             ast::ItemKind::Const(ref ty, ref expr) => {
@@ -1652,7 +1652,7 @@ impl<'a> StaticParts<'a> {
         }
     }
 
-    pub fn from_trait_item(ti: &'a ast::TraitItem) -> Self {
+    pub(crate) fn from_trait_item(ti: &'a ast::TraitItem) -> Self {
         let (ty, expr_opt) = match ti.node {
             ast::TraitItemKind::Const(ref ty, ref expr_opt) => (ty, expr_opt),
             _ => unreachable!(),
@@ -1669,7 +1669,7 @@ impl<'a> StaticParts<'a> {
         }
     }
 
-    pub fn from_impl_item(ii: &'a ast::ImplItem) -> Self {
+    pub(crate) fn from_impl_item(ii: &'a ast::ImplItem) -> Self {
         let (ty, expr) = match ii.node {
             ast::ImplItemKind::Const(ref ty, ref expr) => (ty, expr),
             _ => unreachable!(),
@@ -1739,7 +1739,7 @@ fn rewrite_static(
     }
 }
 
-pub fn rewrite_associated_type(
+pub(crate) fn rewrite_associated_type(
     ident: ast::Ident,
     ty_opt: Option<&ptr::P<ast::Ty>>,
     generics: &ast::Generics,
@@ -1775,7 +1775,7 @@ pub fn rewrite_associated_type(
     }
 }
 
-pub fn rewrite_existential_impl_type(
+pub(crate) fn rewrite_existential_impl_type(
     context: &RewriteContext<'_>,
     ident: ast::Ident,
     generics: &ast::Generics,
@@ -1786,7 +1786,7 @@ pub fn rewrite_existential_impl_type(
         .map(|s| format!("existential {}", s))
 }
 
-pub fn rewrite_associated_impl_type(
+pub(crate) fn rewrite_associated_impl_type(
     ident: ast::Ident,
     defaultness: ast::Defaultness,
     ty_opt: Option<&ptr::P<ast::Ty>>,
@@ -1922,7 +1922,7 @@ fn rewrite_explicit_self(
     }
 }
 
-pub fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
+pub(crate) fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
     if is_named_arg(arg) {
         arg.pat.span.lo()
     } else {
@@ -1930,7 +1930,7 @@ pub fn span_lo_for_arg(arg: &ast::Arg) -> BytePos {
     }
 }
 
-pub fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Arg) -> BytePos {
+pub(crate) fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Arg) -> BytePos {
     match arg.ty.node {
         ast::TyKind::Infer if context.snippet(arg.ty.span) == "_" => arg.ty.span.hi(),
         ast::TyKind::Infer if is_named_arg(arg) => arg.pat.span.hi(),
@@ -1938,7 +1938,7 @@ pub fn span_hi_for_arg(context: &RewriteContext<'_>, arg: &ast::Arg) -> BytePos 
     }
 }
 
-pub fn is_named_arg(arg: &ast::Arg) -> bool {
+pub(crate) fn is_named_arg(arg: &ast::Arg) -> bool {
     if let ast::PatKind::Ident(_, ident, _) = arg.pat.node {
         ident != symbol::keywords::Invalid.ident()
     } else {
@@ -2245,7 +2245,7 @@ struct WhereClauseOption {
 }
 
 impl WhereClauseOption {
-    pub fn new(suppress_comma: bool, snuggle: bool) -> WhereClauseOption {
+    fn new(suppress_comma: bool, snuggle: bool) -> WhereClauseOption {
         WhereClauseOption {
             suppress_comma,
             snuggle,
@@ -2253,7 +2253,7 @@ impl WhereClauseOption {
         }
     }
 
-    pub fn snuggled(current: &str) -> WhereClauseOption {
+    fn snuggled(current: &str) -> WhereClauseOption {
         WhereClauseOption {
             suppress_comma: false,
             snuggle: last_line_width(current) == 1,
@@ -2261,15 +2261,15 @@ impl WhereClauseOption {
         }
     }
 
-    pub fn suppress_comma(&mut self) {
+    fn suppress_comma(&mut self) {
         self.suppress_comma = true
     }
 
-    pub fn compress_where(&mut self) {
+    fn compress_where(&mut self) {
         self.compress_where = true
     }
 
-    pub fn snuggle(&mut self) {
+    fn snuggle(&mut self) {
         self.snuggle = true
     }
 }
@@ -2434,7 +2434,11 @@ fn rewrite_generics(
     overflow::rewrite_with_angle_brackets(context, ident, params, shape, generics.span)
 }
 
-pub fn generics_shape_from_config(config: &Config, shape: Shape, offset: usize) -> Option<Shape> {
+pub(crate) fn generics_shape_from_config(
+    config: &Config,
+    shape: Shape,
+    offset: usize,
+) -> Option<Shape> {
     match config.indent_style() {
         IndentStyle::Visual => shape.visual_indent(1 + offset).sub_width(offset + 2),
         IndentStyle::Block => {
@@ -2858,7 +2862,7 @@ impl Rewrite for ast::ForeignItem {
 }
 
 /// Rewrite an inline mod.
-pub fn rewrite_mod(context: &RewriteContext<'_>, item: &ast::Item) -> String {
+pub(crate) fn rewrite_mod(context: &RewriteContext<'_>, item: &ast::Item) -> String {
     let mut result = String::with_capacity(32);
     result.push_str(&*format_visibility(context, &item.vis));
     result.push_str("mod ");
@@ -2868,7 +2872,10 @@ pub fn rewrite_mod(context: &RewriteContext<'_>, item: &ast::Item) -> String {
 }
 
 /// Rewrite `extern crate foo;` WITHOUT attributes.
-pub fn rewrite_extern_crate(context: &RewriteContext<'_>, item: &ast::Item) -> Option<String> {
+pub(crate) fn rewrite_extern_crate(
+    context: &RewriteContext<'_>,
+    item: &ast::Item,
+) -> Option<String> {
     assert!(is_extern_crate(item));
     let new_str = context.snippet(item.span);
     Some(if contains_comment(new_str) {
@@ -2880,21 +2887,21 @@ pub fn rewrite_extern_crate(context: &RewriteContext<'_>, item: &ast::Item) -> O
 }
 
 /// Returns `true` for `mod foo;`, false for `mod foo { .. }`.
-pub fn is_mod_decl(item: &ast::Item) -> bool {
+pub(crate) fn is_mod_decl(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Mod(ref m) => m.inner.hi() != item.span.hi(),
         _ => false,
     }
 }
 
-pub fn is_use_item(item: &ast::Item) -> bool {
+pub(crate) fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::Use(_) => true,
         _ => false,
     }
 }
 
-pub fn is_extern_crate(item: &ast::Item) -> bool {
+pub(crate) fn is_extern_crate(item: &ast::Item) -> bool {
     match item.node {
         ast::ItemKind::ExternCrate(..) => true,
         _ => false,

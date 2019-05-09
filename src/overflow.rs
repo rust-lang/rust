@@ -68,7 +68,7 @@ const SPECIAL_ATTR_WHITELIST: &[(&str, usize)] = &[
 ];
 
 #[derive(Debug)]
-pub enum OverflowableItem<'a> {
+pub(crate) enum OverflowableItem<'a> {
     Expr(&'a ast::Expr),
     GenericParam(&'a ast::GenericParam),
     MacroArg(&'a MacroArg),
@@ -103,7 +103,7 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    pub fn map<F, T>(&self, f: F) -> T
+    pub(crate) fn map<F, T>(&self, f: F) -> T
     where
         F: Fn(&dyn IntoOverflowableItem<'a>) -> T,
     {
@@ -119,7 +119,7 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    pub fn is_simple(&self) -> bool {
+    pub(crate) fn is_simple(&self) -> bool {
         match self {
             OverflowableItem::Expr(expr) => is_simple_expr(expr),
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_simple_expr(expr),
@@ -134,7 +134,7 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    pub fn is_expr(&self) -> bool {
+    pub(crate) fn is_expr(&self) -> bool {
         match self {
             OverflowableItem::Expr(..) => true,
             OverflowableItem::MacroArg(MacroArg::Expr(..)) => true,
@@ -142,7 +142,7 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    pub fn is_nested_call(&self) -> bool {
+    pub(crate) fn is_nested_call(&self) -> bool {
         match self {
             OverflowableItem::Expr(expr) => is_nested_call(expr),
             OverflowableItem::MacroArg(MacroArg::Expr(expr)) => is_nested_call(expr),
@@ -150,7 +150,7 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    pub fn to_expr(&self) -> Option<&'a ast::Expr> {
+    pub(crate) fn to_expr(&self) -> Option<&'a ast::Expr> {
         match self {
             OverflowableItem::Expr(expr) => Some(expr),
             OverflowableItem::MacroArg(macro_arg) => match macro_arg {
@@ -161,7 +161,7 @@ impl<'a> OverflowableItem<'a> {
         }
     }
 
-    pub fn can_be_overflowed(&self, context: &RewriteContext<'_>, len: usize) -> bool {
+    pub(crate) fn can_be_overflowed(&self, context: &RewriteContext<'_>, len: usize) -> bool {
         match self {
             OverflowableItem::Expr(expr) => can_be_overflowed_expr(context, expr, len),
             OverflowableItem::MacroArg(macro_arg) => match macro_arg {
@@ -196,7 +196,7 @@ impl<'a> OverflowableItem<'a> {
     }
 }
 
-pub trait IntoOverflowableItem<'a>: Rewrite + Spanned {
+pub(crate) trait IntoOverflowableItem<'a>: Rewrite + Spanned {
     fn into_overflowable_item(&'a self) -> OverflowableItem<'a>;
 }
 
@@ -240,7 +240,7 @@ macro_rules! impl_into_overflowable_item_for_rustfmt_types {
 impl_into_overflowable_item_for_ast_node!(Expr, GenericParam, NestedMetaItem, StructField, Ty);
 impl_into_overflowable_item_for_rustfmt_types!([MacroArg], [SegmentParam, TuplePatField]);
 
-pub fn into_overflowable_list<'a, T>(
+pub(crate) fn into_overflowable_list<'a, T>(
     iter: impl Iterator<Item = &'a T>,
 ) -> impl Iterator<Item = OverflowableItem<'a>>
 where
@@ -249,7 +249,7 @@ where
     iter.map(|x| IntoOverflowableItem::into_overflowable_item(x))
 }
 
-pub fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
+pub(crate) fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext<'_>,
     ident: &'a str,
     items: impl Iterator<Item = &'a T>,
@@ -273,7 +273,7 @@ pub fn rewrite_with_parens<'a, T: 'a + IntoOverflowableItem<'a>>(
     .rewrite(shape)
 }
 
-pub fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
+pub(crate) fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext<'_>,
     ident: &'a str,
     items: impl Iterator<Item = &'a T>,
@@ -295,7 +295,7 @@ pub fn rewrite_with_angle_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
     .rewrite(shape)
 }
 
-pub fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
+pub(crate) fn rewrite_with_square_brackets<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext<'_>,
     name: &'a str,
     items: impl Iterator<Item = &'a T>,
@@ -340,7 +340,7 @@ struct Context<'a> {
 }
 
 impl<'a> Context<'a> {
-    pub fn new<T: 'a + IntoOverflowableItem<'a>>(
+    fn new<T: 'a + IntoOverflowableItem<'a>>(
         context: &'a RewriteContext<'_>,
         items: impl Iterator<Item = &'a T>,
         ident: &'a str,
@@ -766,7 +766,7 @@ fn no_long_items(list: &[ListItem]) -> bool {
 }
 
 /// In case special-case style is required, returns an offset from which we start horizontal layout.
-pub fn maybe_get_args_offset(
+pub(crate) fn maybe_get_args_offset(
     callee_str: &str,
     args: &[OverflowableItem<'_>],
 ) -> Option<(bool, usize)> {

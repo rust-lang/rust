@@ -13,7 +13,7 @@ use crate::shape::{Indent, Shape};
 use crate::utils::{count_newlines, first_line_width, last_line_width, mk_sp, starts_with_newline};
 use crate::visitor::SnippetProvider;
 
-pub struct ListFormatting<'a> {
+pub(crate) struct ListFormatting<'a> {
     tactic: DefinitiveListTactic,
     separator: &'a str,
     trailing_separator: SeparatorTactic,
@@ -32,7 +32,7 @@ pub struct ListFormatting<'a> {
 }
 
 impl<'a> ListFormatting<'a> {
-    pub fn new(shape: Shape, config: &'a Config) -> Self {
+    pub(crate) fn new(shape: Shape, config: &'a Config) -> Self {
         ListFormatting {
             tactic: DefinitiveListTactic::Vertical,
             separator: ",",
@@ -47,47 +47,47 @@ impl<'a> ListFormatting<'a> {
         }
     }
 
-    pub fn tactic(mut self, tactic: DefinitiveListTactic) -> Self {
+    pub(crate) fn tactic(mut self, tactic: DefinitiveListTactic) -> Self {
         self.tactic = tactic;
         self
     }
 
-    pub fn separator(mut self, separator: &'a str) -> Self {
+    pub(crate) fn separator(mut self, separator: &'a str) -> Self {
         self.separator = separator;
         self
     }
 
-    pub fn trailing_separator(mut self, trailing_separator: SeparatorTactic) -> Self {
+    pub(crate) fn trailing_separator(mut self, trailing_separator: SeparatorTactic) -> Self {
         self.trailing_separator = trailing_separator;
         self
     }
 
-    pub fn separator_place(mut self, separator_place: SeparatorPlace) -> Self {
+    pub(crate) fn separator_place(mut self, separator_place: SeparatorPlace) -> Self {
         self.separator_place = separator_place;
         self
     }
 
-    pub fn ends_with_newline(mut self, ends_with_newline: bool) -> Self {
+    pub(crate) fn ends_with_newline(mut self, ends_with_newline: bool) -> Self {
         self.ends_with_newline = ends_with_newline;
         self
     }
 
-    pub fn preserve_newline(mut self, preserve_newline: bool) -> Self {
+    pub(crate) fn preserve_newline(mut self, preserve_newline: bool) -> Self {
         self.preserve_newline = preserve_newline;
         self
     }
 
-    pub fn nested(mut self, nested: bool) -> Self {
+    pub(crate) fn nested(mut self, nested: bool) -> Self {
         self.nested = nested;
         self
     }
 
-    pub fn align_comments(mut self, align_comments: bool) -> Self {
+    pub(crate) fn align_comments(mut self, align_comments: bool) -> Self {
         self.align_comments = align_comments;
         self
     }
 
-    pub fn needs_trailing_separator(&self) -> bool {
+    pub(crate) fn needs_trailing_separator(&self) -> bool {
         match self.trailing_separator {
             // We always put separator in front.
             SeparatorTactic::Always => true,
@@ -106,7 +106,7 @@ impl AsRef<ListItem> for ListItem {
 }
 
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
-pub enum ListItemCommentStyle {
+pub(crate) enum ListItemCommentStyle {
     // Try to keep the comment on the same line with the item.
     SameLine,
     // Put the comment on the previous or the next line of the item.
@@ -116,20 +116,20 @@ pub enum ListItemCommentStyle {
 }
 
 #[derive(Debug, Clone)]
-pub struct ListItem {
+pub(crate) struct ListItem {
     // None for comments mean that they are not present.
-    pub pre_comment: Option<String>,
-    pub pre_comment_style: ListItemCommentStyle,
+    pub(crate) pre_comment: Option<String>,
+    pub(crate) pre_comment_style: ListItemCommentStyle,
     // Item should include attributes and doc comments. None indicates a failed
     // rewrite.
-    pub item: Option<String>,
-    pub post_comment: Option<String>,
+    pub(crate) item: Option<String>,
+    pub(crate) post_comment: Option<String>,
     // Whether there is extra whitespace before this item.
-    pub new_lines: bool,
+    pub(crate) new_lines: bool,
 }
 
 impl ListItem {
-    pub fn empty() -> ListItem {
+    pub(crate) fn empty() -> ListItem {
         ListItem {
             pre_comment: None,
             pre_comment_style: ListItemCommentStyle::None,
@@ -139,11 +139,11 @@ impl ListItem {
         }
     }
 
-    pub fn inner_as_ref(&self) -> &str {
+    pub(crate) fn inner_as_ref(&self) -> &str {
         self.item.as_ref().map_or("", |s| s)
     }
 
-    pub fn is_different_group(&self) -> bool {
+    pub(crate) fn is_different_group(&self) -> bool {
         self.inner_as_ref().contains('\n')
             || self.pre_comment.is_some()
             || self
@@ -152,7 +152,7 @@ impl ListItem {
                 .map_or(false, |s| s.contains('\n'))
     }
 
-    pub fn is_multiline(&self) -> bool {
+    pub(crate) fn is_multiline(&self) -> bool {
         self.inner_as_ref().contains('\n')
             || self
                 .pre_comment
@@ -164,7 +164,7 @@ impl ListItem {
                 .map_or(false, |s| s.contains('\n'))
     }
 
-    pub fn has_single_line_comment(&self) -> bool {
+    pub(crate) fn has_single_line_comment(&self) -> bool {
         self.pre_comment
             .as_ref()
             .map_or(false, |comment| comment.trim_start().starts_with("//"))
@@ -174,11 +174,11 @@ impl ListItem {
                 .map_or(false, |comment| comment.trim_start().starts_with("//"))
     }
 
-    pub fn has_comment(&self) -> bool {
+    pub(crate) fn has_comment(&self) -> bool {
         self.pre_comment.is_some() || self.post_comment.is_some()
     }
 
-    pub fn from_str<S: Into<String>>(s: S) -> ListItem {
+    pub(crate) fn from_str<S: Into<String>>(s: S) -> ListItem {
         ListItem {
             pre_comment: None,
             pre_comment_style: ListItemCommentStyle::None,
@@ -203,13 +203,13 @@ impl ListItem {
 
 /// The type of separator for lists.
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Separator {
+pub(crate) enum Separator {
     Comma,
     VerticalBar,
 }
 
 impl Separator {
-    pub fn len(self) -> usize {
+    pub(crate) fn len(self) -> usize {
         match self {
             // 2 = `, `
             Separator::Comma => 2,
@@ -219,7 +219,7 @@ impl Separator {
     }
 }
 
-pub fn definitive_tactic<I, T>(
+pub(crate) fn definitive_tactic<I, T>(
     items: I,
     tactic: ListTactic,
     sep: Separator,
@@ -260,7 +260,7 @@ where
 }
 
 // Format a list of commented items into a string.
-pub fn write_list<I, T>(items: I, formatting: &ListFormatting<'_>) -> Option<String>
+pub(crate) fn write_list<I, T>(items: I, formatting: &ListFormatting<'_>) -> Option<String>
 where
     I: IntoIterator<Item = T> + Clone,
     T: AsRef<ListItem>,
@@ -556,7 +556,7 @@ fn post_comment_alignment(item_max_width: Option<usize>, inner_item_len: usize) 
     item_max_width.unwrap_or(0).saturating_sub(inner_item_len)
 }
 
-pub struct ListItems<'a, I, F1, F2, F3>
+pub(crate) struct ListItems<'a, I, F1, F2, F3>
 where
     I: Iterator,
 {
@@ -572,7 +572,7 @@ where
     leave_last: bool,
 }
 
-pub fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommentStyle) {
+pub(crate) fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommentStyle) {
     let trimmed_pre_snippet = pre_snippet.trim();
     let has_block_comment = trimmed_pre_snippet.ends_with("*/");
     let has_single_line_comment = trimmed_pre_snippet.starts_with("//");
@@ -599,7 +599,7 @@ pub fn extract_pre_comment(pre_snippet: &str) -> (Option<String>, ListItemCommen
     }
 }
 
-pub fn extract_post_comment(
+pub(crate) fn extract_post_comment(
     post_snippet: &str,
     comment_end: usize,
     separator: &str,
@@ -629,7 +629,7 @@ pub fn extract_post_comment(
     }
 }
 
-pub fn get_comment_end(
+pub(crate) fn get_comment_end(
     post_snippet: &str,
     separator: &str,
     terminator: &str,
@@ -682,7 +682,7 @@ pub fn get_comment_end(
 
 // Account for extra whitespace between items. This is fiddly
 // because of the way we divide pre- and post- comments.
-pub fn has_extra_newline(post_snippet: &str, comment_end: usize) -> bool {
+pub(crate) fn has_extra_newline(post_snippet: &str, comment_end: usize) -> bool {
     if post_snippet.is_empty() || comment_end == 0 {
         return false;
     }
@@ -764,7 +764,7 @@ where
 
 #[allow(clippy::too_many_arguments)]
 // Creates an iterator over a list's items with associated comments.
-pub fn itemize_list<'a, T, I, F1, F2, F3>(
+pub(crate) fn itemize_list<'a, T, I, F1, F2, F3>(
     snippet_provider: &'a SnippetProvider<'_>,
     inner: I,
     terminator: &'a str,
@@ -808,7 +808,7 @@ where
         .fold((0, 0), |acc, l| (acc.0 + 1, acc.1 + l))
 }
 
-pub fn total_item_width(item: &ListItem) -> usize {
+pub(crate) fn total_item_width(item: &ListItem) -> usize {
     comment_len(item.pre_comment.as_ref().map(|x| &(*x)[..]))
         + comment_len(item.post_comment.as_ref().map(|x| &(*x)[..]))
         + item.item.as_ref().map_or(0, String::len)
@@ -830,7 +830,7 @@ fn comment_len(comment: Option<&str>) -> usize {
 }
 
 // Compute horizontal and vertical shapes for a struct-lit-like thing.
-pub fn struct_lit_shape(
+pub(crate) fn struct_lit_shape(
     shape: Shape,
     context: &RewriteContext<'_>,
     prefix_width: usize,
@@ -859,7 +859,7 @@ pub fn struct_lit_shape(
 }
 
 // Compute the tactic for the internals of a struct-lit-like thing.
-pub fn struct_lit_tactic(
+pub(crate) fn struct_lit_tactic(
     h_shape: Option<Shape>,
     context: &RewriteContext<'_>,
     items: &[ListItem],
@@ -878,7 +878,7 @@ pub fn struct_lit_tactic(
 
 // Given a tactic and possible shapes for horizontal and vertical layout,
 // come up with the actual shape to use.
-pub fn shape_for_tactic(
+pub(crate) fn shape_for_tactic(
     tactic: DefinitiveListTactic,
     h_shape: Option<Shape>,
     v_shape: Shape,
@@ -891,7 +891,7 @@ pub fn shape_for_tactic(
 
 // Create a ListFormatting object for formatting the internals of a
 // struct-lit-like thing, that is a series of fields.
-pub fn struct_lit_formatting<'a>(
+pub(crate) fn struct_lit_formatting<'a>(
     shape: Shape,
     tactic: DefinitiveListTactic,
     context: &'a RewriteContext<'_>,

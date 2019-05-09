@@ -13,7 +13,7 @@ use crate::utils::contains_skip;
 type FileModMap<'a> = BTreeMap<FileName, (&'a ast::Mod, &'a str)>;
 
 /// Maps each module to the corresponding file.
-pub struct ModResolver<'a, 'b> {
+pub(crate) struct ModResolver<'a, 'b> {
     source_map: &'b source_map::SourceMap,
     directory: Directory,
     file_map: FileModMap<'a>,
@@ -28,7 +28,7 @@ struct Directory {
 
 impl<'a, 'b> ModResolver<'a, 'b> {
     /// Creates a new `ModResolver`.
-    pub fn new(
+    pub(crate) fn new(
         source_map: &'b source_map::SourceMap,
         directory_ownership: DirectoryOwnership,
         is_input_stdin: bool,
@@ -45,7 +45,7 @@ impl<'a, 'b> ModResolver<'a, 'b> {
     }
 
     /// Creates a map that maps a file name to the module in AST.
-    pub fn visit_crate(mut self, krate: &'a ast::Crate) -> Result<FileModMap<'a>, String> {
+    pub(crate) fn visit_crate(mut self, krate: &'a ast::Crate) -> Result<FileModMap<'a>, String> {
         let root_filename = self.source_map.span_to_filename(krate.span);
         self.directory.path = match root_filename {
             source_map::FileName::Real(ref path) => path

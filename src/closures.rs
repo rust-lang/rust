@@ -23,7 +23,7 @@ use crate::utils::{last_line_width, left_most_sub_expr, stmt_expr, NodeIdExt};
 //     statement without needing a semi-colon), then adding or removing braces
 //     can change whether it is treated as an expression or statement.
 
-pub fn rewrite_closure(
+pub(crate) fn rewrite_closure(
     capture: ast::CaptureBy,
     asyncness: ast::IsAsync,
     movability: ast::Movability,
@@ -286,7 +286,7 @@ fn rewrite_closure_fn_decl(
 
 // Rewriting closure which is placed at the end of the function call's arg.
 // Returns `None` if the reformatted closure 'looks bad'.
-pub fn rewrite_last_closure(
+pub(crate) fn rewrite_last_closure(
     context: &RewriteContext<'_>,
     expr: &ast::Expr,
     shape: Shape,
@@ -351,7 +351,7 @@ pub fn rewrite_last_closure(
 }
 
 /// Returns `true` if the given vector of arguments has more than one `ast::ExprKind::Closure`.
-pub fn args_have_many_closure(args: &[OverflowableItem<'_>]) -> bool {
+pub(crate) fn args_have_many_closure(args: &[OverflowableItem<'_>]) -> bool {
     args.iter()
         .filter_map(OverflowableItem::to_expr)
         .filter(|expr| match expr.node {

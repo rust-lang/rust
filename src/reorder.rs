@@ -272,7 +272,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
     /// Visits and format the given items. Items are reordered If they are
     /// consecutive and reorderable.
-    pub fn visit_items_with_reordering(&mut self, mut items: &[&ast::Item]) {
+    pub(crate) fn visit_items_with_reordering(&mut self, mut items: &[&ast::Item]) {
         while !items.is_empty() {
             // If the next item is a `use`, `extern crate` or `mod`, then extract it and any
             // subsequent items that have the same item kind to be reordered within

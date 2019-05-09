@@ -1,4 +1,5 @@
 #![deny(rust_2018_idioms)]
+#![warn(unreachable_pub)]
 
 #[macro_use]
 extern crate derive_new;

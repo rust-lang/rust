@@ -74,7 +74,7 @@ use crate::utils::{
     trimmed_last_line_width, wrap_str,
 };
 
-pub fn rewrite_chain(
+pub(crate) fn rewrite_chain(
     expr: &ast::Expr,
     context: &RewriteContext<'_>,
     shape: Shape,

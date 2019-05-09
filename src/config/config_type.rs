@@ -2,7 +2,7 @@ use crate::config::file_lines::FileLines;
 use crate::config::options::{IgnoreList, WidthHeuristics};
 
 /// Trait for types that can be used in `Config`.
-pub trait ConfigType: Sized {
+pub(crate) trait ConfigType: Sized {
     /// Returns hint text for use in `Config::print_docs()`. For enum types, this is a
     /// pipe-separated list of variants; for other types it returns "<type>".
     fn doc_hint() -> String;
@@ -73,6 +73,7 @@ macro_rules! create_config {
         use std::io::Write;
 
         #[derive(Clone)]
+        #[allow(unreachable_pub)]
         pub struct Config {
             // if a license_template_path has been specified, successfully read, parsed and compiled
             // into a regex, it will be stored here
@@ -89,6 +90,7 @@ macro_rules! create_config {
         // We first parse into `PartialConfig`, then create a default `Config`
         // and overwrite the properties with corresponding values from `PartialConfig`.
         #[derive(Deserialize, Serialize, Clone)]
+        #[allow(unreachable_pub)]
         pub struct PartialConfig {
             $(pub $i: Option<$ty>),+
         }
@@ -98,10 +100,12 @@ macro_rules! create_config {
         // `config.set().option(false)`. It's pretty ugly. Consider replacing
         // with `config.set_option(false)` if we ever get a stable/usable
         // `concat_idents!()`.
+        #[allow(unreachable_pub)]
         pub struct ConfigSetter<'a>(&'a mut Config);
 
         impl<'a> ConfigSetter<'a> {
             $(
+            #[allow(unreachable_pub)]
             pub fn $i(&mut self, value: $ty) {
                 (self.0).$i.2 = value;
                 match stringify!($i) {
@@ -115,10 +119,12 @@ macro_rules! create_config {
 
         // Query each option, returns true if the user set the option, false if
         // a default was used.
+        #[allow(unreachable_pub)]
         pub struct ConfigWasSet<'a>(&'a Config);
 
         impl<'a> ConfigWasSet<'a> {
             $(
+            #[allow(unreachable_pub)]
             pub fn $i(&self) -> bool {
                 (self.0).$i.1
             }
@@ -127,16 +133,19 @@ macro_rules! create_config {
 
         impl Config {
             $(
+            #[allow(unreachable_pub)]
             pub fn $i(&self) -> $ty {
                 self.$i.0.set(true);
                 self.$i.2.clone()
             }
             )+
 
+            #[allow(unreachable_pub)]
             pub fn set(&mut self) -> ConfigSetter<'_> {
                 ConfigSetter(self)
             }
 
+            #[allow(unreachable_pub)]
             pub fn was_set(&self) -> ConfigWasSet<'_> {
                 ConfigWasSet(self)
             }
@@ -183,6 +192,7 @@ macro_rules! create_config {
                 }
             }
 
+            #[allow(unreachable_pub)]
             pub fn used_options(&self) -> PartialConfig {
                 PartialConfig {
                     $(
@@ -195,6 +205,7 @@ macro_rules! create_config {
                 }
             }
 
+            #[allow(unreachable_pub)]
             pub fn all_options(&self) -> PartialConfig {
                 PartialConfig {
                     $(
@@ -203,6 +214,7 @@ macro_rules! create_config {
                 }
             }
 
+            #[allow(unreachable_pub)]
             pub fn override_value(&mut self, key: &str, val: &str)
             {
                 match key {
@@ -226,12 +238,14 @@ macro_rules! create_config {
                 }
             }
 
+            #[allow(unreachable_pub)]
             pub fn is_hidden_option(name: &str) -> bool {
                 const HIDE_OPTIONS: [&str; 4] =
                     ["verbose", "verbose_diff", "file_lines", "width_heuristics"];
                 HIDE_OPTIONS.contains(&name)
             }
 
+            #[allow(unreachable_pub)]
             pub fn print_docs(out: &mut dyn Write, include_unstable: bool) {
                 use std::cmp;
                 let max = 0;
@@ -291,6 +305,7 @@ macro_rules! create_config {
                 self.ignore.2.add_prefix(dir);
             }
 
+            #[allow(unreachable_pub)]
             /// Returns `true` if the config key was explicitly set and is the default value.
             pub fn is_default(&self, key: &str) -> bool {
                 $(

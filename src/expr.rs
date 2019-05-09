@@ -44,12 +44,12 @@ impl Rewrite for ast::Expr {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-pub enum ExprType {
+pub(crate) enum ExprType {
     Statement,
     SubExpression,
 }
 
-pub fn format_expr(
+pub(crate) fn format_expr(
     expr: &ast::Expr,
     expr_type: ExprType,
     context: &RewriteContext<'_>,
@@ -386,7 +386,7 @@ pub fn format_expr(
         })
 }
 
-pub fn rewrite_array<'a, T: 'a + IntoOverflowableItem<'a>>(
+pub(crate) fn rewrite_array<'a, T: 'a + IntoOverflowableItem<'a>>(
     name: &'a str,
     exprs: impl Iterator<Item = &'a T>,
     span: Span,
@@ -492,7 +492,7 @@ fn rewrite_single_line_block(
     None
 }
 
-pub fn rewrite_block_with_visitor(
+pub(crate) fn rewrite_block_with_visitor(
     context: &RewriteContext<'_>,
     prefix: &str,
     block: &ast::Block,
@@ -581,7 +581,7 @@ impl Rewrite for ast::Stmt {
 }
 
 // Rewrite condition if the given expression has one.
-pub fn rewrite_cond(
+pub(crate) fn rewrite_cond(
     context: &RewriteContext<'_>,
     expr: &ast::Expr,
     shape: Shape,
@@ -1128,7 +1128,7 @@ fn extract_comment(span: Span, context: &RewriteContext<'_>, shape: Shape) -> Op
     }
 }
 
-pub fn block_contains_comment(block: &ast::Block, source_map: &SourceMap) -> bool {
+pub(crate) fn block_contains_comment(block: &ast::Block, source_map: &SourceMap) -> bool {
     let snippet = source_map.span_to_snippet(block.span).unwrap();
     contains_comment(&snippet)
 }
@@ -1137,7 +1137,7 @@ pub fn block_contains_comment(block: &ast::Block, source_map: &SourceMap) -> boo
 // attributes.
 // FIXME: incorrectly returns false when comment is contained completely within
 // the expression.
-pub fn is_simple_block(
+pub(crate) fn is_simple_block(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
     source_map: &SourceMap,
@@ -1150,7 +1150,7 @@ pub fn is_simple_block(
 
 /// Checks whether a block contains at most one statement or expression, and no
 /// comments or attributes.
-pub fn is_simple_block_stmt(
+pub(crate) fn is_simple_block_stmt(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
     source_map: &SourceMap,
@@ -1162,7 +1162,7 @@ pub fn is_simple_block_stmt(
 
 /// Checks whether a block contains no statements, expressions, comments, or
 /// inner attributes.
-pub fn is_empty_block(
+pub(crate) fn is_empty_block(
     block: &ast::Block,
     attrs: Option<&[ast::Attribute]>,
     source_map: &SourceMap,
@@ -1172,7 +1172,7 @@ pub fn is_empty_block(
         && attrs.map_or(true, |a| inner_attributes(a).is_empty())
 }
 
-pub fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
+pub(crate) fn stmt_is_expr(stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Expr(..) => true,
         _ => false,
@@ -1189,7 +1189,7 @@ pub(crate) fn stmt_is_if(stmt: &ast::Stmt) -> bool {
     }
 }
 
-pub fn is_unsafe_block(block: &ast::Block) -> bool {
+pub(crate) fn is_unsafe_block(block: &ast::Block) -> bool {
     if let ast::BlockCheckMode::Unsafe(..) = block.rules {
         true
     } else {
@@ -1197,7 +1197,7 @@ pub fn is_unsafe_block(block: &ast::Block) -> bool {
     }
 }
 
-pub fn rewrite_multiple_patterns(
+pub(crate) fn rewrite_multiple_patterns(
     context: &RewriteContext<'_>,
     pats: &[&ast::Pat],
     shape: Shape,
@@ -1230,7 +1230,11 @@ pub fn rewrite_multiple_patterns(
     write_list(&items, &fmt)
 }
 
-pub fn rewrite_literal(context: &RewriteContext<'_>, l: &ast::Lit, shape: Shape) -> Option<String> {
+pub(crate) fn rewrite_literal(
+    context: &RewriteContext<'_>,
+    l: &ast::Lit,
+    shape: Shape,
+) -> Option<String> {
     match l.node {
         ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
         _ => wrap_str(
@@ -1297,7 +1301,7 @@ fn choose_separator_tactic(context: &RewriteContext<'_>, span: Span) -> Option<S
     }
 }
 
-pub fn rewrite_call(
+pub(crate) fn rewrite_call(
     context: &RewriteContext<'_>,
     callee: &str,
     args: &[ptr::P<ast::Expr>],
@@ -1315,7 +1319,7 @@ pub fn rewrite_call(
     )
 }
 
-pub fn is_simple_expr(expr: &ast::Expr) -> bool {
+pub(crate) fn is_simple_expr(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Lit(..) => true,
         ast::ExprKind::Path(ref qself, ref path) => qself.is_none() && path.segments.len() <= 1,
@@ -1333,11 +1337,11 @@ pub fn is_simple_expr(expr: &ast::Expr) -> bool {
     }
 }
 
-pub fn is_every_expr_simple(lists: &[OverflowableItem<'_>]) -> bool {
+pub(crate) fn is_every_expr_simple(lists: &[OverflowableItem<'_>]) -> bool {
     lists.iter().all(OverflowableItem::is_simple)
 }
 
-pub fn can_be_overflowed_expr(
+pub(crate) fn can_be_overflowed_expr(
     context: &RewriteContext<'_>,
     expr: &ast::Expr,
     args_len: usize,
@@ -1388,7 +1392,7 @@ pub fn can_be_overflowed_expr(
     }
 }
 
-pub fn is_nested_call(expr: &ast::Expr) -> bool {
+pub(crate) fn is_nested_call(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Call(..) | ast::ExprKind::Mac(..) => true,
         ast::ExprKind::AddrOf(_, ref expr)
@@ -1403,7 +1407,7 @@ pub fn is_nested_call(expr: &ast::Expr) -> bool {
 /// Returns `true` if a function call or a method call represented by the given span ends with a
 /// trailing comma. This function is used when rewriting macro, as adding or removing a trailing
 /// comma from macro can potentially break the code.
-pub fn span_ends_with_comma(context: &RewriteContext<'_>, span: Span) -> bool {
+pub(crate) fn span_ends_with_comma(context: &RewriteContext<'_>, span: Span) -> bool {
     let mut result: bool = Default::default();
     let mut prev_char: char = Default::default();
     let closing_delimiters = &[')', '}', ']'];
@@ -1667,7 +1671,7 @@ fn rewrite_struct_lit<'a>(
     // of space, we should fall back to BlockIndent.
 }
 
-pub fn wrap_struct_field(
+pub(crate) fn wrap_struct_field(
     context: &RewriteContext<'_>,
     fields_str: &str,
     shape: Shape,
@@ -1691,11 +1695,11 @@ pub fn wrap_struct_field(
     }
 }
 
-pub fn struct_lit_field_separator(config: &Config) -> &str {
+pub(crate) fn struct_lit_field_separator(config: &Config) -> &str {
     colon_spaces(config)
 }
 
-pub fn rewrite_field(
+pub(crate) fn rewrite_field(
     context: &RewriteContext<'_>,
     field: &ast::Field,
     shape: Shape,
@@ -1792,7 +1796,7 @@ fn rewrite_tuple_in_visual_indent_style<'a, T: 'a + IntoOverflowableItem<'a>>(
     Some(format!("({})", list_str))
 }
 
-pub fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
+pub(crate) fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
     context: &'a RewriteContext<'_>,
     items: impl Iterator<Item = &'a T>,
     span: Span,
@@ -1827,7 +1831,7 @@ pub fn rewrite_tuple<'a, T: 'a + IntoOverflowableItem<'a>>(
     }
 }
 
-pub fn rewrite_unary_prefix<R: Rewrite>(
+pub(crate) fn rewrite_unary_prefix<R: Rewrite>(
     context: &RewriteContext<'_>,
     prefix: &str,
     rewrite: &R,
@@ -1840,7 +1844,7 @@ pub fn rewrite_unary_prefix<R: Rewrite>(
 
 // FIXME: this is probably not correct for multi-line Rewrites. we should
 // subtract suffix.len() from the last line budget, not the first!
-pub fn rewrite_unary_suffix<R: Rewrite>(
+pub(crate) fn rewrite_unary_suffix<R: Rewrite>(
     context: &RewriteContext<'_>,
     suffix: &str,
     rewrite: &R,
@@ -1885,7 +1889,7 @@ fn rewrite_assignment(
 
 /// Controls where to put the rhs.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum RhsTactics {
+pub(crate) enum RhsTactics {
     /// Use heuristics.
     Default,
     /// Put the rhs on the next line if it uses multiple line, without extra indentation.
@@ -1894,7 +1898,7 @@ pub enum RhsTactics {
 
 // The left hand side must contain everything up to, and including, the
 // assignment operator.
-pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
+pub(crate) fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
     context: &RewriteContext<'_>,
     lhs: S,
     ex: &R,
@@ -1903,7 +1907,7 @@ pub fn rewrite_assign_rhs<S: Into<String>, R: Rewrite>(
     rewrite_assign_rhs_with(context, lhs, ex, shape, RhsTactics::Default)
 }
 
-pub fn rewrite_assign_rhs_with<S: Into<String>, R: Rewrite>(
+pub(crate) fn rewrite_assign_rhs_with<S: Into<String>, R: Rewrite>(
     context: &RewriteContext<'_>,
     lhs: S,
     ex: &R,
@@ -1989,7 +1993,11 @@ fn shape_from_rhs_tactic(
     }
 }
 
-pub fn prefer_next_line(orig_rhs: &str, next_line_rhs: &str, rhs_tactics: RhsTactics) -> bool {
+pub(crate) fn prefer_next_line(
+    orig_rhs: &str,
+    next_line_rhs: &str,
+    rhs_tactics: RhsTactics,
+) -> bool {
     rhs_tactics == RhsTactics::ForceNextLineWithoutIndent
         || !next_line_rhs.contains('\n')
         || count_newlines(orig_rhs) > count_newlines(next_line_rhs) + 1
@@ -2011,7 +2019,7 @@ fn rewrite_expr_addrof(
     rewrite_unary_prefix(context, operator_str, expr, shape)
 }
 
-pub fn is_method_call(expr: &ast::Expr) -> bool {
+pub(crate) fn is_method_call(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::MethodCall(..) => true,
         ast::ExprKind::AddrOf(_, ref expr)
