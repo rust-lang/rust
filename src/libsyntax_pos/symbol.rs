@@ -725,6 +725,15 @@ impl InternedString {
         unsafe { f(&*str) }
     }
 
+    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: &InternedString, f: F) -> R {
+        let (self_str, other_str) = with_interner(|interner| {
+            (interner.get(self.symbol) as *const str,
+             interner.get(other.symbol) as *const str)
+        });
+        // This is safe for the same reason that `with` is safe.
+        unsafe { f(&*self_str, &*other_str) }
+    }
+
     pub fn as_symbol(self) -> Symbol {
         self.symbol
     }
@@ -745,7 +754,7 @@ impl PartialOrd<InternedString> for InternedString {
         if self.symbol == other.symbol {
             return Some(Ordering::Equal);
         }
-        self.with(|self_str| other.with(|other_str| self_str.partial_cmp(other_str)))
+        self.with2(other, |self_str, other_str| self_str.partial_cmp(other_str))
     }
 }
 
@@ -754,7 +763,7 @@ impl Ord for InternedString {
         if self.symbol == other.symbol {
             return Ordering::Equal;
         }
-        self.with(|self_str| other.with(|other_str| self_str.cmp(&other_str)))
+        self.with2(other, |self_str, other_str| self_str.cmp(other_str))
     }
 }
 
