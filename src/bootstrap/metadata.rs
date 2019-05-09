@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::collections::HashSet;
 
 use build_helper::output;
+use serde::Deserialize;
 use serde_json;
 
 use crate::{Build, Crate};

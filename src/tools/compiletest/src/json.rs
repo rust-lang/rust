@@ -3,6 +3,7 @@
 
 use crate::errors::{Error, ErrorKind};
 use crate::runtest::ProcRes;
+use serde::Deserialize;
 use serde_json;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;

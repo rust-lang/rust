@@ -4,6 +4,8 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
 
+use log::*;
+
 use crate::common::{self, CompareMode, Config, Mode};
 use crate::util;
 

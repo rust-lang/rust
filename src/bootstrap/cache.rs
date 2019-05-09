@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::cmp::{PartialOrd, Ord, Ordering};
 
+use lazy_static::lazy_static;
+
 use crate::builder::Step;
 
 pub struct Interned<T>(usize, PhantomData<*const T>);
