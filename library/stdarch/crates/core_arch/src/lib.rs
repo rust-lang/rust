@@ -32,6 +32,7 @@
     abi_unadjusted,
     adx_target_feature,
     rtm_target_feature,
+    f16c_target_feature,
     external_doc
 )]
 #![cfg_attr(test, feature(test, abi_vectorcall, untagged_unions))]
