@@ -357,29 +357,6 @@ macro_rules! dbg {
     };
 }
 
-/// Awaits the completion of an async call.
-#[macro_export]
-#[unstable(feature = "await_macro", issue = "50547")]
-#[allow_internal_unstable(gen_future, generators)]
-#[allow_internal_unsafe]
-macro_rules! r#await {
-    ($e:expr) => { {
-        let mut pinned = $e;
-        loop {
-            if let $crate::task::Poll::Ready(x) =
-                $crate::future::poll_with_tls_context(unsafe {
-                    $crate::pin::Pin::new_unchecked(&mut pinned)
-                })
-            {
-                break x;
-            }
-            // FIXME(cramertj) prior to stabilizing await, we have to ensure that this
-            // can't be used to create a generator on stable via `|| await!()`.
-            yield
-        }
-    } }
-}
-
 /// Selects the first successful receive event from a number of receivers.
 ///
 /// This macro is used to wait for the first event to occur on a number of
