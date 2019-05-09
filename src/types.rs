@@ -827,7 +827,11 @@ fn join_bounds(
     Some(result)
 }
 
-pub(crate) fn can_be_overflowed_type(context: &RewriteContext<'_>, ty: &ast::Ty, len: usize) -> bool {
+pub(crate) fn can_be_overflowed_type(
+    context: &RewriteContext<'_>,
+    ty: &ast::Ty,
+    len: usize,
+) -> bool {
     match ty.node {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
         ast::TyKind::Rptr(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {

@@ -54,7 +54,10 @@ pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
 }
 
 // Uses Cow to avoid allocating in the common cases.
-pub(crate) fn format_visibility(context: &RewriteContext<'_>, vis: &Visibility) -> Cow<'static, str> {
+pub(crate) fn format_visibility(
+    context: &RewriteContext<'_>,
+    vis: &Visibility,
+) -> Cow<'static, str> {
     match vis.node {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
@@ -143,7 +146,10 @@ pub(crate) fn ptr_vec_to_ref_vec<T>(vec: &[ptr::P<T>]) -> Vec<&T> {
 }
 
 #[inline]
-pub(crate) fn filter_attributes(attrs: &[ast::Attribute], style: ast::AttrStyle) -> Vec<ast::Attribute> {
+pub(crate) fn filter_attributes(
+    attrs: &[ast::Attribute],
+    style: ast::AttrStyle,
+) -> Vec<ast::Attribute> {
     attrs
         .iter()
         .filter(|a| a.style == style)
@@ -503,7 +509,11 @@ pub(crate) fn remove_trailing_white_spaces(text: &str) -> String {
 ///     ),
 /// }
 /// ```
-pub(crate) fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) -> Option<String> {
+pub(crate) fn trim_left_preserve_layout(
+    orig: &str,
+    indent: Indent,
+    config: &Config,
+) -> Option<String> {
     let mut lines = LineClasses::new(orig);
     let first_line = lines.next().map(|(_, s)| s.trim_end().to_owned())?;
     let mut trimmed_lines = Vec::with_capacity(16);
