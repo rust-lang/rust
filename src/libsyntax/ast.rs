@@ -1352,7 +1352,7 @@ pub enum StrStyle {
 }
 
 /// A literal.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Lit {
     pub node: LitKind,
     pub token: token::Lit,

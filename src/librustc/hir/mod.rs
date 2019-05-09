@@ -20,7 +20,7 @@ use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
-use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
+use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
@@ -1331,6 +1331,9 @@ impl BodyOwnerKind {
     }
 }
 
+/// A literal.
+pub type Lit = Spanned<LitKind>;
+
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1353,7 +1356,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 80);
+static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 72);
 
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
