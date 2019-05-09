@@ -259,7 +259,6 @@
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(external_doc)]
-#![feature(fixed_size_array)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
 #![feature(generator_trait)]
@@ -435,6 +434,8 @@ pub use core::char;
 pub use core::u128;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
+#[stable(feature = "core_array", since = "1.36.0")]
+pub use core::array;
 
 pub mod f32;
 pub mod f64;
