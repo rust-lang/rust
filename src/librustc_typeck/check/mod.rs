@@ -4168,9 +4168,25 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 oprnd_t = self.make_overloaded_place_return_type(method).ty;
                                 self.write_method_call(expr.hir_id, method);
                             } else {
-                                type_error_struct!(tcx.sess, expr.span, oprnd_t, E0614,
-                                                   "type `{}` cannot be dereferenced",
-                                                   oprnd_t).emit();
+                                let mut err = type_error_struct!(
+                                    tcx.sess,
+                                    expr.span,
+                                    oprnd_t,
+                                    E0614,
+                                    "type `{}` cannot be dereferenced",
+                                    oprnd_t,
+                                );
+                                let sp = tcx.sess.source_map().start_point(expr.span);
+                                if let Some(sp) = tcx.sess.parse_sess.ambiguous_block_expr_parse
+                                    .borrow().get(&sp)
+                                {
+                                    tcx.sess.parse_sess.expr_parentheses_needed(
+                                        &mut err,
+                                        *sp,
+                                        None,
+                                    );
+                                }
+                                err.emit();
                                 oprnd_t = tcx.types.err;
                             }
                         }

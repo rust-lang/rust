@@ -11,12 +11,12 @@ use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
 use crate::print::pprust::token_to_string;
 
-use errors::{FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
+use errors::{Applicability, FatalError, Level, Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use rustc_data_structures::sync::{Lrc, Lock};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
 use log::debug;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 use std::str;
@@ -52,6 +52,10 @@ pub struct ParseSess {
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
+    /// Contains the spans of block expressions that could have been incomplete based on the
+    /// operation token that followed it, but that the parser cannot identify without further
+    /// analysis.
+    pub ambiguous_block_expr_parse: Lock<FxHashMap<Span, Span>>,
 }
 
 impl ParseSess {
@@ -75,6 +79,7 @@ impl ParseSess {
             included_mod_stack: Lock::new(vec![]),
             source_map,
             buffered_lints: Lock::new(vec![]),
+            ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
         }
     }
 
@@ -97,6 +102,24 @@ impl ParseSess {
                 lint_id,
             });
         });
+    }
+
+    /// Extend an error with a suggestion to wrap an expression with parentheses to allow the
+    /// parser to continue parsing the following operation as part of the same expression.
+    pub fn expr_parentheses_needed(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        span: Span,
+        alt_snippet: Option<String>,
+    ) {
+        if let Some(snippet) = self.source_map().span_to_snippet(span).ok().or(alt_snippet) {
+            err.span_suggestion(
+                span,
+                "parentheses are required to parse this as an expression",
+                format!("({})", snippet),
+                Applicability::MachineApplicable,
+            );
+        }
     }
 }
 
