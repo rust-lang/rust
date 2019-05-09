@@ -1057,7 +1057,7 @@ impl<'hir> Map<'hir> {
             in_which: &parts[..parts.len() - 1],
         };
 
-        self.all_ids().filter(move |hir| nodes.matces_suffix(*hir)).map(move |hir| {
+        self.all_ids().filter(move |hir| nodes.matches_suffix(*hir)).map(move |hir| {
             self.hir_to_node_id(hir)
         })
     }
@@ -1198,7 +1198,7 @@ impl<'a> NodesMatchingSuffix<'a> {
         name == &**self.item_name && self.suffix_matches(parent_of_n)
     }
 
-    fn matces_suffix(&self, hir: HirId) -> bool {
+    fn matches_suffix(&self, hir: HirId) -> bool {
         let name = match self.map.find_entry(hir).map(|entry| entry.node) {
             Some(Node::Item(n)) => n.name(),
             Some(Node::ForeignItem(n)) => n.name(),
