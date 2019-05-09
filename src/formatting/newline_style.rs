@@ -65,10 +65,13 @@ fn native_newline_style() -> EffectiveNewlineStyle {
 
 fn convert_to_windows_newlines(formatted_text: &String) -> String {
     let mut transformed = String::with_capacity(2 * formatted_text.capacity());
-    for c in formatted_text.chars() {
-        match c {
+    let mut chars = formatted_text.chars().peekable();
+    while let Some(current_char) = chars.next() {
+        let next_char = chars.peek();
+        match current_char {
             LINE_FEED => transformed.push_str(WINDOWS_NEWLINE),
-            c => transformed.push(c),
+            CARRIAGE_RETURN if next_char == Some(&LINE_FEED) => {}
+            current_char => transformed.push(current_char),
         }
     }
     transformed
@@ -162,34 +165,63 @@ mod tests {
 
     #[test]
     fn applies_unix_newlines() {
-        let formatted_text = "One\r\nTwo\nThree";
-        let raw_input_text = formatted_text;
-
-        let mut out = String::from(formatted_text);
-        apply_newline_style(NewlineStyle::Unix, &mut out, raw_input_text);
-
-        assert_eq!("One\nTwo\nThree", &out);
+        test_newlines_are_applied_correctly(
+            "One\r\nTwo\nThree",
+            "One\nTwo\nThree",
+            NewlineStyle::Unix,
+        );
     }
 
     #[test]
-    fn preserves_standalone_carriage_returns_when_applying_windows_newlines() {
-        let formatted_text = "One\nTwo\nThree\rDrei";
-        let raw_input_text = "One\nTwo\nThree\rDrei";
+    fn applying_windows_newlines_changes_nothing_for_windows_newlines() {
+        let formatted_text = "One\r\nTwo\r\nThree";
 
-        let mut out = String::from(formatted_text);
-        apply_newline_style(NewlineStyle::Windows, &mut out, raw_input_text);
-
-        assert_eq!("One\r\nTwo\r\nThree\rDrei", &out);
+        test_newlines_are_applied_correctly(formatted_text, formatted_text, NewlineStyle::Windows);
     }
 
     #[test]
-    fn preserves_standalone_carriage_returns_when_applying_unix_newlines() {
-        let formatted_text = "One\nTwo\nThree\rDrei";
-        let raw_input_text = "One\nTwo\nThree\rDrei";
+    fn keeps_carriage_returns_when_applying_windows_newlines_to_str_with_unix_newlines() {
+        test_newlines_are_applied_correctly(
+            "One\nTwo\nThree\rDrei",
+            "One\r\nTwo\r\nThree\rDrei",
+            NewlineStyle::Windows,
+        );
+    }
 
-        let mut out = String::from(formatted_text);
-        apply_newline_style(NewlineStyle::Unix, &mut out, raw_input_text);
+    #[test]
+    fn keeps_carriage_returns_when_applying_unix_newlines_to_str_with_unix_newlines() {
+        test_newlines_are_applied_correctly(
+            "One\nTwo\nThree\rDrei",
+            "One\nTwo\nThree\rDrei",
+            NewlineStyle::Unix,
+        );
+    }
 
-        assert_eq!("One\nTwo\nThree\rDrei", &out);
+    #[test]
+    fn keeps_carriage_returns_when_applying_windows_newlines_to_str_with_windows_newlines() {
+        test_newlines_are_applied_correctly(
+            "One\r\nTwo\r\nThree\rDrei",
+            "One\r\nTwo\r\nThree\rDrei",
+            NewlineStyle::Windows,
+        );
+    }
+
+    #[test]
+    fn keeps_carriage_returns_when_applying_unix_newlines_to_str_with_windows_newlines() {
+        test_newlines_are_applied_correctly(
+            "One\r\nTwo\r\nThree\rDrei",
+            "One\nTwo\nThree\rDrei",
+            NewlineStyle::Unix,
+        );
+    }
+
+    fn test_newlines_are_applied_correctly(
+        input: &str,
+        expected: &str,
+        newline_style: NewlineStyle,
+    ) {
+        let mut out = String::from(input);
+        apply_newline_style(newline_style, &mut out, input);
+        assert_eq!(expected, &out);
     }
 }
