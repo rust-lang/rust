@@ -27,20 +27,7 @@ mod musl_reference_tests {
     // These files are all internal functions or otherwise miscellaneous, not
     // defining a function we want to test.
     const IGNORED_FILES: &[&str] = &[
-        "expo2.rs", // kernel, private
         "fenv.rs",
-        "k_cos.rs",    // kernel, private
-        "k_cosf.rs",   // kernel, private
-        "k_expo2.rs",  // kernel, private
-        "k_expo2f.rs", // kernel, private
-        "k_sin.rs",    // kernel, private
-        "k_sinf.rs",   // kernel, private
-        "k_tan.rs",    // kernel, private
-        "k_tanf.rs",   // kernel, private
-        "mod.rs",
-        "rem_pio2.rs",       // kernel, private
-        "rem_pio2_large.rs", // kernel, private
-        "rem_pio2f.rs",      // kernel, private
         "sincos.rs",         // more than 1 result
         "sincosf.rs",        // more than 1 result
         "jn.rs",             // passed, but very slow
