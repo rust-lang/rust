@@ -8730,6 +8730,10 @@ impl<'a> Parser<'a> {
     /// The arguments of the function are replaced in HIR lowering with the arguments created by
     /// this function and the statements created here are inserted at the top of the closure body.
     fn construct_async_arguments(&mut self, asyncness: &mut Spanned<IsAsync>, decl: &mut FnDecl) {
+        // FIXME(davidtwco): This function should really live in the HIR lowering but because
+        // the types constructed here need to be used in parts of resolve so that the correct
+        // locals are considered upvars, it is currently easier for it to live here in the parser,
+        // where it can be constructed once.
         if let IsAsync::Async { ref mut arguments, .. } = asyncness.node {
             for (index, input) in decl.inputs.iter_mut().enumerate() {
                 let id = ast::DUMMY_NODE_ID;
