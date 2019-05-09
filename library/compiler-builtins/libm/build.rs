@@ -41,18 +41,18 @@ mod musl_reference_tests {
         "rem_pio2.rs",
         "rem_pio2_large.rs",
         "rem_pio2f.rs",
-        "remquo.rs",  // more than 1 result
-        "remquof.rs", // more than 1 result
+        "remquo.rs",    // more than 1 result
+        "remquof.rs",   // more than 1 result
         "lgamma_r.rs",  // more than 1 result
         "lgammaf_r.rs", // more than 1 result
-        "frexp.rs",   // more than 1 result
-        "frexpf.rs",  // more than 1 result
-        "sincos.rs",  // more than 1 result
-        "sincosf.rs", // more than 1 result
-        "modf.rs",    // more than 1 result
-        "modff.rs",   // more than 1 result
-        "jn.rs",      // passed, but very slow
-        "jnf.rs",     // passed, but very slow
+        "frexp.rs",     // more than 1 result
+        "frexpf.rs",    // more than 1 result
+        "sincos.rs",    // more than 1 result
+        "sincosf.rs",   // more than 1 result
+        "modf.rs",      // more than 1 result
+        "modff.rs",     // more than 1 result
+        "jn.rs",        // passed, but very slow
+        "jnf.rs",       // passed, but very slow
     ];
 
     struct Function {
