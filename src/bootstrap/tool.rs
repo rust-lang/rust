@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use std::process::{Command, exit};
 use std::collections::HashSet;
 
+use build_helper::t;
+
 use crate::Mode;
 use crate::Compiler;
 use crate::builder::{Step, RunConfig, ShouldRun, Builder};

@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+use build_helper::t;
+
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::check;
 use crate::compile;
@@ -1307,6 +1309,8 @@ mod __test {
     use super::*;
     use crate::config::Config;
     use std::thread;
+
+    use pretty_assertions::assert_eq;
 
     fn configure(host: &[&str], target: &[&str]) -> Config {
         let mut config = Config::default_opts();

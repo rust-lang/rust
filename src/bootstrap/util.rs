@@ -11,6 +11,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, Instant};
 
+use build_helper::t;
+
 use crate::config::Config;
 use crate::builder::Builder;
 

@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 use std::process::Command;
 
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use serde_json;
 
 const LICENSES: &[&str] = &[

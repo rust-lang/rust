@@ -108,17 +108,6 @@
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 
-#[macro_use]
-extern crate build_helper;
-#[macro_use]
-extern crate serde_derive;
-#[macro_use]
-extern crate lazy_static;
-
-#[cfg(test)]
-#[macro_use]
-extern crate pretty_assertions;
-
 use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
 use std::env;
@@ -134,7 +123,9 @@ use std::os::unix::fs::symlink as symlink_file;
 #[cfg(windows)]
 use std::os::windows::fs::symlink_file;
 
-use build_helper::{run_silent, run_suppressed, try_run_silent, try_run_suppressed, output, mtime};
+use build_helper::{
+    mtime, output, run_silent, run_suppressed, t, try_run_silent, try_run_suppressed,
+};
 use filetime::FileTime;
 
 use crate::util::{exe, libdir, OutputFolder, CiEnv};

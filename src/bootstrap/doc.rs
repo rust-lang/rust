@@ -13,7 +13,7 @@ use std::io;
 use std::path::{PathBuf, Path};
 
 use crate::Mode;
-use build_helper::up_to_date;
+use build_helper::{t, up_to_date};
 
 use crate::util::symlink_dir;
 use crate::builder::{Builder, Compiler, RunConfig, ShouldRun, Step};

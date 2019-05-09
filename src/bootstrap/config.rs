@@ -10,8 +10,10 @@ use std::path::{Path, PathBuf};
 use std::process;
 use std::cmp;
 
+use build_helper::t;
 use num_cpus;
 use toml;
+use serde::Deserialize;
 use crate::cache::{INTERNER, Interned};
 use crate::flags::Flags;
 pub use crate::flags::Subcommand;
