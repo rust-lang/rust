@@ -492,7 +492,7 @@ impl Interner {
         if (symbol.0.as_usize()) < self.strings.len() {
             symbol
         } else {
-            self.interned(self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize])
+            self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]
         }
     }
 
@@ -513,7 +513,10 @@ impl Interner {
     pub fn get(&self, symbol: Symbol) -> &str {
         match self.strings.get(symbol.0.as_usize()) {
             Some(string) => string,
-            None => self.get(self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]),
+            None => {
+                let symbol = self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize];
+                self.strings[symbol.0.as_usize()]
+            }
         }
     }
 }
