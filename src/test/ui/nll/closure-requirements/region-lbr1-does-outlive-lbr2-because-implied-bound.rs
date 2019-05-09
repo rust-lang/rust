@@ -3,8 +3,7 @@
 
 // compile-flags:-Zborrowck=mir -Zverbose
 // compile-pass
-
-#![allow(warnings)]
+// skip-codegen
 
 fn foo<'a, 'b>(x: &'a &'b u32) -> &'a u32 {
     &**x
