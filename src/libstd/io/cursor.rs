@@ -265,6 +265,7 @@ impl<T> BufRead for Cursor<T> where T: AsRef<[u8]> {
 }
 
 // Non-resizing write implementation
+#[inline]
 fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<usize> {
     let pos = cmp::min(*pos_mut, slice.len() as u64);
     let amt = (&mut slice[(pos as usize)..]).write(buf)?;
@@ -272,6 +273,7 @@ fn slice_write(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<us
     Ok(amt)
 }
 
+#[inline]
 fn slice_write_vectored(
     pos_mut: &mut u64,
     slice: &mut [u8],
@@ -341,6 +343,7 @@ impl Write for Cursor<&mut [u8]> {
         slice_write_vectored(&mut self.pos, self.inner, bufs)
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
@@ -354,6 +357,7 @@ impl Write for Cursor<&mut Vec<u8>> {
         vec_write_vectored(&mut self.pos, self.inner, bufs)
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
@@ -367,6 +371,7 @@ impl Write for Cursor<Vec<u8>> {
         vec_write_vectored(&mut self.pos, &mut self.inner, bufs)
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
@@ -382,6 +387,7 @@ impl Write for Cursor<Box<[u8]>> {
         slice_write_vectored(&mut self.pos, &mut self.inner, bufs)
     }
 
+    #[inline]
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
