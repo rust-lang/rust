@@ -840,12 +840,6 @@ impl<'a> PartialEq<InternedString> for &'a String {
     }
 }
 
-impl std::convert::From<InternedString> for String {
-    fn from(val: InternedString) -> String {
-        val.as_symbol().to_string()
-    }
-}
-
 impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.with(|str| fmt::Debug::fmt(&str, f))
