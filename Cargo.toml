@@ -48,9 +48,8 @@ rustc_tools_util = { version = "0.1.1", path = "rustc_tools_util"}
 cargo_metadata = "0.7.1"
 compiletest_rs = { version = "0.3.22", features = ["tmp"] }
 lazy_static = "1.0"
-serde_derive = "1.0"
 clippy-mini-macro-test = { version = "0.2", path = "mini-macro" }
-serde = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 derive-new = "0.5"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.

@@ -64,7 +64,7 @@ macro_rules! define_Conf {
     ($(#[$doc: meta] ($rust_name: ident, $rust_name_str: expr, $default: expr => $($ty: tt)+),)+) => {
         pub use self::helpers::Conf;
         mod helpers {
-            use serde_derive::Deserialize;
+            use serde::Deserialize;
             /// Type used to store lint configuration.
             #[derive(Deserialize)]
             #[serde(rename_all="kebab-case", deny_unknown_fields)]
