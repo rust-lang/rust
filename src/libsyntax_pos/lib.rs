@@ -33,7 +33,7 @@ mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
-pub use symbol::symbols;
+pub use symbol::sym;
 
 mod analyze_source_file;
 

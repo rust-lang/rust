@@ -99,8 +99,8 @@ symbols! {
         Union:              "union",
     }
 
-    // Symbols that can be referred to with syntax_pos::symbols::*. The symbol
-    // is the stringified identifier unless otherwise specified (e.g.
+    // Symbols that can be referred to with syntax_pos::sym::*. The symbol is
+    // the stringified identifier unless otherwise specified (e.g.
     // `proc_dash_macro` represents "proc-macro").
     Symbols {
         aarch64_target_feature,
@@ -937,7 +937,8 @@ pub mod keywords {
     keywords!();
 }
 
-pub mod symbols {
+// This module has a very short name because it's used a lot.
+pub mod sym {
     use super::Symbol;
     symbols!();
 }

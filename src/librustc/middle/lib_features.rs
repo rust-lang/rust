@@ -8,7 +8,7 @@ use crate::ty::TyCtxt;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
-use syntax_pos::{Span, symbols};
+use syntax_pos::{Span, sym};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_macros::HashStable;
 use errors::DiagnosticId;
@@ -51,7 +51,7 @@ impl<'a, 'tcx> LibFeatureCollector<'a, 'tcx> {
     }
 
     fn extract(&self, attr: &Attribute) -> Option<(Symbol, Option<Symbol>, Span)> {
-        let stab_attrs = [symbols::stable, symbols::unstable, symbols::rustc_const_unstable];
+        let stab_attrs = [sym::stable, sym::unstable, sym::rustc_const_unstable];
 
         // Find a stability attribute (i.e., `#[stable (..)]`, `#[unstable (..)]`,
         // `#[rustc_const_unstable (..)]`).
