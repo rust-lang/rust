@@ -159,9 +159,26 @@ mod musl_reference_tests {
 
     impl Ty {
         fn gen_i64<R: Rng>(&self, r: &mut R) -> i64 {
-            match self {
-                Ty::F32 => r.gen::<f32>().to_bits().into(),
-                Ty::F64 => r.gen::<f64>().to_bits() as i64,
+            use std::f32;
+            use std::f64;
+
+            return match self {
+                Ty::F32 => {
+                    if r.gen_range(0, 20) < 1 {
+                        let i = *[f32::NAN, f32::INFINITY, f32::NEG_INFINITY].choose(r).unwrap();
+                        i.to_bits().into()
+                    } else {
+                        r.gen::<f32>().to_bits().into()
+                    }
+                }
+                Ty::F64 => {
+                    if r.gen_range(0, 20) < 1 {
+                        let i = *[f64::NAN, f64::INFINITY, f64::NEG_INFINITY].choose(r).unwrap();
+                        i.to_bits() as i64
+                    } else {
+                        r.gen::<f64>().to_bits() as i64
+                    }
+                }
                 Ty::I32 => {
                     if r.gen_range(0, 10) < 1 {
                         let i = *[i32::max_value(), 0, i32::min_value()].choose(r).unwrap();
@@ -171,7 +188,7 @@ mod musl_reference_tests {
                     }
                 }
                 Ty::Bool => r.gen::<bool>() as i64,
-            }
+            };
         }
 
         fn libc_ty(&self) -> &'static str {
