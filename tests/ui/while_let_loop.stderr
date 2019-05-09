@@ -1,0 +1,63 @@
+error: this loop could be written as a `while let` loop
+  --> $DIR/while_let_loop.rs:5:5
+   |
+LL | /     loop {
+LL | |         if let Some(_x) = y {
+LL | |             let _v = 1;
+LL | |         } else {
+LL | |             break;
+LL | |         }
+LL | |     }
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
+   |
+   = note: `-D clippy::while-let-loop` implied by `-D warnings`
+
+error: this loop could be written as a `while let` loop
+  --> $DIR/while_let_loop.rs:22:5
+   |
+LL | /     loop {
+LL | |         match y {
+LL | |             Some(_x) => true,
+LL | |             None => break,
+LL | |         };
+LL | |     }
+   | |_____^ help: try: `while let Some(_x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> $DIR/while_let_loop.rs:29:5
+   |
+LL | /     loop {
+LL | |         let x = match y {
+LL | |             Some(x) => x,
+LL | |             None => break,
+...  |
+LL | |         let _str = "foo";
+LL | |     }
+   | |_____^ help: try: `while let Some(x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> $DIR/while_let_loop.rs:38:5
+   |
+LL | /     loop {
+LL | |         let x = match y {
+LL | |             Some(x) => x,
+LL | |             None => break,
+...  |
+LL | |         }
+LL | |     }
+   | |_____^ help: try: `while let Some(x) = y { .. }`
+
+error: this loop could be written as a `while let` loop
+  --> $DIR/while_let_loop.rs:68:5
+   |
+LL | /     loop {
+LL | |         let (e, l) = match "".split_whitespace().next() {
+LL | |             Some(word) => (word.is_empty(), word.len()),
+LL | |             None => break,
+...  |
+LL | |         let _ = (e, l);
+LL | |     }
+   | |_____^ help: try: `while let Some(word) = "".split_whitespace().next() { .. }`
+
+error: aborting due to 5 previous errors
+
