@@ -4,7 +4,7 @@ note: External requirements
 LL |             let mut closure1 = || p = &y;
    |                                ^^^^^^^^^
    |
-   = note: defining type: DefId(0/1:10 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:14 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]::{{closure}}[0]) with closure substs [
                i16,
                extern "rust-call" fn(()),
                &'_#1r mut &'_#2r i32,
@@ -23,7 +23,7 @@ LL | |             closure1();
 LL | |         };
    | |_________^
    |
-   = note: defining type: DefId(0/1:9 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:13 ~ escape_upvar_nested[317d]::test[0]::{{closure}}[0]) with closure substs [
                i16,
                extern "rust-call" fn(()),
                &'_#1r mut &'_#2r i32,
@@ -44,7 +44,7 @@ LL | |     deref(p);
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0/0:3 ~ escape_upvar_nested[317d]::test[0]) with substs []
+   = note: defining type: DefId(0:12 ~ escape_upvar_nested[317d]::test[0]) with substs []
 
 error[E0597]: `y` does not live long enough
   --> $DIR/escape-upvar-nested.rs:21:40

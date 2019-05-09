@@ -1,6 +1,6 @@
 use rustc_lint;
 use rustc::session::{self, config};
-use rustc::hir::def_id::{DefId, DefIndex, DefIndexAddressSpace, CrateNum, LOCAL_CRATE};
+use rustc::hir::def_id::{DefId, DefIndex, CrateNum, LOCAL_CRATE};
 use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
@@ -112,8 +112,8 @@ impl<'tcx> DocContext<'tcx> {
     // registered after the AST is constructed would require storing the defid mapping in a
     // RefCell, decreasing the performance for normal compilation for very little gain.
     //
-    // Instead, we construct 'fake' def ids, which start immediately after the last DefId in
-    // DefIndexAddressSpace::Low. In the Debug impl for clean::Item, we explicitly check for fake
+    // Instead, we construct 'fake' def ids, which start immediately after the last DefId.
+    // In the Debug impl for clean::Item, we explicitly check for fake
     // def ids, as we'll end up with a panic if we use the DefId Debug impl for fake DefIds
     pub fn next_def_id(&self, crate_num: CrateNum) -> DefId {
         let start_def_id = {
@@ -122,11 +122,11 @@ impl<'tcx> DocContext<'tcx> {
                     .hir()
                     .definitions()
                     .def_path_table()
-                    .next_id(DefIndexAddressSpace::Low)
+                    .next_id()
             } else {
                 self.cstore
                     .def_path_table(crate_num)
-                    .next_id(DefIndexAddressSpace::Low)
+                    .next_id()
             };
 
             DefId {
@@ -142,10 +142,7 @@ impl<'tcx> DocContext<'tcx> {
             crate_num,
             DefId {
                 krate: crate_num,
-                index: DefIndex::from_array_index(
-                    def_id.index.as_array_index() + 1,
-                    def_id.index.address_space(),
-                ),
+                index: DefIndex::from_array_index(def_id.index.as_array_index() + 1),
             },
         );
 

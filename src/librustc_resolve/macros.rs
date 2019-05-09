@@ -6,8 +6,7 @@ use crate::ModuleOrUniformRoot;
 use crate::Namespace::*;
 use crate::build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use crate::resolve_imports::ImportResolver;
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
-                         CrateNum, DefIndexAddressSpace};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX};
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::map::{self, DefCollector};
 use rustc::{ty, lint};
@@ -173,8 +172,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn add_builtin(&mut self, ident: ast::Ident, ext: Lrc<SyntaxExtension>) {
         let def_id = DefId {
             krate: CrateNum::BuiltinMacros,
-            index: DefIndex::from_array_index(self.macro_map.len(),
-                                              DefIndexAddressSpace::Low),
+            index: DefIndex::from_array_index(self.macro_map.len()),
         };
         let kind = ext.kind();
         self.macro_map.insert(def_id, ext);

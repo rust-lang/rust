@@ -9,8 +9,7 @@ use rustc::hir;
 use rustc::middle::cstore::LinkagePreference;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Res, DefKind, CtorOf, CtorKind};
-use rustc::hir::def_id::{CrateNum, DefId, DefIndex, DefIndexAddressSpace,
-                         CRATE_DEF_INDEX, LOCAL_CRATE, LocalDefId};
+use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::middle::lang_items;
@@ -449,7 +448,7 @@ crate fn proc_macro_def_path_table(crate_root: &CrateRoot,
                                    proc_macros: &[(ast::Name, Lrc<SyntaxExtension>)])
                                    -> DefPathTable
 {
-    let mut definitions = Definitions::new();
+    let mut definitions = Definitions::default();
 
     let name = crate_root.name.as_str();
     let disambiguator = crate_root.disambiguator;
@@ -460,7 +459,6 @@ crate fn proc_macro_def_path_table(crate_root: &CrateRoot,
             crate_root,
             ast::DUMMY_NODE_ID,
             DefPathData::MacroNs(name.as_interned_str()),
-            DefIndexAddressSpace::High,
             Mark::root(),
             DUMMY_SP);
         debug!("definition for {:?} is {:?}", name, def_index);

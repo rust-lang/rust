@@ -5,8 +5,7 @@
 //! expressions) that are mostly just leftovers.
 
 use crate::hir;
-use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, DefIndexAddressSpace,
-                  CRATE_DEF_INDEX};
+use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, CRATE_DEF_INDEX};
 use crate::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
@@ -26,59 +25,41 @@ use crate::util::nodemap::NodeMap;
 /// Internally the DefPathTable holds a tree of DefKeys, where each DefKey
 /// stores the DefIndex of its parent.
 /// There is one DefPathTable for each crate.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct DefPathTable {
-    index_to_key: [Vec<DefKey>; 2],
-    def_path_hashes: [Vec<DefPathHash>; 2],
-}
-
-// Unfortunately we have to provide a manual impl of Clone because of the
-// fixed-sized array field.
-impl Clone for DefPathTable {
-    fn clone(&self) -> Self {
-        DefPathTable {
-            index_to_key: [self.index_to_key[0].clone(),
-                           self.index_to_key[1].clone()],
-            def_path_hashes: [self.def_path_hashes[0].clone(),
-                              self.def_path_hashes[1].clone()],
-        }
-    }
+    index_to_key: Vec<DefKey>,
+    def_path_hashes: Vec<DefPathHash>,
 }
 
 impl DefPathTable {
 
     fn allocate(&mut self,
                 key: DefKey,
-                def_path_hash: DefPathHash,
-                address_space: DefIndexAddressSpace)
+                def_path_hash: DefPathHash)
                 -> DefIndex {
         let index = {
-            let index_to_key = &mut self.index_to_key[address_space.index()];
-            let index = DefIndex::from_array_index(index_to_key.len(), address_space);
+            let index = DefIndex::from_array_index(self.index_to_key.len());
             debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
-            index_to_key.push(key);
+            self.index_to_key.push(key);
             index
         };
-        self.def_path_hashes[address_space.index()].push(def_path_hash);
-        debug_assert!(self.def_path_hashes[address_space.index()].len() ==
-                      self.index_to_key[address_space.index()].len());
+        self.def_path_hashes.push(def_path_hash);
+        debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
         index
     }
 
-    pub fn next_id(&self, address_space: DefIndexAddressSpace) -> DefIndex {
-        DefIndex::from_array_index(self.index_to_key[address_space.index()].len(), address_space)
+    pub fn next_id(&self) -> DefIndex {
+        DefIndex::from_array_index(self.index_to_key.len())
     }
 
     #[inline(always)]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
-        self.index_to_key[index.address_space().index()]
-                         [index.as_array_index()].clone()
+        self.index_to_key[index.as_array_index()].clone()
     }
 
     #[inline(always)]
     pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
-        let ret = self.def_path_hashes[index.address_space().index()]
-                                      [index.as_array_index()];
+        let ret = self.def_path_hashes[index.as_array_index()];
         debug!("def_path_hash({:?}) = {:?}", index, ret);
         return ret
     }
@@ -86,24 +67,22 @@ impl DefPathTable {
     pub fn add_def_path_hashes_to(&self,
                                   cnum: CrateNum,
                                   out: &mut FxHashMap<DefPathHash, DefId>) {
-        for &address_space in &[DefIndexAddressSpace::Low, DefIndexAddressSpace::High] {
-            out.extend(
-                (&self.def_path_hashes[address_space.index()])
-                    .iter()
-                    .enumerate()
-                    .map(|(index, &hash)| {
-                        let def_id = DefId {
-                            krate: cnum,
-                            index: DefIndex::from_array_index(index, address_space),
-                        };
-                        (hash, def_id)
-                    })
-            );
-        }
+        out.extend(
+            self.def_path_hashes
+                .iter()
+                .enumerate()
+                .map(|(index, &hash)| {
+                    let def_id = DefId {
+                        krate: cnum,
+                        index: DefIndex::from_array_index(index),
+                    };
+                    (hash, def_id)
+                })
+        );
     }
 
     pub fn size(&self) -> usize {
-        self.index_to_key.iter().map(|v| v.len()).sum()
+        self.index_to_key.len()
     }
 }
 
@@ -111,12 +90,10 @@ impl DefPathTable {
 impl Encodable for DefPathTable {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         // Index to key
-        self.index_to_key[DefIndexAddressSpace::Low.index()].encode(s)?;
-        self.index_to_key[DefIndexAddressSpace::High.index()].encode(s)?;
+        self.index_to_key.encode(s)?;
 
         // DefPath hashes
-        self.def_path_hashes[DefIndexAddressSpace::Low.index()].encode(s)?;
-        self.def_path_hashes[DefIndexAddressSpace::High.index()].encode(s)?;
+        self.def_path_hashes.encode(s)?;
 
         Ok(())
     }
@@ -124,18 +101,9 @@ impl Encodable for DefPathTable {
 
 impl Decodable for DefPathTable {
     fn decode<D: Decoder>(d: &mut D) -> Result<DefPathTable, D::Error> {
-        let index_to_key_lo: Vec<DefKey> = Decodable::decode(d)?;
-        let index_to_key_hi: Vec<DefKey> = Decodable::decode(d)?;
-
-        let def_path_hashes_lo: Vec<DefPathHash> = Decodable::decode(d)?;
-        let def_path_hashes_hi: Vec<DefPathHash> = Decodable::decode(d)?;
-
-        let index_to_key = [index_to_key_lo, index_to_key_hi];
-        let def_path_hashes = [def_path_hashes_lo, def_path_hashes_hi];
-
         Ok(DefPathTable {
-            index_to_key,
-            def_path_hashes,
+            index_to_key: Decodable::decode(d)?,
+            def_path_hashes : Decodable::decode(d)?,
         })
     }
 }
@@ -147,7 +115,7 @@ impl Decodable for DefPathTable {
 pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
-    def_index_to_node: [Vec<ast::NodeId>; 2],
+    def_index_to_node: Vec<ast::NodeId>,
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
     /// If `Mark` is an ID of some macro expansion,
     /// then `DefId` is the normal module (`mod`) in which the expanded macro was defined.
@@ -374,30 +342,13 @@ impl Borrow<Fingerprint> for DefPathHash {
 }
 
 impl Definitions {
-    /// Creates new empty definition map.
-    ///
-    /// The `DefIndex` returned from a new `Definitions` are as follows:
-    /// 1. At `DefIndexAddressSpace::Low`,
-    ///     CRATE_ROOT has index 0:0, and then new indexes are allocated in
-    ///     ascending order.
-    /// 2. At `DefIndexAddressSpace::High`,
-    ///     the first `FIRST_FREE_HIGH_DEF_INDEX` indexes are reserved for
-    ///     internal use, then `1:FIRST_FREE_HIGH_DEF_INDEX` are allocated in
-    ///     ascending order.
-    //
-    // FIXME: there is probably a better place to put this comment.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn def_path_table(&self) -> &DefPathTable {
         &self.table
     }
 
     /// Gets the number of definitions.
-    pub fn def_index_counts_lo_hi(&self) -> (usize, usize) {
-        (self.table.index_to_key[DefIndexAddressSpace::Low.index()].len(),
-         self.table.index_to_key[DefIndexAddressSpace::High.index()].len())
+    pub fn def_index_count(&self) -> usize {
+        self.table.index_to_key.len()
     }
 
     pub fn def_key(&self, index: DefIndex) -> DefKey {
@@ -436,17 +387,12 @@ impl Definitions {
     #[inline]
     pub fn as_local_node_id(&self, def_id: DefId) -> Option<ast::NodeId> {
         if def_id.krate == LOCAL_CRATE {
-            let space_index = def_id.index.address_space().index();
-            let array_index = def_id.index.as_array_index();
-            let node_id = self.def_index_to_node[space_index][array_index];
+            let node_id = self.def_index_to_node[def_id.index.as_array_index()];
             if node_id != ast::DUMMY_NODE_ID {
-                Some(node_id)
-            } else {
-                None
+                return Some(node_id);
             }
-        } else {
-            None
         }
+        None
     }
 
     // FIXME(@ljedrz): replace the NodeId variant
@@ -471,9 +417,7 @@ impl Definitions {
 
     #[inline]
     pub fn def_index_to_hir_id(&self, def_index: DefIndex) -> hir::HirId {
-        let space_index = def_index.address_space().index();
-        let array_index = def_index.as_array_index();
-        let node_id = self.def_index_to_node[space_index][array_index];
+        let node_id = self.def_index_to_node[def_index.as_array_index()];
         self.node_to_hir_id[node_id]
     }
 
@@ -488,7 +432,11 @@ impl Definitions {
         }
     }
 
-    /// Adds a root definition (no parent).
+    /// Adds a root definition (no parent) and a few other reserved definitions.
+    ///
+    /// After the initial definitions are created the first `FIRST_FREE_DEF_INDEX` indexes
+    /// are taken, so the "user" indexes will be allocated starting with `FIRST_FREE_DEF_INDEX`
+    /// in ascending order.
     pub fn create_root_def(&mut self,
                            crate_name: &str,
                            crate_disambiguator: CrateDisambiguator)
@@ -506,11 +454,10 @@ impl Definitions {
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
         // Create the definition.
-        let address_space = super::ITEM_LIKE_SPACE;
-        let root_index = self.table.allocate(key, def_path_hash, address_space);
+        let root_index = self.table.allocate(key, def_path_hash);
         assert_eq!(root_index, CRATE_DEF_INDEX);
-        assert!(self.def_index_to_node[address_space.index()].is_empty());
-        self.def_index_to_node[address_space.index()].push(ast::CRATE_NODE_ID);
+        assert!(self.def_index_to_node.is_empty());
+        self.def_index_to_node.push(ast::CRATE_NODE_ID);
         self.node_to_def_index.insert(ast::CRATE_NODE_ID, root_index);
 
         // Allocate some other DefIndices that always must exist.
@@ -524,7 +471,6 @@ impl Definitions {
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
                                   data: DefPathData,
-                                  address_space: DefIndexAddressSpace,
                                   expansion: Mark,
                                   span: Span)
                                   -> DefIndex {
@@ -561,10 +507,9 @@ impl Definitions {
         debug!("create_def_with_parent: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        let index = self.table.allocate(key, def_path_hash, address_space);
-        assert_eq!(index.as_array_index(),
-                   self.def_index_to_node[address_space.index()].len());
-        self.def_index_to_node[address_space.index()].push(node_id);
+        let index = self.table.allocate(key, def_path_hash);
+        assert_eq!(index.as_array_index(), self.def_index_to_node.len());
+        self.def_index_to_node.push(node_id);
 
         // Some things for which we allocate DefIndices don't correspond to
         // anything in the AST, so they don't have a NodeId. For these cases
@@ -673,8 +618,7 @@ macro_rules! define_global_metadata_kind {
             $($variant),*
         }
 
-        const GLOBAL_MD_ADDRESS_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
-        pub const FIRST_FREE_HIGH_DEF_INDEX: usize = count!($($variant)*);
+        pub const FIRST_FREE_DEF_INDEX: usize = 1 + count!($($variant)*);
 
         impl GlobalMetaDataKind {
             fn allocate_def_indices(definitions: &mut Definitions) {
@@ -684,7 +628,6 @@ macro_rules! define_global_metadata_kind {
                         CRATE_DEF_INDEX,
                         ast::DUMMY_NODE_ID,
                         DefPathData::GlobalMetaData(instance.name().as_interned_str()),
-                        GLOBAL_MD_ADDRESS_SPACE,
                         Mark::root(),
                         DUMMY_SP
                     );
@@ -705,12 +648,12 @@ macro_rules! define_global_metadata_kind {
 
                 // These DefKeys are all right after the root,
                 // so a linear search is fine.
-                let index = def_path_table.index_to_key[GLOBAL_MD_ADDRESS_SPACE.index()]
+                let index = def_path_table.index_to_key
                                           .iter()
                                           .position(|k| *k == def_key)
                                           .unwrap();
 
-                DefIndex::from_array_index(index, GLOBAL_MD_ADDRESS_SPACE)
+                DefIndex::from_array_index(index)
             }
 
             fn name(&self) -> Symbol {
