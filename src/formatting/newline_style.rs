@@ -173,9 +173,32 @@ mod tests {
     }
 
     #[test]
+    fn applying_unix_newlines_changes_nothing_for_unix_newlines() {
+        let formatted_text = "One\nTwo\nThree";
+        test_newlines_are_applied_correctly(formatted_text, formatted_text, NewlineStyle::Unix);
+    }
+
+    #[test]
+    fn applies_unix_newlines_to_string_with_unix_and_windows_newlines() {
+        test_newlines_are_applied_correctly(
+            "One\r\nTwo\r\nThree\nFour",
+            "One\nTwo\nThree\nFour",
+            NewlineStyle::Unix,
+        );
+    }
+
+    #[test]
+    fn applies_windows_newlines_to_string_with_unix_and_windows_newlines() {
+        test_newlines_are_applied_correctly(
+            "One\nTwo\nThree\r\nFour",
+            "One\r\nTwo\r\nThree\r\nFour",
+            NewlineStyle::Windows,
+        );
+    }
+
+    #[test]
     fn applying_windows_newlines_changes_nothing_for_windows_newlines() {
         let formatted_text = "One\r\nTwo\r\nThree";
-
         test_newlines_are_applied_correctly(formatted_text, formatted_text, NewlineStyle::Windows);
     }
 
