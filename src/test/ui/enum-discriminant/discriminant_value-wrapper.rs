@@ -1,3 +1,4 @@
+// run-pass
 use std::mem;
 
 enum ADT {

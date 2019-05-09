@@ -2,7 +2,7 @@ use crate::ast::{
     self, Arg, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
     Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, VariantData,
 };
-use crate::parse::{SeqSep, PResult, Parser};
+use crate::parse::{SeqSep, PResult, Parser, ParseSess};
 use crate::parse::parser::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType};
 use crate::parse::token::{self, TokenKind};
 use crate::print::pprust;
@@ -539,8 +539,7 @@ impl<'a> Parser<'a> {
     }
 
     crate fn maybe_report_invalid_custom_discriminants(
-        &mut self,
-        discriminant_spans: Vec<Span>,
+        sess: &ParseSess,
         variants: &[Spanned<ast::Variant_>],
     ) {
         let has_fields = variants.iter().any(|variant| match variant.node.data {
@@ -548,28 +547,39 @@ impl<'a> Parser<'a> {
             VariantData::Unit(..) => false,
         });
 
+        let discriminant_spans = variants.iter().filter(|variant| match variant.node.data {
+            VariantData::Tuple(..) | VariantData::Struct(..) => false,
+            VariantData::Unit(..) => true,
+        })
+        .filter_map(|variant| variant.node.disr_expr.as_ref().map(|c| c.value.span))
+        .collect::<Vec<_>>();
+
         if !discriminant_spans.is_empty() && has_fields {
-            let mut err = self.struct_span_err(
+            let mut err = crate::feature_gate::feature_err(
+                sess,
+                sym::arbitrary_enum_discriminant,
                 discriminant_spans.clone(),
-                "custom discriminant values are not allowed in enums with fields",
+                crate::feature_gate::GateIssue::Language,
+                "custom discriminant values are not allowed in enums with tuple or struct variants",
             );
             for sp in discriminant_spans {
-                err.span_label(sp, "invalid custom discriminant");
+                err.span_label(sp, "disallowed custom discriminant");
             }
             for variant in variants.iter() {
-                if let VariantData::Struct(fields, ..) | VariantData::Tuple(fields, ..) =
-                    &variant.node.data
-                {
-                    let fields = if fields.len() > 1 {
-                        "fields"
-                    } else {
-                        "a field"
-                    };
-                    err.span_label(
-                        variant.span,
-                        &format!("variant with {fields} defined here", fields = fields),
-                    );
-
+                match &variant.node.data {
+                    VariantData::Struct(..) => {
+                        err.span_label(
+                            variant.span,
+                            "struct variant defined here",
+                        );
+                    }
+                    VariantData::Tuple(..) => {
+                        err.span_label(
+                            variant.span,
+                            "tuple variant defined here",
+                        );
+                    }
+                    VariantData::Unit(..) => {}
                 }
             }
             err.emit();

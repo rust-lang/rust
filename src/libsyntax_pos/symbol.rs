@@ -135,6 +135,7 @@ symbols! {
         always,
         and,
         any,
+        arbitrary_enum_discriminant,
         arbitrary_self_types,
         Arguments,
         ArgumentV1,

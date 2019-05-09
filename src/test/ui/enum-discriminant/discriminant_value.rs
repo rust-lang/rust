@@ -1,5 +1,6 @@
+// run-pass
 #![allow(stable_features)]
-#![feature(core, core_intrinsics)]
+#![feature(arbitrary_enum_discriminant, core, core_intrinsics)]
 
 extern crate core;
 use core::intrinsics::discriminant_value;
@@ -38,6 +39,17 @@ enum NullablePointer {
 
 static CONST : u32 = 0xBEEF;
 
+#[allow(dead_code)]
+#[repr(isize)]
+enum Mixed {
+    Unit = 3,
+    Tuple(u16) = 2,
+    Struct {
+        a: u8,
+        b: u16,
+    } = 1,
+}
+
 pub fn main() {
     unsafe {
 
@@ -64,5 +76,9 @@ pub fn main() {
 
         assert_eq!(discriminant_value(&10), 0);
         assert_eq!(discriminant_value(&"test"), 0);
+
+        assert_eq!(3, discriminant_value(&Mixed::Unit));
+        assert_eq!(2, discriminant_value(&Mixed::Tuple(5)));
+        assert_eq!(1, discriminant_value(&Mixed::Struct{a: 7, b: 11}));
     }
 }
