@@ -344,9 +344,22 @@ impl Decodable for Ident {
     }
 }
 
-/// A symbol is an interned or gensymed string. The use of `newtype_index!` means
-/// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index!` reserves
-/// the last 256 values for tagging purposes.
+/// A symbol is an interned or gensymed string. A gensym is a symbol that is
+/// never equal to any other symbol. E.g.:
+/// ```
+/// assert_eq!(Symbol::intern("x"), Symbol::intern("x"))
+/// assert_ne!(Symbol::gensym("x"), Symbol::intern("x"))
+/// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
+/// ```
+/// Conceptually, a gensym can be thought of as a normal symbol with an
+/// invisible unique suffix. Gensyms are useful when creating new identifiers
+/// that must not match any existing identifiers, e.g. during macro expansion
+/// and syntax desugaring.
+///
+/// Internally, a Symbol is implemented as an index, and all operations
+/// (including hashing, equality, and ordering) operate on that index. The use
+/// of `newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
+/// because `newtype_index!` reserves the last 256 values for tagging purposes.
 ///
 /// Note that `Symbol` cannot directly be a `newtype_index!` because it implements
 /// `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
@@ -380,6 +393,7 @@ impl Symbol {
         with_interner(|interner| interner.gensymed(self))
     }
 
+    // WARNING: this function is deprecated and will be removed in the future.
     pub fn is_gensymed(self) -> bool {
         with_interner(|interner| interner.is_gensymed(self))
     }
@@ -510,6 +524,8 @@ impl Interner {
         symbol.0.as_usize() >= self.strings.len()
     }
 
+    // Get the symbol as a string. `Symbol::as_str()` should be used in
+    // preference to this function.
     pub fn get(&self, symbol: Symbol) -> &str {
         match self.strings.get(symbol.0.as_usize()) {
             Some(string) => string,
@@ -614,11 +630,17 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
 }
 
-/// Represents a string stored in the interner. Because the interner outlives any thread
-/// which uses this type, we can safely treat `string` which points to interner data,
-/// as an immortal string, as long as this type never crosses between threads.
-// FIXME: ensure that the interner outlives any thread which uses `LocalInternedString`,
-// by creating a new thread right after constructing the interner.
+/// An alternative to `Symbol` and `InternedString`, useful when the chars
+/// within the symbol need to be accessed. It is best used for temporary
+/// values.
+///
+/// Because the interner outlives any thread which uses this type, we can
+/// safely treat `string` which points to interner data, as an immortal string,
+/// as long as this type never crosses between threads.
+//
+// FIXME: ensure that the interner outlives any thread which uses
+// `LocalInternedString`, by creating a new thread right after constructing the
+// interner.
 #[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
@@ -711,7 +733,19 @@ impl Encodable for LocalInternedString {
     }
 }
 
-/// Represents a string stored in the string interner.
+/// An alternative to `Symbol` that is focused on string contents. It has two
+/// main differences to `Symbol`.
+///
+/// First, its implementations of `Hash`, `PartialOrd` and `Ord` work with the
+/// string chars rather than the symbol integer. This is useful when hash
+/// stability is required across compile sessions, or a guaranteed sort
+/// ordering is required.
+///
+/// Second, gensym-ness is irrelevant. E.g.:
+/// ```
+/// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
+/// assert_eq!(Symbol::gensym("x").as_interned_str(), Symbol::gensym("x").as_interned_str())
+/// ```
 #[derive(Clone, Copy, Eq)]
 pub struct InternedString {
     symbol: Symbol,
