@@ -28,8 +28,6 @@ mod musl_reference_tests {
     // defining a function we want to test.
     const IGNORED_FILES: &[&str] = &[
         "fenv.rs",
-        "jn.rs",  // passed, but very slow
-        "jnf.rs", // passed, but very slow
     ];
 
     struct Function {
@@ -143,15 +141,28 @@ mod musl_reference_tests {
     fn generate_random_tests<R: Rng>(functions: &mut [Function], rng: &mut R) {
         for function in functions {
             for _ in 0..NTESTS {
-                function.tests.push(generate_test(&function.args, rng));
+                function.tests.push(generate_test(function, rng));
             }
         }
 
-        fn generate_test<R: Rng>(args: &[Ty], rng: &mut R) -> Test {
-            let inputs = args.iter().map(|ty| ty.gen_i64(rng)).collect();
-            // zero output for now since we'll generate it later
+        fn generate_test<R: Rng>(function: &Function, rng: &mut R) -> Test {
+            let mut inputs = function
+                .args
+                .iter()
+                .map(|ty| ty.gen_i64(rng))
+                .collect::<Vec<_>>();
+
+            // First argument to this function appears to be a number of
+            // iterations, so passing in massive random numbers causes it to
+            // take forever to execute, so make sure we're not running random
+            // math code until the heat death of the universe.
+            if function.name == "jn" || function.name == "jnf" {
+                inputs[0] &= 0xffff;
+            }
+
             Test {
                 inputs,
+                // zero output for now since we'll generate it later
                 outputs: vec![],
             }
         }
@@ -165,7 +176,9 @@ mod musl_reference_tests {
             return match self {
                 Ty::F32 => {
                     if r.gen_range(0, 20) < 1 {
-                        let i = *[f32::NAN, f32::INFINITY, f32::NEG_INFINITY].choose(r).unwrap();
+                        let i = *[f32::NAN, f32::INFINITY, f32::NEG_INFINITY]
+                            .choose(r)
+                            .unwrap();
                         i.to_bits().into()
                     } else {
                         r.gen::<f32>().to_bits().into()
@@ -173,7 +186,9 @@ mod musl_reference_tests {
                 }
                 Ty::F64 => {
                     if r.gen_range(0, 20) < 1 {
-                        let i = *[f64::NAN, f64::INFINITY, f64::NEG_INFINITY].choose(r).unwrap();
+                        let i = *[f64::NAN, f64::INFINITY, f64::NEG_INFINITY]
+                            .choose(r)
+                            .unwrap();
                         i.to_bits() as i64
                     } else {
                         r.gen::<f64>().to_bits() as i64
