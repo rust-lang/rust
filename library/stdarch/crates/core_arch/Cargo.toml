@@ -29,7 +29,7 @@ stdsimd-test = { version = "0.*", path = "../stdsimd-test" }
 std_detect = { version = "0.*", path = "../std_detect" }
 
 [target.wasm32-unknown-unknown.dev-dependencies]
-wasm-bindgen-test = "0.2.39"
+wasm-bindgen-test = "0.2.42"
 
 [package.metadata.docs.rs]
 rustdoc-args = [ "--cfg", "dox" ]
