@@ -27,38 +27,30 @@ mod musl_reference_tests {
     // These files are all internal functions or otherwise miscellaneous, not
     // defining a function we want to test.
     const IGNORED_FILES: &[&str] = &[
-        "expo2.rs",
+        "expo2.rs", // kernel, private
         "fenv.rs",
-        "k_cos.rs",
-        "k_cosf.rs",
-        "k_expo2.rs",
-        "k_expo2f.rs",
-        "k_sin.rs",
-        "k_sinf.rs",
-        "k_tan.rs",
-        "k_tanf.rs",
+        "k_cos.rs",    // kernel, private
+        "k_cosf.rs",   // kernel, private
+        "k_expo2.rs",  // kernel, private
+        "k_expo2f.rs", // kernel, private
+        "k_sin.rs",    // kernel, private
+        "k_sinf.rs",   // kernel, private
+        "k_tan.rs",    // kernel, private
+        "k_tanf.rs",   // kernel, private
         "mod.rs",
-        "rem_pio2.rs",
-        "rem_pio2_large.rs",
-        "rem_pio2f.rs",
-        "remquo.rs",    // more than 1 result
-        "remquof.rs",   // more than 1 result
-        "lgamma_r.rs",  // more than 1 result
-        "lgammaf_r.rs", // more than 1 result
-        "frexp.rs",     // more than 1 result
-        "frexpf.rs",    // more than 1 result
-        "sincos.rs",    // more than 1 result
-        "sincosf.rs",   // more than 1 result
-        "modf.rs",      // more than 1 result
-        "modff.rs",     // more than 1 result
-        "jn.rs",        // passed, but very slow
-        "jnf.rs",       // passed, but very slow
+        "rem_pio2.rs",       // kernel, private
+        "rem_pio2_large.rs", // kernel, private
+        "rem_pio2f.rs",      // kernel, private
+        "sincos.rs",         // more than 1 result
+        "sincosf.rs",        // more than 1 result
+        "jn.rs",             // passed, but very slow
+        "jnf.rs",            // passed, but very slow
     ];
 
     struct Function {
         name: String,
         args: Vec<Ty>,
-        ret: Ty,
+        ret: Vec<Ty>,
         tests: Vec<Test>,
     }
 
@@ -71,7 +63,7 @@ mod musl_reference_tests {
 
     struct Test {
         inputs: Vec<i64>,
-        output: i64,
+        outputs: Vec<i64>,
     }
 
     pub fn generate() {
@@ -103,7 +95,7 @@ mod musl_reference_tests {
         // After we have all our inputs, use the x86_64-unknown-linux-musl
         // target to generate the expected output.
         generate_test_outputs(&mut math);
-
+        //panic!("Boo");
         // ... and now that we have both inputs and expected outputs, do a bunch
         // of codegen to create the unit tests which we'll actually execute.
         generate_unit_tests(&math);
@@ -125,7 +117,7 @@ mod musl_reference_tests {
             .collect::<Vec<_>>();
         let tail = &s[end + 1..];
         let tail = eat(tail, " -> ");
-        let ret = parse_ty(tail.trim().split(' ').next().unwrap());
+        let ret = parse_retty(tail.replace("{", "").trim());
 
         return Function {
             name: name.to_string(),
@@ -141,6 +133,16 @@ mod musl_reference_tests {
                 "i32" => Ty::I32,
                 "bool" => Ty::Bool,
                 other => panic!("unknown type `{}`", other),
+            }
+        }
+
+        fn parse_retty(s: &str) -> Vec<Ty> {
+            match s {
+                "(f32, f32)" => vec![Ty::F32, Ty::F32],
+                "(f32, i32)" => vec![Ty::F32, Ty::I32],
+                "(f64, f64)" => vec![Ty::F64, Ty::F64],
+                "(f64, i32)" => vec![Ty::F64, Ty::I32],
+                other => vec![parse_ty(other)],
             }
         }
 
@@ -163,7 +165,10 @@ mod musl_reference_tests {
         fn generate_test<R: Rng>(args: &[Ty], rng: &mut R) -> Test {
             let inputs = args.iter().map(|ty| ty.gen_i64(rng)).collect();
             // zero output for now since we'll generate it later
-            Test { inputs, output: 0 }
+            Test {
+                inputs,
+                outputs: vec![],
+            }
         }
     }
 
@@ -192,6 +197,33 @@ mod musl_reference_tests {
                 Ty::Bool => "i32",
             }
         }
+
+        fn libc_pty(&self) -> &'static str {
+            match self {
+                Ty::F32 => "*mut f32",
+                Ty::F64 => "*mut f64",
+                Ty::I32 => "*mut i32",
+                Ty::Bool => "*mut i32",
+            }
+        }
+
+        fn default(&self) -> &'static str {
+            match self {
+                Ty::F32 => "0_f32",
+                Ty::F64 => "0_f64",
+                Ty::I32 => "0_i32",
+                Ty::Bool => "false",
+            }
+        }
+
+        fn to_i64(&self) -> &'static str {
+            match self {
+                Ty::F32 => ".to_bits() as i64",
+                Ty::F64 => ".to_bits() as i64",
+                Ty::I32 => " as i64",
+                Ty::Bool => " as i64",
+            }
+        }
     }
 
     fn generate_test_outputs(functions: &mut [Function]) {
@@ -212,8 +244,11 @@ mod musl_reference_tests {
             for (i, arg) in function.args.iter().enumerate() {
                 src.push_str(&format!("arg{}: {},", i, arg.libc_ty()));
             }
+            for (i, ret) in function.ret.iter().skip(1).enumerate() {
+                src.push_str(&format!("argret{}: {},", i, ret.libc_pty()));
+            }
             src.push_str(") -> ");
-            src.push_str(function.ret.libc_ty());
+            src.push_str(function.ret[0].libc_ty());
             src.push_str("; }");
 
             src.push_str(&format!("static TESTS: &[[i64; {}]]", function.args.len()));
@@ -229,6 +264,14 @@ mod musl_reference_tests {
             src.push_str("];");
 
             src.push_str("for test in TESTS {");
+            for (i, arg) in function.ret.iter().skip(1).enumerate() {
+                src.push_str(&format!("let mut argret{} = {};", i, arg.default()));
+                src.push_str(&format!(
+                    "let argret_ptr{0} = &mut argret{0} as *mut {1};",
+                    i,
+                    arg.libc_ty()
+                ));
+            }
             src.push_str("let output = ");
             src.push_str(&function.name);
             src.push_str("(");
@@ -241,17 +284,20 @@ mod musl_reference_tests {
                 });
                 src.push_str(",");
             }
+            for (i, _) in function.ret.iter().skip(1).enumerate() {
+                src.push_str(&format!("argret_ptr{},", i));
+            }
             src.push_str(");");
-            src.push_str("let output = ");
-            src.push_str(match function.ret {
-                Ty::F32 => "output.to_bits() as i64",
-                Ty::F64 => "output.to_bits() as i64",
-                Ty::I32 => "output as i64",
-                Ty::Bool => "output as i64",
-            });
-            src.push_str(";");
+            src.push_str(&format!("let output = output{};", function.ret[0].to_i64()));
             src.push_str("result.extend_from_slice(&output.to_le_bytes());");
 
+            for (i, ret) in function.ret.iter().skip(1).enumerate() {
+                src.push_str(&format!("let output{0} = argret{0}{1};", i, ret.to_i64()));
+                src.push_str(&format!(
+                    "result.extend_from_slice(&output{}.to_le_bytes());",
+                    i
+                ));
+            }
             src.push_str("}");
 
             src.push_str("}");
@@ -288,8 +334,13 @@ mod musl_reference_tests {
             i64::from_le_bytes(exact)
         });
 
-        for test in functions.iter_mut().flat_map(|f| f.tests.iter_mut()) {
-            test.output = results.next().unwrap();
+        for f in functions.iter_mut() {
+            for test in f.tests.iter_mut() {
+                test.outputs = vec![results.next().unwrap()];
+                for _ in f.ret.iter().skip(1) {
+                    test.outputs.push(results.next().unwrap());
+                }
+            }
         }
         assert!(results.next().is_none());
     }
@@ -306,8 +357,9 @@ mod musl_reference_tests {
             src.push_str(&function.name);
             src.push_str("_matches_musl() {");
             src.push_str(&format!(
-                "static TESTS: &[([i64; {}], i64)]",
-                function.args.len()
+                "static TESTS: &[([i64; {}], [i64; {}])]",
+                function.args.len(),
+                function.ret.len(),
             ));
             src.push_str(" = &[");
             for test in function.tests.iter() {
@@ -317,7 +369,12 @@ mod musl_reference_tests {
                     src.push_str(",");
                 }
                 src.push_str("],");
-                src.push_str(&test.output.to_string());
+                src.push_str("[");
+                for val in test.outputs.iter() {
+                    src.push_str(&val.to_string());
+                    src.push_str(",");
+                }
+                src.push_str("],");
                 src.push_str("),");
             }
             src.push_str("];");
@@ -336,12 +393,27 @@ mod musl_reference_tests {
                 src.push_str(",");
             }
             src.push_str(");");
-            src.push_str(match function.ret {
-                Ty::F32 => "if _eqf(output, f32::from_bits(*expected as u32)).is_ok() { continue }",
-                Ty::F64 => "if _eq(output, f64::from_bits(*expected as u64)).is_ok() { continue }",
-                Ty::I32 => "if output as i64 == *expected { continue }",
-                Ty::Bool => unreachable!(),
-            });
+            if function.ret.len() > 1 {
+                for (i, ret) in function.ret.iter().enumerate() {
+                    src.push_str(&(match ret {
+                        Ty::F32 => format!("if _eqf(output.{0}, f32::from_bits(expected[{0}] as u32)).is_ok() {{ continue }}", i),
+                        Ty::F64 => format!("if _eq(output.{0}, f64::from_bits(expected[{0}] as u64)).is_ok() {{ continue }}", i),
+                        Ty::I32 => format!("if output.{0} as i64 == expected[{0}] {{ continue }}", i),
+                        Ty::Bool => unreachable!(),
+                    }));
+                }
+            } else {
+                src.push_str(match function.ret[0] {
+                    Ty::F32 => {
+                        "if _eqf(output, f32::from_bits(expected[0] as u32)).is_ok() { continue }"
+                    }
+                    Ty::F64 => {
+                        "if _eq(output, f64::from_bits(expected[0] as u64)).is_ok() { continue }"
+                    }
+                    Ty::I32 => "if output as i64 == expected[0] { continue }",
+                    Ty::Bool => unreachable!(),
+                });
+            }
 
             src.push_str(
                 r#"

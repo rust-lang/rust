@@ -47,7 +47,7 @@ pub fn remquof(mut x: f32, mut y: f32) -> (f32, i32) {
         }
         /* x mod y */
         while ex > ey {
-            i = uxi - uy;
+            i = uxi.wrapping_sub(uy);
             if (i >> 31) == 0 {
                 uxi = i;
                 q += 1;
@@ -56,7 +56,7 @@ pub fn remquof(mut x: f32, mut y: f32) -> (f32, i32) {
             q <<= 1;
             ex -= 1;
         }
-        i = uxi - uy;
+        i = uxi.wrapping_sub(uy);
         if (i >> 31) == 0 {
             uxi = i;
             q += 1;

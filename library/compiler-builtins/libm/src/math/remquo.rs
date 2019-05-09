@@ -48,7 +48,7 @@ pub fn remquo(mut x: f64, mut y: f64) -> (f64, i32) {
         }
         /* x mod y */
         while ex > ey {
-            i = uxi - uy;
+            i = uxi.wrapping_sub(uy);
             if (i >> 63) == 0 {
                 uxi = i;
                 q += 1;
@@ -57,7 +57,7 @@ pub fn remquo(mut x: f64, mut y: f64) -> (f64, i32) {
             q <<= 1;
             ex -= 1;
         }
-        i = uxi - uy;
+        i = uxi.wrapping_sub(uy);
         if (i >> 63) == 0 {
             uxi = i;
             q += 1;
