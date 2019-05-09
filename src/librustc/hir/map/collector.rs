@@ -145,15 +145,10 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             );
         }
 
-        let (lo, hi) = definitions.def_index_counts_lo_hi();
-
         let mut collector = NodeCollector {
             krate,
             source_map: sess.source_map(),
-            map: [
-                repeat(None).take(lo).collect(),
-                repeat(None).take(hi).collect(),
-            ],
+            map: vec![None; definitions.def_index_count()],
             parent_node: hir::CRATE_HIR_ID,
             current_signature_dep_index: root_mod_sig_dep_index,
             current_full_dep_index: root_mod_full_dep_index,
@@ -231,7 +226,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 
     fn insert_entry(&mut self, id: HirId, entry: Entry<'hir>) {
         debug!("hir_map: {:?} => {:?}", id, entry);
-        let local_map = &mut self.map[id.owner.address_space().index()][id.owner.as_array_index()];
+        let local_map = &mut self.map[id.owner.as_array_index()];
         let i = id.local_id.as_u32() as usize;
         if local_map.is_none() {
             *local_map = Some(IndexVec::with_capacity(i + 1));

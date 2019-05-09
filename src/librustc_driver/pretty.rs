@@ -647,8 +647,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     // alphanumeric. This does not appear in the rendered graph, so it does not
     // have to be user friendly.
     let name = format!(
-        "hir_id_{}_{}_{}",
-        hir_id.owner.address_space().index(),
+        "hir_id_{}_{}",
         hir_id.owner.as_array_index(),
         hir_id.local_id.index(),
     );

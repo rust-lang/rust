@@ -5,7 +5,7 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 
 use crate::dep_graph::{DepGraph, DepNode, DepKind, DepNodeIndex};
 
-use crate::hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId, DefIndexAddressSpace};
+use crate::hir::def_id::{CRATE_DEF_INDEX, DefId, LocalDefId};
 
 use crate::middle::cstore::CrateStoreDyn;
 
@@ -33,9 +33,6 @@ mod collector;
 mod def_collector;
 pub mod definitions;
 mod hir_id_validator;
-
-pub const ITEM_LIKE_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::Low;
-pub const REGULAR_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
 
 /// Represents an entry and its parent `NodeId`.
 #[derive(Copy, Clone, Debug)]
@@ -163,11 +160,10 @@ impl Forest {
 }
 
 /// This type is effectively a `HashMap<HirId, Entry<'hir>>`,
-/// but is implemented by 3 layers of arrays.
-/// - the outer layer is `[A; 2]` and correspond to the 2 address spaces `DefIndex`es can be in
-/// - then we have `A = Vec<Option<B>>` mapping a `DefIndex`'s index to a inner value
-/// - which is `B = IndexVec<ItemLocalId, Option<Entry<'hir>>` which finally gives you the `Entry`.
-pub(super) type HirEntryMap<'hir> = [Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>; 2];
+/// but it is implemented as 2 layers of arrays.
+/// - first we have `A = Vec<Option<B>>` mapping a `DefIndex`'s index to an inner value
+/// - which is `B = IndexVec<ItemLocalId, Option<Entry<'hir>>` which gives you the `Entry`.
+pub(super) type HirEntryMap<'hir> = Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>;
 
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
@@ -193,7 +189,7 @@ pub struct Map<'hir> {
 impl<'hir> Map<'hir> {
     #[inline]
     fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
-        let local_map = self.map[id.owner.address_space().index()].get(id.owner.as_array_index())?;
+        let local_map = self.map.get(id.owner.as_array_index())?;
         local_map.as_ref()?.get(id.local_id)?.as_ref()
     }
 
@@ -1016,29 +1012,21 @@ impl<'hir> Map<'hir> {
 
     /// Returns an iterator that yields all the hir ids in the map.
     fn all_ids<'a>(&'a self) -> impl Iterator<Item = HirId> + 'a {
-        // This code is a bit awkward because the map is implemented as 3 levels of arrays,
+        // This code is a bit awkward because the map is implemented as 2 levels of arrays,
         // see the comment on `HirEntryMap`.
-        let map = &self.map;
-
-        // Look at both the def index address spaces
-        let spaces = [DefIndexAddressSpace::Low, DefIndexAddressSpace::High].iter().cloned();
-        spaces.flat_map(move |space| {
-            // Iterate over all the indices in the address space and return a reference to
-            // local maps and their index given that they exist.
-            let local_maps = map[space.index()].iter().enumerate().filter_map(|(i, local_map)| {
-                local_map.as_ref().map(|m| (i, m))
-            });
-
-            local_maps.flat_map(move |(array_index, local_map)| {
-                // Iterate over each valid entry in the local map
-                local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
-                    // Reconstruct the HirId based on the 3 indices we used to find it
-                    HirId {
-                        owner: DefIndex::from_array_index(array_index, space),
-                        local_id: i,
-                    }
-                }))
-            })
+        // Iterate over all the indices and return a reference to
+        // local maps and their index given that they exist.
+        self.map.iter().enumerate().filter_map(|(i, local_map)| {
+            local_map.as_ref().map(|m| (i, m))
+        }).flat_map(move |(array_index, local_map)| {
+            // Iterate over each valid entry in the local map
+            local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
+                // Reconstruct the HirId based on the 3 indices we used to find it
+                HirId {
+                    owner: DefIndex::from_array_index(array_index),
+                    local_id: i,
+                }
+            }))
         })
     }
 

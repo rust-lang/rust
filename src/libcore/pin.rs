@@ -274,7 +274,7 @@ use crate::ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 /// value in place, preventing the value referenced by that pointer from being moved
 /// unless it implements [`Unpin`].
 ///
-/// See the [`pin` module] documentation for further explanation on pinning.
+/// *See the [`pin` module] documentation for an explanation of pinning.*
 ///
 /// [`Unpin`]: ../../std/marker/trait.Unpin.html
 /// [`pin` module]: ../../std/pin/index.html

@@ -7,7 +7,7 @@ fn main() {}
 
 // END RUST SOURCE
 // START rustc.main.mir_map.0.dot
-// digraph Mir_0_0_3 { // The name here MUST be an ASCII identifier.
+// digraph Mir_0_12 { // The name here MUST be an ASCII identifier.
 //     graph [fontname="monospace"];
 //     node [fontname="monospace"];
 //     edge [fontname="monospace"];
