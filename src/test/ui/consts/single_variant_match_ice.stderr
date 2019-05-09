@@ -1,20 +1,20 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/single_variant_match_ice.rs:6:5
+  --> $DIR/single_variant_match_ice.rs:5:24
    |
-LL |     Foo::Prob => 42,
-   |     ^^^^^^^^^
+LL | const FOO: u32 = match Foo::Prob {
+   |                        ^^^^^^^^^
 
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/single_variant_match_ice.rs:10:5
+  --> $DIR/single_variant_match_ice.rs:9:24
    |
-LL |     x => 42,
-   |     ^
+LL | const BAR: u32 = match Foo::Prob {
+   |                        ^^^^^^^^^
 
 error[E0723]: loops and conditional expressions are not stable in const fn
-  --> $DIR/single_variant_match_ice.rs:18:13
+  --> $DIR/single_variant_match_ice.rs:17:15
    |
-LL |             Prob => 0x1,
-   |             ^^^^
+LL |         match *self {
+   |               ^^^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add #![feature(const_fn)] to the crate attributes to enable

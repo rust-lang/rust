@@ -952,17 +952,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
         }
     }
-
-    fn unreachable_block(&mut self) -> BasicBlock {
-        match self.cached_unreachable_block {
-            Some(ub) => ub,
-            None => {
-                let ub = self.cfg.start_new_block();
-                self.cached_unreachable_block = Some(ub);
-                ub
-            }
-        }
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

@@ -19,21 +19,19 @@ fn main() {
 // bb0: {
 //     FakeRead(ForMatchedPlace, _1);
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb4, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb3, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb5;
+//     goto -> bb4;
 // }
 // bb2: {
-//     goto -> bb8;
+//     _0 = const 1i32;
+//     goto -> bb7;
 // }
 // bb3: {
-//     unreachable;
-// }
-// bb4: {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
-// bb5: {
+// bb4: {
 //     _4 = &shallow _1;
 //     _5 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
 //     _6 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
@@ -44,25 +42,21 @@ fn main() {
 //     FakeRead(ForMatchGuard, _5);
 //     FakeRead(ForMatchGuard, _6);
 //     FakeRead(ForMatchGuard, _7);
-//     switchInt(move _8) -> [false: bb7, otherwise: bb6];
+//     switchInt(move _8) -> [false: bb6, otherwise: bb5];
+// }
+// bb5: {
+//     StorageDead(_8);
+//     _0 = const 0i32;
+//     goto -> bb7;
 // }
 // bb6: {
 //     StorageDead(_8);
-//     _0 = const 0i32;
-//     goto -> bb9;
-// }
-// bb7: {
-//     StorageDead(_8);
 //     goto -> bb2;
 // }
-// bb8: {
-//     _0 = const 1i32;
-//     goto -> bb9;
-// }
-// bb9: {
+// bb7: {
 //     return;
 // }
-// bb10 (cleanup): {
+// bb8 (cleanup): {
 //     resume;
 // }
 // END rustc.match_guard.CleanupNonCodegenStatements.before.mir
@@ -71,21 +65,19 @@ fn main() {
 // bb0: {
 //     nop;
 //     _3 = discriminant(_1);
-//     switchInt(move _3) -> [1isize: bb4, otherwise: bb2];
+//     switchInt(move _3) -> [1isize: bb3, otherwise: bb2];
 // }
 // bb1: {
-//     goto -> bb5;
+//     goto -> bb4;
 // }
 // bb2: {
-//     goto -> bb8;
+//     _0 = const 1i32;
+//     goto -> bb7;
 // }
 // bb3: {
-//     unreachable;
-// }
-// bb4: {
 //     switchInt((*(*((_1 as Some).0: &'<empty> &'<empty> i32)))) -> [0i32: bb1, otherwise: bb2];
 // }
-// bb5: {
+// bb4: {
 //     nop;
 //     nop;
 //     nop;
@@ -96,25 +88,21 @@ fn main() {
 //     nop;
 //     nop;
 //     nop;
-//     switchInt(move _8) -> [false: bb7, otherwise: bb6];
+//     switchInt(move _8) -> [false: bb6, otherwise: bb5];
+// }
+// bb5: {
+//     StorageDead(_8);
+//     _0 = const 0i32;
+//     goto -> bb7;
 // }
 // bb6: {
 //     StorageDead(_8);
-//     _0 = const 0i32;
-//     goto -> bb9;
-// }
-// bb7: {
-//     StorageDead(_8);
 //     goto -> bb2;
 // }
-// bb8: {
-//     _0 = const 1i32;
-//     goto -> bb9;
-// }
-// bb9: {
+// bb7: {
 //     return;
 // }
-// bb10 (cleanup): {
+// bb8 (cleanup): {
 //     resume;
 // }
 // END rustc.match_guard.CleanupNonCodegenStatements.after.mir

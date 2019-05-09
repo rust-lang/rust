@@ -7,6 +7,7 @@ const fn f(x: usize) -> usize {
     for i in 0..x {
         //~^ ERROR E0015
         //~| ERROR E0019
+        //~| ERROR E0019
         //~| ERROR E0080
         sum += i;
     }

@@ -32,76 +32,58 @@ fn main() {
 //         falseUnwind -> [real: bb3, cleanup: bb4];
 //     }
 //     bb2: {
-//         goto -> bb20;
+//         goto -> bb14;
 //     }
 //     bb3: {
 //         StorageLive(_2);
 //         StorageLive(_3);
 //         _3 = const true;
 //         FakeRead(ForMatchedPlace, _3);
-//         switchInt(_3) -> [false: bb9, otherwise: bb8];
+//         switchInt(_3) -> [false: bb5, otherwise: bb6];
 //     }
 //     bb4 (cleanup): {
 //         resume;
 //     }
 //     bb5: {
-//         falseEdges -> [real: bb11, imaginary: bb6];
+//         falseEdges -> [real: bb7, imaginary: bb6];
 //     }
 //     bb6: {
-//         falseEdges -> [real: bb13, imaginary: bb7];
+//         _0 = ();
+//         goto -> bb8;
 //     }
 //     bb7: {
-//         unreachable;
-//     }
-//     bb8: {
-//         goto -> bb6;
-//     }
-//     bb9: {
-//         goto -> bb5;
-//     }
-//     bb10: {
 //         _2 = const 4i32;
-//         goto -> bb18;
-//     }
-//     bb11: {
-//         goto -> bb10;
-//     }
-//     bb12: {
-//         _0 = ();
-//         goto -> bb14;
-//     }
-//     bb13: {
 //         goto -> bb12;
 //     }
-//     bb14: {
+//     bb8: {
 //         StorageDead(_3);
-//         goto -> bb15;
+//         goto -> bb9;
 //     }
-//     bb15: {
+//     bb9: {
 //         StorageDead(_2);
 //         goto -> bb2;
 //     }
-//     bb16: {
+//     bb10: {
 //         _4 = ();
 //         unreachable;
 //     }
-//     bb17: {
-//         goto -> bb18;
+//     bb11: {
+//         goto -> bb12;
 //     }
-//     bb18: {
+//     bb12: {
 //         FakeRead(ForLet, _2);
 //         StorageDead(_3);
 //         StorageLive(_6);
 //         _6 = &_2;
-//         _5 = const std::mem::drop::<&i32>(move _6) -> [return: bb19, unwind: bb4];
+//         _5 = const std::mem::drop::<&i32>(move _6) -> [return: bb13, unwind: bb4];
 //     }
-//     bb19: {
+//     bb13: {
 //         StorageDead(_6);
 //         _1 = ();
 //         StorageDead(_2);
 //         goto -> bb1;
 //     }
-//     bb20: {
+//     bb14: {
 //         return;
 //     }
 // }

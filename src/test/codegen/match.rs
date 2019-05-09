@@ -14,11 +14,11 @@ pub fn exhaustive_match(e: E, unit: ()) {
 // CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[A:[a-zA-Z0-9_]+]]
 // CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[B:[a-zA-Z0-9_]+]]
 // CHECK-NEXT: ]
+// CHECK: [[B]]:
+// CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
 // CHECK: [[OTHERWISE]]:
 // CHECK-NEXT: unreachable
 // CHECK: [[A]]:
-// CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
-// CHECK: [[B]]:
 // CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
     match e {
         E::A => unit,

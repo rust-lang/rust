@@ -2,12 +2,12 @@ enum Foo {
     Prob,
 }
 
-const FOO: u32 = match Foo::Prob {
-    Foo::Prob => 42, //~ ERROR unimplemented expression type
+const FOO: u32 = match Foo::Prob { //~ ERROR unimplemented expression type
+    Foo::Prob => 42,
 };
 
-const BAR: u32 = match Foo::Prob {
-    x => 42, //~ ERROR unimplemented expression type
+const BAR: u32 = match Foo::Prob { //~ ERROR unimplemented expression type
+    x => 42,
 };
 
 impl Foo {
@@ -15,7 +15,8 @@ impl Foo {
         use self::Foo::*;
 
         match *self {
-            Prob => 0x1, //~ ERROR loops and conditional expressions are not stable in const fn
+            //~^ ERROR loops and conditional expressions are not stable in const fn
+            Prob => 0x1,
         }
     }
 }

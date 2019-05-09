@@ -211,6 +211,10 @@ fn check_statement(
             check_rvalue(tcx, body, rval, span)
         }
 
+        StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+            Err((span, "loops and conditional expressions are not stable in const fn".into()))
+        }
+
         StatementKind::FakeRead(_, place) => check_place(place, span),
 
         // just an assignment
