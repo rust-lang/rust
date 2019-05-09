@@ -1,8 +1,8 @@
-pub fn remquo(mut x: f64, mut y: f64) -> (f64, isize) {
+pub fn remquo(mut x: f64, mut y: f64) -> (f64, i32) {
     let ux: u64 = x.to_bits();
     let mut uy: u64 = y.to_bits();
-    let mut ex = ((ux >> 52) & 0x7ff) as isize;
-    let mut ey = ((uy >> 52) & 0x7ff) as isize;
+    let mut ex = ((ux >> 52) & 0x7ff) as i32;
+    let mut ey = ((uy >> 52) & 0x7ff) as i32;
     let sx = (ux >> 63) != 0;
     let sy = (uy >> 63) != 0;
     let mut q: u32;
@@ -88,7 +88,7 @@ pub fn remquo(mut x: f64, mut y: f64) -> (f64, isize) {
         q += 1;
     }
     q &= 0x7fffffff;
-    let quo = if sx ^ sy { -(q as isize) } else { q as isize };
+    let quo = if sx ^ sy { -(q as i32) } else { q as i32 };
     if sx {
         (-x, quo)
     } else {

@@ -1,8 +1,8 @@
-pub fn remquof(mut x: f32, mut y: f32) -> (f32, isize) {
+pub fn remquof(mut x: f32, mut y: f32) -> (f32, i32) {
     let ux: u32 = x.to_bits();
     let mut uy: u32 = y.to_bits();
-    let mut ex = ((ux >> 23) & 0xff) as isize;
-    let mut ey = ((uy >> 23) & 0xff) as isize;
+    let mut ex = ((ux >> 23) & 0xff) as i32;
+    let mut ey = ((uy >> 23) & 0xff) as i32;
     let sx = (ux >> 31) != 0;
     let sy = (uy >> 31) != 0;
     let mut q: u32;
@@ -87,7 +87,7 @@ pub fn remquof(mut x: f32, mut y: f32) -> (f32, isize) {
         q += 1;
     }
     q &= 0x7fffffff;
-    let quo = if sx ^ sy { -(q as isize) } else { q as isize };
+    let quo = if sx ^ sy { -(q as i32) } else { q as i32 };
     if sx {
         (-x, quo)
     } else {
