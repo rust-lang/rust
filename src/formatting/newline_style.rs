@@ -11,11 +11,9 @@ pub(crate) fn apply_newline_style(
     formatted_text: &mut String,
     raw_input_text: &str,
 ) {
-    match effective_newline_style(newline_style, raw_input_text) {
-        EffectiveNewlineStyle::Windows => {
-            *formatted_text = convert_to_windows_newlines(formatted_text);
-        }
-        EffectiveNewlineStyle::Unix => {}
+    *formatted_text = match effective_newline_style(newline_style, raw_input_text) {
+        EffectiveNewlineStyle::Windows => convert_to_windows_newlines(formatted_text),
+        EffectiveNewlineStyle::Unix => convert_to_unix_newlines(formatted_text),
     }
 }
 
@@ -39,6 +37,8 @@ fn effective_newline_style(
 
 const LINE_FEED: char = '\n';
 const CARRIAGE_RETURN: char = '\r';
+const WINDOWS_NEWLINE: &str = "\r\n";
+const UNIX_NEWLINE: &str = "\n";
 
 fn auto_detect_newline_style(raw_input_text: &str) -> EffectiveNewlineStyle {
     let first_line_feed_pos = raw_input_text.chars().position(|ch| ch == LINE_FEED);
@@ -66,13 +66,16 @@ fn native_newline_style() -> EffectiveNewlineStyle {
 fn convert_to_windows_newlines(formatted_text: &String) -> String {
     let mut transformed = String::with_capacity(2 * formatted_text.capacity());
     for c in formatted_text.chars() {
-        const WINDOWS_NEWLINE: &str = "\r\n";
         match c {
             LINE_FEED => transformed.push_str(WINDOWS_NEWLINE),
             c => transformed.push(c),
         }
     }
     transformed
+}
+
+fn convert_to_unix_newlines(formatted_text: &String) -> String {
+    formatted_text.replace(WINDOWS_NEWLINE, UNIX_NEWLINE)
 }
 
 #[cfg(test)]
@@ -155,6 +158,17 @@ mod tests {
                 "auto-native-unix should detect 'lf'"
             );
         }
+    }
+
+    #[test]
+    fn applies_unix_newlines() {
+        let formatted_text = "One\r\nTwo\nThree";
+        let raw_input_text = formatted_text;
+
+        let mut out = String::from(formatted_text);
+        apply_newline_style(NewlineStyle::Unix, &mut out, raw_input_text);
+
+        assert_eq!("One\nTwo\nThree", &out);
     }
 
     #[test]
