@@ -5,8 +5,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::{cmp, fmt, iter, str};
 
-use serde::de::{Deserialize, Deserializer};
-use serde::ser::{self, Serialize, Serializer};
+use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json as json;
 
 use syntax::source_map::{self, SourceFile};
