@@ -3,7 +3,7 @@ authors = ["est31 <MTest31@outlook.com>",
            "The Rust Project Developers"]
 name = "unstable-book-gen"
 version = "0.1.0"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
