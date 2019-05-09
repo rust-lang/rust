@@ -565,8 +565,9 @@ impl MetaItemKind {
             Some(TokenTree::Token(_, token::Eq)) => {
                 tokens.next();
                 return if let Some(TokenTree::Token(span, token)) = tokens.next() {
-                    LitKind::from_token(token)
-                        .map(|(node, token, suffix)| MetaItemKind::NameValue(Lit { node, token, suffix, span }))
+                    LitKind::from_token(token).map(|(node, token, suffix)| {
+                        MetaItemKind::NameValue(Lit { node, token, suffix, span })
+                    })
                 } else {
                     None
                 };
@@ -635,7 +636,7 @@ impl LitKind {
         }
     }
 
-    pub(crate) fn lit_token(&self) -> (token::Lit, Option<Symbol>) {
+    pub fn lit_token(&self) -> (token::Lit, Option<Symbol>) {
         use std::ascii;
 
         match *self {

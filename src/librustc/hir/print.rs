@@ -19,7 +19,6 @@ use std::ascii;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::io::{self, Write, Read};
-use std::iter::Peekable;
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -77,7 +76,6 @@ pub struct State<'a> {
     pub s: pp::Printer<'a>,
     cm: Option<&'a SourceMap>,
     comments: Option<Vec<comments::Comment>>,
-    literals: Peekable<vec::IntoIter<comments::Literal>>,
     cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
     ann: &'a (dyn PpAnn + 'a),
@@ -99,14 +97,6 @@ impl<'a> PrintState<'a> for State<'a> {
     fn cur_cmnt(&mut self) -> &mut usize {
         &mut self.cur_cmnt
     }
-
-    fn cur_lit(&mut self) -> Option<&comments::Literal> {
-        self.literals.peek()
-    }
-
-    fn bump_lit(&mut self) -> Option<comments::Literal> {
-        self.literals.next()
-    }
 }
 
 #[allow(non_upper_case_globals)]
@@ -117,18 +107,16 @@ pub const default_columns: usize = 78;
 
 
 /// Requires you to pass an input filename and reader so that
-/// it can scan the input text for comments and literals to
-/// copy forward.
+/// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &hir::Crate,
                        filename: FileName,
                        input: &mut dyn Read,
                        out: Box<dyn Write + 'a>,
-                       ann: &'a dyn PpAnn,
-                       is_expanded: bool)
+                       ann: &'a dyn PpAnn)
                        -> io::Result<()> {
-    let mut s = State::new_from_input(cm, sess, filename, input, out, ann, is_expanded);
+    let mut s = State::new_from_input(cm, sess, filename, input, out, ann);
 
     // When printing the AST, we sometimes need to inject `#[no_std]` here.
     // Since you can't compile the HIR, it's not necessary.
@@ -144,36 +132,21 @@ impl<'a> State<'a> {
                           filename: FileName,
                           input: &mut dyn Read,
                           out: Box<dyn Write + 'a>,
-                          ann: &'a dyn PpAnn,
-                          is_expanded: bool)
+                          ann: &'a dyn PpAnn)
                           -> State<'a> {
-        let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
-
-        State::new(cm,
-                   out,
-                   ann,
-                   Some(cmnts),
-                   // If the code is post expansion, don't use the table of
-                   // literals, since it doesn't correspond with the literals
-                   // in the AST anymore.
-                   if is_expanded {
-                       None
-                   } else {
-                       Some(lits)
-                   })
+        let comments = comments::gather_comments(sess, filename, input);
+        State::new(cm, out, ann, Some(comments))
     }
 
     pub fn new(cm: &'a SourceMap,
                out: Box<dyn Write + 'a>,
                ann: &'a dyn PpAnn,
-               comments: Option<Vec<comments::Comment>>,
-               literals: Option<Vec<comments::Literal>>)
+               comments: Option<Vec<comments::Comment>>)
                -> State<'a> {
         State {
             s: pp::mk_printer(out, default_columns),
             cm: Some(cm),
             comments,
-            literals: literals.unwrap_or_default().into_iter().peekable(),
             cur_cmnt: 0,
             boxes: Vec::new(),
             ann,
@@ -190,7 +163,6 @@ pub fn to_string<F>(ann: &dyn PpAnn, f: F) -> String
             s: pp::mk_printer(Box::new(&mut wr), default_columns),
             cm: None,
             comments: None,
-            literals: vec![].into_iter().peekable(),
             cur_cmnt: 0,
             boxes: Vec::new(),
             ann,
@@ -1279,9 +1251,6 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) -> io::Result<()> {
         self.maybe_print_comment(lit.span.lo())?;
-        if let Some(ltrl) = self.next_lit(lit.span.lo()) {
-            return self.writer().word(ltrl.lit.clone());
-        }
         match lit.node {
             hir::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
             hir::LitKind::Err(st) => {

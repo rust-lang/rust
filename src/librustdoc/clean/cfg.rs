@@ -414,10 +414,9 @@ impl<'a> fmt::Display for Html<'a> {
 mod test {
     use super::Cfg;
 
-    use syntax::symbol::Symbol;
-    use syntax::ast::*;
-    use syntax::source_map::dummy_spanned;
     use syntax_pos::DUMMY_SP;
+    use syntax::ast::*;
+    use syntax::symbol::Symbol;
     use syntax::with_globals;
 
     fn word_cfg(s: &str) -> Cfg {
@@ -592,12 +591,11 @@ mod test {
             let mi = dummy_meta_item_word("all");
             assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
 
+            let node = LitKind::Str(Symbol::intern("done"), StrStyle::Cooked);
+            let (token, suffix) =   node.lit_token();
             let mi = MetaItem {
                 path: Path::from_ident(Ident::from_str("all")),
-                node: MetaItemKind::NameValue(dummy_spanned(LitKind::Str(
-                    Symbol::intern("done"),
-                    StrStyle::Cooked,
-                ))),
+                node: MetaItemKind::NameValue(Lit { node, token, suffix, span: DUMMY_SP }),
                 span: DUMMY_SP,
             };
             assert_eq!(Cfg::parse(&mi), Ok(name_value_cfg("all", "done")));
@@ -627,9 +625,11 @@ mod test {
     #[test]
     fn test_parse_err() {
         with_globals(|| {
+            let node = LitKind::Bool(false);
+            let (token, suffix) = node.lit_token();
             let mi = MetaItem {
                 path: Path::from_ident(Ident::from_str("foo")),
-                node: MetaItemKind::NameValue(dummy_spanned(LitKind::Bool(false))),
+                node: MetaItemKind::NameValue(Lit { node, token, suffix, span: DUMMY_SP }),
                 span: DUMMY_SP,
             };
             assert!(Cfg::parse(&mi).is_err());

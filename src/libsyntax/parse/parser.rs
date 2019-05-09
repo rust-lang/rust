@@ -2121,11 +2121,11 @@ impl<'a> Parser<'a> {
                         Applicability::MachineApplicable,
                     );
                     err.emit();
-                    return Ok(match float_suffix {
-                        "f32" => (ast::LitKind::Float(val, ast::FloatTy::F32), token::Float(val), suffix),
-                        "f64" => (ast::LitKind::Float(val, ast::FloatTy::F64), token::Float(val), suffix),
-                        _ => (ast::LitKind::FloatUnsuffixed(val), token::Float(val), suffix),
-                    });
+                    return Ok((match float_suffix {
+                        "f32" => ast::LitKind::Float(val, ast::FloatTy::F32),
+                        "f64" => ast::LitKind::Float(val, ast::FloatTy::F64),
+                        _ => ast::LitKind::FloatUnsuffixed(val),
+                    }, token::Float(val), suffix));
                 } else {
                     unreachable!();
                 };
