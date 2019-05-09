@@ -259,6 +259,7 @@
 #![feature(exact_size_is_empty)]
 #![feature(exhaustive_patterns)]
 #![feature(external_doc)]
+#![feature(fixed_size_array)]
 #![feature(fn_traits)]
 #![feature(fnbox)]
 #![feature(generator_trait)]
