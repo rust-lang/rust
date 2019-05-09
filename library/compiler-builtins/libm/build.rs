@@ -28,10 +28,8 @@ mod musl_reference_tests {
     // defining a function we want to test.
     const IGNORED_FILES: &[&str] = &[
         "fenv.rs",
-        "sincos.rs",         // more than 1 result
-        "sincosf.rs",        // more than 1 result
-        "jn.rs",             // passed, but very slow
-        "jnf.rs",            // passed, but very slow
+        "jn.rs",  // passed, but very slow
+        "jnf.rs", // passed, but very slow
     ];
 
     struct Function {
@@ -228,14 +226,22 @@ mod musl_reference_tests {
             src.push_str("extern { fn ");
             src.push_str(&function.name);
             src.push_str("(");
+
+            let (ret, retptr) = match function.name.as_str() {
+                "sincos" | "sincosf" => (None, &function.ret[..]),
+                _ => (Some(&function.ret[0]), &function.ret[1..]),
+            };
             for (i, arg) in function.args.iter().enumerate() {
                 src.push_str(&format!("arg{}: {},", i, arg.libc_ty()));
             }
-            for (i, ret) in function.ret.iter().skip(1).enumerate() {
+            for (i, ret) in retptr.iter().enumerate() {
                 src.push_str(&format!("argret{}: {},", i, ret.libc_pty()));
             }
-            src.push_str(") -> ");
-            src.push_str(function.ret[0].libc_ty());
+            src.push_str(")");
+            if let Some(ty) = ret {
+                src.push_str(" -> ");
+                src.push_str(ty.libc_ty());
+            }
             src.push_str("; }");
 
             src.push_str(&format!("static TESTS: &[[i64; {}]]", function.args.len()));
@@ -251,13 +257,8 @@ mod musl_reference_tests {
             src.push_str("];");
 
             src.push_str("for test in TESTS {");
-            for (i, arg) in function.ret.iter().skip(1).enumerate() {
+            for (i, arg) in retptr.iter().enumerate() {
                 src.push_str(&format!("let mut argret{} = {};", i, arg.default()));
-                src.push_str(&format!(
-                    "let argret_ptr{0} = &mut argret{0} as *mut {1};",
-                    i,
-                    arg.libc_ty()
-                ));
             }
             src.push_str("let output = ");
             src.push_str(&function.name);
@@ -271,18 +272,20 @@ mod musl_reference_tests {
                 });
                 src.push_str(",");
             }
-            for (i, _) in function.ret.iter().skip(1).enumerate() {
-                src.push_str(&format!("argret_ptr{},", i));
+            for (i, _) in retptr.iter().enumerate() {
+                src.push_str(&format!("&mut argret{},", i));
             }
             src.push_str(");");
-            src.push_str(&format!("let output = output{};", function.ret[0].to_i64()));
-            src.push_str("result.extend_from_slice(&output.to_le_bytes());");
+            if let Some(ty) = &ret {
+                src.push_str(&format!("let output = output{};", ty.to_i64()));
+                src.push_str("result.extend_from_slice(&output.to_le_bytes());");
+            }
 
-            for (i, ret) in function.ret.iter().skip(1).enumerate() {
-                src.push_str(&format!("let output{0} = argret{0}{1};", i, ret.to_i64()));
+            for (i, ret) in retptr.iter().enumerate() {
                 src.push_str(&format!(
-                    "result.extend_from_slice(&output{}.to_le_bytes());",
-                    i
+                    "result.extend_from_slice(&(argret{}{}).to_le_bytes());",
+                    i,
+                    ret.to_i64(),
                 ));
             }
             src.push_str("}");
@@ -323,10 +326,7 @@ mod musl_reference_tests {
 
         for f in functions.iter_mut() {
             for test in f.tests.iter_mut() {
-                test.outputs = vec![results.next().unwrap()];
-                for _ in f.ret.iter().skip(1) {
-                    test.outputs.push(results.next().unwrap());
-                }
+                test.outputs = (0..f.ret.len()).map(|_| results.next().unwrap()).collect();
             }
         }
         assert!(results.next().is_none());
@@ -380,26 +380,19 @@ mod musl_reference_tests {
                 src.push_str(",");
             }
             src.push_str(");");
-            if function.ret.len() > 1 {
-                for (i, ret) in function.ret.iter().enumerate() {
-                    src.push_str(&(match ret {
-                        Ty::F32 => format!("if _eqf(output.{0}, f32::from_bits(expected[{0}] as u32)).is_ok() {{ continue }}", i),
-                        Ty::F64 => format!("if _eq(output.{0}, f64::from_bits(expected[{0}] as u64)).is_ok() {{ continue }}", i),
-                        Ty::I32 => format!("if output.{0} as i64 == expected[{0}] {{ continue }}", i),
-                        Ty::Bool => unreachable!(),
-                    }));
-                }
-            } else {
-                src.push_str(match function.ret[0] {
-                    Ty::F32 => {
-                        "if _eqf(output, f32::from_bits(expected[0] as u32)).is_ok() { continue }"
-                    }
-                    Ty::F64 => {
-                        "if _eq(output, f64::from_bits(expected[0] as u64)).is_ok() { continue }"
-                    }
-                    Ty::I32 => "if output as i64 == expected[0] { continue }",
+
+            for (i, ret) in function.ret.iter().enumerate() {
+                let get = if function.ret.len() == 1 {
+                    String::new()
+                } else {
+                    format!(".{}", i)
+                };
+                src.push_str(&(match ret {
+                    Ty::F32 => format!("if _eqf(output{}, f32::from_bits(expected[{}] as u32)).is_ok() {{ continue }}", get, i),
+                    Ty::F64 => format!("if _eq(output{}, f64::from_bits(expected[{}] as u64)).is_ok() {{ continue }}", get, i),
+                    Ty::I32 => format!("if output{} as i64 == expected[{}] {{ continue }}", get, i),
                     Ty::Bool => unreachable!(),
-                });
+                }));
             }
 
             src.push_str(
