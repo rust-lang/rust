@@ -1,9 +1,12 @@
-FROM ubuntu:17.10
+FROM ubuntu:18.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-RUN apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommends \
+# Enable source repositories, which are disabled by default on Ubuntu >= 18.04
+RUN sed -i 's/^# deb-src/deb-src/' /etc/apt/sources.list
+
+RUN apt-get update && apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommends \
   build-essential \
   gcc-multilib \
   libedit-dev \
@@ -15,7 +18,10 @@ RUN apt-get build-dep -y clang llvm && apt-get install -y --no-install-recommend
   nodejs \
   python2.7-dev \
   software-properties-common \
-  unzip
+  unzip \
+  # Needed for apt-key to work:
+  dirmngr \
+  gpg-agent
 
 RUN apt-key adv --batch --yes --keyserver keyserver.ubuntu.com --recv-keys 74DA7924C5513486
 RUN add-apt-repository -y 'deb http://apt.dilos.org/dilos dilos2-testing main'
