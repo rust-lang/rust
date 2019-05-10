@@ -1381,33 +1381,30 @@ impl<'a> LoweringContext<'a> {
         let ty = match c.kind {
             AssocTyConstraintKind::Equality { ref ty } => self.lower_ty(ty, itctx),
             AssocTyConstraintKind::Bound { ref bounds } => {
-                // Piggy-back on the impl trait context to figure out
-                // the correct behavior.
+                // Piggy-back on the `impl Trait` context to figure out the correct behavior.
                 let (desugar_to_impl_trait, itctx) = match itctx {
                     // We are in the return position:
                     //
-                    // fn foo() -> impl Iterator<Item: Debug>
+                    //     fn foo() -> impl Iterator<Item: Debug>
                     //
                     // so desugar to
                     //
-                    // fn foo() -> impl Iterator<Item = impl Debug>
+                    //     fn foo() -> impl Iterator<Item = impl Debug>
                     ImplTraitContext::Existential(_) => (true, itctx),
 
                     // We are in the argument position, but within a dyn type:
                     //
-                    // fn foo(x: dyn Iterator<Item: Debug>)
+                    //     fn foo(x: dyn Iterator<Item: Debug>)
                     //
                     // so desugar to
                     //
-                    // fn foo(x: dyn Iterator<Item = impl Debug>)
+                    //     fn foo(x: dyn Iterator<Item = impl Debug>)
                     ImplTraitContext::Universal(_) if self.is_in_dyn_type => (true, itctx),
 
-                    // In `type Foo = dyn Iterator<Item: Debug>` we
-                    // desugar to `type Foo = dyn Iterator<Item = impl
-                    // Debug>` but we have to override the "impl trait
-                    // context" to permit `impl Debug` in this
-                    // position (it desugars then to an existential
-                    // type).
+                    // In `type Foo = dyn Iterator<Item: Debug>` we desugar to
+                    // `type Foo = dyn Iterator<Item = impl Debug>` but we have to override the
+                    // "impl trait context" to permit `impl Debug` in this position (it desugars
+                    // then to an existential type).
                     //
                     // FIXME: this is only needed until `impl Trait` is allowed in type aliases.
                     ImplTraitContext::Disallowed(_) if self.is_in_dyn_type =>
@@ -1415,19 +1412,17 @@ impl<'a> LoweringContext<'a> {
 
                     // We are in the argument position, but not within a dyn type:
                     //
-                    // fn foo(x: impl Iterator<Item: Debug>)
+                    //     fn foo(x: impl Iterator<Item: Debug>)
                     //
-                    // so we leave it as is and this gets expanded in
-                    // astconv to a bound like `<T as Iterator>::Item:
-                    // Debug` where `T` is the type parameter for the
+                    // so we leave it as is and this gets expanded in astconv to a bound like
+                    // `<T as Iterator>::Item: Debug` where `T` is the type parameter for the
                     // `impl Iterator`.
                     _ => (false, itctx),
                 };
 
                 if desugar_to_impl_trait {
-                    // Desugar `AssocTy: Bounds` into `AssocTy = impl
-                    // Bounds`. We do this by constructing the HIR
-                    // for "impl bounds" and then lowering that.
+                    // Desugar `AssocTy: Bounds` into `AssocTy = impl Bounds`. We do this by
+                    // constructing the HIR for "impl bounds" and then lowering that.
 
                     let impl_trait_node_id = self.sess.next_node_id();
                     let parent_def_index = self.current_hir_id_owner.last().unwrap().0;
