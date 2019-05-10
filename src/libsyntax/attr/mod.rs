@@ -27,11 +27,9 @@ use crate::ThinVec;
 use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use crate::GLOBALS;
 
-use errors::Handler;
 use log::debug;
 use syntax_pos::{FileName, Span};
 
-use std::ascii;
 use std::iter;
 use std::ops::DerefMut;
 
@@ -617,103 +615,6 @@ impl NestedMetaItem {
         }
 
         MetaItem::from_tokens(tokens).map(NestedMetaItem::MetaItem)
-    }
-}
-
-impl Lit {
-    crate fn tokens(&self) -> TokenStream {
-        let token = match self.token {
-            token::Bool(symbol) => Token::Ident(Ident::with_empty_ctxt(symbol), false),
-            token => Token::Literal(token, self.suffix),
-        };
-        TokenTree::Token(self.span, token).into()
-    }
-}
-
-impl LitKind {
-    /// Attempts to recover a token from semantic literal.
-    /// This function is used when the original token doesn't exist (e.g. the literal is created
-    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn to_lit_token(&self) -> (token::Lit, Option<Symbol>) {
-        match *self {
-            LitKind::Str(string, ast::StrStyle::Cooked) => {
-                let escaped = string.as_str().escape_default().to_string();
-                (token::Lit::Str_(Symbol::intern(&escaped)), None)
-            }
-            LitKind::Str(string, ast::StrStyle::Raw(n)) => {
-                (token::Lit::StrRaw(string, n), None)
-            }
-            LitKind::ByteStr(ref bytes) => {
-                let string = bytes.iter().cloned().flat_map(ascii::escape_default)
-                    .map(Into::<char>::into).collect::<String>();
-                (token::Lit::ByteStr(Symbol::intern(&string)), None)
-            }
-            LitKind::Byte(byte) => {
-                let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
-                (token::Lit::Byte(Symbol::intern(&string)), None)
-            }
-            LitKind::Char(ch) => {
-                let string: String = ch.escape_default().map(Into::<char>::into).collect();
-                (token::Lit::Char(Symbol::intern(&string)), None)
-            }
-            LitKind::Int(n, ty) => {
-                let suffix = match ty {
-                    ast::LitIntType::Unsigned(ty) => Some(Symbol::intern(ty.ty_to_string())),
-                    ast::LitIntType::Signed(ty) => Some(Symbol::intern(ty.ty_to_string())),
-                    ast::LitIntType::Unsuffixed => None,
-                };
-                (token::Lit::Integer(Symbol::intern(&n.to_string())), suffix)
-            }
-            LitKind::Float(symbol, ty) => {
-                (token::Lit::Float(symbol), Some(Symbol::intern(ty.ty_to_string())))
-            }
-            LitKind::FloatUnsuffixed(symbol) => (token::Lit::Float(symbol), None),
-            LitKind::Bool(value) => {
-                let kw = if value { keywords::True } else { keywords::False };
-                (token::Lit::Bool(kw.name()), None)
-            }
-            LitKind::Err(val) => (token::Lit::Err(val), None),
-        }
-    }
-}
-
-impl Lit {
-    /// Converts literal token with a suffix into an AST literal.
-    /// Works speculatively and may return `None` is diagnostic handler is not passed.
-    /// If diagnostic handler is passed, may return `Some`,
-    /// possibly after reporting non-fatal errors and recovery, or `None` for irrecoverable errors.
-    crate fn from_token(
-        token: &token::Token,
-        span: Span,
-        diag: Option<(Span, &Handler)>,
-    ) -> Option<Lit> {
-        let (token, suffix) = match *token {
-            token::Ident(ident, false) if ident.name == keywords::True.name() ||
-                                          ident.name == keywords::False.name() =>
-                (token::Bool(ident.name), None),
-            token::Literal(token, suffix) =>
-                (token, suffix),
-            token::Interpolated(ref nt) => {
-                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
-                    if let ast::ExprKind::Lit(lit) = &expr.node {
-                        return Some(lit.clone());
-                    }
-                }
-                return None;
-            }
-            _ => return None,
-        };
-
-        let node = LitKind::from_lit_token(token, suffix, diag)?;
-        Some(Lit { node, token, suffix, span })
-    }
-
-    /// Attempts to recover an AST literal from semantic literal.
-    /// This function is used when the original token doesn't exist (e.g. the literal is created
-    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn from_lit_kind(node: LitKind, span: Span) -> Lit {
-        let (token, suffix) = node.to_lit_token();
-        Lit { node, token, suffix, span }
     }
 }
 

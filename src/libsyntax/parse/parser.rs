@@ -15,7 +15,7 @@ use crate::ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use crate::ast::{GenericParam, GenericParamKind};
 use crate::ast::GenericArg;
 use crate::ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
-use crate::ast::{Label, Lifetime, Lit};
+use crate::ast::{Label, Lifetime};
 use crate::ast::{Local, LocalSource};
 use crate::ast::MacStmtStyle;
 use crate::ast::{Mac, Mac_, MacDelimiter};
@@ -35,7 +35,7 @@ use crate::ast::{RangeEnd, RangeSyntax};
 use crate::{ast, attr};
 use crate::ext::base::DummyResult;
 use crate::source_map::{self, SourceMap, Spanned, respan};
-use crate::parse::{self, SeqSep, classify, token};
+use crate::parse::{SeqSep, classify, literal, token};
 use crate::parse::lexer::{TokenAndSpan, UnmatchedBrace};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use crate::parse::token::DelimToken;
@@ -613,17 +613,12 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn this_token_descr(&self) -> String {
+    crate fn this_token_descr(&self) -> String {
         if let Some(prefix) = self.token_descr() {
             format!("{} `{}`", prefix, self.this_token_to_string())
         } else {
             format!("`{}`", self.this_token_to_string())
         }
-    }
-
-    fn unexpected_last<T>(&self, t: &token::Token) -> PResult<'a, T> {
-        let token_str = pprust::token_to_string(t);
-        Err(self.span_fatal(self.prev_span, &format!("unexpected token: `{}`", token_str)))
     }
 
     crate fn unexpected<T>(&mut self) -> PResult<'a, T> {
@@ -1109,7 +1104,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
-        parse::expect_no_suffix(sp, &self.sess.span_diagnostic, kind, suffix)
+        literal::expect_no_suffix(sp, &self.sess.span_diagnostic, kind, suffix)
     }
 
     /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
@@ -1387,7 +1382,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn look_ahead_span(&self, dist: usize) -> Span {
+    crate fn look_ahead_span(&self, dist: usize) -> Span {
         if dist == 0 {
             return self.span
         }
@@ -2028,47 +2023,6 @@ impl<'a> Parser<'a> {
         } else {
             Ok(None)
         }
-    }
-
-    /// Matches `lit = true | false | token_lit`.
-    crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
-        let diag = Some((self.span, &self.sess.span_diagnostic));
-        if let Some(lit) = Lit::from_token(&self.token, self.span, diag) {
-            self.bump();
-            return Ok(lit);
-        } else if self.token == token::Dot {
-            // Recover `.4` as `0.4`.
-            let recovered = self.look_ahead(1, |t| {
-                if let token::Literal(token::Integer(val), suf) = *t {
-                    let next_span = self.look_ahead_span(1);
-                    if self.span.hi() == next_span.lo() {
-                        let sym = String::from("0.") + &val.as_str();
-                        let token = token::Literal(token::Float(Symbol::intern(&sym)), suf);
-                        return Some((token, self.span.to(next_span)));
-                    }
-                }
-                None
-            });
-            if let Some((token, span)) = recovered {
-                self.diagnostic()
-                    .struct_span_err(span, "float literals must have an integer part")
-                    .span_suggestion(
-                        span,
-                        "must have an integer part",
-                        pprust::token_to_string(&token),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                let diag = Some((span, &self.sess.span_diagnostic));
-                if let Some(lit) = Lit::from_token(&token, span, diag) {
-                    self.bump();
-                    self.bump();
-                    return Ok(lit);
-                }
-            }
-        }
-
-        self.unexpected_last(&self.token)
     }
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).
