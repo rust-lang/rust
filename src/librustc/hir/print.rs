@@ -5,7 +5,7 @@ use syntax::parse::ParseSess;
 use syntax::parse::lexer::comments;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pprust::PrintState;
+use syntax::print::pprust::{self, PrintState};
 use syntax::ptr::P;
 use syntax::symbol::keywords;
 use syntax::util::parser::{self, AssocOp, Fixity};
@@ -15,7 +15,6 @@ use crate::hir;
 use crate::hir::{PatKind, GenericBound, TraitBoundModifier, RangeEnd};
 use crate::hir::{GenericParam, GenericParamKind, GenericArg};
 
-use std::ascii;
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::io::{self, Write, Read};
@@ -1251,57 +1250,8 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) -> io::Result<()> {
         self.maybe_print_comment(lit.span.lo())?;
-        match lit.node {
-            hir::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
-            hir::LitKind::Err(st) => {
-                let st = st.as_str().escape_debug().to_string();
-                let mut res = String::with_capacity(st.len() + 2);
-                res.push('\'');
-                res.push_str(&st);
-                res.push('\'');
-                self.writer().word(res)
-            }
-            hir::LitKind::Byte(byte) => {
-                let mut res = String::from("b'");
-                res.extend(ascii::escape_default(byte).map(|c| c as char));
-                res.push('\'');
-                self.writer().word(res)
-            }
-            hir::LitKind::Char(ch) => {
-                let mut res = String::from("'");
-                res.extend(ch.escape_default());
-                res.push('\'');
-                self.writer().word(res)
-            }
-            hir::LitKind::Int(i, t) => {
-                match t {
-                    ast::LitIntType::Signed(st) => {
-                        self.writer().word(st.val_to_string(i as i128))
-                    }
-                    ast::LitIntType::Unsigned(ut) => {
-                        self.writer().word(ut.val_to_string(i))
-                    }
-                    ast::LitIntType::Unsuffixed => {
-                        self.writer().word(i.to_string())
-                    }
-                }
-            }
-            hir::LitKind::Float(ref f, t) => {
-                self.writer().word(format!("{}{}", &f, t.ty_to_string()))
-            }
-            hir::LitKind::FloatUnsuffixed(ref f) => self.writer().word(f.as_str().to_string()),
-            hir::LitKind::Bool(val) => {
-                if val { self.writer().word("true") } else { self.writer().word("false") }
-            }
-            hir::LitKind::ByteStr(ref v) => {
-                let mut escaped: String = String::new();
-                for &ch in v.iter() {
-                    escaped.extend(ascii::escape_default(ch)
-                                         .map(|c| c as char));
-                }
-                self.writer().word(format!("b\"{}\"", escaped))
-            }
-        }
+        let (token, suffix) = lit.node.to_lit_token();
+        self.writer().word(pprust::literal_to_string(token, suffix))
     }
 
     pub fn print_expr(&mut self, expr: &hir::Expr) -> io::Result<()> {

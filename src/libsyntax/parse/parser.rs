@@ -15,7 +15,7 @@ use crate::ast::{ForeignItem, ForeignItemKind, FunctionRetTy};
 use crate::ast::{GenericParam, GenericParamKind};
 use crate::ast::GenericArg;
 use crate::ast::{Ident, ImplItem, IsAsync, IsAuto, Item, ItemKind};
-use crate::ast::{Label, Lifetime, Lit, LitKind};
+use crate::ast::{Label, Lifetime, Lit};
 use crate::ast::{Local, LocalSource};
 use crate::ast::MacStmtStyle;
 use crate::ast::{Mac, Mac_, MacDelimiter};
@@ -46,7 +46,7 @@ use crate::ptr::P;
 use crate::parse::PResult;
 use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
-use crate::symbol::{Symbol, keywords};
+use crate::symbol::{keywords, Symbol};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
@@ -1109,43 +1109,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
-        match suffix {
-            None => {/* everything ok */}
-            Some(suf) => {
-                let text = suf.as_str();
-                if text.is_empty() {
-                    self.span_bug(sp, "found empty literal suffix in Some")
-                }
-                let mut err = if kind == "a tuple index" &&
-                    ["i32", "u32", "isize", "usize"].contains(&text.to_string().as_str())
-                {
-                    // #59553: warn instead of reject out of hand to allow the fix to percolate
-                    // through the ecosystem when people fix their macros
-                    let mut err = self.struct_span_warn(
-                        sp,
-                        &format!("suffixes on {} are invalid", kind),
-                    );
-                    err.note(&format!(
-                        "`{}` is *temporarily* accepted on tuple index fields as it was \
-                         incorrectly accepted on stable for a few releases",
-                        text,
-                    ));
-                    err.help(
-                        "on proc macros, you'll want to use `syn::Index::from` or \
-                         `proc_macro::Literal::*_unsuffixed` for code that will desugar \
-                         to tuple field access",
-                    );
-                    err.note(
-                        "for more context, see https://github.com/rust-lang/rust/issues/60210",
-                    );
-                    err
-                } else {
-                    self.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
-                };
-                err.span_label(sp, format!("invalid suffix `{}`", text));
-                err.emit();
-            }
-        }
+        parse::expect_no_suffix(sp, &self.sess.span_diagnostic, kind, suffix)
     }
 
     /// Attempts to consume a `<`. If `<<` is seen, replaces it with a single
@@ -1451,9 +1415,6 @@ impl<'a> Parser<'a> {
     }
     crate fn struct_span_err<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_err(sp, m)
-    }
-    fn struct_span_warn<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> DiagnosticBuilder<'a> {
-        self.sess.span_diagnostic.struct_span_warn(sp, m)
     }
     crate fn span_bug<S: Into<MultiSpan>>(&self, sp: S, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
@@ -2069,85 +2030,45 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Matches `token_lit = LIT_INTEGER | ...`.
-    fn parse_lit_token(&mut self) -> PResult<'a, (LitKind, token::Lit, Option<Symbol>)> {
-        let out = match self.token {
-            token::Interpolated(ref nt) => match **nt {
-                token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
-                    ExprKind::Lit(ref lit) => { (lit.node.clone(), lit.token, lit.suffix) }
-                    _ => { return self.unexpected_last(&self.token); }
-                },
-                _ => { return self.unexpected_last(&self.token); }
-            },
-            token::Literal(lit, suf) => {
-                let diag = Some((self.span, &self.sess.span_diagnostic));
-                let (suffix_illegal, result) = parse::lit_token(lit, suf, diag);
-
-                if suffix_illegal {
-                    let sp = self.span;
-                    self.expect_no_suffix(sp, &format!("a {}", lit.literal_name()), suf)
-                }
-
-                (result.unwrap(), lit, suf)
-            }
-            token::Dot if self.look_ahead(1, |t| match t {
-                token::Literal(token::Lit::Integer(_) , _) => true,
-                _ => false,
-            }) => { // recover from `let x = .4;`
-                let lo = self.span;
-                self.bump();
-                if let token::Literal(
-                    token::Lit::Integer(val),
-                    suffix,
-                ) = self.token {
-                    let float_suffix = suffix.and_then(|s| {
-                        let s = s.as_str();
-                        if s == "f32" {
-                            Some("f32")
-                        } else if s == "f64" {
-                            Some("f64")
-                        } else {
-                            None
-                        }
-                    }).unwrap_or("");
-                    self.bump();
-                    let sp = lo.to(self.prev_span);
-                    let mut err = self.diagnostic()
-                        .struct_span_err(sp, "float literals must have an integer part");
-                    err.span_suggestion(
-                        sp,
-                        "must have an integer part",
-                        format!("0.{}{}", val, float_suffix),
-                        Applicability::MachineApplicable,
-                    );
-                    err.emit();
-                    return Ok((match float_suffix {
-                        "f32" => ast::LitKind::Float(val, ast::FloatTy::F32),
-                        "f64" => ast::LitKind::Float(val, ast::FloatTy::F64),
-                        _ => ast::LitKind::FloatUnsuffixed(val),
-                    }, token::Float(val), suffix));
-                } else {
-                    unreachable!();
-                };
-            }
-            _ => { return self.unexpected_last(&self.token); }
-        };
-
-        self.bump();
-        Ok(out)
-    }
-
     /// Matches `lit = true | false | token_lit`.
     crate fn parse_lit(&mut self) -> PResult<'a, Lit> {
-        let lo = self.span;
-        let (node, token, suffix) = if self.eat_keyword(keywords::True) {
-            (LitKind::Bool(true), token::Bool(keywords::True.name()), None)
-        } else if self.eat_keyword(keywords::False) {
-            (LitKind::Bool(false), token::Bool(keywords::False.name()), None)
-        } else {
-            self.parse_lit_token()?
-        };
-        Ok(Lit { node, token, suffix, span: lo.to(self.prev_span) })
+        let diag = Some((self.span, &self.sess.span_diagnostic));
+        if let Some(lit) = Lit::from_token(&self.token, self.span, diag) {
+            self.bump();
+            return Ok(lit);
+        } else if self.token == token::Dot {
+            // Recover `.4` as `0.4`.
+            let recovered = self.look_ahead(1, |t| {
+                if let token::Literal(token::Integer(val), suf) = *t {
+                    let next_span = self.look_ahead_span(1);
+                    if self.span.hi() == next_span.lo() {
+                        let sym = String::from("0.") + &val.as_str();
+                        let token = token::Literal(token::Float(Symbol::intern(&sym)), suf);
+                        return Some((token, self.span.to(next_span)));
+                    }
+                }
+                None
+            });
+            if let Some((token, span)) = recovered {
+                self.diagnostic()
+                    .struct_span_err(span, "float literals must have an integer part")
+                    .span_suggestion(
+                        span,
+                        "must have an integer part",
+                        pprust::token_to_string(&token),
+                        Applicability::MachineApplicable,
+                    )
+                    .emit();
+                let diag = Some((span, &self.sess.span_diagnostic));
+                if let Some(lit) = Lit::from_token(&token, span, diag) {
+                    self.bump();
+                    self.bump();
+                    return Ok(lit);
+                }
+            }
+        }
+
+        self.unexpected_last(&self.token)
     }
 
     /// Matches `'-' lit | lit` (cf. `ast_validation::AstValidator::check_expr_within_pat`).

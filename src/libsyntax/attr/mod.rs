@@ -14,7 +14,7 @@ pub use StabilityLevel::*;
 use crate::ast;
 use crate::ast::{AttrId, Attribute, AttrStyle, Name, Ident, Path, PathSegment};
 use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
-use crate::ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind, GenericParam};
+use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned, dummy_spanned};
 use crate::parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -27,9 +27,11 @@ use crate::ThinVec;
 use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use crate::GLOBALS;
 
+use errors::Handler;
 use log::debug;
 use syntax_pos::{FileName, Span};
 
+use std::ascii;
 use std::iter;
 use std::ops::DerefMut;
 
@@ -350,14 +352,13 @@ impl Attribute {
 /* Constructors */
 
 pub fn mk_name_value_item_str(ident: Ident, value: Spanned<Symbol>) -> MetaItem {
-    let node = LitKind::Str(value.node, ast::StrStyle::Cooked);
-    let (token, suffix) = node.lit_token();
-    let value = Lit { node, token, suffix, span: value.span };
-    mk_name_value_item(ident.span.to(value.span), ident, value)
+    let lit_kind = LitKind::Str(value.node, ast::StrStyle::Cooked);
+    mk_name_value_item(ident.span.to(value.span), ident, lit_kind, value.span)
 }
 
-pub fn mk_name_value_item(span: Span, ident: Ident, value: Lit) -> MetaItem {
-    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(value) }
+pub fn mk_name_value_item(span: Span, ident: Ident, lit_kind: LitKind, lit_span: Span) -> MetaItem {
+    let lit = Lit::from_lit_kind(lit_kind, lit_span);
+    MetaItem { path: Path::from_ident(ident), span, node: MetaItemKind::NameValue(lit) }
 }
 
 pub fn mk_list_item(span: Span, ident: Ident, items: Vec<NestedMetaItem>) -> MetaItem {
@@ -419,9 +420,8 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
 
 pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
-    let node = LitKind::Str(text, ast::StrStyle::Cooked);
-    let (token, suffix) = node.lit_token();
-    let lit = Lit { node, token, suffix, span };
+    let lit_kind = LitKind::Str(text, ast::StrStyle::Cooked);
+    let lit = Lit::from_lit_kind(lit_kind, span);
     Attribute {
         id,
         style,
@@ -565,9 +565,7 @@ impl MetaItemKind {
             Some(TokenTree::Token(_, token::Eq)) => {
                 tokens.next();
                 return if let Some(TokenTree::Token(span, token)) = tokens.next() {
-                    LitKind::from_token(token).map(|(node, token, suffix)| {
-                        MetaItemKind::NameValue(Lit { node, token, suffix, span })
-                    })
+                    Lit::from_token(&token, span, None).map(MetaItemKind::NameValue)
                 } else {
                     None
                 };
@@ -612,9 +610,9 @@ impl NestedMetaItem {
         where I: Iterator<Item = TokenTree>,
     {
         if let Some(TokenTree::Token(span, token)) = tokens.peek().cloned() {
-            if let Some((node, token, suffix)) = LitKind::from_token(token) {
+            if let Some(lit) = Lit::from_token(&token, span, None) {
                 tokens.next();
-                return Some(NestedMetaItem::Literal(Lit { node, token, suffix, span }));
+                return Some(NestedMetaItem::Literal(lit));
             }
         }
 
@@ -624,21 +622,19 @@ impl NestedMetaItem {
 
 impl Lit {
     crate fn tokens(&self) -> TokenStream {
-        TokenTree::Token(self.span, self.node.token()).into()
+        let token = match self.token {
+            token::Bool(symbol) => Token::Ident(Ident::with_empty_ctxt(symbol), false),
+            token => Token::Literal(token, self.suffix),
+        };
+        TokenTree::Token(self.span, token).into()
     }
 }
 
 impl LitKind {
-    fn token(&self) -> Token {
-        match self.lit_token() {
-            (token::Bool(symbol), _) => Token::Ident(Ident::with_empty_ctxt(symbol), false),
-            (lit, suffix) => Token::Literal(lit, suffix),
-        }
-    }
-
-    pub fn lit_token(&self) -> (token::Lit, Option<Symbol>) {
-        use std::ascii;
-
+    /// Attempts to recover a token from semantic literal.
+    /// This function is used when the original token doesn't exist (e.g. the literal is created
+    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
+    pub fn to_lit_token(&self) -> (token::Lit, Option<Symbol>) {
         match *self {
             LitKind::Str(string, ast::StrStyle::Cooked) => {
                 let escaped = string.as_str().escape_default().to_string();
@@ -679,29 +675,45 @@ impl LitKind {
             LitKind::Err(val) => (token::Lit::Err(val), None),
         }
     }
+}
 
-    fn from_token(token: Token) -> Option<(LitKind, token::Lit, Option<Symbol>)> {
-        match token {
-            Token::Ident(ident, false) if ident.name == keywords::True.name() =>
-                Some((LitKind::Bool(true), token::Bool(ident.name), None)),
-            Token::Ident(ident, false) if ident.name == keywords::False.name() =>
-                Some((LitKind::Bool(false), token::Bool(ident.name), None)),
-            Token::Interpolated(nt) => match *nt {
-                token::NtExpr(ref v) | token::NtLiteral(ref v) => match v.node {
-                    ExprKind::Lit(ref lit) => Some((lit.node.clone(), lit.token, lit.suffix)),
-                    _ => None,
-                },
-                _ => None,
-            },
-            Token::Literal(lit, suf) => {
-                let (suffix_illegal, result) = parse::lit_token(lit, suf, None);
-                if result.is_none() || suffix_illegal && suf.is_some() {
-                    return None;
+impl Lit {
+    /// Converts literal token with a suffix into an AST literal.
+    /// Works speculatively and may return `None` is diagnostic handler is not passed.
+    /// If diagnostic handler is passed, may return `Some`,
+    /// possibly after reporting non-fatal errors and recovery, or `None` for irrecoverable errors.
+    crate fn from_token(
+        token: &token::Token,
+        span: Span,
+        diag: Option<(Span, &Handler)>,
+    ) -> Option<Lit> {
+        let (token, suffix) = match *token {
+            token::Ident(ident, false) if ident.name == keywords::True.name() ||
+                                          ident.name == keywords::False.name() =>
+                (token::Bool(ident.name), None),
+            token::Literal(token, suffix) =>
+                (token, suffix),
+            token::Interpolated(ref nt) => {
+                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt {
+                    if let ast::ExprKind::Lit(lit) = &expr.node {
+                        return Some(lit.clone());
+                    }
                 }
-                Some((result.unwrap(), lit, suf))
+                return None;
             }
-            _ => None,
-        }
+            _ => return None,
+        };
+
+        let node = LitKind::from_lit_token(token, suffix, diag)?;
+        Some(Lit { node, token, suffix, span })
+    }
+
+    /// Attempts to recover an AST literal from semantic literal.
+    /// This function is used when the original token doesn't exist (e.g. the literal is created
+    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
+    pub fn from_lit_kind(node: LitKind, span: Span) -> Lit {
+        let (token, suffix) = node.to_lit_token();
+        Lit { node, token, suffix, span }
     }
 }
 

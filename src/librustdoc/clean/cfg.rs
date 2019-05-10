@@ -591,13 +591,10 @@ mod test {
             let mi = dummy_meta_item_word("all");
             assert_eq!(Cfg::parse(&mi), Ok(word_cfg("all")));
 
-            let node = LitKind::Str(Symbol::intern("done"), StrStyle::Cooked);
-            let (token, suffix) =   node.lit_token();
-            let mi = MetaItem {
-                path: Path::from_ident(Ident::from_str("all")),
-                node: MetaItemKind::NameValue(Lit { node, token, suffix, span: DUMMY_SP }),
-                span: DUMMY_SP,
-            };
+            let mi = attr::mk_name_value_item_str(
+                Ident::from_str("all"),
+                dummy_spanned(Symbol::intern("done"))
+            );
             assert_eq!(Cfg::parse(&mi), Ok(name_value_cfg("all", "done")));
 
             let mi = dummy_meta_item_list!(all, [a, b]);
@@ -625,13 +622,12 @@ mod test {
     #[test]
     fn test_parse_err() {
         with_globals(|| {
-            let node = LitKind::Bool(false);
-            let (token, suffix) = node.lit_token();
-            let mi = MetaItem {
-                path: Path::from_ident(Ident::from_str("foo")),
-                node: MetaItemKind::NameValue(Lit { node, token, suffix, span: DUMMY_SP }),
-                span: DUMMY_SP,
-            };
+            let mi = attr::mk_name_value_item(
+                DUMMY_SP,
+                Ident::from_str("foo"),
+                LitKind::Bool(false),
+                DUMMY_SP,
+            );
             assert!(Cfg::parse(&mi).is_err());
 
             let mi = dummy_meta_item_list!(not, [a, b]);

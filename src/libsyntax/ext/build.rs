@@ -697,9 +697,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_struct(span, self.path_ident(span, id), fields)
     }
 
-    fn expr_lit(&self, span: Span, node: ast::LitKind) -> P<ast::Expr> {
-        let (token, suffix) = node.lit_token();
-        self.expr(span, ast::ExprKind::Lit(ast::Lit { node, token, suffix, span }))
+    fn expr_lit(&self, span: Span, lit_kind: ast::LitKind) -> P<ast::Expr> {
+        let lit = ast::Lit::from_lit_kind(lit_kind, span);
+        self.expr(span, ast::ExprKind::Lit(lit))
     }
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitKind::Int(i as u128,
@@ -1165,11 +1165,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         attr::mk_list_item(sp, Ident::with_empty_ctxt(name).with_span_pos(sp), mis)
     }
 
-    fn meta_name_value(&self, span: Span, name: ast::Name, node: ast::LitKind)
+    fn meta_name_value(&self, span: Span, name: ast::Name, lit_kind: ast::LitKind)
                        -> ast::MetaItem {
-        let (token, suffix) = node.lit_token();
         attr::mk_name_value_item(span, Ident::with_empty_ctxt(name).with_span_pos(span),
-                                 ast::Lit { node, token, suffix, span })
+                                 lit_kind, span)
     }
 
     fn item_use(&self, sp: Span,

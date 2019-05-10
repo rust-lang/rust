@@ -90,6 +90,13 @@ impl Lit {
         }
     }
 
+    crate fn may_have_suffix(&self) -> bool {
+        match *self {
+            Integer(..) | Float(..) => true,
+            _ => false,
+        }
+    }
+
     // See comments in `Nonterminal::to_tokenstream` for why we care about
     // *probably* equal here rather than actual equality
     fn probably_equal_for_proc_macro(&self, other: &Lit) -> bool {

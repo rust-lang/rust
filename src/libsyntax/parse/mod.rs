@@ -1,11 +1,11 @@
 //! The main parser interface.
 
-use crate::ast::{self, CrateConfig, NodeId};
+use crate::ast::{self, CrateConfig, LitKind, NodeId};
 use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use crate::source_map::{SourceMap, FilePathMapping};
 use crate::feature_gate::UnstableFeatures;
 use crate::parse::parser::Parser;
-use crate::symbol::Symbol;
+use crate::symbol::{keywords, Symbol};
 use crate::syntax::parse::parser::emit_unclosed_delims;
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::diagnostics::plugin::ErrorMap;
@@ -371,97 +371,151 @@ macro_rules! err {
     }
 }
 
-crate fn lit_token(lit: token::Lit, suf: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                 -> (bool /* suffix illegal? */, Option<ast::LitKind>) {
-    use ast::LitKind;
-
-    match lit {
-        token::Bool(_) => panic!("literal token contains `Lit::Bool`"),
-        token::Byte(i) => {
-            let lit_kind = match unescape_byte(&i.as_str()) {
-                Ok(c) => LitKind::Byte(c),
-                Err(_) => LitKind::Err(i),
+crate fn expect_no_suffix(sp: Span, diag: &Handler, kind: &str, suffix: Option<ast::Name>) {
+    match suffix {
+        None => {/* everything ok */}
+        Some(suf) => {
+            let text = suf.as_str();
+            if text.is_empty() {
+                diag.span_bug(sp, "found empty literal suffix in Some")
+            }
+            let mut err = if kind == "a tuple index" &&
+                ["i32", "u32", "isize", "usize"].contains(&text.to_string().as_str())
+            {
+                // #59553: warn instead of reject out of hand to allow the fix to percolate
+                // through the ecosystem when people fix their macros
+                let mut err = diag.struct_span_warn(
+                    sp,
+                    &format!("suffixes on {} are invalid", kind),
+                );
+                err.note(&format!(
+                    "`{}` is *temporarily* accepted on tuple index fields as it was \
+                        incorrectly accepted on stable for a few releases",
+                    text,
+                ));
+                err.help(
+                    "on proc macros, you'll want to use `syn::Index::from` or \
+                        `proc_macro::Literal::*_unsuffixed` for code that will desugar \
+                        to tuple field access",
+                );
+                err.note(
+                    "for more context, see https://github.com/rust-lang/rust/issues/60210",
+                );
+                err
+            } else {
+                diag.struct_span_err(sp, &format!("suffixes on {} are invalid", kind))
             };
-            (true, Some(lit_kind))
-        },
-        token::Char(i) => {
-            let lit_kind = match unescape_char(&i.as_str()) {
-                Ok(c) => LitKind::Char(c),
-                Err(_) => LitKind::Err(i),
-            };
-            (true, Some(lit_kind))
-        },
-        token::Err(i) => (true, Some(LitKind::Err(i))),
+            err.span_label(sp, format!("invalid suffix `{}`", text));
+            err.emit();
+        }
+    }
+}
 
-        // There are some valid suffixes for integer and float literals,
-        // so all the handling is done internally.
-        token::Integer(s) => (false, integer_lit(&s.as_str(), suf, diag)),
-        token::Float(s) => (false, float_lit(&s.as_str(), suf, diag)),
+impl LitKind {
+    /// Converts literal token with a suffix into a semantic literal.
+    /// Works speculatively and may return `None` is diagnostic handler is not passed.
+    /// If diagnostic handler is passed, always returns `Some`,
+    /// possibly after reporting non-fatal errors and recovery.
+    crate fn from_lit_token(
+        lit: token::Lit,
+        suf: Option<Symbol>,
+        diag: Option<(Span, &Handler)>
+    ) -> Option<LitKind> {
+        if suf.is_some() && !lit.may_have_suffix() {
+            err!(diag, |span, diag| {
+                expect_no_suffix(span, diag, &format!("a {}", lit.literal_name()), suf)
+            });
+        }
 
-        token::Str_(mut sym) => {
-            // If there are no characters requiring special treatment we can
-            // reuse the symbol from the Token. Otherwise, we must generate a
-            // new symbol because the string in the LitKind is different to the
-            // string in the Token.
-            let mut has_error = false;
-            let s = &sym.as_str();
-            if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
-                let mut buf = String::with_capacity(s.len());
-                unescape_str(s, &mut |_, unescaped_char| {
-                    match unescaped_char {
+        Some(match lit {
+            token::Bool(i) => {
+                assert!(i == keywords::True.name() || i == keywords::False.name());
+                LitKind::Bool(i == keywords::True.name())
+            }
+            token::Byte(i) => {
+                match unescape_byte(&i.as_str()) {
+                    Ok(c) => LitKind::Byte(c),
+                    Err(_) => LitKind::Err(i),
+                }
+            },
+            token::Char(i) => {
+                match unescape_char(&i.as_str()) {
+                    Ok(c) => LitKind::Char(c),
+                    Err(_) => LitKind::Err(i),
+                }
+            },
+            token::Err(i) => LitKind::Err(i),
+
+            // There are some valid suffixes for integer and float literals,
+            // so all the handling is done internally.
+            token::Integer(s) => return integer_lit(&s.as_str(), suf, diag),
+            token::Float(s) => return float_lit(&s.as_str(), suf, diag),
+
+            token::Str_(mut sym) => {
+                // If there are no characters requiring special treatment we can
+                // reuse the symbol from the Token. Otherwise, we must generate a
+                // new symbol because the string in the LitKind is different to the
+                // string in the Token.
+                let mut has_error = false;
+                let s = &sym.as_str();
+                if s.as_bytes().iter().any(|&c| c == b'\\' || c == b'\r') {
+                    let mut buf = String::with_capacity(s.len());
+                    unescape_str(s, &mut |_, unescaped_char| {
+                        match unescaped_char {
+                            Ok(c) => buf.push(c),
+                            Err(_) => has_error = true,
+                        }
+                    });
+                    if has_error {
+                        return Some(LitKind::Err(sym));
+                    }
+                    sym = Symbol::intern(&buf)
+                }
+
+                LitKind::Str(sym, ast::StrStyle::Cooked)
+            }
+            token::StrRaw(mut sym, n) => {
+                // Ditto.
+                let s = &sym.as_str();
+                if s.contains('\r') {
+                    sym = Symbol::intern(&raw_str_lit(s));
+                }
+                LitKind::Str(sym, ast::StrStyle::Raw(n))
+            }
+            token::ByteStr(i) => {
+                let s = &i.as_str();
+                let mut buf = Vec::with_capacity(s.len());
+                let mut has_error = false;
+                unescape_byte_str(s, &mut |_, unescaped_byte| {
+                    match unescaped_byte {
                         Ok(c) => buf.push(c),
                         Err(_) => has_error = true,
                     }
                 });
                 if has_error {
-                    return (true, Some(LitKind::Err(sym)));
+                    return Some(LitKind::Err(i));
                 }
-                sym = Symbol::intern(&buf)
+                buf.shrink_to_fit();
+                LitKind::ByteStr(Lrc::new(buf))
             }
-
-            (true, Some(LitKind::Str(sym, ast::StrStyle::Cooked)))
-        }
-        token::StrRaw(mut sym, n) => {
-            // Ditto.
-            let s = &sym.as_str();
-            if s.contains('\r') {
-                sym = Symbol::intern(&raw_str_lit(s));
+            token::ByteStrRaw(i, _) => {
+                LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))
             }
-            (true, Some(LitKind::Str(sym, ast::StrStyle::Raw(n))))
-        }
-        token::ByteStr(i) => {
-            let s = &i.as_str();
-            let mut buf = Vec::with_capacity(s.len());
-            let mut has_error = false;
-            unescape_byte_str(s, &mut |_, unescaped_byte| {
-                match unescaped_byte {
-                    Ok(c) => buf.push(c),
-                    Err(_) => has_error = true,
-                }
-            });
-            if has_error {
-                return (true, Some(LitKind::Err(i)));
-            }
-            buf.shrink_to_fit();
-            (true, Some(LitKind::ByteStr(Lrc::new(buf))))
-        }
-        token::ByteStrRaw(i, _) => {
-            (true, Some(LitKind::ByteStr(Lrc::new(i.to_string().into_bytes()))))
-        }
+        })
     }
 }
 
 fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                      -> Option<ast::LitKind> {
+                      -> Option<LitKind> {
     debug!("filtered_float_lit: {}, {:?}", data, suffix);
     let suffix = match suffix {
         Some(suffix) => suffix,
-        None => return Some(ast::LitKind::FloatUnsuffixed(data)),
+        None => return Some(LitKind::FloatUnsuffixed(data)),
     };
 
     Some(match &*suffix.as_str() {
-        "f32" => ast::LitKind::Float(data, ast::FloatTy::F32),
-        "f64" => ast::LitKind::Float(data, ast::FloatTy::F64),
+        "f32" => LitKind::Float(data, ast::FloatTy::F32),
+        "f64" => LitKind::Float(data, ast::FloatTy::F64),
         suf => {
             err!(diag, |span, diag| {
                 if suf.len() >= 2 && looks_like_width_suffix(&['f'], suf) {
@@ -477,12 +531,12 @@ fn filtered_float_lit(data: Symbol, suffix: Option<Symbol>, diag: Option<(Span, 
                 }
             });
 
-            ast::LitKind::FloatUnsuffixed(data)
+            LitKind::FloatUnsuffixed(data)
         }
     })
 }
 fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                 -> Option<ast::LitKind> {
+                 -> Option<LitKind> {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
 
@@ -499,7 +553,7 @@ fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
 }
 
 fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
-                   -> Option<ast::LitKind> {
+                   -> Option<LitKind> {
     // s can only be ascii, byte indexing is fine
 
     // Strip underscores without allocating a new String unless necessary.
@@ -595,7 +649,7 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
            string was {:?}, the original suffix was {:?}", ty, base, s, orig, suffix);
 
     Some(match u128::from_str_radix(s, base) {
-        Ok(r) => ast::LitKind::Int(r, ty),
+        Ok(r) => LitKind::Int(r, ty),
         Err(_) => {
             // small bases are lexed as if they were base 10, e.g, the string
             // might be `0b10201`. This will cause the conversion above to fail,
@@ -608,7 +662,7 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
             if !already_errored {
                 err!(diag, |span, diag| diag.span_err(span, "int literal is too large"));
             }
-            ast::LitKind::Int(0, ty)
+            LitKind::Int(0, ty)
         }
     })
 }
