@@ -1145,7 +1145,7 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
 
 /// Runs a closure and catches unwinds triggered by fatal errors.
 ///
-/// The compiler currently panics with a special sentinel value to abort
+/// The compiler currently unwinds with a special sentinel value to abort
 /// compilation on fatal errors. This function catches that sentinel and turns
 /// the panic into a `Result` instead.
 pub fn catch_fatal_errors<F: FnOnce() -> R, R>(f: F) -> Result<R, ErrorReported> {
