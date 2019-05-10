@@ -19,7 +19,7 @@ use crate::source_map::SpanUtils;
 use crate::spanned::Spanned;
 use crate::utils::{contains_skip, is_attributes_extendable, mk_sp, rewrite_ident};
 
-pub trait AlignedItem {
+pub(crate) trait AlignedItem {
     fn skip(&self) -> bool;
     fn get_span(&self) -> Span;
     fn rewrite_prefix(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String>;
@@ -107,7 +107,7 @@ impl AlignedItem for ast::Field {
     }
 }
 
-pub fn rewrite_with_alignment<T: AlignedItem>(
+pub(crate) fn rewrite_with_alignment<T: AlignedItem>(
     fields: &[T],
     context: &RewriteContext<'_>,
     shape: Shape,

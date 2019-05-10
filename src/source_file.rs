@@ -12,7 +12,7 @@ use crate::rustfmt_diff::{make_diff, print_diff, ModifiedLines};
 use crate::formatting::FileRecord;
 
 // Append a newline to the end of each file.
-pub fn append_newline(s: &mut String) {
+pub(crate) fn append_newline(s: &mut String) {
     s.push_str("\n");
 }
 
@@ -38,7 +38,7 @@ where
     Ok(())
 }
 
-pub fn write_file<T>(
+pub(crate) fn write_file<T>(
     source_map: Option<&SourceMap>,
     filename: &FileName,
     formatted_text: &str,

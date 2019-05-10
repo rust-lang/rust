@@ -2,12 +2,12 @@ use ignore::{self, gitignore};
 
 use crate::config::{FileName, IgnoreList};
 
-pub struct IgnorePathSet {
+pub(crate) struct IgnorePathSet {
     ignore_set: gitignore::Gitignore,
 }
 
 impl IgnorePathSet {
-    pub fn from_ignore_list(ignore_list: &IgnoreList) -> Result<Self, ignore::Error> {
+    pub(crate) fn from_ignore_list(ignore_list: &IgnoreList) -> Result<Self, ignore::Error> {
         let mut ignore_builder = gitignore::GitignoreBuilder::new(ignore_list.rustfmt_toml_path());
 
         for ignore_path in ignore_list {
@@ -19,7 +19,7 @@ impl IgnorePathSet {
         })
     }
 
-    pub fn is_match(&self, file_name: &FileName) -> bool {
+    pub(crate) fn is_match(&self, file_name: &FileName) -> bool {
         match file_name {
             FileName::Stdin => false,
             FileName::Real(p) => self

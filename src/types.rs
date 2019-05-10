@@ -24,14 +24,14 @@ use crate::utils::{
 };
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub enum PathContext {
+pub(crate) enum PathContext {
     Expr,
     Type,
     Import,
 }
 
 // Does not wrap on simple segments.
-pub fn rewrite_path(
+pub(crate) fn rewrite_path(
     context: &RewriteContext<'_>,
     path_context: PathContext,
     qself: Option<&ast::QSelf>,
@@ -133,7 +133,7 @@ where
 }
 
 #[derive(Debug)]
-pub enum SegmentParam<'a> {
+pub(crate) enum SegmentParam<'a> {
     Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
@@ -827,7 +827,11 @@ fn join_bounds(
     Some(result)
 }
 
-pub fn can_be_overflowed_type(context: &RewriteContext<'_>, ty: &ast::Ty, len: usize) -> bool {
+pub(crate) fn can_be_overflowed_type(
+    context: &RewriteContext<'_>,
+    ty: &ast::Ty,
+    len: usize,
+) -> bool {
     match ty.node {
         ast::TyKind::Tup(..) => context.use_block_indent() && len == 1,
         ast::TyKind::Rptr(_, ref mutty) | ast::TyKind::Ptr(ref mutty) => {

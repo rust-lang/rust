@@ -34,7 +34,7 @@ impl<'a> FmtVisitor<'a> {
         self.buffer.is_empty()
     }
 
-    pub fn format_missing(&mut self, end: BytePos) {
+    pub(crate) fn format_missing(&mut self, end: BytePos) {
         // HACK(topecongiro): we use `format_missing()` to extract a missing comment between
         // a macro (or similar) and a trailing semicolon. Here we just try to avoid calling
         // `format_missing_inner` in the common case where there is no such comment.
@@ -50,7 +50,7 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_inner(end, |this, last_snippet, _| this.push_str(last_snippet))
     }
 
-    pub fn format_missing_with_indent(&mut self, end: BytePos) {
+    pub(crate) fn format_missing_with_indent(&mut self, end: BytePos) {
         let config = self.config;
         self.format_missing_inner(end, |this, last_snippet, snippet| {
             this.push_str(last_snippet.trim_end());
@@ -63,7 +63,7 @@ impl<'a> FmtVisitor<'a> {
         })
     }
 
-    pub fn format_missing_no_indent(&mut self, end: BytePos) {
+    pub(crate) fn format_missing_no_indent(&mut self, end: BytePos) {
         self.format_missing_inner(end, |this, last_snippet, _| {
             this.push_str(last_snippet.trim_end());
         })

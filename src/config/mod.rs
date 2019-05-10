@@ -8,18 +8,21 @@ use std::{env, fs};
 use regex::Regex;
 
 use crate::config::config_type::ConfigType;
+#[allow(unreachable_pub)]
 pub use crate::config::file_lines::{FileLines, FileName, Range};
+#[allow(unreachable_pub)]
 pub use crate::config::lists::*;
+#[allow(unreachable_pub)]
 pub use crate::config::options::*;
 
 #[macro_use]
-pub mod config_type;
+pub(crate) mod config_type;
 #[macro_use]
-pub mod options;
+pub(crate) mod options;
 
-pub mod file_lines;
-pub mod license;
-pub mod lists;
+pub(crate) mod file_lines;
+pub(crate) mod license;
+pub(crate) mod lists;
 
 // This macro defines configuration options used in rustfmt. Each option
 // is defined as follows:

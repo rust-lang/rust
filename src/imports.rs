@@ -20,12 +20,12 @@ use crate::visitor::FmtVisitor;
 
 /// Returns a name imported by a `use` declaration.
 /// E.g., returns `Ordering` for `std::cmp::Ordering` and `self` for `std::cmp::self`.
-pub fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
+pub(crate) fn path_to_imported_ident(path: &ast::Path) -> ast::Ident {
     path.segments.last().unwrap().ident
 }
 
 impl<'a> FmtVisitor<'a> {
-    pub fn format_import(&mut self, item: &ast::Item, tree: &ast::UseTree) {
+    pub(crate) fn format_import(&mut self, item: &ast::Item, tree: &ast::UseTree) {
         let span = item.span();
         let shape = self.shape();
         let rw = UseTree::from_ast(
@@ -84,7 +84,7 @@ impl<'a> FmtVisitor<'a> {
 
 // FIXME we do a lot of allocation to make our own representation.
 #[derive(Clone, Eq, PartialEq)]
-pub enum UseSegment {
+pub(crate) enum UseSegment {
     Ident(String, Option<String>),
     Slf(Option<String>),
     Super(Option<String>),
@@ -94,11 +94,11 @@ pub enum UseSegment {
 }
 
 #[derive(Clone)]
-pub struct UseTree {
-    pub path: Vec<UseSegment>,
-    pub span: Span,
+pub(crate) struct UseTree {
+    pub(crate) path: Vec<UseSegment>,
+    pub(crate) span: Span,
     // Comment information within nested use tree.
-    pub list_item: Option<ListItem>,
+    pub(crate) list_item: Option<ListItem>,
     // Additional fields for top level use items.
     // Should we have another struct for top-level use items rather than reusing this?
     visibility: Option<ast::Visibility>,
@@ -156,7 +156,7 @@ impl UseSegment {
     }
 }
 
-pub fn merge_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
+pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
     let mut result = Vec::with_capacity(use_trees.len());
     for use_tree in use_trees {
         if use_tree.has_comment() || use_tree.attrs.is_some() {
@@ -229,7 +229,11 @@ impl fmt::Display for UseTree {
 
 impl UseTree {
     // Rewrite use tree with `use ` and a trailing `;`.
-    pub fn rewrite_top_level(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
+    pub(crate) fn rewrite_top_level(
+        &self,
+        context: &RewriteContext<'_>,
+        shape: Shape,
+    ) -> Option<String> {
         let vis = self.visibility.as_ref().map_or(Cow::from(""), |vis| {
             crate::utils::format_visibility(context, &vis)
         });
@@ -285,7 +289,7 @@ impl UseTree {
         }
     }
 
-    pub fn from_ast_with_normalization(
+    pub(crate) fn from_ast_with_normalization(
         context: &RewriteContext<'_>,
         item: &ast::Item,
     ) -> Option<UseTree> {
@@ -416,7 +420,7 @@ impl UseTree {
     }
 
     // Do the adjustments that rustfmt does elsewhere to use paths.
-    pub fn normalize(mut self) -> UseTree {
+    pub(crate) fn normalize(mut self) -> UseTree {
         let mut last = self.path.pop().expect("Empty use tree?");
         // Hack around borrow checker.
         let mut normalize_sole_list = false;

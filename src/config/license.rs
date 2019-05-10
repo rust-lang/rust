@@ -7,7 +7,7 @@ use regex;
 use regex::Regex;
 
 #[derive(Debug)]
-pub enum LicenseError {
+pub(crate) enum LicenseError {
     IO(io::Error),
     Regex(regex::Error),
     Parse(String),
@@ -47,7 +47,7 @@ enum ParsingState {
 
 use self::ParsingState::*;
 
-pub struct TemplateParser {
+pub(crate) struct TemplateParser {
     parsed: String,
     buffer: String,
     state: ParsingState,
@@ -110,7 +110,7 @@ impl TemplateParser {
     /// "
     /// );
     /// ```
-    pub fn parse(template: &str) -> Result<String, LicenseError> {
+    pub(crate) fn parse(template: &str) -> Result<String, LicenseError> {
         let mut parser = Self::new();
         for chr in template.chars() {
             if chr == '\n' {
@@ -212,7 +212,7 @@ impl TemplateParser {
     }
 }
 
-pub fn load_and_compile_template(path: &str) -> Result<Regex, LicenseError> {
+pub(crate) fn load_and_compile_template(path: &str) -> Result<Regex, LicenseError> {
     let mut lt_file = File::open(&path)?;
     let mut lt_str = String::new();
     lt_file.read_to_string(&mut lt_str)?;

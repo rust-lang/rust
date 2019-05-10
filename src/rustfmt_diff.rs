@@ -146,14 +146,14 @@ impl std::str::FromStr for ModifiedLines {
 
 // This struct handles writing output to stdout and abstracts away the logic
 // of printing in color, if it's possible in the executing environment.
-pub struct OutputWriter {
+pub(crate) struct OutputWriter {
     terminal: Option<Box<dyn term::Terminal<Output = io::Stdout>>>,
 }
 
 impl OutputWriter {
     // Create a new OutputWriter instance based on the caller's preference
     // for colorized output and the capabilities of the terminal.
-    pub fn new(color: Color) -> Self {
+    pub(crate) fn new(color: Color) -> Self {
         if let Some(t) = term::stdout() {
             if color.use_colored_tty() && t.supports_color() {
                 return OutputWriter { terminal: Some(t) };
@@ -165,7 +165,7 @@ impl OutputWriter {
     // Write output in the optionally specified color. The output is written
     // in the specified color if this OutputWriter instance contains a
     // Terminal in its `terminal` field.
-    pub fn writeln(&mut self, msg: &str, color: Option<term::color::Color>) {
+    pub(crate) fn writeln(&mut self, msg: &str, color: Option<term::color::Color>) {
         match &mut self.terminal {
             Some(ref mut t) => {
                 if let Some(color) = color {
@@ -182,7 +182,7 @@ impl OutputWriter {
 }
 
 // Produces a diff between the expected output and actual output of rustfmt.
-pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
+pub(crate) fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Mismatch> {
     let mut line_number = 1;
     let mut line_number_orig = 1;
     let mut context_queue: VecDeque<&str> = VecDeque::with_capacity(context_size);
@@ -250,7 +250,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
     results
 }
 
-pub fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F, config: &Config)
+pub(crate) fn print_diff<F>(diff: Vec<Mismatch>, get_section_title: F, config: &Config)
 where
     F: Fn(u32) -> String,
 {

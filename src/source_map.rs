@@ -7,7 +7,7 @@ use crate::comment::FindUncommented;
 use crate::config::file_lines::LineRange;
 use crate::visitor::SnippetProvider;
 
-pub trait SpanUtils {
+pub(crate) trait SpanUtils {
     fn span_after(&self, original: Span, needle: &str) -> BytePos;
     fn span_after_last(&self, original: Span, needle: &str) -> BytePos;
     fn span_before(&self, original: Span, needle: &str) -> BytePos;
@@ -16,7 +16,7 @@ pub trait SpanUtils {
     fn opt_span_before(&self, original: Span, needle: &str) -> Option<BytePos>;
 }
 
-pub trait LineRangeUtils {
+pub(crate) trait LineRangeUtils {
     /// Returns the `LineRange` that corresponds to `span` in `self`.
     ///
     /// # Panics

@@ -24,20 +24,16 @@ use crate::utils::{
 
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
 struct ArmWrapper<'a> {
-    pub arm: &'a ast::Arm,
+    arm: &'a ast::Arm,
     /// `true` if the arm is the last one in match expression. Used to decide on whether we should
     /// add trailing comma to the match arm when `config.trailing_comma() == Never`.
-    pub is_last: bool,
+    is_last: bool,
     /// Holds a byte position of `|` at the beginning of the arm pattern, if available.
-    pub beginning_vert: Option<BytePos>,
+    beginning_vert: Option<BytePos>,
 }
 
 impl<'a> ArmWrapper<'a> {
-    pub fn new(
-        arm: &'a ast::Arm,
-        is_last: bool,
-        beginning_vert: Option<BytePos>,
-    ) -> ArmWrapper<'a> {
+    fn new(arm: &'a ast::Arm, is_last: bool, beginning_vert: Option<BytePos>) -> ArmWrapper<'a> {
         ArmWrapper {
             arm,
             is_last,
@@ -62,7 +58,7 @@ impl<'a> Rewrite for ArmWrapper<'a> {
     }
 }
 
-pub fn rewrite_match(
+pub(crate) fn rewrite_match(
     context: &RewriteContext<'_>,
     cond: &ast::Expr,
     arms: &[ast::Arm],

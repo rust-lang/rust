@@ -15,7 +15,7 @@ use crate::types::{rewrite_path, PathContext};
 use crate::utils::{count_newlines, mk_sp};
 
 /// Returns attributes on the given statement.
-pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
+pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
     match stmt.node {
         ast::StmtKind::Local(ref local) => &local.attrs,
         ast::StmtKind::Item(ref item) => &item.attrs,
@@ -24,7 +24,7 @@ pub fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
     }
 }
 
-pub fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
+pub(crate) fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
     match stmt.node {
         ast::StmtKind::Local(ref local) => local.span,
         ast::StmtKind::Item(ref item) => item.span,
@@ -37,7 +37,10 @@ pub fn get_span_without_attrs(stmt: &ast::Stmt) -> Span {
 }
 
 /// Returns attributes that are within `outer_span`.
-pub fn filter_inline_attrs(attrs: &[ast::Attribute], outer_span: Span) -> Vec<ast::Attribute> {
+pub(crate) fn filter_inline_attrs(
+    attrs: &[ast::Attribute],
+    outer_span: Span,
+) -> Vec<ast::Attribute> {
     attrs
         .iter()
         .filter(|a| outer_span.lo() <= a.span.lo() && a.span.hi() <= outer_span.hi())

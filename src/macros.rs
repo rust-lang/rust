@@ -41,7 +41,7 @@ use crate::visitor::FmtVisitor;
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MacroPosition {
+pub(crate) enum MacroPosition {
     Item,
     Statement,
     Expression,
@@ -49,7 +49,7 @@ pub enum MacroPosition {
 }
 
 #[derive(Debug)]
-pub enum MacroArg {
+pub(crate) enum MacroArg {
     Expr(ptr::P<ast::Expr>),
     Ty(ptr::P<ast::Ty>),
     Pat(ptr::P<ast::Pat>),
@@ -201,7 +201,7 @@ impl<'a> Drop for InsideMacroGuard<'a> {
     }
 }
 
-pub fn rewrite_macro(
+pub(crate) fn rewrite_macro(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
     context: &RewriteContext<'_>,
@@ -242,7 +242,7 @@ fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     None
 }
 
-pub fn rewrite_macro_inner(
+fn rewrite_macro_inner(
     mac: &ast::Mac,
     extra_ident: Option<ast::Ident>,
     context: &RewriteContext<'_>,
@@ -453,7 +453,7 @@ pub fn rewrite_macro_inner(
     }
 }
 
-pub fn rewrite_macro_def(
+pub(crate) fn rewrite_macro_def(
     context: &RewriteContext<'_>,
     shape: Shape,
     indent: Indent,
@@ -736,7 +736,7 @@ struct ParsedMacroArg {
 }
 
 impl ParsedMacroArg {
-    pub fn rewrite(
+    fn rewrite(
         &self,
         context: &RewriteContext<'_>,
         shape: Shape,
@@ -772,7 +772,7 @@ fn last_tok(tt: &TokenTree) -> Token {
 }
 
 impl MacroArgParser {
-    pub fn new() -> MacroArgParser {
+    fn new() -> MacroArgParser {
         MacroArgParser {
             lo: BytePos(0),
             hi: BytePos(0),
@@ -932,7 +932,7 @@ impl MacroArgParser {
     }
 
     /// Returns a collection of parsed macro def's arguments.
-    pub fn parse(mut self, tokens: TokenStream) -> Option<Vec<ParsedMacroArg>> {
+    fn parse(mut self, tokens: TokenStream) -> Option<Vec<ParsedMacroArg>> {
         let mut iter = tokens.trees();
 
         while let Some(tok) = iter.next() {
@@ -1136,7 +1136,7 @@ fn next_space(tok: &Token) -> SpaceState {
 /// Tries to convert a macro use into a short hand try expression. Returns `None`
 /// when the macro is not an instance of `try!` (or parsing the inner expression
 /// failed).
-pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
+pub(crate) fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext<'_>) -> Option<ast::Expr> {
     if &mac.node.path.to_string() == "try" {
         let ts: TokenStream = mac.node.tts.clone();
         let mut parser = new_parser_from_tts(context.parse_session, ts.trees().collect());

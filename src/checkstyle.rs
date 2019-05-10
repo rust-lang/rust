@@ -7,7 +7,7 @@ use crate::rustfmt_diff::{DiffLine, Mismatch};
 ///
 /// Note that emitting checkstyle output is not stable and may removed in a
 /// future version of Rustfmt.
-pub fn header() -> String {
+pub(crate) fn header() -> String {
     let mut xml_heading = String::new();
     xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
     xml_heading.push_str("\n");
@@ -19,11 +19,11 @@ pub fn header() -> String {
 ///
 /// Note that emitting checkstyle output is not stable and may removed in a
 /// future version of Rustfmt.
-pub fn footer() -> String {
+pub(crate) fn footer() -> String {
     "</checkstyle>\n".to_owned()
 }
 
-pub fn output_checkstyle_file<T>(
+pub(crate) fn output_checkstyle_file<T>(
     mut writer: T,
     filename: &Path,
     diff: Vec<Mismatch>,

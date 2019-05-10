@@ -17,15 +17,15 @@ use crate::config::{Config, Version};
 use crate::rewrite::RewriteContext;
 use crate::shape::{Indent, Shape};
 
-pub const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
-pub const SKIP_ANNOTATION: &str = "rustfmt::skip";
+pub(crate) const DEPR_SKIP_ANNOTATION: &str = "rustfmt_skip";
+pub(crate) const SKIP_ANNOTATION: &str = "rustfmt::skip";
 
-pub fn rewrite_ident<'a>(context: &'a RewriteContext<'_>, ident: ast::Ident) -> &'a str {
+pub(crate) fn rewrite_ident<'a>(context: &'a RewriteContext<'_>, ident: ast::Ident) -> &'a str {
     context.snippet(ident.span)
 }
 
 // Computes the length of a string's last line, minus offset.
-pub fn extra_offset(text: &str, shape: Shape) -> usize {
+pub(crate) fn extra_offset(text: &str, shape: Shape) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
         Some(idx) => text.len().saturating_sub(idx + 1 + shape.used_width()),
@@ -33,7 +33,7 @@ pub fn extra_offset(text: &str, shape: Shape) -> usize {
     }
 }
 
-pub fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
+pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
     match (&a.node, &b.node) {
         (
             VisibilityKind::Restricted { path: p, .. },
@@ -54,7 +54,10 @@ pub fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
 }
 
 // Uses Cow to avoid allocating in the common cases.
-pub fn format_visibility(context: &RewriteContext<'_>, vis: &Visibility) -> Cow<'static, str> {
+pub(crate) fn format_visibility(
+    context: &RewriteContext<'_>,
+    vis: &Visibility,
+) -> Cow<'static, str> {
     match vis.node {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
@@ -78,7 +81,7 @@ pub fn format_visibility(context: &RewriteContext<'_>, vis: &Visibility) -> Cow<
 }
 
 #[inline]
-pub fn format_async(is_async: ast::IsAsync) -> &'static str {
+pub(crate) fn format_async(is_async: ast::IsAsync) -> &'static str {
     match is_async {
         ast::IsAsync::Async { .. } => "async ",
         ast::IsAsync::NotAsync => "",
@@ -86,7 +89,7 @@ pub fn format_async(is_async: ast::IsAsync) -> &'static str {
 }
 
 #[inline]
-pub fn format_constness(constness: ast::Constness) -> &'static str {
+pub(crate) fn format_constness(constness: ast::Constness) -> &'static str {
     match constness {
         ast::Constness::Const => "const ",
         ast::Constness::NotConst => "",
@@ -94,7 +97,7 @@ pub fn format_constness(constness: ast::Constness) -> &'static str {
 }
 
 #[inline]
-pub fn format_defaultness(defaultness: ast::Defaultness) -> &'static str {
+pub(crate) fn format_defaultness(defaultness: ast::Defaultness) -> &'static str {
     match defaultness {
         ast::Defaultness::Default => "default ",
         ast::Defaultness::Final => "",
@@ -102,7 +105,7 @@ pub fn format_defaultness(defaultness: ast::Defaultness) -> &'static str {
 }
 
 #[inline]
-pub fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
+pub(crate) fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
     match unsafety {
         ast::Unsafety::Unsafe => "unsafe ",
         ast::Unsafety::Normal => "",
@@ -110,7 +113,7 @@ pub fn format_unsafety(unsafety: ast::Unsafety) -> &'static str {
 }
 
 #[inline]
-pub fn format_auto(is_auto: ast::IsAuto) -> &'static str {
+pub(crate) fn format_auto(is_auto: ast::IsAuto) -> &'static str {
     match is_auto {
         ast::IsAuto::Yes => "auto ",
         ast::IsAuto::No => "",
@@ -118,7 +121,7 @@ pub fn format_auto(is_auto: ast::IsAuto) -> &'static str {
 }
 
 #[inline]
-pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
+pub(crate) fn format_mutability(mutability: ast::Mutability) -> &'static str {
     match mutability {
         ast::Mutability::Mutable => "mut ",
         ast::Mutability::Immutable => "",
@@ -126,7 +129,7 @@ pub fn format_mutability(mutability: ast::Mutability) -> &'static str {
 }
 
 #[inline]
-pub fn format_abi(abi: abi::Abi, explicit_abi: bool, is_mod: bool) -> Cow<'static, str> {
+pub(crate) fn format_abi(abi: abi::Abi, explicit_abi: bool, is_mod: bool) -> Cow<'static, str> {
     if abi == abi::Abi::Rust && !is_mod {
         Cow::from("")
     } else if abi == abi::Abi::C && !explicit_abi {
@@ -138,12 +141,15 @@ pub fn format_abi(abi: abi::Abi, explicit_abi: bool, is_mod: bool) -> Cow<'stati
 
 #[inline]
 // Transform `Vec<syntax::ptr::P<T>>` into `Vec<&T>`
-pub fn ptr_vec_to_ref_vec<T>(vec: &[ptr::P<T>]) -> Vec<&T> {
+pub(crate) fn ptr_vec_to_ref_vec<T>(vec: &[ptr::P<T>]) -> Vec<&T> {
     vec.iter().map(|x| &**x).collect::<Vec<_>>()
 }
 
 #[inline]
-pub fn filter_attributes(attrs: &[ast::Attribute], style: ast::AttrStyle) -> Vec<ast::Attribute> {
+pub(crate) fn filter_attributes(
+    attrs: &[ast::Attribute],
+    style: ast::AttrStyle,
+) -> Vec<ast::Attribute> {
     attrs
         .iter()
         .filter(|a| a.style == style)
@@ -152,50 +158,50 @@ pub fn filter_attributes(attrs: &[ast::Attribute], style: ast::AttrStyle) -> Vec
 }
 
 #[inline]
-pub fn inner_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
+pub(crate) fn inner_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
     filter_attributes(attrs, ast::AttrStyle::Inner)
 }
 
 #[inline]
-pub fn outer_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
+pub(crate) fn outer_attributes(attrs: &[ast::Attribute]) -> Vec<ast::Attribute> {
     filter_attributes(attrs, ast::AttrStyle::Outer)
 }
 
 #[inline]
-pub fn is_single_line(s: &str) -> bool {
+pub(crate) fn is_single_line(s: &str) -> bool {
     s.chars().find(|&c| c == '\n').is_none()
 }
 
 #[inline]
-pub fn first_line_contains_single_line_comment(s: &str) -> bool {
+pub(crate) fn first_line_contains_single_line_comment(s: &str) -> bool {
     s.lines().next().map_or(false, |l| l.contains("//"))
 }
 
 #[inline]
-pub fn last_line_contains_single_line_comment(s: &str) -> bool {
+pub(crate) fn last_line_contains_single_line_comment(s: &str) -> bool {
     s.lines().last().map_or(false, |l| l.contains("//"))
 }
 
 #[inline]
-pub fn is_attributes_extendable(attrs_str: &str) -> bool {
+pub(crate) fn is_attributes_extendable(attrs_str: &str) -> bool {
     !attrs_str.contains('\n') && !last_line_contains_single_line_comment(attrs_str)
 }
 
 // The width of the first line in s.
 #[inline]
-pub fn first_line_width(s: &str) -> usize {
+pub(crate) fn first_line_width(s: &str) -> usize {
     unicode_str_width(s.splitn(2, '\n').next().unwrap_or(""))
 }
 
 // The width of the last line in s.
 #[inline]
-pub fn last_line_width(s: &str) -> usize {
+pub(crate) fn last_line_width(s: &str) -> usize {
     unicode_str_width(s.rsplitn(2, '\n').next().unwrap_or(""))
 }
 
 // The total used width of the last line.
 #[inline]
-pub fn last_line_used_width(s: &str, offset: usize) -> usize {
+pub(crate) fn last_line_used_width(s: &str, offset: usize) -> usize {
     if s.contains('\n') {
         last_line_width(s)
     } else {
@@ -204,7 +210,7 @@ pub fn last_line_used_width(s: &str, offset: usize) -> usize {
 }
 
 #[inline]
-pub fn trimmed_last_line_width(s: &str) -> usize {
+pub(crate) fn trimmed_last_line_width(s: &str) -> usize {
     unicode_str_width(match s.rfind('\n') {
         Some(n) => s[(n + 1)..].trim(),
         None => s.trim(),
@@ -212,7 +218,7 @@ pub fn trimmed_last_line_width(s: &str) -> usize {
 }
 
 #[inline]
-pub fn last_line_extendable(s: &str) -> bool {
+pub(crate) fn last_line_extendable(s: &str) -> bool {
     if s.ends_with("\"#") {
         return true;
     }
@@ -250,14 +256,14 @@ fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
 }
 
 #[inline]
-pub fn contains_skip(attrs: &[Attribute]) -> bool {
+pub(crate) fn contains_skip(attrs: &[Attribute]) -> bool {
     attrs
         .iter()
         .any(|a| a.meta().map_or(false, |a| is_skip(&a)))
 }
 
 #[inline]
-pub fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr) -> bool {
+pub(crate) fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprKind::Ret(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Break(..) => {
             context.config.trailing_semicolon()
@@ -267,7 +273,7 @@ pub fn semicolon_for_expr(context: &RewriteContext<'_>, expr: &ast::Expr) -> boo
 }
 
 #[inline]
-pub fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt) -> bool {
+pub(crate) fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt) -> bool {
     match stmt.node {
         ast::StmtKind::Semi(ref expr) => match expr.node {
             ast::ExprKind::While(..)
@@ -285,7 +291,7 @@ pub fn semicolon_for_stmt(context: &RewriteContext<'_>, stmt: &ast::Stmt) -> boo
 }
 
 #[inline]
-pub fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
+pub(crate) fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
     match stmt.node {
         ast::StmtKind::Expr(ref expr) => Some(expr),
         _ => None,
@@ -293,7 +299,7 @@ pub fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
 }
 
 #[inline]
-pub fn count_newlines(input: &str) -> usize {
+pub(crate) fn count_newlines(input: &str) -> usize {
     // Using bytes to omit UTF-8 decoding
     bytecount::count(input.as_bytes(), b'\n')
 }
@@ -306,7 +312,7 @@ macro_rules! source {
     };
 }
 
-pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
+pub(crate) fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
     Span::new(lo, hi, NO_EXPANSION)
 }
 
@@ -340,7 +346,7 @@ macro_rules! skip_out_of_file_lines_range_visitor {
 
 // Wraps String in an Option. Returns Some when the string adheres to the
 // Rewrite constraints defined for the Rewrite trait and None otherwise.
-pub fn wrap_str(s: String, max_width: usize, shape: Shape) -> Option<String> {
+pub(crate) fn wrap_str(s: String, max_width: usize, shape: Shape) -> Option<String> {
     if is_valid_str(&filter_normal_code(&s), max_width, shape) {
         Some(s)
     } else {
@@ -376,7 +382,7 @@ fn is_valid_str(snippet: &str, max_width: usize, shape: Shape) -> bool {
 }
 
 #[inline]
-pub fn colon_spaces(config: &Config) -> &'static str {
+pub(crate) fn colon_spaces(config: &Config) -> &'static str {
     let before = config.space_before_colon();
     let after = config.space_after_colon();
     match (before, after) {
@@ -388,7 +394,7 @@ pub fn colon_spaces(config: &Config) -> &'static str {
 }
 
 #[inline]
-pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
+pub(crate) fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
     match e.node {
         ast::ExprKind::Call(ref e, _)
         | ast::ExprKind::Binary(_, ref e, _)
@@ -405,18 +411,18 @@ pub fn left_most_sub_expr(e: &ast::Expr) -> &ast::Expr {
 }
 
 #[inline]
-pub fn starts_with_newline(s: &str) -> bool {
+pub(crate) fn starts_with_newline(s: &str) -> bool {
     s.starts_with('\n') || s.starts_with("\r\n")
 }
 
 #[inline]
-pub fn first_line_ends_with(s: &str, c: char) -> bool {
+pub(crate) fn first_line_ends_with(s: &str, c: char) -> bool {
     s.lines().next().map_or(false, |l| l.ends_with(c))
 }
 
 // States whether an expression's last line exclusively consists of closing
 // parens, braces, and brackets in its idiomatic formatting.
-pub fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str) -> bool {
+pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str) -> bool {
     match expr.node {
         ast::ExprKind::Mac(..)
         | ast::ExprKind::Call(..)
@@ -448,7 +454,7 @@ pub fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr: &str)
 
 /// Removes trailing spaces from the specified snippet. We do not remove spaces
 /// inside strings or comments.
-pub fn remove_trailing_white_spaces(text: &str) -> String {
+pub(crate) fn remove_trailing_white_spaces(text: &str) -> String {
     let mut buffer = String::with_capacity(text.len());
     let mut space_buffer = String::with_capacity(128);
     for (char_kind, c) in CharClasses::new(text.chars()) {
@@ -503,7 +509,11 @@ pub fn remove_trailing_white_spaces(text: &str) -> String {
 ///     ),
 /// }
 /// ```
-pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) -> Option<String> {
+pub(crate) fn trim_left_preserve_layout(
+    orig: &str,
+    indent: Indent,
+    config: &Config,
+) -> Option<String> {
     let mut lines = LineClasses::new(orig);
     let first_line = lines.next().map(|(_, s)| s.trim_end().to_owned())?;
     let mut trimmed_lines = Vec::with_capacity(16);
@@ -570,12 +580,12 @@ pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) ->
 
 /// Based on the given line, determine if the next line can be indented or not.
 /// This allows to preserve the indentation of multi-line literals.
-pub fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Config) -> bool {
+pub(crate) fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Config) -> bool {
     !(kind.is_string() || (config.version() == Version::Two && kind.is_commented_string()))
         || line.ends_with('\\')
 }
 
-pub fn is_empty_line(s: &str) -> bool {
+pub(crate) fn is_empty_line(s: &str) -> bool {
     s.is_empty() || s.chars().all(char::is_whitespace)
 }
 
@@ -605,7 +615,7 @@ pub(crate) fn unicode_str_width(s: &str) -> usize {
     s.width()
 }
 
-pub fn get_skip_macro_names(attrs: &[ast::Attribute]) -> Vec<String> {
+pub(crate) fn get_skip_macro_names(attrs: &[ast::Attribute]) -> Vec<String> {
     let mut skip_macro_names = vec![];
     for attr in attrs {
         // syntax::ast::Path is implemented partialEq

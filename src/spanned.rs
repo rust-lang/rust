@@ -9,7 +9,7 @@ use crate::macros::MacroArg;
 use crate::utils::{mk_sp, outer_attributes};
 
 /// Spanned returns a span including attributes, if available.
-pub trait Spanned {
+pub(crate) trait Spanned {
     fn span(&self) -> Span;
 }
 

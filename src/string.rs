@@ -11,24 +11,24 @@ use crate::utils::{unicode_str_width, wrap_str};
 const MIN_STRING: usize = 10;
 
 /// Describes the layout of a piece of text.
-pub struct StringFormat<'a> {
+pub(crate) struct StringFormat<'a> {
     /// The opening sequence of characters for the piece of text
-    pub opener: &'a str,
+    pub(crate) opener: &'a str,
     /// The closing sequence of characters for the piece of text
-    pub closer: &'a str,
+    pub(crate) closer: &'a str,
     /// The opening sequence of characters for a line
-    pub line_start: &'a str,
+    pub(crate) line_start: &'a str,
     /// The closing sequence of characters for a line
-    pub line_end: &'a str,
+    pub(crate) line_end: &'a str,
     /// The allocated box to fit the text into
-    pub shape: Shape,
+    pub(crate) shape: Shape,
     /// Trim trailing whitespaces
-    pub trim_end: bool,
-    pub config: &'a Config,
+    pub(crate) trim_end: bool,
+    pub(crate) config: &'a Config,
 }
 
 impl<'a> StringFormat<'a> {
-    pub fn new(shape: Shape, config: &'a Config) -> StringFormat<'a> {
+    pub(crate) fn new(shape: Shape, config: &'a Config) -> StringFormat<'a> {
         StringFormat {
             opener: "\"",
             closer: "\"",
@@ -61,7 +61,7 @@ impl<'a> StringFormat<'a> {
     }
 }
 
-pub fn rewrite_string<'a>(
+pub(crate) fn rewrite_string<'a>(
     orig: &str,
     fmt: &StringFormat<'a>,
     newline_max_chars: usize,
