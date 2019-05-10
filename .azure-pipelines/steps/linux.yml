@@ -17,14 +17,6 @@ steps:
     mkdir -p $HOME/rustsrc
   displayName:  Prep
 
-# FIXME(#46924): these two commands are required to enable IPv6,
-# they shouldn't exist, please revert once more official solutions appeared.
-# see https://github.com/travis-ci/travis-ci/issues/8891#issuecomment-353403729
-- bash: |
-    echo '{"ipv6":true,"fixed-cidr-v6":"fd9a:8454:6789:13f7::/64"}' | sudo tee /etc/docker/daemon.json
-    sudo service docker restart
-  displayName: Enable IPv6  
-
 # FIXME: using the job display name feels brittle. Is there a better variable that represents the current matrix key?
 - bash: |
     export RUN_SCRIPT="$BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc && src/ci/docker/run.sh $IMAGE"
