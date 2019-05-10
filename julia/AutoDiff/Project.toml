@@ -1,0 +1,8 @@
+name = "AutoDiff"
+uuid = "f83bfab2-7349-11e9-03e3-5b346ea5bed0"
+authors = ["Valentin Churavy <v.churavy@gmail.com>"]
+version = "0.1.0"
+
+[deps]
+LLVM = "929cbde3-209d-540e-8aea-75f648917ca0"
+MCAnalyzer = "a81df072-f4bb-11e8-03d3-cfaeda626d18"
