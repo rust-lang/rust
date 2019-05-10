@@ -133,12 +133,9 @@ fn xargo_version() -> Option<(u32, u32, u32)> {
         (split.next().expect("malformed `xargo --version` output: empty"),
          split.next().expect("malformed `xargo --version` output: not at least two words"))
     };
-    if name == "xargo" {
-        // This is the upstream version which is currently broken, we need our fork.
+    if name != "xargo" {
+        // This is some fork of xargo
         return None;
-    }
-    if name != "xargo-rj" {
-        panic!("malformed `xargo --version` output: application name is not `xargo`");
     }
     let mut version_pieces = version.split('.');
     let major = version_pieces.next()
@@ -185,13 +182,13 @@ fn setup(ask_user: bool) {
 
     // First, we need xargo.
     let xargo = xargo_version();
-    if xargo.map_or(true, |v| v < (0, 3, 13)) {
+    if xargo.map_or(true, |v| v < (0, 3, 14)) {
         if ask_user {
-            ask("It seems you do not have a recent enough xargo installed. I will run `cargo install --git https://github.com/RalfJung/xargo -f`. Proceed?");
+            ask("It seems you do not have a recent enough xargo installed. I will run `cargo install xargo -f`. Proceed?");
         } else {
-            println!("Installing xargo: `cargo install --git https://github.com/RalfJung/xargo -f`");
+            println!("Installing xargo: `cargo install xargo -f`");
         }
-        if !Command::new("cargo").args(&["install", "--git", "https://github.com/RalfJung/xargo", "-f"]).status().unwrap().success() {
+        if !Command::new("cargo").args(&["install", "xargo", "-f"]).status().unwrap().success() {
             show_error(format!("Failed to install xargo"));
         }
     }
