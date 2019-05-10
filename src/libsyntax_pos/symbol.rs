@@ -344,9 +344,22 @@ impl Decodable for Ident {
     }
 }
 
-/// A symbol is an interned or gensymed string. The use of `newtype_index!` means
-/// that `Option<Symbol>` only takes up 4 bytes, because `newtype_index!` reserves
-/// the last 256 values for tagging purposes.
+/// A symbol is an interned or gensymed string. A gensym is a symbol that is
+/// never equal to any other symbol. E.g.:
+/// ```
+/// assert_eq!(Symbol::intern("x"), Symbol::intern("x"))
+/// assert_ne!(Symbol::gensym("x"), Symbol::intern("x"))
+/// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
+/// ```
+/// Conceptually, a gensym can be thought of as a normal symbol with an
+/// invisible unique suffix. Gensyms are useful when creating new identifiers
+/// that must not match any existing identifiers, e.g. during macro expansion
+/// and syntax desugaring.
+///
+/// Internally, a Symbol is implemented as an index, and all operations
+/// (including hashing, equality, and ordering) operate on that index. The use
+/// of `newtype_index!` means that `Option<Symbol>` only takes up 4 bytes,
+/// because `newtype_index!` reserves the last 256 values for tagging purposes.
 ///
 /// Note that `Symbol` cannot directly be a `newtype_index!` because it implements
 /// `fmt::Debug`, `Encodable`, and `Decodable` in special ways.
@@ -367,10 +380,6 @@ impl Symbol {
         with_interner(|interner| interner.intern(string))
     }
 
-    pub fn interned(self) -> Self {
-        with_interner(|interner| interner.interned(self))
-    }
-
     /// Gensyms a new `usize`, using the current interner.
     pub fn gensym(string: &str) -> Self {
         with_interner(|interner| interner.gensym(string))
@@ -380,6 +389,7 @@ impl Symbol {
         with_interner(|interner| interner.gensymed(self))
     }
 
+    // WARNING: this function is deprecated and will be removed in the future.
     pub fn is_gensymed(self) -> bool {
         with_interner(|interner| interner.is_gensymed(self))
     }
@@ -488,11 +498,11 @@ impl Interner {
         name
     }
 
-    pub fn interned(&self, symbol: Symbol) -> Symbol {
+    fn interned(&self, symbol: Symbol) -> Symbol {
         if (symbol.0.as_usize()) < self.strings.len() {
             symbol
         } else {
-            self.interned(self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize])
+            self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]
         }
     }
 
@@ -510,10 +520,15 @@ impl Interner {
         symbol.0.as_usize() >= self.strings.len()
     }
 
+    // Get the symbol as a string. `Symbol::as_str()` should be used in
+    // preference to this function.
     pub fn get(&self, symbol: Symbol) -> &str {
         match self.strings.get(symbol.0.as_usize()) {
             Some(string) => string,
-            None => self.get(self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize]),
+            None => {
+                let symbol = self.gensyms[(SymbolIndex::MAX_AS_U32 - symbol.0.as_u32()) as usize];
+                self.strings[symbol.0.as_usize()]
+            }
         }
     }
 }
@@ -611,11 +626,17 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
 }
 
-/// Represents a string stored in the interner. Because the interner outlives any thread
-/// which uses this type, we can safely treat `string` which points to interner data,
-/// as an immortal string, as long as this type never crosses between threads.
-// FIXME: ensure that the interner outlives any thread which uses `LocalInternedString`,
-// by creating a new thread right after constructing the interner.
+/// An alternative to `Symbol` and `InternedString`, useful when the chars
+/// within the symbol need to be accessed. It is best used for temporary
+/// values.
+///
+/// Because the interner outlives any thread which uses this type, we can
+/// safely treat `string` which points to interner data, as an immortal string,
+/// as long as this type never crosses between threads.
+//
+// FIXME: ensure that the interner outlives any thread which uses
+// `LocalInternedString`, by creating a new thread right after constructing the
+// interner.
 #[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
@@ -708,7 +729,19 @@ impl Encodable for LocalInternedString {
     }
 }
 
-/// Represents a string stored in the string interner.
+/// An alternative to `Symbol` that is focused on string contents. It has two
+/// main differences to `Symbol`.
+///
+/// First, its implementations of `Hash`, `PartialOrd` and `Ord` work with the
+/// string chars rather than the symbol integer. This is useful when hash
+/// stability is required across compile sessions, or a guaranteed sort
+/// ordering is required.
+///
+/// Second, gensym-ness is irrelevant. E.g.:
+/// ```
+/// assert_ne!(Symbol::gensym("x"), Symbol::gensym("x"))
+/// assert_eq!(Symbol::gensym("x").as_interned_str(), Symbol::gensym("x").as_interned_str())
+/// ```
 #[derive(Clone, Copy, Eq)]
 pub struct InternedString {
     symbol: Symbol,
@@ -723,6 +756,15 @@ impl InternedString {
         // We can access it because we know the interner is still alive since we use a
         // scoped thread local to access it, and it was alive at the beginning of this scope
         unsafe { f(&*str) }
+    }
+
+    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: &InternedString, f: F) -> R {
+        let (self_str, other_str) = with_interner(|interner| {
+            (interner.get(self.symbol) as *const str,
+             interner.get(other.symbol) as *const str)
+        });
+        // This is safe for the same reason that `with` is safe.
+        unsafe { f(&*self_str, &*other_str) }
     }
 
     pub fn as_symbol(self) -> Symbol {
@@ -745,7 +787,7 @@ impl PartialOrd<InternedString> for InternedString {
         if self.symbol == other.symbol {
             return Some(Ordering::Equal);
         }
-        self.with(|self_str| other.with(|other_str| self_str.partial_cmp(other_str)))
+        self.with2(other, |self_str, other_str| self_str.partial_cmp(other_str))
     }
 }
 
@@ -754,7 +796,7 @@ impl Ord for InternedString {
         if self.symbol == other.symbol {
             return Ordering::Equal;
         }
-        self.with(|self_str| other.with(|other_str| self_str.cmp(&other_str)))
+        self.with2(other, |self_str, other_str| self_str.cmp(other_str))
     }
 }
 
@@ -791,12 +833,6 @@ impl PartialEq<InternedString> for String {
 impl<'a> PartialEq<InternedString> for &'a String {
     fn eq(&self, other: &InternedString) -> bool {
         other.with(|string| *self == string)
-    }
-}
-
-impl std::convert::From<InternedString> for String {
-    fn from(val: InternedString) -> String {
-        val.as_symbol().to_string()
     }
 }
 

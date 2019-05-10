@@ -1,0 +1,49 @@
+error[E0004]: non-exhaustive patterns: pattern `UninhabitedStruct` of type `UninhabitedStruct` is not handled
+  --> $DIR/match_same_crate.rs:31:11
+   |
+LL |   pub struct UninhabitedStruct {
+   |   -          ----------------- variant not covered
+   |  _|
+   | |
+LL | |     _priv: !,
+LL | | }
+   | |_- `UninhabitedStruct` defined here
+...
+LL |       match x {}
+   |             ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: pattern `UninhabitedTupleStruct` of type `UninhabitedTupleStruct` is not handled
+  --> $DIR/match_same_crate.rs:35:11
+   |
+LL | pub struct UninhabitedTupleStruct(!);
+   | -------------------------------------
+   | |          |
+   | |          variant not covered
+   | `UninhabitedTupleStruct` defined here
+...
+LL |     match x {}
+   |           ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: multiple patterns of type `UninhabitedVariants` are not handled
+  --> $DIR/match_same_crate.rs:39:11
+   |
+LL | / pub enum UninhabitedVariants {
+LL | |     #[non_exhaustive] Tuple(!),
+   | |                       ----- variant not covered
+LL | |     #[non_exhaustive] Struct { x: ! }
+   | |                       ------ variant not covered
+LL | | }
+   | |_- `UninhabitedVariants` defined here
+...
+LL |       match x {}
+   |             ^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0004`.
