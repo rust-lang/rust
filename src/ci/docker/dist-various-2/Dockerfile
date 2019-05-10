@@ -75,7 +75,7 @@ ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,aarch64-fuchsia
 ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,wasm32-unknown-unknown
-ENV TARGETS=$TARGETS,wasm32-unknown-wasi
+ENV TARGETS=$TARGETS,wasm32-wasi
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-unknown-cloudabi
@@ -85,5 +85,5 @@ ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 ENV X86_FORTANIX_SGX_LIBS="/x86_64-fortanix-unknown-sgx/lib/"
 
 ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
-  --set target.wasm32-unknown-wasi.wasi-root=/wasm32-unknown-wasi
+  --set target.wasm32-wasi.wasi-root=/wasm32-wasi
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
