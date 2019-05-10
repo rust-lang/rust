@@ -1,0 +1,29 @@
+error[E0658]: existential types are unstable
+  --> $DIR/issue-60371.rs:8:5
+   |
+LL |     existential type Item: Bug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/34511
+   = help: add #![feature(existential_type)] to the crate attributes to enable
+
+error[E0277]: the trait bound `(): Bug` is not satisfied
+  --> $DIR/issue-60371.rs:8:5
+   |
+LL |     existential type Item: Bug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bug` is not implemented for `()`
+   |
+   = help: the following implementations were found:
+             <&() as Bug>
+   = note: the return type of a function must have a statically known size
+
+error: could not find defining uses
+  --> $DIR/issue-60371.rs:8:5
+   |
+LL |     existential type Item: Bug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0658.
+For more information about an error, try `rustc --explain E0277`.
