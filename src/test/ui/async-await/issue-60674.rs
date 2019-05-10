@@ -11,4 +11,10 @@ extern crate issue_60674;
 #[issue_60674::attr]
 async fn f(mut x: u8) {}
 
+#[issue_60674::attr]
+async fn g((mut x, y, mut z): (u8, u8, u8)) {}
+
+#[issue_60674::attr]
+async fn g(mut x: u8, (a, mut b, c): (u8, u8, u8), y: u8) {}
+
 fn main() {}
