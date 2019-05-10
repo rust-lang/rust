@@ -1902,7 +1902,18 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             ty,
         };
 
-        let expr = &tcx.hir().body(ast_const.body).value;
+        let mut expr = &tcx.hir().body(ast_const.body).value;
+
+        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
+        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
+        if let ExprKind::Block(block, _) = &expr.node {
+            if block.stmts.is_empty() {
+                if let Some(trailing) = &block.expr {
+                    expr = &trailing;
+                }
+            }
+        }
+
         if let ExprKind::Path(ref qpath) = expr.node {
             if let hir::QPath::Resolved(_, ref path) = qpath {
                 if let Res::Def(DefKind::ConstParam, def_id) = path.res {
