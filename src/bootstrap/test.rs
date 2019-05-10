@@ -1184,8 +1184,13 @@ impl Step for Compiletest {
                     Err(_) => p,
                 }
             })
-            .filter(|p| p.starts_with(suite_path) && p.is_file())
-            .map(|p| p.strip_prefix(suite_path).unwrap().to_str().unwrap())
+            .filter(|p| p.starts_with(suite_path) && (p.is_dir() || p.is_file()))
+            .filter_map(|p| {
+                match p.strip_prefix(suite_path).ok().and_then(|p| p.to_str()) {
+                    Some(s) if s != "" => Some(s),
+                    _ => None,
+                }
+            })
             .collect();
 
         test_args.append(&mut builder.config.cmd.test_args());
