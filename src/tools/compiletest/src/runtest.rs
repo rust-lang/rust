@@ -29,6 +29,9 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
 
+use lazy_static::lazy_static;
+use log::*;
+
 use crate::extract_gdb_version;
 use crate::is_android_gdb_target;
 

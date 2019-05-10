@@ -7,6 +7,8 @@ use std::io::BufReader;
 use std::path::Path;
 use std::str::FromStr;
 
+use log::*;
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ErrorKind {
     Help,

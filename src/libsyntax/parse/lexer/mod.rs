@@ -1598,7 +1598,7 @@ mod tests {
     use std::io;
     use std::path::PathBuf;
     use syntax_pos::{BytePos, Span, NO_EXPANSION};
-    use rustc_data_structures::fx::FxHashSet;
+    use rustc_data_structures::fx::{FxHashSet, FxHashMap};
     use rustc_data_structures::sync::Lock;
 
     fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
@@ -1617,6 +1617,7 @@ mod tests {
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             buffered_lints: Lock::new(vec![]),
+            ambiguous_block_expr_parse: Lock::new(FxHashMap::default()),
         }
     }
 

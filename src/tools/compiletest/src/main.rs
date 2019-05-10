@@ -3,14 +3,6 @@
 #![feature(vec_remove_item)]
 #![deny(warnings, rust_2018_idioms)]
 
-#[cfg(unix)]
-extern crate libc;
-#[macro_use]
-extern crate log;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate serde_derive;
 extern crate test;
 
 use crate::common::CompareMode;
@@ -30,6 +22,7 @@ use crate::util::logv;
 use walkdir::WalkDir;
 use env_logger;
 use getopts;
+use log::*;
 
 use self::header::{EarlyProps, Ignore};
 

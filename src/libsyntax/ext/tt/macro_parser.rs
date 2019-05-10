@@ -554,7 +554,10 @@ fn inner_parse_loop<'root, 'tt>(
             match item.top_elts.get_tt(idx) {
                 // Need to descend into a sequence
                 TokenTree::Sequence(sp, seq) => {
-                    // Examine the case where there are 0 matches of this sequence
+                    // Examine the case where there are 0 matches of this sequence. We are
+                    // implicitly disallowing OneOrMore from having 0 matches here. Thus, that will
+                    // result in a "no rules expected token" error by virtue of this matcher not
+                    // working.
                     if seq.op == quoted::KleeneOp::ZeroOrMore
                         || seq.op == quoted::KleeneOp::ZeroOrOne
                     {

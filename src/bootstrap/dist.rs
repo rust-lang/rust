@@ -14,7 +14,7 @@ use std::io::Write;
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
 
-use build_helper::output;
+use build_helper::{output, t};
 
 use crate::{Compiler, Mode, LLVM_TOOLS};
 use crate::channel;

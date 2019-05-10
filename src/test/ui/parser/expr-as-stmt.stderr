@@ -1,0 +1,92 @@
+error: expected expression, found `+`
+  --> $DIR/expr-as-stmt.rs:7:9
+   |
+LL |     {2} + {2}
+   |     --- ^ expected expression
+   |     |
+   |     help: parentheses are required to parse this as an expression: `({2})`
+
+error: expected expression, found `+`
+  --> $DIR/expr-as-stmt.rs:12:9
+   |
+LL |     {2} + 2
+   |     --- ^ expected expression
+   |     |
+   |     help: parentheses are required to parse this as an expression: `({2})`
+
+error: expected expression, found `+`
+  --> $DIR/expr-as-stmt.rs:18:12
+   |
+LL |     { 42 } + foo;
+   |     ------ ^ expected expression
+   |     |
+   |     help: parentheses are required to parse this as an expression: `({ 42 })`
+
+error: expected expression, found `&&`
+  --> $DIR/expr-as-stmt.rs:30:5
+   |
+LL |     if let Some(x) = a { true } else { false }
+   |     ------------------------------------------ help: parentheses are required to parse this as an expression: `(if let Some(x) = a { true } else { false })`
+LL |     &&
+   |     ^^ expected expression
+
+error: expected expression, found `>`
+  --> $DIR/expr-as-stmt.rs:37:7
+   |
+LL |     } > 0
+   |       ^ expected expression
+help: parentheses are required to parse this as an expression
+   |
+LL |     (match x {
+LL |         _ => 1,
+LL |     }) > 0
+   |
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:7:6
+   |
+LL |     {2} + {2}
+   |      ^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:12:6
+   |
+LL |     {2} + 2
+   |      ^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:18:7
+   |
+LL |     { 42 } + foo;
+   |       ^^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
+
+error[E0308]: mismatched types
+  --> $DIR/expr-as-stmt.rs:24:7
+   |
+LL |     { 3 } * 3
+   |       ^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
+
+error[E0614]: type `{integer}` cannot be dereferenced
+  --> $DIR/expr-as-stmt.rs:24:11
+   |
+LL |     { 3 } * 3
+   |     ----- ^^^
+   |     |
+   |     help: parentheses are required to parse this as an expression: `({ 3 })`
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0308, E0614.
+For more information about an error, try `rustc --explain E0308`.

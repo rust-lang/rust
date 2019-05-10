@@ -8,6 +8,8 @@ use std::fs;
 use std::path::{Path, PathBuf, Component};
 use std::process::Command;
 
+use build_helper::t;
+
 use crate::dist::{self, pkgname, sanitize_sh, tmpdir};
 
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
