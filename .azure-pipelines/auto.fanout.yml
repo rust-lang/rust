@@ -160,7 +160,7 @@ jobs:
 
   - script: |
       REM md sccache
-      REM powershell -Command "iwr -outf sccache\sccache.exe https://rustlangtools.blob.core.windows.net/public/stable-x86_64-pc-windows-msvc.sccache.exe"
+      REM powershell -Command "iwr -outf sccache\sccache.exe https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc"
       echo ##vso[task.prependpath]%CD%\sccache
     displayName: Download and install sccache
 
@@ -392,7 +392,7 @@ jobs:
       mkdir -p $HOME/rustsrc    
       echo "##vso[task.setvariable variable=PATH;]$PATH"
 
-      curl -fo /usr/local/bin/sccache https://rustlangtools.blob.core.windows.net/public/stable-x86_64-apple-darwin.sccache
+      curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin
       chmod +x /usr/local/bin/sccache
 
       curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin

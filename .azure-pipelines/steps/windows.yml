@@ -106,7 +106,7 @@ steps:
 
 - script: |
     md sccache
-    powershell -Command "iwr -outf sccache\sccache.exe https://rustlangtools.blob.core.windows.net/public/stable-x86_64-pc-windows-msvc.sccache.exe"
+    powershell -Command "iwr -outf sccache\sccache.exe https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-26-sccache-x86_64-pc-windows-msvc"
     echo ##vso[task.prependpath]%CD%\sccache
   displayName: Download and install sccache
 
@@ -155,6 +155,6 @@ steps:
 
     # explicitly decrypt secret variables
     # see https://docs.microsoft.com/en-us/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch
-    SCCACHE_AZURE_CONNECTION_STRING: $(SCCACHE_AZURE_CONNECTION_STRING_SECRET)
-    DOCKER_LAYER_CACHE_AZURE_STORAGE_ACCOUNT_KEY: $(DOCKER_LAYER_CACHE_AZURE_STORAGE_ACCOUNT_KEY_SECRET)
+    AWS_ACCESS_KEY_ID: $(SCCACHE_AWS_ACCESS_KEY_ID)
+    AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
   displayName: Run script

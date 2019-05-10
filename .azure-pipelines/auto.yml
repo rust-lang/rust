@@ -1,11 +1,6 @@
 #
 # Azure Pipelines "auto" branch build for Rust on Linux, macOS, and Windows.
 # 
-# Notes:
-# To get sccache working, I (John Erickson) had to build it with the Azure feature enabled
-# and with openssl statically-linked for Linux.
-# Here's the build (with a backpointer to source) of where the bits came from:
-# https://dev.azure.com/johnterickson/rust-lang/_build/results?buildId=275
 
 pr: none
 # trigger:

@@ -5,7 +5,7 @@ steps:
     date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
   displayName: Log time information (before)
 
-- bash: |    
+- bash: |
     which sccache
     stamp sh -x -c "$RUN_SCRIPT"
   env:
@@ -15,8 +15,8 @@ steps:
 
     # Explicitly decrypt secret variables
     # See https://docs.microsoft.com/azure/devops/pipelines/process/variables?view=azure-devops&tabs=yaml%2Cbatch#secret-variables
-    SCCACHE_AZURE_CONNECTION_STRING: $(SCCACHE_AZURE_CONNECTION_STRING_SECRET)
-    DOCKER_LAYER_CACHE_AZURE_STORAGE_ACCOUNT_KEY: $(DOCKER_LAYER_CACHE_AZURE_STORAGE_ACCOUNT_KEY_SECRET)
+    AWS_ACCESS_KEY_ID: $(SCCACHE_AWS_ACCESS_KEY_ID)
+    AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
   displayName: Run script
 
 - bash: |

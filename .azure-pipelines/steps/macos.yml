@@ -3,21 +3,21 @@ steps:
 
 - bash: |
     export PATH=$PATH:$HOME/.local/bin:$HOME/Library/Python/2.7/bin/
-    mkdir -p $HOME/rustsrc    
+    mkdir -p $HOME/rustsrc
     echo "##vso[task.setvariable variable=PATH;]$PATH"
 
-    curl -fo /usr/local/bin/sccache https://rustlangtools.blob.core.windows.net/public/stable-x86_64-apple-darwin.sccache
+    curl -fo /usr/local/bin/sccache https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2018-04-02-sccache-x86_64-apple-darwin
     chmod +x /usr/local/bin/sccache
 
     curl -fo /usr/local/bin/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin
     chmod +x /usr/local/bin/stamp
-    
+
     export CC=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang
     echo "##vso[task.setvariable variable=CC]$CC"
-    
+
     export CXX=`pwd`/clang+llvm-7.0.0-x86_64-apple-darwin/bin/clang++
     echo "##vso[task.setvariable variable=CXX]$CXX"
-    
+
     echo "##vso[task.setvariable variable=AR]ar"
   displayName: Prep
 
