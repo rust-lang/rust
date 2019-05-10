@@ -500,7 +500,6 @@ fn visit_expr<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, expr: &'tcx Expr) {
       }
 
       // live nodes required for interesting control flow:
-      hir::ExprKind::If(..) |
       hir::ExprKind::Match(..) |
       hir::ExprKind::While(..) |
       hir::ExprKind::Loop(..) => {
@@ -1040,28 +1039,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 })
             }
 
-            hir::ExprKind::If(ref cond, ref then, ref els) => {
-                //
-                //     (cond)
-                //       |
-                //       v
-                //     (expr)
-                //     /   \
-                //    |     |
-                //    v     v
-                //  (then)(els)
-                //    |     |
-                //    v     v
-                //   (  succ  )
-                //
-                let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
-                let then_ln = self.propagate_through_expr(&then, succ);
-                let ln = self.live_node(expr.hir_id, expr.span);
-                self.init_from_succ(ln, else_ln);
-                self.merge_from_succ(ln, then_ln, false);
-                self.propagate_through_expr(&cond, ln)
-            }
-
             hir::ExprKind::While(ref cond, ref blk, _) => {
                 self.propagate_through_loop(expr, WhileLoop(&cond), &blk, succ)
             }
@@ -1523,7 +1500,7 @@ fn check_expr<'a, 'tcx>(this: &mut Liveness<'a, 'tcx>, expr: &'tcx Expr) {
         }
 
         // no correctness conditions related to liveness
-        hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) | hir::ExprKind::If(..) |
+        hir::ExprKind::Call(..) | hir::ExprKind::MethodCall(..) |
         hir::ExprKind::Match(..) | hir::ExprKind::While(..) | hir::ExprKind::Loop(..) |
         hir::ExprKind::Index(..) | hir::ExprKind::Field(..) |
         hir::ExprKind::Array(..) | hir::ExprKind::Tup(..) | hir::ExprKind::Binary(..) |

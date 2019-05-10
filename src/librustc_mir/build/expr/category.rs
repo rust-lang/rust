@@ -45,7 +45,6 @@ impl Category {
             | ExprKind::ValueTypeAscription { .. } => Some(Category::Place),
 
             ExprKind::LogicalOp { .. }
-            | ExprKind::If { .. }
             | ExprKind::Match { .. }
             | ExprKind::NeverToAny { .. }
             | ExprKind::Use { .. }

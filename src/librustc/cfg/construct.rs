@@ -166,47 +166,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(expr.hir_id.local_id, &[blk_exit])
             }
 
-            hir::ExprKind::If(ref cond, ref then, None) => {
-                //
-                //     [pred]
-                //       |
-                //       v 1
-                //     [cond]
-                //       |
-                //      / \
-                //     /   \
-                //    v 2   *
-                //  [then]  |
-                //    |     |
-                //    v 3   v 4
-                //   [..expr..]
-                //
-                let cond_exit = self.expr(&cond, pred);                // 1
-                let then_exit = self.expr(&then, cond_exit);          // 2
-                self.add_ast_node(expr.hir_id.local_id, &[cond_exit, then_exit])      // 3,4
-            }
-
-            hir::ExprKind::If(ref cond, ref then, Some(ref otherwise)) => {
-                //
-                //     [pred]
-                //       |
-                //       v 1
-                //     [cond]
-                //       |
-                //      / \
-                //     /   \
-                //    v 2   v 3
-                //  [then][otherwise]
-                //    |     |
-                //    v 4   v 5
-                //   [..expr..]
-                //
-                let cond_exit = self.expr(&cond, pred);                // 1
-                let then_exit = self.expr(&then, cond_exit);          // 2
-                let else_exit = self.expr(&otherwise, cond_exit);      // 3
-                self.add_ast_node(expr.hir_id.local_id, &[then_exit, else_exit])      // 4, 5
-            }
-
             hir::ExprKind::While(ref cond, ref body, _) => {
                 //
                 //         [pred]

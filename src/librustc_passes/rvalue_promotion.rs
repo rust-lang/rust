@@ -518,15 +518,6 @@ fn check_expr_kind<'a, 'tcx>(
             NotPromotable
         }
 
-        hir::ExprKind::If(ref lhs, ref rhs, ref option_expr) => {
-            let _ = v.check_expr(lhs);
-            let _ = v.check_expr(rhs);
-            if let Some(ref expr) = option_expr {
-                let _ = v.check_expr(&expr);
-            }
-            NotPromotable
-        }
-
         // Loops (not very meaningful in constants).
         hir::ExprKind::While(ref expr, ref box_block, ref _option_label) => {
             let _ = v.check_expr(expr);

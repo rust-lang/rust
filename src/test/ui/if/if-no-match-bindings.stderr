@@ -1,0 +1,39 @@
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:18:8
+   |
+LL |     if b_ref() {}
+   |        ^^^^^^^ expected bool, found &bool
+   |
+   = note: expected type `bool`
+              found type `&bool`
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:19:8
+   |
+LL |     if b_mut_ref() {}
+   |        ^^^^^^^^^^^ expected bool, found &mut bool
+   |
+   = note: expected type `bool`
+              found type `&mut bool`
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:20:8
+   |
+LL |     if &true {}
+   |        ^^^^^ expected bool, found &bool
+   |
+   = note: expected type `bool`
+              found type `&bool`
+
+error[E0308]: mismatched types
+  --> $DIR/if-no-match-bindings.rs:21:8
+   |
+LL |     if &mut true {}
+   |        ^^^^^^^^^ expected bool, found &mut bool
+   |
+   = note: expected type `bool`
+              found type `&mut bool`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

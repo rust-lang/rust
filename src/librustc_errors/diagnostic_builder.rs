@@ -100,6 +100,18 @@ impl<'a> DiagnosticBuilder<'a> {
         self.cancel();
     }
 
+    /// Emit the diagnostic unless `delay` is true,
+    /// in which case the emission will be delayed as a bug.
+    ///
+    /// See `emit` and `delay_as_bug` for details.
+    pub fn emit_unless(&mut self, delay: bool) {
+        if delay {
+            self.delay_as_bug()
+        } else {
+            self.emit()
+        }
+    }
+
     /// Buffers the diagnostic for later emission, unless handler
     /// has disabled such buffering.
     pub fn buffer(mut self, buffered_diagnostics: &mut Vec<Diagnostic>) {

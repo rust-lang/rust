@@ -1368,7 +1368,6 @@ impl Expr {
             ExprKind::Lit(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
             ExprKind::DropTemps(ref expr, ..) => expr.precedence(),
-            ExprKind::If(..) => ExprPrecedence::If,
             ExprKind::While(..) => ExprPrecedence::While,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
             ExprKind::Match(..) => ExprPrecedence::Match,
@@ -1421,7 +1420,6 @@ impl Expr {
             ExprKind::MethodCall(..) |
             ExprKind::Struct(..) |
             ExprKind::Tup(..) |
-            ExprKind::If(..) |
             ExprKind::Match(..) |
             ExprKind::Closure(..) |
             ExprKind::Block(..) |
@@ -1498,10 +1496,6 @@ pub enum ExprKind {
     /// This construct only exists to tweak the drop order in HIR lowering.
     /// An example of that is the desugaring of `for` loops.
     DropTemps(P<Expr>),
-    /// An `if` block, with an optional else block.
-    ///
-    /// I.e., `if <expr> { <expr> } else { <expr> }`.
-    If(P<Expr>, P<Expr>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// I.e., `'label: while expr { <block> }`.
@@ -1615,6 +1609,10 @@ pub enum LocalSource {
 pub enum MatchSource {
     /// A `match _ { .. }`.
     Normal,
+    /// An `if _ { .. }` (optionally with `else { .. }`).
+    IfDesugar {
+        contains_else_clause: bool,
+    },
     /// An `if let _ = _ { .. }` (optionally with `else { .. }`).
     IfLetDesugar {
         contains_else_clause: bool,

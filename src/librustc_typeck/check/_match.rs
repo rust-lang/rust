@@ -2,12 +2,12 @@ use crate::check::{FnCtxt, Expectation, Diverges, Needs};
 use crate::check::coercion::CoerceMany;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
-use rustc::hir::{self, PatKind, Pat};
+use rustc::hir::{self, PatKind, Pat, ExprKind};
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
 use rustc::infer;
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::traits::ObligationCauseCode;
+use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
 use syntax::ast;
@@ -15,6 +15,7 @@ use syntax::source_map::Spanned;
 use syntax::ptr::P;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::Span;
+use syntax_pos::hygiene::CompilerDesugaringKind;
 
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::cmp;
@@ -22,10 +23,9 @@ use std::cmp;
 use super::report_unexpected_variant_res;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    /// `match_discrim_span` argument having a `Span` indicates that this pattern is part of
-    /// a match expression arm guard, and it points to the match discriminant to add context
-    /// in type errors. In the folloowing example, `match_discrim_span` corresponds to the
-    /// `a + b` expression:
+    /// `discrim_span` argument having a `Span` indicates that this pattern is part of a match
+    /// expression arm guard, and it points to the match discriminant to add context in type errors.
+    /// In the following example, `discrim_span` corresponds to the `a + b` expression:
     ///
     /// ```text
     /// error[E0308]: mismatched types
@@ -44,7 +44,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         pat: &'gcx hir::Pat,
         mut expected: Ty<'tcx>,
         mut def_bm: ty::BindingMode,
-        match_discrim_span: Option<Span>,
+        discrim_span: Option<Span>,
     ) {
         let tcx = self.tcx;
 
@@ -176,7 +176,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //     &'static str <: expected
                 //
                 // that's equivalent to there existing a LUB.
-                self.demand_suptype(pat.span, expected, pat_ty);
+                if let Some(mut err) = self.demand_suptype_diag(pat.span, expected, pat_ty) {
+                    err.emit_unless(discrim_span
+                        .filter(|&s| s.is_compiler_desugaring(CompilerDesugaringKind::IfTemporary))
+                        .is_some());
+                }
+
                 pat_ty
             }
             PatKind::Range(ref begin, ref end, _) => {
@@ -224,8 +229,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let common_type = self.resolve_type_vars_if_possible(&lhs_ty);
 
                 // subtyping doesn't matter here, as the value is some kind of scalar
-                self.demand_eqtype_pat(pat.span, expected, lhs_ty, match_discrim_span);
-                self.demand_eqtype_pat(pat.span, expected, rhs_ty, match_discrim_span);
+                self.demand_eqtype_pat(pat.span, expected, lhs_ty, discrim_span);
+                self.demand_eqtype_pat(pat.span, expected, rhs_ty, discrim_span);
                 common_type
             }
             PatKind::Binding(ba, var_id, _, ref sub) => {
@@ -254,13 +259,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // `x` is assigned a value of type `&M T`, hence `&M T <: typeof(x)` is
                         // required. However, we use equality, which is stronger. See (*) for
                         // an explanation.
-                        self.demand_eqtype_pat(pat.span, region_ty, local_ty, match_discrim_span);
+                        self.demand_eqtype_pat(pat.span, region_ty, local_ty, discrim_span);
                     }
                     // otherwise the type of x is the expected type T
                     ty::BindByValue(_) => {
                         // As above, `T <: typeof(x)` is required but we
                         // use equality, see (*) below.
-                        self.demand_eqtype_pat(pat.span, expected, local_ty, match_discrim_span);
+                        self.demand_eqtype_pat(pat.span, expected, local_ty, discrim_span);
                     }
                 }
 
@@ -268,11 +273,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // what the type of the binding `x` ought to be
                 if var_id != pat.hir_id {
                     let vt = self.local_ty(pat.span, var_id).decl_ty;
-                    self.demand_eqtype_pat(pat.span, vt, local_ty, match_discrim_span);
+                    self.demand_eqtype_pat(pat.span, vt, local_ty, discrim_span);
                 }
 
                 if let Some(ref p) = *sub {
-                    self.check_pat_walk(&p, expected, def_bm, match_discrim_span);
+                    self.check_pat_walk(&p, expected, def_bm, discrim_span);
                 }
 
                 local_ty
@@ -285,14 +290,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ddpos,
                     expected,
                     def_bm,
-                    match_discrim_span,
+                    discrim_span,
                 )
             }
             PatKind::Path(ref qpath) => {
                 self.check_pat_path(pat, qpath, expected)
             }
             PatKind::Struct(ref qpath, ref fields, etc) => {
-                self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, match_discrim_span)
+                self.check_pat_struct(pat, qpath, fields, etc, expected, def_bm, discrim_span)
             }
             PatKind::Tuple(ref elements, ddpos) => {
                 let mut expected_len = elements.len();
@@ -318,7 +323,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // further errors being emitted when using the bindings. #50333
                     let element_tys_iter = (0..max_len).map(|_| tcx.types.err);
                     for (_, elem) in elements.iter().enumerate_and_adjust(max_len, ddpos) {
-                        self.check_pat_walk(elem, &tcx.types.err, def_bm, match_discrim_span);
+                        self.check_pat_walk(elem, &tcx.types.err, def_bm, discrim_span);
                     }
                     tcx.mk_tup(element_tys_iter)
                 } else {
@@ -327,7 +332,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             elem,
                             &element_tys[i].expect_ty(),
                             def_bm,
-                            match_discrim_span,
+                            discrim_span,
                         );
                     }
                     pat_ty
@@ -341,11 +346,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Here, `demand::subtype` is good enough, but I don't
                     // think any errors can be introduced by using
                     // `demand::eqtype`.
-                    self.demand_eqtype_pat(pat.span, expected, uniq_ty, match_discrim_span);
-                    self.check_pat_walk(&inner, inner_ty, def_bm, match_discrim_span);
+                    self.demand_eqtype_pat(pat.span, expected, uniq_ty, discrim_span);
+                    self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
                     uniq_ty
                 } else {
-                    self.check_pat_walk(&inner, tcx.types.err, def_bm, match_discrim_span);
+                    self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
                     tcx.types.err
                 }
             }
@@ -384,10 +389,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     };
 
-                    self.check_pat_walk(&inner, inner_ty, def_bm, match_discrim_span);
+                    self.check_pat_walk(&inner, inner_ty, def_bm, discrim_span);
                     rptr_ty
                 } else {
-                    self.check_pat_walk(&inner, tcx.types.err, def_bm, match_discrim_span);
+                    self.check_pat_walk(&inner, tcx.types.err, def_bm, discrim_span);
                     tcx.types.err
                 }
             }
@@ -445,13 +450,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 };
 
                 for elt in before {
-                    self.check_pat_walk(&elt, inner_ty, def_bm, match_discrim_span);
+                    self.check_pat_walk(&elt, inner_ty, def_bm, discrim_span);
                 }
                 if let Some(ref slice) = *slice {
-                    self.check_pat_walk(&slice, slice_ty, def_bm, match_discrim_span);
+                    self.check_pat_walk(&slice, slice_ty, def_bm, discrim_span);
                 }
                 for elt in after {
-                    self.check_pat_walk(&elt, inner_ty, def_bm, match_discrim_span);
+                    self.check_pat_walk(&elt, inner_ty, def_bm, discrim_span);
                 }
                 expected_ty
             }
@@ -595,6 +600,323 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
+        use hir::MatchSource::*;
+        let (source_if, if_no_else, if_desugar) = match match_src {
+            IfDesugar { contains_else_clause } => (true, !contains_else_clause, true),
+            IfLetDesugar { contains_else_clause } => (true, !contains_else_clause, false),
+            _ => (false, false, false),
+        };
+
+        // Type check the descriminant and get its type.
+        let discrim_ty = if if_desugar {
+            // Here we want to ensure:
+            //
+            // 1. That default match bindings are *not* accepted in the condition of an
+            //    `if` expression. E.g. given `fn foo() -> &bool;` we reject `if foo() { .. }`.
+            //
+            // 2. By expecting `bool` for `expr` we get nice diagnostics for e.g. `if x = y { .. }`.
+            //
+            // FIXME(60707): Consider removing hack with principled solution.
+            self.check_expr_has_type_or_error(discrim, self.tcx.types.bool)
+        } else {
+            self.demand_discriminant_type(arms, discrim)
+        };
+
+        // If there are no arms, that is a diverging match; a special case.
+        if arms.is_empty() {
+            self.diverges.set(self.diverges.get() | Diverges::Always);
+            return tcx.types.never;
+        }
+
+        self.warn_arms_when_scrutinee_diverges(arms, source_if);
+
+        // Otherwise, we have to union together the types that the
+        // arms produce and so forth.
+        let discrim_diverges = self.diverges.get();
+        self.diverges.set(Diverges::Maybe);
+
+        // rust-lang/rust#55810: Typecheck patterns first (via eager
+        // collection into `Vec`), so we get types for all bindings.
+        let all_arm_pats_diverge: Vec<_> = arms.iter().map(|arm| {
+            let mut all_pats_diverge = Diverges::WarnedAlways;
+            for p in &arm.pats {
+                self.diverges.set(Diverges::Maybe);
+                let binding_mode = ty::BindingMode::BindByValue(hir::Mutability::MutImmutable);
+                self.check_pat_walk(&p, discrim_ty, binding_mode, Some(discrim.span));
+                all_pats_diverge &= self.diverges.get();
+            }
+
+            // As discussed with @eddyb, this is for disabling unreachable_code
+            // warnings on patterns (they're now subsumed by unreachable_patterns
+            // warnings).
+            match all_pats_diverge {
+                Diverges::Maybe => Diverges::Maybe,
+                Diverges::Always | Diverges::WarnedAlways => Diverges::WarnedAlways,
+            }
+        }).collect();
+
+        // Now typecheck the blocks.
+        //
+        // The result of the match is the common supertype of all the
+        // arms. Start out the value as bottom, since it's the, well,
+        // bottom the type lattice, and we'll be moving up the lattice as
+        // we process each arm. (Note that any match with 0 arms is matching
+        // on any empty type and is therefore unreachable; should the flow
+        // of execution reach it, we will panic, so bottom is an appropriate
+        // type in that case)
+        let mut all_arms_diverge = Diverges::WarnedAlways;
+
+        let expected = expected.adjust_for_branches(self);
+
+        let mut coercion = {
+            let coerce_first = match expected {
+                // We don't coerce to `()` so that if the match expression is a
+                // statement it's branches can have any consistent type. That allows
+                // us to give better error messages (pointing to a usually better
+                // arm for inconsistent arms or to the whole match when a `()` type
+                // is required).
+                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_unit() => ety,
+                _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
+            };
+            CoerceMany::with_coercion_sites(coerce_first, arms)
+        };
+
+        let mut other_arms = vec![];  // used only for diagnostics
+        let mut prior_arm_ty = None;
+        for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
+            if let Some(g) = &arm.guard {
+                self.diverges.set(pats_diverge);
+                match g {
+                    hir::Guard::If(e) => self.check_expr_has_type_or_error(e, tcx.types.bool),
+                };
+            }
+
+            self.diverges.set(pats_diverge);
+            let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
+            all_arms_diverge &= self.diverges.get();
+
+            let span = expr.span;
+
+            if source_if {
+                let then_expr = &arms[0].body;
+                match (i, if_no_else) {
+                    (0, _) => coercion.coerce(self, &self.misc(span), then_expr, arm_ty),
+                    (_, true) => self.if_fallback_coercion(span, then_expr, &mut coercion),
+                    (_, _) => {
+                        let then_ty = prior_arm_ty.unwrap();
+                        let cause = self.if_cause(span, then_expr, &arm.body, then_ty, arm_ty);
+                        coercion.coerce(self, &cause, &arm.body, arm_ty);
+                    }
+                }
+            } else {
+                let arm_span = if let hir::ExprKind::Block(blk, _) = &arm.body.node {
+                    // Point at the block expr instead of the entire block
+                    blk.expr.as_ref().map(|e| e.span).unwrap_or(arm.body.span)
+                } else {
+                    arm.body.span
+                };
+                let (span, code) = match i {
+                    // The reason for the first arm to fail is not that the match arms diverge,
+                    // but rather that there's a prior obligation that doesn't hold.
+                    0 => (arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id)),
+                    _ => (span, ObligationCauseCode::MatchExpressionArm {
+                        arm_span,
+                        source: match_src,
+                        prior_arms: other_arms.clone(),
+                        last_ty: prior_arm_ty.unwrap(),
+                        discrim_hir_id: discrim.hir_id,
+                    }),
+                };
+                let cause = self.cause(span, code);
+                coercion.coerce(self, &cause, &arm.body, arm_ty);
+                other_arms.push(arm_span);
+                if other_arms.len() > 5 {
+                    other_arms.remove(0);
+                }
+            }
+            prior_arm_ty = Some(arm_ty);
+        }
+
+        // We won't diverge unless the discriminant or all arms diverge.
+        self.diverges.set(discrim_diverges | all_arms_diverge);
+
+        coercion.complete(self)
+    }
+
+    /// When the previously checked expression (the scrutinee) diverges,
+    /// warn the user about the match arms being unreachable.
+    fn warn_arms_when_scrutinee_diverges(&self, arms: &'gcx [hir::Arm], source_if: bool) {
+        if self.diverges.get().always() {
+            let msg = if source_if { "block in `if` expression" } else { "arm" };
+            for arm in arms {
+                self.warn_if_unreachable(arm.body.hir_id, arm.body.span, msg);
+            }
+        }
+    }
+
+    /// Handle the fallback arm of a desugared if(-let) like a missing else.
+    fn if_fallback_coercion(
+        &self,
+        span: Span,
+        then_expr: &'gcx hir::Expr,
+        coercion: &mut CoerceMany<'gcx, 'tcx, '_, rustc::hir::Arm>,
+    ) {
+        // If this `if` expr is the parent's function return expr,
+        // the cause of the type coercion is the return type, point at it. (#25228)
+        let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, span);
+        let cause = self.cause(span, ObligationCauseCode::IfExpressionWithNoElse);
+        coercion.coerce_forced_unit(self, &cause, &mut |err| {
+            if let Some((span, msg)) = &ret_reason {
+                err.span_label(*span, msg.as_str());
+            } else if let ExprKind::Block(block, _) = &then_expr.node {
+                if let Some(expr) = &block.expr {
+                    err.span_label(expr.span, "found here".to_string());
+                }
+            }
+            err.note("`if` expressions without `else` evaluate to `()`");
+            err.help("consider adding an `else` block that evaluates to the expected type");
+        }, ret_reason.is_none());
+    }
+
+    fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, span: Span) -> Option<(Span, String)> {
+        use hir::Node::{Block, Item, Local};
+
+        let node = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(
+            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
+        ));
+        if let Block(block) = node {
+            // check that the body's parent is an fn
+            let parent = self.tcx.hir().get_by_hir_id(
+                self.tcx.hir().get_parent_node_by_hir_id(
+                    self.tcx.hir().get_parent_node_by_hir_id(block.hir_id),
+                ),
+            );
+            if let (Some(expr), Item(hir::Item {
+                node: hir::ItemKind::Fn(..), ..
+            })) = (&block.expr, parent) {
+                // check that the `if` expr without `else` is the fn body's expr
+                if expr.span == span {
+                    return self.get_fn_decl(hir_id).map(|(fn_decl, _)| (
+                        fn_decl.output.span(),
+                        format!("expected `{}` because of this return type", fn_decl.output),
+                    ));
+                }
+            }
+        }
+        if let Local(hir::Local { ty: Some(_), pat, .. }) = node {
+            return Some((pat.span, "expected because of this assignment".to_string()));
+        }
+        None
+    }
+
+    fn if_cause(
+        &self,
+        span: Span,
+        then_expr: &'gcx hir::Expr,
+        else_expr: &'gcx hir::Expr,
+        then_ty: Ty<'tcx>,
+        else_ty: Ty<'tcx>,
+    ) -> ObligationCause<'tcx> {
+        let mut outer_sp = if self.tcx.sess.source_map().is_multiline(span) {
+            // The `if`/`else` isn't in one line in the output, include some context to make it
+            // clear it is an if/else expression:
+            // ```
+            // LL |      let x = if true {
+            //    | _____________-
+            // LL ||         10i32
+            //    ||         ----- expected because of this
+            // LL ||     } else {
+            // LL ||         10u32
+            //    ||         ^^^^^ expected i32, found u32
+            // LL ||     };
+            //    ||_____- if and else have incompatible types
+            // ```
+            Some(span)
+        } else {
+            // The entire expression is in one line, only point at the arms
+            // ```
+            // LL |     let x = if true { 10i32 } else { 10u32 };
+            //    |                       -----          ^^^^^ expected i32, found u32
+            //    |                       |
+            //    |                       expected because of this
+            // ```
+            None
+        };
+
+        let mut remove_semicolon = None;
+        let error_sp = if let ExprKind::Block(block, _) = &else_expr.node {
+            if let Some(expr) = &block.expr {
+                expr.span
+            } else if let Some(stmt) = block.stmts.last() {
+                // possibly incorrect trailing `;` in the else arm
+                remove_semicolon = self.could_remove_semicolon(block, then_ty);
+                stmt.span
+            } else {  // empty block, point at its entirety
+                // Avoid overlapping spans that aren't as readable:
+                // ```
+                // 2 |        let x = if true {
+                //   |   _____________-
+                // 3 |  |         3
+                //   |  |         - expected because of this
+                // 4 |  |     } else {
+                //   |  |____________^
+                // 5 | ||
+                // 6 | ||     };
+                //   | ||     ^
+                //   | ||_____|
+                //   | |______if and else have incompatible types
+                //   |        expected integer, found ()
+                // ```
+                // by not pointing at the entire expression:
+                // ```
+                // 2 |       let x = if true {
+                //   |               ------- if and else have incompatible types
+                // 3 |           3
+                //   |           - expected because of this
+                // 4 |       } else {
+                //   |  ____________^
+                // 5 | |
+                // 6 | |     };
+                //   | |_____^ expected integer, found ()
+                // ```
+                if outer_sp.is_some() {
+                    outer_sp = Some(self.tcx.sess.source_map().def_span(span));
+                }
+                else_expr.span
+            }
+        } else { // shouldn't happen unless the parser has done something weird
+            else_expr.span
+        };
+
+        // Compute `Span` of `then` part of `if`-expression:
+        let then_sp = if let ExprKind::Block(block, _) = &then_expr.node {
+            if let Some(expr) = &block.expr {
+                expr.span
+            } else if let Some(stmt) = block.stmts.last() {
+                // possibly incorrect trailing `;` in the else arm
+                remove_semicolon = remove_semicolon.or(self.could_remove_semicolon(block, else_ty));
+                stmt.span
+            } else {  // empty block, point at its entirety
+                outer_sp = None;  // same as in `error_sp`, cleanup output
+                then_expr.span
+            }
+        } else {  // shouldn't happen unless the parser has done something weird
+            then_expr.span
+        };
+
+        // Finally construct the cause:
+        self.cause(error_sp, ObligationCauseCode::IfExpression {
+            then: then_sp,
+            outer: outer_sp,
+            semicolon: remove_semicolon,
+        })
+    }
+
+    fn demand_discriminant_type(
+        &self,
+        arms: &'gcx [hir::Arm],
+        discrim: &'gcx hir::Expr,
+    ) -> Ty<'tcx> {
         // Not entirely obvious: if matches may create ref bindings, we want to
         // use the *precise* type of the discriminant, *not* some supertype, as
         // the "discriminant type" (issue #23116).
@@ -653,143 +975,17 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                                             hir::MutMutable => 1,
                                             hir::MutImmutable => 0,
                                         });
-        let discrim_ty;
+
         if let Some(m) = contains_ref_bindings {
-            discrim_ty = self.check_expr_with_needs(discrim, Needs::maybe_mut_place(m));
+            self.check_expr_with_needs(discrim, Needs::maybe_mut_place(m))
         } else {
             // ...but otherwise we want to use any supertype of the
             // discriminant. This is sort of a workaround, see note (*) in
             // `check_pat` for some details.
-            discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
+            let discrim_ty = self.next_ty_var(TypeVariableOrigin::TypeInference(discrim.span));
             self.check_expr_has_type_or_error(discrim, discrim_ty);
-        };
-
-        // If there are no arms, that is a diverging match; a special case.
-        if arms.is_empty() {
-            self.diverges.set(self.diverges.get() | Diverges::Always);
-            return tcx.types.never;
+            discrim_ty
         }
-
-        if self.diverges.get().always() {
-            for arm in arms {
-                self.warn_if_unreachable(arm.body.hir_id, arm.body.span, "arm");
-            }
-        }
-
-        // Otherwise, we have to union together the types that the
-        // arms produce and so forth.
-        let discrim_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
-
-        // rust-lang/rust#55810: Typecheck patterns first (via eager
-        // collection into `Vec`), so we get types for all bindings.
-        let all_arm_pats_diverge: Vec<_> = arms.iter().map(|arm| {
-            let mut all_pats_diverge = Diverges::WarnedAlways;
-            for p in &arm.pats {
-                self.diverges.set(Diverges::Maybe);
-                self.check_pat_walk(
-                    &p,
-                    discrim_ty,
-                    ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
-                    Some(discrim.span),
-                );
-                all_pats_diverge &= self.diverges.get();
-            }
-
-            // As discussed with @eddyb, this is for disabling unreachable_code
-            // warnings on patterns (they're now subsumed by unreachable_patterns
-            // warnings).
-            match all_pats_diverge {
-                Diverges::Maybe => Diverges::Maybe,
-                Diverges::Always | Diverges::WarnedAlways => Diverges::WarnedAlways,
-            }
-        }).collect();
-
-        // Now typecheck the blocks.
-        //
-        // The result of the match is the common supertype of all the
-        // arms. Start out the value as bottom, since it's the, well,
-        // bottom the type lattice, and we'll be moving up the lattice as
-        // we process each arm. (Note that any match with 0 arms is matching
-        // on any empty type and is therefore unreachable; should the flow
-        // of execution reach it, we will panic, so bottom is an appropriate
-        // type in that case)
-        let mut all_arms_diverge = Diverges::WarnedAlways;
-
-        let expected = expected.adjust_for_branches(self);
-
-        let mut coercion = {
-            let coerce_first = match expected {
-                // We don't coerce to `()` so that if the match expression is a
-                // statement it's branches can have any consistent type. That allows
-                // us to give better error messages (pointing to a usually better
-                // arm for inconsistent arms or to the whole match when a `()` type
-                // is required).
-                Expectation::ExpectHasType(ety) if ety != self.tcx.mk_unit() => ety,
-                _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
-            };
-            CoerceMany::with_coercion_sites(coerce_first, arms)
-        };
-
-        let mut other_arms = vec![];  // used only for diagnostics
-        let mut prior_arm_ty = None;
-        for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
-            if let Some(ref g) = arm.guard {
-                self.diverges.set(pats_diverge);
-                match g {
-                    hir::Guard::If(e) => self.check_expr_has_type_or_error(e, tcx.types.bool),
-                };
-            }
-
-            self.diverges.set(pats_diverge);
-            let arm_ty = self.check_expr_with_expectation(&arm.body, expected);
-            all_arms_diverge &= self.diverges.get();
-
-            // Handle the fallback arm of a desugared if-let like a missing else.
-            let is_if_let_fallback = match match_src {
-                hir::MatchSource::IfLetDesugar { contains_else_clause: false } => {
-                    i == arms.len() - 1 && arm_ty.is_unit()
-                }
-                _ => false
-            };
-
-            let arm_span = if let hir::ExprKind::Block(ref blk, _) = arm.body.node {
-                // Point at the block expr instead of the entire block
-                blk.expr.as_ref().map(|e| e.span).unwrap_or(arm.body.span)
-            } else {
-                arm.body.span
-            };
-            if is_if_let_fallback {
-                let cause = self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse);
-                assert!(arm_ty.is_unit());
-                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
-            } else {
-                let cause = if i == 0 {
-                    // The reason for the first arm to fail is not that the match arms diverge,
-                    // but rather that there's a prior obligation that doesn't hold.
-                    self.cause(arm_span, ObligationCauseCode::BlockTailExpression(arm.body.hir_id))
-                } else {
-                    self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
-                        arm_span,
-                        source: match_src,
-                        prior_arms: other_arms.clone(),
-                        last_ty: prior_arm_ty.unwrap(),
-                        discrim_hir_id: discrim.hir_id,
-                    })
-                };
-                coercion.coerce(self, &cause, &arm.body, arm_ty);
-            }
-            other_arms.push(arm_span);
-            if other_arms.len() > 5 {
-                other_arms.remove(0);
-            }
-            prior_arm_ty = Some(arm_ty);
-        }
-
-        // We won't diverge unless the discriminant or all arms diverge.
-        self.diverges.set(discrim_diverges | all_arms_diverge);
-
-        coercion.complete(self)
     }
 
     fn check_pat_struct(
@@ -800,7 +996,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         etc: bool,
         expected: Ty<'tcx>,
         def_bm: ty::BindingMode,
-        match_discrim_span: Option<Span>,
+        discrim_span: Option<Span>,
     ) -> Ty<'tcx>
     {
         // Resolve the path and check the definition for errors.
@@ -809,18 +1005,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             variant_ty
         } else {
             for field in fields {
-                self.check_pat_walk(
-                    &field.node.pat,
-                    self.tcx.types.err,
-                    def_bm,
-                    match_discrim_span,
-                );
+                self.check_pat_walk(&field.node.pat, self.tcx.types.err, def_bm, discrim_span);
             }
             return self.tcx.types.err;
         };
 
         // Type-check the path.
-        self.demand_eqtype_pat(pat.span, expected, pat_ty, match_discrim_span);
+        self.demand_eqtype_pat(pat.span, expected, pat_ty, discrim_span);
 
         // Type-check subpatterns.
         if self.check_struct_pat_fields(pat_ty, pat.hir_id, pat.span, variant, fields, etc, def_bm)

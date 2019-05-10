@@ -117,6 +117,7 @@ use rustc::ty::subst::{UnpackedKind, Subst, InternalSubsts, SubstsRef, UserSelfT
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
 use rustc::ty::layout::VariantIdx;
 use syntax_pos::{self, BytePos, Span, MultiSpan};
+use syntax_pos::hygiene::CompilerDesugaringKind;
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
@@ -1086,12 +1087,8 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // Add formal parameters.
     for (arg_ty, arg) in fn_sig.inputs().iter().zip(&body.arguments) {
         // Check the pattern.
-        fcx.check_pat_walk(
-            &arg.pat,
-            arg_ty,
-            ty::BindingMode::BindByValue(hir::Mutability::MutImmutable),
-            None,
-        );
+        let binding_mode = ty::BindingMode::BindByValue(hir::Mutability::MutImmutable);
+        fcx.check_pat_walk(&arg.pat, arg_ty, binding_mode, None);
 
         // Check that argument is Sized.
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
@@ -2045,15 +2042,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Produces warning on the given node, if the current point in the
     /// function is unreachable, and there hasn't been another warning.
     fn warn_if_unreachable(&self, id: hir::HirId, span: Span, kind: &str) {
-        if self.diverges.get() == Diverges::Always {
+        if self.diverges.get() == Diverges::Always &&
+            // If span arose from a desugaring of `if` then it is the condition itself,
+            // which diverges, that we are about to lint on. This gives suboptimal diagnostics
+            // and so we stop here and allow the block of the `if`-expression to be linted instead.
+            !span.is_compiler_desugaring(CompilerDesugaringKind::IfTemporary) {
             self.diverges.set(Diverges::WarnedAlways);
 
             debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
-            self.tcx().lint_hir(
-                lint::builtin::UNREACHABLE_CODE,
-                id, span,
-                &format!("unreachable {}", kind));
+            let msg = format!("unreachable {}", kind);
+            self.tcx().lint_hir(lint::builtin::UNREACHABLE_CODE, id, span, &msg);
         }
     }
 
@@ -3161,13 +3160,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         if let Some(mut err) = self.demand_suptype_diag(expr.span, expected_ty, ty) {
-            if self.is_assign_to_bool(expr, expected_ty) {
-                // Error reported in `check_assign` so avoid emitting error again.
-                // FIXME(centril): Consider removing if/when `if` desugars to `match`.
-                err.delay_as_bug();
-            } else {
-                err.emit();
-            }
+            let expr = match &expr.node {
+                ExprKind::DropTemps(expr) => expr,
+                _ => expr,
+            };
+            // Error possibly reported in `check_assign` so avoid emitting error again.
+            err.emit_unless(self.is_assign_to_bool(expr, expected_ty));
         }
         ty
     }
@@ -3328,194 +3326,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         ObligationCauseCode::ReturnType(return_expr.hir_id)),
                             return_expr,
                             return_expr_ty);
-    }
-
-    // A generic function for checking the 'then' and 'else' clauses in an 'if'
-    // or 'if-else' expression.
-    fn check_then_else(&self,
-                       cond_expr: &'gcx hir::Expr,
-                       then_expr: &'gcx hir::Expr,
-                       opt_else_expr: Option<&'gcx hir::Expr>,
-                       sp: Span,
-                       expected: Expectation<'tcx>) -> Ty<'tcx> {
-        let cond_ty = self.check_expr_has_type_or_error(cond_expr, self.tcx.types.bool);
-        let cond_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
-
-        let expected = expected.adjust_for_branches(self);
-        let then_ty = self.check_expr_with_expectation(then_expr, expected);
-        let then_diverges = self.diverges.get();
-        self.diverges.set(Diverges::Maybe);
-
-        // We've already taken the expected type's preferences
-        // into account when typing the `then` branch. To figure
-        // out the initial shot at a LUB, we thus only consider
-        // `expected` if it represents a *hard* constraint
-        // (`only_has_type`); otherwise, we just go with a
-        // fresh type variable.
-        let coerce_to_ty = expected.coercion_target_type(self, sp);
-        let mut coerce: DynamicCoerceMany<'_, '_> = CoerceMany::new(coerce_to_ty);
-
-        coerce.coerce(self, &self.misc(sp), then_expr, then_ty);
-
-        if let Some(else_expr) = opt_else_expr {
-            let else_ty = self.check_expr_with_expectation(else_expr, expected);
-            let else_diverges = self.diverges.get();
-
-            let mut outer_sp = if self.tcx.sess.source_map().is_multiline(sp) {
-                // The `if`/`else` isn't in one line in the output, include some context to make it
-                // clear it is an if/else expression:
-                // ```
-                // LL |      let x = if true {
-                //    | _____________-
-                // LL ||         10i32
-                //    ||         ----- expected because of this
-                // LL ||     } else {
-                // LL ||         10u32
-                //    ||         ^^^^^ expected i32, found u32
-                // LL ||     };
-                //    ||_____- if and else have incompatible types
-                // ```
-                Some(sp)
-            } else {
-                // The entire expression is in one line, only point at the arms
-                // ```
-                // LL |     let x = if true { 10i32 } else { 10u32 };
-                //    |                       -----          ^^^^^ expected i32, found u32
-                //    |                       |
-                //    |                       expected because of this
-                // ```
-                None
-            };
-            let mut remove_semicolon = None;
-            let error_sp = if let ExprKind::Block(block, _) = &else_expr.node {
-                if let Some(expr) = &block.expr {
-                    expr.span
-                } else if let Some(stmt) = block.stmts.last() {
-                    // possibly incorrect trailing `;` in the else arm
-                    remove_semicolon = self.could_remove_semicolon(block, then_ty);
-                    stmt.span
-                } else {  // empty block, point at its entirety
-                    // Avoid overlapping spans that aren't as readable:
-                    // ```
-                    // 2 |        let x = if true {
-                    //   |   _____________-
-                    // 3 |  |         3
-                    //   |  |         - expected because of this
-                    // 4 |  |     } else {
-                    //   |  |____________^
-                    // 5 | ||
-                    // 6 | ||     };
-                    //   | ||     ^
-                    //   | ||_____|
-                    //   | |______if and else have incompatible types
-                    //   |        expected integer, found ()
-                    // ```
-                    // by not pointing at the entire expression:
-                    // ```
-                    // 2 |       let x = if true {
-                    //   |               ------- if and else have incompatible types
-                    // 3 |           3
-                    //   |           - expected because of this
-                    // 4 |       } else {
-                    //   |  ____________^
-                    // 5 | |
-                    // 6 | |     };
-                    //   | |_____^ expected integer, found ()
-                    // ```
-                    if outer_sp.is_some() {
-                        outer_sp = Some(self.tcx.sess.source_map().def_span(sp));
-                    }
-                    else_expr.span
-                }
-            } else { // shouldn't happen unless the parser has done something weird
-                else_expr.span
-            };
-            let then_sp = if let ExprKind::Block(block, _) = &then_expr.node {
-                if let Some(expr) = &block.expr {
-                    expr.span
-                } else if let Some(stmt) = block.stmts.last() {
-                    // possibly incorrect trailing `;` in the else arm
-                    remove_semicolon = remove_semicolon.or(
-                        self.could_remove_semicolon(block, else_ty));
-                    stmt.span
-                } else {  // empty block, point at its entirety
-                    outer_sp = None;  // same as in `error_sp`, cleanup output
-                    then_expr.span
-                }
-            } else {  // shouldn't happen unless the parser has done something weird
-                then_expr.span
-            };
-
-            let if_cause = self.cause(error_sp, ObligationCauseCode::IfExpression {
-                then: then_sp,
-                outer: outer_sp,
-                semicolon: remove_semicolon,
-            });
-
-            coerce.coerce(self, &if_cause, else_expr, else_ty);
-
-            // We won't diverge unless both branches do (or the condition does).
-            self.diverges.set(cond_diverges | then_diverges & else_diverges);
-        } else {
-            // If this `if` expr is the parent's function return expr, the cause of the type
-            // coercion is the return type, point at it. (#25228)
-            let ret_reason = self.maybe_get_coercion_reason(then_expr.hir_id, sp);
-
-            let else_cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
-            coerce.coerce_forced_unit(self, &else_cause, &mut |err| {
-                if let Some((sp, msg)) = &ret_reason {
-                    err.span_label(*sp, msg.as_str());
-                } else if let ExprKind::Block(block, _) = &then_expr.node {
-                    if let Some(expr) = &block.expr {
-                        err.span_label(expr.span, "found here".to_string());
-                    }
-                }
-                err.note("`if` expressions without `else` evaluate to `()`");
-                err.help("consider adding an `else` block that evaluates to the expected type");
-            }, ret_reason.is_none());
-
-            // If the condition is false we can't diverge.
-            self.diverges.set(cond_diverges);
-        }
-
-        let result_ty = coerce.complete(self);
-        if cond_ty.references_error() {
-            self.tcx.types.err
-        } else {
-            result_ty
-        }
-    }
-
-    fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
-        let node = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(
-            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
-        ));
-        if let Node::Block(block) = node {
-            // check that the body's parent is an fn
-            let parent = self.tcx.hir().get_by_hir_id(
-                self.tcx.hir().get_parent_node_by_hir_id(
-                    self.tcx.hir().get_parent_node_by_hir_id(block.hir_id),
-                ),
-            );
-            if let (Some(expr), Node::Item(hir::Item {
-                node: hir::ItemKind::Fn(..), ..
-            })) = (&block.expr, parent) {
-                // check that the `if` expr without `else` is the fn body's expr
-                if expr.span == sp {
-                    return self.get_fn_decl(hir_id).map(|(fn_decl, _)| (
-                        fn_decl.output.span(),
-                        format!("expected `{}` because of this return type", fn_decl.output),
-                    ));
-                }
-            }
-        }
-        if let Node::Local(hir::Local {
-            ty: Some(_), pat, ..
-        }) = node {
-            return Some((pat.span, "expected because of this assignment".to_string()));
-        }
-        None
     }
 
     // Check field access expressions
@@ -4062,7 +3872,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         match expr.node {
             ExprKind::Block(..) |
             ExprKind::Loop(..) | ExprKind::While(..) |
-            ExprKind::If(..) | ExprKind::Match(..) => {}
+            ExprKind::Match(..) => {}
 
             _ => self.warn_if_unreachable(expr.hir_id, expr.span, "expression")
         }
@@ -4443,10 +4253,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             ExprKind::Assign(ref lhs, ref rhs) => {
                 self.check_assign(expr, expected, lhs, rhs)
-            }
-            ExprKind::If(ref cond, ref then_expr, ref opt_else_expr) => {
-                self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
-                                     expr.span, expected)
             }
             ExprKind::While(ref cond, ref body, _) => {
                 let ctxt = BreakableCtxt {
@@ -5261,7 +5067,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match expression.node {
                 ExprKind::Call(..) |
                 ExprKind::MethodCall(..) |
-                ExprKind::If(..) |
                 ExprKind::While(..) |
                 ExprKind::Loop(..) |
                 ExprKind::Match(..) |
