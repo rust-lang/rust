@@ -12,6 +12,7 @@ use syntax::errors::{DiagnosticBuilder, Handler};
 use syntax::parse::{self, ParseSess};
 use syntax::source_map::{FilePathMapping, SourceMap, Span, DUMMY_SP};
 
+use self::newline_style::apply_newline_style;
 use crate::comment::{CharClasses, FullCodeCharKind};
 use crate::config::{Config, FileName, Verbosity};
 use crate::ignore_path::IgnorePathSet;
@@ -19,6 +20,8 @@ use crate::issues::BadIssueSeeker;
 use crate::utils::{count_newlines, get_skip_macro_names};
 use crate::visitor::{FmtVisitor, SnippetProvider};
 use crate::{modules, source_file, ErrorKind, FormatReport, Input, Session};
+
+mod newline_style;
 
 // A map of the files of a crate, with their new content
 pub(crate) type SourceFile = Vec<FileRecord>;
@@ -191,9 +194,12 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
             &self.config,
             &self.report,
         );
-        self.config
-            .newline_style()
-            .apply(&mut visitor.buffer, &big_snippet);
+
+        apply_newline_style(
+            self.config.newline_style(),
+            &mut visitor.buffer,
+            &big_snippet,
+        );
 
         if visitor.macro_rewrite_failure {
             self.report.add_macro_format_failure();
