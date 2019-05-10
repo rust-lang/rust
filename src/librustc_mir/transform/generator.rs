@@ -401,9 +401,9 @@ fn locals_live_across_suspend_points(
     movable: bool,
 ) -> (
     liveness::LiveVarSet,
+    Vec<BitSet<GeneratorSavedLocal>>,
     IndexVec<GeneratorSavedLocal, BitSet<GeneratorSavedLocal>>,
     FxHashMap<BasicBlock, liveness::LiveVarSet>,
-    BitSet<BasicBlock>,
 ) {
     let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
     let def_id = source.def_id();
@@ -447,13 +447,10 @@ fn locals_live_across_suspend_points(
     );
 
     let mut storage_liveness_map = FxHashMap::default();
-
-    let mut suspending_blocks = BitSet::new_empty(body.basic_blocks().len());
+    let mut live_locals_at_suspension_points = Vec::new();
 
     for (block, data) in body.basic_blocks().iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
-            suspending_blocks.insert(block);
-
             let loc = Location {
                 block: block,
                 statement_index: data.statements.len(),
@@ -494,16 +491,25 @@ fn locals_live_across_suspend_points(
             // and their storage is live (the `storage_liveness` variable)
             storage_liveness.intersect(&liveness.outs[block]);
 
+            // The generator argument is ignored
+            storage_liveness.remove(self_arg());
+
             let live_locals = storage_liveness;
 
-            // Add the locals life at this suspension point to the set of locals which live across
+            // Add the locals live at this suspension point to the set of locals which live across
             // any suspension points
             set.union(&live_locals);
+
+            live_locals_at_suspension_points.push(live_locals);
         }
     }
 
-    // The generator argument is ignored
-    set.remove(self_arg());
+    // Renumber our liveness_map bitsets to include only the locals we are
+    // saving.
+    let live_locals_at_suspension_points = live_locals_at_suspension_points
+        .iter()
+        .map(|live_locals| renumber_bitset(&live_locals, &set))
+        .collect();
 
     let storage_conflicts = compute_storage_conflicts(
         body,
@@ -512,7 +518,7 @@ fn locals_live_across_suspend_points(
         storage_live,
         storage_live_analysis);
 
-    (set, storage_conflicts, storage_liveness_map, suspending_blocks)
+    (set, live_locals_at_suspension_points, storage_conflicts, storage_liveness_map)
 }
 
 /// For every saved local, looks for which locals are StorageLive at the same
@@ -611,7 +617,7 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         FxHashMap<BasicBlock, liveness::LiveVarSet>)
 {
     // Use a liveness analysis to compute locals which are live across a suspension point
-    let (live_locals, storage_conflicts, storage_liveness, suspending_blocks) =
+    let (live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness) =
         locals_live_across_suspend_points(tcx, body, source, movable);
 
     // Erase regions from the types passed in from typeck so we can compare them with
@@ -641,38 +647,46 @@ fn compute_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let dummy_local = LocalDecl::new_internal(tcx.mk_unit(), body.span);
 
-    // Gather live locals and their indices replacing values in body.local_decls with a dummy
-    // to avoid changing local indices
-    let live_decls = live_locals.iter().map(|local| {
+    // Gather live locals and their indices replacing values in body.local_decls
+    // with a dummy to avoid changing local indices.
+    let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
+    let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
+    let mut decls = IndexVec::<GeneratorSavedLocal, _>::new();
+    for (idx, local) in live_locals.iter().enumerate() {
         let var = mem::replace(&mut body.local_decls[local], dummy_local.clone());
-        (local, var)
-    });
-
-    // For now we will access everything via variant #3, leaving empty variants
-    // for the UNRESUMED, RETURNED, and POISONED states.
-    // If there were a yield-less generator without a variant #3, it would not
-    // have any vars to remap, so we would never use this.
-    let variant_index = VariantIdx::new(3);
-
-    // Create a map from local indices to generator struct indices.
-    // We also create a vector of the LocalDecls of these locals.
-    let mut remap = FxHashMap::default();
-    let mut decls = IndexVec::new();
-    for (idx, (local, var)) in live_decls.enumerate() {
-        remap.insert(local, (var.ty, variant_index, idx));
+        locals.push(local);
+        tys.push(var.ty);
         decls.push(var);
+        debug!("generator saved local {:?} => {:?}", GeneratorSavedLocal::from(idx), local);
     }
-    debug!("generator saved local mappings: {:?}", decls);
-    let field_tys = decls.iter().map(|field| field.ty).collect::<IndexVec<_, _>>();
 
-    // Put every var in each variant, for now.
-    let all_vars = (0..field_tys.len()).map(GeneratorSavedLocal::from).collect();
-    let empty_variants = iter::repeat(IndexVec::new()).take(3);
-    let state_variants = iter::repeat(all_vars).take(suspending_blocks.count());
+    // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
+    const RESERVED_VARIANTS: usize = 3;
+
+    // Build the generator variant field list.
+    // Create a map from local indices to generator struct indices.
+    let mut variant_fields: IndexVec<VariantIdx, IndexVec<Field, GeneratorSavedLocal>> =
+        iter::repeat(IndexVec::new()).take(RESERVED_VARIANTS).collect();
+    let mut remap = FxHashMap::default();
+    for (suspension_point_idx, live_locals) in live_locals_at_suspension_points.iter().enumerate() {
+        let variant_index = VariantIdx::from(RESERVED_VARIANTS + suspension_point_idx);
+        let mut fields = IndexVec::new();
+        for (idx, saved_local) in live_locals.iter().enumerate() {
+            fields.push(saved_local);
+            // Note that if a field is included in multiple variants, it will be
+            // added overwritten here. That's fine; fields do not move around
+            // inside generators, so it doesn't matter which variant index we
+            // access them by.
+            remap.insert(locals[saved_local], (tys[saved_local], variant_index, idx));
+        }
+        variant_fields.push(fields);
+    }
+    debug!("generator variant_fields = {:?}", variant_fields);
+    debug!("generator storage_conflicts = {:?}", storage_conflicts);
 
     let layout = GeneratorLayout {
-        field_tys,
-        variant_fields: empty_variants.chain(state_variants).collect(),
+        field_tys: tys,
+        variant_fields,
         storage_conflicts,
         __local_debuginfo_codegen_only_do_not_use: decls,
     };
