@@ -18,7 +18,7 @@ variables:
 jobs:
 # WINDOWS JOBS
 - job: Windows
-  timeoutInMinutes: 600
+  timeoutInMinutes: 180
   variables:
     TAR_COMMAND: tar
   pool:
@@ -38,7 +38,7 @@ jobs:
         SCRIPT: make ci-subset-2
 
 - job: Windows_build  
-  timeoutInMinutes: 600
+  timeoutInMinutes: 180
   variables:
     TAR_COMMAND: tar
   pool:
@@ -66,7 +66,7 @@ jobs:
 
 - job: Windows_test
   dependsOn: Windows_build
-  timeoutInMinutes: 600
+  timeoutInMinutes: 180
   variables:
     TAR_COMMAND: tar
     SKIP_PREP: 1
@@ -285,7 +285,7 @@ jobs:
 
 # macOS JOBS
 - job: macOS
-  timeoutInMinutes: 600
+  timeoutInMinutes: 180
   variables:
     TAR_COMMAND: gtar
   pool:
@@ -306,7 +306,7 @@ jobs:
         NO_DEBUG_ASSERTIONS: 1
 
 - job: macOS_build
-  timeoutInMinutes: 600
+  timeoutInMinutes: 180
   variables:
     TAR_COMMAND: gtar
   pool:
@@ -351,7 +351,7 @@ jobs:
 
 - job: macOS_test
   dependsOn: macOS_build
-  timeoutInMinutes: 600
+  timeoutInMinutes: 180
   variables:
     TAR_COMMAND: gtar
     SKIP_PREP: 1
