@@ -615,6 +615,8 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             //    `if` expression. E.g. given `fn foo() -> &bool;` we reject `if foo() { .. }`.
             //
             // 2. By expecting `bool` for `expr` we get nice diagnostics for e.g. `if x = y { .. }`.
+            //
+            // FIXME(60707): Consider removing hack with principled solution.
             self.check_expr_has_type_or_error(discrim, self.tcx.types.bool)
         } else {
             self.demand_discriminant_type(arms, discrim)
