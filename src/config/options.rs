@@ -4,7 +4,8 @@ use std::path::{Path, PathBuf};
 
 use atty;
 use config_proc_macro::config_type;
-use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
+use serde::de::{SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::config::lists::*;
 use crate::config::Config;

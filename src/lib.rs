@@ -7,8 +7,6 @@ extern crate derive_new;
 extern crate lazy_static;
 #[macro_use]
 extern crate log;
-#[macro_use]
-extern crate serde_derive;
 
 use std::cell::RefCell;
 use std::collections::HashMap;

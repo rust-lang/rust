@@ -11,8 +11,7 @@ use getopts;
 #[macro_use]
 extern crate log;
 use regex;
-#[macro_use]
-extern crate serde_derive;
+use serde::{Deserialize, Serialize};
 use serde_json as json;
 
 use std::collections::HashSet;

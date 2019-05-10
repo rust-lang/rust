@@ -72,6 +72,8 @@ macro_rules! create_config {
         use std::collections::HashSet;
         use std::io::Write;
 
+        use serde::{Deserialize, Serialize};
+
         #[derive(Clone)]
         pub struct Config {
             // if a license_template_path has been specified, successfully read, parsed and compiled
