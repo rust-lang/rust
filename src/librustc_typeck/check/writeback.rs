@@ -611,26 +611,33 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            let new = ty::ResolvedOpaqueTy {
-                concrete_type: definition_ty,
-                substs: self.tcx().lift_to_global(&opaque_defn.substs).unwrap(),
-            };
+            if let Some(substs) = self.tcx().lift_to_global(&opaque_defn.substs) {
+                let new = ty::ResolvedOpaqueTy {
+                    concrete_type: definition_ty,
+                    substs,
+                };
 
-            let old = self.tables
-                .concrete_existential_types
-                .insert(def_id, new);
-            if let Some(old) = old {
-                if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
-                    span_bug!(
-                        span,
-                        "visit_opaque_types tried to write \
-                        different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
-                        def_id,
-                        definition_ty,
-                        opaque_defn,
-                        old,
-                    );
+                let old = self.tables
+                    .concrete_existential_types
+                    .insert(def_id, new);
+                if let Some(old) = old {
+                    if old.concrete_type != definition_ty || old.substs != opaque_defn.substs {
+                        span_bug!(
+                            span,
+                            "visit_opaque_types tried to write \
+                            different types for the same existential type: {:?}, {:?}, {:?}, {:?}",
+                            def_id,
+                            definition_ty,
+                            opaque_defn,
+                            old,
+                        );
+                    }
                 }
+            } else {
+                self.tcx().sess.delay_span_bug(
+                    span,
+                    "cannot lift `opaque_defn` substs to global type context",
+                );
             }
         }
     }
