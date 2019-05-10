@@ -170,10 +170,9 @@ pub fn transcribe(
                     }
 
                     LockstepIterSize::Contradiction(ref msg) => {
-                        // FIXME: this should be impossible. I (mark-i-m) believe it would
-                        // represent a bug in the macro_parser.
-                        // FIXME #2887 blame macro invoker instead
-                        cx.span_fatal(seq.span(), &msg[..]);
+                        // This should never happen because the macro parser should generate
+                        // properly-sized matches for all meta-vars.
+                        cx.span_bug(seq.span(), &msg[..]);
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -188,14 +187,13 @@ pub fn transcribe(
                         // Is the repetition empty?
                         if len == 0 {
                             if seq.op == quoted::KleeneOp::OneOrMore {
-                                // FIXME: this should be impossible because we check for this in
-                                // macro_parser.rs
-                                // FIXME #2887 blame invoker
-                                cx.span_fatal(sp.entire(), "this must repeat at least once");
+                                // This should be impossible because the macro parser would not
+                                // match the given macro arm.
+                                cx.span_bug(sp.entire(), "this must repeat at least once");
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repretitions so far). `len`
-                            //   is the total number of reptitions we should generate.
+                            // is the total number of reptitions we should generate.
                             repeats.push((0, len));
 
                             // The first time we encounter the sequence we push it to the stack. It
