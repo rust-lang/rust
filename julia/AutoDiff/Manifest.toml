@@ -25,7 +25,7 @@ uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
 
 [[MCAnalyzer]]
 deps = ["LLVM"]
-git-tree-sha1 = "ed6f1c4cf5220f072addc7f7af5486df32fdfb39"
+git-tree-sha1 = "7376d664016f148ccf59c83c8160682a6638650d"
 repo-rev = "master"
 repo-url = "https://github.com/vchuravy/MCAnalyzer.jl"
 uuid = "a81df072-f4bb-11e8-03d3-cfaeda626d18"
