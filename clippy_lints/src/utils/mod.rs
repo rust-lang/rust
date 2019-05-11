@@ -40,6 +40,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_errors::Applicability;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
+use syntax::ext::hygiene::ExpnFormat;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{keywords, Symbol};
 
@@ -90,7 +91,15 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
 
 /// Returns `true` if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
-    span.ctxt().outer().expn_info().is_some()
+    if let Some(info) = span.ctxt().outer().expn_info() {
+        if let ExpnFormat::CompilerDesugaring(..) = info.format {
+            false
+        } else {
+            true
+        }
+    } else {
+        false
+    }
 }
 
 // If the snippet is empty, it's an attribute that was inserted during macro

@@ -1,14 +1,20 @@
 error: this .into_iter() call is equivalent to .iter() and will not move the array
-  --> $DIR/into_iter_on_ref.rs:15:23
+  --> $DIR/into_iter_on_ref.rs:13:24
    |
-LL |     let _ = [1, 2, 3].into_iter(); //~ ERROR equivalent to .iter()
-   |                       ^^^^^^^^^ help: call directly: `iter`
+LL |     for _ in [1, 2, 3].into_iter() {} //~ ERROR equivalent to .iter()
+   |                        ^^^^^^^^^ help: call directly: `iter`
    |
 note: lint level defined here
   --> $DIR/into_iter_on_ref.rs:4:9
    |
 LL | #![deny(clippy::into_iter_on_array)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this .into_iter() call is equivalent to .iter() and will not move the array
+  --> $DIR/into_iter_on_ref.rs:15:23
+   |
+LL |     let _ = [1, 2, 3].into_iter(); //~ ERROR equivalent to .iter()
+   |                       ^^^^^^^^^ help: call directly: `iter`
 
 error: this .into_iter() call is equivalent to .iter() and will not move the Vec
   --> $DIR/into_iter_on_ref.rs:17:30
@@ -168,5 +174,5 @@ error: this .into_iter() call is equivalent to .iter() and will not move the Pat
 LL |     let _ = std::path::PathBuf::from("12/34").into_iter(); //~ ERROR equivalent to .iter()
    |                                               ^^^^^^^^^ help: call directly: `iter`
 
-error: aborting due to 27 previous errors
+error: aborting due to 28 previous errors
 
