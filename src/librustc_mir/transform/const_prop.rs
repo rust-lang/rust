@@ -656,75 +656,87 @@ impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         location: Location,
     ) {
         self.super_terminator(terminator, location);
-        let source_info = terminator.source_info;;
-        if let TerminatorKind::Assert { expected, msg, cond, .. } = &terminator.kind {
-            if let Some(value) = self.eval_operand(&cond, source_info) {
-                trace!("assertion on {:?} should be {:?}", value, expected);
-                let expected = ScalarMaybeUndef::from(Scalar::from_bool(*expected));
-                if expected != self.ecx.read_scalar(value).unwrap() {
-                    // poison all places this operand references so that further code
-                    // doesn't use the invalid value
-                    match cond {
-                        Operand::Move(ref place) | Operand::Copy(ref place) => {
-                            let mut place = place;
-                            while let Place::Projection(ref proj) = *place {
-                                place = &proj.base;
-                            }
-                            if let Place::Base(PlaceBase::Local(local)) = *place {
-                                self.places[local] = None;
-                            }
-                        },
-                        Operand::Constant(_) => {}
+        let source_info = terminator.source_info;
+        match &mut terminator.kind {
+            TerminatorKind::Assert { expected, msg, ref mut cond, .. } => {
+                if let Some(value) = self.eval_operand(&cond, source_info) {
+                    trace!("assertion on {:?} should be {:?}", value, expected);
+                    let expected = ScalarMaybeUndef::from(Scalar::from_bool(*expected));
+                    let value_const = self.ecx.read_scalar(value).unwrap();
+                    if expected != value_const {
+                        // poison all places this operand references so that further code
+                        // doesn't use the invalid value
+                        match cond {
+                            Operand::Move(ref place) | Operand::Copy(ref place) => {
+                                let mut place = place;
+                                while let Place::Projection(ref proj) = *place {
+                                    place = &proj.base;
+                                }
+                                if let Place::Base(PlaceBase::Local(local)) = *place {
+                                    self.places[local] = None;
+                                }
+                            },
+                            Operand::Constant(_) => {}
+                        }
+                        let span = terminator.source_info.span;
+                        let hir_id = self
+                            .tcx
+                            .hir()
+                            .as_local_hir_id(self.source.def_id())
+                            .expect("some part of a failing const eval must be local");
+                        use rustc::mir::interpret::InterpError::*;
+                        let msg = match msg {
+                            Overflow(_) |
+                            OverflowNeg |
+                            DivisionByZero |
+                            RemainderByZero => msg.description().to_owned(),
+                            BoundsCheck { ref len, ref index } => {
+                                let len = self
+                                    .eval_operand(len, source_info)
+                                    .expect("len must be const");
+                                let len = match self.ecx.read_scalar(len) {
+                                    Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                                        bits, ..
+                                    })) => bits,
+                                    other => bug!("const len not primitive: {:?}", other),
+                                };
+                                let index = self
+                                    .eval_operand(index, source_info)
+                                    .expect("index must be const");
+                                let index = match self.ecx.read_scalar(index) {
+                                    Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                                        bits, ..
+                                    })) => bits,
+                                    other => bug!("const index not primitive: {:?}", other),
+                                };
+                                format!(
+                                    "index out of bounds: \
+                                    the len is {} but the index is {}",
+                                    len,
+                                    index,
+                                )
+                            },
+                            // Need proper const propagator for these
+                            _ => return,
+                        };
+                        self.tcx.lint_hir(
+                            ::rustc::lint::builtin::CONST_ERR,
+                            hir_id,
+                            span,
+                            &msg,
+                        );
+                    } else {
+                        if let ScalarMaybeUndef::Scalar(scalar) = value_const {
+                            *cond = self.operand_from_scalar(
+                                scalar,
+                                self.tcx.types.bool,
+                                source_info.span,
+                            );
+                        }
                     }
-                    let span = terminator.source_info.span;
-                    let hir_id = self
-                        .tcx
-                        .hir()
-                        .as_local_hir_id(self.source.def_id())
-                        .expect("some part of a failing const eval must be local");
-                    use rustc::mir::interpret::InterpError::*;
-                    let msg = match msg {
-                        Overflow(_) |
-                        OverflowNeg |
-                        DivisionByZero |
-                        RemainderByZero => msg.description().to_owned(),
-                        BoundsCheck { ref len, ref index } => {
-                            let len = self
-                                .eval_operand(len, source_info)
-                                .expect("len must be const");
-                            let len = match self.ecx.read_scalar(len) {
-                                Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
-                                    bits, ..
-                                })) => bits,
-                                other => bug!("const len not primitive: {:?}", other),
-                            };
-                            let index = self
-                                .eval_operand(index, source_info)
-                                .expect("index must be const");
-                            let index = match self.ecx.read_scalar(index) {
-                                Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
-                                    bits, ..
-                                })) => bits,
-                                other => bug!("const index not primitive: {:?}", other),
-                            };
-                            format!(
-                                "index out of bounds: \
-                                the len is {} but the index is {}",
-                                len,
-                                index,
-                            )
-                        },
-                        // Need proper const propagator for these
-                        _ => return,
-                    };
-                    self.tcx.lint_hir(
-                        ::rustc::lint::builtin::CONST_ERR,
-                        hir_id,
-                        span,
-                        &msg,
-                    );
                 }
-            }
+            },
+            _ => {}
         }
     }
 }
