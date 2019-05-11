@@ -36,12 +36,21 @@ $ cd rust-analyzer
 $ cargo install-code
 ```
 
-This will run `cargo install --package ra_lsp_server` to install the server
-binary into `~/.cargo/bin`, and then will build and install plugin from
-`editors/code`. See
-[this](https://github.com/rust-analyzer/rust-analyzer/blob/69ee5c9c5ef212f7911028c9ddf581559e6565c3/crates/tools/src/main.rs#L37-L56)
-for details. The installation is expected to *just work*, if it doesn't, report
-bugs!
+The automatic installation is expected to *just work* for common cases, if it
+doesn't, report bugs!
+
+If you have an usual setup (for example, `code` is not in the `PATH`), you
+should adapt these manual installation instructions:
+
+```
+$ git clone https://github.com/rust-analyzer/rust-analyzer.git --depth 1
+$ cd rust-analyzer
+$ cargo install --path ./crates/ra_lsp_server/ --force
+$ cd ./editors/code
+$ npm install
+$ ./node_modules/vsce/out/vsce package
+$ code --install-extension ./ra-lsp-0.0.1.vsix
+```
 
 It's better to remove existing Rust plugins to avoid interference.
 
@@ -59,8 +68,8 @@ for details.
 * `rust-analyzer.raLspServerPath`: path to `ra_lsp_server` executable
 * `rust-analyzer.enableCargoWatchOnStartup`: prompt to install & enable `cargo
   watch` for live error highlighting (note, this **does not** use rust-analyzer)
-* `rust-analyzer.cargo-watch.check-arguments`: cargo-watch check arguments. 
-  (e.g: `--features="shumway,pdf"` will run as `cargo watch -x "check --features="shumway,pdf""` )  
+* `rust-analyzer.cargo-watch.check-arguments`: cargo-watch check arguments.
+  (e.g: `--features="shumway,pdf"` will run as `cargo watch -x "check --features="shumway,pdf""` )
 * `rust-analyzer.trace.server`: enables internal logging
 * `rust-analyzer.trace.cargo-watch`: enables cargo-watch logging
 
