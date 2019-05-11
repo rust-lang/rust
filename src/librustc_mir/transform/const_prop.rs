@@ -546,6 +546,10 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             }
         }
     }
+
+    fn should_const_prop(&self) -> bool {
+        self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2
+    }
 }
 
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -639,7 +643,7 @@ impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             assert!(self.places[local].is_none());
                             self.places[local] = Some(value);
 
-                            if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+                            if self.should_const_prop() {
                                 self.replace_with_const(rval, value, statement.source_info.span);
                             }
                         }
@@ -726,20 +730,25 @@ impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             &msg,
                         );
                     } else {
-                        if let ScalarMaybeUndef::Scalar(scalar) = value_const {
-                            *cond = self.operand_from_scalar(
-                                scalar,
-                                self.tcx.types.bool,
-                                source_info.span,
-                            );
+                        if self.should_const_prop() {
+                            if let ScalarMaybeUndef::Scalar(scalar) = value_const {
+                                *cond = self.operand_from_scalar(
+                                    scalar,
+                                    self.tcx.types.bool,
+                                    source_info.span,
+                                );
+                            }
                         }
                     }
                 }
             },
             TerminatorKind::SwitchInt { ref mut discr, switch_ty, .. } => {
-                if let Some(value) = self.eval_operand(&discr, source_info) {
-                    if let ScalarMaybeUndef::Scalar(scalar) = self.ecx.read_scalar(value).unwrap() {
-                        *discr = self.operand_from_scalar(scalar, switch_ty, source_info.span);
+                if self.should_const_prop() {
+                    if let Some(value) = self.eval_operand(&discr, source_info) {
+                        if let ScalarMaybeUndef::Scalar(scalar) =
+                                self.ecx.read_scalar(value).unwrap() {
+                            *discr = self.operand_from_scalar(scalar, switch_ty, source_info.span);
+                        }
                     }
                 }
             },
