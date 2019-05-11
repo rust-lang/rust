@@ -5474,10 +5474,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
-                    span_bug!(span,
+                    self.tcx.sess.delay_span_bug(span, &format!(
                         "instantiate_value_path: (UFCS) {:?} was a subtype of {:?} but now is not?",
                         self_ty,
-                        impl_ty);
+                        impl_ty,
+                    ));
                 }
             }
         }
