@@ -41,7 +41,7 @@ impl Allocator {
             data: RefCell::new(vec![])
         }
     }
-    fn alloc(&self) -> Ptr {
+    fn alloc(&self) -> Ptr<'_> {
         self.cur_ops.set(self.cur_ops.get() + 1);
 
         if self.cur_ops.get() == self.failing_op {
@@ -52,6 +52,20 @@ impl Allocator {
         let addr = data.len();
         data.push(true);
         Ptr(addr, self)
+    }
+    // FIXME(#47949) Any use of this indicates a bug in rustc: we should never
+    // be leaking values in the cases here.
+    //
+    // Creates a `Ptr<'_>` and checks that the allocated value is leaked if the
+    // `failing_op` is in the list of exception.
+    fn alloc_leaked(&self, exceptions: Vec<usize>) -> Ptr<'_> {
+        let ptr = self.alloc();
+
+        if exceptions.iter().any(|operation| *operation == self.failing_op) {
+            let mut data = self.data.borrow_mut();
+            data[ptr.0] = false;
+        }
+        ptr
     }
 }
 
@@ -255,6 +269,72 @@ fn subslice_pattern_reassign(a: &Allocator) {
     let[_, _y..] = ar;
 }
 
+fn panic_after_return(a: &Allocator) -> Ptr<'_> {
+    // Panic in the drop of `p` or `q` can leak
+    let exceptions = vec![8, 9];
+    a.alloc();
+    let p = a.alloc();
+    {
+        a.alloc();
+        let p = a.alloc();
+        // FIXME (#47949) We leak values when we panic in a destructor after
+        // evaluating an expression with `rustc_mir::build::Builder::into`.
+        a.alloc_leaked(exceptions)
+    }
+}
+
+fn panic_after_return_expr(a: &Allocator) -> Ptr<'_> {
+    // Panic in the drop of `p` or `q` can leak
+    let exceptions = vec![8, 9];
+    a.alloc();
+    let p = a.alloc();
+    {
+        a.alloc();
+        let q = a.alloc();
+        // FIXME (#47949)
+        return a.alloc_leaked(exceptions);
+    }
+}
+
+fn panic_after_init(a: &Allocator) {
+    // Panic in the drop of `r` can leak
+    let exceptions = vec![8];
+    a.alloc();
+    let p = a.alloc();
+    let q = {
+        a.alloc();
+        let r = a.alloc();
+        // FIXME (#47949)
+        a.alloc_leaked(exceptions)
+    };
+}
+
+fn panic_after_init_temp(a: &Allocator) {
+    // Panic in the drop of `r` can leak
+    let exceptions = vec![8];
+    a.alloc();
+    let p = a.alloc();
+    {
+        a.alloc();
+        let r = a.alloc();
+        // FIXME (#47949)
+        a.alloc_leaked(exceptions)
+    };
+}
+
+fn panic_after_init_by_loop(a: &Allocator) {
+    // Panic in the drop of `r` can leak
+    let exceptions = vec![8];
+    a.alloc();
+    let p = a.alloc();
+    let q = loop {
+        a.alloc();
+        let r = a.alloc();
+        // FIXME (#47949)
+        break a.alloc_leaked(exceptions);
+    };
+}
+
 fn run_test<F>(mut f: F)
     where F: FnMut(&Allocator)
 {
@@ -341,6 +421,16 @@ fn main() {
     run_test(|a| subslice_pattern_from_end_with_drop(a, false, false));
     run_test(|a| slice_pattern_reassign(a));
     run_test(|a| subslice_pattern_reassign(a));
+
+    run_test(|a| {
+        panic_after_return(a);
+    });
+    run_test(|a| {
+        panic_after_return_expr(a);
+    });
+    run_test(|a| panic_after_init(a));
+    run_test(|a| panic_after_init_temp(a));
+    run_test(|a| panic_after_init_by_loop(a));
 
     run_test_nopanic(|a| union1(a));
 }
