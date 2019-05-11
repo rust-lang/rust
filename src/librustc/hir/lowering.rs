@@ -5647,11 +5647,7 @@ impl<'a> LoweringContext<'a> {
                 hir_vec![ready_arm, pending_arm],
                 hir::MatchSource::AwaitDesugar,
             ));
-            hir::Stmt {
-                hir_id: self.next_id(),
-                node: hir::StmtKind::Expr(match_expr),
-                span,
-            }
+            self.stmt(span, hir::StmtKind::Expr(match_expr))
         };
 
         let yield_stmt = {
@@ -5661,11 +5657,7 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprKind::Yield(P(unit)),
                 ThinVec::new(),
             ));
-            hir::Stmt {
-                hir_id: self.next_id(),
-                node: hir::StmtKind::Expr(yield_expr),
-                span,
-            }
+            self.stmt(span, hir::StmtKind::Expr(yield_expr))
         };
 
         let loop_block = P(self.block_all(
