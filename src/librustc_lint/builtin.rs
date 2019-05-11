@@ -42,7 +42,7 @@ use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeTemplate, AttributeType};
 use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span, SyntaxContext};
-use syntax::symbol::{Symbol, keywords, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::expr_to_string;
 use syntax::visit::FnKind;
@@ -607,7 +607,7 @@ impl EarlyLintPass for AnonymousParameters {
                 for arg in sig.decl.inputs.iter() {
                     match arg.pat.node {
                         ast::PatKind::Ident(_, ident, None) => {
-                            if ident.name == keywords::Invalid.name() {
+                            if ident.name == kw::Invalid {
                                 let ty_snip = cx
                                     .sess
                                     .source_map()

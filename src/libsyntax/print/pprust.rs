@@ -13,7 +13,7 @@ use crate::print::pp::{self, Breaks};
 use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::ptr::P;
 use crate::std_inject;
-use crate::symbol::{keywords, sym};
+use crate::symbol::{kw, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use rustc_target::spec::abi::{self, Abi};
@@ -641,8 +641,8 @@ pub trait PrintState<'a> {
             if i > 0 {
                 self.writer().word("::")?
             }
-            if segment.ident.name != keywords::PathRoot.name() {
-                if segment.ident.name == keywords::DollarCrate.name() {
+            if segment.ident.name != kw::PathRoot {
+                if segment.ident.name == kw::DollarCrate {
                     self.print_dollar_crate(segment.ident)?;
                 } else {
                     self.writer().word(segment.ident.as_str().to_string())?;
@@ -1340,7 +1340,7 @@ impl<'a> State<'a> {
                 self.s.word(";")?;
             }
             ast::ItemKind::Mac(ref mac) => {
-                if item.ident.name == keywords::Invalid.name() {
+                if item.ident.name == kw::Invalid {
                     self.print_mac(mac)?;
                     match mac.node.delim {
                         MacDelimiter::Brace => {}
@@ -2400,8 +2400,8 @@ impl<'a> State<'a> {
                           colons_before_params: bool)
                           -> io::Result<()>
     {
-        if segment.ident.name != keywords::PathRoot.name() {
-            if segment.ident.name == keywords::DollarCrate.name() {
+        if segment.ident.name != kw::PathRoot {
+            if segment.ident.name == kw::DollarCrate {
                 self.print_dollar_crate(segment.ident)?;
             } else {
                 self.print_ident(segment.ident)?;
@@ -2984,7 +2984,7 @@ impl<'a> State<'a> {
                     self.print_explicit_self(&eself)?;
                 } else {
                     let invalid = if let PatKind::Ident(_, ident, _) = input.pat.node {
-                        ident.name == keywords::Invalid.name()
+                        ident.name == kw::Invalid
                     } else {
                         false
                     };

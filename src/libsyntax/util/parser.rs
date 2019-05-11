@@ -1,5 +1,5 @@
 use crate::parse::token::{Token, BinOpToken};
-use crate::symbol::keywords;
+use crate::symbol::kw;
 use crate::ast::{self, BinOpKind};
 
 /// Associative operator with precedence.
@@ -100,7 +100,7 @@ impl AssocOp {
             // DotDotDot is no longer supported, but we need some way to display the error
             Token::DotDotDot => Some(DotDotEq),
             Token::Colon => Some(Colon),
-            _ if t.is_keyword(keywords::As) => Some(As),
+            _ if t.is_keyword(kw::As) => Some(As),
             _ => None
         }
     }

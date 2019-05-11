@@ -123,7 +123,7 @@ use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::source_map::{DUMMY_SP, original_sp};
-use syntax::symbol::{Symbol, LocalInternedString, keywords, sym};
+use syntax::symbol::{Symbol, LocalInternedString, kw, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
@@ -3290,7 +3290,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Ok(method)
             }
             Err(error) => {
-                if segment.ident.name != keywords::Invalid.name() {
+                if segment.ident.name != kw::Invalid {
                     self.report_method_error(span,
                                              rcvr_t,
                                              segment.ident,
@@ -3402,7 +3402,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             err.emit();
             field_ty
-        } else if field.name == keywords::Invalid.name() {
+        } else if field.name == kw::Invalid {
             self.tcx().types.err
         } else if self.method_exists(field, expr_t, expr.hir_id, true) {
             let mut err = type_error_struct!(self.tcx().sess, field.span, expr_t, E0615,
@@ -4672,7 +4672,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
                 _ => Err(ErrorReported),
             };
-            if item_name.name != keywords::Invalid.name() {
+            if item_name.name != kw::Invalid {
                 self.report_method_error(
                     span,
                     ty,

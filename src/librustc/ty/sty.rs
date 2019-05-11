@@ -22,7 +22,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::symbol::{keywords, InternedString};
+use syntax::symbol::{kw, InternedString};
 
 use serialize;
 use self::InferTy::*;
@@ -1121,7 +1121,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, keywords::SelfUpper.name().as_interned_str())
+        ParamTy::new(0, kw::SelfUpper.as_interned_str())
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
@@ -1136,7 +1136,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         // FIXME(#50125): Ignoring `Self` with `index != 0` might lead to weird behavior elsewhere,
         // but this should only be possible when using `-Z continue-parse-after-error` like
         // `compile-fail/issue-36638.rs`.
-        self.name.as_symbol() == keywords::SelfUpper.name() && self.index == 0
+        self.name.as_symbol() == kw::SelfUpper && self.index == 0
     }
 }
 

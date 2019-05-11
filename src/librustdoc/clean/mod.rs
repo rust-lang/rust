@@ -31,8 +31,7 @@ use syntax::attr;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::{dummy_spanned, Spanned};
 use syntax::ptr::P;
-use syntax::symbol::keywords::{self, Keyword};
-use syntax::symbol::{Symbol, sym};
+use syntax::symbol::{Symbol, kw, sym};
 use syntax::symbol::InternedString;
 use syntax_pos::{self, Pos, FileName};
 
@@ -43,7 +42,6 @@ use std::default::Default;
 use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
 use std::rc::Rc;
-use std::str::FromStr;
 use std::cell::RefCell;
 use std::sync::Arc;
 use std::u32;
@@ -309,10 +307,9 @@ impl Clean<ExternalCrate> for CrateNum {
                 for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
                         if attr.check_name(sym::keyword) {
-                            keyword = Keyword::from_str(&v.as_str()).ok()
-                                                                    .map(|x| x.name().to_string());
-                            if keyword.is_some() {
-                                break
+                            if v.is_doc_keyword() {
+                                keyword = Some(v.to_string());
+                                break;
                             }
                             // FIXME: should warn on unknown keywords?
                         }
@@ -1702,7 +1699,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         let stripped_typarams = gens.params.iter().filter_map(|param| match param.kind {
             ty::GenericParamDefKind::Lifetime => None,
             ty::GenericParamDefKind::Type { .. } => {
-                if param.name.as_symbol() == keywords::SelfUpper.name() {
+                if param.name.as_symbol() == kw::SelfUpper {
                     assert_eq!(param.index, 0);
                     return None;
                 }
@@ -3596,7 +3593,7 @@ fn qpath_to_string(p: &hir::QPath) -> String {
         if i > 0 {
             s.push_str("::");
         }
-        if seg.ident.name != keywords::PathRoot.name() {
+        if seg.ident.name != kw::PathRoot {
             s.push_str(&*seg.ident.as_str());
         }
     }
@@ -4176,7 +4173,7 @@ fn resolve_type(cx: &DocContext<'_>,
             hir::Float(float_ty) => return Primitive(float_ty.into()),
         },
         Res::SelfTy(..) if path.segments.len() == 1 => {
-            return Generic(keywords::SelfUpper.name().to_string());
+            return Generic(kw::SelfUpper.to_string());
         }
         Res::Def(DefKind::TyParam, _) if path.segments.len() == 1 => {
             return Generic(format!("{:#}", path));

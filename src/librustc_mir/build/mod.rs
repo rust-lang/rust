@@ -20,7 +20,7 @@ use std::mem;
 use std::u32;
 use rustc_target::spec::abi::Abi;
 use syntax::attr::{self, UnwindAttr};
-use syntax::symbol::keywords;
+use syntax::symbol::kw;
 use syntax_pos::Span;
 
 use super::lints;
@@ -660,7 +660,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 ty::UpvarCapture::ByRef(..) => true,
             };
             let mut debuginfo = UpvarDebuginfo {
-                debug_name: keywords::Invalid.name(),
+                debug_name: kw::Invalid,
                 by_ref,
             };
             let mut mutability = Mutability::Not;

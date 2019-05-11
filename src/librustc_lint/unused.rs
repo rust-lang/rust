@@ -12,7 +12,7 @@ use syntax::attr;
 use syntax::errors::Applicability;
 use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
-use syntax::symbol::{keywords, sym};
+use syntax::symbol::{kw, sym};
 use syntax::symbol::Symbol;
 use syntax::util::parser;
 use syntax_pos::Span;
@@ -455,7 +455,7 @@ impl UnusedImportBraces {
             match items[0].0.kind {
                 ast::UseTreeKind::Simple(rename, ..) => {
                     let orig_ident = items[0].0.prefix.segments.last().unwrap().ident;
-                    if orig_ident.name == keywords::SelfLower.name() {
+                    if orig_ident.name == kw::SelfLower {
                         return;
                     }
                     node_ident = rename.unwrap_or(orig_ident);

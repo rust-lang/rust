@@ -1107,7 +1107,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                     _ => IsInFollow::No(tokens),
                 }
             },
-            "" => IsInFollow::Yes, // keywords::Invalid
+            "" => IsInFollow::Yes, // kw::Invalid
             _ => IsInFollow::Invalid(format!("invalid fragment specifier `{}`", frag),
                                      VALID_FRAGMENT_NAMES_MSG),
         }

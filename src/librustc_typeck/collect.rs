@@ -39,7 +39,7 @@ use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{InlineAttr, OptimizeAttr, list_contains_name, mark_used};
 use syntax::source_map::Spanned;
 use syntax::feature_gate;
-use syntax::symbol::{InternedString, keywords, Symbol, sym};
+use syntax::symbol::{InternedString, kw, Symbol, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::def::{CtorKind, Res, DefKind};
@@ -939,7 +939,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
 
                     opt_self = Some(ty::GenericParamDef {
                         index: 0,
-                        name: keywords::SelfUpper.name().as_interned_str(),
+                        name: kw::SelfUpper.as_interned_str(),
                         def_id: tcx.hir().local_def_id_from_hir_id(param_id),
                         pure_wrt_drop: false,
                         kind: ty::GenericParamDefKind::Type {
@@ -1008,7 +1008,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                         synthetic,
                         ..
                     } => {
-                        if param.name.ident().name == keywords::SelfUpper.name() {
+                        if param.name.ident().name == kw::SelfUpper {
                             span_bug!(
                                 param.span,
                                 "`Self` should not be the name of a regular parameter"
@@ -1038,7 +1038,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
                         }
                     }
                     GenericParamKind::Const { .. } => {
-                        if param.name.ident().name == keywords::SelfUpper.name() {
+                        if param.name.ident().name == kw::SelfUpper {
                             span_bug!(
                                 param.span,
                                 "`Self` should not be the name of a regular parameter",

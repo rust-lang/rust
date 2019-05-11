@@ -80,7 +80,7 @@ use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::{Parser, PathStyle};
 use crate::parse::token::{self, DocComment, Nonterminal, Token};
 use crate::print::pprust;
-use crate::symbol::keywords;
+use crate::symbol::kw;
 use crate::tokenstream::{DelimSpan, TokenStream};
 
 use errors::FatalError;
@@ -382,7 +382,7 @@ fn nameize<I: Iterator<Item = NamedMatch>>(
             TokenTree::Delimited(_, ref delim) => for next_m in &delim.tts {
                 n_rec(sess, next_m, res.by_ref(), ret_val)?;
             },
-            TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+            TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
                 if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                     return Err((span, "missing fragment specifier".to_string()));
                 }
@@ -587,7 +587,7 @@ fn inner_parse_loop<'root, 'tt>(
                 }
 
                 // We need to match a metavar (but the identifier is invalid)... this is an error
-                TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+                TokenTree::MetaVarDecl(span, _, id) if id.name == kw::Invalid => {
                     if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
                         return Error(span, "missing fragment specifier".to_string());
                     }
@@ -802,7 +802,7 @@ pub fn parse(
 /// We prohibit passing `_` to macros expecting `ident` for now.
 fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
     match *token {
-        token::Ident(ident, is_raw) if ident.name != keywords::Underscore.name() =>
+        token::Ident(ident, is_raw) if ident.name != kw::Underscore =>
             Some((ident, is_raw)),
         _ => None,
     }

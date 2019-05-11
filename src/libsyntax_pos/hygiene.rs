@@ -8,7 +8,7 @@
 use crate::GLOBALS;
 use crate::Span;
 use crate::edition::Edition;
-use crate::symbol::{keywords, Symbol};
+use crate::symbol::{kw, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -192,7 +192,7 @@ impl HygieneData {
                 prev_ctxt: SyntaxContext(0),
                 opaque: SyntaxContext(0),
                 opaque_and_semitransparent: SyntaxContext(0),
-                dollar_crate_name: keywords::DollarCrate.name(),
+                dollar_crate_name: kw::DollarCrate,
             }],
             markings: FxHashMap::default(),
         }
@@ -245,7 +245,7 @@ impl SyntaxContext {
                 prev_ctxt: SyntaxContext::empty(),
                 opaque: SyntaxContext::empty(),
                 opaque_and_semitransparent: SyntaxContext::empty(),
-                dollar_crate_name: keywords::DollarCrate.name(),
+                dollar_crate_name: kw::DollarCrate,
             });
             SyntaxContext(data.syntax_contexts.len() as u32 - 1)
         })
@@ -312,7 +312,7 @@ impl SyntaxContext {
                         prev_ctxt,
                         opaque: new_opaque,
                         opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: keywords::DollarCrate.name(),
+                        dollar_crate_name: kw::DollarCrate,
                     });
                     new_opaque
                 });
@@ -330,7 +330,7 @@ impl SyntaxContext {
                         prev_ctxt,
                         opaque,
                         opaque_and_semitransparent: new_opaque_and_semitransparent,
-                        dollar_crate_name: keywords::DollarCrate.name(),
+                        dollar_crate_name: kw::DollarCrate,
                     });
                     new_opaque_and_semitransparent
                 });
@@ -346,7 +346,7 @@ impl SyntaxContext {
                     prev_ctxt,
                     opaque,
                     opaque_and_semitransparent,
-                    dollar_crate_name: keywords::DollarCrate.name(),
+                    dollar_crate_name: kw::DollarCrate,
                 });
                 new_opaque_and_semitransparent_and_transparent
             })
@@ -512,7 +512,7 @@ impl SyntaxContext {
                 &mut data.syntax_contexts[self.0 as usize].dollar_crate_name, dollar_crate_name
             );
             assert!(dollar_crate_name == prev_dollar_crate_name ||
-                    prev_dollar_crate_name == keywords::DollarCrate.name(),
+                    prev_dollar_crate_name == kw::DollarCrate,
                     "$crate name is reset for a syntax context");
         })
     }

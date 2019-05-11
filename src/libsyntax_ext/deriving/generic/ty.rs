@@ -10,7 +10,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::source_map::{respan, DUMMY_SP};
 use syntax::ptr::P;
 use syntax_pos::Span;
-use syntax_pos::symbol::keywords;
+use syntax_pos::symbol::kw;
 
 /// The types of pointers
 #[derive(Clone)]
@@ -86,7 +86,7 @@ impl<'a> Path<'a> {
             PathKind::Local => cx.path_all(span, false, idents, params, Vec::new()),
             PathKind::Std => {
                 let def_site = DUMMY_SP.apply_mark(cx.current_expansion.mark);
-                idents.insert(0, Ident::new(keywords::DollarCrate.name(), def_site));
+                idents.insert(0, Ident::new(kw::DollarCrate, def_site));
                 cx.path_all(span, false, idents, params, Vec::new())
             }
         }

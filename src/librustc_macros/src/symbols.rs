@@ -97,7 +97,6 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     let mut keyword_stream = quote! {};
     let mut symbols_stream = quote! {};
     let mut prefill_stream = quote! {};
-    let mut from_str_stream = quote! {};
     let mut counter = 0u32;
     let mut keys = HashSet::<String>::new();
 
@@ -115,12 +114,7 @@ pub fn symbols(input: TokenStream) -> TokenStream {
             #value,
         });
         keyword_stream.extend(quote! {
-            pub const #name: Keyword = Keyword {
-                ident: Ident::with_empty_ctxt(super::Symbol::new(#counter))
-            };
-        });
-        from_str_stream.extend(quote! {
-            #value => Ok(#name),
+            pub const #name: Symbol = Symbol::new(#counter);
         });
         counter += 1;
     }
@@ -145,17 +139,6 @@ pub fn symbols(input: TokenStream) -> TokenStream {
         macro_rules! keywords {
             () => {
                 #keyword_stream
-
-                impl std::str::FromStr for Keyword {
-                    type Err = ();
-
-                    fn from_str(s: &str) -> Result<Self, ()> {
-                        match s {
-                            #from_str_stream
-                            _ => Err(()),
-                        }
-                    }
-                }
             }
         }
 

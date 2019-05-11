@@ -980,7 +980,7 @@ impl<F: fmt::Write> Printer<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> {
             if self.tcx.sess.rust_2018() {
                 // We add the `crate::` keyword on Rust 2018, only when desired.
                 if SHOULD_PREFIX_WITH_CRATE.with(|flag| flag.get()) {
-                    write!(self, "{}", keywords::Crate.name())?;
+                    write!(self, "{}", kw::Crate)?;
                     self.empty_path = false;
                 }
             }

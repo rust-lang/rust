@@ -6,7 +6,7 @@ use crate::parse::PResult;
 use crate::parse::token::{self, Token};
 use crate::parse::unescape::{unescape_str, unescape_char, unescape_byte_str, unescape_byte};
 use crate::print::pprust;
-use crate::symbol::{keywords, Symbol};
+use crate::symbol::{kw, Symbol};
 use crate::tokenstream::{TokenStream, TokenTree};
 
 use errors::{Applicability, Handler};
