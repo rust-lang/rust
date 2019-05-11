@@ -736,6 +736,13 @@ impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                     }
                 }
             },
+            TerminatorKind::SwitchInt { ref mut discr, switch_ty, .. } => {
+                if let Some(value) = self.eval_operand(&discr, source_info) {
+                    if let ScalarMaybeUndef::Scalar(scalar) = self.ecx.read_scalar(value).unwrap() {
+                        *discr = self.operand_from_scalar(scalar, switch_ty, source_info.span);
+                    }
+                }
+            },
             _ => {}
         }
     }
