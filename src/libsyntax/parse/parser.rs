@@ -1480,9 +1480,7 @@ impl<'a> Parser<'a> {
             (ident, TraitItemKind::Const(ty, default), ast::Generics::default())
         } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
             // trait item macro.
-            (Ident::with_empty_ctxt(kw::Invalid),
-             ast::TraitItemKind::Macro(mac),
-             ast::Generics::default())
+            (Ident::invalid(), ast::TraitItemKind::Macro(mac), ast::Generics::default())
         } else {
             let (constness, unsafety, mut asyncness, abi) = self.parse_fn_front_matter()?;
 
@@ -4988,7 +4986,7 @@ impl<'a> Parser<'a> {
 
             // it's a macro invocation
             let id = match self.token {
-                token::OpenDelim(_) => Ident::with_empty_ctxt(kw::Invalid), // no special identifier
+                token::OpenDelim(_) => Ident::invalid(), // no special identifier
                 _ => self.parse_ident()?,
             };
 
@@ -6396,7 +6394,7 @@ impl<'a> Parser<'a> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(vis), at_end)? {
             // method macro
-            Ok((Ident::with_empty_ctxt(kw::Invalid), vec![], ast::Generics::default(),
+            Ok((Ident::invalid(), vec![], ast::Generics::default(),
                 ast::ImplItemKind::Macro(mac)))
         } else {
             let (constness, unsafety, mut asyncness, abi) = self.parse_fn_front_matter()?;
@@ -6616,7 +6614,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Ok((Ident::with_empty_ctxt(kw::Invalid), item_kind, Some(attrs)))
+        Ok((Ident::invalid(), item_kind, Some(attrs)))
     }
 
     fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
@@ -7414,7 +7412,7 @@ impl<'a> Parser<'a> {
             abi,
             items: foreign_items
         };
-        let invalid = Ident::with_empty_ctxt(kw::Invalid);
+        let invalid = Ident::invalid();
         Ok(self.mk_item(lo.to(prev_span), invalid, ItemKind::ForeignMod(m), visibility, attrs))
     }
 
@@ -7662,7 +7660,7 @@ impl<'a> Parser<'a> {
 
             let span = lo.to(self.prev_span);
             let item =
-                self.mk_item(span, Ident::with_empty_ctxt(kw::Invalid), item_, visibility, attrs);
+                self.mk_item(span, Ident::invalid(), item_, visibility, attrs);
             return Ok(Some(item));
         }
 
@@ -8108,7 +8106,7 @@ impl<'a> Parser<'a> {
             Some(mac) => {
                 Ok(
                     ForeignItem {
-                        ident: Ident::with_empty_ctxt(kw::Invalid),
+                        ident: Ident::invalid(),
                         span: lo.to(self.prev_span),
                         id: ast::DUMMY_NODE_ID,
                         attrs,
@@ -8155,7 +8153,7 @@ impl<'a> Parser<'a> {
             let id = if self.token.is_ident() {
                 self.parse_ident()?
             } else {
-                Ident::with_empty_ctxt(kw::Invalid) // no special identifier
+                Ident::invalid() // no special identifier
             };
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;

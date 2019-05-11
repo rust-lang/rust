@@ -271,7 +271,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             attrs: krate.attrs,
             span: krate.span,
             node: ast::ItemKind::Mod(krate.module),
-            ident: Ident::with_empty_ctxt(kw::Invalid),
+            ident: Ident::invalid(),
             id: ast::DUMMY_NODE_ID,
             vis: respan(krate.span.shrink_to_lo(), ast::VisibilityKind::Public),
             tokens: None,
@@ -708,7 +708,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
         let path = &mac.node.path;
 
-        let ident = ident.unwrap_or_else(|| Ident::with_empty_ctxt(kw::Invalid));
+        let ident = ident.unwrap_or_else(|| Ident::invalid());
         let validate_and_set_expn_info = |this: &mut Self, // arg instead of capture
                                           def_site_span: Option<Span>,
                                           allow_internal_unstable,
@@ -929,7 +929,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invoc.expansion_data.mark.set_expn_info(expn_info);
                 let span = span.with_ctxt(self.cx.backtrace());
                 let dummy = ast::MetaItem { // FIXME(jseyfried) avoid this
-                    path: Path::from_ident(Ident::with_empty_ctxt(kw::Invalid)),
+                    path: Path::from_ident(Ident::invalid()),
                     span: DUMMY_SP,
                     node: ast::MetaItemKind::Word,
                 };
@@ -1338,7 +1338,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 })
             }
             ast::ItemKind::Mod(ast::Mod { inner, .. }) => {
-                if item.ident == Ident::with_empty_ctxt(kw::Invalid) {
+                if item.ident == Ident::invalid() {
                     return noop_flat_map_item(item, self);
                 }
 

@@ -420,7 +420,7 @@ impl<'a> Resolver<'a> {
 
             ItemKind::GlobalAsm(..) => {}
 
-            ItemKind::Mod(..) if ident == Ident::with_empty_ctxt(kw::Invalid) => {} // Crate root
+            ItemKind::Mod(..) if ident.name == kw::Invalid => {} // Crate root
 
             ItemKind::Mod(..) => {
                 let def_id = self.definitions.local_def_id(item.id);

@@ -641,6 +641,11 @@ impl Ident {
         Ident::new(name, DUMMY_SP)
     }
 
+    #[inline]
+    pub fn invalid() -> Ident {
+        Ident::with_empty_ctxt(kw::Invalid)
+    }
+
     /// Maps an interned string to an identifier with an empty syntax context.
     pub fn from_interned_str(string: InternedString) -> Ident {
         Ident::with_empty_ctxt(string.as_symbol())

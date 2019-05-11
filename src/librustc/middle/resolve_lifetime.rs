@@ -1602,7 +1602,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     } {
                         debug!("id = {:?} span = {:?} name = {:?}", id, span, name);
 
-                        if name == ast::Ident::with_empty_ctxt(kw::UnderscoreLifetime) {
+                        if name.name == kw::UnderscoreLifetime {
                             continue;
                         }
 

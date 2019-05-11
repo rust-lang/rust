@@ -234,8 +234,7 @@ pub enum LifetimeName {
 impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
-            LifetimeName::Implicit => Ident::with_empty_ctxt(kw::Invalid),
-            LifetimeName::Error => Ident::with_empty_ctxt(kw::Invalid),
+            LifetimeName::Implicit | LifetimeName::Error => Ident::invalid(),
             LifetimeName::Underscore => Ident::with_empty_ctxt(kw::UnderscoreLifetime),
             LifetimeName::Static => Ident::with_empty_ctxt(kw::StaticLifetime),
             LifetimeName::Param(param_name) => param_name.ident(),

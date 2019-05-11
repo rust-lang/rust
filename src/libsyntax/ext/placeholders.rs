@@ -6,7 +6,6 @@ use crate::ext::hygiene::Mark;
 use crate::tokenstream::TokenStream;
 use crate::mut_visit::*;
 use crate::ptr::P;
-use crate::symbol::kw;
 use crate::ThinVec;
 
 use smallvec::{smallvec, SmallVec};
@@ -22,7 +21,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
         })
     }
 
-    let ident = ast::Ident::with_empty_ctxt(kw::Invalid);
+    let ident = ast::Ident::invalid();
     let attrs = Vec::new();
     let generics = ast::Generics::default();
     let vis = dummy_spanned(ast::VisibilityKind::Inherited);

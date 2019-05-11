@@ -118,7 +118,7 @@ pub fn maybe_inject_crates_ref(
             span,
         })),
         id: ast::DUMMY_NODE_ID,
-        ident: ast::Ident::with_empty_ctxt(kw::Invalid),
+        ident: ast::Ident::invalid(),
         span,
         tokens: None,
     }));

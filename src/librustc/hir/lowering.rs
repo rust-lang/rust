@@ -1614,7 +1614,7 @@ impl<'a> LoweringContext<'a> {
         trace!("registering existential type with id {:#?}", exist_ty_id);
         let exist_ty_item = hir::Item {
             hir_id: exist_ty_id,
-            ident: Ident::with_empty_ctxt(kw::Invalid),
+            ident: Ident::invalid(),
             attrs: Default::default(),
             node: exist_ty_item_kind,
             vis: respan(span.shrink_to_lo(), hir::VisibilityKind::Inherited),

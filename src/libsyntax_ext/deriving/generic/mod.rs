@@ -686,7 +686,7 @@ impl<'a> TraitDef<'a> {
         };
 
         cx.item(self.span,
-                Ident::with_empty_ctxt(kw::Invalid),
+                Ident::invalid(),
                 a,
                 ast::ItemKind::Impl(unsafety,
                                     ast::ImplPolarity::Positive,

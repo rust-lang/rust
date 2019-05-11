@@ -228,7 +228,7 @@ pub fn parse(
                 result.push(TokenTree::MetaVarDecl(
                     span,
                     ident,
-                    ast::Ident::with_empty_ctxt(kw::Invalid),
+                    ast::Ident::invalid(),
                 ));
             }
 
@@ -334,7 +334,7 @@ where
                     pprust::token_to_string(&tok)
                 );
                 sess.span_diagnostic.span_err(span, &msg);
-                TokenTree::MetaVar(span, ast::Ident::with_empty_ctxt(kw::Invalid))
+                TokenTree::MetaVar(span, ast::Ident::invalid())
             }
 
             // There are no more tokens. Just return the `$` we already have.

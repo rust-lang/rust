@@ -138,7 +138,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // information we encapsulate into, the better
         let def_data = match i.node {
             ItemKind::Impl(..) => DefPathData::Impl,
-            ItemKind::Mod(..) if i.ident == Ident::with_empty_ctxt(kw::Invalid) => {
+            ItemKind::Mod(..) if i.ident.name == kw::Invalid => {
                 return visit::walk_item(self, i);
             }
             ItemKind::Mod(..) | ItemKind::Trait(..) | ItemKind::TraitAlias(..) |

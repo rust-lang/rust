@@ -37,7 +37,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
     match parse_global_asm(cx, sp, tts) {
         Ok(Some(global_asm)) => {
             MacEager::items(smallvec![P(ast::Item {
-                ident: ast::Ident::with_empty_ctxt(Symbol::intern("")),
+                ident: ast::Ident::invalid(),
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
                 node: ast::ItemKind::GlobalAsm(P(global_asm)),

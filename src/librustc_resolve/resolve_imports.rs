@@ -992,7 +992,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = directive.module_path.clone();
-                    full_path.push(Segment::from_ident(Ident::with_empty_ctxt(kw::Invalid)));
+                    full_path.push(Segment::from_ident(Ident::invalid()));
                     self.lint_if_path_starts_with_module(
                         directive.crate_lint(),
                         &full_path,

@@ -4669,7 +4669,7 @@ impl<'a> Resolver<'a> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let not_local_module = crate_name != Ident::with_empty_ctxt(kw::Crate);
+        let not_local_module = crate_name.name != kw::Crate;
         let mut worklist = vec![(start_module, Vec::<ast::PathSegment>::new(), not_local_module)];
 
         while let Some((in_module,

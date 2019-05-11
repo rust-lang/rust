@@ -1175,7 +1175,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 vis: ast::Visibility, vp: P<ast::UseTree>) -> P<ast::Item> {
         P(ast::Item {
             id: ast::DUMMY_NODE_ID,
-            ident: Ident::with_empty_ctxt(kw::Invalid),
+            ident: Ident::invalid(),
             attrs: vec![],
             node: ast::ItemKind::Use(vp),
             vis,
