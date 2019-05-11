@@ -167,7 +167,7 @@ fn write_graph_label<'a, 'gcx, 'tcx, W: Write>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
                    Place::Base(PlaceBase::Local(local)), escape(&decl.ty), name)?;
         } else {
-            write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
+            write!(w, r#"{:?}: {};<br align="left"/>"#,
                    Place::Base(PlaceBase::Local(local)), escape(&decl.ty))?;
         }
     }

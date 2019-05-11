@@ -91,14 +91,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     CandidateSource::ImplSource(impl_did) => {
                         // Provide the best span we can. Use the item, if local to crate, else
                         // the impl, if local to crate (item may be defaulted), else nothing.
-                        let item = self.associated_item(impl_did, item_name, Namespace::Value)
-                            .or_else(|| {
-                                self.associated_item(
-                                    self.tcx.impl_trait_ref(impl_did).unwrap().def_id,
-                                    item_name,
-                                    Namespace::Value,
-                                )
-                            }).unwrap();
+                        let item = match self.associated_item(
+                            impl_did,
+                            item_name,
+                            Namespace::Value,
+                        ).or_else(|| {
+                            let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
+                            self.associated_item(
+                                impl_trait_ref.def_id,
+                                item_name,
+                                Namespace::Value,
+                            )
+                        }) {
+                            Some(item) => item,
+                            None => continue,
+                        };
                         let note_span = self.tcx.hir().span_if_local(item.def_id).or_else(|| {
                             self.tcx.hir().span_if_local(impl_did)
                         });
@@ -132,9 +139,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                     CandidateSource::TraitSource(trait_did) => {
-                        let item = self
-                            .associated_item(trait_did, item_name, Namespace::Value)
-                            .unwrap();
+                        let item = match self.associated_item(
+                            trait_did,
+                            item_name,
+                            Namespace::Value)
+                        {
+                            Some(item) => item,
+                            None => continue,
+                        };
                         let item_span = self.tcx.sess.source_map()
                             .def_span(self.tcx.def_span(item.def_id));
                         if sources.len() > 1 {
@@ -251,8 +263,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 if let &QPath::Resolved(_, ref path) = &qpath {
                                     if let hir::def::Res::Local(hir_id) = path.res {
                                         let span = tcx.hir().span_by_hir_id(hir_id);
-                                        let snippet = tcx.sess.source_map().span_to_snippet(span)
-                                            .unwrap();
+                                        let snippet = tcx.sess.source_map().span_to_snippet(span);
                                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                                         let parent_node = self.tcx.hir().get_by_hir_id(
@@ -263,12 +274,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                             concrete_type,
                                         );
 
-                                        match (filename, parent_node) {
+                                        match (filename, parent_node, snippet) {
                                             (FileName::Real(_), Node::Local(hir::Local {
                                                 source: hir::LocalSource::Normal,
                                                 ty,
                                                 ..
-                                            })) => {
+                                            }), Ok(ref snippet)) => {
                                                 err.span_suggestion(
                                                     // account for `let x: _ = 42;`
                                                     //                  ^^^^
@@ -375,14 +386,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     self.tcx.hir().get_parent_node_by_hir_id(expr.hir_id),
                                 );
 
-                                let span = call_expr.span.trim_start(item_name.span).unwrap();
-
-                                err.span_suggestion(
-                                    span,
-                                    "remove the arguments",
-                                    String::new(),
-                                    Applicability::MaybeIncorrect,
-                                );
+                                if let Some(span) = call_expr.span.trim_start(item_name.span) {
+                                    err.span_suggestion(
+                                        span,
+                                        "remove the arguments",
+                                        String::new(),
+                                        Applicability::MaybeIncorrect,
+                                    );
+                                }
                             }
                         }
 
