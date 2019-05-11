@@ -90,8 +90,17 @@ impl GenericParams {
     fn fill_params(&mut self, params: &ast::TypeParamList, start: u32) {
         for (idx, type_param) in params.type_params().enumerate() {
             let name = type_param.name().map(AsName::as_name).unwrap_or_else(Name::missing);
-            let param = GenericParam { idx: idx as u32 + start, name };
+            let param = GenericParam { idx: idx as u32 + start, name: name.clone() };
             self.params.push(param);
+
+            let type_ref = TypeRef::Path(name.into());
+            for bound in type_param
+                .type_bound_list()
+                .iter()
+                .flat_map(|type_bound_list| type_bound_list.bounds())
+            {
+                self.add_where_predicate_from_bound(bound, type_ref.clone());
+            }
         }
     }
 
@@ -101,24 +110,26 @@ impl GenericParams {
                 Some(type_ref) => type_ref,
                 None => continue,
             };
+            let type_ref = TypeRef::from_ast(type_ref);
             for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                let path = bound
-                    .type_ref()
-                    .and_then(|tr| match tr.kind() {
-                        ast::TypeRefKind::PathType(path) => path.path(),
-                        _ => None,
-                    })
-                    .and_then(Path::from_ast);
-                let path = match path {
-                    Some(p) => p,
-                    None => continue,
-                };
-                self.where_predicates.push(WherePredicate {
-                    type_ref: TypeRef::from_ast(type_ref),
-                    trait_ref: path,
-                });
+                self.add_where_predicate_from_bound(bound, type_ref.clone());
             }
         }
+    }
+
+    fn add_where_predicate_from_bound(&mut self, bound: &ast::TypeBound, type_ref: TypeRef) {
+        let path = bound
+            .type_ref()
+            .and_then(|tr| match tr.kind() {
+                ast::TypeRefKind::PathType(path) => path.path(),
+                _ => None,
+            })
+            .and_then(Path::from_ast);
+        let path = match path {
+            Some(p) => p,
+            None => return,
+        };
+        self.where_predicates.push(WherePredicate { type_ref, trait_ref: path });
     }
 
     pub(crate) fn find_by_name(&self, name: &Name) -> Option<&GenericParam> {

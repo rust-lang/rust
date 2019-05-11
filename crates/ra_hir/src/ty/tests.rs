@@ -2536,6 +2536,22 @@ fn test() { (&S).foo()<|>; }
 }
 
 #[test]
+fn method_resolution_where_clause_inline_not_met() {
+    // The blanket impl shouldn't apply because we can't prove S: Clone
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone {}
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl<T: Clone> Trait for T {}
+fn test() { (&S).foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
 fn method_resolution_where_clause_1() {
     let t = type_at(
         r#"
@@ -2562,6 +2578,23 @@ struct S1;
 struct S2;
 impl From<S2> for S1 {};
 impl<T, U> Into<U> for T where U: From<T> {}
+fn test() { S2.into()<|>; }
+"#,
+    );
+    assert_eq!(t, "S1");
+}
+
+#[test]
+fn method_resolution_where_clause_inline() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Into<T> { fn into(self) -> T; }
+trait From<T> { fn from(other: T) -> Self; }
+struct S1;
+struct S2;
+impl From<S2> for S1 {};
+impl<T, U: From<T>> Into<U> for T {}
 fn test() { S2.into()<|>; }
 "#,
     );
