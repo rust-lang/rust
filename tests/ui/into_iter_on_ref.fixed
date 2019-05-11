@@ -10,7 +10,7 @@ fn main() {
     for _ in &[1, 2, 3] {}
     for _ in vec![X, X] {}
     for _ in &vec![X, X] {}
-    for _ in [1, 2, 3].into_iter() {} //~ ERROR equivalent to .iter()
+    for _ in [1, 2, 3].iter() {} //~ ERROR equivalent to .iter()
 
     let _ = [1, 2, 3].iter(); //~ ERROR equivalent to .iter()
     let _ = vec![1, 2, 3].into_iter();

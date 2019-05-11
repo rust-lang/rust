@@ -1,4 +1,4 @@
-use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
+use crate::utils::{get_parent_expr, higher, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 use crate::utils::{SpanlessEq, SpanlessHash};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -109,13 +109,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if !in_macro(expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
-            if let Some(&Expr {
-                node: ExprKind::If(_, _, Some(ref else_expr)),
-                ..
-            }) = get_parent_expr(cx, expr)
-            {
-                if else_expr.hir_id == expr.hir_id {
-                    return;
+            if let Some(expr) = get_parent_expr(cx, expr) {
+                if let Some((_, _, Some(ref else_expr))) = higher::if_block(&expr) {
+                    if else_expr.hir_id == expr.hir_id {
+                        return;
+                    }
                 }
             }
 
@@ -236,7 +234,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>)
     let mut conds = SmallVec::new();
     let mut blocks: SmallVec<[&Block; 1]> = SmallVec::new();
 
-    while let ExprKind::If(ref cond, ref then_expr, ref else_expr) = expr.node {
+    while let Some((ref cond, ref then_expr, ref else_expr)) = higher::if_block(&expr) {
         conds.push(&**cond);
         if let ExprKind::Block(ref block, _) = then_expr.node {
             blocks.push(block);

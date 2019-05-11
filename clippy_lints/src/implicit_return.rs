@@ -74,13 +74,6 @@ impl ImplicitReturn {
                     Self::lint(cx, expr.span, break_expr.span, "change `break` to `return` as shown");
                 }
             },
-            ExprKind::If(.., if_expr, else_expr) => {
-                Self::expr_match(cx, if_expr);
-
-                if let Some(else_expr) = else_expr {
-                    Self::expr_match(cx, else_expr);
-                }
-            },
             ExprKind::Match(.., arms, source) => {
                 let check_all_arms = match source {
                     MatchSource::IfLetDesugar {

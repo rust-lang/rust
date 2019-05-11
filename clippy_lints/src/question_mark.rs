@@ -8,7 +8,7 @@ use syntax::ptr::P;
 
 use crate::utils::paths::*;
 use crate::utils::sugg::Sugg;
-use crate::utils::{match_type, span_lint_and_then, SpanlessEq};
+use crate::utils::{higher, match_type, span_lint_and_then, SpanlessEq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions that could be replaced by the question mark operator.
@@ -48,7 +48,7 @@ impl QuestionMark {
     /// If it matches, it will suggest to use the question mark operator instead
     fn check_is_none_and_early_return_none(cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
-            if let ExprKind::If(if_expr, body, else_) = &expr.node;
+            if let Some((if_expr, body, else_)) = higher::if_block(&expr);
             if let ExprKind::MethodCall(segment, _, args) = &if_expr.node;
             if segment.ident.name == "is_none";
             if Self::expression_returns_none(cx, body);

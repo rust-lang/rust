@@ -199,6 +199,27 @@ pub fn for_loop(expr: &hir::Expr) -> Option<(&hir::Pat, &hir::Expr, &hir::Expr)>
     None
 }
 
+/// Recover the essential nodes of a desugared if block
+/// `if cond { then } else { els }` becomes `(cond, then, Some(els))`
+pub fn if_block(expr: &hir::Expr) -> Option<(&hir::Expr, &hir::Expr, Option<&hir::Expr>)> {
+    if let hir::ExprKind::Match(ref cond, ref arms, hir::MatchSource::IfDesugar { contains_else_clause }) = expr.node {
+        let cond = if let hir::ExprKind::DropTemps(ref cond) = cond.node {
+            cond
+        } else {
+            panic!("If block desugar must contain DropTemps");
+        };
+        let then = &arms[0].body;
+        let els = if contains_else_clause {
+            Some(&*arms[1].body)
+        } else {
+            None
+        };
+        Some((cond, then, els))
+    } else {
+        None
+    }
+}
+
 /// Represent the pre-expansion arguments of a `vec!` invocation.
 pub enum VecArgs<'a> {
     /// `vec![elem; len]`

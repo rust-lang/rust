@@ -2,7 +2,7 @@ use if_chain::if_chain;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 
-use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
+use crate::utils::{higher::if_block, in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use syntax::source_map::Span;
@@ -130,7 +130,7 @@ impl<'a, 'tcx: 'a> UnwrappableVariablesVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx: 'a> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        if let ExprKind::If(cond, then, els) = &expr.node {
+        if let Some((cond, then, els)) = if_block(&expr) {
             walk_expr(self, cond);
             self.visit_branch(cond, then, false);
             if let Some(els) = els {

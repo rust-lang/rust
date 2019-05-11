@@ -1,4 +1,4 @@
-use crate::utils::{snippet, span_lint_and_then};
+use crate::utils::{higher, snippet, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::Res;
@@ -63,7 +63,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 if let hir::StmtKind::Local(ref local) = stmt.node;
                 if let hir::PatKind::Binding(mode, canonical_id, ident, None) = local.pat.node;
                 if let hir::StmtKind::Expr(ref if_) = expr.node;
-                if let hir::ExprKind::If(ref cond, ref then, ref else_) = if_.node;
+                if let Some((ref cond, ref then, ref else_)) = higher::if_block(&if_);
                 if !used_in_expr(cx, canonical_id, cond);
                 if let hir::ExprKind::Block(ref then, _) = then.node;
                 if let Some(value) = check_assign(cx, canonical_id, &*then);

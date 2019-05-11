@@ -72,7 +72,7 @@ const COMPLEX_BLOCK_MESSAGE: &str = "in an 'if' condition, avoid complex blocks 
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprKind::If(check, then, _) = &expr.node {
+        if let Some((check, then, _)) = higher::if_block(&expr) {
             if let ExprKind::Block(block, _) = &check.node {
                 if block.rules == DefaultBlock {
                     if block.stmts.is_empty() {

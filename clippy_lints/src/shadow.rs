@@ -319,13 +319,6 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
                 check_expr(cx, e, bindings)
             }
         },
-        ExprKind::If(ref cond, ref then, ref otherwise) => {
-            check_expr(cx, cond, bindings);
-            check_expr(cx, &**then, bindings);
-            if let Some(ref o) = *otherwise {
-                check_expr(cx, o, bindings);
-            }
-        },
         ExprKind::While(ref cond, ref block, _) => {
             check_expr(cx, cond, bindings);
             check_block(cx, block, bindings);
