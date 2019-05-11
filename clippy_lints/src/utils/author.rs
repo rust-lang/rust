@@ -1,7 +1,7 @@
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
-use crate::utils::get_attr;
+use crate::utils::{get_attr, higher};
 use rustc::hir;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
@@ -187,6 +187,32 @@ struct PrintVisitor {
 impl<'tcx> Visitor<'tcx> for PrintVisitor {
     #[allow(clippy::too_many_lines)]
     fn visit_expr(&mut self, expr: &Expr) {
+        // handle if desugarings
+        // TODO add more desugarings here
+        if let Some((cond, then, opt_else)) = higher::if_block(&expr) {
+            let cond_pat = self.next("cond");
+            let then_pat = self.next("then");
+            if let Some(else_) = opt_else {
+                let else_pat = self.next("else_");
+                println!(
+                    "    if let Some((ref {}, ref {}, Some({}))) = higher::if_block(&{});",
+                    cond_pat, then_pat, else_pat, self.current
+                );
+                self.current = else_pat;
+                self.visit_expr(else_);
+            } else {
+                println!(
+                    "    if let Some((ref {}, ref {}, None)) = higher::if_block(&{});",
+                    cond_pat, then_pat, self.current
+                );
+            }
+            self.current = cond_pat;
+            self.visit_expr(cond);
+            self.current = then_pat;
+            self.visit_expr(then);
+            return;
+        }
+
         print!("    if let ExprKind::");
         let current = format!("{}.node", self.current);
         match expr.node {
