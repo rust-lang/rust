@@ -829,10 +829,10 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
                     if let Ok(snip) = self.tcx().sess.source_map().span_to_snippet(span) {
                         p!(write("{}", snip))
                     } else {
-                        p!(write("_"))
+                        p!(write("_: "), print(ct.ty))
                     }
                 } else {
-                    p!(write("_"))
+                    p!(write("_: "), print(ct.ty))
                 },
             }
             return Ok(self);
