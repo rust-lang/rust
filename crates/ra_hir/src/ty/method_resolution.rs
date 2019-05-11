@@ -75,11 +75,13 @@ impl CrateImplBlocks {
 
             let target_ty = impl_block.target_ty(db);
 
-            if let Some(tr) = impl_block.target_trait_ref(db) {
-                self.impls_by_trait
-                    .entry(tr.trait_)
-                    .or_insert_with(Vec::new)
-                    .push((module.module_id, impl_id));
+            if impl_block.target_trait(db).is_some() {
+                if let Some(tr) = impl_block.target_trait_ref(db) {
+                    self.impls_by_trait
+                        .entry(tr.trait_)
+                        .or_insert_with(Vec::new)
+                        .push((module.module_id, impl_id));
+                }
             } else {
                 if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
                     self.impls
