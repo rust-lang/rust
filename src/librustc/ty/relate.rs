@@ -9,7 +9,6 @@ use crate::ty::subst::{Kind, UnpackedKind, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt, TypeFoldable};
 use crate::ty::error::{ExpectedFound, TypeError};
 use crate::mir::interpret::{GlobalId, ConstValue, Scalar};
-use crate::util::common::ErrorReported;
 use syntax_pos::DUMMY_SP;
 use std::rc::Rc;
 use std::iter;
@@ -474,8 +473,9 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Array(a_t, sz_a), &ty::Array(b_t, sz_b)) =>
         {
             let t = relation.relate(&a_t, &b_t)?;
-            let to_u64 = |x: ty::Const<'tcx>| -> Result<u64, ErrorReported> {
-                match x.val {
+
+            let to_u64 = |ct: &'tcx ty::Const<'tcx>| -> Option<u64> {
+                match ct.val {
                     // FIXME(const_generics): this doesn't work right now,
                     // because it tries to relate an `Infer` to a `Param`.
                     ConstValue::Unevaluated(def_id, substs) => {
@@ -493,26 +493,18 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                                     instance,
                                     promoted: None,
                                 };
-                                if let Some(s) = tcx.const_eval(param_env.and(cid))
-                                                    .ok()
-                                                    .map(|c| c.unwrap_usize(tcx)) {
-                                    return Ok(s)
-                                }
+                                return tcx.const_eval(param_env.and(cid))
+                                    .ok()
+                                    .map(|c| c.unwrap_usize(tcx));
                             }
                         }
-                        tcx.sess.delay_span_bug(tcx.def_span(def_id),
-                            "array length could not be evaluated");
-                        Err(ErrorReported)
+                        None
                     }
-                    _ => x.assert_usize(tcx).ok_or_else(|| {
-                        tcx.sess.delay_span_bug(DUMMY_SP,
-                            "array length could not be evaluated");
-                        ErrorReported
-                    })
+                    _ => ct.assert_usize(tcx),
                 }
             };
-            match (to_u64(*sz_a), to_u64(*sz_b)) {
-                (Ok(sz_a_u64), Ok(sz_b_u64)) => {
+            match (to_u64(sz_a), to_u64(sz_b)) {
+                (Some(sz_a_u64), Some(sz_b_u64)) => {
                     if sz_a_u64 == sz_b_u64 {
                         Ok(tcx.mk_ty(ty::Array(t, sz_a)))
                     } else {
@@ -520,9 +512,13 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
                             expected_found(relation, &sz_a_u64, &sz_b_u64)))
                     }
                 }
-                // We reported an error or will ICE, so we can return Error.
-                (Err(ErrorReported), _) | (_, Err(ErrorReported)) => {
-                    Ok(tcx.types.err)
+                _ => {
+                    if let Ok(sz) = relation.relate(&sz_a, &sz_b) {
+                        Ok(tcx.mk_ty(ty::Array(t, sz)))
+                    } else {
+                        tcx.sess.delay_span_bug(DUMMY_SP, "array length could not be evaluated");
+                        Ok(tcx.types.err)
+                    }
                 }
             }
         }
