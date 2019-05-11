@@ -1,0 +1,9 @@
+error[E0624]: method `foo` is private
+  --> $DIR/issue-53498.rs:16:5
+   |
+LL |     test::Foo::<test::B>::foo();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0624`.
