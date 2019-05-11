@@ -1266,7 +1266,6 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
             hir::ExprKind::Call(..)
             | hir::ExprKind::MethodCall(..)
             // These variants are debatable or require further examination
-            | hir::ExprKind::If(..)
             | hir::ExprKind::Match(..)
             | hir::ExprKind::Block{ .. } => true,
             _ => false,

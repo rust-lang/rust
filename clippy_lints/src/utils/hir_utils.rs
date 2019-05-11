@@ -114,9 +114,6 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprKind::Index(ref la, ref li), &ExprKind::Index(ref ra, ref ri)) => {
                 self.eq_expr(la, ra) && self.eq_expr(li, ri)
             },
-            (&ExprKind::If(ref lc, ref lt, ref le), &ExprKind::If(ref rc, ref rt, ref re)) => {
-                self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
-            },
             (&ExprKind::Lit(ref l), &ExprKind::Lit(ref r)) => l.node == r.node,
             (&ExprKind::Loop(ref lb, ref ll, ref lls), &ExprKind::Loop(ref rb, ref rl, ref rls)) => {
                 lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
@@ -492,15 +489,6 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             ExprKind::InlineAsm(..) => {
                 let c: fn(_, _, _) -> _ = ExprKind::InlineAsm;
                 c.hash(&mut self.s);
-            },
-            ExprKind::If(ref cond, ref t, ref e) => {
-                let c: fn(_, _, _) -> _ = ExprKind::If;
-                c.hash(&mut self.s);
-                self.hash_expr(cond);
-                self.hash_expr(&**t);
-                if let Some(ref e) = *e {
-                    self.hash_expr(e);
-                }
             },
             ExprKind::Lit(ref l) => {
                 let c: fn(_) -> _ = ExprKind::Lit;

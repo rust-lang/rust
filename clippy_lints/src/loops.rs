@@ -686,14 +686,6 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Assign(ref e1, ref e2)
         | ExprKind::AssignOp(_, ref e1, ref e2)
         | ExprKind::Index(ref e1, ref e2) => never_loop_expr_all(&mut [&**e1, &**e2].iter().cloned(), main_loop_id),
-        ExprKind::If(ref e, ref e2, ref e3) => {
-            let e1 = never_loop_expr(e, main_loop_id);
-            let e2 = never_loop_expr(e2, main_loop_id);
-            let e3 = e3
-                .as_ref()
-                .map_or(NeverLoopResult::Otherwise, |e| never_loop_expr(e, main_loop_id));
-            combine_seq(e1, combine_branches(e2, e3))
-        },
         ExprKind::Loop(ref b, _, _) => {
             // Break can come from the inner loop so remove them.
             absorb_break(&never_loop_block(b, main_loop_id))
@@ -2204,7 +2196,7 @@ fn is_loop(expr: &Expr) -> bool {
 
 fn is_conditional(expr: &Expr) -> bool {
     match expr.node {
-        ExprKind::If(..) | ExprKind::Match(..) => true,
+        ExprKind::Match(..) => true,
         _ => false,
     }
 }

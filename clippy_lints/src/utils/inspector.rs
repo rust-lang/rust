@@ -209,15 +209,6 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
             print_expr(cx, e, indent + 1);
             println!("{}target type: {:?}", ind, target);
         },
-        hir::ExprKind::If(ref e, _, ref els) => {
-            println!("{}If", ind);
-            println!("{}condition:", ind);
-            print_expr(cx, e, indent + 1);
-            if let Some(ref els) = *els {
-                println!("{}else:", ind);
-                print_expr(cx, els, indent + 1);
-            }
-        },
         hir::ExprKind::While(ref cond, _, _) => {
             println!("{}While", ind);
             println!("{}condition:", ind);

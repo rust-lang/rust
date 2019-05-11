@@ -94,7 +94,6 @@ impl<'a> Sugg<'a> {
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Box(..)
             | hir::ExprKind::Closure(.., _)
-            | hir::ExprKind::If(..)
             | hir::ExprKind::Unary(..)
             | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
             hir::ExprKind::Continue(..)

@@ -296,25 +296,6 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = cast_pat;
                 self.visit_expr(expr);
             },
-            ExprKind::If(ref cond, ref then, ref opt_else) => {
-                let cond_pat = self.next("cond");
-                let then_pat = self.next("then");
-                if let Some(ref else_) = *opt_else {
-                    let else_pat = self.next("else_");
-                    println!(
-                        "If(ref {}, ref {}, Some(ref {})) = {};",
-                        cond_pat, then_pat, else_pat, current
-                    );
-                    self.current = else_pat;
-                    self.visit_expr(else_);
-                } else {
-                    println!("If(ref {}, ref {}, None) = {};", cond_pat, then_pat, current);
-                }
-                self.current = cond_pat;
-                self.visit_expr(cond);
-                self.current = then_pat;
-                self.visit_expr(then);
-            },
             ExprKind::While(ref cond, ref body, _) => {
                 let cond_pat = self.next("cond");
                 let body_pat = self.next("body");

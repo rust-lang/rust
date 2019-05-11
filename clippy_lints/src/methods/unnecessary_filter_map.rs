@@ -89,12 +89,6 @@ fn check_expression<'a, 'tcx: 'a>(
                 (false, false)
             }
         },
-        // There must be an else_arm or there will be a type error
-        hir::ExprKind::If(_, ref if_arm, Some(ref else_arm)) => {
-            let if_check = check_expression(cx, arg_id, if_arm);
-            let else_check = check_expression(cx, arg_id, else_arm);
-            (if_check.0 | else_check.0, if_check.1 | else_check.1)
-        },
         hir::ExprKind::Match(_, ref arms, _) => {
             let mut found_mapping = false;
             let mut found_filtering = false;
