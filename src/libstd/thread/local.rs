@@ -432,6 +432,7 @@ pub mod fast {
         // performed for every call to `Key::get`.
         // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
         #[inline(never)]
+        #[cold]
         unsafe fn try_initialize_drop<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
             // We don't put a `needs_drop` check around this and call it a day
             // because this function is not inlined. Unwrapping code gets
