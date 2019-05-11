@@ -275,7 +275,6 @@ mod lazy {
             }
         }
 
-        #[inline]
         pub unsafe fn get(&self) -> Option<&'static T> {
             (*self.inner.get()).as_ref()
         }
@@ -346,7 +345,6 @@ pub mod statik {
             }
         }
 
-        #[inline]
         pub unsafe fn get(&self, init: fn() -> T) -> Option<&'static T> {
             let value = match self.inner.get() {
                 Some(ref value) => value,
@@ -373,6 +371,11 @@ pub mod fast {
         RunningOrHasRun,
     }
 
+    // This data structure has been carefully constructed so that the fast path
+    // only contains one branch on x86. That optimization is necessary to avoid
+    // duplicated tls lookups on OSX.
+    // 
+    // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
     pub struct Key<T> {
         // If `LazyKeyInner::get` returns `None`, that indicates either:
         //   * The value has never been initialized
@@ -403,38 +406,32 @@ pub mod fast {
             }
         }
 
-        #[inline]
         pub unsafe fn get<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
             match self.inner.get() {
                 Some(val) => Some(val),
-                None => {
-                    if mem::needs_drop::<T>() {
-                        self.try_initialize_drop(init)
-                    } else {
-                        Some(self.try_initialize_nodrop(init))
-                    }
-                }
+                None => self.try_initialize(init),
             }
         }
 
-        // `try_initialize_nodrop` is only called once per fast thread local
-        // variable, except in corner cases where it is being recursively
-        // initialized.
-        //
-        // Macos: Inlining this function causes two `tlv_get_addr` calls to be
-        // performed for every call to `Key::get`.
-        // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
-        #[inline(never)]
+        // `try_initialize` is only called once per fast thread local variable,
+        // except in corner cases where it is being recursively initialized.
         #[cold]
-        unsafe fn try_initialize_nodrop<F: FnOnce() -> T>(&self, init: F) -> &'static T {
-            self.inner.initialize(init)
+        unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
+            if mem::needs_drop::<T>() {
+                self.try_initialize_drop(init)
+            } else {
+                Some(self.inner.initialize(init))
+            }
         }
 
         // `try_initialize_drop` is only called once per fast thread local
         // variable, except in corner cases where thread_local dtors reference
         // other thread_local's, or it is being recursively initialized.
+        //
+        // Macos: Inlining this function causes two `tlv_get_addr` calls to be
+        // performed for every call to `Key::get`.
+        // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
         #[inline(never)]
-        #[cold]
         unsafe fn try_initialize_drop<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
             // We don't put a `needs_drop` check around this and call it a day
             // because this function is not inlined. Unwrapping code gets
