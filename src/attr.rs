@@ -3,6 +3,7 @@
 use syntax::ast;
 use syntax::source_map::{BytePos, Span, DUMMY_SP};
 
+use self::doc_comment::DocCommentFormatter;
 use crate::comment::{contains_comment, rewrite_doc_comment, CommentStyle};
 use crate::config::lists::*;
 use crate::config::IndentStyle;
@@ -13,6 +14,8 @@ use crate::rewrite::{Rewrite, RewriteContext};
 use crate::shape::Shape;
 use crate::types::{rewrite_path, PathContext};
 use crate::utils::{count_newlines, mk_sp};
+
+mod doc_comment;
 
 /// Returns attributes on the given statement.
 pub(crate) fn get_attrs_from_stmt(stmt: &ast::Stmt) -> &[ast::Attribute] {
@@ -331,11 +334,9 @@ impl Rewrite for ast::Attribute {
                             ast::AttrStyle::Outer => CommentStyle::TripleSlash,
                         };
 
-                        // Remove possible whitespace from the `CommentStyle::opener()` so that
-                        // the literal itself has control over the comment's leading spaces.
-                        let opener = comment_style.opener().trim_end();
-
-                        let doc_comment = format!("{}{}", opener, literal);
+                        let doc_comment_formatter =
+                            DocCommentFormatter::new(literal, comment_style);
+                        let doc_comment = format!("{}", doc_comment_formatter);
                         return rewrite_doc_comment(
                             &doc_comment,
                             shape.comment(context.config),
