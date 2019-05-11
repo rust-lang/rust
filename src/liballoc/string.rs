@@ -1212,6 +1212,16 @@ impl String {
     ///
     /// assert_eq!(s, "foobar");
     /// ```
+    ///
+    /// The exact order may be useful for tracking external state, like an index.
+    ///
+    /// ```
+    /// let mut s = String::from("abcde");
+    /// let keep = [false, true, true, false, true];
+    /// let mut i = 0;
+    /// s.retain(|_| (keep[i], i += 1).0);
+    /// assert_eq!(s, "bce");
+    /// ```
     #[inline]
     #[stable(feature = "string_retain", since = "1.26.0")]
     pub fn retain<F>(&mut self, mut f: F)

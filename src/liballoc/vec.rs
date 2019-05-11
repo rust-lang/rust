@@ -947,6 +947,16 @@ impl<T> Vec<T> {
     /// vec.retain(|&x| x%2 == 0);
     /// assert_eq!(vec, [2, 4]);
     /// ```
+    ///
+    /// The exact order may be useful for tracking external state, like an index.
+    ///
+    /// ```
+    /// let mut vec = vec![1, 2, 3, 4, 5];
+    /// let keep = [false, true, true, false, true];
+    /// let mut i = 0;
+    /// vec.retain(|_| (keep[i], i += 1).0);
+    /// assert_eq!(vec, [2, 3, 5]);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(&T) -> bool
