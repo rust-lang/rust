@@ -560,6 +560,9 @@ declare_features! (
     // Allows calling constructor functions in `const fn`.
     (active, const_constructor, "1.37.0", Some(61456), None),
 
+    // Allows `if/while p && let q = r && ...` chains.
+    (active, let_chains, "1.37.0", Some(53667), None),
+
     // #[repr(transparent)] on enums.
     (active, transparent_enums, "1.37.0", Some(60405), None),
 
@@ -577,7 +580,8 @@ declare_features! (
 const INCOMPLETE_FEATURES: &[Symbol] = &[
     sym::impl_trait_in_bindings,
     sym::generic_associated_types,
-    sym::const_generics
+    sym::const_generics,
+    sym::let_chains,
 ];
 
 declare_features! (
@@ -1936,6 +1940,27 @@ impl<'a> PostExpansionVisitor<'a> {
             Err(mut err) => err.emit(),
         }
     }
+
+    /// Recurse into all places where a `let` expression would be feature gated
+    /// and emit gate post errors for those.
+    fn find_and_gate_lets(&mut self, e: &'a ast::Expr) {
+        match &e.node {
+            ast::ExprKind::Paren(e) => {
+                self.find_and_gate_lets(e);
+            }
+            ast::ExprKind::Binary(op, lhs, rhs) if op.node == ast::BinOpKind::And => {
+                self.find_and_gate_lets(lhs);
+                self.find_and_gate_lets(rhs);
+            }
+            ast::ExprKind::Let(..) => {
+                gate_feature_post!(
+                    &self, let_chains, e.span,
+                    "`let` expressions in this position are experimental"
+                );
+            }
+            _ => {}
+        }
+    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -2133,6 +2158,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.node {
+            ast::ExprKind::If(ref e, ..) | ast::ExprKind::While(ref e, ..) => match e.node {
+                ast::ExprKind::Let(..) => {} // Stable!,
+                _ => self.find_and_gate_lets(e),
+            }
             ast::ExprKind::Box(_) => {
                 gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
             }
