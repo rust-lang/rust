@@ -373,7 +373,7 @@ impl<'tcx> Stack {
     }
 
     /// Derived a new pointer from one with the given tag.
-    /// `weak` controls whether this operation is weak or string: weak granting does not act as
+    /// `weak` controls whether this operation is weak or strong: weak granting does not act as
     /// an access, and they add the new item directly on top of the one it is derived
     /// from instead of all the way at the top of the stack.
     fn grant(
