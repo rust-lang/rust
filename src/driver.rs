@@ -17,9 +17,8 @@ use crate::prelude::*;
 pub fn codegen_crate<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     metadata: EncodedMetadata,
-    _need_metadata_module: bool,
+    need_metadata_module: bool,
 ) -> Box<dyn Any> {
-    env_logger::init();
     if !tcx.sess.crate_types.get().contains(&CrateType::Executable)
         && std::env::var("SHOULD_RUN").is_ok()
     {
@@ -36,148 +35,168 @@ pub fn codegen_crate<'a, 'tcx>(
     };
 
     if std::env::var("SHOULD_RUN").is_ok() {
-        let mut jit_module: Module<SimpleJITBackend> =
-            Module::new(SimpleJITBuilder::new(cranelift_module::default_libcall_names()));
-        assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
+        #[cfg(not(target_arch = "wasm32"))]
+        let _: ! = run_jit(tcx, &mut log);
 
-        let sig = Signature {
-            params: vec![
-                AbiParam::new(jit_module.target_config().pointer_type()),
-                AbiParam::new(jit_module.target_config().pointer_type()),
-            ],
-            returns: vec![AbiParam::new(
-                jit_module.target_config().pointer_type(), /*isize*/
-            )],
-            call_conv: CallConv::SystemV,
-        };
-        let main_func_id = jit_module
-            .declare_function("main", Linkage::Import, &sig)
-            .unwrap();
+        #[cfg(target_arch = "wasm32")]
+        panic!("jit not supported on wasm");
+    }
 
-        codegen_cgus(tcx, &mut jit_module, &mut None, &mut log);
-        crate::allocator::codegen(tcx.sess, &mut jit_module);
-        jit_module.finalize_definitions();
+    run_aot(tcx, metadata, need_metadata_module, &mut log)
+}
 
-        tcx.sess.abort_if_errors();
+#[cfg(not(target_arch = "wasm32"))]
+fn run_jit<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>, log: &mut Option<File>) -> ! {
+    use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
-        let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
+    let mut jit_module: Module<SimpleJITBackend> =
+        Module::new(SimpleJITBuilder::new(cranelift_module::default_libcall_names()));
+    assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
-        println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
+    let sig = Signature {
+        params: vec![
+            AbiParam::new(jit_module.target_config().pointer_type()),
+            AbiParam::new(jit_module.target_config().pointer_type()),
+        ],
+        returns: vec![AbiParam::new(
+            jit_module.target_config().pointer_type(), /*isize*/
+        )],
+        call_conv: CallConv::SystemV,
+    };
+    let main_func_id = jit_module
+        .declare_function("main", Linkage::Import, &sig)
+        .unwrap();
 
-        let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
-            unsafe { ::std::mem::transmute(finalized_main) };
+    codegen_cgus(tcx, &mut jit_module, &mut None, log);
+    crate::allocator::codegen(tcx.sess, &mut jit_module);
+    jit_module.finalize_definitions();
 
-        let args = ::std::env::var("JIT_ARGS").unwrap_or_else(|_| String::new());
-        let args = args
-            .split(" ")
-            .chain(Some(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string()))
-            .map(|arg| CString::new(arg).unwrap())
-            .collect::<Vec<_>>();
-        let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
-        // TODO: Rust doesn't care, but POSIX argv has a NULL sentinel at the end
+    tcx.sess.abort_if_errors();
 
-        let ret = f(args.len() as c_int, argv.as_ptr());
+    let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
 
-        jit_module.finish();
-        std::process::exit(ret);
+    println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
+
+    let f: extern "C" fn(c_int, *const *const c_char) -> c_int =
+        unsafe { ::std::mem::transmute(finalized_main) };
+
+    let args = ::std::env::var("JIT_ARGS").unwrap_or_else(|_| String::new());
+    let args = args
+        .split(" ")
+        .chain(Some(&*tcx.crate_name(LOCAL_CRATE).as_str().to_string()))
+        .map(|arg| CString::new(arg).unwrap())
+        .collect::<Vec<_>>();
+    let argv = args.iter().map(|arg| arg.as_ptr()).collect::<Vec<_>>();
+    // TODO: Rust doesn't care, but POSIX argv has a NULL sentinel at the end
+
+    let ret = f(args.len() as c_int, argv.as_ptr());
+
+    jit_module.finish();
+    std::process::exit(ret);
+}
+
+fn run_aot<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    metadata: EncodedMetadata,
+    _need_metadata_module: bool,
+    log: &mut Option<File>,
+) -> Box<CodegenResults> {
+    let new_module = |name: String| {
+        let module: Module<FaerieBackend> = Module::new(
+            FaerieBuilder::new(
+                crate::build_isa(tcx.sess),
+                name + ".o",
+                FaerieTrapCollection::Disabled,
+                cranelift_module::default_libcall_names(),
+            )
+            .unwrap(),
+        );
+        assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
+        module
+    };
+
+    let emit_module = |name: &str,
+                        kind: ModuleKind,
+                        mut module: Module<FaerieBackend>,
+                        debug: Option<DebugContext>| {
+        module.finalize_definitions();
+        let mut artifact = module.finish().artifact;
+
+        if let Some(mut debug) = debug {
+            debug.emit(&mut artifact);
+        }
+
+        let tmp_file = tcx
+            .output_filenames(LOCAL_CRATE)
+            .temp_path(OutputType::Object, Some(name));
+        let obj = artifact.emit().unwrap();
+        std::fs::write(&tmp_file, obj).unwrap();
+        CompiledModule {
+            name: name.to_string(),
+            kind,
+            object: Some(tmp_file),
+            bytecode: None,
+            bytecode_compressed: None,
+        }
+    };
+
+    let mut faerie_module = new_module("some_file".to_string());
+
+    let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None
+        // macOS debuginfo doesn't work yet (see #303)
+        && !tcx.sess.target.target.options.is_like_osx
+    {
+        let debug = DebugContext::new(
+            tcx,
+            faerie_module.target_config().pointer_type().bytes() as u8,
+        );
+        Some(debug)
     } else {
-        let new_module = |name: String| {
-            let module: Module<FaerieBackend> = Module::new(
-                FaerieBuilder::new(
-                    crate::build_isa(tcx.sess),
-                    name + ".o",
-                    FaerieTrapCollection::Disabled,
-                    cranelift_module::default_libcall_names(),
-                )
-                .unwrap(),
-            );
-            assert_eq!(pointer_ty(tcx), module.target_config().pointer_type());
-            module
-        };
+        None
+    };
 
-        let emit_module = |name: &str,
-                            kind: ModuleKind,
-                            mut module: Module<FaerieBackend>,
-                            debug: Option<DebugContext>| {
-            module.finalize_definitions();
-            let mut artifact = module.finish().artifact;
+    codegen_cgus(tcx, &mut faerie_module, &mut debug, log);
 
-            if let Some(mut debug) = debug {
-                debug.emit(&mut artifact);
-            }
+    tcx.sess.abort_if_errors();
 
-            let tmp_file = tcx
-                .output_filenames(LOCAL_CRATE)
-                .temp_path(OutputType::Object, Some(name));
-            let obj = artifact.emit().unwrap();
-            std::fs::write(&tmp_file, obj).unwrap();
-            CompiledModule {
-                name: name.to_string(),
-                kind,
-                object: Some(tmp_file),
-                bytecode: None,
-                bytecode_compressed: None,
-            }
-        };
+    let mut allocator_module = new_module("allocator_shim.o".to_string());
+    let created_alloc_shim = crate::allocator::codegen(tcx.sess, &mut allocator_module);
 
-        let mut faerie_module = new_module("some_file".to_string());
+    rustc_incremental::assert_dep_graph(tcx);
+    rustc_incremental::save_dep_graph(tcx);
+    rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
 
-        let mut debug = if tcx.sess.opts.debuginfo != DebugInfo::None
-            // macOS debuginfo doesn't work yet (see #303)
-            && !tcx.sess.target.target.options.is_like_osx
-        {
-            let debug = DebugContext::new(
-                tcx,
-                faerie_module.target_config().pointer_type().bytes() as u8,
-            );
-            Some(debug)
+    Box::new(CodegenResults {
+        crate_name: tcx.crate_name(LOCAL_CRATE),
+        modules: vec![emit_module(
+            "dummy_name",
+            ModuleKind::Regular,
+            faerie_module,
+            debug,
+        )],
+        allocator_module: if created_alloc_shim {
+            Some(emit_module(
+                "allocator_shim",
+                ModuleKind::Allocator,
+                allocator_module,
+                None,
+            ))
         } else {
             None
-        };
-
-        codegen_cgus(tcx, &mut faerie_module, &mut debug, &mut log);
-
-        tcx.sess.abort_if_errors();
-
-        let mut allocator_module = new_module("allocator_shim.o".to_string());
-        let created_alloc_shim = crate::allocator::codegen(tcx.sess, &mut allocator_module);
-
-        rustc_incremental::assert_dep_graph(tcx);
-        rustc_incremental::save_dep_graph(tcx);
-        rustc_incremental::finalize_session_directory(tcx.sess, tcx.crate_hash(LOCAL_CRATE));
-
-        Box::new(CodegenResults {
-            crate_name: tcx.crate_name(LOCAL_CRATE),
-            modules: vec![emit_module(
-                "dummy_name",
-                ModuleKind::Regular,
-                faerie_module,
-                debug,
-            )],
-            allocator_module: if created_alloc_shim {
-                Some(emit_module(
-                    "allocator_shim",
-                    ModuleKind::Allocator,
-                    allocator_module,
-                    None,
-                ))
-            } else {
-                None
-            },
-            metadata_module: Some(CompiledModule {
-                name: "dummy_metadata".to_string(),
-                kind: ModuleKind::Metadata,
-                object: None,
-                bytecode: None,
-                bytecode_compressed: None,
-            }),
-            crate_hash: tcx.crate_hash(LOCAL_CRATE),
-            metadata,
-            windows_subsystem: None, // Windows is not yet supported
-            linker_info: LinkerInfo::new(tcx),
-            crate_info: CrateInfo::new(tcx),
-        })
-    }
+        },
+        metadata_module: Some(CompiledModule {
+            name: "dummy_metadata".to_string(),
+            kind: ModuleKind::Metadata,
+            object: None,
+            bytecode: None,
+            bytecode_compressed: None,
+        }),
+        crate_hash: tcx.crate_hash(LOCAL_CRATE),
+        metadata,
+        windows_subsystem: None, // Windows is not yet supported
+        linker_info: LinkerInfo::new(tcx),
+        crate_info: CrateInfo::new(tcx),
+    })
 }
 
 fn codegen_cgus<'a, 'tcx: 'a>(

@@ -1,7 +1,6 @@
 #![feature(rustc_private, never_type, decl_macro)]
 #![allow(intra_doc_link_resolution_failure)]
 
-extern crate log;
 extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_codegen_ssa;
@@ -87,7 +86,6 @@ mod prelude {
     pub use cranelift_module::{
         self, Backend, DataContext, DataId, FuncId, FuncOrDataId, Linkage, Module,
     };
-    pub use cranelift_simplejit::{SimpleJITBackend, SimpleJITBuilder};
 
     pub use crate::abi::*;
     pub use crate::base::{trans_operand, trans_place};
