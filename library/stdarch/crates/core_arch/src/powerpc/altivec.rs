@@ -161,6 +161,20 @@ extern "C" {
     fn vminuh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.ppc.altivec.vminuw"]
     fn vminuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.ppc.altivec.vsubsbs"]
+    fn vsubsbs(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.vsubshs"]
+    fn vsubshs(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vsubsws"]
+    fn vsubsws(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vsububs"]
+    fn vsububs(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.ppc.altivec.vsubuhs"]
+    fn vsubuhs(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.ppc.altivec.vsubuws"]
+    fn vsubuws(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
 macro_rules! s_t_l {
@@ -302,6 +316,20 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
         }
     }
+
+    test_impl! { vec_vsubsbs(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vsubsbs, vsubsbs ] }
+    test_impl! { vec_vsubshs(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vsubshs, vsubshs ] }
+    test_impl! { vec_vsubsws(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [ vsubsws, vsubsws ] }
+    test_impl! { vec_vsububs(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [ vsububs, vsububs ] }
+    test_impl! { vec_vsubuhs(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [ vsubuhs, vsubuhs ] }
+    test_impl! { vec_vsubuws(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [ vsubuws, vsubuws ] }
+
+    pub trait VectorSubs<Other> {
+        type Result;
+        unsafe fn vec_subs(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorSubs vec_subs] ~(vsububs, vsubsbs, vsubuhs, vsubshs, vsubuws, vsubsws) }
 
     pub trait VectorAbs {
         unsafe fn vec_abs(self) -> Self;
@@ -1138,6 +1166,16 @@ where
     a.vec_sub(b)
 }
 
+/// Vector subs.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_subs<T, U>(a: T, b: U) -> <T as sealed::VectorSubs<U>>::Result
+where
+    T: sealed::VectorSubs<U>,
+{
+    a.vec_subs(b)
+}
+
 /// Vector min.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1361,6 +1399,20 @@ mod tests {
     use crate::core_arch::simd::*;
     use stdsimd_test::simd_test;
 
+    macro_rules! test_vec_2 {
+        { $name: ident, $fn:ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
+                let b: s_t_l!($ty) = transmute($ty::new($($b),+));
+
+                let d = $ty::new($($d),+);
+                let r : $ty = transmute($fn(a, b));
+                assert_eq!(d, r);
+            }
+         }
+    }
+
     macro_rules! test_vec_abs {
         { $name: ident, $ty: ident, $a: expr } => {
             #[simd_test(enable = "altivec")]
@@ -1398,16 +1450,8 @@ mod tests {
 
     macro_rules! test_vec_sub {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
-            #[simd_test(enable = "altivec")]
-            unsafe fn $name() {
-                let a: s_t_l!($ty) = transmute($ty::new($($a),+));
-                let b: s_t_l!($ty) = transmute($ty::new($($b),+));
-
-                let d = $ty::new($($d),+);
-                let r : $ty = transmute(vec_sub(a, b));
-                assert_eq!(d, r);
-            }
-         }
+            test_vec_2! {$name, vec_sub, $ty, [$($a),+], [$($b),+], [$($d),+] }
+        }
     }
 
     test_vec_sub! { test_vec_sub_i32x4, i32x4,
@@ -1439,6 +1483,42 @@ mod tests {
     [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
     [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
     [254, 255, 1, 2, 254, 255, 1, 2, 254, 255, 1, 2, 254, 255, 1, 2] }
+
+    macro_rules! test_vec_subs {
+        { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            test_vec_2! {$name, vec_subs, $ty, [$($a),+], [$($b),+], [$($d),+] }
+        }
+    }
+
+    test_vec_subs! { test_vec_subs_i32x4, i32x4,
+    [-1, 0, 1, 2],
+    [2, 1, -1, -2],
+    [-3, -1, 2, 4] }
+
+    test_vec_subs! { test_vec_subs_u32x4, u32x4,
+    [0, 0, 1, 2],
+    [2, 1, 0, 0],
+    [0, 0, 1, 2] }
+
+    test_vec_subs! { test_vec_subs_i16x8, i16x8,
+    [-1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2],
+    [-3, -1, 2, 4, -3, -1, 2, 4] }
+
+    test_vec_subs! { test_vec_subs_u16x8, u16x8,
+    [0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0],
+    [0, 0, 1, 2, 0, 0, 1, 2] }
+
+    test_vec_subs! { test_vec_subs_i8x16, i8x16,
+    [-1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2, -1, 0, 1, 2],
+    [2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2, 2, 1, -1, -2],
+    [-3, -1, 2, 4, -3, -1, 2, 4, -3, -1, 2, 4, -3, -1, 2, 4] }
+
+    test_vec_subs! { test_vec_subs_u8x16, u8x16,
+    [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2],
+    [2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0, 2, 1, 0, 0],
+    [0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2, 0, 0, 1, 2] }
 
     macro_rules! test_vec_min {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
