@@ -2620,22 +2620,22 @@ fn method_resolution_slow() {
     let t = type_at(
         r#"
 //- /main.rs
-trait Send {}
+trait SendX {}
 
-struct S1; impl Send for S1;
-struct S2; impl Send for S2;
+struct S1; impl SendX for S1;
+struct S2; impl SendX for S2;
 struct U1;
 
 trait Trait { fn method(self); }
 
 struct X1<A, B> {}
-impl<A, B> Send for X1<A, B> where A: Send, B: Send {}
+impl<A, B> SendX for X1<A, B> where A: SendX, B: SendX {}
 
 struct S<B, C> {}
 
-trait Fn {}
+trait FnX {}
 
-impl<B, C> Trait for S<B, C> where C: Fn, B: Send {}
+impl<B, C> Trait for S<B, C> where C: FnX, B: SendX {}
 
 fn test() { (S {}).method()<|>; }
 "#,
