@@ -157,7 +157,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let result = self.tcx.erase_regions(&result);
 
         self.tcx.lift_to_global(&result).unwrap_or_else(||
-            bug!("Uninferred types/regions in `{:?}`", result)
+            bug!("Uninferred types/regions/consts in `{:?}`", result)
         )
     }
 }
