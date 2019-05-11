@@ -743,7 +743,20 @@ impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                     }
                 }
             },
-            _ => {}
+            //none of these have Operands to const-propagate
+            TerminatorKind::Goto { .. } |
+            TerminatorKind::Resume |
+            TerminatorKind::Abort |
+            TerminatorKind::Return |
+            TerminatorKind::Unreachable |
+            TerminatorKind::Drop { .. } |
+            TerminatorKind::DropAndReplace { .. } |
+            TerminatorKind::Yield { .. } |
+            TerminatorKind::GeneratorDrop |
+            TerminatorKind::FalseEdges { .. } |
+            TerminatorKind::FalseUnwind { .. } => { }
+            //FIXME(wesleywiser) Call does have Operands that could be const-propagated
+            TerminatorKind::Call { .. } => { }
         }
     }
 }
