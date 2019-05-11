@@ -373,10 +373,10 @@ impl<'tcx> Stack {
     }
 
     /// Derived a new pointer from one with the given tag.
-    /// `weak` controls whether this is a weak reborrow: weak reborrows do not act as
-    /// accesses, and they add the new item directly on top of the one it is derived
+    /// `weak` controls whether this operation is weak or string: weak granting does not act as
+    /// an access, and they add the new item directly on top of the one it is derived
     /// from instead of all the way at the top of the stack.
-    fn reborrow(
+    fn grant(
         &mut self,
         derived_from: Tag,
         weak: bool,
@@ -588,7 +588,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                     let weak = perm == Permission::SharedReadWrite;
                     let item = Item { perm, tag: new_tag, protector };
                     alloc.extra.for_each(cur_ptr, size, |stack, global| {
-                        stack.reborrow(cur_ptr.tag, force_weak || weak, item, global)
+                        stack.grant(cur_ptr.tag, force_weak || weak, item, global)
                     })
                 });
             }
@@ -597,7 +597,7 @@ trait EvalContextPrivExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
         let weak = perm == Permission::SharedReadWrite;
         let item = Item { perm, tag: new_tag, protector };
         alloc.extra.for_each(ptr, size, |stack, global| {
-            stack.reborrow(ptr.tag, force_weak || weak, item, global)
+            stack.grant(ptr.tag, force_weak || weak, item, global)
         })
     }
 
