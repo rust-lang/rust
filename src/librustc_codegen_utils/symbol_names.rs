@@ -96,6 +96,7 @@ use rustc::ty::print::{PrettyPrinter, Printer, Print};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::mir::interpret::{ConstValue, Scalar};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
@@ -438,10 +439,17 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     }
 
     fn print_const(
-        self,
+        mut self,
         ct: &'tcx ty::Const<'tcx>,
     ) -> Result<Self::Const, Self::Error> {
-        self.pretty_print_const(ct)
+        // only print integers
+        if let ConstValue::Scalar(Scalar::Bits { .. }) = ct.val {
+            if ct.ty.is_integral() {
+                return self.pretty_print_const(ct);
+            }
+        }
+        self.write_str("_")?;
+        Ok(self)
     }
 
     fn path_crate(
