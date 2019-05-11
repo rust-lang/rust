@@ -463,15 +463,16 @@ pub struct Interner {
 impl Interner {
     fn prefill(init: &[&str]) -> Self {
         let mut this = Interner::default();
-        for &string in init {
-            if string == "" {
-                // We can't allocate empty strings in the arena, so handle this here.
-                let name = Symbol::new(this.strings.len() as u32);
-                this.names.insert("", name);
-                this.strings.push("");
-            } else {
-                this.intern(string);
-            }
+        this.names.reserve(init.len());
+        this.strings.reserve(init.len());
+
+        // We can't allocate empty strings in the arena, so handle this here.
+        assert!(keywords::Invalid.name().as_u32() == 0 && init[0].is_empty());
+        this.names.insert("", keywords::Invalid.name());
+        this.strings.push("");
+
+        for string in &init[1..] {
+            this.intern(string);
         }
         this
     }
