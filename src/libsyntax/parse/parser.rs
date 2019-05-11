@@ -1925,8 +1925,6 @@ impl<'a> Parser<'a> {
     /// This version of parse arg doesn't necessarily require identifier names.
     fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool,
                          allow_c_variadic: bool) -> PResult<'a, Arg> {
-        maybe_whole!(self, NtArg, |x| x);
-
         if let Ok(Some(_)) = self.parse_self_arg() {
             let mut err = self.struct_span_err(self.prev_span,
                 "unexpected `self` argument in function");
@@ -4179,8 +4177,6 @@ impl<'a> Parser<'a> {
     }
 
     crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
-        maybe_whole!(self, NtArm, |x| x);
-
         let attrs = self.parse_outer_attributes()?;
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(keywords::If) {
@@ -5915,8 +5911,6 @@ impl<'a> Parser<'a> {
     ///                  | ( < lifetimes , typaramseq ( , )? > )
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
-        maybe_whole!(self, NtGenerics, |x| x);
-
         let span_lo = self.span;
         if self.eat_lt() {
             let params = self.parse_generic_params()?;
@@ -6169,8 +6163,6 @@ impl<'a> Parser<'a> {
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
-        maybe_whole!(self, NtWhereClause, |x| x);
-
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
