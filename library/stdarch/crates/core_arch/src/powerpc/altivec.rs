@@ -351,6 +351,27 @@ mod sealed {
     impl_abs! { vec_abs_i16, i16x8 }
     impl_abs! { vec_abs_i32, i32x4 }
 
+    pub trait VectorAbss {
+        unsafe fn vec_abss(self) -> Self;
+    }
+
+    macro_rules! impl_abss {
+        ($name:ident,  $ty: ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            unsafe fn $name(v: s_t_l!($ty)) -> s_t_l!($ty) {
+                let zero: s_t_l!($ty) = transmute(0u8.vec_splats());
+                v.vec_max(zero.vec_subs(v))
+            }
+
+            impl_vec_trait! { [VectorAbss vec_abss] $name (s_t_l!($ty)) }
+        };
+    }
+
+    impl_abss! { vec_abss_i8, i8x16 }
+    impl_abss! { vec_abss_i16, i16x8 }
+    impl_abss! { vec_abss_i32, i32x4 }
+
     macro_rules! splats {
         ($name:ident, $v:ident, $r:ident) => {
             #[inline]
@@ -1146,6 +1167,16 @@ where
     a.vec_abs()
 }
 
+/// Vector abss.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_abss<T>(a: T) -> T
+where
+    T: sealed::VectorAbss,
+{
+    a.vec_abss()
+}
+
 /// Vector splats.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1414,20 +1445,36 @@ mod tests {
     }
 
     macro_rules! test_vec_abs {
-        { $name: ident, $ty: ident, $a: expr } => {
+        { $name: ident, $ty: ident, $a: expr, $d: expr } => {
             #[simd_test(enable = "altivec")]
             unsafe fn $name() {
                 let a = vec_splats($a);
                 let a: s_t_l!($ty) = vec_abs(a);
-                let d = $ty::splat($a);
+                let d = $ty::splat($d);
                 assert_eq!(d, transmute(a));
             }
         }
     }
 
-    test_vec_abs! { test_vec_abs_i8, i8x16, 42i8 }
-    test_vec_abs! { test_vec_abs_i16, i16x8, 42i16 }
-    test_vec_abs! { test_vec_abs_i32, i32x4, 42i32 }
+    test_vec_abs! { test_vec_abs_i8, i8x16, -42i8, 42i8 }
+    test_vec_abs! { test_vec_abs_i16, i16x8, -42i16, 42i16 }
+    test_vec_abs! { test_vec_abs_i32, i32x4, -42i32, 42i32 }
+
+    macro_rules! test_vec_abss {
+        { $name: ident, $ty: ident, $a: expr, $d: expr } => {
+            #[simd_test(enable = "altivec")]
+            unsafe fn $name() {
+                let a = vec_splats($a);
+                let a: s_t_l!($ty) = vec_abss(a);
+                let d = $ty::splat($d);
+                assert_eq!(d, transmute(a));
+            }
+        }
+    }
+
+    test_vec_abss! { test_vec_abss_i8, i8x16, -127i8, 127i8 }
+    test_vec_abss! { test_vec_abss_i16, i16x8, -42i16, 42i16 }
+    test_vec_abss! { test_vec_abss_i32, i32x4, -42i32, 42i32 }
 
     macro_rules! test_vec_splats {
         { $name: ident, $ty: ident, $a: expr } => {
