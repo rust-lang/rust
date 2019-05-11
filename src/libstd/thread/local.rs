@@ -374,7 +374,7 @@ pub mod fast {
     // This data structure has been carefully constructed so that the fast path
     // only contains one branch on x86. That optimization is necessary to avoid
     // duplicated tls lookups on OSX.
-    // 
+    //
     // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
     pub struct Key<T> {
         // If `LazyKeyInner::get` returns `None`, that indicates either:
