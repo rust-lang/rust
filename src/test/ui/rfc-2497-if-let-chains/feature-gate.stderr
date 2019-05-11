@@ -1,0 +1,279 @@
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:14:9
+   |
+LL |     if (let 0 = 1) {}
+   |         ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:18:11
+   |
+LL |     if (((let 0 = 1))) {}
+   |           ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:21:16
+   |
+LL |     if true && let 0 = 1 {}
+   |                ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:24:8
+   |
+LL |     if let 0 = 1 && true {}
+   |        ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:27:9
+   |
+LL |     if (let 0 = 1) && true {}
+   |         ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:30:17
+   |
+LL |     if true && (let 0 = 1) {}
+   |                 ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:33:9
+   |
+LL |     if (let 0 = 1) && (let 0 = 1) {}
+   |         ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:33:24
+   |
+LL |     if (let 0 = 1) && (let 0 = 1) {}
+   |                        ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:37:8
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |        ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:37:21
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                     ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:37:35
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                   ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:37:48
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:37:61
+   |
+LL |     if let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                             ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:44:8
+   |
+LL |     if let Range { start: _, end: _ } = (true..true) && false {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:51:12
+   |
+LL |     while (let 0 = 1) {}
+   |            ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:54:14
+   |
+LL |     while (((let 0 = 1))) {}
+   |              ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:57:19
+   |
+LL |     while true && let 0 = 1 {}
+   |                   ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:60:11
+   |
+LL |     while let 0 = 1 && true {}
+   |           ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:63:12
+   |
+LL |     while (let 0 = 1) && true {}
+   |            ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:66:20
+   |
+LL |     while true && (let 0 = 1) {}
+   |                    ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:69:12
+   |
+LL |     while (let 0 = 1) && (let 0 = 1) {}
+   |            ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:69:27
+   |
+LL |     while (let 0 = 1) && (let 0 = 1) {}
+   |                           ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:73:11
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |           ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:73:24
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                        ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:73:38
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                      ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:73:51
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                   ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:73:64
+   |
+LL |     while let 0 = 1 && let 1 = 2 && (let 2 = 3 && let 3 = 4 && let 4 = 5) {}
+   |                                                                ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:80:11
+   |
+LL |     while let Range { start: _, end: _ } = (true..true) && false {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:94:15
+   |
+LL |     use_expr!(let 0 = 1 && 0 == 0);
+   |               ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error[E0658]: `let` expressions in this position are experimental
+  --> $DIR/feature-gate.rs:96:16
+   |
+LL |     use_expr!((let 0 = 1));
+   |                ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/53667
+   = help: add #![feature(let_chains)] to the crate attributes to enable
+
+error: `let` expressions only supported in `if`
+  --> $DIR/feature-gate.rs:14:9
+   |
+LL |     if (let 0 = 1) {}
+   |         ^^^^^^^^^
+
+error: aborting due to 31 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
