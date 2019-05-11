@@ -665,6 +665,10 @@ fn desugaring_name(des: hir::MatchSource) -> String {
             "MatchSource::IfLetDesugar {{ contains_else_clause: {} }}",
             contains_else_clause
         ),
+        hir::MatchSource::IfDesugar { contains_else_clause } => format!(
+            "MatchSource::IfDesugar {{ contains_else_clause: {} }}",
+            contains_else_clause
+        ),
         hir::MatchSource::AwaitDesugar => "MatchSource::AwaitDesugar".to_string(),
     }
 }
