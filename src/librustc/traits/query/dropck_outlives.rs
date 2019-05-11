@@ -54,7 +54,7 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
                     &orig_values,
                     result)
                 {
-                    let ty = self.infcx.resolve_type_vars_if_possible(&ty);
+                    let ty = self.infcx.resolve_vars_if_possible(&ty);
                     let kinds = value.into_kinds_reporting_overflows(tcx, span, ty);
                     return InferOk {
                         value: kinds,

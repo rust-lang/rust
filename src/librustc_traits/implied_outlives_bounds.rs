@@ -121,7 +121,7 @@ fn compute_implied_outlives_bounds<'tcx>(
                 ty::Predicate::TypeOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(ty_a, r_b)) => {
-                        let ty_a = infcx.resolve_type_vars_if_possible(&ty_a);
+                        let ty_a = infcx.resolve_vars_if_possible(&ty_a);
                         let mut components = smallvec![];
                         tcx.push_outlives_components(ty_a, &mut components);
                         implied_bounds_from_components(r_b, components)

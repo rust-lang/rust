@@ -138,7 +138,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             hir::ExprKind::Unary(hir::UnNeg, ref inner)
             | hir::ExprKind::Unary(hir::UnNot, ref inner) => {
                 let inner_ty = self.fcx.node_ty(inner.hir_id);
-                let inner_ty = self.fcx.resolve_type_vars_if_possible(&inner_ty);
+                let inner_ty = self.fcx.resolve_vars_if_possible(&inner_ty);
 
                 if inner_ty.is_scalar() {
                     let mut tables = self.fcx.tables.borrow_mut();
@@ -149,10 +149,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             hir::ExprKind::Binary(ref op, ref lhs, ref rhs)
             | hir::ExprKind::AssignOp(ref op, ref lhs, ref rhs) => {
                 let lhs_ty = self.fcx.node_ty(lhs.hir_id);
-                let lhs_ty = self.fcx.resolve_type_vars_if_possible(&lhs_ty);
+                let lhs_ty = self.fcx.resolve_vars_if_possible(&lhs_ty);
 
                 let rhs_ty = self.fcx.node_ty(rhs.hir_id);
-                let rhs_ty = self.fcx.resolve_type_vars_if_possible(&rhs_ty);
+                let rhs_ty = self.fcx.resolve_vars_if_possible(&rhs_ty);
 
                 if lhs_ty.is_scalar() && rhs_ty.is_scalar() {
                     let mut tables = self.fcx.tables.borrow_mut();
@@ -192,7 +192,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             // All valid indexing looks like this; might encounter non-valid indexes at this point
             if let ty::Ref(_, base_ty, _) = tables.expr_ty_adjusted(&base).sty {
                 let index_ty = tables.expr_ty_adjusted(&index);
-                let index_ty = self.fcx.resolve_type_vars_if_possible(&index_ty);
+                let index_ty = self.fcx.resolve_vars_if_possible(&index_ty);
 
                 if base_ty.builtin_index().is_some() && index_ty == self.fcx.tcx.types.usize {
                     // Remove the method call record

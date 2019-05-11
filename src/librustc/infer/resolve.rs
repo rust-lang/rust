@@ -4,25 +4,25 @@ use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst, TypeFlags};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 
 ///////////////////////////////////////////////////////////////////////////
-// OPPORTUNISTIC TYPE RESOLVER
+// OPPORTUNISTIC KIND RESOLVER
 
-/// The opportunistic type resolver can be used at any time. It simply replaces
-/// type variables that have been unified with the things they have
+/// The opportunistic kind resolver can be used at any time. It simply replaces
+/// type/const variables that have been unified with the things they have
 /// been unified with (similar to `shallow_resolve`, but deep). This is
 /// useful for printing messages etc but also required at various
 /// points for correctness.
-pub struct OpportunisticTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+pub struct OpportunisticVarResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
 }
 
-impl<'a, 'gcx, 'tcx> OpportunisticTypeResolver<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> OpportunisticVarResolver<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        OpportunisticTypeResolver { infcx }
+        OpportunisticVarResolver { infcx }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeResolver<'a, 'gcx, 'tcx> {
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticVarResolver<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> {
         self.infcx.tcx
     }

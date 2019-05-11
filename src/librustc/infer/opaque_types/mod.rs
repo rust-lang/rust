@@ -284,9 +284,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("constrain_opaque_type: def_id={:?}", def_id);
         debug!("constrain_opaque_type: opaque_defn={:#?}", opaque_defn);
 
-        let tcx = self.tcx;
-
-        let concrete_ty = self.resolve_type_vars_if_possible(&opaque_defn.concrete_ty);
+        let concrete_ty = self.resolve_vars_if_possible(&opaque_defn.concrete_ty);
 
         debug!("constrain_opaque_type: concrete_ty={:?}", concrete_ty);
 

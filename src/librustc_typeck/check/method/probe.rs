@@ -1338,7 +1338,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                             // and point at it rather than reporting the entire
                             // trait-ref?
                             result = ProbeResult::NoMatch;
-                            let trait_ref = self.resolve_type_vars_if_possible(&trait_ref);
+                            let trait_ref = self.resolve_vars_if_possible(&trait_ref);
                             possibly_unsatisfied_predicates.push(trait_ref);
                         }
                     }
@@ -1351,7 +1351,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
             // Evaluate those obligations to see if they might possibly hold.
             for o in candidate_obligations.into_iter().chain(sub_obligations) {
-                let o = self.resolve_type_vars_if_possible(&o);
+                let o = self.resolve_vars_if_possible(&o);
                 if !self.predicate_may_hold(&o) {
                     result = ProbeResult::NoMatch;
                     if let &ty::Predicate::Trait(ref pred) = &o.predicate {
@@ -1364,7 +1364,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 if let (Some(return_ty), Some(xform_ret_ty)) =
                     (self.return_type, probe.xform_ret_ty)
                 {
-                    let xform_ret_ty = self.resolve_type_vars_if_possible(&xform_ret_ty);
+                    let xform_ret_ty = self.resolve_vars_if_possible(&xform_ret_ty);
                     debug!("comparing return_ty {:?} with xform ret ty {:?}",
                            return_ty,
                            probe.xform_ret_ty);

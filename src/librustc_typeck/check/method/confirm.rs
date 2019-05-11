@@ -511,7 +511,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         let base_ty = self.tables.borrow().expr_adjustments(base_expr).last()
             .map_or_else(|| self.node_ty(expr.hir_id), |adj| adj.target);
-        let base_ty = self.resolve_type_vars_if_possible(&base_ty);
+        let base_ty = self.resolve_vars_if_possible(&base_ty);
 
         // Need to deref because overloaded place ops take self by-reference.
         let base_ty = base_ty.builtin_deref(false)

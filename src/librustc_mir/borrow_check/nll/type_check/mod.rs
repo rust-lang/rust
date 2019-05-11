@@ -1263,7 +1263,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         debug!(
                             "eq_opaque_type_and_type: concrete_ty={:?}={:?} opaque_defn_ty={:?}",
                             opaque_decl.concrete_ty,
-                            infcx.resolve_type_vars_if_possible(&opaque_decl.concrete_ty),
+                            infcx.resolve_vars_if_possible(&opaque_decl.concrete_ty),
                             opaque_defn_ty
                         );
                         obligations.add(infcx

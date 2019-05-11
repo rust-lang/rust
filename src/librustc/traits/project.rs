@@ -312,7 +312,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssocTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
     }
 
     fn fold<T:TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
-        let value = self.selcx.infcx().resolve_type_vars_if_possible(value);
+        let value = self.selcx.infcx().resolve_vars_if_possible(value);
 
         if !value.has_projections() {
             value
@@ -508,7 +508,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 {
     let infcx = selcx.infcx();
 
-    let projection_ty = infcx.resolve_type_vars_if_possible(&projection_ty);
+    let projection_ty = infcx.resolve_vars_if_possible(&projection_ty);
     let cache_key = ProjectionCacheKey { ty: projection_ty };
 
     debug!("opt_normalize_projection_type(\
@@ -1614,7 +1614,7 @@ impl<'cx, 'gcx, 'tcx> ProjectionCacheKey<'tcx> {
                 // from a specific call to `opt_normalize_projection_type` - if
                 // there's no precise match, the original cache entry is "stranded"
                 // anyway.
-                ty: infcx.resolve_type_vars_if_possible(&predicate.projection_ty)
+                ty: infcx.resolve_vars_if_possible(&predicate.projection_ty)
             })
     }
 }

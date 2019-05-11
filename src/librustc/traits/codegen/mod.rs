@@ -153,7 +153,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             bug!("Encountered errors `{:?}` resolving bounds after type-checking", errors);
         }
 
-        let result = self.resolve_type_vars_if_possible(result);
+        let result = self.resolve_vars_if_possible(result);
         let result = self.tcx.erase_regions(&result);
 
         self.tcx.lift_to_global(&result).unwrap_or_else(||

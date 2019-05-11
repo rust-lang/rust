@@ -48,7 +48,7 @@ impl<'a, 'gcx, 'tcx> InteriorVisitor<'a, 'gcx, 'tcx> {
         });
 
         if let Some(yield_span) = live_across_yield {
-            let ty = self.fcx.resolve_type_vars_if_possible(&ty);
+            let ty = self.fcx.resolve_vars_if_possible(&ty);
 
             debug!("type in expr = {:?}, scope = {:?}, type = {:?}, count = {}, yield_span = {:?}",
                    expr, scope, ty, self.expr_count, yield_span);

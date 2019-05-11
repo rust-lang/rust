@@ -411,7 +411,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     }
 
     fn debug_ex_clause(&mut self, value: &'v ChalkExClause<'tcx>) -> Box<dyn Debug + 'v> {
-        let string = format!("{:?}", self.infcx.resolve_type_vars_if_possible(value));
+        let string = format!("{:?}", self.infcx.resolve_vars_if_possible(value));
         Box::new(string)
     }
 
