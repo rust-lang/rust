@@ -1351,12 +1351,17 @@ pub enum StrStyle {
     Raw(u16),
 }
 
-/// A literal.
+/// An AST literal.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Lit {
-    pub node: LitKind,
+    /// The original literal token as written in source code.
     pub token: token::Lit,
+    /// The original literal suffix as written in source code.
     pub suffix: Option<Symbol>,
+    /// The "semantic" representation of the literal lowered from the original tokens.
+    /// Strings are unescaped, hexadecimal forms are eliminated, etc.
+    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
+    pub node: LitKind,
     pub span: Span,
 }
 

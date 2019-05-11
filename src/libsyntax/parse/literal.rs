@@ -27,7 +27,7 @@ macro_rules! err {
 
 impl LitKind {
     /// Converts literal token with a suffix into a semantic literal.
-    /// Works speculatively and may return `None` is diagnostic handler is not passed.
+    /// Works speculatively and may return `None` if diagnostic handler is not passed.
     /// If diagnostic handler is passed, always returns `Some`,
     /// possibly after reporting non-fatal errors and recovery.
     fn from_lit_token(
@@ -166,7 +166,7 @@ impl LitKind {
 
 impl Lit {
     /// Converts literal token with a suffix into an AST literal.
-    /// Works speculatively and may return `None` is diagnostic handler is not passed.
+    /// Works speculatively and may return `None` if diagnostic handler is not passed.
     /// If diagnostic handler is passed, may return `Some`,
     /// possibly after reporting non-fatal errors and recovery, or `None` for irrecoverable errors.
     crate fn from_token(
