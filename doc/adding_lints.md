@@ -381,7 +381,7 @@ Here are some pointers to things you are likely going to need for every lint:
   is already in here (`implements_trait`, `match_path`, `snippet`, etc)
 * [Clippy diagnostics][diagnostics]
 * [The `if_chain` macro][if_chain]
-* [`in_macro`][in_macro] and [`in_external_macro`][in_external_macro]
+* [`in_macro_or_desugar`][in_macro_or_desugar] and [`in_external_macro`][in_external_macro]
 * [`Span`][span]
 * [`Applicability`][applicability]
 * [The rustc guide][rustc_guide] explains a lot of internal compiler concepts
@@ -421,7 +421,7 @@ don't hesitate to ask on Discord, IRC or in the issue/PR.
 [if_chain]: https://docs.rs/if_chain/0.1.2/if_chain/
 [ty]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/sty/index.html
 [ast]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast/index.html
-[in_macro]: https://github.com/rust-lang/rust-clippy/blob/d0717d1f9531a03d154aaeb0cad94c243915a146/clippy_lints/src/utils/mod.rs#L94
+[in_macro_or_desugar]: https://github.com/rust-lang/rust-clippy/blob/d0717d1f9531a03d154aaeb0cad94c243915a146/clippy_lints/src/utils/mod.rs#L94
 [in_external_macro]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/fn.in_external_macro.html
 [play]: https://play.rust-lang.org
 [author_example]: https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=f093b986e80ad62f3b67a1f24f5e66e2

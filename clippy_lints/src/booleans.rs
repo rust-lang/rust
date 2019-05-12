@@ -1,5 +1,6 @@
 use crate::utils::{
-    get_trait_def_id, implements_trait, in_macro, match_type, paths, snippet_opt, span_lint_and_then, SpanlessEq,
+    get_trait_def_id, implements_trait, in_macro_or_desugar, match_type, paths, snippet_opt, span_lint_and_then,
+    SpanlessEq,
 };
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
@@ -93,7 +94,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
 
     fn run(&mut self, e: &'v Expr) -> Result<Bool, String> {
         // prevent folding of `cfg!` macros and the like
-        if !in_macro(e.span) {
+        if !in_macro_or_desugar(e.span) {
             match &e.node {
                 ExprKind::Unary(UnNot, inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprKind::Binary(binop, lhs, rhs) => match &binop.node {
@@ -441,7 +442,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr) {
-        if in_macro(e.span) {
+        if in_macro_or_desugar(e.span) {
             return;
         }
         match &e.node {

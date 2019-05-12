@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, span_lint};
+use crate::utils::{in_macro_or_desugar, span_lint};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast::*;
@@ -26,7 +26,7 @@ declare_lint_pass!(DoubleParens => [DOUBLE_PARENS]);
 
 impl EarlyLintPass for DoubleParens {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
-        if in_macro(expr.span) {
+        if in_macro_or_desugar(expr.span) {
             return;
         }
 

@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, span_lint};
+use crate::utils::{in_macro_or_desugar, span_lint};
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
         span: Span,
         fn_id: hir::HirId,
     ) {
-        if in_macro(span) {
+        if in_macro_or_desugar(span) {
             return;
         }
 

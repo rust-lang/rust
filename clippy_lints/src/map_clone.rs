@@ -1,6 +1,7 @@
 use crate::utils::paths;
 use crate::utils::{
-    in_macro, is_copy, match_trait_method, match_type, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
+    in_macro_or_desugar, is_copy, match_trait_method, match_type, remove_blocks, snippet_with_applicability,
+    span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc::hir;
@@ -43,7 +44,7 @@ declare_lint_pass!(MapClone => [MAP_CLONE]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MapClone {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, e: &hir::Expr) {
-        if in_macro(e.span) {
+        if in_macro_or_desugar(e.span) {
             return;
         }
 
