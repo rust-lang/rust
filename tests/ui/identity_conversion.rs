@@ -20,10 +20,21 @@ fn test_questionmark() -> Result<(), ()> {
     Ok(())
 }
 
+fn test_issue_3913() -> Result<(), std::io::Error> {
+    use std::fs;
+    use std::path::Path;
+
+    let path = Path::new(".");
+    for _ in fs::read_dir(path)? {}
+
+    Ok(())
+}
+
 fn main() {
     test_generic(10i32);
     test_generic2::<i32, i32>(10i32);
     test_questionmark().unwrap();
+    test_issue_3913().unwrap();
 
     let _: String = "foo".into();
     let _: String = From::from("foo");

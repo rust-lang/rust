@@ -23,43 +23,43 @@ LL |         let _: i32 = 0i32.into();
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:38:21
+  --> $DIR/identity_conversion.rs:49:21
    |
 LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:39:21
+  --> $DIR/identity_conversion.rs:50:21
    |
 LL |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:40:13
+  --> $DIR/identity_conversion.rs:51:13
    |
 LL |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:41:13
+  --> $DIR/identity_conversion.rs:52:13
    |
 LL |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:42:13
+  --> $DIR/identity_conversion.rs:53:13
    |
 LL |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:43:13
+  --> $DIR/identity_conversion.rs:54:13
    |
 LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
 error: identical conversion
-  --> $DIR/identity_conversion.rs:44:21
+  --> $DIR/identity_conversion.rs:55:21
    |
 LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`
