@@ -126,10 +126,8 @@ jobs:
 
       asmjs:
         IMAGE: asmjs
-      i686-gnu-1:
-        IMAGE: i686-gnu-1
-      i686-gnu-2:
-        IMAGE: i686-gnu-2
+      i686-gnu:
+        IMAGE: i686-gnu
       i686-gnu-nopt:
         IMAGE: i686-gnu-nopt
       test-various:
