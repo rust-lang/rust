@@ -558,6 +558,28 @@ mod impl_keyword { }
 /// [Reference]: ../reference/statements.html#let-statements
 mod let_keyword { }
 
+#[doc(keyword = "while")]
+//
+/// while loop
+///
+/// `while` is used to define while loops in Rust. It runs the code inside it
+/// until the condition in the while loop becomes False or there the code uses
+/// `break`.
+///
+///
+/// ```rust
+/// let mut i = 0;
+/// while i > 10 {
+///     println!("i is {}", i);
+///     i += 1;
+/// }
+/// ```
+///
+/// For more information on `while` and loops in general, see the [Reference].
+///
+/// [Reference]: ../reference/expressions/loop-expr.html
+mod while_keyword { }
+
 #[doc(keyword = "loop")]
 //
 /// The loop-defining keyword.
