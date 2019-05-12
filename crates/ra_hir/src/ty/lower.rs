@@ -5,6 +5,7 @@
 //!  - Building the type for an item: This happens through the `type_for_def` query.
 //!
 //! This usually involves resolving names, collecting generic arguments etc.
+use std::sync::Arc;
 use std::iter;
 
 use crate::{
@@ -18,9 +19,9 @@ use crate::{
     resolve::{Resolver, Resolution},
     path::{PathSegment, GenericArg},
     generics::{GenericParams, HasGenericParams},
-    adt::VariantDef, Trait
+    adt::VariantDef, Trait, generics::{ WherePredicate, GenericDef}
 };
-use super::{Ty, primitive, FnSig, Substs, TypeCtor, TraitRef};
+use super::{Ty, primitive, FnSig, Substs, TypeCtor, TraitRef, GenericPredicate};
 
 impl Ty {
     pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {
@@ -208,16 +209,12 @@ pub(super) fn substs_from_path_segment(
 }
 
 impl TraitRef {
-    pub(crate) fn from_hir(
+    pub(crate) fn from_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
-        type_ref: &TypeRef,
+        path: &Path,
         explicit_self_ty: Option<Ty>,
     ) -> Option<Self> {
-        let path = match type_ref {
-            TypeRef::Path(path) => path,
-            _ => return None,
-        };
         let resolved = match resolver.resolve_path(db, &path).take_types()? {
             Resolution::Def(ModuleDef::Trait(tr)) => tr,
             _ => return None,
@@ -230,6 +227,19 @@ impl TraitRef {
             substs.0 = substs_vec.into();
         }
         Some(TraitRef { trait_: resolved, substs })
+    }
+
+    pub(crate) fn from_hir(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        type_ref: &TypeRef,
+        explicit_self_ty: Option<Ty>,
+    ) -> Option<Self> {
+        let path = match type_ref {
+            TypeRef::Path(path) => path,
+            _ => return None,
+        };
+        TraitRef::from_path(db, resolver, path, explicit_self_ty)
     }
 
     fn substs_from_path(
@@ -245,6 +255,15 @@ impl TraitRef {
     pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {
         let substs = Substs::identity(&trait_.generic_params(db));
         TraitRef { trait_, substs }
+    }
+
+    pub(crate) fn for_where_predicate(
+        db: &impl HirDatabase,
+        resolver: &Resolver,
+        pred: &WherePredicate,
+    ) -> Option<TraitRef> {
+        let self_ty = Ty::from_hir(db, resolver, &pred.type_ref);
+        TraitRef::from_path(db, resolver, &pred.trait_ref, Some(self_ty))
     }
 }
 
@@ -292,6 +311,24 @@ pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let var_data = parent_def.variant_data(db);
     let type_ref = &var_data.fields().unwrap()[field.id].type_ref;
     Ty::from_hir(db, &resolver, type_ref)
+}
+
+/// Resolve the where clause(s) of an item with generics.
+pub(crate) fn generic_predicates(
+    db: &impl HirDatabase,
+    def: GenericDef,
+) -> Arc<[GenericPredicate]> {
+    let resolver = def.resolver(db);
+    let generic_params = def.generic_params(db);
+    let predicates = generic_params
+        .where_predicates
+        .iter()
+        .map(|pred| {
+            TraitRef::for_where_predicate(db, &resolver, pred)
+                .map_or(GenericPredicate::Error, GenericPredicate::Implemented)
+        })
+        .collect::<Vec<_>>();
+    predicates.into()
 }
 
 fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {

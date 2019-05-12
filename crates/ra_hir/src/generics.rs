@@ -8,7 +8,7 @@ use std::sync::Arc;
 use ra_syntax::ast::{self, NameOwner, TypeParamsOwner, TypeBoundsOwner};
 
 use crate::{
-    db::DefDatabase,
+    db::{ HirDatabase, DefDatabase},
     Name, AsName, Function, Struct, Enum, Trait, TypeAlias, ImplBlock, Container, path::Path, type_ref::TypeRef, AdtDef
 };
 
@@ -32,8 +32,8 @@ pub struct GenericParams {
 /// where clauses like `where T: Foo + Bar` are turned into multiple of these.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct WherePredicate {
-    type_ref: TypeRef,
-    trait_ref: Path,
+    pub(crate) type_ref: TypeRef,
+    pub(crate) trait_ref: Path,
 }
 
 // FIXME: consts can have type parameters from their parents (i.e. associated consts of traits)
@@ -90,8 +90,17 @@ impl GenericParams {
     fn fill_params(&mut self, params: &ast::TypeParamList, start: u32) {
         for (idx, type_param) in params.type_params().enumerate() {
             let name = type_param.name().map(AsName::as_name).unwrap_or_else(Name::missing);
-            let param = GenericParam { idx: idx as u32 + start, name };
+            let param = GenericParam { idx: idx as u32 + start, name: name.clone() };
             self.params.push(param);
+
+            let type_ref = TypeRef::Path(name.into());
+            for bound in type_param
+                .type_bound_list()
+                .iter()
+                .flat_map(|type_bound_list| type_bound_list.bounds())
+            {
+                self.add_where_predicate_from_bound(bound, type_ref.clone());
+            }
         }
     }
 
@@ -101,24 +110,26 @@ impl GenericParams {
                 Some(type_ref) => type_ref,
                 None => continue,
             };
+            let type_ref = TypeRef::from_ast(type_ref);
             for bound in pred.type_bound_list().iter().flat_map(|l| l.bounds()) {
-                let path = bound
-                    .type_ref()
-                    .and_then(|tr| match tr.kind() {
-                        ast::TypeRefKind::PathType(path) => path.path(),
-                        _ => None,
-                    })
-                    .and_then(Path::from_ast);
-                let path = match path {
-                    Some(p) => p,
-                    None => continue,
-                };
-                self.where_predicates.push(WherePredicate {
-                    type_ref: TypeRef::from_ast(type_ref),
-                    trait_ref: path,
-                });
+                self.add_where_predicate_from_bound(bound, type_ref.clone());
             }
         }
+    }
+
+    fn add_where_predicate_from_bound(&mut self, bound: &ast::TypeBound, type_ref: TypeRef) {
+        let path = bound
+            .type_ref()
+            .and_then(|tr| match tr.kind() {
+                ast::TypeRefKind::PathType(path) => path.path(),
+                _ => None,
+            })
+            .and_then(Path::from_ast);
+        let path = match path {
+            Some(p) => p,
+            None => return,
+        };
+        self.where_predicates.push(WherePredicate { type_ref, trait_ref: path });
     }
 
     pub(crate) fn find_by_name(&self, name: &Name) -> Option<&GenericParam> {
@@ -145,6 +156,19 @@ impl GenericParams {
         let mut vec = Vec::with_capacity(self.count_params_including_parent());
         self.for_each_param(&mut |p| vec.push(p));
         vec
+    }
+}
+
+impl GenericDef {
+    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> crate::Resolver {
+        match self {
+            GenericDef::Function(inner) => inner.resolver(db),
+            GenericDef::Struct(inner) => inner.resolver(db),
+            GenericDef::Enum(inner) => inner.resolver(db),
+            GenericDef::Trait(inner) => inner.resolver(db),
+            GenericDef::TypeAlias(inner) => inner.resolver(db),
+            GenericDef::ImplBlock(inner) => inner.resolver(db),
+        }
     }
 }
 

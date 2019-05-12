@@ -2502,6 +2502,21 @@ fn test() { (&S).foo()<|>; }
 }
 
 #[test]
+fn method_resolution_where_clause_for_unknown_trait() {
+    // The blanket impl shouldn't apply because we can't even resolve UnknownTrait
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl<T> Trait for T where T: UnknownTrait {}
+fn test() { (&S).foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
 fn method_resolution_where_clause_not_met() {
     // The blanket impl shouldn't apply because we can't prove S: Clone
     let t = type_at(
@@ -2510,12 +2525,122 @@ fn method_resolution_where_clause_not_met() {
 trait Clone {}
 trait Trait { fn foo(self) -> u128; }
 struct S;
-impl S { fn foo(self) -> i8 { 0 } }
-impl<T> Trait for T where T: Clone { fn foo(self) -> u128 { 0 } }
+impl<T> Trait for T where T: Clone {}
 fn test() { (&S).foo()<|>; }
 "#,
     );
-    assert_eq!(t, "i8");
+    // This is also to make sure that we don't resolve to the foo method just
+    // because that's the only method named foo we can find, which would make
+    // the below tests not work
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn method_resolution_where_clause_inline_not_met() {
+    // The blanket impl shouldn't apply because we can't prove S: Clone
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone {}
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl<T: Clone> Trait for T {}
+fn test() { (&S).foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn method_resolution_where_clause_1() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Clone {}
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl Clone for S {};
+impl<T> Trait for T where T: Clone {}
+fn test() { S.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "u128");
+}
+
+#[test]
+fn method_resolution_where_clause_2() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Into<T> { fn into(self) -> T; }
+trait From<T> { fn from(other: T) -> Self; }
+struct S1;
+struct S2;
+impl From<S2> for S1 {};
+impl<T, U> Into<U> for T where U: From<T> {}
+fn test() { S2.into()<|>; }
+"#,
+    );
+    assert_eq!(t, "S1");
+}
+
+#[test]
+fn method_resolution_where_clause_inline() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Into<T> { fn into(self) -> T; }
+trait From<T> { fn from(other: T) -> Self; }
+struct S1;
+struct S2;
+impl From<S2> for S1 {};
+impl<T, U: From<T>> Into<U> for T {}
+fn test() { S2.into()<|>; }
+"#,
+    );
+    assert_eq!(t, "S1");
+}
+
+#[test]
+fn method_resolution_encountering_fn_type() {
+    covers!(trait_resolution_on_fn_type);
+    type_at(
+        r#"
+//- /main.rs
+fn foo() {}
+trait FnOnce { fn call(self); }
+fn test() { foo.call()<|>; }
+"#,
+    );
+}
+
+#[test]
+fn method_resolution_slow() {
+    // this can get quite slow if we set the solver size limit too high
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Send {}
+
+struct S1; impl Send for S1;
+struct S2; impl Send for S2;
+struct U1;
+
+trait Trait { fn method(self); }
+
+struct X1<A, B> {}
+impl<A, B> Send for X1<A, B> where A: Send, B: Send {}
+
+struct S<B, C> {}
+
+trait Fn {}
+
+impl<B, C> Trait for S<B, C> where C: Fn, B: Send {}
+
+fn test() { (S {}).method()<|>; }
+"#,
+    );
+    assert_eq!(t, "{unknown}");
 }
 
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {

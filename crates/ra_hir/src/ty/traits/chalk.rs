@@ -6,14 +6,21 @@ use log::debug;
 use chalk_ir::{TypeId, ImplId, TypeKindId, ProjectionTy, Parameter, Identifier, cast::Cast, PlaceholderIndex, UniverseIndex, TypeName};
 use chalk_rust_ir::{AssociatedTyDatum, TraitDatum, StructDatum, ImplDatum};
 
+use test_utils::tested_by;
 use ra_db::salsa::{InternId, InternKey};
 
 use crate::{
     Trait, HasGenericParams, ImplBlock,
     db::HirDatabase,
-    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs},
+    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate, CallableDef},
+    ty::display::HirDisplay,
+    generics::GenericDef,
 };
 use super::ChalkContext;
+
+/// This represents a trait whose name we could not resolve.
+const UNKNOWN_TRAIT: chalk_ir::TraitId =
+    chalk_ir::TraitId(chalk_ir::RawId { index: u32::max_value() });
 
 pub(super) trait ToChalk {
     type Chalk;
@@ -45,7 +52,10 @@ impl ToChalk for Ty {
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
             // FIXME this is clearly incorrect, but probably not too incorrect
             // and I'm not sure what to actually do with Ty::Unknown
-            Ty::Unknown => PlaceholderIndex { ui: UniverseIndex::ROOT, idx: 0 }.to_ty(),
+            // maybe an alternative would be `for<T> T`? (meaningless in rust, but expressible in chalk's Ty)
+            Ty::Unknown => {
+                PlaceholderIndex { ui: UniverseIndex::ROOT, idx: usize::max_value() }.to_ty()
+            }
         }
     }
     fn from_chalk(db: &impl HirDatabase, chalk: chalk_ir::Ty) -> Self {
@@ -146,11 +156,51 @@ impl ToChalk for ImplBlock {
     }
 }
 
+impl ToChalk for GenericPredicate {
+    type Chalk = chalk_ir::QuantifiedWhereClause;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::QuantifiedWhereClause {
+        match self {
+            GenericPredicate::Implemented(trait_ref) => {
+                make_binders(chalk_ir::WhereClause::Implemented(trait_ref.to_chalk(db)), 0)
+            }
+            GenericPredicate::Error => {
+                let impossible_trait_ref = chalk_ir::TraitRef {
+                    trait_id: UNKNOWN_TRAIT,
+                    parameters: vec![Ty::Unknown.to_chalk(db).cast()],
+                };
+                make_binders(chalk_ir::WhereClause::Implemented(impossible_trait_ref), 0)
+            }
+        }
+    }
+
+    fn from_chalk(
+        _db: &impl HirDatabase,
+        _where_clause: chalk_ir::QuantifiedWhereClause,
+    ) -> GenericPredicate {
+        // This should never need to be called
+        unimplemented!()
+    }
+}
+
 fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
     chalk_ir::Binders {
         value,
         binders: std::iter::repeat(chalk_ir::ParameterKind::Ty(())).take(num_vars).collect(),
     }
+}
+
+fn convert_where_clauses(
+    db: &impl HirDatabase,
+    def: GenericDef,
+    substs: &Substs,
+) -> Vec<chalk_ir::QuantifiedWhereClause> {
+    let generic_predicates = db.generic_predicates(def);
+    let mut result = Vec::with_capacity(generic_predicates.len());
+    for pred in generic_predicates.iter() {
+        result.push(pred.clone().subst(substs).to_chalk(db));
+    }
+    result
 }
 
 impl<'a, DB> chalk_solve::RustIrDatabase for ChalkContext<'a, DB>
@@ -162,18 +212,35 @@ where
     }
     fn trait_datum(&self, trait_id: chalk_ir::TraitId) -> Arc<TraitDatum> {
         debug!("trait_datum {:?}", trait_id);
+        if trait_id == UNKNOWN_TRAIT {
+            let trait_datum_bound = chalk_rust_ir::TraitDatumBound {
+                trait_ref: chalk_ir::TraitRef {
+                    trait_id: UNKNOWN_TRAIT,
+                    parameters: vec![chalk_ir::Ty::BoundVar(0).cast()],
+                },
+                associated_ty_ids: Vec::new(),
+                where_clauses: Vec::new(),
+                flags: chalk_rust_ir::TraitFlags {
+                    auto: false,
+                    marker: false,
+                    upstream: true,
+                    fundamental: false,
+                },
+            };
+            return Arc::new(TraitDatum { binders: make_binders(trait_datum_bound, 1) });
+        }
         let trait_: Trait = from_chalk(self.db, trait_id);
         let generic_params = trait_.generic_params(self.db);
         let bound_vars = Substs::bound_vars(&generic_params);
         let trait_ref = trait_.trait_ref(self.db).subst(&bound_vars).to_chalk(self.db);
         let flags = chalk_rust_ir::TraitFlags {
-            // FIXME set these flags correctly
-            auto: false,
-            marker: false,
+            auto: trait_.is_auto(self.db),
             upstream: trait_.module(self.db).krate(self.db) != Some(self.krate),
+            // FIXME set these flags correctly
+            marker: false,
             fundamental: false,
         };
-        let where_clauses = Vec::new(); // FIXME add where clauses
+        let where_clauses = convert_where_clauses(self.db, trait_.into(), &bound_vars);
         let associated_ty_ids = Vec::new(); // FIXME add associated tys
         let trait_datum_bound =
             chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
@@ -185,21 +252,48 @@ where
         let type_ctor = from_chalk(self.db, struct_id);
         // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
         // FIXME extract this to a method on Ty
-        let (num_params, upstream) = match type_ctor {
+        let (num_params, where_clauses, upstream) = match type_ctor {
             TypeCtor::Bool
             | TypeCtor::Char
             | TypeCtor::Int(_)
             | TypeCtor::Float(_)
             | TypeCtor::Never
-            | TypeCtor::Str => (0, true),
-            TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => (1, true),
-            TypeCtor::FnPtr { num_args } => (num_args as usize + 1, true),
-            TypeCtor::Tuple { cardinality } => (cardinality as usize, true),
-            TypeCtor::FnDef(_) => unimplemented!(),
-            TypeCtor::Adt(adt) => {
-                let generic_params = adt.generic_params(self.db);
+            | TypeCtor::Str => (0, vec![], true),
+            TypeCtor::Slice | TypeCtor::Array | TypeCtor::RawPtr(_) | TypeCtor::Ref(_) => {
+                (1, vec![], true)
+            }
+            TypeCtor::FnPtr { num_args } => (num_args as usize + 1, vec![], true),
+            TypeCtor::Tuple { cardinality } => (cardinality as usize, vec![], true),
+            TypeCtor::FnDef(callable) => {
+                tested_by!(trait_resolution_on_fn_type);
+                let krate = match callable {
+                    CallableDef::Function(f) => f.module(self.db).krate(self.db),
+                    CallableDef::Struct(s) => s.module(self.db).krate(self.db),
+                    CallableDef::EnumVariant(v) => {
+                        v.parent_enum(self.db).module(self.db).krate(self.db)
+                    }
+                };
+                let generic_def: GenericDef = match callable {
+                    CallableDef::Function(f) => f.into(),
+                    CallableDef::Struct(s) => s.into(),
+                    CallableDef::EnumVariant(v) => v.parent_enum(self.db).into(),
+                };
+                let generic_params = generic_def.generic_params(self.db);
+                let bound_vars = Substs::bound_vars(&generic_params);
+                let where_clauses = convert_where_clauses(self.db, generic_def, &bound_vars);
                 (
                     generic_params.count_params_including_parent(),
+                    where_clauses,
+                    krate != Some(self.krate),
+                )
+            }
+            TypeCtor::Adt(adt) => {
+                let generic_params = adt.generic_params(self.db);
+                let bound_vars = Substs::bound_vars(&generic_params);
+                let where_clauses = convert_where_clauses(self.db, adt.into(), &bound_vars);
+                (
+                    generic_params.count_params_including_parent(),
+                    where_clauses,
                     adt.krate(self.db) != Some(self.krate),
                 )
             }
@@ -209,7 +303,6 @@ where
             // FIXME set fundamental flag correctly
             fundamental: false,
         };
-        let where_clauses = Vec::new(); // FIXME add where clauses
         let self_ty = chalk_ir::ApplicationTy {
             name: TypeName::TypeKindId(type_ctor.to_chalk(self.db).into()),
             parameters: (0..num_params).map(|i| chalk_ir::Ty::BoundVar(i).cast()).collect(),
@@ -237,10 +330,23 @@ where
         } else {
             chalk_rust_ir::ImplType::External
         };
+        let where_clauses = convert_where_clauses(self.db, impl_block.into(), &bound_vars);
+        let negative = impl_block.is_negative(self.db);
+        debug!(
+            "impl {:?}: {}{} where {:?}",
+            impl_id,
+            if negative { "!" } else { "" },
+            trait_ref.display(self.db),
+            where_clauses
+        );
+        let trait_ref = trait_ref.to_chalk(self.db);
         let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
-            // FIXME handle negative impls (impl !Sync for Foo)
-            trait_ref: chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref.to_chalk(self.db)),
-            where_clauses: Vec::new(),        // FIXME add where clauses
+            trait_ref: if negative {
+                chalk_rust_ir::PolarizedTraitRef::Negative(trait_ref)
+            } else {
+                chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref)
+            },
+            where_clauses,
             associated_ty_values: Vec::new(), // FIXME add associated type values
             impl_type,
         };
@@ -249,16 +355,18 @@ where
     }
     fn impls_for_trait(&self, trait_id: chalk_ir::TraitId) -> Vec<ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
+        if trait_id == UNKNOWN_TRAIT {
+            return Vec::new();
+        }
         let trait_ = from_chalk(self.db, trait_id);
-        self.db
+        let result: Vec<_> = self
+            .db
             .impls_for_trait(self.krate, trait_)
             .iter()
-            // FIXME temporary hack -- as long as we're not lowering where clauses
-            // correctly, ignore impls with them completely so as to not treat
-            // impl<T> Trait for T where T: ... as a blanket impl on all types
-            .filter(|impl_block| impl_block.generic_params(self.db).where_predicates.is_empty())
             .map(|impl_block| impl_block.to_chalk(self.db))
-            .collect()
+            .collect();
+        debug!("impls_for_trait returned {} impls", result.len());
+        result
     }
     fn impl_provided_for(
         &self,

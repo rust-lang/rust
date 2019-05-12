@@ -11,7 +11,7 @@ use crate::{
     DefWithBody, Trait,
     ids,
     nameres::{Namespace, ImportSourceMap, RawItems, CrateDefMap},
-    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig, TypeCtor},
+    ty::{InferenceResult, Ty, method_resolution::CrateImplBlocks, TypableDef, CallableDef, FnSig, TypeCtor, GenericPredicate},
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap, ImplBlock},
     generics::{GenericParams, GenericDef},
@@ -137,6 +137,9 @@ pub trait HirDatabase: DefDatabase {
 
     #[salsa::invoke(crate::ty::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDef) -> FnSig;
+
+    #[salsa::invoke(crate::ty::generic_predicates)]
+    fn generic_predicates(&self, def: GenericDef) -> Arc<[GenericPredicate]>;
 
     #[salsa::invoke(crate::expr::body_with_source_map_query)]
     fn body_with_source_map(

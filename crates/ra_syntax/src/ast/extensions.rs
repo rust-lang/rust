@@ -170,6 +170,10 @@ impl ast::ImplBlock {
         let second = types.next();
         (first, second)
     }
+
+    pub fn is_negative(&self) -> bool {
+        self.syntax().children_with_tokens().any(|t| t.kind() == EXCL)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -346,5 +350,11 @@ impl ast::WherePred {
             .children_with_tokens()
             .filter_map(|it| it.as_token())
             .find(|it| it.kind() == LIFETIME)
+    }
+}
+
+impl ast::TraitDef {
+    pub fn is_auto(&self) -> bool {
+        self.syntax().children_with_tokens().any(|t| t.kind() == AUTO_KW)
     }
 }

@@ -19,7 +19,7 @@ use std::{fmt, mem};
 use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams};
 use display::{HirDisplay, HirFormatter};
 
-pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig};
+pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig, generic_predicates};
 pub(crate) use infer::{infer, InferenceResult, InferTy};
 pub use lower::CallableDef;
 
@@ -231,6 +231,35 @@ impl TraitRef {
             *ty_mut = ty.subst(substs);
         });
         self
+    }
+}
+
+/// Like `generics::WherePredicate`, but with resolved types: A condition on the
+/// parameters of a generic item.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenericPredicate {
+    /// The given trait needs to be implemented for its type parameters.
+    Implemented(TraitRef),
+    /// We couldn't resolve the trait reference. (If some type parameters can't
+    /// be resolved, they will just be Unknown).
+    Error,
+}
+
+impl GenericPredicate {
+    pub fn is_error(&self) -> bool {
+        match self {
+            GenericPredicate::Error => true,
+            _ => false,
+        }
+    }
+
+    pub fn subst(self, substs: &Substs) -> GenericPredicate {
+        match self {
+            GenericPredicate::Implemented(trait_ref) => {
+                GenericPredicate::Implemented(trait_ref.subst(substs))
+            }
+            GenericPredicate::Error => self,
+        }
     }
 }
 

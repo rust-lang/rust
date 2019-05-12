@@ -703,6 +703,10 @@ impl Trait {
         TraitRef::for_trait(db, self)
     }
 
+    pub fn is_auto(self, db: &impl DefDatabase) -> bool {
+        self.trait_data(db).is_auto()
+    }
+
     pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
         let r = self.module(db).resolver(db);
         // add generic params, if present

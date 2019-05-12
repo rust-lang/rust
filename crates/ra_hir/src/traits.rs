@@ -11,6 +11,7 @@ use crate::{Function, Const, TypeAlias, Name, DefDatabase, Trait, ids::LocationC
 pub struct TraitData {
     name: Option<Name>,
     items: Vec<TraitItem>,
+    auto: bool,
 }
 
 impl TraitData {
@@ -19,6 +20,7 @@ impl TraitData {
         let name = node.name().map(|n| n.as_name());
         let module = tr.module(db);
         let ctx = LocationCtx::new(db, module, file_id);
+        let auto = node.is_auto();
         let items = if let Some(item_list) = node.item_list() {
             item_list
                 .impl_items()
@@ -31,7 +33,7 @@ impl TraitData {
         } else {
             Vec::new()
         };
-        Arc::new(TraitData { name, items })
+        Arc::new(TraitData { name, items, auto })
     }
 
     pub(crate) fn name(&self) -> &Option<Name> {
@@ -40,6 +42,10 @@ impl TraitData {
 
     pub(crate) fn items(&self) -> &[TraitItem] {
         &self.items
+    }
+
+    pub(crate) fn is_auto(&self) -> bool {
+        self.auto
     }
 }
 
