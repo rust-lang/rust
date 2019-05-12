@@ -154,6 +154,7 @@ pub mod block_in_if_condition;
 pub mod booleans;
 pub mod bytecount;
 pub mod cargo_common_metadata;
+pub mod checked_conversions;
 pub mod cognitive_complexity;
 pub mod collapsible_if;
 pub mod const_static_lifetime;
@@ -605,6 +606,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::pedantic", Some("clippy_pedantic"), vec![
         attrs::INLINE_ALWAYS,
+        checked_conversions::CHECKED_CONVERSIONS,
         copies::MATCH_SAME_ARMS,
         copy_iterator::COPY_ITERATOR,
         default_trait_access::DEFAULT_TRAIT_ACCESS,

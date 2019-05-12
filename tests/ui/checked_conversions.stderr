@@ -1,0 +1,52 @@
+error: Checked cast can be simplified: `u32::try_from`
+  --> $DIR/checked_conversions.rs:9:8
+   |
+LL |     if value <= (u32::max_value() as i64) && value >= 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::checked-conversions` implied by `-D warnings`
+
+error: Checked cast can be simplified: `u16::try_from`
+  --> $DIR/checked_conversions.rs:17:8
+   |
+LL |     if value <= i64::from(u16::max_value()) && value >= 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Checked cast can be simplified: `u8::try_from`
+  --> $DIR/checked_conversions.rs:25:8
+   |
+LL |     if value <= (u8::max_value() as isize) && value >= 0 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Checked cast can be simplified: `i32::try_from`
+  --> $DIR/checked_conversions.rs:35:8
+   |
+LL |     if value <= (i32::max_value() as i64) && value >= (i32::min_value() as i64) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Checked cast can be simplified: `i16::try_from`
+  --> $DIR/checked_conversions.rs:43:8
+   |
+LL |     if value <= i64::from(i16::max_value()) && value >= i64::from(i16::min_value()) {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Checked cast can be simplified: `i32::try_from`
+  --> $DIR/checked_conversions.rs:53:8
+   |
+LL |     if value <= i32::max_value() as u32 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Checked cast can be simplified: `isize::try_from`
+  --> $DIR/checked_conversions.rs:61:8
+   |
+LL |     if value <= isize::max_value() as usize && value as i32 == 5 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Checked cast can be simplified: `u16::try_from`
+  --> $DIR/checked_conversions.rs:69:8
+   |
+LL |     if value <= u16::max_value() as u32 && value as i32 == 5 {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 8 previous errors
+
