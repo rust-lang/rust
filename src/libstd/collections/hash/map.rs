@@ -13,6 +13,7 @@ use crate::hash::{BuildHasher, Hash, Hasher, SipHasher13};
 use crate::iter::{FromIterator, FusedIterator};
 use crate::ops::Index;
 use crate::sys;
+use crate::alloc::AllocErr;
 
 /// A hash map implemented with quadratic probing and SIMD lookup.
 ///
@@ -2540,7 +2541,7 @@ fn map_entry<'a, K: 'a, V: 'a>(raw: base::RustcEntry<'a, K, V>) -> Entry<'a, K, 
 fn map_collection_alloc_err(err: hashbrown::CollectionAllocErr) -> CollectionAllocErr {
     match err {
         hashbrown::CollectionAllocErr::CapacityOverflow => CollectionAllocErr::CapacityOverflow,
-        hashbrown::CollectionAllocErr::AllocErr => CollectionAllocErr::AllocErr,
+        hashbrown::CollectionAllocErr::AllocErr => CollectionAllocErr::AllocErr(AllocErr),
     }
 }
 
