@@ -1,4 +1,4 @@
-//! lint on manually implemented checked conversions that could be transformed into try_from
+//! lint on manually implemented checked conversions that could be transformed into `try_from`
 
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -61,7 +61,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CheckedConversions {
                 item.span,
                 &format!(
                     "Checked cast can be simplified: `{}::try_from`",
-                    cv.to_type.unwrap_or("IntegerType".to_string()),
+                    cv.to_type.unwrap_or_else(|| "IntegerType".to_string()),
                 ),
             );
         }
@@ -299,7 +299,7 @@ fn int_ty_to_str(path: &QPath) -> Option<&str> {
 
         then {
             INT_TYPES
-                .into_iter()
+                .iter()
                 .find(|c| (&ty.ident.name) == *c)
                 .cloned()
         } else {
