@@ -611,10 +611,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
             ty::ReLateBound(..) |
 
             // ignore `'static`, as that can appear anywhere
-            ty::ReStatic |
-
-            // ignore `ReScope`, which may appear in impl Trait in bindings.
-            ty::ReScope(..) => return r,
+            ty::ReStatic => return r,
 
             _ => { }
         }
