@@ -80,8 +80,8 @@ pub enum Obligation {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ProjectionPredicate {
-    projection_ty: ProjectionTy,
-    ty: Ty,
+    pub projection_ty: ProjectionTy,
+    pub ty: Ty,
 }
 
 /// Check using Chalk whether trait is implemented for given parameters including `Self` type.

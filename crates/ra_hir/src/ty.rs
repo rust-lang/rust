@@ -22,6 +22,7 @@ use display::{HirDisplay, HirFormatter};
 pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig, generic_predicates, generic_defaults};
 pub(crate) use infer::{infer_query, InferenceResult, InferTy};
 pub use lower::CallableDef;
+pub(crate) use autoderef::autoderef;
 
 /// A type constructor or type name: this might be something like the primitive
 /// type `bool`, a struct like `Vec`, or things like function pointers or
@@ -225,8 +226,8 @@ impl Deref for Substs {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef {
     /// FIXME name?
-    trait_: Trait,
-    substs: Substs,
+    pub trait_: Trait,
+    pub substs: Substs,
 }
 
 impl TraitRef {

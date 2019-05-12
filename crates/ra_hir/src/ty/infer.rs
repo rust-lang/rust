@@ -46,7 +46,7 @@ use crate::{
 use super::{
     Ty, TypableDef, Substs, primitive, op, ApplicationTy, TypeCtor, CallableDef, TraitRef,
     traits::{Solution, Obligation, Guidance},
-    method_resolution,
+    method_resolution, autoderef,
 };
 
 mod unify;
@@ -1074,25 +1074,27 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Field { expr, name } => {
                 let receiver_ty = self.infer_expr(*expr, &Expectation::none());
-                let ty = receiver_ty
-                    .autoderef(self.db)
-                    .find_map(|derefed_ty| match derefed_ty {
-                        Ty::Apply(a_ty) => match a_ty.ctor {
-                            TypeCtor::Tuple { .. } => {
-                                let i = name.to_string().parse::<usize>().ok();
-                                i.and_then(|i| a_ty.parameters.0.get(i).cloned())
-                            }
-                            TypeCtor::Adt(AdtDef::Struct(s)) => {
-                                s.field(self.db, name).map(|field| {
-                                    self.write_field_resolution(tgt_expr, field);
-                                    field.ty(self.db).subst(&a_ty.parameters)
-                                })
-                            }
-                            _ => None,
-                        },
+                let canonicalized = self.canonicalizer().canonicalize_ty(receiver_ty);
+                let ty = autoderef::autoderef(
+                    self.db,
+                    &self.resolver.clone(),
+                    canonicalized.value.clone(),
+                )
+                .find_map(|derefed_ty| match canonicalized.decanonicalize_ty(derefed_ty.value) {
+                    Ty::Apply(a_ty) => match a_ty.ctor {
+                        TypeCtor::Tuple { .. } => {
+                            let i = name.to_string().parse::<usize>().ok();
+                            i.and_then(|i| a_ty.parameters.0.get(i).cloned())
+                        }
+                        TypeCtor::Adt(AdtDef::Struct(s)) => s.field(self.db, name).map(|field| {
+                            self.write_field_resolution(tgt_expr, field);
+                            field.ty(self.db).subst(&a_ty.parameters)
+                        }),
                         _ => None,
-                    })
-                    .unwrap_or(Ty::Unknown);
+                    },
+                    _ => None,
+                })
+                .unwrap_or(Ty::Unknown);
                 self.insert_type_vars(ty)
             }
             Expr::Try { expr } => {
