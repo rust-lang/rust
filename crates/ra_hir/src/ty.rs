@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::ops::Deref;
 use std::{fmt, mem};
 
-use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams};
+use crate::{Name, AdtDef, type_ref::Mutability, db::HirDatabase, Trait, GenericParams, TypeAlias};
 use display::{HirDisplay, HirFormatter};
 
 pub(crate) use lower::{TypableDef, type_for_def, type_for_field, callable_item_sig, generic_predicates, generic_defaults};
@@ -97,6 +97,15 @@ pub enum TypeCtor {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ApplicationTy {
     pub ctor: TypeCtor,
+    pub parameters: Substs,
+}
+
+/// A "projection" type corresponds to an (unnormalized)
+/// projection like `<P0 as Trait<P1..Pn>>::Foo`. Note that the
+/// trait and all its parameters are fully known.
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub struct ProjectionTy {
+    pub associated_ty: TypeAlias,
     pub parameters: Substs,
 }
 

@@ -25,6 +25,7 @@ ra_prof = { path = "../ra_prof" }
 chalk-solve = { git = "https://github.com/flodiebold/chalk.git", branch = "fuel" }
 chalk-rust-ir = { git = "https://github.com/flodiebold/chalk.git", branch = "fuel" }
 chalk-ir = { git = "https://github.com/flodiebold/chalk.git", branch = "fuel" }
+lalrpop-intern = "0.15.1"
 
 [dev-dependencies]
 flexi_logger = "0.11.0"

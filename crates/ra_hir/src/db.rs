@@ -16,9 +16,8 @@ use crate::{
     adt::{StructData, EnumData},
     impl_block::{ModuleImplBlocks, ImplSourceMap, ImplBlock},
     generics::{GenericParams, GenericDef},
-    type_ref::TypeRef,
     traits::TraitData,
-    lang_item::{LangItems, LangItemTarget},
+    lang_item::{LangItems, LangItemTarget}, type_alias::TypeAliasData,
 };
 
 // This database has access to source code, so queries here are not really
@@ -113,8 +112,8 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::FnSignature::fn_signature_query)]
     fn fn_signature(&self, func: Function) -> Arc<FnSignature>;
 
-    #[salsa::invoke(crate::type_alias::type_alias_ref_query)]
-    fn type_alias_ref(&self, typ: TypeAlias) -> Arc<TypeRef>;
+    #[salsa::invoke(crate::type_alias::type_alias_data_query)]
+    fn type_alias_data(&self, typ: TypeAlias) -> Arc<TypeAliasData>;
 
     #[salsa::invoke(crate::ConstSignature::const_signature_query)]
     fn const_signature(&self, konst: Const) -> Arc<ConstSignature>;
@@ -184,6 +183,13 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
         &self,
         krate: Crate,
         goal: crate::ty::Canonical<crate::ty::TraitRef>,
+    ) -> Option<crate::ty::traits::Solution>;
+
+    #[salsa::invoke(crate::ty::traits::normalize)]
+    fn normalize(
+        &self,
+        krate: Crate,
+        goal: crate::ty::Canonical<crate::ty::traits::ProjectionPredicate>,
     ) -> Option<crate::ty::traits::Solution>;
 }
 

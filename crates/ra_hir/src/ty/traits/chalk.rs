@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use log::debug;
 
-use chalk_ir::{TypeId, ImplId, TypeKindId, ProjectionTy, Parameter, Identifier, cast::Cast, PlaceholderIndex, UniverseIndex, TypeName};
+use chalk_ir::{TypeId, ImplId, TypeKindId, Parameter, Identifier, cast::Cast, PlaceholderIndex, UniverseIndex, TypeName};
 use chalk_rust_ir::{AssociatedTyDatum, TraitDatum, StructDatum, ImplDatum};
 
 use test_utils::tested_by;
@@ -12,9 +12,9 @@ use ra_db::salsa::{InternId, InternKey};
 use crate::{
     Trait, HasGenericParams, ImplBlock,
     db::HirDatabase,
-    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate, CallableDef},
+    ty::{TraitRef, Ty, ApplicationTy, TypeCtor, Substs, GenericPredicate, CallableDef, ProjectionTy},
     ty::display::HirDisplay,
-    generics::GenericDef,
+    generics::GenericDef, TypeAlias, ImplItem,
 };
 use super::ChalkContext;
 
@@ -156,6 +156,18 @@ impl ToChalk for ImplBlock {
     }
 }
 
+impl ToChalk for TypeAlias {
+    type Chalk = chalk_ir::TypeId;
+
+    fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TypeId {
+        self.id.into()
+    }
+
+    fn from_chalk(_db: &impl HirDatabase, impl_id: chalk_ir::TypeId) -> TypeAlias {
+        TypeAlias { id: impl_id.into() }
+    }
+}
+
 impl ToChalk for GenericPredicate {
     type Chalk = chalk_ir::QuantifiedWhereClause;
 
@@ -180,6 +192,24 @@ impl ToChalk for GenericPredicate {
     ) -> GenericPredicate {
         // This should never need to be called
         unimplemented!()
+    }
+}
+
+impl ToChalk for ProjectionTy {
+    type Chalk = chalk_ir::ProjectionTy;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::ProjectionTy {
+        chalk_ir::ProjectionTy {
+            associated_ty_id: self.associated_ty.to_chalk(db),
+            parameters: self.parameters.to_chalk(db),
+        }
+    }
+
+    fn from_chalk(db: &impl HirDatabase, projection_ty: chalk_ir::ProjectionTy) -> ProjectionTy {
+        ProjectionTy {
+            associated_ty: from_chalk(db, projection_ty.associated_ty_id),
+            parameters: from_chalk(db, projection_ty.parameters),
+        }
     }
 }
 
@@ -225,8 +255,28 @@ impl<'a, DB> chalk_solve::RustIrDatabase for ChalkContext<'a, DB>
 where
     DB: HirDatabase,
 {
-    fn associated_ty_data(&self, _ty: TypeId) -> Arc<AssociatedTyDatum> {
-        unimplemented!()
+    fn associated_ty_data(&self, id: TypeId) -> Arc<AssociatedTyDatum> {
+        debug!("associated_ty_data {:?}", id);
+        let type_alias: TypeAlias = from_chalk(self.db, id);
+        let trait_ = match type_alias.container(self.db) {
+            Some(crate::Container::Trait(t)) => t,
+            _ => panic!("associated type not in trait"),
+        };
+        let generic_params = type_alias.generic_params(self.db);
+        let parameter_kinds = generic_params
+            .params_including_parent()
+            .into_iter()
+            .map(|p| chalk_ir::ParameterKind::Ty(lalrpop_intern::intern(&p.name.to_string())))
+            .collect();
+        let datum = AssociatedTyDatum {
+            trait_id: trait_.to_chalk(self.db),
+            id,
+            name: lalrpop_intern::intern(&type_alias.name(self.db).to_string()),
+            parameter_kinds,
+            bounds: vec![],        // FIXME
+            where_clauses: vec![], // FIXME
+        };
+        Arc::new(datum)
     }
     fn trait_datum(&self, trait_id: chalk_ir::TraitId) -> Arc<TraitDatum> {
         debug!("trait_datum {:?}", trait_id);
@@ -260,7 +310,15 @@ where
             fundamental: false,
         };
         let where_clauses = convert_where_clauses(self.db, trait_.into(), &bound_vars);
-        let associated_ty_ids = Vec::new(); // FIXME add associated tys
+        let associated_ty_ids = trait_
+            .items(self.db)
+            .into_iter()
+            .filter_map(|trait_item| match trait_item {
+                crate::traits::TraitItem::TypeAlias(type_alias) => Some(type_alias),
+                _ => None,
+            })
+            .map(|type_alias| type_alias.to_chalk(self.db))
+            .collect();
         let trait_datum_bound =
             chalk_rust_ir::TraitDatumBound { trait_ref, where_clauses, flags, associated_ty_ids };
         let trait_datum = TraitDatum { binders: make_binders(trait_datum_bound, bound_vars.len()) };
@@ -359,7 +417,30 @@ where
             trait_ref.display(self.db),
             where_clauses
         );
+        let trait_ = trait_ref.trait_;
         let trait_ref = trait_ref.to_chalk(self.db);
+        let associated_ty_values = impl_block
+            .items(self.db)
+            .into_iter()
+            .filter_map(|item| match item {
+                ImplItem::TypeAlias(t) => Some(t),
+                _ => None,
+            })
+            .filter_map(|t| {
+                let assoc_ty = trait_.associated_type_by_name(self.db, t.name(self.db))?;
+                let ty = self.db.type_for_def(t.into(), crate::Namespace::Types).subst(&bound_vars);
+                debug!("ty = {}", ty.display(self.db));
+                Some(chalk_rust_ir::AssociatedTyValue {
+                    impl_id,
+                    associated_ty_id: assoc_ty.to_chalk(self.db),
+                    value: chalk_ir::Binders {
+                        value: chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(self.db) },
+                        binders: vec![], // FIXME add generic params (generic associated types)
+                    },
+                })
+            })
+            .collect();
+
         let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
             trait_ref: if negative {
                 chalk_rust_ir::PolarizedTraitRef::Negative(trait_ref)
@@ -367,9 +448,10 @@ where
                 chalk_rust_ir::PolarizedTraitRef::Positive(trait_ref)
             },
             where_clauses,
-            associated_ty_values: Vec::new(), // FIXME add associated type values
+            associated_ty_values,
             impl_type,
         };
+        debug!("impl_datum: {:?}", impl_datum_bound);
         let impl_datum = ImplDatum { binders: make_binders(impl_datum_bound, bound_vars.len()) };
         Arc::new(impl_datum)
     }
@@ -405,7 +487,7 @@ where
     }
     fn split_projection<'p>(
         &self,
-        projection: &'p ProjectionTy,
+        projection: &'p chalk_ir::ProjectionTy,
     ) -> (Arc<AssociatedTyDatum>, &'p [Parameter], &'p [Parameter]) {
         debug!("split_projection {:?}", projection);
         unimplemented!()
@@ -437,6 +519,18 @@ impl From<chalk_ir::TraitId> for crate::ids::TraitId {
 impl From<crate::ids::TraitId> for chalk_ir::TraitId {
     fn from(trait_id: crate::ids::TraitId) -> Self {
         chalk_ir::TraitId(id_to_chalk(trait_id))
+    }
+}
+
+impl From<chalk_ir::TypeId> for crate::ids::TypeAliasId {
+    fn from(type_id: chalk_ir::TypeId) -> Self {
+        id_from_chalk(type_id.0)
+    }
+}
+
+impl From<crate::ids::TypeAliasId> for chalk_ir::TypeId {
+    fn from(type_id: crate::ids::TypeAliasId) -> Self {
+        chalk_ir::TypeId(id_to_chalk(type_id))
     }
 }
 
