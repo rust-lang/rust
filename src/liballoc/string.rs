@@ -1200,8 +1200,8 @@ impl String {
     /// Retains only the characters specified by the predicate.
     ///
     /// In other words, remove all characters `c` such that `f(c)` returns `false`.
-    /// This method operates in place and preserves the order of the retained
-    /// characters.
+    /// This method operates in place, visiting each character exactly once in the
+    /// original order, and preserves the order of the retained characters.
     ///
     /// # Examples
     ///
@@ -1211,6 +1211,16 @@ impl String {
     /// s.retain(|c| c != '_');
     ///
     /// assert_eq!(s, "foobar");
+    /// ```
+    ///
+    /// The exact order may be useful for tracking external state, like an index.
+    ///
+    /// ```
+    /// let mut s = String::from("abcde");
+    /// let keep = [false, true, true, false, true];
+    /// let mut i = 0;
+    /// s.retain(|_| (keep[i], i += 1).0);
+    /// assert_eq!(s, "bce");
     /// ```
     #[inline]
     #[stable(feature = "string_retain", since = "1.26.0")]

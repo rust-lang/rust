@@ -1835,8 +1835,8 @@ impl<T> VecDeque<T> {
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all elements `e` such that `f(&e)` returns false.
-    /// This method operates in place and preserves the order of the retained
-    /// elements.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
     ///
     /// # Examples
     ///
@@ -1847,6 +1847,20 @@ impl<T> VecDeque<T> {
     /// buf.extend(1..5);
     /// buf.retain(|&x| x%2 == 0);
     /// assert_eq!(buf, [2, 4]);
+    /// ```
+    ///
+    /// The exact order may be useful for tracking external state, like an index.
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.extend(1..6);
+    ///
+    /// let keep = [false, true, true, false, true];
+    /// let mut i = 0;
+    /// buf.retain(|_| (keep[i], i += 1).0);
+    /// assert_eq!(buf, [2, 3, 5]);
     /// ```
     #[stable(feature = "vec_deque_retain", since = "1.4.0")]
     pub fn retain<F>(&mut self, mut f: F)
