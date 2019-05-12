@@ -705,6 +705,23 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                 self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
             }
 
+            ty::Generator(def_id, substs, movability) => {
+                let generics = self.tcx.generics_of(def_id);
+                let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(
+                    |(index, &kind)| {
+                        if index < generics.parent_count {
+                            // Accommodate missing regions in the parent kinds...
+                            self.fold_kind_mapping_missing_regions_to_empty(kind)
+                        } else {
+                            // ...but not elsewhere.
+                            self.fold_kind_normally(kind)
+                        }
+                    },
+                ));
+
+                self.tcx.mk_generator(def_id, ty::GeneratorSubsts { substs }, movability)
+            }
+
             _ => ty.super_fold_with(self),
         }
     }
