@@ -1060,13 +1060,15 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
 
     impl<'a, 'tcx> intravisit::Visitor<'tcx> for FunCallFinder<'a, 'tcx> {
         fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
-            let found = match &expr.node {
+            let call_found = match &expr.node {
+                // ignore enum and struct constructors
                 hir::ExprKind::Call(..) => !is_ctor_function(self.cx, expr),
                 hir::ExprKind::MethodCall(..) => true,
                 _ => false,
             };
 
-            if found {
+            if call_found {
+                // don't lint for constant values
                 let owner_def = self.cx.tcx.hir().get_parent_did_by_hir_id(expr.hir_id);
                 let promotable = self
                     .cx
@@ -1162,7 +1164,6 @@ fn lint_or_fun_call<'a, 'tcx: 'a>(
             return;
         }
 
-        // ignore enum and struct constructors
         let mut finder = FunCallFinder { cx: &cx, found: false };
         finder.visit_expr(&arg);
         if !finder.found {
