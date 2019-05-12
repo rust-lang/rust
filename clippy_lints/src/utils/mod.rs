@@ -89,8 +89,13 @@ pub fn in_constant(cx: &LateContext<'_, '_>, id: HirId) -> bool {
     }
 }
 
-/// Returns `true` if this `expn_info` was expanded by any macro.
+/// Returns `true` if this `expn_info` was expanded by any macro or desugaring
 pub fn in_macro_or_desugar(span: Span) -> bool {
+    span.ctxt().outer().expn_info().is_some()
+}
+
+/// Returns `true` if this `expn_info` was expanded by any macro.
+pub fn in_macro(span: Span) -> bool {
     if let Some(info) = span.ctxt().outer().expn_info() {
         if let ExpnFormat::CompilerDesugaring(..) = info.format {
             false
@@ -101,7 +106,6 @@ pub fn in_macro_or_desugar(span: Span) -> bool {
         false
     }
 }
-
 // If the snippet is empty, it's an attribute that was inserted during macro
 // expansion and we want to ignore those, because they could come from external
 // sources that the user has no control over.
