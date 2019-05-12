@@ -1870,6 +1870,10 @@ impl Step for CrateRustdoc {
         cargo.arg("--");
         cargo.args(&builder.config.cmd.test_args());
 
+        if self.host.contains("musl") {
+            cargo.arg("'-Ctarget-feature=-crt-static'");
+        }
+
         if !builder.config.verbose_tests {
             cargo.arg("--quiet");
         }

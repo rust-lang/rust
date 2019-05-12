@@ -23,7 +23,7 @@ COPY scripts/musl-toolchain.sh /build/
 # We need to mitigate rust-lang/rust#34978 when compiling musl itself as well
 RUN CFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
     CXXFLAGS="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none -Wl,--compress-debug-sections=none" \
-    bash musl-toolchain.sh x86_64 && rm -rf build
+    REPLACE_CC=1 bash musl-toolchain.sh x86_64 && rm -rf build
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -35,10 +35,7 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --disable-docs \
       --set target.x86_64-unknown-linux-musl.crt-static=false \
-      --build $HOSTS \
-      --set target.x86_64-unknown-linux-musl.cc=x86_64-linux-musl-gcc \
-      --set target.x86_64-unknown-linux-musl.cxx=x86_64-linux-musl-g++ \
-      --set target.x86_64-unknown-linux-musl.linker=x86_64-linux-musl-gcc
+      --build $HOSTS
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
 # unknown relocs disabled by the following flag), so we need to go out of our
@@ -49,4 +46,5 @@ ENV RUST_CONFIGURE_ARGS \
 ENV CFLAGS_x86_64_unknown_linux_musl="-Wa,-mrelax-relocations=no -Wa,--compress-debug-sections=none \
     -Wl,--compress-debug-sections=none"
 
+# To run native tests replace `dist` below with `test`
 ENV SCRIPT python2.7 ../x.py dist --build $HOSTS

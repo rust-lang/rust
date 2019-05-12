@@ -1650,7 +1650,9 @@ impl<'test> TestCx<'test> {
                 (true, None)
             } else if self.config.target.contains("cloudabi")
                 || self.config.target.contains("emscripten")
-                || (self.config.target.contains("musl") && !aux_props.force_host)
+                || (self.config.target.contains("musl")
+                    && !aux_props.force_host
+                    && !self.config.host.contains("musl"))
                 || self.config.target.contains("wasm32")
                 || self.config.target.contains("nvptx")
             {
@@ -1930,6 +1932,11 @@ impl<'test> TestCx<'test> {
                     rustc.arg(format!("-Clinker={}", linker));
                 }
             }
+        }
+
+        // Use dynamic musl for tests because static doesn't allow creating dylibs
+        if self.config.host.contains("musl") {
+            rustc.arg("-Ctarget-feature=-crt-static");
         }
 
         rustc.args(&self.props.compile_flags);
@@ -2724,6 +2731,12 @@ impl<'test> TestCx<'test> {
         // We don't want RUSTFLAGS set from the outside to interfere with
         // compiler flags set in the test cases:
         cmd.env_remove("RUSTFLAGS");
+
+        // Use dynamic musl for tests because static doesn't allow creating dylibs
+        if self.config.host.contains("musl") {
+            cmd.env("RUSTFLAGS", "-Ctarget-feature=-crt-static")
+                .env("IS_MUSL_HOST", "1");
+        }
 
         if self.config.target.contains("msvc") && self.config.cc != "" {
             // We need to pass a path to `lib.exe`, so assume that `cc` is `cl.exe`
