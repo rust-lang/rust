@@ -7,9 +7,9 @@ use ra_syntax::AstNode;
 
 use crate::Result;
 
-pub fn run(verbose: bool, only: Option<&str>) -> Result<()> {
+pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
     let db_load_time = Instant::now();
-    let (db, roots) = BatchDatabase::load_cargo(".")?;
+    let (db, roots) = BatchDatabase::load_cargo(path)?;
     println!("Database loaded, {} roots, {:?}", roots.len(), db_load_time.elapsed());
     let analysis_time = Instant::now();
     let mut num_crates = 0;
