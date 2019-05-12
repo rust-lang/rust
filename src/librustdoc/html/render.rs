@@ -1951,29 +1951,95 @@ impl fmt::Display for AllTypes {
 }
 
 #[derive(Debug)]
+struct Setting {
+    js_data_name: &'static str,
+    description: &'static str,
+    default_value: bool,
+    sub_settings: Vec<Setting>,
+}
+
+impl From<(&'static str, &'static str, bool)> for Setting {
+    fn from(values: (&'static str, &'static str, bool)) -> Setting {
+        Setting {
+            js_data_name: values.0,
+            description: values.1,
+            default_value: values.2,
+            sub_settings: Vec::new(),
+        }
+    }
+}
+
+impl<T: Into<Setting>> From<(&'static str, &'static str, bool, Vec<T>)> for Setting {
+    fn from(values: (&'static str, &'static str, bool, Vec<T>)) -> Setting {
+        Setting {
+            js_data_name: values.0,
+            description: values.1,
+            default_value: values.2,
+            sub_settings: values.3.into_iter().map(|v| v.into()).collect::<Vec<_>>(),
+        }
+    }
+}
+
+impl<'a, T: Into<Setting>> From<(Vec<T>, &'a str, &'a str)> for Settings<'a> {
+    fn from(v: (Vec<T>, &'a str, &'a str)) -> Settings<'a> {
+        let (settings, root_path, suffix) = v;
+        Settings {
+            settings: settings.into_iter().map(|v| v.into()).collect::<Vec<_>>(),
+            root_path,
+            suffix,
+        }
+    }
+}
+
+impl fmt::Display for Setting {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "<div class='setting-line'>\
+                       <label class='toggle'>\
+                           <input type='checkbox' id='{}'{}>\
+                           <span class='slider'></span>\
+                       </label>\
+                       <div>{}</div>{}\
+                   </div>",
+               self.js_data_name,
+               if self.default_value { " checked" } else { "" },
+               self.description,
+               if self.sub_settings.is_empty() {
+                   String::new()
+               } else {
+                   format!("<div class='sub-setting'>{}</div>",
+                           self.sub_settings.iter().map(|s| s.to_string()).collect::<String>())
+               })
+    }
+}
+
+#[derive(Debug)]
 struct Settings<'a> {
-    // (id, explanation, default value)
-    settings: Vec<(&'static str, &'static str, bool)>,
+    settings: Vec<Setting>,
     root_path: &'a str,
     suffix: &'a str,
 }
 
 impl<'a> Settings<'a> {
     pub fn new(root_path: &'a str, suffix: &'a str) -> Settings<'a> {
-        Settings {
-            settings: vec![
-                ("item-declarations", "Auto-hide item declarations.", true),
-                ("item-attributes", "Auto-hide item attributes.", true),
-                ("trait-implementations", "Auto-hide trait implementations documentation",
-                 true),
-                ("method-docs", "Auto-hide item methods' documentation", false),
+        Settings::from((vec![
+                ("auto-hide-declarations", "Auto-hide item declarations", true, vec![
+                    ("auto-hide-struct", "Auto-hide structs declaration", true),
+                    ("auto-hide-enum", "Auto-hide enums declaration", false),
+                    ("auto-hide-union", "Auto-hide unions declaration", true),
+                    ("auto-hide-trait", "Auto-hide traits declaration", true),
+                    ("auto-hide-macro", "Auto-hide macros declaration", false),
+                ]),
+                ("auto-hide-attributes", "Auto-hide item attributes", true, vec![]),
+                ("auto-hide-trait-implementations", "Auto-hide trait implementations documentation",
+                 true, vec![]),
+                ("auto-hide-method-docs", "Auto-hide item methods' documentation", false, vec![]),
                 ("go-to-only-result", "Directly go to item in search if there is only one result",
-                 false),
-                ("line-numbers", "Show line numbers on code examples", false),
+                 false, vec![]),
+                ("line-numbers", "Show line numbers on code examples", false, vec![]),
             ],
             root_path,
             suffix,
-        }
+        ))
     }
 }
 
@@ -1986,15 +2052,7 @@ impl<'a> fmt::Display for Settings<'a> {
 <div class='settings'>{}</div>\
 <script src='{}settings{}.js'></script>",
                self.settings.iter()
-                            .map(|(id, text, enabled)| {
-                                format!("<div class='setting-line'>\
-                                             <label class='toggle'>\
-                                                <input type='checkbox' id='{}' {}>\
-                                                <span class='slider'></span>\
-                                             </label>\
-                                             <div>{}</div>\
-                                         </div>", id, if *enabled { " checked" } else { "" }, text)
-                            })
+                            .map(|s| s.to_string())
                             .collect::<String>(),
                self.root_path,
                self.suffix)

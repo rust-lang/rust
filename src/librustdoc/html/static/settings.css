@@ -59,3 +59,9 @@ input:checked + .slider:before {
 	-ms-transform: translateX(19px);
 	transform: translateX(19px);
 }
+
+.setting-line > .sub-setting {
+	padding-left: 42px;
+	width: 100%;
+	display: block;
+}

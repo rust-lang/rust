@@ -2067,7 +2067,7 @@ if (!DOMTokenList.prototype.remove) {
     function autoCollapse(pageId, collapse) {
         if (collapse) {
             toggleAllDocs(pageId, true);
-        } else if (getCurrentValue("rustdoc-trait-implementations") !== "false") {
+        } else if (getCurrentValue("rustdoc-auto-hide-trait-implementations") !== "false") {
             var impl_list = document.getElementById("implementations-list");
 
             if (impl_list !== null) {
@@ -2105,7 +2105,7 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     var toggle = createSimpleToggle(false);
-    var hideMethodDocs = getCurrentValue("rustdoc-method-docs") === "true";
+    var hideMethodDocs = getCurrentValue("rustdoc-auto-hide-method-docs") === "true";
     var pageId = getPageId();
 
     var func = function(e) {
@@ -2235,7 +2235,25 @@ if (!DOMTokenList.prototype.remove) {
         return wrapper;
     }
 
-    var showItemDeclarations = getCurrentValue("rustdoc-item-declarations") === "false";
+    var currentType = document.getElementsByClassName("type-decl")[0];
+    var className = null;
+    if (currentType) {
+        currentType = currentType.getElementsByClassName("rust")[0];
+        if (currentType) {
+            currentType.classList.forEach(function(item) {
+                if (item !== "main") {
+                    className = item;
+                    return true;
+                }
+            });
+        }
+    }
+    var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
+    var globalItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
+    if (showItemDeclarations === null && globalItemDeclarations !== null) {
+        showItemDeclarations = globalItemDeclarations;
+    }
+    showItemDeclarations = showItemDeclarations === "false";
     function buildToggleWrapper(e) {
         if (hasClass(e, "autohide")) {
             var wrap = e.previousElementSibling;
@@ -2318,7 +2336,7 @@ if (!DOMTokenList.prototype.remove) {
 
     // To avoid checking on "rustdoc-item-attributes" value on every loop...
     var itemAttributesFunc = function() {};
-    if (getCurrentValue("rustdoc-item-attributes") !== "false") {
+    if (getCurrentValue("rustdoc-auto-hide-attributes") !== "false") {
         itemAttributesFunc = function(x) {
             collapseDocs(x.previousSibling.childNodes[0], "toggle");
         };
