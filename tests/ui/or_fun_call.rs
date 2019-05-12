@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
+use std::time::Duration;
 
 /// Checks implementation of the `OR_FUN_CALL` lint.
 fn or_fun_call() {
@@ -24,8 +25,8 @@ fn or_fun_call() {
     let with_enum = Some(Enum::A(1));
     with_enum.unwrap_or(Enum::A(5));
 
-    let with_const_fn = Some(::std::time::Duration::from_secs(1));
-    with_const_fn.unwrap_or(::std::time::Duration::from_secs(5));
+    let with_const_fn = Some(Duration::from_secs(1));
+    with_const_fn.unwrap_or(Duration::from_secs(5));
 
     let with_constructor = Some(vec![1]);
     with_constructor.unwrap_or(make());
@@ -71,6 +72,7 @@ fn or_fun_call() {
 }
 
 struct Foo(u8);
+struct Bar(String, Duration);
 #[rustfmt::skip]
 fn test_or_with_ctors() {
     let opt = Some(1);
@@ -86,6 +88,12 @@ fn test_or_with_ctors() {
     let _ = opt.ok_or(Foo(two));
     let _ = opt.or(Some(2));
     let _ = opt.or(Some(two));
+
+    let _ = Some("a".to_string()).or(Some("b".to_string()));
+
+    let b = "b".to_string();
+    let _ = Some(Bar("a".to_string(), Duration::from_secs(1)))
+        .or(Some(Bar(b, Duration::from_secs(2))));
 }
 
 fn main() {}
