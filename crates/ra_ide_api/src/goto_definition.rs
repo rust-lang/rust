@@ -69,7 +69,7 @@ pub(crate) fn reference_definition(
         .and_then(ast::MacroCall::cast)
     {
         tested_by!(goto_definition_works_for_macros);
-        if let Some(macro_call) = analyzer.resolve_macro_call(db, file_id, macro_call) {
+        if let Some(macro_call) = analyzer.resolve_macro_call(macro_call) {
             return Exact(NavigationTarget::from_macro_def(db, macro_call));
         }
     }
