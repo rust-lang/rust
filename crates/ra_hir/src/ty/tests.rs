@@ -2502,6 +2502,35 @@ fn test() { (&S).foo()<|>; }
 }
 
 #[test]
+fn method_resolution_trait_from_prelude() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+struct S;
+impl Clone for S {}
+
+fn test() {
+    S.clone()<|>;
+}
+
+//- /lib.rs
+#[prelude_import] use foo::*;
+
+mod foo {
+    trait Clone {
+        fn clone(&self) -> Self;
+    }
+}
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["other_crate"]),
+        "other_crate": ("/lib.rs", []),
+    });
+    assert_eq!("S", type_at_pos(&db, pos));
+}
+
+#[test]
 fn method_resolution_where_clause_for_unknown_trait() {
     // The blanket impl shouldn't apply because we can't even resolve UnknownTrait
     let t = type_at(

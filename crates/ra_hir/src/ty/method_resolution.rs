@@ -185,7 +185,7 @@ fn iterate_trait_method_candidates<T>(
     mut callback: impl FnMut(&Ty, Function) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
-    'traits: for t in resolver.traits_in_scope() {
+    'traits: for t in resolver.traits_in_scope(db) {
         let data = t.trait_data(db);
         // we'll be lazy about checking whether the type implements the
         // trait, but if we find out it doesn't, we'll skip the rest of the
