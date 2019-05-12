@@ -3573,7 +3573,8 @@ impl<'a> Parser<'a> {
             } else {
                 self.restrictions
             };
-            if op.precedence() < min_prec {
+            let prec = op.precedence();
+            if prec < min_prec {
                 break;
             }
             // Check for deprecated `...` syntax
@@ -3614,8 +3615,7 @@ impl<'a> Parser<'a> {
                 // We have 2 alternatives here: `x..y`/`x..=y` and `x..`/`x..=` The other
                 // two variants are handled with `parse_prefix_range_expr` call above.
                 let rhs = if self.is_at_start_of_range_notation_rhs() {
-                    Some(self.parse_assoc_expr_with(op.precedence() + 1,
-                                                    LhsExpr::NotYetParsed)?)
+                    Some(self.parse_assoc_expr_with(prec + 1, LhsExpr::NotYetParsed)?)
                 } else {
                     None
                 };
@@ -3635,28 +3635,18 @@ impl<'a> Parser<'a> {
                 break
             }
 
-            let rhs = match op.fixity() {
-                Fixity::Right => self.with_res(
-                    restrictions - Restrictions::STMT_EXPR,
-                    |this| {
-                        this.parse_assoc_expr_with(op.precedence(),
-                            LhsExpr::NotYetParsed)
-                }),
-                Fixity::Left => self.with_res(
-                    restrictions - Restrictions::STMT_EXPR,
-                    |this| {
-                        this.parse_assoc_expr_with(op.precedence() + 1,
-                            LhsExpr::NotYetParsed)
-                }),
+            let fixity = op.fixity();
+            let prec_adjustment = match fixity {
+                Fixity::Right => 0,
+                Fixity::Left => 1,
                 // We currently have no non-associative operators that are not handled above by
                 // the special cases. The code is here only for future convenience.
-                Fixity::None => self.with_res(
-                    restrictions - Restrictions::STMT_EXPR,
-                    |this| {
-                        this.parse_assoc_expr_with(op.precedence() + 1,
-                            LhsExpr::NotYetParsed)
-                }),
-            }?;
+                Fixity::None => 1,
+            };
+            let rhs = self.with_res(
+                restrictions - Restrictions::STMT_EXPR,
+                |this| this.parse_assoc_expr_with(prec + prec_adjustment, LhsExpr::NotYetParsed)
+            )?;
 
             // Make sure that the span of the parent node is larger than the span of lhs and rhs,
             // including the attributes.
@@ -3702,7 +3692,7 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            if op.fixity() == Fixity::None { break }
+            if let Fixity::None = fixity { break }
         }
         Ok(lhs)
     }
