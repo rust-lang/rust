@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, snippet, span_lint_and_then};
+use crate::utils::{in_macro_or_desugar, snippet, span_lint_and_then};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
@@ -81,7 +81,7 @@ impl StaticConst {
 
 impl EarlyLintPass for StaticConst {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if !in_macro(item.span) {
+        if !in_macro_or_desugar(item.span) {
             // Match only constants...
             if let ItemKind::Const(ref var_type, _) = item.node {
                 self.visit_type(var_type, cx);

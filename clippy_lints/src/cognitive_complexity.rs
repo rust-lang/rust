@@ -9,7 +9,7 @@ use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::ast::Attribute;
 use syntax::source_map::Span;
 
-use crate::utils::{in_macro, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
+use crate::utils::{in_macro_or_desugar, is_allowed, match_type, paths, span_help_and_lint, LimitStack};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for methods with high cognitive complexity.
@@ -42,7 +42,7 @@ impl_lint_pass!(CognitiveComplexity => [COGNITIVE_COMPLEXITY]);
 
 impl CognitiveComplexity {
     fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
-        if in_macro(span) {
+        if in_macro_or_desugar(span) {
             return;
         }
 

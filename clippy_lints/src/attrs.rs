@@ -2,7 +2,7 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, is_present_in_source, last_line_of_span, paths, snippet_opt, span_lint, span_lint_and_sugg,
+    in_macro_or_desugar, is_present_in_source, last_line_of_span, paths, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
@@ -408,7 +408,7 @@ fn is_relevant_expr(cx: &LateContext<'_, '_>, tables: &ty::TypeckTables<'_>, exp
 }
 
 fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attribute]) {
-    if in_macro(span) {
+    if in_macro_or_desugar(span) {
         return;
     }
 

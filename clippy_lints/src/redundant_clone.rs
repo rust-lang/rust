@@ -1,5 +1,5 @@
 use crate::utils::{
-    has_drop, in_macro, is_copy, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
+    has_drop, in_macro_or_desugar, is_copy, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
     walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
             let terminator = bbdata.terminator();
 
-            if in_macro(terminator.source_info.span) {
+            if in_macro_or_desugar(terminator.source_info.span) {
                 continue;
             }
 

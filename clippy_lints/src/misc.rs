@@ -12,8 +12,8 @@ use syntax::source_map::{ExpnFormat, Span};
 use crate::consts::{constant, Constant};
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal, iter_input_pats,
-    last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then,
+    get_item_name, get_parent_expr, implements_trait, in_constant, in_macro_or_desugar, is_integer_literal,
+    iter_input_pats, last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then,
     span_lint_hir_and_then, walk_ptrs_ty, SpanlessEq,
 };
 
@@ -602,7 +602,7 @@ fn in_attributes_expansion(expr: &Expr) -> bool {
 /// Tests whether `res` is a variable defined outside a macro.
 fn non_macro_local(cx: &LateContext<'_, '_>, res: def::Res) -> bool {
     match res {
-        def::Res::Local(id) | def::Res::Upvar(id, ..) => !in_macro(cx.tcx.hir().span_by_hir_id(id)),
+        def::Res::Local(id) | def::Res::Upvar(id, ..) => !in_macro_or_desugar(cx.tcx.hir().span_by_hir_id(id)),
         _ => false,
     }
 }

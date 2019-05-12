@@ -1,4 +1,4 @@
-use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
+use crate::utils::{differing_macro_contexts, in_macro_or_desugar, snippet_opt, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -108,7 +108,7 @@ impl EarlyLintPass for Formatting {
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
 fn check_assign(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if let ast::ExprKind::Assign(ref lhs, ref rhs) = expr.node {
-        if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(lhs.span) {
+        if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro_or_desugar(lhs.span) {
             let eq_span = lhs.span.between(rhs.span);
             if let ast::ExprKind::Unary(op, ref sub_rhs) = rhs.node {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
@@ -140,7 +140,7 @@ fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
         if let Some((then, &Some(ref else_))) = unsugar_if(expr);
         if is_block(else_) || unsugar_if(else_).is_some();
         if !differing_macro_contexts(then.span, else_.span);
-        if !in_macro(then.span) && !in_external_macro(cx.sess, expr.span);
+        if !in_macro_or_desugar(then.span) && !in_external_macro(cx.sess, expr.span);
 
         // workaround for rust-lang/rust#43081
         if expr.span.lo().0 != 0 && expr.span.hi().0 != 0;
@@ -206,7 +206,7 @@ fn check_array(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 
 fn check_missing_else(cx: &EarlyContext<'_>, first: &ast::Expr, second: &ast::Expr) {
     if !differing_macro_contexts(first.span, second.span)
-        && !in_macro(first.span)
+        && !in_macro_or_desugar(first.span)
         && unsugar_if(first).is_some()
         && (is_block(second) || unsugar_if(second).is_some())
     {

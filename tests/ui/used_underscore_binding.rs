@@ -25,7 +25,7 @@ fn prefix_underscore(_foo: u32) -> u32 {
 }
 
 /// Tests that we lint if we use a `_`-variable defined outside within a macro expansion
-fn in_macro(_foo: u32) {
+fn in_macro_or_desugar(_foo: u32) {
     println!("{}", _foo);
     assert_eq!(_foo, _foo);
 
@@ -90,7 +90,7 @@ fn main() {
     let foo = 0u32;
     // tests of unused_underscore lint
     let _ = prefix_underscore(foo);
-    in_macro(foo);
+    in_macro_or_desugar(foo);
     in_struct_field();
     // possible false positives
     let _ = non_prefix_underscore(foo);

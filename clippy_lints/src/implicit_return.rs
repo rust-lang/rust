@@ -1,4 +1,4 @@
-use crate::utils::{in_macro, is_expn_of, snippet_opt, span_lint_and_then};
+use crate::utils::{in_macro_or_desugar, is_expn_of, snippet_opt, span_lint_and_then};
 use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, MatchSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -118,7 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImplicitReturn {
 
         // checking return type through MIR, HIR is not able to determine inferred closure return types
         // make sure it's not a macro
-        if !mir.return_ty().is_unit() && !in_macro(span) {
+        if !mir.return_ty().is_unit() && !in_macro_or_desugar(span) {
             Self::expr_match(cx, &body.value);
         }
     }

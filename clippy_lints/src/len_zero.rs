@@ -1,4 +1,6 @@
-use crate::utils::{get_item_name, in_macro, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{
+    get_item_name, in_macro_or_desugar, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty,
+};
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -73,7 +75,7 @@ declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if in_macro(item.span) {
+        if in_macro_or_desugar(item.span) {
             return;
         }
 
@@ -85,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_macro(expr.span) {
+        if in_macro_or_desugar(expr.span) {
             return;
         }
 

@@ -1,6 +1,6 @@
 //! lint when items are used after statements
 
-use crate::utils::{in_macro, span_lint};
+use crate::utils::{in_macro_or_desugar, span_lint};
 use matches::matches;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -38,7 +38,7 @@ declare_lint_pass!(ItemsAfterStatements => [ITEMS_AFTER_STATEMENTS]);
 
 impl EarlyLintPass for ItemsAfterStatements {
     fn check_block(&mut self, cx: &EarlyContext<'_>, item: &Block) {
-        if in_macro(item.span) {
+        if in_macro_or_desugar(item.span) {
             return;
         }
 
@@ -52,7 +52,7 @@ impl EarlyLintPass for ItemsAfterStatements {
         // lint on all further items
         for stmt in stmts {
             if let StmtKind::Item(ref it) = *stmt {
-                if in_macro(it.span) {
+                if in_macro_or_desugar(it.span) {
                     return;
                 }
                 if let ItemKind::MacroDef(..) = it.node {
