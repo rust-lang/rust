@@ -54,21 +54,21 @@ struct AstValidator<'a> {
     has_proc_macro_decls: bool,
     has_global_allocator: bool,
 
-    // Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
-    // Nested `impl Trait` _is_ allowed in associated type position,
-    // e.g `impl Iterator<Item=impl Debug>`
+    /// Used to ban nested `impl Trait`, e.g., `impl Into<impl Debug>`.
+    /// Nested `impl Trait` _is_ allowed in associated type position,
+    /// e.g `impl Iterator<Item=impl Debug>`
     outer_impl_trait: Option<OuterImplTrait>,
 
-    // Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
-    // or `Foo::Bar<impl Trait>`
+    /// Used to ban `impl Trait` in path projections like `<impl Iterator>::Item`
+    /// or `Foo::Bar<impl Trait>`
     is_impl_trait_banned: bool,
 
-    // rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
-    // until PRs #57730 and #57981 landed: it would jump directly to
-    // walk_ty rather than visit_ty (or skip recurring entirely for
-    // impl trait in projections), and thus miss some cases. We track
-    // whether we should downgrade to a warning for short-term via
-    // these booleans.
+    /// rust-lang/rust#57979: the ban of nested `impl Trait` was buggy
+    /// until PRs #57730 and #57981 landed: it would jump directly to
+    /// walk_ty rather than visit_ty (or skip recurring entirely for
+    /// impl trait in projections), and thus miss some cases. We track
+    /// whether we should downgrade to a warning for short-term via
+    /// these booleans.
     warning_period_57979_didnt_record_next_impl_trait: bool,
     warning_period_57979_impl_trait_in_proj: bool,
 }
