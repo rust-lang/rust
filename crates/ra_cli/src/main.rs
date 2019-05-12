@@ -25,7 +25,8 @@ fn main() -> Result<()> {
         .subcommand(
             SubCommand::with_name("analysis-stats")
                 .arg(Arg::with_name("verbose").short("v"))
-                .arg(Arg::with_name("only").short("o").takes_value(true)),
+                .arg(Arg::with_name("only").short("o").takes_value(true))
+                .arg(Arg::with_name("path")),
         )
         .get_matches();
     match matches.subcommand() {
@@ -53,8 +54,9 @@ fn main() -> Result<()> {
         }
         ("analysis-stats", Some(matches)) => {
             let verbose = matches.is_present("verbose");
+            let path = matches.value_of("path").unwrap_or("");
             let only = matches.value_of("only");
-            analysis_stats::run(verbose, only)?;
+            analysis_stats::run(verbose, path, only)?;
         }
         _ => unreachable!(),
     }
