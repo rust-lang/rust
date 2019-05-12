@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(const_ptr_nonnull)]
-
 use std::ptr::NonNull;
 
 const DANGLING: NonNull<u32> = NonNull::dangling();
