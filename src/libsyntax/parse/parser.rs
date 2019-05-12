@@ -2643,13 +2643,12 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
-                if self.span.rust_2018() && self.check_keyword(keywords::Async)
-                {
-                    if self.is_async_block() { // check for `async {` and `async move {`
-                        return self.parse_async_block(attrs);
+                if self.span.rust_2018() && self.check_keyword(keywords::Async) {
+                    return if self.is_async_block() { // check for `async {` and `async move {`
+                        self.parse_async_block(attrs)
                     } else {
-                        return self.parse_lambda_expr(attrs);
-                    }
+                        self.parse_lambda_expr(attrs)
+                    };
                 }
                 if self.check_keyword(keywords::Move) || self.check_keyword(keywords::Static) {
                     return self.parse_lambda_expr(attrs);
