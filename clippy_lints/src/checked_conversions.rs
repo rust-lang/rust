@@ -123,9 +123,7 @@ impl<'a> Conversion<'a> {
 
     /// Checks if the to-type is the same (if there is a type constraint)
     fn has_compatible_to_type(&self, other: &Self) -> bool {
-        transpose(self.to_type.as_ref(), other.to_type.as_ref())
-            .map(|(l, r)| l == r)
-            .unwrap_or(true)
+        transpose(self.to_type.as_ref(), other.to_type.as_ref()).map_or(true, |(l, r)| l == r)
     }
 
     /// Try to construct a new conversion if the conversion type is valid
@@ -149,7 +147,7 @@ impl<'a> Conversion<'a> {
 
 impl ConversionType {
     /// Creates a conversion type if the type is allowed & conversion is valid
-    fn try_new(from: &str, to: &str) -> Option<ConversionType> {
+    fn try_new(from: &str, to: &str) -> Option<Self> {
         if UNSIGNED_TYPES.contains(&from) {
             Some(ConversionType::FromUnsigned)
         } else if SIGNED_TYPES.contains(&from) {
