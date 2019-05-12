@@ -62,6 +62,10 @@ Cargo
 - [You can now set `cargo:rustc-cdylib-link-arg` at build time to pass custom
   linker arguments when building a `cdylib`.][cargo/6298] Its usage is highly
   platform specific.
+  
+Misc
+----
+- [The 1.35.0 rust toolchain is now available natively for musl based distros.][58575]
 
 [59460]: https://github.com/rust-lang/rust/pull/59460/
 [59464]: https://github.com/rust-lang/rust/pull/59464/
@@ -77,6 +81,7 @@ Cargo
 [58423]: https://github.com/rust-lang/rust/pull/58423/
 [58080]: https://github.com/rust-lang/rust/pull/58080/
 [57847]: https://github.com/rust-lang/rust/pull/57847/
+[58575]: https://github.com/rust-lang/rust/pull/58575
 [cargo/6298]: https://github.com/rust-lang/cargo/pull/6298/
 [`f32::copysign`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.copysign
 [`f64::copysign`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.copysign
