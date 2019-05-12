@@ -875,7 +875,7 @@ const NOTIFIED: u8 = 2;
 //
 // The implementation currently just delegates to the park/unpark functionality of
 // parking_lot_core. which does not actually allow spurious wakeups. In the
-// future, this might be implemented in a more efficient way, perhaps along the lines of
+// future, this will be implemented in a more efficient way, perhaps along the lines of
 //   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
 // or futuxes, and in either case may allow spurious wakeups.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -969,14 +969,14 @@ fn park_internal(timeout: Option<Instant>) {
             validate,
             before_sleep,
             timed_out,
-            crate::parking_lot_core::ParkToken(0),
+            crate::parking_lot_core::DEFAULT_PARK_TOKEN,
             timeout,
         );
     }
     match thread.inner.state.swap(EMPTY, SeqCst) {
         NOTIFIED => {} // got a notification, hurray!
         PARKED if timeout.is_some() => {} // no notification, OK if timed out
-        n => panic!("inconsistent park state: {}", n),
+        _ => unreachable!(),
     }
 }
 
@@ -1134,13 +1134,13 @@ impl Thread {
             EMPTY => return, // no one was waiting
             NOTIFIED => return, // already unparked
             PARKED => {} // gotta go wake someone up
-            n => panic!("inconsistent state in unpark: {}", n),
+            _ => unreachable!(),
         }
 
         unsafe {
             crate::parking_lot_core::unpark_all(
                 (&*self.inner) as *const _ as usize,
-                crate::parking_lot_core::UnparkToken(0)
+                crate::parking_lot_core::DEFAULT_UNPARK_TOKEN,
             );
         }
     }
