@@ -20,7 +20,7 @@ use crate::{
     HirDatabase, Function, Struct, Enum, Const, Static, Either, DefWithBody, PerNs, Name,
     AsName, Module, HirFileId, Crate, Trait, Resolver, Ty,Path,
     expr::{BodySourceMap, scope::{ScopeId, ExprScopes}},
-    ids::{LocationCtx,MacroCallId},
+    ids::{LocationCtx, MacroDefId},
     docs::{docs_from_ast,Documentation},
     expr, AstId,
 };
@@ -191,13 +191,12 @@ pub enum PathResolution {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroByExampleDef {
-    pub(crate) id: MacroCallId,
+    pub(crate) id: MacroDefId,
 }
 
 impl MacroByExampleDef {
     pub fn source(&self, db: &impl HirDatabase) -> (HirFileId, TreeArc<ast::MacroCall>) {
-        let loc = self.id.loc(db);
-        (self.id.into(), loc.def.0.to_node(db))
+        (self.id.0.file_id(), self.id.0.to_node(db))
     }
 }
 
@@ -296,9 +295,9 @@ impl SourceAnalyzer {
             db,
             macro_call.path().and_then(Path::from_ast),
             ast_id,
-        );
-
-        call_id.map(|id| MacroByExampleDef { id })
+        )?;
+        let loc = call_id.loc(db);
+        Some(MacroByExampleDef { id: loc.def })
     }
 
     pub fn resolve_hir_path(

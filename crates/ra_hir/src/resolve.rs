@@ -134,7 +134,7 @@ impl Resolver {
         resolution
     }
 
-    pub fn resolve_macro_call(
+    pub(crate) fn resolve_macro_call(
         &self,
         db: &impl HirDatabase,
         path: Option<Path>,
