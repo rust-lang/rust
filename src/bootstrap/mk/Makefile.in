@@ -14,10 +14,9 @@ endif
 
 BOOTSTRAP := $(CFG_PYTHON) $(CFG_SRC_DIR)src/bootstrap/bootstrap.py
 
-build:
+all:
 	$(Q)$(BOOTSTRAP) build $(BOOTSTRAP_ARGS)
-
-all: build doc
+	$(Q)$(BOOTSTRAP) doc $(BOOTSTRAP_ARGS)
 
 help:
 	$(Q)echo 'Welcome to the rustbuild build system!'
@@ -81,75 +80,10 @@ TESTS_IN_2 := \
 	src/test/run-pass-fulldeps \
 	src/tools/linkchecker
 
-MIN_TEST := \
-	src/test/debuginfo
-
 ci-subset-1:
 	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2:%=--exclude %)
 ci-subset-2:
 	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2)
 
-ci-test-prepare: 
-	$(Q)$(BOOTSTRAP) test $(MIN_TEST)
-
-ci-resume-subset-1:
-	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2:%=--exclude %)
-ci-resume-subset-2:
-	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2)
-
-TESTS_IN_B := \
-	src/tools/linkchecker
-
-TESTS_IN_C := \
-	src/test/run-pass \
-	src/test/run-pass-fulldeps
-
-TESTS_IN_D := \
-	src/test/compile-fail \
-	src/test/rustdoc \
-	src/test/pretty
-
-TESTS_IN_E := \
-	src/test/ui 
-
-TESTS_IN_F := \
-	src/test/run-fail \
-	src/liballoc \
-	src/libcore
-
-TESTS_IN_G := \
-	src/tools/rustdoc \
-	src/test/rustdoc-js-std \
-	src/test/run-make-fulldeps \
-	src/libstd
-
-TESTS_IN_H := \
-	src/librustc_driver
-
-ci-resume-subset-A:
-	$(Q)$(BOOTSTRAP) test \
-		$(KEEP_STAGE) \
-		$(TESTS_IN_B:%=--exclude %) \
-		$(TESTS_IN_C:%=--exclude %) \
-		$(TESTS_IN_D:%=--exclude %) \
-		$(TESTS_IN_E:%=--exclude %) \
-		$(TESTS_IN_F:%=--exclude %) \
-		$(TESTS_IN_G:%=--exclude %) \
-		$(TESTS_IN_H:%=--exclude %) \
-		$(MIN_TEST:%=--exclude %) 
-ci-resume-subset-B:
-	$(Q)$(BOOTSTRAP) test $(KEEP_STAGE) $(TESTS_IN_B)
-ci-resume-subset-C:
-	$(Q)$(BOOTSTRAP) test $(KEEP_STAGE) $(TESTS_IN_C)
-ci-resume-subset-D:
-	$(Q)$(BOOTSTRAP) test $(KEEP_STAGE) $(TESTS_IN_D)
-ci-resume-subset-E:
-	$(Q)$(BOOTSTRAP) test $(KEEP_STAGE) $(TESTS_IN_E)
-ci-resume-subset-F:
-	$(Q)$(BOOTSTRAP) test $(KEEP_STAGE) $(TESTS_IN_F)
-ci-resume-subset-G:
-	$(Q)$(BOOTSTRAP) test $(KEEP_STAGE) $(TESTS_IN_G)
-ci-resume-subset-H:
-	$(Q)$(BOOTSTRAP) test $(KEEP_STAGE) $(TESTS_IN_H)
 
 .PHONY: dist

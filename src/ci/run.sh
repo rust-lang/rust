@@ -90,25 +90,23 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   rm -rf build
 fi
 
-if [ "$SKIP_PREP" != "1" ]; then
-  travis_fold start configure
-  travis_time_start
-  $SRC/configure $RUST_CONFIGURE_ARGS
-  travis_fold end configure
-  travis_time_finish
+travis_fold start configure
+travis_time_start
+$SRC/configure $RUST_CONFIGURE_ARGS
+travis_fold end configure
+travis_time_finish
 
-  travis_fold start make-prepare
-  travis_time_start
-  retry make prepare
-  travis_fold end make-prepare
-  travis_time_finish
+travis_fold start make-prepare
+travis_time_start
+retry make prepare
+travis_fold end make-prepare
+travis_time_finish
 
-  travis_fold start check-bootstrap
-  travis_time_start
-  make check-bootstrap
-  travis_fold end check-bootstrap
-  travis_time_finish
-fi
+travis_fold start check-bootstrap
+travis_time_start
+make check-bootstrap
+travis_fold end check-bootstrap
+travis_time_finish
 
 # Display the CPU and memory information. This helps us know why the CI timing
 # is fluctuating.
