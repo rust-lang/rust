@@ -318,6 +318,8 @@ impl<'a> Classifier<'a> {
 
                     // Number literals.
                     token::Integer(..) | token::Float(..) => Class::Number,
+
+                    token::Bool(..) => panic!("literal token contains `Lit::Bool`"),
                 }
             }
 

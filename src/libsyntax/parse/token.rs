@@ -61,6 +61,7 @@ impl DelimToken {
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum Lit {
+    Bool(ast::Name), // AST only, must never appear in a `Token`
     Byte(ast::Name),
     Char(ast::Name),
     Err(ast::Name),
@@ -72,9 +73,13 @@ pub enum Lit {
     ByteStrRaw(ast::Name, u16), /* raw byte str delimited by n hash symbols */
 }
 
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_LIT: mem::size_of::<Lit>() == 8);
+
 impl Lit {
     crate fn literal_name(&self) -> &'static str {
         match *self {
+            Bool(_) => panic!("literal token contains `Lit::Bool`"),
             Byte(_) => "byte literal",
             Char(_) => "char literal",
             Err(_) => "invalid literal",
@@ -82,6 +87,13 @@ impl Lit {
             Float(_) => "float literal",
             Str_(_) | StrRaw(..) => "string literal",
             ByteStr(_) | ByteStrRaw(..) => "byte string literal"
+        }
+    }
+
+    crate fn may_have_suffix(&self) -> bool {
+        match *self {
+            Integer(..) | Float(..) => true,
+            _ => false,
         }
     }
 

@@ -262,18 +262,6 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    pub fn new(sess: &'a ParseSess,
-               source_file: Lrc<syntax_pos::SourceFile>,
-               override_span: Option<Span>) -> Self {
-        let mut sr = StringReader::new_raw(sess, source_file, override_span);
-        if sr.advance_token().is_err() {
-            sr.emit_fatal_errors();
-            FatalError.raise();
-        }
-
-        sr
-    }
-
     pub fn new_or_buffered_errs(sess: &'a ParseSess,
                                 source_file: Lrc<syntax_pos::SourceFile>,
                                 override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
@@ -1627,7 +1615,12 @@ mod tests {
                  teststr: String)
                  -> StringReader<'a> {
         let sf = sm.new_source_file(PathBuf::from(teststr.clone()).into(), teststr);
-        StringReader::new(sess, sf, None)
+        let mut sr = StringReader::new_raw(sess, sf, None);
+        if sr.advance_token().is_err() {
+            sr.emit_fatal_errors();
+            FatalError.raise();
+        }
+        sr
     }
 
     #[test]

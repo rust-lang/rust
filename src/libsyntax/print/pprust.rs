@@ -20,10 +20,8 @@ use rustc_target::spec::abi::{self, Abi};
 use syntax_pos::{self, BytePos};
 use syntax_pos::{DUMMY_SP, FileName};
 
-use std::ascii;
 use std::borrow::Cow;
 use std::io::{self, Write, Read};
-use std::iter::Peekable;
 use std::vec;
 
 pub enum AnnNode<'a> {
@@ -49,8 +47,7 @@ impl PpAnn for NoAnn {}
 pub struct State<'a> {
     pub s: pp::Printer<'a>,
     cm: Option<&'a SourceMap>,
-    comments: Option<Vec<comments::Comment> >,
-    literals: Peekable<vec::IntoIter<comments::Literal>>,
+    comments: Option<Vec<comments::Comment>>,
     cur_cmnt: usize,
     boxes: Vec<pp::Breaks>,
     ann: &'a (dyn PpAnn+'a),
@@ -62,7 +59,6 @@ fn rust_printer<'a>(writer: Box<dyn Write+'a>, ann: &'a dyn PpAnn) -> State<'a> 
         s: pp::mk_printer(writer, DEFAULT_COLUMNS),
         cm: None,
         comments: None,
-        literals: vec![].into_iter().peekable(),
         cur_cmnt: 0,
         boxes: Vec::new(),
         ann,
@@ -75,8 +71,7 @@ pub const INDENT_UNIT: usize = 4;
 pub const DEFAULT_COLUMNS: usize = 78;
 
 /// Requires you to pass an input filename and reader so that
-/// it can scan the input text for comments and literals to
-/// copy forward.
+/// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
                        krate: &ast::Crate,
@@ -118,36 +113,23 @@ impl<'a> State<'a> {
                           out: Box<dyn Write+'a>,
                           ann: &'a dyn PpAnn,
                           is_expanded: bool) -> State<'a> {
-        let (cmnts, lits) = comments::gather_comments_and_literals(sess, filename, input);
-
-        State::new(
-            cm,
-            out,
-            ann,
-            Some(cmnts),
-            // If the code is post expansion, don't use the table of
-            // literals, since it doesn't correspond with the literals
-            // in the AST anymore.
-            if is_expanded { None } else { Some(lits) },
-            is_expanded
-        )
+        let comments = comments::gather_comments(sess, filename, input);
+        State::new(cm, out, ann, Some(comments), is_expanded)
     }
 
     pub fn new(cm: &'a SourceMap,
                out: Box<dyn Write+'a>,
                ann: &'a dyn PpAnn,
                comments: Option<Vec<comments::Comment>>,
-               literals: Option<Vec<comments::Literal>>,
                is_expanded: bool) -> State<'a> {
         State {
             s: pp::mk_printer(out, DEFAULT_COLUMNS),
             cm: Some(cm),
             comments,
-            literals: literals.unwrap_or_default().into_iter().peekable(),
             cur_cmnt: 0,
             boxes: Vec::new(),
             ann,
-            is_expanded: is_expanded
+            is_expanded,
         }
     }
 }
@@ -178,6 +160,31 @@ fn binop_to_string(op: BinOpToken) -> &'static str {
         token::Shl      => "<<",
         token::Shr      => ">>",
     }
+}
+
+pub fn literal_to_string(lit: token::Lit, suffix: Option<ast::Name>) -> String {
+    let mut out = match lit {
+        token::Byte(b)           => format!("b'{}'", b),
+        token::Char(c)           => format!("'{}'", c),
+        token::Err(c)            => format!("'{}'", c),
+        token::Bool(c)           |
+        token::Float(c)          |
+        token::Integer(c)        => c.to_string(),
+        token::Str_(s)           => format!("\"{}\"", s),
+        token::StrRaw(s, n)      => format!("r{delim}\"{string}\"{delim}",
+                                            delim="#".repeat(n as usize),
+                                            string=s),
+        token::ByteStr(v)        => format!("b\"{}\"", v),
+        token::ByteStrRaw(s, n)  => format!("br{delim}\"{string}\"{delim}",
+                                            delim="#".repeat(n as usize),
+                                            string=s),
+    };
+
+    if let Some(suffix) = suffix {
+        out.push_str(&suffix.as_str())
+    }
+
+    out
 }
 
 pub fn token_to_string(tok: &Token) -> String {
@@ -223,29 +230,7 @@ pub fn token_to_string(tok: &Token) -> String {
         token::SingleQuote          => "'".to_string(),
 
         /* Literals */
-        token::Literal(lit, suf) => {
-            let mut out = match lit {
-                token::Byte(b)           => format!("b'{}'", b),
-                token::Char(c)           => format!("'{}'", c),
-                token::Err(c)            => format!("'{}'", c),
-                token::Float(c)          |
-                token::Integer(c)        => c.to_string(),
-                token::Str_(s)           => format!("\"{}\"", s),
-                token::StrRaw(s, n)      => format!("r{delim}\"{string}\"{delim}",
-                                                    delim="#".repeat(n as usize),
-                                                    string=s),
-                token::ByteStr(v)         => format!("b\"{}\"", v),
-                token::ByteStrRaw(s, n)   => format!("br{delim}\"{string}\"{delim}",
-                                                    delim="#".repeat(n as usize),
-                                                    string=s),
-            };
-
-            if let Some(s) = suf {
-                out.push_str(&s.as_str())
-            }
-
-            out
-        }
+        token::Literal(lit, suf) => literal_to_string(lit, suf),
 
         /* Name components */
         token::Ident(s, false)      => s.to_string(),
@@ -438,8 +423,6 @@ pub trait PrintState<'a> {
     fn boxes(&mut self) -> &mut Vec<pp::Breaks>;
     fn comments(&mut self) -> &mut Option<Vec<comments::Comment>>;
     fn cur_cmnt(&mut self) -> &mut usize;
-    fn cur_lit(&mut self) -> Option<&comments::Literal>;
-    fn bump_lit(&mut self) -> Option<comments::Literal>;
 
     fn word_space<S: Into<Cow<'static, str>>>(&mut self, w: S) -> io::Result<()> {
         self.writer().word(w)?;
@@ -502,21 +485,6 @@ pub trait PrintState<'a> {
             op(self, elt)?;
         }
         self.end()
-    }
-
-    fn next_lit(&mut self, pos: BytePos) -> Option<comments::Literal> {
-        while let Some(ltrl) = self.cur_lit().cloned() {
-            if ltrl.pos > pos { break; }
-
-            // we don't need the value here since we're forced to clone cur_lit
-            // due to lack of NLL.
-            self.bump_lit();
-            if ltrl.pos == pos {
-                return Some(ltrl);
-            }
-        }
-
-        None
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) -> io::Result<()> {
@@ -606,60 +574,7 @@ pub trait PrintState<'a> {
 
     fn print_literal(&mut self, lit: &ast::Lit) -> io::Result<()> {
         self.maybe_print_comment(lit.span.lo())?;
-        if let Some(ltrl) = self.next_lit(lit.span.lo()) {
-            return self.writer().word(ltrl.lit.clone());
-        }
-        match lit.node {
-            ast::LitKind::Str(st, style) => self.print_string(&st.as_str(), style),
-            ast::LitKind::Err(st) => {
-                let st = st.as_str().escape_debug().to_string();
-                let mut res = String::with_capacity(st.len() + 2);
-                res.push('\'');
-                res.push_str(&st);
-                res.push('\'');
-                self.writer().word(res)
-            }
-            ast::LitKind::Byte(byte) => {
-                let mut res = String::from("b'");
-                res.extend(ascii::escape_default(byte).map(|c| c as char));
-                res.push('\'');
-                self.writer().word(res)
-            }
-            ast::LitKind::Char(ch) => {
-                let mut res = String::from("'");
-                res.extend(ch.escape_default());
-                res.push('\'');
-                self.writer().word(res)
-            }
-            ast::LitKind::Int(i, t) => {
-                match t {
-                    ast::LitIntType::Signed(st) => {
-                        self.writer().word(st.val_to_string(i as i128))
-                    }
-                    ast::LitIntType::Unsigned(ut) => {
-                        self.writer().word(ut.val_to_string(i))
-                    }
-                    ast::LitIntType::Unsuffixed => {
-                        self.writer().word(i.to_string())
-                    }
-                }
-            }
-            ast::LitKind::Float(ref f, t) => {
-                self.writer().word(format!("{}{}", &f, t.ty_to_string()))
-            }
-            ast::LitKind::FloatUnsuffixed(ref f) => self.writer().word(f.as_str().to_string()),
-            ast::LitKind::Bool(val) => {
-                if val { self.writer().word("true") } else { self.writer().word("false") }
-            }
-            ast::LitKind::ByteStr(ref v) => {
-                let mut escaped: String = String::new();
-                for &ch in v.iter() {
-                    escaped.extend(ascii::escape_default(ch)
-                                         .map(|c| c as char));
-                }
-                self.writer().word(format!("b\"{}\"", escaped))
-            }
-        }
+        self.writer().word(literal_to_string(lit.token, lit.suffix))
     }
 
     fn print_string(&mut self, st: &str,
@@ -879,14 +794,6 @@ impl<'a> PrintState<'a> for State<'a> {
 
     fn cur_cmnt(&mut self) -> &mut usize {
         &mut self.cur_cmnt
-    }
-
-    fn cur_lit(&mut self) -> Option<&comments::Literal> {
-        self.literals.peek()
-    }
-
-    fn bump_lit(&mut self) -> Option<comments::Literal> {
-        self.literals.next()
     }
 }
 
