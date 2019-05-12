@@ -597,14 +597,12 @@ pub enum Nonterminal {
     NtPath(ast::Path),
     NtVis(ast::Visibility),
     NtTT(TokenTree),
-    // These are not exposed to macros, but are used by quasiquote.
-    NtArm(ast::Arm),
-    NtImplItem(ast::ImplItem),
+    // Used only for passing items to proc macro attributes (they are not
+    // strictly necessary for that, `Annotatable` can be converted into
+    // tokens directly, but doing that naively regresses pretty-printing).
     NtTraitItem(ast::TraitItem),
+    NtImplItem(ast::ImplItem),
     NtForeignItem(ast::ForeignItem),
-    NtGenerics(ast::Generics),
-    NtWhereClause(ast::WhereClause),
-    NtArg(ast::Arg),
 }
 
 impl PartialEq for Nonterminal {
@@ -637,13 +635,9 @@ impl fmt::Debug for Nonterminal {
             NtMeta(..) => f.pad("NtMeta(..)"),
             NtPath(..) => f.pad("NtPath(..)"),
             NtTT(..) => f.pad("NtTT(..)"),
-            NtArm(..) => f.pad("NtArm(..)"),
             NtImplItem(..) => f.pad("NtImplItem(..)"),
             NtTraitItem(..) => f.pad("NtTraitItem(..)"),
             NtForeignItem(..) => f.pad("NtForeignItem(..)"),
-            NtGenerics(..) => f.pad("NtGenerics(..)"),
-            NtWhereClause(..) => f.pad("NtWhereClause(..)"),
-            NtArg(..) => f.pad("NtArg(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }

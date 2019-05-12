@@ -1,0 +1,14 @@
+// compile-pass
+// compile-flags: -Z unpretty=hir
+
+#![feature(existential_type)]
+#[prelude_import]
+use ::std::prelude::v1::*;
+#[macro_use]
+extern crate std;
+
+trait Animal { }
+
+fn main() {
+              pub existential type ServeFut : Animal;
+          }

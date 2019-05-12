@@ -618,7 +618,6 @@ impl<'a> State<'a> {
 
                 self.print_where_clause(&exist.generics.where_clause)?;
                 self.s.space()?;
-                self.word_space(":")?;
                 let mut real_bounds = Vec::with_capacity(exist.bounds.len());
                 for b in exist.bounds.iter() {
                     if let GenericBound::Trait(ref ptr, hir::TraitBoundModifier::Maybe) = *b {

@@ -1833,7 +1833,7 @@ impl<'a> Parser<'a> {
         Ok(MutTy { ty: t, mutbl: mutbl })
     }
 
-    fn is_named_argument(&mut self) -> bool {
+    fn is_named_argument(&self) -> bool {
         let offset = match self.token {
             token::Interpolated(ref nt) => match **nt {
                 token::NtPat(..) => return self.look_ahead(1, |t| t == &token::Colon),
@@ -1881,8 +1881,6 @@ impl<'a> Parser<'a> {
     /// This version of parse arg doesn't necessarily require identifier names.
     fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool,
                          allow_c_variadic: bool) -> PResult<'a, Arg> {
-        maybe_whole!(self, NtArg, |x| x);
-
         if let Ok(Some(_)) = self.parse_self_arg() {
             let mut err = self.struct_span_err(self.prev_span,
                 "unexpected `self` argument in function");
@@ -2345,27 +2343,27 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn mk_expr(&mut self, span: Span, node: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
+    fn mk_expr(&self, span: Span, node: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr { node, span, attrs, id: ast::DUMMY_NODE_ID })
     }
 
-    fn mk_unary(&mut self, unop: ast::UnOp, expr: P<Expr>) -> ast::ExprKind {
+    fn mk_unary(&self, unop: ast::UnOp, expr: P<Expr>) -> ast::ExprKind {
         ExprKind::Unary(unop, expr)
     }
 
-    fn mk_binary(&mut self, binop: ast::BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprKind {
+    fn mk_binary(&self, binop: ast::BinOp, lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprKind {
         ExprKind::Binary(binop, lhs, rhs)
     }
 
-    fn mk_call(&mut self, f: P<Expr>, args: Vec<P<Expr>>) -> ast::ExprKind {
+    fn mk_call(&self, f: P<Expr>, args: Vec<P<Expr>>) -> ast::ExprKind {
         ExprKind::Call(f, args)
     }
 
-    fn mk_index(&mut self, expr: P<Expr>, idx: P<Expr>) -> ast::ExprKind {
+    fn mk_index(&self, expr: P<Expr>, idx: P<Expr>) -> ast::ExprKind {
         ExprKind::Index(expr, idx)
     }
 
-    fn mk_range(&mut self,
+    fn mk_range(&self,
                     start: Option<P<Expr>>,
                     end: Option<P<Expr>>,
                     limits: RangeLimits)
@@ -2377,7 +2375,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn mk_assign_op(&mut self, binop: ast::BinOp,
+    fn mk_assign_op(&self, binop: ast::BinOp,
                         lhs: P<Expr>, rhs: P<Expr>) -> ast::ExprKind {
         ExprKind::AssignOp(binop, lhs, rhs)
     }
@@ -2517,13 +2515,12 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
-                if self.span.rust_2018() && self.check_keyword(keywords::Async)
-                {
-                    if self.is_async_block() { // check for `async {` and `async move {`
-                        return self.parse_async_block(attrs);
+                if self.span.rust_2018() && self.check_keyword(keywords::Async) {
+                    return if self.is_async_block() { // check for `async {` and `async move {`
+                        self.parse_async_block(attrs)
                     } else {
-                        return self.parse_lambda_expr(attrs);
-                    }
+                        self.parse_lambda_expr(attrs)
+                    };
                 }
                 if self.check_keyword(keywords::Move) || self.check_keyword(keywords::Static) {
                     return self.parse_lambda_expr(attrs);
@@ -3448,7 +3445,8 @@ impl<'a> Parser<'a> {
             } else {
                 self.restrictions
             };
-            if op.precedence() < min_prec {
+            let prec = op.precedence();
+            if prec < min_prec {
                 break;
             }
             // Check for deprecated `...` syntax
@@ -3489,8 +3487,7 @@ impl<'a> Parser<'a> {
                 // We have 2 alternatives here: `x..y`/`x..=y` and `x..`/`x..=` The other
                 // two variants are handled with `parse_prefix_range_expr` call above.
                 let rhs = if self.is_at_start_of_range_notation_rhs() {
-                    Some(self.parse_assoc_expr_with(op.precedence() + 1,
-                                                    LhsExpr::NotYetParsed)?)
+                    Some(self.parse_assoc_expr_with(prec + 1, LhsExpr::NotYetParsed)?)
                 } else {
                     None
                 };
@@ -3510,28 +3507,18 @@ impl<'a> Parser<'a> {
                 break
             }
 
-            let rhs = match op.fixity() {
-                Fixity::Right => self.with_res(
-                    restrictions - Restrictions::STMT_EXPR,
-                    |this| {
-                        this.parse_assoc_expr_with(op.precedence(),
-                            LhsExpr::NotYetParsed)
-                }),
-                Fixity::Left => self.with_res(
-                    restrictions - Restrictions::STMT_EXPR,
-                    |this| {
-                        this.parse_assoc_expr_with(op.precedence() + 1,
-                            LhsExpr::NotYetParsed)
-                }),
+            let fixity = op.fixity();
+            let prec_adjustment = match fixity {
+                Fixity::Right => 0,
+                Fixity::Left => 1,
                 // We currently have no non-associative operators that are not handled above by
                 // the special cases. The code is here only for future convenience.
-                Fixity::None => self.with_res(
-                    restrictions - Restrictions::STMT_EXPR,
-                    |this| {
-                        this.parse_assoc_expr_with(op.precedence() + 1,
-                            LhsExpr::NotYetParsed)
-                }),
-            }?;
+                Fixity::None => 1,
+            };
+            let rhs = self.with_res(
+                restrictions - Restrictions::STMT_EXPR,
+                |this| this.parse_assoc_expr_with(prec + prec_adjustment, LhsExpr::NotYetParsed)
+            )?;
 
             // Make sure that the span of the parent node is larger than the span of lhs and rhs,
             // including the attributes.
@@ -3577,7 +3564,7 @@ impl<'a> Parser<'a> {
                 }
             };
 
-            if op.fixity() == Fixity::None { break }
+            if let Fixity::None = fixity { break }
         }
         Ok(lhs)
     }
@@ -3714,7 +3701,7 @@ impl<'a> Parser<'a> {
     /// Produce an error if comparison operators are chained (RFC #558).
     /// We only need to check lhs, not rhs, because all comparison ops
     /// have same precedence and are left-associative
-    fn check_no_chained_comparison(&mut self, lhs: &Expr, outer_op: &AssocOp) {
+    fn check_no_chained_comparison(&self, lhs: &Expr, outer_op: &AssocOp) {
         debug_assert!(outer_op.is_comparison(),
                       "check_no_chained_comparison: {:?} is not comparison",
                       outer_op);
@@ -4053,8 +4040,6 @@ impl<'a> Parser<'a> {
     }
 
     crate fn parse_arm(&mut self) -> PResult<'a, Arm> {
-        maybe_whole!(self, NtArm, |x| x);
-
         let attrs = self.parse_outer_attributes()?;
         let pats = self.parse_pats()?;
         let guard = if self.eat_keyword(keywords::If) {
@@ -5011,7 +4996,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn is_async_block(&mut self) -> bool {
+    fn is_async_block(&self) -> bool {
         self.token.is_keyword(keywords::Async) &&
         (
             ( // `async move {`
@@ -5023,19 +5008,19 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn is_async_fn(&mut self) -> bool {
+    fn is_async_fn(&self) -> bool {
         self.token.is_keyword(keywords::Async) &&
             self.look_ahead(1, |t| t.is_keyword(keywords::Fn))
     }
 
-    fn is_do_catch_block(&mut self) -> bool {
+    fn is_do_catch_block(&self) -> bool {
         self.token.is_keyword(keywords::Do) &&
         self.look_ahead(1, |t| t.is_keyword(keywords::Catch)) &&
         self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace)) &&
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
 
-    fn is_try_block(&mut self) -> bool {
+    fn is_try_block(&self) -> bool {
         self.token.is_keyword(keywords::Try) &&
         self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
         self.span.rust_2018() &&
@@ -5057,7 +5042,7 @@ impl<'a> Parser<'a> {
         self.look_ahead(1, |t| t.is_keyword(keywords::Type))
     }
 
-    fn is_auto_trait_item(&mut self) -> bool {
+    fn is_auto_trait_item(&self) -> bool {
         // auto trait
         (self.token.is_keyword(keywords::Auto)
             && self.look_ahead(1, |t| t.is_keyword(keywords::Trait)))
@@ -5319,7 +5304,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Checks if this expression is a successfully parsed statement.
-    fn expr_is_complete(&mut self, e: &Expr) -> bool {
+    fn expr_is_complete(&self, e: &Expr) -> bool {
         self.restrictions.contains(Restrictions::STMT_EXPR) &&
             !classify::expr_requires_semi_to_be_stmt(e)
     }
@@ -5789,8 +5774,6 @@ impl<'a> Parser<'a> {
     ///                  | ( < lifetimes , typaramseq ( , )? > )
     /// where   typaramseq = ( typaram ) | ( typaram , typaramseq )
     fn parse_generics(&mut self) -> PResult<'a, ast::Generics> {
-        maybe_whole!(self, NtGenerics, |x| x);
-
         let span_lo = self.span;
         if self.eat_lt() {
             let params = self.parse_generic_params()?;
@@ -6043,8 +6026,6 @@ impl<'a> Parser<'a> {
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
-        maybe_whole!(self, NtWhereClause, |x| x);
-
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
@@ -6391,7 +6372,7 @@ impl<'a> Parser<'a> {
         Ok((id, generics))
     }
 
-    fn mk_item(&mut self, span: Span, ident: Ident, node: ItemKind, vis: Visibility,
+    fn mk_item(&self, span: Span, ident: Ident, node: ItemKind, vis: Visibility,
                attrs: Vec<Attribute>) -> P<Item> {
         P(Item {
             ident,
@@ -6423,7 +6404,7 @@ impl<'a> Parser<'a> {
 
     /// Returns `true` if we are looking at `const ID`
     /// (returns `false` for things like `const fn`, etc.).
-    fn is_const_item(&mut self) -> bool {
+    fn is_const_item(&self) -> bool {
         self.token.is_keyword(keywords::Const) &&
             !self.look_ahead(1, |t| t.is_keyword(keywords::Fn)) &&
             !self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe))
@@ -6531,7 +6512,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn complain_if_pub_macro(&mut self, vis: &VisibilityKind, sp: Span) {
+    fn complain_if_pub_macro(&self, vis: &VisibilityKind, sp: Span) {
         match *vis {
             VisibilityKind::Inherited => {}
             _ => {
@@ -6560,7 +6541,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn missing_assoc_item_kind_err(&mut self, item_type: &str, prev_span: Span)
+    fn missing_assoc_item_kind_err(&self, item_type: &str, prev_span: Span)
                                    -> DiagnosticBuilder<'a>
     {
         let expected_kinds = if item_type == "extern" {

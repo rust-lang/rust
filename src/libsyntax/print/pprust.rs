@@ -263,12 +263,8 @@ pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
         token::NtLifetime(e)        => ident_to_string(e),
         token::NtLiteral(ref e)     => expr_to_string(e),
         token::NtTT(ref tree)       => tt_to_string(tree.clone()),
-        token::NtArm(ref e)         => arm_to_string(e),
         token::NtImplItem(ref e)    => impl_item_to_string(e),
         token::NtTraitItem(ref e)   => trait_item_to_string(e),
-        token::NtGenerics(ref e)    => generic_params_to_string(&e.params),
-        token::NtWhereClause(ref e) => where_clause_to_string(e),
-        token::NtArg(ref e)         => arg_to_string(e),
         token::NtVis(ref e)         => vis_to_string(e),
         token::NtForeignItem(ref e) => foreign_item_to_string(e),
     }
