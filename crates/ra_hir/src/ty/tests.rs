@@ -2502,6 +2502,35 @@ fn test() { (&S).foo()<|>; }
 }
 
 #[test]
+fn method_resolution_trait_from_prelude() {
+    let (mut db, pos) = MockDatabase::with_position(
+        r#"
+//- /main.rs
+struct S;
+impl Clone for S {}
+
+fn test() {
+    S.clone()<|>;
+}
+
+//- /lib.rs
+#[prelude_import] use foo::*;
+
+mod foo {
+    trait Clone {
+        fn clone(&self) -> Self;
+    }
+}
+"#,
+    );
+    db.set_crate_graph_from_fixture(crate_graph! {
+        "main": ("/main.rs", ["other_crate"]),
+        "other_crate": ("/lib.rs", []),
+    });
+    assert_eq!("S", type_at_pos(&db, pos));
+}
+
+#[test]
 fn method_resolution_where_clause_for_unknown_trait() {
     // The blanket impl shouldn't apply because we can't even resolve UnknownTrait
     let t = type_at(
@@ -2620,22 +2649,22 @@ fn method_resolution_slow() {
     let t = type_at(
         r#"
 //- /main.rs
-trait Send {}
+trait SendX {}
 
-struct S1; impl Send for S1;
-struct S2; impl Send for S2;
+struct S1; impl SendX for S1;
+struct S2; impl SendX for S2;
 struct U1;
 
 trait Trait { fn method(self); }
 
 struct X1<A, B> {}
-impl<A, B> Send for X1<A, B> where A: Send, B: Send {}
+impl<A, B> SendX for X1<A, B> where A: SendX, B: SendX {}
 
 struct S<B, C> {}
 
-trait Fn {}
+trait FnX {}
 
-impl<B, C> Trait for S<B, C> where C: Fn, B: Send {}
+impl<B, C> Trait for S<B, C> where C: FnX, B: SendX {}
 
 fn test() { (S {}).method()<|>; }
 "#,

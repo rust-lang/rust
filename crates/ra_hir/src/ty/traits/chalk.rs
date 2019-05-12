@@ -190,6 +190,14 @@ fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
     }
 }
 
+fn blacklisted_trait(db: &impl HirDatabase, trait_: Trait) -> bool {
+    let name = trait_.name(db).unwrap_or_else(crate::Name::missing).to_string();
+    match &*name {
+        "Send" | "Sync" | "Sized" | "Fn" | "FnMut" | "FnOnce" => true,
+        _ => false,
+    }
+}
+
 fn convert_where_clauses(
     db: &impl HirDatabase,
     def: GenericDef,
@@ -198,6 +206,19 @@ fn convert_where_clauses(
     let generic_predicates = db.generic_predicates(def);
     let mut result = Vec::with_capacity(generic_predicates.len());
     for pred in generic_predicates.iter() {
+        if pred.is_error() {
+            // HACK: Return just the single predicate (which is always false
+            // anyway), otherwise Chalk can easily get into slow situations
+            return vec![pred.clone().subst(substs).to_chalk(db)];
+        }
+        match pred {
+            GenericPredicate::Implemented(trait_ref) => {
+                if blacklisted_trait(db, trait_ref.trait_) {
+                    continue;
+                }
+            }
+            _ => {}
+        }
         result.push(pred.clone().subst(substs).to_chalk(db));
     }
     result
@@ -230,6 +251,7 @@ where
             return Arc::new(TraitDatum { binders: make_binders(trait_datum_bound, 1) });
         }
         let trait_: Trait = from_chalk(self.db, trait_id);
+        debug!("trait {:?} = {:?}", trait_id, trait_.name(self.db));
         let generic_params = trait_.generic_params(self.db);
         let bound_vars = Substs::bound_vars(&generic_params);
         let trait_ref = trait_.trait_ref(self.db).subst(&bound_vars).to_chalk(self.db);
@@ -250,6 +272,7 @@ where
     fn struct_datum(&self, struct_id: chalk_ir::StructId) -> Arc<StructDatum> {
         debug!("struct_datum {:?}", struct_id);
         let type_ctor = from_chalk(self.db, struct_id);
+        debug!("struct {:?} = {:?}", struct_id, type_ctor);
         // FIXME might be nicer if we can create a fake GenericParams for the TypeCtor
         // FIXME extract this to a method on Ty
         let (num_params, where_clauses, upstream) = match type_ctor {
@@ -358,7 +381,11 @@ where
         if trait_id == UNKNOWN_TRAIT {
             return Vec::new();
         }
-        let trait_ = from_chalk(self.db, trait_id);
+        let trait_: Trait = from_chalk(self.db, trait_id);
+        let blacklisted = blacklisted_trait(self.db, trait_);
+        if blacklisted {
+            return Vec::new();
+        }
         let result: Vec<_> = self
             .db
             .impls_for_trait(self.krate, trait_)

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use ra_syntax::ast;
 
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     ModuleDef, Trait,
@@ -193,19 +193,18 @@ impl Resolver {
         names
     }
 
-    pub(crate) fn traits_in_scope<'a>(&'a self) -> impl Iterator<Item = Trait> + 'a {
-        // FIXME prelude
-        self.scopes
-            .iter()
-            .rev()
-            .flat_map(|scope| {
-                match scope {
-                    Scope::ModuleScope(m) => Some(m.crate_def_map[m.module_id].scope.traits()),
-                    _ => None,
+    pub(crate) fn traits_in_scope(&self, db: &impl HirDatabase) -> FxHashSet<Trait> {
+        let mut traits = FxHashSet::default();
+        for scope in &self.scopes {
+            if let Scope::ModuleScope(m) = scope {
+                if let Some(prelude) = m.crate_def_map.prelude() {
+                    let prelude_def_map = db.crate_def_map(prelude.krate);
+                    traits.extend(prelude_def_map[prelude.module_id].scope.traits());
                 }
-                .into_iter()
-            })
-            .flatten()
+                traits.extend(m.crate_def_map[m.module_id].scope.traits());
+            }
+        }
+        traits
     }
 
     fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
