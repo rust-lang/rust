@@ -81,7 +81,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             let elem_size = mem::size_of::<T>();
 
             let alloc_size = cap.checked_mul(elem_size).unwrap_or_else(|| capacity_overflow());
-            alloc_guard::<A>(alloc_size).unwrap_or_else(|_| capacity_overflow());
+            alloc_guard::<A::Err>(alloc_size).unwrap_or_else(|_| capacity_overflow());
 
             // handles ZSTs and `cap = 0` alike
             let ptr = if alloc_size == 0 {
@@ -305,7 +305,7 @@ impl<T, A: Alloc> RawVec<T, A> {
                     // `from_size_align_unchecked`.
                     let new_cap = 2 * self.cap;
                     let new_size = new_cap * elem_size;
-                    alloc_guard::<A>(new_size).unwrap_or_else(|_| capacity_overflow());
+                    alloc_guard::<A::Err>(new_size).unwrap_or_else(|_| capacity_overflow());
                     let ptr_res = self.a.realloc(NonNull::from(self.ptr).cast(),
                                                  cur,
                                                  new_size);
@@ -320,7 +320,8 @@ impl<T, A: Alloc> RawVec<T, A> {
                     // skip to 4 because tiny Vec's are dumb; but not if that
                     // would cause overflow
                     let new_cap = if elem_size > (!0) / 8 { 1 } else { 4 };
-                    let layout = Layout::array::<T>(new_cap).expect("unable to create array layout");
+                    let layout = Layout::array::<T>(new_cap)
+                        .expect("unable to create array layout");
 
                     match self.a.alloc(layout) {
                         Ok(ptr) => (new_cap, ptr.cast().into()),
@@ -368,7 +369,7 @@ impl<T, A: Alloc> RawVec<T, A> {
             // overflow and the alignment is sufficiently small.
             let new_cap = 2 * self.cap;
             let new_size = new_cap * elem_size;
-            alloc_guard::<A>(new_size).unwrap_or_else(|_| capacity_overflow());
+            alloc_guard::<A::Err>(new_size).unwrap_or_else(|_| capacity_overflow());
             match self.a.grow_in_place(NonNull::from(self.ptr).cast(), old_layout, new_size) {
                 Ok(_) => {
                     // We can't directly divide `size`.
@@ -540,7 +541,7 @@ impl<T, A: Alloc> RawVec<T, A> {
 
             let new_layout = Layout::new::<T>().repeat(new_cap).unwrap().0;
             // FIXME: may crash and burn on over-reserve
-            alloc_guard::<A>(new_layout.size()).unwrap_or_else(|_| capacity_overflow());
+            alloc_guard::<A::Err>(new_layout.size()).unwrap_or_else(|_| capacity_overflow());
             match self.a.grow_in_place(
                 NonNull::from(self.ptr).cast(), old_layout, new_layout.size(),
             ) {
