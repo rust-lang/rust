@@ -2737,6 +2737,35 @@ fn main() {
     assert_eq!(t, "Foo");
 }
 
+#[test]
+fn deref_trait() {
+    let t = type_at(
+        r#"
+//- /main.rs
+#[lang = "deref"]
+trait Deref {
+    type Target;
+    fn deref(&self) -> &Self::Target;
+}
+
+struct Arc<T>;
+impl<T> Deref for Arc<T> {
+    type Target = T;
+}
+
+struct S;
+impl S {
+    fn foo(&self) -> u128 {}
+}
+
+fn test(s: Arc<S>) {
+    (*s, s.foo())<|>
+}
+"#,
+    );
+    assert_eq!(t, "(S, u128)");
+}
+
 fn type_at_pos(db: &MockDatabase, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
