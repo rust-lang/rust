@@ -1,16 +1,12 @@
 //! Name resolution.
 use std::sync::Arc;
 
-use ra_syntax::ast;
-
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     ModuleDef, Trait,
     code_model_api::Crate,
-    MacroCallId,
-    MacroCallLoc,
-    AstId,
+    MacroDefId,
     db::HirDatabase,
     name::{Name, KnownName},
     nameres::{PerNs, CrateDefMap, CrateModuleId},
@@ -134,16 +130,9 @@ impl Resolver {
         resolution
     }
 
-    pub(crate) fn resolve_macro_call(
-        &self,
-        db: &impl HirDatabase,
-        path: Option<Path>,
-        ast_id: AstId<ast::MacroCall>,
-    ) -> Option<MacroCallId> {
+    pub(crate) fn resolve_macro_call(&self, path: Option<Path>) -> Option<MacroDefId> {
         let name = path.and_then(|path| path.expand_macro_expr()).unwrap_or_else(Name::missing);
-        let def_id = self.module().and_then(|(module, _)| module.find_macro(&name))?;
-        let call_loc = MacroCallLoc { def: *def_id, ast_id }.id(db);
-        Some(call_loc)
+        self.module()?.0.find_macro(&name)
     }
 
     /// Returns the resolved path segments

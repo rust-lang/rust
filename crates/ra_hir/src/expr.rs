@@ -10,7 +10,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    Path, Name, HirDatabase, Resolver,DefWithBody, Either, HirFileId,
+    Path, Name, HirDatabase, Resolver,DefWithBody, Either, HirFileId, MacroCallLoc,
     name::AsName,
     type_ref::{Mutability, TypeRef},
 };
@@ -828,7 +828,8 @@ where
                     .ast_id(e)
                     .with_file_id(self.current_file_id);
 
-                if let Some(call_id) = self.resolver.resolve_macro_call(self.db, path, ast_id) {
+                if let Some(def) = self.resolver.resolve_macro_call(path) {
+                    let call_id = MacroCallLoc { def, ast_id }.id(self.db);
                     if let Some(tt) = self.db.macro_expand(call_id).ok() {
                         if let Some(expr) = mbe::token_tree_to_expr(&tt).ok() {
                             log::debug!("macro expansion {}", expr.syntax().debug_dump());

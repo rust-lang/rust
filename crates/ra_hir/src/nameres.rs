@@ -272,8 +272,8 @@ impl CrateDefMap {
         (res.resolved_def, res.segment_index)
     }
 
-    pub(crate) fn find_macro(&self, name: &Name) -> Option<&MacroDefId> {
-        self.public_macros.get(name).or(self.local_macros.get(name))
+    pub(crate) fn find_macro(&self, name: &Name) -> Option<MacroDefId> {
+        self.public_macros.get(name).or(self.local_macros.get(name)).map(|it| *it)
     }
 
     // Returns Yes if we are sure that additions to `ItemMap` wouldn't change

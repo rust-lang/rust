@@ -283,21 +283,9 @@ impl SourceAnalyzer {
         self.infer.as_ref()?.field_resolution(expr_id)
     }
 
-    pub fn resolve_macro_call(
-        &self,
-        db: &impl HirDatabase,
-        file_id: FileId,
-        macro_call: &ast::MacroCall,
-    ) -> Option<MacroByExampleDef> {
-        let hir_id = file_id.into();
-        let ast_id = db.ast_id_map(hir_id).ast_id(macro_call).with_file_id(hir_id);
-        let call_id = self.resolver.resolve_macro_call(
-            db,
-            macro_call.path().and_then(Path::from_ast),
-            ast_id,
-        )?;
-        let loc = call_id.loc(db);
-        Some(MacroByExampleDef { id: loc.def })
+    pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<MacroByExampleDef> {
+        let id = self.resolver.resolve_macro_call(macro_call.path().and_then(Path::from_ast))?;
+        Some(MacroByExampleDef { id })
     }
 
     pub fn resolve_hir_path(
