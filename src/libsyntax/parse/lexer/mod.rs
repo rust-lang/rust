@@ -1275,12 +1275,6 @@ impl<'a> StringReader<'a> {
         let mut content_end_bpos;
         let mut valid = true;
         'outer: loop {
-            // if self.ch_is('"') {
-            // content_end_bpos = self.pos;
-            // for _ in 0..hash_count {
-            // self.bump();
-            // if !self.ch_is('#') {
-            // continue 'outer;
             match self.ch {
                 None => {
                     self.fail_unterminated_raw_string(start_bpos, hash_count);
