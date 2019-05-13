@@ -1,0 +1,27 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `<-`
+  --> $DIR/bad.rs:5:7
+   |
+LL |     x <- y;
+   |       ^^ expected one of 8 possible tokens here
+
+error: expected expression, found keyword `in`
+  --> $DIR/bad.rs:11:5
+   |
+LL |     in(foo) { bar };
+   |     ^^ expected expression
+
+error[E0308]: mismatched types
+  --> $DIR/bad.rs:5:5
+   |
+LL | fn foo() {
+   |          - possibly return type missing here?
+LL |     let (x, y) = (0, 0);
+LL |     x <- y;
+   |     ^ expected (), found integer
+   |
+   = note: expected type `()`
+              found type `{integer}`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

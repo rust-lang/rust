@@ -1,14 +1,10 @@
-error: emplacement syntax is obsolete (for now, anyway)
-  --> $DIR/placement-syntax.rs:3:8
+error: expected `{`, found `<-`
+  --> $DIR/placement-syntax.rs:3:9
    |
 LL |     if x<-1 {
-   |        ^^^^
-   |
-   = note: for more information, see <https://github.com/rust-lang/rust/issues/27779#issuecomment-378416911>
-help: if you meant to write a comparison against a negative value, add a space in between `<` and `-`
-   |
-LL |     if x< -1 {
-   |         ^^^
+   |     --  ^^ expected `{`
+   |     |
+   |     this `if` statement has a condition, but no block
 
 error: aborting due to previous error
 

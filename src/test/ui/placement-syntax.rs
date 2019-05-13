@@ -1,7 +1,6 @@
 fn main() {
     let x = -5;
-    if x<-1 {
-    //~^ ERROR emplacement syntax is obsolete
+    if x<-1 { //~ ERROR expected `{`, found `<-`
         println!("ok");
     }
 }
