@@ -25,9 +25,9 @@ steps:
   displayName: install a tar that works well
 
 - bash: |
-    curl -f http://releases.llvm.org/7.0.0/clang+llvm-7.0.0-x86_64-apple-darwin.tar.xz | tar xJf - 
+    curl -f http://releases.llvm.org/7.0.0/clang+llvm-7.0.0-x86_64-apple-darwin.tar.xz | tar xJf -
   displayName: Download clang
-  
+
 - bash: |
     brew update
     brew install xz

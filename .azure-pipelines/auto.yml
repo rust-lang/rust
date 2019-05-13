@@ -1,6 +1,6 @@
 #
 # Azure Pipelines "auto" branch build for Rust on Linux, macOS, and Windows.
-# 
+#
 
 pr: none
  trigger:
@@ -33,7 +33,7 @@ jobs:
         IMAGE: dist-x86_64-linux
         DEPLOY_ALT: 1
 
-      # Linux builders, remaining docker images        
+      # Linux builders, remaining docker images
       arm-android:
         IMAGE: arm-android
 
@@ -157,7 +157,7 @@ jobs:
   steps:
   - checkout: self
     fetchDepth: 2
-  - template: steps/macos.yml  
+  - template: steps/macos.yml
   strategy:
     matrix:
       # macOS builders. These are placed near the beginning because they are very
@@ -200,7 +200,7 @@ jobs:
       # # temp disabled
       # # https://github.com/johnterickson/rust/issues/18
       # i686-apple:
-      #   RUST_CHECK_TARGET: check 
+      #   RUST_CHECK_TARGET: check
       #   RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --set rust.jemalloc
       #   RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
       #   MACOSX_DEPLOYMENT_TARGET: 10.8

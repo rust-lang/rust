@@ -1,6 +1,6 @@
 #
 # Azure Pipelines "try" branch build for Rust
-# 
+#
 
 pr: none
 trigger:

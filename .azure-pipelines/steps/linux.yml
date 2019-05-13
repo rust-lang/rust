@@ -7,10 +7,10 @@ steps:
 
 - bash: |
     sudo apt install gdb
-        
+
     curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl
     chmod +x $HOME/stamp
-    
+
     export PATH=$PATH:$HOME/.local/bin:$HOME/Library/Python/2.7/bin/:$HOME
     echo "##vso[task.setvariable variable=PATH;]$PATH"
 

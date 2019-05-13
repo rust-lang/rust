@@ -7,7 +7,7 @@ steps:
     git submodule
     export SUBMODULES_EXCLUDES=$(git submodule | grep -Eow 'src/[^ ]+' | sed 's/\(.*\)/--exclude=\1\/\.git/')
     echo "##vso[task.setvariable variable=SUBMODULES_EXCLUDES;]$SUBMODULES_EXCLUDES"
-    
+
 - script: |
     REM echo hack as drive D is too small
     IF NOT "%DISABLE_DISK_SPACE_HACK%"=="1" (
@@ -19,7 +19,7 @@ steps:
     set MSYS_PATH=%CD%\citools\msys64
     choco install msys2 --params="/InstallDir:%MSYS_PATH% /NoPath" -y
     set PATH=%MSYS_PATH%\usr\bin;%PATH%
-    pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar 
+    pacman -S --noconfirm --needed base-devel ca-certificates make diffutils tar
     IF "%MINGW_URL%"=="" (
       IF "%MSYS_BITS%"=="32" pacman -S --noconfirm --needed mingw-w64-i686-toolchain mingw-w64-i686-cmake mingw-w64-i686-gcc mingw-w64-i686-python2
       IF "%MSYS_BITS%"=="64" pacman -S --noconfirm --needed mingw-w64-x86_64-toolchain mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-python2
@@ -135,7 +135,7 @@ steps:
 
 - script: |
     REM echo force the specific VS version https://github.com/johnterickson/rust/issues/8
-    IF "%VCVARS_BAT%" NEQ "" ( 
+    IF "%VCVARS_BAT%" NEQ "" (
       CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\%VCVARS_BAT%"
     )
 
@@ -144,10 +144,10 @@ steps:
     set | findstr /v SCCACHE_AZURE_CONNECTION_STRING
 
     if not exist D:\cache\rustsrc\NUL mkdir D:\cache\rustsrc
-    
+
     sh src/ci/init_repo.sh . /d/cache/rustsrc
     sh src/ci/run.sh
-  env:      
+  env:
     CI: true
     CI_JOB_NAME: $(System.JobDisplayName)
     SRC: .
