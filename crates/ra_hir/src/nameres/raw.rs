@@ -39,7 +39,10 @@ type ImportSource = Either<TreeArc<ast::UseTree>, TreeArc<ast::ExternCrateItem>>
 
 impl ImportSourcePtr {
     fn to_node(self, file: &SourceFile) -> ImportSource {
-        self.map(|ptr| ptr.to_node(file).to_owned(), |ptr| ptr.to_node(file).to_owned())
+        self.map(
+            |ptr| ptr.to_node(file.syntax()).to_owned(),
+            |ptr| ptr.to_node(file.syntax()).to_owned(),
+        )
     }
 }
 

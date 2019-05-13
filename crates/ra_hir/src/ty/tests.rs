@@ -2715,7 +2715,7 @@ fn infer(content: &str) -> String {
         // sort ranges for consistency
         types.sort_by_key(|(ptr, _)| (ptr.range().start(), ptr.range().end()));
         for (syntax_ptr, ty) in &types {
-            let node = syntax_ptr.to_node(&source_file);
+            let node = syntax_ptr.to_node(source_file.syntax());
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node) {
                 (self_param.self_kw_token().range(), "self".to_string())
             } else {

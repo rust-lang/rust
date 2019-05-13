@@ -54,7 +54,7 @@ pub(crate) fn diagnostics(db: &RootDatabase, file_id: FileId) -> Vec<Diagnostic>
         let file_id = d.file().original_file(db);
         let source_file = db.parse(file_id);
         let syntax_node = d.syntax_node_ptr();
-        let node = NamedFieldList::cast(syntax_node.to_node(&source_file)).unwrap();
+        let node = NamedFieldList::cast(syntax_node.to_node(source_file.syntax())).unwrap();
         let mut ast_editor = AstEditor::new(node);
         for f in d.missed_fields.iter() {
             ast_editor.append_field(&AstBuilder::<NamedField>::from_name(f));
@@ -281,7 +281,7 @@ mod tests {
                 one: i32,
                 two: i64,
             }
-            
+
             fn test_fn() {
                 let one = 1;
                 let s = TestStruct{ one, two: 2 };
@@ -298,7 +298,7 @@ mod tests {
                 one: i32,
                 two: i64,
             }
-            
+
             fn test_fn() {
                 let one = 1;
                 let s = TestStruct{ ..a };

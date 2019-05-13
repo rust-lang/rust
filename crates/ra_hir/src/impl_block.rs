@@ -34,7 +34,7 @@ impl ImplSourceMap {
             ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
         };
 
-        self.map[impl_id].to_node(file).to_owned()
+        self.map[impl_id].to_node(file.syntax()).to_owned()
     }
 }
 

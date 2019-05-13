@@ -392,7 +392,7 @@ impl SyntaxNode {
         // `range` private afterwards
         let mut ptr = SyntaxNodePtr::new(self);
         ptr.range = TextRange::offset_len(ptr.range().start(), len);
-        return ptr.to_node(&file).to_owned();
+        return ptr.to_node(file.syntax()).to_owned();
     }
 
     fn position_of_child(&self, child: SyntaxElement) -> usize {

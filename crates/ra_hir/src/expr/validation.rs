@@ -76,7 +76,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let source_file = db.parse(file_id.original_file(db));
             if let Some(field_list_node) = source_map
                 .expr_syntax(id)
-                .map(|ptr| ptr.to_node(&source_file))
+                .map(|ptr| ptr.to_node(source_file.syntax()))
                 .and_then(StructLit::cast)
                 .and_then(|lit| lit.named_field_list())
             {

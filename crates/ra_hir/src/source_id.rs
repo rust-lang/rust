@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, sync::Arc, hash::{Hash, Hasher}};
 
 use ra_arena::{Arena, RawId, impl_arena_id};
-use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, SourceFile, AstNode, ast};
+use ra_syntax::{SyntaxNodePtr, TreeArc, SyntaxNode, AstNode, ast};
 
 use crate::{HirFileId, DefDatabase};
 
@@ -89,7 +89,7 @@ pub struct AstIdMap {
 impl AstIdMap {
     pub(crate) fn ast_id_map_query(db: &impl DefDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
         let source_file = db.hir_parse(file_id);
-        Arc::new(AstIdMap::from_source_file(&source_file))
+        Arc::new(AstIdMap::from_source(source_file.syntax()))
     }
 
     pub(crate) fn file_item_query(
@@ -98,7 +98,7 @@ impl AstIdMap {
         ast_id: ErasedFileAstId,
     ) -> TreeArc<SyntaxNode> {
         let source_file = db.hir_parse(file_id);
-        db.ast_id_map(file_id).arena[ast_id].to_node(&source_file).to_owned()
+        db.ast_id_map(file_id).arena[ast_id].to_node(source_file.syntax()).to_owned()
     }
 
     pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {
@@ -115,13 +115,14 @@ impl AstIdMap {
         FileAstId { raw, _ty: PhantomData }
     }
 
-    fn from_source_file(source_file: &SourceFile) -> AstIdMap {
+    fn from_source(node: &SyntaxNode) -> AstIdMap {
+        assert!(node.parent().is_none());
         let mut res = AstIdMap { arena: Arena::default() };
         // By walking the tree in bread-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
-        bfs(source_file.syntax(), |it| {
+        bfs(node, |it| {
             if let Some(module_item) = ast::ModuleItem::cast(it) {
                 res.alloc(module_item.syntax());
             } else if let Some(macro_call) = ast::MacroCall::cast(it) {
