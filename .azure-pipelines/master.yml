@@ -4,7 +4,7 @@
 
 pr: none
 trigger:
-- master
+  - master
 
 pool:
   vmImage: ubuntu-16.04
