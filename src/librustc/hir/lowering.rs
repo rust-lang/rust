@@ -4755,9 +4755,9 @@ impl<'a> LoweringContext<'a> {
                 //     Ok(val) => #[allow(unreachable_code)] val,
                 //     Err(err) => #[allow(unreachable_code)]
                 //                 // If there is an enclosing `catch {...}`
-                //                 break 'catch_target Try::from_error(From::from(err)),
+                //                 break 'catch_target Try::from_error(Into::into(err)),
                 //                 // Otherwise
-                //                 return Try::from_error(From::from(err)),
+                //                 return Try::from_error(Into::into(err)),
                 // }
 
                 let unstable_span = self.sess.source_map().mark_span_with_reason(
@@ -4818,17 +4818,17 @@ impl<'a> LoweringContext<'a> {
                 };
 
                 // `Err(err) => #[allow(unreachable_code)]
-                //              return Try::from_error(From::from(err)),`
+                //              return Try::from_error(Into::into(err)),`
                 let err_arm = {
                     let err_ident = self.str_to_ident("err");
                     let (err_local, err_local_nid) = self.pat_ident(try_span, err_ident);
-                    let from_expr = {
-                        let from_path = &[sym::convert, sym::From, sym::from];
+                    let into_expr = {
+                        let into_path = &[sym::convert, sym::Into, sym::into];
                         let err_expr = self.expr_ident(try_span, err_ident, err_local_nid);
-                        self.expr_call_std_path(try_span, from_path, hir_vec![err_expr])
+                        self.expr_call_std_path(try_span, into_path, hir_vec![err_expr])
                     };
                     let from_err_expr =
-                        self.wrap_in_try_constructor(sym::from_error, from_expr, unstable_span);
+                        self.wrap_in_try_constructor(sym::from_error, into_expr, unstable_span);
                     let thin_attrs = ThinVec::from(attrs);
                     let catch_scope = self.catch_scopes.last().map(|x| *x);
                     let ret_expr = if let Some(catch_node) = catch_scope {

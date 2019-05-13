@@ -34,7 +34,7 @@ pub trait Try {
     ///
     /// If an `Err(e)` result is returned, the value `e` will be "wrapped"
     /// in the return type of the enclosing scope (which must itself implement
-    /// `Try`). Specifically, the value `X::from_error(From::from(e))`
+    /// `Try`). Specifically, the value `X::from_error(Into::into(e))`
     /// is returned, where `X` is the return type of the enclosing function.
     #[unstable(feature = "try_trait", issue = "42327")]
     fn into_result(self) -> Result<Self::Ok, Self::Error>;

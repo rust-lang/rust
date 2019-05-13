@@ -287,6 +287,8 @@ symbols! {
         infer_static_outlives_requirements,
         inline,
         intel,
+        into,
+        Into,
         into_iter,
         IntoIterator,
         into_result,
