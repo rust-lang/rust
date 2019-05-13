@@ -3,6 +3,7 @@
 #![feature(box_patterns)]
 #![feature(drain_filter)]
 #![feature(libc)]
+#![feature(never_type)]
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
