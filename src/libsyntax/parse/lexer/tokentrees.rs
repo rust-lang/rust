@@ -207,6 +207,8 @@ impl<'a> TokenTreesReader<'a> {
                 // Note that testing for joint-ness here is done via the raw
                 // source span as the joint-ness is a property of the raw source
                 // rather than wanting to take `override_span` into account.
+                // Additionally, we actually check if the *next* pair of tokens
+                // is joint, but this is equivalent to checking the current pair.
                 let raw = self.string_reader.peek_span_src_raw;
                 self.real_token();
                 let is_joint = raw.hi() == self.string_reader.peek_span_src_raw.lo()
@@ -222,4 +224,3 @@ impl<'a> TokenTreesReader<'a> {
         self.span = t.sp;
     }
 }
-
