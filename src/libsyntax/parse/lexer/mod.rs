@@ -210,14 +210,6 @@ impl<'a> StringReader<'a> {
         buffer
     }
 
-    pub fn peek(&self) -> TokenAndSpan {
-        // FIXME(pcwalton): Bad copy!
-        TokenAndSpan {
-            tok: self.peek_tok.clone(),
-            sp: self.peek_span,
-        }
-    }
-
     /// For comments.rs, which hackily pokes into next_pos and ch
     fn new_raw(sess: &'a ParseSess,
                source_file: Lrc<syntax_pos::SourceFile>,
