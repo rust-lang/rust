@@ -14,7 +14,7 @@ use crate::Build;
 use crate::config::Config;
 
 // The version number
-pub const CFG_RELEASE_NUM: &str = "1.34.1";
+pub const CFG_RELEASE_NUM: &str = "1.34.2";
 
 pub struct GitInfo {
     inner: Option<Info>,
