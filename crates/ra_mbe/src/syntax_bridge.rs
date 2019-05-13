@@ -50,6 +50,10 @@ pub fn token_tree_to_expr(tt: &tt::Subtree) -> Result<TreeArc<ast::Expr>, Expand
     let token_source = SubtreeTokenSource::new(tt);
     let mut tree_sink = TtTreeSink::new(token_source.querier());
     ra_parser::parse_expr(&token_source, &mut tree_sink);
+    if tree_sink.roots.len() != 1 {
+        return Err(ExpandError::ConversionError);
+    }
+
     let syntax = tree_sink.inner.finish();
     ast::Expr::cast(&syntax)
         .map(|m| m.to_owned())
@@ -61,6 +65,10 @@ pub fn token_tree_to_pat(tt: &tt::Subtree) -> Result<TreeArc<ast::Pat>, ExpandEr
     let token_source = SubtreeTokenSource::new(tt);
     let mut tree_sink = TtTreeSink::new(token_source.querier());
     ra_parser::parse_pat(&token_source, &mut tree_sink);
+    if tree_sink.roots.len() != 1 {
+        return Err(ExpandError::ConversionError);
+    }
+
     let syntax = tree_sink.inner.finish();
     ast::Pat::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
@@ -70,6 +78,9 @@ pub fn token_tree_to_ty(tt: &tt::Subtree) -> Result<TreeArc<ast::TypeRef>, Expan
     let token_source = SubtreeTokenSource::new(tt);
     let mut tree_sink = TtTreeSink::new(token_source.querier());
     ra_parser::parse_ty(&token_source, &mut tree_sink);
+    if tree_sink.roots.len() != 1 {
+        return Err(ExpandError::ConversionError);
+    }
     let syntax = tree_sink.inner.finish();
     ast::TypeRef::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
@@ -81,6 +92,9 @@ pub fn token_tree_to_macro_stmts(
     let token_source = SubtreeTokenSource::new(tt);
     let mut tree_sink = TtTreeSink::new(token_source.querier());
     ra_parser::parse_macro_stmts(&token_source, &mut tree_sink);
+    if tree_sink.roots.len() != 1 {
+        return Err(ExpandError::ConversionError);
+    }
     let syntax = tree_sink.inner.finish();
     ast::MacroStmts::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
@@ -92,6 +106,9 @@ pub fn token_tree_to_macro_items(
     let token_source = SubtreeTokenSource::new(tt);
     let mut tree_sink = TtTreeSink::new(token_source.querier());
     ra_parser::parse_macro_items(&token_source, &mut tree_sink);
+    if tree_sink.roots.len() != 1 {
+        return Err(ExpandError::ConversionError);
+    }
     let syntax = tree_sink.inner.finish();
     ast::MacroItems::cast(&syntax).map(|m| m.to_owned()).ok_or_else(|| ExpandError::ConversionError)
 }
@@ -268,6 +285,10 @@ struct TtTreeSink<'a, Q: Querier> {
     text_pos: TextUnit,
     token_pos: usize,
     inner: SyntaxTreeBuilder,
+
+    // Number of roots
+    // Use for detect ill-form tree which is not single root
+    roots: smallvec::SmallVec<[usize; 1]>,
 }
 
 impl<'a, Q: Querier> TtTreeSink<'a, Q> {
@@ -278,6 +299,7 @@ impl<'a, Q: Querier> TtTreeSink<'a, Q> {
             text_pos: 0.into(),
             token_pos: 0,
             inner: SyntaxTreeBuilder::default(),
+            roots: smallvec::SmallVec::new(),
         }
     }
 }
@@ -323,10 +345,16 @@ impl<'a, Q: Querier> TreeSink for TtTreeSink<'a, Q> {
 
     fn start_node(&mut self, kind: SyntaxKind) {
         self.inner.start_node(kind);
+
+        match self.roots.last_mut() {
+            None | Some(0) => self.roots.push(1),
+            Some(ref mut n) => **n += 1,
+        };
     }
 
     fn finish_node(&mut self) {
         self.inner.finish_node();
+        *self.roots.last_mut().unwrap() -= 1;
     }
 
     fn error(&mut self, error: ParseError) {
@@ -374,5 +402,23 @@ mod tests {
         // [let] [s] [=] ["rust1"] [;]
         assert_eq!(query.token(2 + 15 + 3).1, "\"rust1\"");
         assert_eq!(query.token(2 + 15 + 3).0, STRING);
+    }
+
+    #[test]
+    fn stmts_token_trees_to_expr_is_err() {
+        let rules = create_rules(
+            r#"
+            macro_rules! stmts {
+                () => {
+                    let a = 0;
+                    let b = 0;
+                    let c = 0;
+                    let d = 0;
+                }
+            }
+            "#,
+        );
+        let expansion = expand(&rules, "stmts!()");
+        assert!(token_tree_to_expr(&expansion).is_err());
     }
 }
