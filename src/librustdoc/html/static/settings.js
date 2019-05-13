@@ -41,13 +41,16 @@
         if (!elems || elems.length === 0) {
             return;
         }
-        for (var i = 0; i < elems.length; ++i) {
+        var i;
+        for (i = 0; i < elems.length; ++i) {
             var toggle = elems[i].previousElementSibling;
             var settingId = toggle.id;
             var settingValue = getSettingValue(settingId);
             if (settingValue !== null) {
                 toggle.checked = settingValue === "true";
             }
+        }
+        for (i = 0; i < elems.length; ++i) {
             toggle.onchange = function() {
                 changeSetting(this.id, this.checked);
                 updateChildren(this);

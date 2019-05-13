@@ -2249,9 +2249,15 @@ if (!DOMTokenList.prototype.remove) {
         }
     }
     var showItemDeclarations = getCurrentValue("rustdoc-auto-hide-" + className);
-    var globalItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
-    if (showItemDeclarations === null && globalItemDeclarations !== null) {
-        showItemDeclarations = globalItemDeclarations;
+    if (showItemDeclarations === null) {
+        if (className === "enum" || className === "macro") {
+            showItemDeclarations = "false";
+        } else if (className === "struct" || className === "union" || className === "trait") {
+            showItemDeclarations = "true";
+        } else {
+            // In case we found an unknown type, we just use the "parent" value.
+            showItemDeclarations = getCurrentValue("rustdoc-auto-hide-declarations");
+        }
     }
     showItemDeclarations = showItemDeclarations === "false";
     function buildToggleWrapper(e) {
