@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-// ignore-bitrig
 // compile-flags: -C codegen-units=3
 // ignore-emscripten no threads support
 

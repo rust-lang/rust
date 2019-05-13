@@ -113,7 +113,7 @@ pub fn gnu_target(target: &str) -> &str {
 }
 
 pub fn make(host: &str) -> PathBuf {
-    if host.contains("bitrig") || host.contains("dragonfly") || host.contains("freebsd")
+    if host.contains("dragonfly") || host.contains("freebsd")
         || host.contains("netbsd") || host.contains("openbsd")
     {
         PathBuf::from("gmake")

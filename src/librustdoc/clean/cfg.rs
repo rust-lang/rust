@@ -338,7 +338,6 @@ impl<'a> fmt::Display for Html<'a> {
                     ("debug_assertions", None) => "debug-assertions enabled",
                     ("target_os", Some(os)) => match &*os.as_str() {
                         "android" => "Android",
-                        "bitrig" => "Bitrig",
                         "dragonfly" => "DragonFly BSD",
                         "emscripten" => "Emscripten",
                         "freebsd" => "FreeBSD",

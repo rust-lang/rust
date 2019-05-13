@@ -845,7 +845,6 @@ pub mod consts {
     /// - ios
     /// - freebsd
     /// - dragonfly
-    /// - bitrig
     /// - netbsd
     /// - openbsd
     /// - solaris

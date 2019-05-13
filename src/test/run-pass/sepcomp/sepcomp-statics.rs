@@ -1,6 +1,5 @@
 // run-pass
 #![allow(dead_code)]
-// ignore-bitrig
 // compile-flags: -C codegen-units=3
 
 // Test references to static items across compilation units.

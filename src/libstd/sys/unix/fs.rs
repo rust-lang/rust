@@ -147,8 +147,7 @@ impl FileAttr {
         }))
     }
 
-    #[cfg(any(target_os = "bitrig",
-              target_os = "freebsd",
+    #[cfg(any(target_os = "freebsd",
               target_os = "openbsd",
               target_os = "macos",
               target_os = "ios"))]
@@ -159,8 +158,7 @@ impl FileAttr {
         }))
     }
 
-    #[cfg(not(any(target_os = "bitrig",
-                  target_os = "freebsd",
+    #[cfg(not(any(target_os = "freebsd",
                   target_os = "openbsd",
                   target_os = "macos",
                   target_os = "ios")))]
@@ -355,7 +353,6 @@ impl DirEntry {
 
     #[cfg(any(target_os = "freebsd",
               target_os = "openbsd",
-              target_os = "bitrig",
               target_os = "netbsd",
               target_os = "dragonfly"))]
     pub fn ino(&self) -> u64 {
@@ -367,8 +364,7 @@ impl DirEntry {
               target_os = "netbsd",
               target_os = "openbsd",
               target_os = "freebsd",
-              target_os = "dragonfly",
-              target_os = "bitrig"))]
+              target_os = "dragonfly"))]
     fn name_bytes(&self) -> &[u8] {
         use crate::slice;
         unsafe {

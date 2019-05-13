@@ -1024,9 +1024,9 @@ mod tests {
         assert_eq!(format!("{:?}", udpsock), compare);
     }
 
-    // FIXME: re-enabled bitrig/openbsd/netbsd tests once their socket timeout code
+    // FIXME: re-enabled openbsd/netbsd tests once their socket timeout code
     //        no longer has rounding errors.
-    #[cfg_attr(any(target_os = "bitrig", target_os = "netbsd", target_os = "openbsd"), ignore)]
+    #[cfg_attr(any(target_os = "netbsd", target_os = "openbsd"), ignore)]
     #[test]
     fn timeouts() {
         let addr = next_test_ip4();
