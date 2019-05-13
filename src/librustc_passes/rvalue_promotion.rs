@@ -25,6 +25,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::util::nodemap::{ItemLocalSet, HirIdSet};
 use rustc::hir;
+use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 use log::debug;
 use Promotability::*;
@@ -335,7 +336,7 @@ fn check_expr_kind<'a, 'tcx>(
 
                     if v.in_static {
                         for attr in &v.tcx.get_attrs(did)[..] {
-                            if attr.check_name("thread_local") {
+                            if attr.check_name(sym::thread_local) {
                                 debug!("Reference to Static(id={:?}) is unpromotable \
                                        due to a #[thread_local] attribute", did);
                                 return NotPromotable;

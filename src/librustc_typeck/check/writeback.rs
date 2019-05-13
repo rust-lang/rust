@@ -16,6 +16,7 @@ use rustc::mir::interpret::ConstValue;
 use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::sync::Lrc;
 use std::mem;
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 ///////////////////////////////////////////////////////////////////////////
@@ -36,8 +37,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let item_def_id = self.tcx.hir().local_def_id(item_id);
 
         // This attribute causes us to dump some writeback information
-        // in the form of errors, which is used for unit tests.
-        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, "rustc_dump_user_substs");
+        // in the form of errors, which is uSymbolfor unit tests.
+        let rustc_dump_user_substs = self.tcx.has_attr(item_def_id, sym::rustc_dump_user_substs);
 
         let mut wbcx = WritebackCx::new(self, body, rustc_dump_user_substs);
         for arg in &body.arguments {

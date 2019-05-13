@@ -22,6 +22,7 @@ use rustc_macros::HashStable;
 use std::{cmp, fmt};
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
+use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Copy, Clone, Debug)]
@@ -447,7 +448,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Such access can be in plain sight (e.g., dereferencing
         // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
         // (e.g., calling `foo.0.clone()` of `Foo<T:Clone>`).
-        if self.has_attr(dtor, "unsafe_destructor_blind_to_params") {
+        if self.has_attr(dtor, sym::unsafe_destructor_blind_to_params) {
             debug!("destructor_constraint({:?}) - blind", def.did);
             return vec![];
         }

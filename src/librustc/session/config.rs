@@ -2753,6 +2753,7 @@ mod tests {
     // another --cfg test
     #[test]
     fn test_switch_implies_cfg_test_unless_cfg_test() {
+        use syntax::symbol::sym;
         syntax::with_globals(|| {
             let matches = &match optgroups().parse(&["--test".to_string(),
                                                      "--cfg=test".to_string()]) {
@@ -2763,7 +2764,7 @@ mod tests {
             let (sessopts, cfg) = build_session_options_and_crate_config(matches);
             let sess = build_session(sessopts, None, registry);
             let cfg = build_configuration(&sess, to_crate_config(cfg));
-            let mut test_items = cfg.iter().filter(|&&(name, _)| name == "test");
+            let mut test_items = cfg.iter().filter(|&&(name, _)| name == sym::test);
             assert!(test_items.next().is_some());
             assert!(test_items.next().is_none());
         });

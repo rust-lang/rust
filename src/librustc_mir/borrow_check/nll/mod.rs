@@ -20,6 +20,7 @@ use std::io;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
+use syntax::symbol::sym;
 
 use self::mir_util::PassWhere;
 use polonius_engine::{Algorithm, Output};
@@ -280,7 +281,7 @@ fn dump_annotation<'a, 'gcx, 'tcx>(
 ) {
     let tcx = infcx.tcx;
     let base_def_id = tcx.closure_base_def_id(mir_def_id);
-    if !tcx.has_attr(base_def_id, "rustc_regions") {
+    if !tcx.has_attr(base_def_id, sym::rustc_regions) {
         return;
     }
 

@@ -11,6 +11,7 @@ use rustc::lint::{LateContext, LintContext, LintPass, LateLintPass, LateLintPass
 use rustc_plugin::Registry;
 use rustc::hir;
 use syntax::attr;
+use syntax::symbol::Symbol;
 
 declare_lint! {
     CRATE_NOT_OKAY,
@@ -22,7 +23,7 @@ declare_lint_pass!(Pass => [CRATE_NOT_OKAY]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
-        if !attr::contains_name(&krate.attrs, "crate_okay") {
+        if !attr::contains_name(&krate.attrs, Symbol::intern("crate_okay")) {
             cx.span_lint(CRATE_NOT_OKAY, krate.span,
                          "crate is not marked with #![crate_okay]");
         }

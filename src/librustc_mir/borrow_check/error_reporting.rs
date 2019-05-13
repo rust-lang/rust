@@ -20,6 +20,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 use syntax::source_map::CompilerDesugaringKind;
+use syntax::symbol::sym;
 
 use super::borrow_set::BorrowData;
 use super::{MirBorrowckCtxt};
@@ -1839,7 +1840,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             PlaceBase::Static(box Static{ kind: StaticKind::Static(def_id), .. })
         ) = place {
             let attrs = self.infcx.tcx.get_attrs(*def_id);
-            let is_thread_local = attrs.iter().any(|attr| attr.check_name("thread_local"));
+            let is_thread_local = attrs.iter().any(|attr| attr.check_name(sym::thread_local));
 
             debug!(
                 "is_place_thread_local: attrs={:?} is_thread_local={:?}",

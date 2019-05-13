@@ -37,7 +37,7 @@ use syntax::feature_gate::is_builtin_attr;
 use syntax::parse::token::{self, Token};
 use syntax::span_err;
 use syntax::std_inject::injected_crate_name;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax::visit::{self, Visitor};
 
 use syntax_pos::{Span, DUMMY_SP};
@@ -257,7 +257,7 @@ impl<'a> Resolver<'a> {
             }
             ast::UseTreeKind::Glob => {
                 let subclass = GlobImport {
-                    is_prelude: attr::contains_name(&item.attrs, "prelude_import"),
+                    is_prelude: attr::contains_name(&item.attrs, sym::prelude_import),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
                 self.add_import_directive(
@@ -369,7 +369,7 @@ impl<'a> Resolver<'a> {
                 };
 
                 self.populate_module_if_necessary(module);
-                if injected_crate_name().map_or(false, |name| ident.name == name) {
+                if injected_crate_name().map_or(false, |name| ident.name.as_str() == name) {
                     self.injected_crate = Some(module);
                 }
 
@@ -427,7 +427,7 @@ impl<'a> Resolver<'a> {
                 let module_kind = ModuleKind::Def(DefKind::Mod, def_id, ident.name);
                 let module = self.arenas.alloc_module(ModuleData {
                     no_implicit_prelude: parent.no_implicit_prelude || {
-                        attr::contains_name(&item.attrs, "no_implicit_prelude")
+                        attr::contains_name(&item.attrs, sym::no_implicit_prelude)
                     },
                     ..ModuleData::new(Some(parent), module_kind, def_id, expansion, item.span)
                 });
@@ -456,12 +456,12 @@ impl<'a> Resolver<'a> {
 
                 // Functions introducing procedural macros reserve a slot
                 // in the macro namespace as well (see #52225).
-                if attr::contains_name(&item.attrs, "proc_macro") ||
-                   attr::contains_name(&item.attrs, "proc_macro_attribute") {
+                if attr::contains_name(&item.attrs, sym::proc_macro) ||
+                   attr::contains_name(&item.attrs, sym::proc_macro_attribute) {
                     let res = Res::Def(DefKind::Macro(MacroKind::ProcMacroStub), res.def_id());
                     self.define(parent, ident, MacroNS, (res, vis, sp, expansion));
                 }
-                if let Some(attr) = attr::find_by_name(&item.attrs, "proc_macro_derive") {
+                if let Some(attr) = attr::find_by_name(&item.attrs, sym::proc_macro_derive) {
                     if let Some(trait_attr) =
                             attr.meta_item_list().and_then(|list| list.get(0).cloned()) {
                         if let Some(ident) = trait_attr.ident() {
@@ -518,7 +518,7 @@ impl<'a> Resolver<'a> {
 
                 let mut ctor_vis = vis;
 
-                let has_non_exhaustive = attr::contains_name(&item.attrs, "non_exhaustive");
+                let has_non_exhaustive = attr::contains_name(&item.attrs, sym::non_exhaustive);
 
                 // If the structure is marked as non_exhaustive then lower the visibility
                 // to within the crate.
@@ -599,7 +599,7 @@ impl<'a> Resolver<'a> {
         // If the variant is marked as non_exhaustive then lower the visibility to within the
         // crate.
         let mut ctor_vis = vis;
-        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, "non_exhaustive");
+        let has_non_exhaustive = attr::contains_name(&variant.node.attrs, sym::non_exhaustive);
         if has_non_exhaustive && vis == ty::Visibility::Public {
             ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
         }
@@ -825,7 +825,7 @@ impl<'a> Resolver<'a> {
         let mut import_all = None;
         let mut single_imports = Vec::new();
         for attr in &item.attrs {
-            if attr.check_name("macro_use") {
+            if attr.check_name(sym::macro_use) {
                 if self.current_module.parent.is_some() {
                     span_err!(self.session, item.span, E0468,
                         "an `extern crate` loading macros must be at the crate root");
@@ -908,7 +908,7 @@ impl<'a> Resolver<'a> {
     /// Returns `true` if this attribute list contains `macro_use`.
     fn contains_macro_use(&mut self, attrs: &[ast::Attribute]) -> bool {
         for attr in attrs {
-            if attr.check_name("macro_escape") {
+            if attr.check_name(sym::macro_escape) {
                 let msg = "macro_escape is a deprecated synonym for macro_use";
                 let mut err = self.session.struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
@@ -916,7 +916,7 @@ impl<'a> Resolver<'a> {
                 } else {
                     err.emit();
                 }
-            } else if !attr.check_name("macro_use") {
+            } else if !attr.check_name(sym::macro_use) {
                 continue;
             }
 

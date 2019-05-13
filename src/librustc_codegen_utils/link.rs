@@ -2,6 +2,7 @@ use rustc::session::config::{self, OutputFilenames, Input, OutputType};
 use rustc::session::Session;
 use std::path::{Path, PathBuf};
 use syntax::{ast, attr};
+use syntax::symbol::sym;
 use syntax_pos::Span;
 
 pub fn out_filename(sess: &Session,
@@ -49,13 +50,13 @@ pub fn find_crate_name(sess: Option<&Session>,
     // as used. After doing this, however, we still prioritize a crate name from
     // the command line over one found in the #[crate_name] attribute. If we
     // find both we ensure that they're the same later on as well.
-    let attr_crate_name = attr::find_by_name(attrs, "crate_name")
+    let attr_crate_name = attr::find_by_name(attrs, sym::crate_name)
         .and_then(|at| at.value_str().map(|s| (at, s)));
 
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {
             if let Some((attr, name)) = attr_crate_name {
-                if name != &**s {
+                if name.as_str() != *s {
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);

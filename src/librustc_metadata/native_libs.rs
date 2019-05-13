@@ -8,7 +8,7 @@ use rustc_target::spec::abi::Abi;
 use syntax::attr;
 use syntax::source_map::Span;
 use syntax::feature_gate::{self, GateIssue};
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::{span_err, struct_span_err};
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<NativeLibrary> {
@@ -47,7 +47,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
         }
 
         // Process all of the #[link(..)]-style arguments
-        for m in it.attrs.iter().filter(|a| a.check_name("link")) {
+        for m in it.attrs.iter().filter(|a| a.check_name(sym::link)) {
             let items = match m.meta_item_list() {
                 Some(item) => item,
                 None => continue,
@@ -62,7 +62,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
             let mut kind_specified = false;
 
             for item in items.iter() {
-                if item.check_name("kind") {
+                if item.check_name(sym::kind) {
                     kind_specified = true;
                     let kind = match item.value_str() {
                         Some(name) => name,
@@ -81,9 +81,9 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                             cstore::NativeUnknown
                         }
                     };
-                } else if item.check_name("name") {
+                } else if item.check_name(sym::name) {
                     lib.name = item.value_str();
-                } else if item.check_name("cfg") {
+                } else if item.check_name(sym::cfg) {
                     let cfg = match item.meta_item_list() {
                         Some(list) => list,
                         None => continue, // skip like historical compilers
@@ -98,7 +98,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for Collector<'a, 'tcx> {
                     } else {
                         self.tcx.sess.span_err(cfg[0].span(), "invalid argument for `cfg(..)`");
                     }
-                } else if item.check_name("wasm_import_module") {
+                } else if item.check_name(sym::wasm_import_module) {
                     match item.value_str() {
                         Some(s) => lib.wasm_import_module = Some(s),
                         None => {
@@ -156,7 +156,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
         }
         if lib.cfg.is_some() && !self.tcx.features().link_cfg {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           "link_cfg",
+                                           sym::link_cfg,
                                            span.unwrap(),
                                            GateIssue::Language,
                                            "is feature gated");
@@ -164,7 +164,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
         if lib.kind == cstore::NativeStaticNobundle &&
            !self.tcx.features().static_nobundle {
             feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           "static_nobundle",
+                                           sym::static_nobundle,
                                            span.unwrap_or_else(|| syntax_pos::DUMMY_SP),
                                            GateIssue::Language,
                                            "kind=\"static-nobundle\" is feature gated");
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
                 let any_duplicate = self.libs
                     .iter()
                     .filter_map(|lib| lib.name.as_ref())
-                    .any(|n| n == name);
+                    .any(|n| n.as_str() == *name);
                 if new_name.is_empty() {
                     self.tcx.sess.err(
                         &format!("an empty renaming target was specified for library `{}`",name));
@@ -212,7 +212,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             // can move them to the end of the list below.
             let mut existing = self.libs.drain_filter(|lib| {
                 if let Some(lib_name) = lib.name {
-                    if lib_name == name as &str {
+                    if lib_name.as_str() == *name {
                         if let Some(k) = kind {
                             lib.kind = k;
                         }

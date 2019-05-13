@@ -391,6 +391,8 @@ mod tests {
     #[test]
     fn string_to_tts_macro () {
         with_globals(|| {
+            use crate::symbol::sym;
+
             let tts: Vec<_> =
                 string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).trees().collect();
             let tts: &[TokenTree] = &tts[..];
@@ -403,8 +405,8 @@ mod tests {
                     Some(&TokenTree::Token(_, token::Ident(name_zip, false))),
                     Some(&TokenTree::Delimited(_, macro_delim, ref macro_tts)),
                 )
-                if name_macro_rules.name == "macro_rules"
-                && name_zip.name == "zip" => {
+                if name_macro_rules.name == sym::macro_rules
+                && name_zip.name.as_str() == "zip" => {
                     let tts = &macro_tts.trees().collect::<Vec<_>>();
                     match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                         (
@@ -421,7 +423,7 @@ mod tests {
                                     Some(&TokenTree::Token(_, token::Dollar)),
                                     Some(&TokenTree::Token(_, token::Ident(ident, false))),
                                 )
-                                if first_delim == token::Paren && ident.name == "a" => {},
+                                if first_delim == token::Paren && ident.name.as_str() == "a" => {},
                                 _ => panic!("value 3: {:?} {:?}", first_delim, first_tts),
                             }
                             let tts = &second_tts.trees().collect::<Vec<_>>();
@@ -431,7 +433,7 @@ mod tests {
                                     Some(&TokenTree::Token(_, token::Dollar)),
                                     Some(&TokenTree::Token(_, token::Ident(ident, false))),
                                 )
-                                if second_delim == token::Paren && ident.name == "a" => {},
+                                if second_delim == token::Paren && ident.name.as_str() == "a" => {},
                                 _ => panic!("value 4: {:?} {:?}", second_delim, second_tts),
                             }
                         },
@@ -575,20 +577,22 @@ mod tests {
 
     #[test] fn crlf_doc_comments() {
         with_globals(|| {
+            use crate::symbol::sym;
+
             let sess = ParseSess::new(FilePathMapping::empty());
 
             let name_1 = FileName::Custom("crlf_source_1".to_string());
             let source = "/// doc comment\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_1, source, &sess)
                 .unwrap().unwrap();
-            let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-            assert_eq!(doc, "/// doc comment");
+            let doc = first_attr_value_str_by_name(&item.attrs, sym::doc).unwrap();
+            assert_eq!(doc.as_str(), "/// doc comment");
 
             let name_2 = FileName::Custom("crlf_source_2".to_string());
             let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_2, source, &sess)
                 .unwrap().unwrap();
-            let docs = item.attrs.iter().filter(|a| a.path == "doc")
+            let docs = item.attrs.iter().filter(|a| a.path == sym::doc)
                         .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
             let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
             assert_eq!(&docs[..], b);
@@ -596,8 +600,8 @@ mod tests {
             let name_3 = FileName::Custom("clrf_source_3".to_string());
             let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
             let item = parse_item_from_source_str(name_3, source, &sess).unwrap().unwrap();
-            let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-            assert_eq!(doc, "/** doc comment\n *  with CRLF */");
+            let doc = first_attr_value_str_by_name(&item.attrs, sym::doc).unwrap();
+            assert_eq!(doc.as_str(), "/** doc comment\n *  with CRLF */");
         });
     }
 

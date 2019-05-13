@@ -22,6 +22,7 @@ use rustc::middle::lang_items;
 use rustc::session::config::nightly_options;
 use syntax::ast::LitKind;
 use syntax::feature_gate::{emit_feature_err, GateIssue};
+use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
@@ -380,8 +381,8 @@ impl Qualif for IsNotPromotable {
 
                 !allowed ||
                     cx.tcx.get_attrs(def_id).iter().any(
-                        |attr| attr.check_name("thread_local"
-                    ))
+                        |attr| attr.check_name(sym::thread_local)
+                    )
             }
         }
     }
@@ -939,7 +940,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 if self.tcx
                        .get_attrs(def_id)
                        .iter()
-                       .any(|attr| attr.check_name("thread_local")) {
+                       .any(|attr| attr.check_name(sym::thread_local)) {
                     if self.mode != Mode::Fn {
                         span_err!(self.tcx.sess, self.span, E0625,
                                   "thread-local statics cannot be \
@@ -994,7 +995,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                 if let ty::RawPtr(_) = base_ty.sty {
                                     if !self.tcx.features().const_raw_ptr_deref {
                                         emit_feature_err(
-                                            &self.tcx.sess.parse_sess, "const_raw_ptr_deref",
+                                            &self.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
                                             self.span, GateIssue::Language,
                                             &format!(
                                                 "dereferencing raw pointers in {}s is unstable",
@@ -1018,7 +1019,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                     Mode::ConstFn => {
                                         if !self.tcx.features().const_fn_union {
                                             emit_feature_err(
-                                                &self.tcx.sess.parse_sess, "const_fn_union",
+                                                &self.tcx.sess.parse_sess, sym::const_fn_union,
                                                 self.span, GateIssue::Language,
                                                 "unions in const fn are unstable",
                                             );
@@ -1123,7 +1124,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                             // in const fn and constants require the feature gate
                             // FIXME: make it unsafe inside const fn and constants
                             emit_feature_err(
-                                &self.tcx.sess.parse_sess, "const_raw_ptr_to_usize_cast",
+                                &self.tcx.sess.parse_sess, sym::const_raw_ptr_to_usize_cast,
                                 self.span, GateIssue::Language,
                                 &format!(
                                     "casting pointers to integers in {}s is unstable",
@@ -1149,7 +1150,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                         // FIXME: make it unsafe to use these operations
                         emit_feature_err(
                             &self.tcx.sess.parse_sess,
-                            "const_compare_raw_pointers",
+                            sym::const_compare_raw_pointers,
                             self.span,
                             GateIssue::Language,
                             &format!("comparing raw pointers inside {}", self.mode),
@@ -1210,7 +1211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                         // const eval transmute calls only with the feature gate
                                         if !self.tcx.features().const_transmute {
                                             emit_feature_err(
-                                                &self.tcx.sess.parse_sess, "const_transmute",
+                                                &self.tcx.sess.parse_sess, sym::const_transmute,
                                                 self.span, GateIssue::Language,
                                                 &format!("The use of std::mem::transmute() \
                                                 is gated in {}s", self.mode));
@@ -1249,7 +1250,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                         // Don't allow panics in constants without the feature gate.
                                         emit_feature_err(
                                             &self.tcx.sess.parse_sess,
-                                            "const_panic",
+                                            sym::const_panic,
                                             self.span,
                                             GateIssue::Language,
                                             &format!("panicking in {}s is unstable", self.mode),
@@ -1260,7 +1261,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                     // Check `#[unstable]` const fns or `#[rustc_const_unstable]`
                                     // functions without the feature gate active in this crate in
                                     // order to report a better error message than the one below.
-                                    if !self.span.allows_unstable(&feature.as_str()) {
+                                    if !self.span.allows_unstable(feature) {
                                         let mut err = self.tcx.sess.struct_span_err(self.span,
                                             &format!("`{}` is not yet stable as a const fn",
                                                     self.tcx.def_path_str(def_id)));
@@ -1592,7 +1593,7 @@ impl MirPass for QualifyAndPromoteConstants {
         if mode == Mode::Static {
             // `#[thread_local]` statics don't have to be `Sync`.
             for attr in &tcx.get_attrs(def_id)[..] {
-                if attr.check_name("thread_local") {
+                if attr.check_name(sym::thread_local) {
                     return;
                 }
             }
@@ -1616,7 +1617,7 @@ impl MirPass for QualifyAndPromoteConstants {
 
 fn args_required_const(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<FxHashSet<usize>> {
     let attrs = tcx.get_attrs(def_id);
-    let attr = attrs.iter().find(|a| a.check_name("rustc_args_required_const"))?;
+    let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
     let mut ret = FxHashSet::default();
     for meta in attr.meta_item_list()? {
         match meta.literal()?.node {

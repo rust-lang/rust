@@ -43,7 +43,7 @@ use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::base::MacroKind;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::{Symbol, keywords, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use syntax::visit::{self, FnKind, Visitor};
@@ -1812,8 +1812,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
     fn resolve_str_path(
         &mut self,
         span: Span,
-        crate_root: Option<&str>,
-        components: &[&str],
+        crate_root: Option<Symbol>,
+        components: &[Symbol],
         is_value: bool
     ) -> hir::Path {
         let root = if crate_root.is_some() {
@@ -1825,7 +1825,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
-                    .map(Ident::from_str)
+                    .map(Ident::with_empty_ctxt)
             ).map(|i| self.new_ast_path_segment(i)).collect::<Vec<_>>();
 
 
@@ -1964,7 +1964,7 @@ impl<'a> Resolver<'a> {
             keywords::Invalid.name(),
         );
         let graph_root = arenas.alloc_module(ModuleData {
-            no_implicit_prelude: attr::contains_name(&krate.attrs, "no_implicit_prelude"),
+            no_implicit_prelude: attr::contains_name(&krate.attrs, sym::no_implicit_prelude),
             ..ModuleData::new(None, root_module_kind, root_def_id, Mark::root(), krate.span)
         });
         let mut module_map = FxHashMap::default();
@@ -1978,9 +1978,9 @@ impl<'a> Resolver<'a> {
             session.opts.externs.iter().map(|kv| (Ident::from_str(kv.0), Default::default()))
                                        .collect();
 
-        if !attr::contains_name(&krate.attrs, "no_core") {
+        if !attr::contains_name(&krate.attrs, sym::no_core) {
             extern_prelude.insert(Ident::from_str("core"), Default::default());
-            if !attr::contains_name(&krate.attrs, "no_std") {
+            if !attr::contains_name(&krate.attrs, sym::no_std) {
                 extern_prelude.insert(Ident::from_str("std"), Default::default());
                 if session.rust_2018() {
                     extern_prelude.insert(Ident::from_str("meta"), Default::default());

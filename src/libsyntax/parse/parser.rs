@@ -46,7 +46,7 @@ use crate::ptr::P;
 use crate::parse::PResult;
 use crate::ThinVec;
 use crate::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
-use crate::symbol::{keywords, Symbol};
+use crate::symbol::{keywords, sym, Symbol};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use rustc_target::spec::abi::{self, Abi};
@@ -5084,7 +5084,7 @@ impl<'a> Parser<'a> {
 
                 (ident, ast::MacroDef { tokens: tokens.into(), legacy: false })
             }
-            token::Ident(ident, _) if ident.name == "macro_rules" &&
+            token::Ident(ident, _) if ident.name == sym::macro_rules &&
                                    self.look_ahead(1, |t| *t == token::Not) => {
                 let prev_span = self.prev_span;
                 self.complain_if_pub_macro(&vis.node, prev_span);
@@ -7244,7 +7244,7 @@ impl<'a> Parser<'a> {
     }
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
-        if let Some(path) = attr::first_attr_value_str_by_name(attrs, "path") {
+        if let Some(path) = attr::first_attr_value_str_by_name(attrs, sym::path) {
             self.directory.path.to_mut().push(&path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
@@ -7264,7 +7264,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn submod_path_from_attr(attrs: &[Attribute], dir_path: &Path) -> Option<PathBuf> {
-        if let Some(s) = attr::first_attr_value_str_by_name(attrs, "path") {
+        if let Some(s) = attr::first_attr_value_str_by_name(attrs, sym::path) {
             let s = s.as_str();
 
             // On windows, the base path might have the form

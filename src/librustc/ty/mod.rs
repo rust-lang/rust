@@ -47,7 +47,7 @@ use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
-use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
+use syntax::symbol::{keywords, sym, Symbol, LocalInternedString, InternedString};
 use syntax_pos::Span;
 
 use smallvec;
@@ -1875,11 +1875,11 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         );
 
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
-        if adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, "non_exhaustive") {
+        if adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive) {
             debug!("found non-exhaustive field list for {:?}", parent_did);
             flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
         } else if let Some(variant_did) = variant_did {
-            if tcx.has_attr(variant_did, "non_exhaustive") {
+            if tcx.has_attr(variant_did, sym::non_exhaustive) {
                 debug!("found non-exhaustive field list for {:?}", variant_did);
                 flags = flags | VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
             }
@@ -2156,7 +2156,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
 
-        if kind == AdtKind::Enum && tcx.has_attr(did, "non_exhaustive") {
+        if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
         }
@@ -2172,7 +2172,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
 
         let attrs = tcx.get_attrs(did);
-        if attr::contains_name(&attrs, "fundamental") {
+        if attr::contains_name(&attrs, sym::fundamental) {
             flags |= AdtFlags::IS_FUNDAMENTAL;
         }
         if Some(did) == tcx.lang_items().phantom_data() {
@@ -3030,7 +3030,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Determines whether an item is annotated with an attribute.
-    pub fn has_attr(self, did: DefId, attr: &str) -> bool {
+    pub fn has_attr(self, did: DefId, attr: Symbol) -> bool {
         attr::contains_name(&self.get_attrs(did), attr)
     }
 

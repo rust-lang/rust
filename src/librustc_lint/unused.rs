@@ -12,7 +12,7 @@ use syntax::attr;
 use syntax::errors::Applicability;
 use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax::symbol::Symbol;
 use syntax::util::parser;
 use syntax_pos::Span;
@@ -170,7 +170,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             descr_post_path: &str,
         ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
-                if attr.check_name("must_use") {
+                if attr.check_name(sym::must_use) {
                     let msg = format!("unused {}`{}`{} that must be used",
                         descr_pre_path, cx.tcx.def_path_str(def_id), descr_post_path);
                     let mut err = cx.struct_span_lint(UNUSED_MUST_USE, sp, &msg);
@@ -243,8 +243,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
         }
 
         let plugin_attributes = cx.sess().plugin_attributes.borrow_mut();
-        for &(ref name, ty) in plugin_attributes.iter() {
-            if ty == AttributeType::Whitelisted && attr.check_name(&**name) {
+        for &(name, ty) in plugin_attributes.iter() {
+            if ty == AttributeType::Whitelisted && attr.check_name(name) {
                 debug!("{:?} (plugin attr) is whitelisted with ty {:?}", name, ty);
                 break;
             }
@@ -262,7 +262,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             // Has a plugin registered this attribute as one that must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
-                .find(|&&(ref x, t)| name == x.as_str() && AttributeType::CrateLevel == t)
+                .find(|&&(x, t)| name == x && AttributeType::CrateLevel == t)
                 .is_some();
             if known_crate || plugin_crate {
                 let msg = match attr.style {

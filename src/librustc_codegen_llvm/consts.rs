@@ -14,6 +14,7 @@ use rustc::mir::interpret::{ConstValue, Allocation, read_target_uint,
 use rustc::hir::Node;
 use syntax_pos::Span;
 use rustc_target::abi::HasDataLayout;
+use syntax::symbol::sym;
 use syntax_pos::symbol::LocalInternedString;
 use rustc::ty::{self, Ty};
 use rustc_codegen_ssa::traits::*;
@@ -248,7 +249,7 @@ impl CodegenCx<'ll, 'tcx> {
             debug!("get_static: sym={} attrs={:?}", sym, attrs);
 
             for attr in attrs {
-                if attr.check_name("thread_local") {
+                if attr.check_name(sym::thread_local) {
                     llvm::set_thread_local_mode(g, self.tls_model);
                 }
             }

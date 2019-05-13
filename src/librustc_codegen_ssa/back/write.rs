@@ -28,7 +28,7 @@ use rustc_target::spec::MergeFunctions;
 use syntax::attr;
 use syntax::ext::hygiene::Mark;
 use syntax_pos::MultiSpan;
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{Symbol, sym};
 use jobserver::{Client, Acquired};
 
 use std::any::Any;
@@ -382,11 +382,11 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let sess = tcx.sess;
     let crate_name = tcx.crate_name(LOCAL_CRATE);
     let crate_hash = tcx.crate_hash(LOCAL_CRATE);
-    let no_builtins = attr::contains_name(&tcx.hir().krate().attrs, "no_builtins");
+    let no_builtins = attr::contains_name(&tcx.hir().krate().attrs, sym::no_builtins);
     let subsystem = attr::first_attr_value_str_by_name(&tcx.hir().krate().attrs,
-                                                       "windows_subsystem");
+                                                       sym::windows_subsystem);
     let windows_subsystem = subsystem.map(|subsystem| {
-        if subsystem != "windows" && subsystem != "console" {
+        if subsystem != sym::windows && subsystem != sym::console {
             tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
                                      `windows` and `console` are allowed",
                                     subsystem));

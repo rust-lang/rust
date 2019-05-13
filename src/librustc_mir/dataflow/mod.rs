@@ -1,4 +1,5 @@
 use syntax::ast::{self, MetaItem};
+use syntax::symbol::{Symbol, sym};
 
 use rustc_data_structures::bit_set::{BitSet, BitSetOperator, HybridBitSet};
 use rustc_data_structures::indexed_vec::Idx;
@@ -100,9 +101,9 @@ where
     fn propagate(&mut self) { self.flow_state.propagate(); }
 }
 
-pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: &str) -> Option<MetaItem> {
+pub(crate) fn has_rustc_mir_with(attrs: &[ast::Attribute], name: Symbol) -> Option<MetaItem> {
     for attr in attrs {
-        if attr.check_name("rustc_mir") {
+        if attr.check_name(sym::rustc_mir) {
             let items = attr.meta_item_list();
             for item in items.iter().flat_map(|l| l.iter()) {
                 match item.meta_item() {
@@ -158,10 +159,8 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD> where BD: BitD
             return None;
         };
 
-        let print_preflow_to =
-            name_found(tcx.sess, attributes, "borrowck_graphviz_preflow");
-        let print_postflow_to =
-            name_found(tcx.sess, attributes, "borrowck_graphviz_postflow");
+        let print_preflow_to = name_found(tcx.sess, attributes, sym::borrowck_graphviz_preflow);
+        let print_postflow_to = name_found(tcx.sess, attributes, sym::borrowck_graphviz_postflow);
 
         let mut mbcx = DataflowBuilder {
             def_id,

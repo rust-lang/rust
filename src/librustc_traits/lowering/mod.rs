@@ -21,6 +21,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::{self, List, TyCtxt};
 use rustc::ty::subst::{Subst, InternalSubsts};
 use syntax::ast;
+use syntax::symbol::sym;
 
 use std::iter;
 
@@ -640,11 +641,11 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
         for attr in attrs {
             let mut clauses = None;
 
-            if attr.check_name("rustc_dump_program_clauses") {
+            if attr.check_name(sym::rustc_dump_program_clauses) {
                 clauses = Some(self.tcx.program_clauses_for(def_id));
             }
 
-            if attr.check_name("rustc_dump_env_program_clauses") {
+            if attr.check_name(sym::rustc_dump_env_program_clauses) {
                 let environment = self.tcx.environment(def_id);
                 clauses = Some(self.tcx.program_clauses_for_env(environment));
             }

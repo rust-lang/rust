@@ -18,6 +18,7 @@ use rustc_target::spec::TargetTriple;
 use syntax::source_map;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
+use syntax::symbol::sym;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 use parking_lot::ReentrantMutex;
@@ -367,9 +368,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             };
 
             let send_trait = if crate_name == Some("core".to_string()) {
-                clean::path_to_def_local(tcx, &["marker", "Send"])
+                clean::path_to_def_local(tcx, &[sym::marker, sym::Send])
             } else {
-                clean::path_to_def(tcx, &["core", "marker", "Send"])
+                clean::path_to_def(tcx, &[sym::core, sym::marker, sym::Send])
             };
 
             let mut renderinfo = RenderInfo::default();
@@ -415,24 +416,24 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             // Process all of the crate attributes, extracting plugin metadata along
             // with the passes which we are supposed to run.
-            for attr in krate.module.as_ref().unwrap().attrs.lists("doc") {
+            for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
                 let diag = ctxt.sess().diagnostic();
 
                 let name = attr.name_or_empty();
                 if attr.is_word() {
-                    if name == "no_default_passes" {
+                    if name == sym::no_default_passes {
                         report_deprecated_attr("no_default_passes", diag);
                         if default_passes == passes::DefaultPassOption::Default {
                             default_passes = passes::DefaultPassOption::None;
                         }
                     }
                 } else if let Some(value) = attr.value_str() {
-                    let sink = match name.get() {
-                        "passes" => {
+                    let sink = match name {
+                        sym::passes => {
                             report_deprecated_attr("passes = \"...\"", diag);
                             &mut manual_passes
                         },
-                        "plugins" => {
+                        sym::plugins => {
                             report_deprecated_attr("plugins = \"...\"", diag);
                             eprintln!("WARNING: #![doc(plugins = \"...\")] no longer functions; \
                                       see CVE-2018-1000622");
@@ -445,7 +446,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                     }
                 }
 
-                if attr.is_word() && name == "document_private_items" {
+                if attr.is_word() && name == sym::document_private_items {
                     if default_passes == passes::DefaultPassOption::Default {
                         default_passes = passes::DefaultPassOption::Private;
                     }

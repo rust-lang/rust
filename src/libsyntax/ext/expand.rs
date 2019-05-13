@@ -14,7 +14,7 @@ use crate::parse::token::{self, Token};
 use crate::parse::parser::Parser;
 use crate::ptr::P;
 use crate::symbol::Symbol;
-use crate::symbol::keywords;
+use crate::symbol::{keywords, sym};
 use crate::tokenstream::{TokenStream, TokenTree};
 use crate::visit::{self, Visitor};
 use crate::util::map_in_place::MapInPlace;
@@ -356,7 +356,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.collect_invocations(fragment, &[])
                 } else if let InvocationKind::Attr { attr: None, traits, item, .. } = invoc.kind {
                     if !item.derive_allowed() {
-                        let attr = attr::find_by_name(item.attrs(), "derive")
+                        let attr = attr::find_by_name(item.attrs(), sym::derive)
                             .expect("`derive` attribute should exist");
                         let span = attr.span;
                         let mut err = self.cx.mut_span_err(span,
@@ -376,7 +376,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
 
                     let mut item = self.fully_configure(item);
-                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != "derive"));
+                    item.visit_attrs(|attrs| attrs.retain(|a| a.path != sym::derive));
                     let mut item_with_markers = item.clone();
                     add_derived_markers(&mut self.cx, item.span(), &traits, &mut item_with_markers);
                     let derives = derives.entry(invoc.expansion_data.mark).or_default();
@@ -510,7 +510,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if invoc.fragment_kind == AstFragmentKind::ForeignItems &&
            !self.cx.ecfg.macros_in_extern_enabled() {
             if let SyntaxExtension::NonMacroAttr { .. } = *ext {} else {
-                emit_feature_err(&self.cx.parse_sess, "macros_in_extern",
+                emit_feature_err(&self.cx.parse_sess, sym::macros_in_extern,
                                  invoc.span(), GateIssue::Language,
                                  "macro invocations in `extern {}` blocks are experimental");
             }
@@ -636,7 +636,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Annotatable::Item(ref item) => {
                 match item.node {
                     ItemKind::Mod(_) if self.cx.ecfg.proc_macro_hygiene() => return,
-                    ItemKind::Mod(_) => ("modules", "proc_macro_hygiene"),
+                    ItemKind::Mod(_) => ("modules", sym::proc_macro_hygiene),
                     _ => return,
                 }
             }
@@ -645,8 +645,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Annotatable::ForeignItem(_) => return,
             Annotatable::Stmt(_) |
             Annotatable::Expr(_) if self.cx.ecfg.proc_macro_hygiene() => return,
-            Annotatable::Stmt(_) => ("statements", "proc_macro_hygiene"),
-            Annotatable::Expr(_) => ("expressions", "proc_macro_hygiene"),
+            Annotatable::Stmt(_) => ("statements", sym::proc_macro_hygiene),
+            Annotatable::Expr(_) => ("expressions", sym::proc_macro_hygiene),
         };
         emit_feature_err(
             self.cx.parse_sess,
@@ -681,7 +681,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 if let ast::ItemKind::MacroDef(_) = i.node {
                     emit_feature_err(
                         self.parse_sess,
-                        "proc_macro_hygiene",
+                        sym::proc_macro_hygiene,
                         self.span,
                         GateIssue::Language,
                         "procedural macros cannot expand to macro definitions",
@@ -724,13 +724,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 // don't stability-check macros in the same crate
                 // (the only time this is null is for syntax extensions registered as macros)
                 if def_site_span.map_or(false, |def_span| !crate_span.contains(def_span))
-                    && !span.allows_unstable(&feature.as_str())
+                    && !span.allows_unstable(feature)
                     && this.cx.ecfg.features.map_or(true, |feats| {
                     // macro features will count as lib features
                     !feats.declared_lib_features.iter().any(|&(feat, _)| feat == feature)
                 }) {
                     let explain = format!("macro {}! is unstable", path);
-                    emit_feature_err(this.cx.parse_sess, &*feature.as_str(), span,
+                    emit_feature_err(this.cx.parse_sess, feature, span,
                                      GateIssue::Library(Some(issue)), &explain);
                     this.cx.trace_macros_diag();
                 }
@@ -885,7 +885,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
         emit_feature_err(
             self.cx.parse_sess,
-            "proc_macro_hygiene",
+            sym::proc_macro_hygiene,
             span,
             GateIssue::Language,
             &format!("procedural macros cannot be expanded to {}", kind),
@@ -1109,7 +1109,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                        -> Option<ast::Attribute> {
         let attr = attrs.iter()
                         .position(|a| {
-                            if a.path == "derive" {
+                            if a.path == sym::derive {
                                 *after_derive = true;
                             }
                             !attr::is_known(a) && !is_builtin_attr(a)
@@ -1117,8 +1117,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         .map(|i| attrs.remove(i));
         if let Some(attr) = &attr {
             if !self.cx.ecfg.enable_custom_inner_attributes() &&
-               attr.style == ast::AttrStyle::Inner && attr.path != "test" {
-                emit_feature_err(&self.cx.parse_sess, "custom_inner_attributes",
+               attr.style == ast::AttrStyle::Inner && attr.path != sym::test {
+                emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
                                  attr.span, GateIssue::Language,
                                  "non-builtin inner attributes are unstable");
             }
@@ -1167,7 +1167,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             self.check_attribute_inner(attr, features);
 
             // macros are expanded before any lint passes so this warning has to be hardcoded
-            if attr.path == "derive" {
+            if attr.path == sym::derive {
                 self.cx.struct_span_warn(attr.span, "`#[derive]` does nothing on macro invocations")
                     .note("this may become a hard error in a future release")
                     .emit();
@@ -1352,7 +1352,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
                 let inline_module = item.span.contains(inner) || inner.is_dummy();
 
                 if inline_module {
-                    if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
+                    if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, sym::path) {
                         self.cx.current_expansion.directory_ownership =
                             DirectoryOwnership::Owned { relative: None };
                         module.directory.push(&*path.as_str());
@@ -1485,19 +1485,19 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn visit_attribute(&mut self, at: &mut ast::Attribute) {
         // turn `#[doc(include="filename")]` attributes into `#[doc(include(file="filename",
         // contents="file contents")]` attributes
-        if !at.check_name("doc") {
+        if !at.check_name(sym::doc) {
             return noop_visit_attribute(at, self);
         }
 
         if let Some(list) = at.meta_item_list() {
-            if !list.iter().any(|it| it.check_name("include")) {
+            if !list.iter().any(|it| it.check_name(sym::include)) {
                 return noop_visit_attribute(at, self);
             }
 
             let mut items = vec![];
 
             for mut it in list {
-                if !it.check_name("include") {
+                if !it.check_name(sym::include) {
                     items.push({ noop_visit_meta_list_item(&mut it, self); it });
                     continue;
                 }

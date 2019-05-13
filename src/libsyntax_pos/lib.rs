@@ -33,7 +33,7 @@ mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
 
 pub mod symbol;
-pub use symbol::symbols;
+pub use symbol::{Symbol, sym};
 
 mod analyze_source_file;
 
@@ -388,12 +388,12 @@ impl Span {
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
     /// items can be used (that is, a macro marked with
     /// `#[allow_internal_unstable]`).
-    pub fn allows_unstable(&self, feature: &str) -> bool {
+    pub fn allows_unstable(&self, feature: Symbol) -> bool {
         match self.ctxt().outer().expn_info() {
             Some(info) => info
                 .allow_internal_unstable
                 .map_or(false, |features| features.iter().any(|&f|
-                    f == feature || f == "allow_internal_unstable_backcompat_hack"
+                    f == feature || f == sym::allow_internal_unstable_backcompat_hack
                 )),
             None => false,
         }

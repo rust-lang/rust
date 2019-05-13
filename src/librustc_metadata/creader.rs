@@ -27,7 +27,7 @@ use std::{cmp, fs};
 use syntax::ast;
 use syntax::attr;
 use syntax::ext::base::SyntaxExtension;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::visit;
 use syntax::{span_err, span_fatal};
 use syntax_pos::{Span, DUMMY_SP};
@@ -650,9 +650,8 @@ impl<'a> CrateLoader<'a> {
     /// SVH and DefIndex of the registrar function.
     pub fn find_plugin_registrar(&mut self,
                                  span: Span,
-                                 name: &str)
+                                 name: Symbol)
                                  -> Option<(PathBuf, CrateDisambiguator)> {
-        let name = Symbol::intern(name);
         let ekrate = self.read_extension_crate(span, name, name);
 
         if ekrate.target_only {
@@ -704,7 +703,7 @@ impl<'a> CrateLoader<'a> {
         let desired_strategy = self.sess.panic_strategy();
         let mut runtime_found = false;
         let mut needs_panic_runtime = attr::contains_name(&krate.attrs,
-                                                          "needs_panic_runtime");
+                                                          sym::needs_panic_runtime);
 
         self.cstore.iter_crate_data(|cnum, data| {
             needs_panic_runtime = needs_panic_runtime ||
@@ -837,7 +836,7 @@ impl<'a> CrateLoader<'a> {
 
             let mut uses_std = false;
             self.cstore.iter_crate_data(|_, data| {
-                if data.name == "std" {
+                if data.name == sym::std {
                     uses_std = true;
                 }
             });
@@ -898,7 +897,7 @@ impl<'a> CrateLoader<'a> {
         // about through the `#![needs_allocator]` attribute and is typically
         // written down in liballoc.
         let mut needs_allocator = attr::contains_name(&krate.attrs,
-                                                      "needs_allocator");
+                                                      sym::needs_allocator);
         self.cstore.iter_crate_data(|_, data| {
             needs_allocator = needs_allocator || data.root.needs_allocator;
         });
@@ -964,7 +963,7 @@ impl<'a> CrateLoader<'a> {
         // allocator. At this point our allocator request is typically fulfilled
         // by the standard library, denoted by the `#![default_lib_allocator]`
         // attribute.
-        let mut has_default = attr::contains_name(&krate.attrs, "default_lib_allocator");
+        let mut has_default = attr::contains_name(&krate.attrs, sym::default_lib_allocator);
         self.cstore.iter_crate_data(|_, data| {
             if data.root.has_default_lib_allocator {
                 has_default = true;
@@ -987,7 +986,7 @@ impl<'a> CrateLoader<'a> {
 
             impl<'ast> visit::Visitor<'ast> for Finder {
                 fn visit_item(&mut self, i: &'ast ast::Item) {
-                    if attr::contains_name(&i.attrs, "global_allocator") {
+                    if attr::contains_name(&i.attrs, sym::global_allocator) {
                         self.0 = true;
                     }
                     visit::walk_item(self, i)
@@ -1065,7 +1064,7 @@ impl<'a> CrateLoader<'a> {
                     }
                     None => item.ident.name,
                 };
-                let dep_kind = if attr::contains_name(&item.attrs, "no_link") {
+                let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     DepKind::UnexportedMacrosOnly
                 } else {
                     DepKind::Explicit

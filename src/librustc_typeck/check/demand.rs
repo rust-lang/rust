@@ -2,6 +2,7 @@ use crate::check::FnCtxt;
 use rustc::infer::InferOk;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 
+use syntax::symbol::sym;
 use syntax::util::parser::PREC_POSTFIX;
 use syntax_pos::Span;
 use rustc::hir;
@@ -197,7 +198,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 //
                 // FIXME? Other potential candidate methods: `as_ref` and
                 // `as_mut`?
-                .find(|a| a.check_name("rustc_conversion_suggestion")).is_some()
+                .find(|a| a.check_name(sym::rustc_conversion_suggestion)).is_some()
         });
 
         methods

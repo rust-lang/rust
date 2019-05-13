@@ -6,7 +6,7 @@ use syntax::feature_gate;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{Symbol, sym};
 use syntax::tokenstream::TokenTree;
 
 pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
@@ -15,7 +15,7 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut ExtCtxt<'_>,
                               -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_concat_idents() {
         feature_gate::emit_feature_err(&cx.parse_sess,
-                                       "concat_idents",
+                                       sym::concat_idents,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_CONCAT_IDENTS);

@@ -123,7 +123,7 @@ use syntax::attr;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::ptr::P;
 use syntax::source_map::{DUMMY_SP, original_sp};
-use syntax::symbol::{Symbol, LocalInternedString, keywords};
+use syntax::symbol::{Symbol, LocalInternedString, keywords, sym};
 use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
@@ -1840,7 +1840,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if vs.is_empty() {
         let attributes = tcx.get_attrs(def_id);
-        if let Some(attr) = attr::find_by_name(&attributes, "repr") {
+        if let Some(attr) = attr::find_by_name(&attributes, sym::repr) {
             struct_span_err!(
                 tcx.sess, attr.span, E0084,
                 "unsupported representation for zero-variant enum")
@@ -1853,7 +1853,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
         if !tcx.features().repr128 {
             emit_feature_err(&tcx.sess.parse_sess,
-                             "repr128",
+                             sym::repr128,
                              sp,
                              GateIssue::Language,
                              "repr with 128-bit type is unstable");
@@ -4197,7 +4197,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // ... except when we try to 'break rust;'.
                         // ICE this expression in particular (see #43162).
                         if let ExprKind::Path(QPath::Resolved(_, ref path)) = e.node {
-                            if path.segments.len() == 1 && path.segments[0].ident.name == "rust" {
+                            if path.segments.len() == 1 &&
+                               path.segments[0].ident.name == sym::rust {
                                 fatally_break_rust(self.tcx.sess);
                             }
                         }
@@ -5499,7 +5500,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       span: Span) {
         // We're only interested in functions tagged with
         // #[rustc_args_required_const], so ignore anything that's not.
-        if !self.tcx.has_attr(def_id, "rustc_args_required_const") {
+        if !self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
             return
         }
 

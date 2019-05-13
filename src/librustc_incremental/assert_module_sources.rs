@@ -27,12 +27,13 @@ use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
 use std::collections::BTreeSet;
 use syntax::ast;
+use syntax::symbol::{Symbol, sym};
 use rustc::ich::{ATTR_PARTITION_REUSED, ATTR_PARTITION_CODEGENED,
                  ATTR_EXPECTED_CGU_REUSE};
 
-const MODULE: &str = "module";
-const CFG: &str = "cfg";
-const KIND: &str = "kind";
+const MODULE: Symbol = sym::module;
+const CFG: Symbol = sym::cfg;
+const KIND: Symbol = sym::kind;
 
 pub fn assert_module_sources<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.dep_graph.with_ignore(|| {
@@ -146,7 +147,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
                                                         comp_kind);
     }
 
-    fn field(&self, attr: &ast::Attribute, name: &str) -> ast::Name {
+    fn field(&self, attr: &ast::Attribute, name: Symbol) -> ast::Name {
         for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(name) {
                 if let Some(value) = item.value_str() {

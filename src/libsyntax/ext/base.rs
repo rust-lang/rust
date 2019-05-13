@@ -10,7 +10,7 @@ use crate::mut_visit::{self, MutVisitor};
 use crate::parse::{self, parser, DirectoryOwnership};
 use crate::parse::token;
 use crate::ptr::P;
-use crate::symbol::{keywords, Ident, Symbol};
+use crate::symbol::{keywords, Ident, Symbol, sym};
 use crate::ThinVec;
 use crate::tokenstream::{self, TokenStream};
 
@@ -871,7 +871,7 @@ impl<'a> ExtCtxt<'a> {
         let mut last_macro = None;
         loop {
             if ctxt.outer().expn_info().map_or(None, |info| {
-                if info.format.name() == "include" {
+                if info.format.name() == sym::include {
                     // Stop going up the backtrace once include! is encountered
                     return None;
                 }

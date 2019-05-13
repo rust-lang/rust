@@ -6,11 +6,11 @@
 
 use rustc::hir;
 use rustc::ty::TyCtxt;
-
 use rustc_mir::monomorphize::Instance;
+use syntax::symbol::{Symbol, sym};
 
-const SYMBOL_NAME: &'static str = "rustc_symbol_name";
-const DEF_PATH: &'static str = "rustc_def_path";
+const SYMBOL_NAME: Symbol = sym::rustc_symbol_name;
+const DEF_PATH: Symbol = sym::rustc_def_path;
 
 pub fn report_symbol_names<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // if the `rustc_attrs` feature is not enabled, then the

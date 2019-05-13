@@ -2,6 +2,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 use rustc::ty::TyCtxt;
 use rustc_target::spec::abi::Abi;
+use syntax::symbol::sym;
 
 pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<String> {
     let mut collector = Collector {
@@ -10,7 +11,7 @@ pub fn collect<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Vec<String> {
     tcx.hir().krate().visit_all_item_likes(&mut collector);
 
     for attr in tcx.hir().krate().attrs.iter() {
-        if attr.path == "link_args" {
+        if attr.path == sym::link_args {
             if let Some(linkarg) = attr.value_str() {
                 collector.add_link_args(&linkarg.as_str());
             }
@@ -37,7 +38,7 @@ impl<'tcx> ItemLikeVisitor<'tcx> for Collector {
         }
 
         // First, add all of the custom #[link_args] attributes
-        for m in it.attrs.iter().filter(|a| a.check_name("link_args")) {
+        for m in it.attrs.iter().filter(|a| a.check_name(sym::link_args)) {
             if let Some(linkarg) = m.value_str() {
                 self.add_link_args(&linkarg.as_str());
             }

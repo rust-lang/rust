@@ -11,7 +11,7 @@ use syntax::ext::base::{self, *};
 use syntax::feature_gate;
 use syntax::parse::{self, token};
 use syntax::ptr::P;
-use syntax::symbol::Symbol;
+use syntax::symbol::{Symbol, sym};
 use syntax::ast::AsmDialect;
 use syntax_pos::Span;
 use syntax::tokenstream;
@@ -39,7 +39,7 @@ impl State {
     }
 }
 
-const OPTIONS: &[&str] = &["volatile", "alignstack", "intel"];
+const OPTIONS: &[Symbol] = &[sym::volatile, sym::alignstack, sym::intel];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
@@ -47,7 +47,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        -> Box<dyn base::MacResult + 'cx> {
     if !cx.ecfg.enable_asm() {
         feature_gate::emit_feature_err(&cx.parse_sess,
-                                       "asm",
+                                       sym::asm,
                                        sp,
                                        feature_gate::GateIssue::Language,
                                        feature_gate::EXPLAIN_ASM);
@@ -233,13 +233,13 @@ fn parse_inline_asm<'a>(
             Options => {
                 let (option, _) = p.parse_str()?;
 
-                if option == "volatile" {
+                if option == sym::volatile {
                     // Indicates that the inline assembly has side effects
                     // and must not be optimized out along with its outputs.
                     volatile = true;
-                } else if option == "alignstack" {
+                } else if option == sym::alignstack {
                     alignstack = true;
-                } else if option == "intel" {
+                } else if option == sym::intel {
                     dialect = AsmDialect::Intel;
                 } else {
                     cx.span_warn(p.prev_span, "unrecognized option");

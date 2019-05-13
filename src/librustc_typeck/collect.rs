@@ -39,7 +39,7 @@ use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{InlineAttr, OptimizeAttr, list_contains_name, mark_used};
 use syntax::source_map::Spanned;
 use syntax::feature_gate;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::{keywords, Symbol, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::def::{CtorKind, Res, DefKind};
@@ -750,7 +750,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
-    let paren_sugar = tcx.has_attr(def_id, "rustc_paren_sugar");
+    let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
         let mut err = tcx.sess.struct_span_err(
             item.span,
@@ -765,7 +765,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::
         err.emit();
     }
 
-    let is_marker = tcx.has_attr(def_id, "marker");
+    let is_marker = tcx.has_attr(def_id, sym::marker);
     let def_path_hash = tcx.def_path_hash(def_id);
     let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, is_auto, is_marker, def_path_hash);
     tcx.alloc_trait_def(def)
@@ -2382,7 +2382,7 @@ fn from_target_feature(
     tcx: TyCtxt<'_, '_, '_>,
     id: DefId,
     attr: &ast::Attribute,
-    whitelist: &FxHashMap<String, Option<String>>,
+    whitelist: &FxHashMap<String, Option<Symbol>>,
     target_features: &mut Vec<Symbol>,
 ) {
     let list = match attr.meta_item_list() {
@@ -2392,7 +2392,7 @@ fn from_target_feature(
     let rust_features = tcx.features();
     for item in list {
         // Only `enable = ...` is accepted in the meta item list
-        if !item.check_name("enable") {
+        if !item.check_name(sym::enable) {
             let msg = "#[target_feature(..)] only accepts sub-keys of `enable` \
                        currently";
             tcx.sess.span_err(item.span(), &msg);
@@ -2435,29 +2435,29 @@ fn from_target_feature(
             };
 
             // Only allow features whose feature gates have been enabled
-            let allowed = match feature_gate.as_ref().map(|s| &**s) {
-                Some("arm_target_feature") => rust_features.arm_target_feature,
-                Some("aarch64_target_feature") => rust_features.aarch64_target_feature,
-                Some("hexagon_target_feature") => rust_features.hexagon_target_feature,
-                Some("powerpc_target_feature") => rust_features.powerpc_target_feature,
-                Some("mips_target_feature") => rust_features.mips_target_feature,
-                Some("avx512_target_feature") => rust_features.avx512_target_feature,
-                Some("mmx_target_feature") => rust_features.mmx_target_feature,
-                Some("sse4a_target_feature") => rust_features.sse4a_target_feature,
-                Some("tbm_target_feature") => rust_features.tbm_target_feature,
-                Some("wasm_target_feature") => rust_features.wasm_target_feature,
-                Some("cmpxchg16b_target_feature") => rust_features.cmpxchg16b_target_feature,
-                Some("adx_target_feature") => rust_features.adx_target_feature,
-                Some("movbe_target_feature") => rust_features.movbe_target_feature,
-                Some("rtm_target_feature") => rust_features.rtm_target_feature,
-                Some("f16c_target_feature") => rust_features.f16c_target_feature,
+            let allowed = match feature_gate.as_ref().map(|s| *s) {
+                Some(sym::arm_target_feature) => rust_features.arm_target_feature,
+                Some(sym::aarch64_target_feature) => rust_features.aarch64_target_feature,
+                Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
+                Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
+                Some(sym::mips_target_feature) => rust_features.mips_target_feature,
+                Some(sym::avx512_target_feature) => rust_features.avx512_target_feature,
+                Some(sym::mmx_target_feature) => rust_features.mmx_target_feature,
+                Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
+                Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
+                Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
+                Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
+                Some(sym::adx_target_feature) => rust_features.adx_target_feature,
+                Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
+                Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
+                Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
                 Some(name) => bug!("unknown target feature gate {}", name),
                 None => true,
             };
             if !allowed && id.is_local() {
                 feature_gate::emit_feature_err(
                     &tcx.sess.parse_sess,
-                    feature_gate.as_ref().unwrap(),
+                    feature_gate.unwrap(),
                     item.span(),
                     feature_gate::GateIssue::Language,
                     &format!("the target feature `{}` is currently unstable", feature),
@@ -2512,13 +2512,13 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
 
     let mut inline_span = None;
     for attr in attrs.iter() {
-        if attr.check_name("cold") {
+        if attr.check_name(sym::cold) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::COLD;
-        } else if attr.check_name("allocator") {
+        } else if attr.check_name(sym::allocator) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR;
-        } else if attr.check_name("unwind") {
+        } else if attr.check_name(sym::unwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::UNWIND;
-        } else if attr.check_name("ffi_returns_twice") {
+        } else if attr.check_name(sym::ffi_returns_twice) {
             if tcx.is_foreign_item(id) {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::FFI_RETURNS_TWICE;
             } else {
@@ -2530,21 +2530,21 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     "`#[ffi_returns_twice]` may only be used on foreign functions"
                 ).emit();
             }
-        } else if attr.check_name("rustc_allocator_nounwind") {
+        } else if attr.check_name(sym::rustc_allocator_nounwind) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_ALLOCATOR_NOUNWIND;
-        } else if attr.check_name("naked") {
+        } else if attr.check_name(sym::naked) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NAKED;
-        } else if attr.check_name("no_mangle") {
+        } else if attr.check_name(sym::no_mangle) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-        } else if attr.check_name("rustc_std_internal_symbol") {
+        } else if attr.check_name(sym::rustc_std_internal_symbol) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        } else if attr.check_name("no_debug") {
+        } else if attr.check_name(sym::no_debug) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_DEBUG;
-        } else if attr.check_name("used") {
+        } else if attr.check_name(sym::used) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED;
-        } else if attr.check_name("thread_local") {
+        } else if attr.check_name(sym::thread_local) {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
-        } else if attr.check_name("export_name") {
+        } else if attr.check_name(sym::export_name) {
             if let Some(s) = attr.value_str() {
                 if s.as_str().contains("\0") {
                     // `#[export_name = ...]` will be converted to a null-terminated string,
@@ -2558,7 +2558,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 }
                 codegen_fn_attrs.export_name = Some(s);
             }
-        } else if attr.check_name("target_feature") {
+        } else if attr.check_name(sym::target_feature) {
             if tcx.fn_sig(id).unsafety() == Unsafety::Normal {
                 let msg = "#[target_feature(..)] can only be applied to \
                            `unsafe` function";
@@ -2571,11 +2571,11 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 &whitelist,
                 &mut codegen_fn_attrs.target_features,
             );
-        } else if attr.check_name("linkage") {
+        } else if attr.check_name(sym::linkage) {
             if let Some(val) = attr.value_str() {
                 codegen_fn_attrs.linkage = Some(linkage_by_name(tcx, id, &val.as_str()));
             }
-        } else if attr.check_name("link_section") {
+        } else if attr.check_name(sym::link_section) {
             if let Some(val) = attr.value_str() {
                 if val.as_str().bytes().any(|b| b == 0) {
                     let msg = format!(
@@ -2588,13 +2588,13 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                     codegen_fn_attrs.link_section = Some(val);
                 }
             }
-        } else if attr.check_name("link_name") {
+        } else if attr.check_name(sym::link_name) {
             codegen_fn_attrs.link_name = attr.value_str();
         }
     }
 
     codegen_fn_attrs.inline = attrs.iter().fold(InlineAttr::None, |ia, attr| {
-        if attr.path != "inline" {
+        if attr.path != sym::inline {
             return ia;
         }
         match attr.meta().map(|i| i.node) {
@@ -2613,9 +2613,9 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                         "expected one argument"
                     );
                     InlineAttr::None
-                } else if list_contains_name(&items[..], "always") {
+                } else if list_contains_name(&items[..], sym::always) {
                     InlineAttr::Always
-                } else if list_contains_name(&items[..], "never") {
+                } else if list_contains_name(&items[..], sym::never) {
                     InlineAttr::Never
                 } else {
                     span_err!(
@@ -2634,7 +2634,7 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
     });
 
     codegen_fn_attrs.optimize = attrs.iter().fold(OptimizeAttr::None, |ia, attr| {
-        if attr.path != "optimize" {
+        if attr.path != sym::optimize {
             return ia;
         }
         let err = |sp, s| span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s);
@@ -2649,9 +2649,9 @@ fn codegen_fn_attrs<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, id: DefId) -> Codegen
                 if items.len() != 1 {
                     err(attr.span, "expected one argument");
                     OptimizeAttr::None
-                } else if list_contains_name(&items[..], "size") {
+                } else if list_contains_name(&items[..], sym::size) {
                     OptimizeAttr::Size
-                } else if list_contains_name(&items[..], "speed") {
+                } else if list_contains_name(&items[..], sym::speed) {
                     OptimizeAttr::Speed
                 } else {
                     err(items[0].span(), "invalid argument");

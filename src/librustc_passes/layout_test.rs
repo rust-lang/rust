@@ -12,6 +12,7 @@ use rustc::ty::ParamEnv;
 use rustc::ty::Ty;
 use rustc::ty::TyCtxt;
 use syntax::ast::Attribute;
+use syntax::symbol::sym;
 
 pub fn test_layout<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     if tcx.features().rustc_attrs {
@@ -32,7 +33,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for VarianceTest<'a, 'tcx> {
 
         if let ItemKind::Ty(..) = item.node {
             for attr in self.tcx.get_attrs(item_def_id).iter() {
-                if attr.check_name("rustc_layout") {
+                if attr.check_name(sym::rustc_layout) {
                     self.dump_layout_of(item_def_id, item, attr);
                 }
             }
@@ -54,26 +55,26 @@ impl<'a, 'tcx> VarianceTest<'a, 'tcx> {
                 // The `..` are the names of fields to dump.
                 let meta_items = attr.meta_item_list().unwrap_or_default();
                 for meta_item in meta_items {
-                    match meta_item.name_or_empty().get() {
-                        "abi" => {
+                    match meta_item.name_or_empty() {
+                        sym::abi => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("abi: {:?}", ty_layout.abi));
                         }
 
-                        "align" => {
+                        sym::align => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("align: {:?}", ty_layout.align));
                         }
 
-                        "size" => {
+                        sym::size => {
                             self.tcx
                                 .sess
                                 .span_err(item.span, &format!("size: {:?}", ty_layout.size));
                         }
 
-                        "homogeneous_aggregate" => {
+                        sym::homogeneous_aggregate => {
                             self.tcx.sess.span_err(
                                 item.span,
                                 &format!(

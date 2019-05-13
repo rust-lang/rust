@@ -112,7 +112,7 @@ use std::io;
 use std::rc::Rc;
 use syntax::ast::{self, NodeId};
 use syntax::ptr::P;
-use syntax::symbol::keywords;
+use syntax::symbol::{keywords, sym};
 use syntax_pos::Span;
 
 use crate::hir;
@@ -362,7 +362,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
     if let FnKind::Method(..) = fk {
         let parent = ir.tcx.hir().get_parent_item(id);
         if let Some(Node::Item(i)) = ir.tcx.hir().find_by_hir_id(parent) {
-            if i.attrs.iter().any(|a| a.check_name("automatically_derived")) {
+            if i.attrs.iter().any(|a| a.check_name(sym::automatically_derived)) {
                 return;
             }
         }

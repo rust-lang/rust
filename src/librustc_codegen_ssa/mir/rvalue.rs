@@ -5,6 +5,7 @@ use rustc::mir;
 use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 use rustc_apfloat::{ieee, Float, Status, Round};
 use std::{u128, i128};
+use syntax::symbol::sym;
 
 use crate::base;
 use crate::MemFlags;
@@ -181,9 +182,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::CastKind::Pointer(PointerCast::ReifyFnPointer) => {
                         match operand.layout.ty.sty {
                             ty::FnDef(def_id, substs) => {
-                                if bx.cx().tcx().has_attr(def_id, "rustc_args_required_const") {
-                                    bug!("reifying a fn ptr that requires \
-                                          const arguments");
+                                if bx.cx().tcx().has_attr(def_id, sym::rustc_args_required_const) {
+                                    bug!("reifying a fn ptr that requires const arguments");
                                 }
                                 OperandValue::Immediate(
                                     callee::resolve_and_get_fn(bx.cx(), def_id, substs))

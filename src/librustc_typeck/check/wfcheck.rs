@@ -13,6 +13,7 @@ use rustc::infer::opaque_types::may_define_existential_type;
 use syntax::ast;
 use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
+use syntax::symbol::sym;
 use errors::{DiagnosticBuilder, DiagnosticId};
 
 use rustc::hir::itemlikevisit::ParItemLikeVisitor;
@@ -796,7 +797,7 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                 // report error, would have worked with arbitrary_self_types
                 feature_gate::feature_err(
                     &fcx.tcx.sess.parse_sess,
-                    "arbitrary_self_types",
+                    sym::arbitrary_self_types,
                     span,
                     GateIssue::Language,
                     &format!(

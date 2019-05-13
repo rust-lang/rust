@@ -879,7 +879,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let mut result = String::new();
 
         for attr in attrs {
-            if attr.check_name("doc") {
+            if attr.check_name(sym::doc) {
                 if let Some(val) = attr.value_str() {
                     if attr.is_sugared_doc {
                         result.push_str(&strip_doc_comment_decoration(&val.as_str()));
@@ -889,10 +889,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     result.push('\n');
                 } else if let Some(meta_list) = attr.meta_item_list() {
                     meta_list.into_iter()
-                             .filter(|it| it.check_name("include"))
+                             .filter(|it| it.check_name(sym::include))
                              .filter_map(|it| it.meta_item_list().map(|l| l.to_owned()))
                              .flat_map(|it| it)
-                             .filter(|meta| meta.check_name("contents"))
+                             .filter(|meta| meta.check_name(sym::contents))
                              .filter_map(|meta| meta.value_str())
                              .for_each(|val| {
                                  result.push_str(&val.as_str());
@@ -1197,7 +1197,7 @@ fn null_id() -> rls_data::Id {
 fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext<'_, '_>) -> Vec<rls_data::Attribute> {
     attrs.into_iter()
     // Only retain real attributes. Doc comments are lowered separately.
-    .filter(|attr| attr.path != "doc")
+    .filter(|attr| attr.path != sym::doc)
     .map(|mut attr| {
         // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
         // attribute. First normalize all inner attribute (#![..]) to outer

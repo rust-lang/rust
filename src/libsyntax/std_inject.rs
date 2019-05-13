@@ -2,7 +2,7 @@ use crate::ast;
 use crate::attr;
 use crate::edition::Edition;
 use crate::ext::hygiene::{Mark, SyntaxContext};
-use crate::symbol::{Symbol, keywords};
+use crate::symbol::{Symbol, keywords, sym};
 use crate::source_map::{ExpnInfo, MacroAttribute, dummy_spanned, hygiene, respan};
 use crate::ptr::P;
 use crate::tokenstream::TokenStream;
@@ -35,6 +35,9 @@ pub fn injected_crate_name() -> Option<&'static str> {
 }
 
 thread_local! {
+    // A `Symbol` might make more sense here, but it doesn't work, probably for
+    // reasons relating to the use of thread-local storage for the Symbol
+    // interner.
     static INJECTED_CRATE_NAME: Cell<Option<&'static str>> = Cell::new(None);
 }
 
@@ -46,10 +49,10 @@ pub fn maybe_inject_crates_ref(
     let rust_2018 = edition >= Edition::Edition2018;
 
     // the first name in this list is the crate name of the crate with the prelude
-    let names: &[&str] = if attr::contains_name(&krate.attrs, "no_core") {
+    let names: &[&str] = if attr::contains_name(&krate.attrs, sym::no_core) {
         return krate;
-    } else if attr::contains_name(&krate.attrs, "no_std") {
-        if attr::contains_name(&krate.attrs, "compiler_builtins") {
+    } else if attr::contains_name(&krate.attrs, sym::no_std) {
+        if attr::contains_name(&krate.attrs, sym::compiler_builtins) {
             &["core"]
         } else {
             &["core", "compiler_builtins"]

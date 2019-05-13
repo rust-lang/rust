@@ -13,7 +13,7 @@ use crate::parse::{Directory, ParseSess};
 use crate::parse::parser::Parser;
 use crate::parse::token::{self, NtTT};
 use crate::parse::token::Token::*;
-use crate::symbol::Symbol;
+use crate::symbol::{Symbol, keywords, sym};
 use crate::tokenstream::{DelimSpan, TokenStream, TokenTree};
 
 use errors::FatalError;
@@ -376,7 +376,7 @@ pub fn compile(
     });
 
     if body.legacy {
-        let allow_internal_unstable = attr::find_by_name(&def.attrs, "allow_internal_unstable")
+        let allow_internal_unstable = attr::find_by_name(&def.attrs, sym::allow_internal_unstable)
             .map(|attr| attr
                 .meta_item_list()
                 .map(|list| list.iter()
@@ -399,11 +399,11 @@ pub fn compile(
                     vec![Symbol::intern("allow_internal_unstable_backcompat_hack")].into()
                 })
             );
-        let allow_internal_unsafe = attr::contains_name(&def.attrs, "allow_internal_unsafe");
+        let allow_internal_unsafe = attr::contains_name(&def.attrs, sym::allow_internal_unsafe);
         let mut local_inner_macros = false;
-        if let Some(macro_export) = attr::find_by_name(&def.attrs, "macro_export") {
+        if let Some(macro_export) = attr::find_by_name(&def.attrs, sym::macro_export) {
             if let Some(l) = macro_export.meta_item_list() {
-                local_inner_macros = attr::list_contains_name(&l, "local_inner_macros");
+                local_inner_macros = attr::list_contains_name(&l, sym::local_inner_macros);
             }
         }
 
@@ -426,7 +426,7 @@ pub fn compile(
             edition,
         }
     } else {
-        let is_transparent = attr::contains_name(&def.attrs, "rustc_transparent_macro");
+        let is_transparent = attr::contains_name(&def.attrs, sym::rustc_transparent_macro);
 
         SyntaxExtension::DeclMacro {
             expander,
@@ -467,7 +467,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[quoted::TokenTree]) -> bool {
             TokenTree::Sequence(span, ref seq) => {
                 if seq.separator.is_none() && seq.tts.iter().all(|seq_tt| {
                     match *seq_tt {
-                        TokenTree::MetaVarDecl(_, _, id) => id.name == "vis",
+                        TokenTree::MetaVarDecl(_, _, id) => id.name == sym::vis,
                         TokenTree::Sequence(_, ref sub_seq) =>
                             sub_seq.op == quoted::KleeneOp::ZeroOrMore
                             || sub_seq.op == quoted::KleeneOp::ZeroOrOne,
@@ -1046,7 +1046,8 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == "if" || i.name == "in" => IsInFollow::Yes,
+                        Ident(i, false) if i.name == keywords::If.name() ||
+                                           i.name == keywords::In.name() => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
                     _ => IsInFollow::No(tokens),
@@ -1063,10 +1064,12 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                         OpenDelim(token::DelimToken::Bracket) |
                         Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
                         BinOp(token::Or) => IsInFollow::Yes,
-                        Ident(i, false) if i.name == "as" || i.name == "where" => IsInFollow::Yes,
+                        Ident(i, false) if i.name == keywords::As.name() ||
+                                           i.name == keywords::Where.name() => IsInFollow::Yes,
                         _ => IsInFollow::No(tokens),
                     },
-                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => IsInFollow::Yes,
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::block =>
+                        IsInFollow::Yes,
                     _ => IsInFollow::No(tokens),
                 }
             },
@@ -1089,16 +1092,18 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         Comma => IsInFollow::Yes,
-                        Ident(i, is_raw) if is_raw || i.name != "priv" => IsInFollow::Yes,
+                        Ident(i, is_raw) if is_raw || i.name != keywords::Priv.name() =>
+                            IsInFollow::Yes,
                         ref tok => if tok.can_begin_type() {
                             IsInFollow::Yes
                         } else {
                             IsInFollow::No(tokens)
                         }
                     },
-                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == "ident"
-                                                       || frag.name == "ty"
-                                                       || frag.name == "path" => IsInFollow::Yes,
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == sym::ident
+                                                       || frag.name == sym::ty
+                                                       || frag.name == sym::path =>
+                        IsInFollow::Yes,
                     _ => IsInFollow::No(tokens),
                 }
             },

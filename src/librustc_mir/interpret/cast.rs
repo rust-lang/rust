@@ -2,6 +2,7 @@ use rustc::ty::{self, Ty, TypeAndMut};
 use rustc::ty::layout::{self, TyLayout, Size};
 use rustc::ty::adjustment::{PointerCast};
 use syntax::ast::{FloatTy, IntTy, UintTy};
+use syntax::symbol::sym;
 
 use rustc_apfloat::ieee::{Single, Double};
 use rustc::mir::interpret::{
@@ -76,9 +77,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> InterpretCx<'a, 'mir, 'tcx, M> 
                 // The src operand does not matter, just its type
                 match src.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
-                        if self.tcx.has_attr(def_id, "rustc_args_required_const") {
-                            bug!("reifying a fn ptr that requires \
-                                    const arguments");
+                        if self.tcx.has_attr(def_id, sym::rustc_args_required_const) {
+                            bug!("reifying a fn ptr that requires const arguments");
                         }
                         let instance: EvalResult<'tcx, _> = ty::Instance::resolve(
                             *self.tcx,

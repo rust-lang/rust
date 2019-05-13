@@ -29,7 +29,7 @@ use crate::parse::{token, ParseSess};
 use crate::print::pprust;
 use crate::ast::{self, Ident};
 use crate::ptr::P;
-use crate::symbol::{self, Symbol, keywords};
+use crate::symbol::{self, Symbol, keywords, sym};
 use crate::ThinVec;
 
 struct Test {
@@ -65,8 +65,7 @@ pub fn modify_for_testing(sess: &ParseSess,
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
-        attr::first_attr_value_str_by_name(&krate.attrs,
-                                           "reexport_test_harness_main");
+        attr::first_attr_value_str_by_name(&krate.attrs, sym::reexport_test_harness_main);
 
     // Do this here so that the test_runner crate attribute gets marked as used
     // even in non-test builds
@@ -185,7 +184,7 @@ impl MutVisitor for EntryPointCleaner {
                         ident,
                         attrs: attrs.into_iter()
                             .filter(|attr| {
-                                !attr.check_name("main") && !attr.check_name("start")
+                                !attr.check_name(sym::main) && !attr.check_name(sym::start)
                             })
                             .chain(iter::once(allow_dead_code))
                             .collect(),
@@ -273,7 +272,8 @@ fn generate_test_harness(sess: &ParseSess,
         test_cases: Vec::new(),
         reexport_test_harness_main,
         // N.B., doesn't consider the value of `--crate-name` passed on the command line.
-        is_libtest: attr::find_crate_name(&krate.attrs).map(|s| s == "test").unwrap_or(false),
+        is_libtest: attr::find_crate_name(&krate.attrs)
+            .map(|s| s == sym::test).unwrap_or(false),
         toplevel_reexport: None,
         ctxt: SyntaxContext::empty().apply_mark(mark),
         features,
@@ -428,11 +428,11 @@ fn visible_path(cx: &TestCtxt<'_>, path: &[Ident]) -> Vec<Ident>{
 }
 
 fn is_test_case(i: &ast::Item) -> bool {
-    attr::contains_name(&i.attrs, "rustc_test_marker")
+    attr::contains_name(&i.attrs, sym::rustc_test_marker)
 }
 
 fn get_test_runner(sd: &errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
-    let test_attr = attr::find_by_name(&krate.attrs, "test_runner")?;
+    let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     test_attr.meta_item_list().map(|meta_list| {
         if meta_list.len() != 1 {
             sd.span_fatal(test_attr.span,

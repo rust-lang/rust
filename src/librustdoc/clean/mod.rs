@@ -32,6 +32,7 @@ use syntax::ext::base::MacroKind;
 use syntax::source_map::{dummy_spanned, Spanned};
 use syntax::ptr::P;
 use syntax::symbol::keywords::{self, Keyword};
+use syntax::symbol::{Symbol, sym};
 use syntax::symbol::InternedString;
 use syntax_pos::{self, Pos, FileName};
 
@@ -170,7 +171,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     // `compiler_builtins` should be masked too, but we can't apply
                     // `#[doc(masked)]` to the injected `extern crate` because it's unstable.
                     if it.is_extern_crate()
-                        && (it.attrs.has_doc_flag("masked")
+                        && (it.attrs.has_doc_flag(sym::masked)
                             || self.cx.tcx.is_compiler_builtins(it.def_id.krate))
                     {
                         masked_crates.insert(it.def_id.krate);
@@ -261,9 +262,9 @@ impl Clean<ExternalCrate> for CrateNum {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let attrs = cx.tcx.get_attrs(def_id).clean(cx);
                 let mut prim = None;
-                for attr in attrs.lists("doc") {
+                for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
-                        if attr.check_name("primitive") {
+                        if attr.check_name(sym::primitive) {
                             prim = PrimitiveType::from_str(&v.as_str());
                             if prim.is_some() {
                                 break;
@@ -305,9 +306,9 @@ impl Clean<ExternalCrate> for CrateNum {
             if let Res::Def(DefKind::Mod, def_id) = res {
                 let attrs = cx.tcx.get_attrs(def_id).clean(cx);
                 let mut keyword = None;
-                for attr in attrs.lists("doc") {
+                for attr in attrs.lists(sym::doc) {
                     if let Some(v) = attr.value_str() {
-                        if attr.check_name("keyword") {
+                        if attr.check_name(sym::keyword) {
                             keyword = Keyword::from_str(&v.as_str()).ok()
                                                                     .map(|x| x.name().to_string());
                             if keyword.is_some() {
@@ -501,7 +502,7 @@ impl Item {
 
     pub fn is_non_exhaustive(&self) -> bool {
         self.attrs.other_attrs.iter()
-            .any(|a| a.check_name("non_exhaustive"))
+            .any(|a| a.check_name(sym::non_exhaustive))
     }
 
     /// Returns a documentation-level item type from the item.
@@ -669,7 +670,7 @@ impl Clean<Item> for doctree::Module {
 pub struct ListAttributesIter<'a> {
     attrs: slice::Iter<'a, ast::Attribute>,
     current_list: vec::IntoIter<ast::NestedMetaItem>,
-    name: &'a str
+    name: Symbol,
 }
 
 impl<'a> Iterator for ListAttributesIter<'a> {
@@ -702,11 +703,11 @@ impl<'a> Iterator for ListAttributesIter<'a> {
 
 pub trait AttributesExt {
     /// Finds an attribute as List and returns the list of attributes nested inside.
-    fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a>;
+    fn lists<'a>(&'a self, name: Symbol) -> ListAttributesIter<'a>;
 }
 
 impl AttributesExt for [ast::Attribute] {
-    fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {
+    fn lists<'a>(&'a self, name: Symbol) -> ListAttributesIter<'a> {
         ListAttributesIter {
             attrs: self.iter(),
             current_list: Vec::new().into_iter(),
@@ -717,11 +718,11 @@ impl AttributesExt for [ast::Attribute] {
 
 pub trait NestedAttributesExt {
     /// Returns `true` if the attribute list contains a specific `Word`
-    fn has_word(self, word: &str) -> bool;
+    fn has_word(self, word: Symbol) -> bool;
 }
 
 impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
-    fn has_word(self, word: &str) -> bool {
+    fn has_word(self, word: Symbol) -> bool {
         self.into_iter().any(|attr| attr.is_word() && attr.check_name(word))
     }
 }
@@ -803,7 +804,7 @@ impl Attributes {
         if let ast::MetaItemKind::List(ref nmis) = mi.node {
             if nmis.len() == 1 {
                 if let MetaItem(ref cfg_mi) = nmis[0] {
-                    if cfg_mi.check_name("cfg") {
+                    if cfg_mi.check_name(sym::cfg) {
                         if let ast::MetaItemKind::List(ref cfg_nmis) = cfg_mi.node {
                             if cfg_nmis.len() == 1 {
                                 if let MetaItem(ref content_mi) = cfg_nmis[0] {
@@ -827,7 +828,7 @@ impl Attributes {
     {
         mi.meta_item_list().and_then(|list| {
             for meta in list {
-                if meta.check_name("include") {
+                if meta.check_name(sym::include) {
                     // the actual compiled `#[doc(include="filename")]` gets expanded to
                     // `#[doc(include(file="filename", contents="file contents")]` so we need to
                     // look for that instead
@@ -836,11 +837,11 @@ impl Attributes {
                         let mut contents: Option<String> = None;
 
                         for it in list {
-                            if it.check_name("file") {
+                            if it.check_name(sym::file) {
                                 if let Some(name) = it.value_str() {
                                     filename = Some(name.to_string());
                                 }
-                            } else if it.check_name("contents") {
+                            } else if it.check_name(sym::contents) {
                                 if let Some(docs) = it.value_str() {
                                     contents = Some(docs.to_string());
                                 }
@@ -860,9 +861,9 @@ impl Attributes {
         })
     }
 
-    pub fn has_doc_flag(&self, flag: &str) -> bool {
+    pub fn has_doc_flag(&self, flag: Symbol) -> bool {
         for attr in &self.other_attrs {
-            if !attr.check_name("doc") { continue; }
+            if !attr.check_name(sym::doc) { continue; }
 
             if let Some(items) = attr.meta_item_list() {
                 if items.iter().filter_map(|i| i.meta_item()).any(|it| it.check_name(flag)) {
@@ -883,7 +884,7 @@ impl Attributes {
 
         let other_attrs = attrs.iter().filter_map(|attr| {
             attr.with_desugared_doc(|attr| {
-                if attr.check_name("doc") {
+                if attr.check_name(sym::doc) {
                     if let Some(mi) = attr.meta() {
                         if let Some(value) = mi.value_str() {
                             // Extracted #[doc = "..."]
@@ -925,8 +926,8 @@ impl Attributes {
 
         // treat #[target_feature(enable = "feat")] attributes as if they were
         // #[doc(cfg(target_feature = "feat"))] attributes as well
-        for attr in attrs.lists("target_feature") {
-            if attr.check_name("enable") {
+        for attr in attrs.lists(sym::target_feature) {
+            if attr.check_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
                     let meta = attr::mk_name_value_item_str(Ident::from_str("target_feature"),
                                                             dummy_spanned(feat));
@@ -938,7 +939,7 @@ impl Attributes {
         }
 
         let inner_docs = attrs.iter()
-                              .filter(|a| a.check_name("doc"))
+                              .filter(|a| a.check_name(sym::doc))
                               .next()
                               .map_or(true, |a| a.style == AttrStyle::Inner);
 
@@ -1039,7 +1040,7 @@ impl Hash for Attributes {
 }
 
 impl AttributesExt for Attributes {
-    fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {
+    fn lists<'a>(&'a self, name: Symbol) -> ListAttributesIter<'a> {
         self.other_attrs.lists(name)
     }
 }
@@ -2133,7 +2134,7 @@ pub struct Trait {
 impl Clean<Item> for doctree::Trait {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let attrs = self.attrs.clean(cx);
-        let is_spotlight = attrs.has_doc_flag("spotlight");
+        let is_spotlight = attrs.has_doc_flag(sym::spotlight);
         Item {
             name: Some(self.name.clean(cx)),
             attrs: attrs,
@@ -3893,8 +3894,8 @@ impl Clean<Vec<Item>> for doctree::ExternCrate {
     fn clean(&self, cx: &DocContext<'_>) -> Vec<Item> {
 
         let please_inline = self.vis.node.is_pub() && self.attrs.iter().any(|a| {
-            a.check_name("doc") && match a.meta_item_list() {
-                Some(l) => attr::list_contains_name(&l, "inline"),
+            a.check_name(sym::doc) && match a.meta_item_list() {
+                Some(l) => attr::list_contains_name(&l, sym::inline),
                 None => false,
             }
         });
@@ -3935,15 +3936,15 @@ impl Clean<Vec<Item>> for doctree::Import {
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let mut denied = !self.vis.node.is_pub() || self.attrs.iter().any(|a| {
-            a.check_name("doc") && match a.meta_item_list() {
-                Some(l) => attr::list_contains_name(&l, "no_inline") ||
-                           attr::list_contains_name(&l, "hidden"),
+            a.check_name(sym::doc) && match a.meta_item_list() {
+                Some(l) => attr::list_contains_name(&l, sym::no_inline) ||
+                           attr::list_contains_name(&l, sym::hidden),
                 None => false,
             }
         });
         // Also check whether imports were asked to be inlined, in case we're trying to re-export a
         // crate in Rust 2018+
-        let please_inline = self.attrs.lists("doc").has_word("inline");
+        let please_inline = self.attrs.lists(sym::doc).has_word(sym::inline);
         let path = self.path.clean(cx);
         let inner = if self.glob {
             if !denied {
@@ -4382,7 +4383,7 @@ where
 
 // Start of code copied from rust-clippy
 
-pub fn path_to_def_local(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
+pub fn path_to_def_local(tcx: TyCtxt<'_, '_, '_>, path: &[Symbol]) -> Option<DefId> {
     let krate = tcx.hir().krate();
     let mut items = krate.module.item_ids.clone();
     let mut path_it = path.iter().peekable();
@@ -4407,7 +4408,7 @@ pub fn path_to_def_local(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId
     }
 }
 
-pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[&str]) -> Option<DefId> {
+pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[Symbol]) -> Option<DefId> {
     let crates = tcx.crates();
 
     let krate = crates

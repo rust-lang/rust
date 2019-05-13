@@ -29,7 +29,7 @@ use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::source_map;
-use syntax::symbol::InternedString;
+use syntax::symbol::{InternedString, sym};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::hygiene::Mark;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
@@ -841,7 +841,7 @@ impl<'a, 'tcx> CrateMetadata {
                                 // for other constructors correct visibilities
                                 // were already encoded in metadata.
                                 let attrs = self.get_item_attrs(def_id.index, sess);
-                                if attr::contains_name(&attrs, "non_exhaustive") {
+                                if attr::contains_name(&attrs, sym::non_exhaustive) {
                                     let crate_def_id = self.local_def_id(CRATE_DEF_INDEX);
                                     vis = ty::Visibility::Restricted(crate_def_id);
                                 }
