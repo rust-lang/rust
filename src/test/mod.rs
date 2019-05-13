@@ -500,7 +500,7 @@ fn read_config(filename: &Path) -> Config {
     };
 
     for (key, val) in &sig_comments {
-        if key != "target" && key != "config" {
+        if key != "target" && key != "config" && key != "unstable" {
             config.override_value(key, val);
             if config.is_default(key) {
                 warn!("Default value {} used explicitly for {}", val, key);
