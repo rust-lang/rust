@@ -27,10 +27,10 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
                     for item in mem::replace(&mut items, Default::default()).iter() {
                         if item.ident.name == *segment {
                             if path_it.peek().is_none() {
-                                return Some(ty::Instance::mono(this.tcx.tcx, item.def.def_id()));
+                                return Some(ty::Instance::mono(this.tcx.tcx, item.res.def_id()));
                             }
 
-                            items = this.tcx.item_children(item.def.def_id());
+                            items = this.tcx.item_children(item.res.def_id());
                             break;
                         }
                     }
