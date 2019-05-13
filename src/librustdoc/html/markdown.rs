@@ -351,9 +351,11 @@ impl<'a, 'b, 'ids, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 
         if let Some(Event::Start(Tag::Header(level))) = event {
             let mut id = String::new();
             for event in &mut self.inner {
-                match event {
+                match &event {
                     Event::End(Tag::Header(..)) => break,
-                    Event::Text(ref text) => id.extend(text.chars().filter_map(slugify)),
+                    Event::Text(text) | Event::Code(text) => {
+                        id.extend(text.chars().filter_map(slugify));
+                    }
                     _ => {},
                 }
                 self.buf.push_back(event);
@@ -402,7 +404,6 @@ fn check_if_allowed_tag(t: &Tag<'_>) -> bool {
         | Tag::Item
         | Tag::Emphasis
         | Tag::Strong
-        | Tag::Code
         | Tag::Link(..)
         | Tag::BlockQuote => true,
         _ => false,
@@ -790,9 +791,8 @@ pub fn plain_summary_line_full(md: &str, limit_length: bool) -> String {
             let next_event = next_event.unwrap();
             let (ret, is_in) = match next_event {
                 Event::Start(Tag::Paragraph) => (None, 1),
-                Event::Start(Tag::Code) => (Some("`".to_owned()), 1),
-                Event::End(Tag::Code) => (Some("`".to_owned()), -1),
                 Event::Start(Tag::Header(_)) => (None, 1),
+                Event::Code(code) => (Some(format!("`{}`", code)), 0),
                 Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
                 Event::End(Tag::Paragraph) | Event::End(Tag::Header(_)) => (None, -1),
                 _ => (None, 0),
