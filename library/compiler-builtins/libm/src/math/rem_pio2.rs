@@ -85,7 +85,7 @@ pub(crate) fn rem_pio2(x: f64) -> (i32, f64, f64) {
         /* |x| ~<= 5pi/4 */
         if (ix & 0xfffff) == 0x921fb {
             /* |x| ~= pi/2 or 2pi/2 */
-            medium(x, ix); /* cancellation -- use medium case */
+            return medium(x, ix); /* cancellation -- use medium case */
         }
         if ix <= 0x4002d97c {
             /* |x| ~<= 3pi/4 */
@@ -184,4 +184,24 @@ pub(crate) fn rem_pio2(x: f64) -> (i32, f64, f64) {
         return (-n, -ty[0], -ty[1]);
     }
     (n, ty[0], ty[1])
+}
+
+#[test]
+fn test_near_pi() {
+    assert_eq!(
+        rem_pio2(3.141592025756836),
+        (2, -6.278329573009626e-7, -2.1125998133974653e-23)
+    );
+    assert_eq!(
+        rem_pio2(3.141592033207416),
+        (2, -6.20382377148128e-7, -2.1125998133974653e-23)
+    );
+    assert_eq!(
+        rem_pio2(3.141592144966125),
+        (2, -5.086236681942706e-7, -2.1125998133974653e-23)
+    );
+    assert_eq!(
+        rem_pio2(3.141592979431152),
+        (2, 3.2584135866119817e-7, -2.1125998133974653e-23)
+    );
 }
