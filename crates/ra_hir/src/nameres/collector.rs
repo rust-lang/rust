@@ -15,7 +15,7 @@ use crate::{
         diagnostics::DefDiagnostic,
         raw,
     },
-    ids::{AstItemDef, LocationCtx, MacroCallLoc, MacroCallId, MacroDefId},
+    ids::{AstItemDef, LocationCtx, MacroCallLoc, MacroCallId, MacroDefId, MacroFileKind},
     AstId,
 };
 
@@ -371,7 +371,7 @@ where
         self.macro_stack_monitor.increase(macro_def_id);
 
         if !self.macro_stack_monitor.is_poison(macro_def_id) {
-            let file_id: HirFileId = macro_call_id.into();
+            let file_id: HirFileId = macro_call_id.as_file(MacroFileKind::Items);
             let raw_items = self.db.raw_items(file_id);
             ModCollector { def_collector: &mut *self, file_id, module_id, raw_items: &raw_items }
                 .collect(raw_items.items());

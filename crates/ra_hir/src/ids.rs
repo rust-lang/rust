@@ -39,8 +39,8 @@ impl HirFileId {
     pub fn original_file(self, db: &impl DefDatabase) -> FileId {
         match self.0 {
             HirFileIdRepr::File(file_id) => file_id,
-            HirFileIdRepr::Macro(macro_call_id) => {
-                let loc = macro_call_id.loc(db);
+            HirFileIdRepr::Macro(macro_file) => {
+                let loc = macro_file.macro_call_id.loc(db);
                 loc.ast_id.file_id().original_file(db)
             }
         }
@@ -62,9 +62,10 @@ impl HirFileId {
     ) -> TreeArc<SourceFile> {
         match file_id.0 {
             HirFileIdRepr::File(file_id) => db.parse(file_id),
-            HirFileIdRepr::Macro(macro_call_id) => {
-                match db.macro_expand(macro_call_id) {
-                    Ok(tt) => mbe::token_tree_to_ast_item_list(&tt),
+            HirFileIdRepr::Macro(macro_file) => {
+                let macro_call_id = macro_file.macro_call_id;
+                let tt = match db.macro_expand(macro_call_id) {
+                    Ok(it) => it,
                     Err(err) => {
                         // Note:
                         // The final goal we would like to make all parse_macro success,
@@ -74,10 +75,12 @@ impl HirFileId {
                             err,
                             macro_call_id.debug_dump(db)
                         );
-
                         // returning an empty string looks fishy...
-                        SourceFile::parse("")
+                        return SourceFile::parse("");
                     }
+                };
+                match macro_file.macro_file_kind {
+                    MacroFileKind::Items => mbe::token_tree_to_ast_item_list(&tt),
                 }
             }
         }
@@ -87,18 +90,23 @@ impl HirFileId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum HirFileIdRepr {
     File(FileId),
-    Macro(MacroCallId),
+    Macro(MacroFile),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct MacroFile {
+    macro_call_id: MacroCallId,
+    macro_file_kind: MacroFileKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) enum MacroFileKind {
+    Items,
 }
 
 impl From<FileId> for HirFileId {
     fn from(file_id: FileId) -> HirFileId {
         HirFileId(HirFileIdRepr::File(file_id))
-    }
-}
-
-impl From<MacroCallId> for HirFileId {
-    fn from(macro_call_id: MacroCallId) -> HirFileId {
-        HirFileId(HirFileIdRepr::Macro(macro_call_id))
     }
 }
 
@@ -172,6 +180,11 @@ pub struct MacroCallLoc {
 impl MacroCallId {
     pub(crate) fn loc(self, db: &impl DefDatabase) -> MacroCallLoc {
         db.lookup_intern_macro(self)
+    }
+
+    pub(crate) fn as_file(self, kind: MacroFileKind) -> HirFileId {
+        let macro_file = MacroFile { macro_call_id: self, macro_file_kind: kind };
+        HirFileId(HirFileIdRepr::Macro(macro_file))
     }
 }
 
@@ -342,7 +355,7 @@ impl MacroCallId {
         let syntax_str = node.syntax().text().chunks().collect::<Vec<_>>().join(" ");
 
         // dump the file name
-        let file_id: HirFileId = self.clone().into();
+        let file_id: HirFileId = self.loc(db).ast_id.file_id();
         let original = file_id.original_file(db);
         let macro_rules = db.macro_def(loc.def);
 
