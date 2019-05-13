@@ -85,7 +85,7 @@ pub(crate) fn rem_pio2(x: f64) -> (i32, f64, f64) {
         /* |x| ~<= 5pi/4 */
         if (ix & 0xfffff) == 0x921fb {
             /* |x| ~= pi/2 or 2pi/2 */
-            medium(x, ix); /* cancellation -- use medium case */
+            return medium(x, ix); /* cancellation -- use medium case */
         }
         if ix <= 0x4002d97c {
             /* |x| ~<= 3pi/4 */
