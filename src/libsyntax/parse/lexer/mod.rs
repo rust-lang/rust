@@ -1086,10 +1086,12 @@ impl<'a> StringReader<'a> {
                 Ok(TokenKind::lit(token::Str, symbol, suffix))
             }
             'r' => {
-                let (kind, symbol) = self.scan_raw_string();
+                let (start, end, hash_count) = self.scan_raw_string();
+                let symbol = self.name_from_to(start, end);
+                self.validate_raw_str_escape(start, end);
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(TokenKind::lit(kind, symbol, suffix))
+                Ok(TokenKind::lit(token::StrRaw(hash_count), symbol, suffix))
             }
             '-' => {
                 if self.nextch_is('>') {
@@ -1243,7 +1245,7 @@ impl<'a> StringReader<'a> {
         id
     }
 
-    fn scan_raw_string(&mut self) -> (token::LitKind, Symbol) {
+    fn scan_raw_string(&mut self) -> (BytePos, BytePos, u16) {
         let start_bpos = self.pos;
         self.bump();
         let mut hash_count: u16 = 0;
@@ -1273,7 +1275,6 @@ impl<'a> StringReader<'a> {
         self.bump();
         let content_start_bpos = self.pos;
         let mut content_end_bpos;
-        let mut valid = true;
         'outer: loop {
             match self.ch {
                 None => {
@@ -1289,29 +1290,14 @@ impl<'a> StringReader<'a> {
                     }
                     break;
                 }
-                Some(c) => {
-                    if c == '\r' && !self.nextch_is('\n') {
-                        let last_bpos = self.pos;
-                        self.err_span_(start_bpos,
-                                        last_bpos,
-                                        "bare CR not allowed in raw string, use \\r \
-                                        instead");
-                        valid = false;
-                    }
-                }
+                _ => (),
             }
             self.bump();
         }
 
         self.bump();
 
-        let symbol = if valid {
-            self.name_from_to(content_start_bpos, content_end_bpos)
-        } else {
-            Symbol::intern("??")
-        };
-
-        (token::StrRaw(hash_count), symbol)
+        (content_start_bpos, content_end_bpos, hash_count)
     }
 
     fn scan_raw_byte_string(&mut self) -> (token::LitKind, Symbol) {
@@ -1412,6 +1398,23 @@ impl<'a> StringReader<'a> {
                         &self.sess.span_diagnostic,
                         lit,
                         self.mk_sp(start_with_quote, self.pos),
+                        unescape::Mode::Str,
+                        range,
+                        err,
+                    )
+                }
+            })
+        });
+    }
+
+    fn validate_raw_str_escape(&self, content_start: BytePos, content_end: BytePos) {
+        self.with_str_from_to(content_start, content_end, |lit: &str| {
+            unescape::unescape_raw_str(lit, &mut |range, c| {
+                if let Err(err) = c {
+                    emit_unescape_error(
+                        &self.sess.span_diagnostic,
+                        lit,
+                        self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
                         unescape::Mode::Str,
                         range,
                         err,
