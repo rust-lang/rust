@@ -29,6 +29,7 @@ pub(crate) enum EscapeError {
 
     UnicodeEscapeInByte,
     NonAsciiCharInByte,
+    NonAsciiCharInByteString,
 }
 
 /// Takes a contents of a char literal (without quotes), and returns an
@@ -81,6 +82,29 @@ where
         let result = match (curr, chars.peek()) {
             ('\r', Some('\n')) => Ok(curr),
             ('\r', _) => Err(EscapeError::BareCarriageReturn),
+            _ => Ok(curr),
+        };
+        callback(byte_offset..(byte_offset + curr.len_utf8()), result);
+        byte_offset += curr.len_utf8();
+    }
+}
+
+/// Takes a contents of a string literal (without quotes) and produces a
+/// sequence of characters or errors.
+/// NOTE: Raw strings do not perform any explicit character escaping, here we
+/// only translate CRLF to LF and produce errors on bare CR.
+pub(crate) fn unescape_raw_byte_str<F>(literal_text: &str, callback: &mut F)
+where
+    F: FnMut(Range<usize>, Result<char, EscapeError>),
+{
+    let mut byte_offset: usize = 0;
+
+    let mut chars = literal_text.chars().peekable();
+    while let Some(curr) = chars.next() {
+        let result = match (curr, chars.peek()) {
+            ('\r', Some('\n')) => Ok(curr),
+            ('\r', _) => Err(EscapeError::BareCarriageReturn),
+            (c, _) if c > '\x7F' => Err(EscapeError::NonAsciiCharInByteString),
             _ => Ok(curr),
         };
         callback(byte_offset..(byte_offset + curr.len_utf8()), result);

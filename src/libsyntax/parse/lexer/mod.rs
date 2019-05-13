@@ -292,15 +292,6 @@ impl<'a> StringReader<'a> {
         self.sess.span_diagnostic.struct_span_fatal(self.mk_sp(from_pos, to_pos), &m[..])
     }
 
-    /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
-    /// escaped character to the error message
-    fn err_span_char(&self, from_pos: BytePos, to_pos: BytePos, m: &str, c: char) {
-        let mut m = m.to_string();
-        m.push_str(": ");
-        push_escaped_char(&mut m, c);
-        self.err_span_(from_pos, to_pos, &m[..]);
-    }
-
     /// Advance peek_token to refer to the next token, and
     /// possibly update the interner.
     fn advance_token(&mut self) -> Result<(), ()> {
@@ -1070,7 +1061,13 @@ impl<'a> StringReader<'a> {
                         self.validate_byte_str_escape(start_with_quote);
                         (token::ByteStr, symbol)
                     },
-                    Some('r') => self.scan_raw_byte_string(),
+                    Some('r') => {
+                        let (start, end, hash_count) = self.scan_raw_string();
+                        let symbol = self.name_from_to(start, end);
+                        self.validate_raw_byte_str_escape(start, end);
+
+                        (token::ByteStrRaw(hash_count), symbol)
+                    }
                     _ => unreachable!(),  // Should have been a token::Ident above.
                 };
                 let suffix = self.scan_optional_raw_name();
@@ -1300,66 +1297,6 @@ impl<'a> StringReader<'a> {
         (content_start_bpos, content_end_bpos, hash_count)
     }
 
-    fn scan_raw_byte_string(&mut self) -> (token::LitKind, Symbol) {
-        let start_bpos = self.pos;
-        self.bump();
-        let mut hash_count = 0;
-        while self.ch_is('#') {
-            if hash_count == 65535 {
-                let bpos = self.next_pos;
-                self.fatal_span_(start_bpos,
-                                 bpos,
-                                 "too many `#` symbols: raw strings may be \
-                                 delimited by up to 65535 `#` symbols").raise();
-            }
-            self.bump();
-            hash_count += 1;
-        }
-
-        if self.is_eof() {
-            self.fail_unterminated_raw_string(start_bpos, hash_count);
-        } else if !self.ch_is('"') {
-            let last_bpos = self.pos;
-            let curr_char = self.ch.unwrap();
-            self.fatal_span_char(start_bpos,
-                                        pos,
-                                        "found invalid character; only `#` is allowed in raw \
-                                         string delimitation",
-                                        ch).raise();
-        }
-        self.bump();
-        let content_start_bpos = self.pos;
-        let mut content_end_bpos;
-        'outer: loop {
-            match self.ch {
-                None => {
-                    self.fail_unterminated_raw_string(start_bpos, hash_count);
-                }
-                Some('"') => {
-                    content_end_bpos = self.pos;
-                    for _ in 0..hash_count {
-                        self.bump();
-                        if !self.ch_is('#') {
-                            continue 'outer;
-                        }
-                    }
-                    break;
-                }
-                Some(c) => {
-                    if c > '\x7F' {
-                        let pos = self.pos;
-                        self.err_span_char(pos, pos, "raw byte string must be ASCII", c);
-                    }
-                }
-            }
-            self.bump();
-        }
-
-        self.bump();
-
-        (token::ByteStrRaw(hash_count), self.name_from_to(content_start_bpos, content_end_bpos))
-    }
-
     fn validate_char_escape(&self, start_with_quote: BytePos) {
         self.with_str_from_to(start_with_quote + BytePos(1), self.pos - BytePos(1), |lit| {
             if let Err((off, err)) = unescape::unescape_char(lit) {
@@ -1416,6 +1353,23 @@ impl<'a> StringReader<'a> {
                         lit,
                         self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
                         unescape::Mode::Str,
+                        range,
+                        err,
+                    )
+                }
+            })
+        });
+    }
+
+    fn validate_raw_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
+        self.with_str_from_to(content_start, content_end, |lit: &str| {
+            unescape::unescape_raw_byte_str(lit, &mut |range, c| {
+                if let Err(err) = c {
+                    emit_unescape_error(
+                        &self.sess.span_diagnostic,
+                        lit,
+                        self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
+                        unescape::Mode::ByteStr,
                         range,
                         err,
                     )
