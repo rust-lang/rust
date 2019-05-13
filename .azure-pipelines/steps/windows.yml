@@ -134,7 +134,7 @@ steps:
 - template: show-environment-variables.yml
 
 - script: |
-    REM echo force the specific VS version https://github.com/johnterickson/rust/issues/8
+    REM echo force the specific VS version
     IF "%VCVARS_BAT%" NEQ "" (
       CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\%VCVARS_BAT%"
     )

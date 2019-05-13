@@ -197,26 +197,24 @@ jobs:
         NO_LLVM_ASSERTIONS: 1
         NO_DEBUG_ASSERTIONS: 1
 
-      # # temp disabled
-      # # https://github.com/johnterickson/rust/issues/18
-      # i686-apple:
-      #   RUST_CHECK_TARGET: check
-      #   RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --set rust.jemalloc
-      #   RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-      #   MACOSX_DEPLOYMENT_TARGET: 10.8
-      #   MACOSX_STD_DEPLOYMENT_TARGET: 10.7
-      #   NO_LLVM_ASSERTIONS: 1
-      #   NO_DEBUG_ASSERTIONS: 1
+      i686-apple:
+        RUST_CHECK_TARGET: check
+        RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --set rust.jemalloc
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.8
+        MACOSX_STD_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
 
-      # dist-i686-apple:
-      #   RUST_CHECK_TARGET: dist
-      #   RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb --set rust.jemalloc
-      #   DEPLOY: 1
-      #   RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-      #   MACOSX_DEPLOYMENT_TARGET: 10.7
-      #   NO_LLVM_ASSERTIONS: 1
-      #   NO_DEBUG_ASSERTIONS: 1
-      #   DIST_REQUIRE_ALL_TOOLS: 1
+      dist-i686-apple:
+        RUST_CHECK_TARGET: dist
+        RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb --set rust.jemalloc
+        DEPLOY: 1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+        MACOSX_DEPLOYMENT_TARGET: 10.7
+        NO_LLVM_ASSERTIONS: 1
+        NO_DEBUG_ASSERTIONS: 1
+        DIST_REQUIRE_ALL_TOOLS: 1
 
 
 
