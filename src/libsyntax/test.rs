@@ -215,7 +215,7 @@ fn mk_reexport_mod(cx: &mut TestCtxt<'_>,
                    tests: Vec<Ident>,
                    tested_submods: Vec<(Ident, Ident)>)
                    -> (P<ast::Item>, Ident) {
-    let super_ = Ident::with_empty_ctxt(keywords::Super.name());
+    let super_ = Ident::with_empty_ctxt(kw::Super);
 
     let items = tests.into_iter().map(|r| {
         cx.ext_cx.item_use_simple(DUMMY_SP, dummy_spanned(ast::VisibilityKind::Public),

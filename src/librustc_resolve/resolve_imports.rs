@@ -707,7 +707,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                 has_errors = true;
 
                 if let SingleImport { source, ref source_bindings, .. } = import.subclass {
-                    if source.name == keywords::SelfLower.name() {
+                    if source.name == kw::SelfLower {
                         // Silence `unresolved import` error if E0429 is already emitted
                         if let Err(Determined) = source_bindings.value_ns.get() {
                             continue;

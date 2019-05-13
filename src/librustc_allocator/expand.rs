@@ -19,7 +19,7 @@ use syntax::{
     mut_visit::{self, MutVisitor},
     parse::ParseSess,
     ptr::P,
-    symbol::{keywords, Symbol, sym}
+    symbol::{kw, sym, Symbol}
 };
 use syntax_pos::Span;
 
@@ -116,8 +116,7 @@ impl MutVisitor for ExpandAllocatorDirectives<'_> {
 
         // We will generate a new submodule. To `use` the static from that module, we need to get
         // the `super::...` path.
-        let super_path =
-            f.cx.path(f.span, vec![Ident::with_empty_ctxt(keywords::Super.name()), f.global]);
+        let super_path = f.cx.path(f.span, vec![Ident::with_empty_ctxt(kw::Super), f.global]);
 
         // Generate the items in the submodule
         let mut items = vec![

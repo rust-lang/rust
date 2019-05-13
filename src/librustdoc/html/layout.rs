@@ -44,7 +44,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
     <meta name=\"generator\" content=\"rustdoc\">\
     <meta name=\"description\" content=\"{description}\">\
-    <meta name=\"keywords\" content=\"{kw}\">\
+    <meta name=\"keywords\" content=\"{keywords}\">\
     <title>{title}</title>\
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}normalize{suffix}.css\">\
     <link rel=\"stylesheet\" type=\"text/css\" href=\"{static_root_path}rustdoc{suffix}.css\" \

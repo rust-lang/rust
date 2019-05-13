@@ -951,6 +951,11 @@ impl Symbol {
     fn is_unused_keyword_2018(self) -> bool {
         self >= kw::Async && self <= kw::Try
     }
+
+    /// Used for sanity checking rustdoc keyword sections.
+    pub fn is_doc_keyword(self) -> bool {
+        self <= kw::Union
+    }
 }
 
 impl Ident {

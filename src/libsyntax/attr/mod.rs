@@ -22,7 +22,7 @@ use crate::parse::parser::Parser;
 use crate::parse::{self, ParseSess, PResult};
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
-use crate::symbol::{kw, sym, Symbol};
+use crate::symbol::{sym, Symbol};
 use crate::ThinVec;
 use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use crate::GLOBALS;
@@ -206,7 +206,7 @@ impl MetaItem {
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
-        self.ident().unwrap_or(Ident.invalid()).name
+        self.ident().unwrap_or(Ident::invalid()).name
     }
 
     // #[attribute(name = "value")]
