@@ -328,6 +328,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
 // Creates a new module which looks like:
 //
+//      #[doc(hidden)]
 //      mod $gensym {
 //          extern crate proc_macro;
 //
@@ -360,6 +361,10 @@ fn mk_decls(
         edition: hygiene::default_edition(),
     });
     let span = DUMMY_SP.apply_mark(mark);
+
+    let hidden = cx.meta_list_item_word(span, Symbol::intern("hidden"));
+    let doc = cx.meta_list(span, Symbol::intern("doc"), vec![hidden]);
+    let doc_hidden = cx.attribute(span, doc);
 
     let proc_macro = Ident::from_str("proc_macro");
     let krate = cx.item(span,
@@ -425,7 +430,7 @@ fn mk_decls(
         span,
         span,
         ast::Ident::with_empty_ctxt(Symbol::gensym("decls")),
-        vec![],
+        vec![doc_hidden],
         vec![krate, decls_static],
     ).map(|mut i| {
         i.vis = respan(span, ast::VisibilityKind::Public);
