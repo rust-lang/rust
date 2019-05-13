@@ -63,9 +63,7 @@ pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_
 pub use self::util::{
     supertraits, supertrait_def_ids, transitive_bounds, Supertraits, SupertraitDefIds,
 };
-pub use self::util::{
-    expand_trait_aliases, TraitAliasExpander, TraitAliasExpansionInfoDignosticBuilder,
-};
+pub use self::util::{expand_trait_aliases, TraitAliasExpander};
 
 pub use self::chalk_fulfill::{
     CanonicalGoal as ChalkCanonicalGoal,

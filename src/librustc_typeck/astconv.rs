@@ -11,7 +11,7 @@ use crate::lint;
 use crate::middle::resolve_lifetime as rl;
 use crate::namespace::Namespace;
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
-use rustc::traits::{self, TraitAliasExpansionInfoDignosticBuilder};
+use rustc::traits;
 use rustc::ty::{self, DefIdTree, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
@@ -976,6 +976,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         let mut projection_bounds = Vec::new();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
+        // FIXME: we want to avoid collecting into a `Vec` here, but simply cloning the iterator is
+        // not straightforward due to the borrow checker.
         let bound_trait_refs: Vec<_> = trait_bounds
             .iter()
             .rev()
@@ -998,14 +1000,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         if regular_traits.len() > 1 {
             let first_trait = &regular_traits[0];
             let additional_trait = &regular_traits[1];
-            struct_span_err!(tcx.sess, additional_trait.bottom().1, E0225,
+            let mut err = struct_span_err!(tcx.sess, additional_trait.bottom().1, E0225,
                 "only auto traits can be used as additional traits in a trait object"
-            )
-                .label_with_exp_info(additional_trait, "additional non-auto trait",
-                    "additional use")
-                .label_with_exp_info(first_trait, "first non-auto trait",
-                    "first use")
-                .emit();
+            );
+            additional_trait.label_with_exp_info(&mut err,
+                "additional non-auto trait", "additional use");
+            first_trait.label_with_exp_info(&mut err,
+                "first non-auto trait", "first use");
+            err.emit();
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {

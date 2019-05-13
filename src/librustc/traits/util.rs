@@ -132,18 +132,18 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let mut predicates: Vec<_> = predicates.predicates
+                let predicates = predicates.predicates
                     .iter()
-                    .map(|(pred, _)| pred.subst_supertrait(tcx, &data.to_poly_trait_ref()))
-                    .collect();
+                    .map(|(pred, _)| pred.subst_supertrait(tcx, &data.to_poly_trait_ref()));
                 debug!("super_predicates: data={:?} predicates={:?}",
-                       data, predicates);
+                       data, predicates.clone());
 
                 // Only keep those bounds that we haven't already seen.
                 // This is necessary to prevent infinite recursion in some
                 // cases. One common case is when people define
                 // `trait Sized: Sized { }` rather than `trait Sized { }`.
-                predicates.retain(|pred| self.visited.insert(pred));
+                let visited = &mut self.visited;
+                let predicates = predicates.filter(|pred| visited.insert(pred));
 
                 self.stack.extend(predicates);
             }
@@ -298,13 +298,21 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
         }
     }
 
-    fn clone_and_push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
-        let mut path = self.path.clone();
-        path.push((trait_ref, span));
-
-        Self {
-            path
+    /// Adds diagnostic labels to `diag` for the expansion path of a trait through all intermediate
+    /// trait aliases.
+    pub fn label_with_exp_info(&self,
+        diag: &mut DiagnosticBuilder<'_>,
+        top_label: &str,
+        use_desc: &str
+    ) {
+        diag.span_label(self.top().1, top_label);
+        if self.path.len() > 1 {
+            for (_, sp) in self.path.iter().rev().skip(1).take(self.path.len() - 2) {
+                diag.span_label(*sp, format!("referenced here ({})", use_desc));
+            }
         }
+        diag.span_label(self.bottom().1,
+            format!("trait alias used in trait object type ({})", use_desc));
     }
 
     pub fn trait_ref(&self) -> &ty::PolyTraitRef<'tcx> {
@@ -318,33 +326,14 @@ impl<'tcx> TraitAliasExpansionInfo<'tcx> {
     pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
         self.path.first().unwrap()
     }
-}
 
-/// Emits diagnostic information relating to the expansion of a trait via trait aliases
-/// (see [`TraitAliasExpansionInfo`]).
-pub trait TraitAliasExpansionInfoDignosticBuilder {
-    fn label_with_exp_info<'tcx>(&mut self,
-        info: &TraitAliasExpansionInfo<'tcx>,
-        top_label: &str,
-        use_desc: &str
-    ) -> &mut Self;
-}
+    fn clone_and_push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> Self {
+        let mut path = self.path.clone();
+        path.push((trait_ref, span));
 
-impl<'a> TraitAliasExpansionInfoDignosticBuilder for DiagnosticBuilder<'a> {
-    fn label_with_exp_info<'tcx>(&mut self,
-        info: &TraitAliasExpansionInfo<'tcx>,
-        top_label: &str,
-        use_desc: &str
-    ) -> &mut Self {
-        self.span_label(info.top().1, top_label);
-        if info.path.len() > 1 {
-            for (_, sp) in info.path.iter().rev().skip(1).take(info.path.len() - 2) {
-                self.span_label(*sp, format!("referenced here ({})", use_desc));
-            }
+        Self {
+            path
         }
-        self.span_label(info.bottom().1,
-            format!("trait alias used in trait object type ({})", use_desc));
-        self
     }
 }
 
@@ -388,16 +377,15 @@ impl<'cx, 'gcx, 'tcx> TraitAliasExpander<'cx, 'gcx, 'tcx> {
         // Get components of trait alias.
         let predicates = tcx.super_predicates_of(trait_ref.def_id());
 
-        let items: Vec<_> = predicates.predicates
+        let items = predicates.predicates
             .iter()
             .rev()
             .filter_map(|(pred, span)| {
                 pred.subst_supertrait(tcx, &trait_ref)
                     .to_opt_poly_trait_ref()
                     .map(|trait_ref| item.clone_and_push(trait_ref, *span))
-            })
-            .collect();
-        debug!("expand_trait_aliases: items={:?}", items);
+            });
+        debug!("expand_trait_aliases: items={:?}", items.clone());
 
         self.stack.extend(items);
 
