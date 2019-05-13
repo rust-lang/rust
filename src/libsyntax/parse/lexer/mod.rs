@@ -62,10 +62,6 @@ pub struct StringReader<'a> {
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.source_file.src.as_ref().unwrap()` all the time.
     src: Lrc<String>,
-    token: token::Token,
-    span: Span,
-    /// The raw source span which *does not* take `override_span` into account
-    span_src_raw: Span,
     override_span: Option<Span>,
 }
 
@@ -113,8 +109,6 @@ impl<'a> StringReader<'a> {
             sp: self.peek_span,
         };
         self.advance_token()?;
-        self.span_src_raw = self.peek_span_src_raw;
-
         Ok(ret_val)
     }
 
@@ -150,9 +144,6 @@ impl<'a> StringReader<'a> {
                 _ => break,
             }
         }
-
-        self.token = t.tok.clone();
-        self.span = t.sp;
 
         Ok(t)
     }
@@ -243,9 +234,6 @@ impl<'a> StringReader<'a> {
             peek_span_src_raw: syntax_pos::DUMMY_SP,
             src,
             fatal_errs: Vec::new(),
-            token: token::Eof,
-            span: syntax_pos::DUMMY_SP,
-            span_src_raw: syntax_pos::DUMMY_SP,
             override_span,
         }
     }
