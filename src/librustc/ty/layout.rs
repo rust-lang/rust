@@ -249,7 +249,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             Prefixed(Size, Align),
         }
 
-        let univariant_uninterned = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
+        let univariant_uninterned = |fields: &[TyLayout<'_>],
+                                     repr: &ReprOptions,
+                                     kind|
+         -> Result<_, LayoutError<'tcx>> {
             let packed = repr.packed();
             if packed && repr.align > 0 {
                 bug!("struct cannot be packed and aligned");
@@ -458,9 +461,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 size
             })
         };
-        let univariant = |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| {
-            Ok(tcx.intern_layout(univariant_uninterned(fields, repr, kind)?))
-        };
+        let univariant =
+            |fields: &[TyLayout<'_>], repr: &ReprOptions, kind| -> Result<_, LayoutError<'tcx>> {
+                Ok(tcx.intern_layout(univariant_uninterned(fields, repr, kind)?))
+            };
         debug_assert!(!ty.has_infer_types());
 
         Ok(match ty.sty {
@@ -635,7 +639,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     align = align.max(variant.align);
 
                     Ok(variant)
-                }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+                }).collect::<Result<IndexVec<VariantIdx, _>, LayoutError<'tcx>>>()?;
 
                 let abi = if prefix.abi.is_uninhabited() ||
                              variants.iter().all(|v| v.abi.is_uninhabited()) {
@@ -933,7 +937,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 align = align.max(st.align);
 
                                 Ok(st)
-                            }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+                            }).collect::<Result<IndexVec<VariantIdx, _>, LayoutError<'tcx>>>()?;
 
                             let offset = st[i].fields.offset(field_index) + niche.offset;
                             let size = st[i].size;
@@ -1048,7 +1052,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     size = cmp::max(size, st.size);
                     align = align.max(st.align);
                     Ok(st)
-                }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
+                }).collect::<Result<IndexVec<VariantIdx, _>, LayoutError<'tcx>>>()?;
 
                 // Align the maximum variant size to the largest alignment.
                 size = size.align_to(align.abi);

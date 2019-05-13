@@ -139,10 +139,10 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
 
             // If one side is known, prefer that one.
             (ConstVariableValue::Known { .. }, ConstVariableValue::Unknown { .. }) => {
-                Ok(value1.val)
+                value1.val
             }
             (ConstVariableValue::Unknown { .. }, ConstVariableValue::Known { .. }) => {
-                Ok(value2.val)
+                value2.val
             }
 
             // If both sides are *unknown*, it hardly matters, does it?
@@ -154,9 +154,9 @@ impl<'tcx> UnifyValue for ConstVarValue<'tcx> {
                 // universe is the minimum of the two universes, because that is
                 // the one which contains the fewest names in scope.
                 let universe = cmp::min(universe1, universe2);
-                Ok(ConstVariableValue::Unknown { universe })
+                ConstVariableValue::Unknown { universe }
             }
-        }?;
+        };
 
         Ok(ConstVarValue {
             origin: ConstVariableOrigin::ConstInference(DUMMY_SP),

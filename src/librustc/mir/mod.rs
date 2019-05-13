@@ -2543,7 +2543,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         let variant_def = &adt_def.variants[variant];
 
                         let f = &mut *fmt;
-                        ty::tls::with(|tcx| {
+                        ty::tls::with(|tcx| -> fmt::Result {
                             let substs = tcx.lift(&substs).expect("could not lift for printing");
                             FmtPrinter::new(tcx, f, Namespace::ValueNS)
                                 .print_def_path(variant_def.def_id, substs)?;

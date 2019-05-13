@@ -171,7 +171,7 @@ impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "DefId({}:{}", self.krate, self.index.as_array_index())?;
 
-        ty::tls::with_opt(|opt_tcx| {
+        ty::tls::with_opt(|opt_tcx| -> fmt::Result {
             if let Some(tcx) = opt_tcx {
                 write!(f, " ~ {}", tcx.def_path_debug_str(*self))?;
             }

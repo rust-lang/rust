@@ -201,7 +201,7 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
             }?;
             Ok((predicate, Decodable::decode(decoder)?))
         })
-        .collect::<Result<Vec<_>, _>>()?,
+        .collect::<Result<Vec<_>, D::Error>>()?,
     })
 }
 

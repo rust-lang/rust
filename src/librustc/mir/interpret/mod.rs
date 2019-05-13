@@ -159,7 +159,7 @@ impl<'s> AllocDecodingSession<'s> {
 
         // Decode the AllocDiscriminant now so that we know if we have to reserve an
         // AllocId.
-        let (alloc_kind, pos) = decoder.with_position(pos, |decoder| {
+        let (alloc_kind, pos) = decoder.with_position(pos, |decoder| -> Result<_, D::Error> {
             let alloc_kind = AllocDiscriminant::decode(decoder)?;
             Ok((alloc_kind, decoder.position()))
         })?;
@@ -217,7 +217,7 @@ impl<'s> AllocDecodingSession<'s> {
         };
 
         // Now decode the actual data
-        let alloc_id = decoder.with_position(pos, |decoder| {
+        let alloc_id = decoder.with_position(pos, |decoder| -> Result<_, D::Error> {
             match alloc_kind {
                 AllocDiscriminant::Alloc => {
                     let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;

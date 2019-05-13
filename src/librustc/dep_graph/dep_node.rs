@@ -370,7 +370,7 @@ impl fmt::Debug for DepNode {
 
         write!(f, "(")?;
 
-        crate::ty::tls::with_opt(|opt_tcx| {
+        crate::ty::tls::with_opt(|opt_tcx| -> fmt::Result {
             if let Some(tcx) = opt_tcx {
                 if let Some(def_id) = self.extract_def_id(tcx) {
                     write!(f, "{}", tcx.def_path_debug_str(def_id))?;

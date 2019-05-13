@@ -202,7 +202,7 @@ impl<'sess> OnDiskCache<'sess> {
             // Encode query results
             let mut query_result_index = EncodedQueryResultIndex::new();
 
-            time(tcx.sess, "encode query results", || {
+            time(tcx.sess, "encode query results", || -> Result<_, E::Error> {
                 use crate::ty::query::queries::*;
                 let enc = &mut encoder;
                 let qri = &mut query_result_index;
@@ -260,7 +260,7 @@ impl<'sess> OnDiskCache<'sess> {
 
                 Ok((dep_node_index, pos))
             })
-            .collect::<Result<_, _>>()?;
+            .collect::<Result<_, E::Error>>()?;
 
             let interpret_alloc_index = {
                 let mut interpret_alloc_index = Vec::new();
