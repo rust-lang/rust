@@ -700,22 +700,64 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             }
                     }
 
-                    // We can only call poly_project_and_unify_type when our predicate's
-                    // Ty contains an inference variable - otherwise, there won't be anything to
-                    // unify
-                    if p.ty().skip_binder().has_infer_types() {
-                        debug!("Projecting and unifying projection predicate {:?}",
-                               predicate);
-                        match poly_project_and_unify_type(select, &obligation.with(p)) {
-                            Err(e) => {
-                                debug!(
-                                    "evaluate_nested_obligations: Unable to unify predicate \
-                                     '{:?}' '{:?}', bailing out",
-                                    ty, e
-                                );
-                                return false;
-                            }
-                            Ok(Some(v)) => {
+                    // There are three possible cases when we project a predicate:
+                    //
+                    // 1. We encounter an error. This means that it's impossible for
+                    // our current type to implement the auto trait - there's bound
+                    // that we could add to our ParamEnv that would 'fix' this kind
+                    // of error, as it's not caused by an unimplemented type.
+                    //
+                    // 2. We succesfully project the predicate (Ok(Some(_))), generating
+                    //  some subobligations. We then process these subobligations
+                    //  like any other generated sub-obligations.
+                    //
+                    // 3. We receieve an 'ambiguous' result (Ok(None))
+                    // If we were actually trying to compile a crate,
+                    // we would need to re-process this obligation later.
+                    // However, all we care about is finding out what bounds
+                    // are needed for our type to implement a particular auto trait.
+                    // We've already added this obligation to our computed ParamEnv
+                    // above (if it was necessary). Therefore, we don't need
+                    // to do any further processing of the obligation.
+                    //
+                    // Note that we *must* try to project *all* projection predicates
+                    // we encounter, even ones without inference variable.
+                    // This ensures that we detect any projection errors,
+                    // which indicate that our type can *never* implement the given
+                    // auto trait. In that case, we will generate an explicit negative
+                    // impl (e.g. 'impl !Send for MyType'). However, we don't
+                    // try to process any of the generated subobligations -
+                    // they contain no new information, since we already know
+                    // that our type implements the projected-through trait,
+                    // and can lead to weird region issues.
+                    //
+                    // Normally, we'll generate a negative impl as a result of encountering
+                    // a type with an explicit negative impl of an auto trait
+                    // (for example, raw pointers have !Send and !Sync impls)
+                    // However, through some **interesting** manipulations of the type
+                    // system, it's actually possible to write a type that never
+                    // implements an auto trait due to a projection error, not a normal
+                    // negative impl error. To properly handle this case, we need
+                    // to ensure that we catch any potential projection errors,
+                    // and turn them into an explicit negative impl for our type.
+                    debug!("Projecting and unifying projection predicate {:?}",
+                           predicate);
+
+                    match poly_project_and_unify_type(select, &obligation.with(p)) {
+                        Err(e) => {
+                            debug!(
+                                "evaluate_nested_obligations: Unable to unify predicate \
+                                 '{:?}' '{:?}', bailing out",
+                                ty, e
+                            );
+                            return false;
+                        }
+                        Ok(Some(v)) => {
+                            // We only care about sub-obligations
+                            // when we started out trying to unify
+                            // some inference variables. See the comment above
+                            // for more infomration
+                            if p.ty().skip_binder().has_infer_types() {
                                 if !self.evaluate_nested_obligations(
                                     ty,
                                     v.clone().iter().cloned(),
@@ -728,7 +770,16 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                     return false;
                                 }
                             }
-                            Ok(None) => {
+                        }
+                        Ok(None) => {
+                            // It's ok not to make progress when hvave no inference variables -
+                            // in that case, we were only performing unifcation to check if an
+                            // error occured (which would indicate that it's impossible for our
+                            // type to implement the auto trait).
+                            // However, we should always make progress (either by generating
+                            // subobligations or getting an error) when we started off with
+                            // inference variables
+                            if p.ty().skip_binder().has_infer_types() {
                                 panic!("Unexpected result when selecting {:?} {:?}", ty, obligation)
                             }
                         }
