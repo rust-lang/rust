@@ -1,3 +1,4 @@
+#[macro_use]
 mod generated;
 
 use std::fmt;

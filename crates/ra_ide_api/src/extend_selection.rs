@@ -4,6 +4,7 @@ use ra_syntax::{
     algo::{find_covering_element, find_token_at_offset, TokenAtOffset},
     SyntaxKind::*, SyntaxToken,
     ast::{self, AstNode, AstToken},
+    T
 };
 
 use crate::{FileRange, db::RootDatabase};
@@ -135,7 +136,7 @@ fn pick_best<'a>(l: SyntaxToken<'a>, r: SyntaxToken<'a>) -> SyntaxToken<'a> {
     fn priority(n: SyntaxToken) -> usize {
         match n.kind() {
             WHITESPACE => 0,
-            IDENT | SELF_KW | SUPER_KW | CRATE_KW | LIFETIME => 2,
+            IDENT | T![self] | T![super] | T![crate] | LIFETIME => 2,
             _ => 1,
         }
     }

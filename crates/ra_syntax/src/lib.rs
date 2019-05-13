@@ -33,6 +33,7 @@ pub mod fuzz;
 
 pub use rowan::{SmolStr, TextRange, TextUnit};
 pub use ra_parser::SyntaxKind;
+pub use ra_parser::T;
 pub use crate::{
     ast::AstNode,
     syntax_error::{SyntaxError, SyntaxErrorKind, Location},
