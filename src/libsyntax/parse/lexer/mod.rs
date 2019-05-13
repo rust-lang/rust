@@ -1086,82 +1086,10 @@ impl<'a> StringReader<'a> {
                 Ok(TokenKind::lit(token::Str, symbol, suffix))
             }
             'r' => {
-                let start_bpos = self.pos;
-                self.bump();
-                let mut hash_count: u16 = 0;
-                while self.ch_is('#') {
-                    if hash_count == 65535 {
-                        let bpos = self.next_pos;
-                        self.fatal_span_(start_bpos,
-                                         bpos,
-                                         "too many `#` symbols: raw strings may be \
-                                         delimited by up to 65535 `#` symbols").raise();
-                    }
-                    self.bump();
-                    hash_count += 1;
-                }
-
-                if self.is_eof() {
-                    self.fail_unterminated_raw_string(start_bpos, hash_count);
-                } else if !self.ch_is('"') {
-                    let last_bpos = self.pos;
-                    let curr_char = self.ch.unwrap();
-                    self.fatal_span_char(start_bpos,
-                                         last_bpos,
-                                         "found invalid character; only `#` is allowed \
-                                         in raw string delimitation",
-                                         curr_char).raise();
-                }
-                self.bump();
-                let content_start_bpos = self.pos;
-                let mut content_end_bpos;
-                let mut valid = true;
-                'outer: loop {
-                    if self.is_eof() {
-                        self.fail_unterminated_raw_string(start_bpos, hash_count);
-                    }
-                    // if self.ch_is('"') {
-                    // content_end_bpos = self.pos;
-                    // for _ in 0..hash_count {
-                    // self.bump();
-                    // if !self.ch_is('#') {
-                    // continue 'outer;
-                    let c = self.ch.unwrap();
-                    match c {
-                        '"' => {
-                            content_end_bpos = self.pos;
-                            for _ in 0..hash_count {
-                                self.bump();
-                                if !self.ch_is('#') {
-                                    continue 'outer;
-                                }
-                            }
-                            break;
-                        }
-                        '\r' => {
-                            if !self.nextch_is('\n') {
-                                let last_bpos = self.pos;
-                                self.err_span_(start_bpos,
-                                               last_bpos,
-                                               "bare CR not allowed in raw string, use \\r \
-                                                instead");
-                                valid = false;
-                            }
-                        }
-                        _ => (),
-                    }
-                    self.bump();
-                }
-
-                self.bump();
-                let symbol = if valid {
-                    self.name_from_to(content_start_bpos, content_end_bpos)
-                } else {
-                    Symbol::intern("??")
-                };
+                let (kind, symbol) = self.scan_raw_string();
                 let suffix = self.scan_optional_raw_name();
 
-                Ok(TokenKind::lit(token::StrRaw(hash_count), symbol, suffix))
+                Ok(TokenKind::lit(kind, symbol, suffix))
             }
             '-' => {
                 if self.nextch_is('>') {
@@ -1315,16 +1243,16 @@ impl<'a> StringReader<'a> {
         id
     }
 
-    fn scan_raw_byte_string(&mut self) -> (token::LitKind, Symbol) {
+    fn scan_raw_string(&mut self) -> (token::LitKind, Symbol) {
         let start_bpos = self.pos;
         self.bump();
-        let mut hash_count = 0;
+        let mut hash_count: u16 = 0;
         while self.ch_is('#') {
             if hash_count == 65535 {
                 let bpos = self.next_pos;
                 self.fatal_span_(start_bpos,
                                  bpos,
-                                 "too many `#` symbols: raw byte strings may be \
+                                 "too many `#` symbols: raw strings may be \
                                  delimited by up to 65535 `#` symbols").raise();
             }
             self.bump();
@@ -1334,8 +1262,85 @@ impl<'a> StringReader<'a> {
         if self.is_eof() {
             self.fail_unterminated_raw_string(start_bpos, hash_count);
         } else if !self.ch_is('"') {
-            let pos = self.pos;
-            let ch = self.ch.unwrap();
+            let last_bpos = self.pos;
+            let curr_char = self.ch.unwrap();
+            self.fatal_span_char(start_bpos,
+                                 last_bpos,
+                                 "found invalid character; only `#` is allowed \
+                                 in raw string delimitation",
+                                 curr_char).raise();
+        }
+        self.bump();
+        let content_start_bpos = self.pos;
+        let mut content_end_bpos;
+        let mut valid = true;
+        'outer: loop {
+            // if self.ch_is('"') {
+            // content_end_bpos = self.pos;
+            // for _ in 0..hash_count {
+            // self.bump();
+            // if !self.ch_is('#') {
+            // continue 'outer;
+            match self.ch {
+                None => {
+                    self.fail_unterminated_raw_string(start_bpos, hash_count);
+                }
+                Some('"') => {
+                    content_end_bpos = self.pos;
+                    for _ in 0..hash_count {
+                        self.bump();
+                        if !self.ch_is('#') {
+                            continue 'outer;
+                        }
+                    }
+                    break;
+                }
+                Some(c) => {
+                    if c == '\r' && !self.nextch_is('\n') {
+                        let last_bpos = self.pos;
+                        self.err_span_(start_bpos,
+                                        last_bpos,
+                                        "bare CR not allowed in raw string, use \\r \
+                                        instead");
+                        valid = false;
+                    }
+                }
+            }
+            self.bump();
+        }
+
+        self.bump();
+
+        let symbol = if valid {
+            self.name_from_to(content_start_bpos, content_end_bpos)
+        } else {
+            Symbol::intern("??")
+        };
+
+        (token::StrRaw(hash_count), symbol)
+    }
+
+    fn scan_raw_byte_string(&mut self) -> (token::LitKind, Symbol) {
+        let start_bpos = self.pos;
+        self.bump();
+        let mut hash_count = 0;
+        while self.ch_is('#') {
+            if hash_count == 65535 {
+                let bpos = self.next_pos;
+                self.fatal_span_(start_bpos,
+                                 bpos,
+                                 "too many `#` symbols: raw strings may be \
+                                 delimited by up to 65535 `#` symbols").raise();
+            }
+            self.bump();
+            hash_count += 1;
+        }
+
+        if self.is_eof() {
+            self.fail_unterminated_raw_string(start_bpos, hash_count);
+        } else if !self.ch_is('"') {
+            let last_bpos = self.pos;
+            let curr_char = self.ch.unwrap();
             self.fatal_span_char(start_bpos,
                                         pos,
                                         "found invalid character; only `#` is allowed in raw \
