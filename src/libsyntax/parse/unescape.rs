@@ -1,4 +1,4 @@
-//! Utilities for validating  string and char literals and turning them into
+//! Utilities for validating string and char literals and turning them into
 //! values they represent.
 
 use std::str::Chars;

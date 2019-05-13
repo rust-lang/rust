@@ -130,7 +130,7 @@ impl<'a> StringReader<'a> {
         self.ch.is_none()
     }
 
-    fn fail_unterminated_raw_string(&self, pos: BytePos, hash_count: u16) {
+    fn fail_unterminated_raw_string(&self, pos: BytePos, hash_count: u16) -> ! {
         let mut err = self.struct_span_fatal(pos, pos, "unterminated raw string");
         err.span_label(self.mk_sp(pos, pos), "unterminated raw string");
 
