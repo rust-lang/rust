@@ -830,14 +830,11 @@ where
 
                 if let Some(def) = self.resolver.resolve_macro_call(path) {
                     let call_id = MacroCallLoc { def, ast_id }.id(self.db);
-                    if let Some(tt) = self.db.macro_expand(call_id).ok() {
-                        if let Some(expr) = mbe::token_tree_to_expr(&tt).ok() {
+                    let file_id = call_id.as_file(MacroFileKind::Expr);
+                    if let Some(node) = self.db.parse_or_expand(file_id) {
+                        if let Some(expr) = ast::Expr::cast(&*node) {
                             log::debug!("macro expansion {}", expr.syntax().debug_dump());
-                            let old_file_id = std::mem::replace(
-                                &mut self.current_file_id,
-                                //BUG
-                                call_id.as_file(MacroFileKind::Items),
-                            );
+                            let old_file_id = std::mem::replace(&mut self.current_file_id, file_id);
                             let id = self.collect_expr(&expr);
                             self.current_file_id = old_file_id;
                             return id;

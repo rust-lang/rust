@@ -81,6 +81,9 @@ impl HirFileId {
                     MacroFileKind::Items => {
                         Some(mbe::token_tree_to_ast_item_list(&tt).syntax().to_owned())
                     }
+                    MacroFileKind::Expr => {
+                        mbe::token_tree_to_expr(&tt).ok().map(|it| it.syntax().to_owned())
+                    }
                 }
             }
         }
@@ -102,6 +105,7 @@ struct MacroFile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) enum MacroFileKind {
     Items,
+    Expr,
 }
 
 impl From<FileId> for HirFileId {
