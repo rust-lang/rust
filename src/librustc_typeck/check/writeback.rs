@@ -466,6 +466,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let hir_id = self.tcx().hir().as_local_hir_id(def_id).unwrap();
             let instantiated_ty = self.resolve(&opaque_defn.concrete_ty, &hir_id);
 
+            debug_assert!(!instantiated_ty.has_escaping_bound_vars());
+
             let generics = self.tcx().generics_of(def_id);
 
             let definition_ty = if generics.parent.is_some() {
@@ -524,8 +526,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     },
                     lt_op: |region| {
                         match region {
-                            // ignore static regions
-                            ty::ReStatic => region,
+                            // Skip static and bound regions: they don't
+                            // require substitution.
+                            ty::ReStatic | ty::ReLateBound(..) => region,
                             _ => {
                                 trace!("checking {:?}", region);
                                 for (subst, p) in opaque_defn.substs.iter().zip(&generics.params) {
