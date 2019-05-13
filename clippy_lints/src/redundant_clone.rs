@@ -1,6 +1,6 @@
 use crate::utils::{
     has_drop, in_macro_or_desugar, is_copy, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
-    walk_ptrs_ty_depth,
+    walk_ptrs_ty_depth, match_def_path,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -94,13 +94,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 
             let (fn_def_id, arg, arg_ty, _) = unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
 
-            let from_borrow = cx.match_def_path(fn_def_id, &paths::CLONE_TRAIT_METHOD)
-                || cx.match_def_path(fn_def_id, &paths::TO_OWNED_METHOD)
-                || (cx.match_def_path(fn_def_id, &paths::TO_STRING_METHOD) && match_type(cx, arg_ty, &paths::STRING));
+            let from_borrow = match_def_path(cx, fn_def_id, &*paths::CLONE_TRAIT_METHOD)
+                || match_def_path(cx, fn_def_id, &*paths::TO_OWNED_METHOD)
+                || (match_def_path(cx, fn_def_id, &*paths::TO_STRING_METHOD) && match_type(cx, arg_ty, &*paths::STRING));
 
             let from_deref = !from_borrow
-                && (cx.match_def_path(fn_def_id, &paths::PATH_TO_PATH_BUF)
-                    || cx.match_def_path(fn_def_id, &paths::OS_STR_TO_OS_STRING));
+                && (match_def_path(cx, fn_def_id, &*paths::PATH_TO_PATH_BUF)
+                    || match_def_path(cx, fn_def_id, &*paths::OS_STR_TO_OS_STRING));
 
             if !from_borrow && !from_deref {
                 continue;
@@ -133,9 +133,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, Some(res))) =
                         is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
                     if *res == mir::Place::Base(mir::PlaceBase::Local(cloned));
-                    if cx.match_def_path(pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
-                    if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
-                        || match_type(cx, pred_arg_ty, &paths::OS_STRING);
+                    if match_def_path(cx, pred_fn_def_id, &*paths::DEREF_TRAIT_METHOD);
+                    if match_type(cx, pred_arg_ty, &*paths::PATH_BUF)
+                        || match_type(cx, pred_arg_ty, &*paths::OS_STRING);
                     then {
                         pred_arg
                     } else {

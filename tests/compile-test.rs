@@ -125,7 +125,7 @@ fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDesc
                 base: config.src_base.clone(),
                 relative_dir: dir_path.file_name().unwrap().into(),
             };
-            let test_name = compiletest::make_test_name(&config, &paths);
+            let test_name = compiletest::make_test_name(&config, &*paths);
             let index = tests
                 .iter()
                 .position(|test| test.desc.name == test_name)

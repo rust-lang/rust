@@ -2,6 +2,7 @@
 
 use crate::utils::span_lint_and_then;
 use crate::utils::sugg::DiagnosticBuilderExt;
+use crate::utils::sym;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -40,7 +41,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for InlineFnWithoutBody {
 
 fn check_attrs(cx: &LateContext<'_, '_>, name: Name, attrs: &[Attribute]) {
     for attr in attrs {
-        if !attr.check_name("inline") {
+        if !attr.check_name(*sym::inline) {
             continue;
         }
 

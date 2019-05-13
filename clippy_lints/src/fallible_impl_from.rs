@@ -1,11 +1,13 @@
 use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
-use crate::utils::{is_expn_of, method_chain_args, span_lint_and_then, walk_ptrs_ty};
+use crate::utils::{is_expn_of, method_chain_args, span_lint_and_then, walk_ptrs_ty, match_def_path};
+use crate::utils::sym;
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty::{self, Ty};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax_pos::Span;
+use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
@@ -37,7 +39,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
         if_chain! {
             if let hir::ItemKind::Impl(.., ref impl_items) = item.node;
             if let Some(impl_trait_ref) = cx.tcx.impl_trait_ref(impl_def_id);
-            if cx.match_def_path(impl_trait_ref.def_id, &FROM_TRAIT);
+            if match_def_path(cx, impl_trait_ref.def_id, &*FROM_TRAIT);
             then {
                 lint_impl_body(cx, item.span, impl_items);
             }
@@ -62,18 +64,18 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
                 if let ExprKind::Call(ref func_expr, _) = expr.node;
                 if let ExprKind::Path(QPath::Resolved(_, ref path)) = func_expr.node;
                 if let Some(path_def_id) = path.res.opt_def_id();
-                if self.lcx.match_def_path(path_def_id, &BEGIN_PANIC) ||
-                    self.lcx.match_def_path(path_def_id, &BEGIN_PANIC_FMT);
-                if is_expn_of(expr.span, "unreachable").is_none();
+                if match_def_path(self.lcx, path_def_id, &*BEGIN_PANIC) ||
+                    match_def_path(self.lcx, path_def_id, &*BEGIN_PANIC_FMT);
+                if is_expn_of(expr.span, *sym::unreachable).is_none();
                 then {
                     self.result.push(expr.span);
                 }
             }
 
             // check for `unwrap`
-            if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
+            if let Some(arglists) = method_chain_args(expr, &[*sym::unwrap]) {
                 let reciever_ty = walk_ptrs_ty(self.tables.expr_ty(&arglists[0][0]));
-                if match_type(self.lcx, reciever_ty, &OPTION) || match_type(self.lcx, reciever_ty, &RESULT) {
+                if match_type(self.lcx, reciever_ty, &*OPTION) || match_type(self.lcx, reciever_ty, &*RESULT) {
                     self.result.push(expr.span);
                 }
             }
@@ -89,7 +91,7 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
 
     for impl_item in impl_items {
         if_chain! {
-            if impl_item.ident.name == "from";
+            if impl_item.ident.name == *sym::from;
             if let ImplItemKind::Method(_, body_id) =
                 cx.tcx.hir().impl_item(impl_item.id).node;
             then {
@@ -122,9 +124,9 @@ fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_it
     }
 }
 
-fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[&str]) -> bool {
+fn match_type(cx: &LateContext<'_, '_>, ty: Ty<'_>, path: &[Symbol]) -> bool {
     match ty.sty {
-        ty::Adt(adt, _) => cx.match_def_path(adt.did, path),
+        ty::Adt(adt, _) => match_def_path(cx, adt.did, path),
         _ => false,
     }
 }

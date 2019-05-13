@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Mutex {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         let ty = cx.tables.expr_ty(expr);
         if let ty::Adt(_, subst) = ty.sty {
-            if match_type(cx, ty, &paths::MUTEX) {
+            if match_type(cx, ty, &*paths::MUTEX) {
                 let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!(

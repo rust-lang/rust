@@ -58,7 +58,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                 let ty = cx.tables.expr_ty(left);
 
                 let implements_ord = {
-                    if let Some(id) = utils::get_trait_def_id(cx, &paths::ORD) {
+                    if let Some(id) = utils::get_trait_def_id(cx, &*paths::ORD) {
                         utils::implements_trait(cx, ty, id, &[])
                     } else {
                         return;
@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NoNegCompOpForPartialOrd {
                 };
 
                 let implements_partial_ord = {
-                    if let Some(id) = utils::get_trait_def_id(cx, &paths::PARTIAL_ORD) {
+                    if let Some(id) = utils::get_trait_def_id(cx, &*paths::PARTIAL_ORD) {
                         utils::implements_trait(cx, ty, id, &[])
                     } else {
                         return;

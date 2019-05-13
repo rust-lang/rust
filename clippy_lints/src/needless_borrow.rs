@@ -3,6 +3,7 @@
 //! This lint is **warn** by default
 
 use crate::utils::{in_macro_or_desugar, snippet_opt, span_lint_and_then};
+use crate::utils::sym;
 use if_chain::if_chain;
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, HirId, Item, MutImmutable, Pat, PatKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -108,7 +109,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
     }
 
     fn check_item(&mut self, _: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if item.attrs.iter().any(|a| a.check_name("automatically_derived")) {
+        if item.attrs.iter().any(|a| a.check_name(*sym::automatically_derived)) {
             debug_assert!(self.derived_item.is_none());
             self.derived_item = Some(item.hir_id);
         }

@@ -1,6 +1,7 @@
 use crate::utils::{
     get_item_name, in_macro_or_desugar, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty,
 };
+use crate::utils::sym;
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -8,8 +9,9 @@ use rustc::ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use syntax::ast::{Lit, LitKind, Name};
+use syntax::ast::{LitKind, Name};
 use syntax::source_map::{Span, Spanned};
+use syntax::symbol::Symbol;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for getting the length of something via `.len()`
@@ -118,7 +120,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 }
 
 fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items: &[TraitItemRef]) {
-    fn is_named_self(cx: &LateContext<'_, '_>, item: &TraitItemRef, name: &str) -> bool {
+    fn is_named_self(cx: &LateContext<'_, '_>, item: &TraitItemRef, name: Symbol) -> bool {
         item.ident.name == name
             && if let AssociatedItemKind::Method { has_self } = item.kind {
                 has_self && {
@@ -139,7 +141,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
         }
     }
 
-    if cx.access_levels.is_exported(visited_trait.hir_id) && trait_items.iter().any(|i| is_named_self(cx, i, "len")) {
+    if cx.access_levels.is_exported(visited_trait.hir_id) && trait_items.iter().any(|i| is_named_self(cx, i, *sym::len)) {
         let mut current_and_super_traits = FxHashSet::default();
         let visited_trait_def_id = cx.tcx.hir().local_def_id_from_hir_id(visited_trait.hir_id);
         fill_trait_set(visited_trait_def_id, &mut current_and_super_traits, cx);
@@ -150,7 +152,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
             .any(|i| {
                 i.kind == ty::AssociatedKind::Method
                     && i.method_has_self_argument
-                    && i.ident.name == "is_empty"
+                    && i.ident.name == *sym::is_empty
                     && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
 
@@ -169,7 +171,7 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
 }
 
 fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplItemRef]) {
-    fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef, name: &str) -> bool {
+    fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef, name: Symbol) -> bool {
         item.ident.name == name
             && if let AssociatedItemKind::Method { has_self } = item.kind {
                 has_self && {
@@ -181,7 +183,7 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplIte
             }
     }
 
-    let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
+    let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, *sym::is_empty)) {
         if cx.access_levels.is_exported(is_empty.id.hir_id) {
             return;
         } else {
@@ -191,7 +193,7 @@ fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplIte
         "no corresponding"
     };
 
-    if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, "len")) {
+    if let Some(i) = impl_items.iter().find(|i| is_named_self(cx, i, *sym::len)) {
         if cx.access_levels.is_exported(i.id.hir_id) {
             let def_id = cx.tcx.hir().local_def_id_from_hir_id(item.hir_id);
             let ty = cx.tcx.type_of(def_id);
@@ -213,7 +215,7 @@ fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr, lit: &Expr, op
     if let (&ExprKind::MethodCall(ref method_path, _, ref args), &ExprKind::Lit(ref lit)) = (&method.node, &lit.node) {
         // check if we are in an is_empty() method
         if let Some(name) = get_item_name(cx, method) {
-            if name == "is_empty" {
+            if name == *sym::is_empty {
                 return;
             }
         }
@@ -237,7 +239,7 @@ fn check_len(
             return;
         }
 
-        if method_name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
+        if method_name == *sym::len && args.len() == 1 && has_is_empty(cx, &args[0]) {
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
@@ -261,7 +263,7 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     /// Gets an `AssociatedItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext<'_, '_>, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
-            if item.ident.name == "is_empty" {
+            if item.ident.name == *sym::is_empty {
                 let sig = cx.tcx.fn_sig(item.def_id);
                 let ty = sig.skip_binder();
                 ty.inputs().len() == 1

@@ -1,5 +1,6 @@
 use crate::utils::{
     in_macro_or_desugar, match_trait_method, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then,
+    match_def_path,
 };
 use crate::utils::{paths, resolve_node};
 use rustc::hir::*;
@@ -55,7 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
             },
 
             ExprKind::MethodCall(ref name, .., ref args) => {
-                if match_trait_method(cx, e, &paths::INTO[..]) && &*name.ident.as_str() == "into" {
+                if match_trait_method(cx, e, &*paths::INTO) && &*name.ident.as_str() == "into" {
                     let a = cx.tables.expr_ty(e);
                     let b = cx.tables.expr_ty(&args[0]);
                     if same_tys(cx, a, b) {
@@ -71,7 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                         });
                     }
                 }
-                if match_trait_method(cx, e, &paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
+                if match_trait_method(cx, e, &*paths::INTO_ITERATOR) && &*name.ident.as_str() == "into_iter" {
                     let a = cx.tables.expr_ty(e);
                     let b = cx.tables.expr_ty(&args[0]);
                     if same_tys(cx, a, b) {
@@ -91,7 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
             ExprKind::Call(ref path, ref args) => {
                 if let ExprKind::Path(ref qpath) = path.node {
                     if let Some(def_id) = resolve_node(cx, qpath, path.hir_id).opt_def_id() {
-                        if cx.match_def_path(def_id, &paths::FROM_FROM[..]) {
+                        if match_def_path(cx, def_id, &*paths::FROM_FROM) {
                             let a = cx.tables.expr_ty(e);
                             let b = cx.tables.expr_ty(&args[0]);
                             if same_tys(cx, a, b) {

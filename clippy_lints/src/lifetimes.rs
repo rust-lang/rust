@@ -476,7 +476,7 @@ struct BodyLifetimeChecker {
 impl<'tcx> Visitor<'tcx> for BodyLifetimeChecker {
     // for lifetimes as parameters of generics
     fn visit_lifetime(&mut self, lifetime: &'tcx Lifetime) {
-        if lifetime.name.ident().name != keywords::Invalid.name() && lifetime.name.ident().name != "'static" {
+        if lifetime.name.ident().name != keywords::Invalid.name() && lifetime.name.ident().name != syntax::symbol::keywords::StaticLifetime.name() {
             self.lifetimes_used_in_body = true;
         }
     }

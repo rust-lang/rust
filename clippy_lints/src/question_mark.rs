@@ -7,8 +7,9 @@ use rustc_errors::Applicability;
 use syntax::ptr::P;
 
 use crate::utils::paths::*;
+use crate::utils::sym;
 use crate::utils::sugg::Sugg;
-use crate::utils::{higher, match_type, span_lint_and_then, SpanlessEq};
+use crate::utils::{higher, match_type, span_lint_and_then, SpanlessEq, match_def_path};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions that could be replaced by the question mark operator.
@@ -50,7 +51,7 @@ impl QuestionMark {
         if_chain! {
             if let Some((if_expr, body, else_)) = higher::if_block(&expr);
             if let ExprKind::MethodCall(segment, _, args) = &if_expr.node;
-            if segment.ident.name == "is_none";
+            if segment.ident.name == *sym::is_none;
             if Self::expression_returns_none(cx, body);
             if let Some(subject) = args.get(0);
             if Self::is_option(cx, subject);
@@ -103,7 +104,7 @@ impl QuestionMark {
     fn is_option(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
         let expr_ty = cx.tables.expr_ty(expression);
 
-        match_type(cx, expr_ty, &OPTION)
+        match_type(cx, expr_ty, &*OPTION)
     }
 
     fn expression_returns_none(cx: &LateContext<'_, '_>, expression: &Expr) -> bool {
@@ -120,7 +121,7 @@ impl QuestionMark {
                 if let Res::Def(DefKind::Ctor(def::CtorOf::Variant, def::CtorKind::Const), def_id) =
                     cx.tables.qpath_res(qp, expression.hir_id)
                 {
-                    return cx.match_def_path(def_id, &OPTION_NONE);
+                    return match_def_path(cx, def_id, &*OPTION_NONE);
                 }
 
                 false

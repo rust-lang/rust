@@ -8,6 +8,7 @@ use syntax::visit::FnKind;
 use syntax_pos::BytePos;
 
 use crate::utils::{in_macro_or_desugar, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
+use crate::utils::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.
@@ -161,7 +162,7 @@ impl Return {
             if let Some(ref initexpr) = local.init;
             if let ast::PatKind::Ident(_, ident, _) = local.pat.node;
             if let ast::ExprKind::Path(_, ref path) = retexpr.node;
-            if match_path_ast(path, &[&ident.as_str()]);
+            if match_path_ast(path, &[ident.name]);
             if !in_external_macro(cx.sess(), initexpr.span);
             then {
                     span_note_and_lint(cx,
@@ -252,7 +253,7 @@ impl EarlyLintPass for Return {
 }
 
 fn attr_is_cfg(attr: &ast::Attribute) -> bool {
-    attr.meta_item_list().is_some() && attr.check_name("cfg")
+    attr.meta_item_list().is_some() && attr.check_name(*sym::cfg)
 }
 
 // get the def site

@@ -1,4 +1,5 @@
 use crate::utils::{in_macro_or_desugar, is_expn_of, snippet_opt, span_lint_and_then};
+use crate::utils::sym;
 use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, MatchSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -95,7 +96,7 @@ impl ImplicitReturn {
             // everything else is missing `return`
             _ => {
                 // make sure it's not just an unreachable expression
-                if is_expn_of(expr.span, "unreachable").is_none() {
+                if is_expn_of(expr.span, *sym::unreachable).is_none() {
                     Self::lint(cx, expr.span, expr.span, "add `return` as shown")
                 }
             },

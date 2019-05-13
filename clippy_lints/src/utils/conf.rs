@@ -3,6 +3,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use lazy_static::lazy_static;
+use crate::utils::sym;
 use std::default::Default;
 use std::io::Read;
 use std::sync::Mutex;
@@ -13,7 +14,7 @@ use toml;
 /// Gets the configuration file from arguments.
 pub fn file_from_args(args: &[ast::NestedMetaItem]) -> Result<Option<path::PathBuf>, (&'static str, source_map::Span)> {
     for arg in args.iter().filter_map(syntax::ast::NestedMetaItem::meta_item) {
-        if arg.check_name("conf_file") {
+        if arg.check_name(*sym::conf_file) {
             return match arg.node {
                 ast::MetaItemKind::Word | ast::MetaItemKind::List(_) => {
                     Err(("`conf_file` must be a named value", arg.span))
