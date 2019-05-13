@@ -86,7 +86,7 @@ pub(crate) fn find_all_refs(
         let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
         let resolved = analyzer.resolve_local_name(name_ref)?;
         if let Either::A(ptr) = resolved.ptr() {
-            if let ast::PatKind::BindPat(binding) = ptr.to_node(source_file).kind() {
+            if let ast::PatKind::BindPat(binding) = ptr.to_node(source_file.syntax()).kind() {
                 return Some((binding, analyzer));
             }
         }

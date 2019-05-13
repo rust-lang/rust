@@ -81,7 +81,7 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         let file = db.parse(file_id);
         let (name, full_range) = match pat {
-            Either::A(pat) => match pat.to_node(&file).kind() {
+            Either::A(pat) => match pat.to_node(file.syntax()).kind() {
                 ast::PatKind::BindPat(pat) => {
                     return NavigationTarget::from_bind_pat(file_id, &pat)
                 }
