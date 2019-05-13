@@ -75,8 +75,11 @@ impl RawItems {
             source_ast_id_map: db.ast_id_map(file_id.into()),
             source_map: ImportSourceMap::default(),
         };
-        let source_file = db.hir_parse(file_id);
-        collector.process_module(None, &*source_file);
+        if let Some(node) = db.parse_or_expand(file_id) {
+            if let Some(source_file) = ast::SourceFile::cast(&node) {
+                collector.process_module(None, &*source_file);
+            }
+        }
         (Arc::new(collector.raw_items), Arc::new(collector.source_map))
     }
 

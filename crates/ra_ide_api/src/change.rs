@@ -222,7 +222,7 @@ impl RootDatabase {
 
         self.query(ra_db::ParseQuery).sweep(sweep);
 
-        self.query(hir::db::HirParseQuery).sweep(sweep);
+        self.query(hir::db::ParseOrExpandQuery).sweep(sweep);
         self.query(hir::db::AstIdMapQuery).sweep(sweep);
         self.query(hir::db::AstIdToNodeQuery).sweep(sweep);
 

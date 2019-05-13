@@ -81,15 +81,19 @@ pub struct ErasedFileAstId(RawId);
 impl_arena_id!(ErasedFileAstId);
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 pub struct AstIdMap {
     arena: Arena<ErasedFileAstId, SyntaxNodePtr>,
 }
 
 impl AstIdMap {
     pub(crate) fn ast_id_map_query(db: &impl DefDatabase, file_id: HirFileId) -> Arc<AstIdMap> {
-        let source_file = db.hir_parse(file_id);
-        Arc::new(AstIdMap::from_source(source_file.syntax()))
+        let map = if let Some(node) = db.parse_or_expand(file_id) {
+            AstIdMap::from_source(&*node)
+        } else {
+            AstIdMap::default()
+        };
+        Arc::new(map)
     }
 
     pub(crate) fn file_item_query(
@@ -97,8 +101,8 @@ impl AstIdMap {
         file_id: HirFileId,
         ast_id: ErasedFileAstId,
     ) -> TreeArc<SyntaxNode> {
-        let source_file = db.hir_parse(file_id);
-        db.ast_id_map(file_id).arena[ast_id].to_node(source_file.syntax()).to_owned()
+        let node = db.parse_or_expand(file_id).unwrap();
+        db.ast_id_map(file_id).arena[ast_id].to_node(&*node).to_owned()
     }
 
     pub(crate) fn ast_id<N: AstNode>(&self, item: &N) -> FileAstId<N> {

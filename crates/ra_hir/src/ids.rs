@@ -4,7 +4,7 @@ use std::{
 };
 
 use ra_db::{FileId, salsa};
-use ra_syntax::{TreeArc, SourceFile, AstNode, ast};
+use ra_syntax::{TreeArc, AstNode, ast, SyntaxNode};
 use mbe::MacroRules;
 
 use crate::{
@@ -56,17 +56,17 @@ impl HirFileId {
         }
     }
 
-    pub(crate) fn hir_parse_query(
+    pub(crate) fn parse_or_expand_query(
         db: &impl DefDatabase,
         file_id: HirFileId,
-    ) -> TreeArc<SourceFile> {
+    ) -> Option<TreeArc<SyntaxNode>> {
         match file_id.0 {
-            HirFileIdRepr::File(file_id) => db.parse(file_id),
+            HirFileIdRepr::File(file_id) => Some(db.parse(file_id).syntax().to_owned()),
             HirFileIdRepr::Macro(macro_file) => {
                 let macro_call_id = macro_file.macro_call_id;
-                let tt = match db.macro_expand(macro_call_id) {
-                    Ok(it) => it,
-                    Err(err) => {
+                let tt = db
+                    .macro_expand(macro_call_id)
+                    .map_err(|err| {
                         // Note:
                         // The final goal we would like to make all parse_macro success,
                         // such that the following log will not call anyway.
@@ -75,12 +75,12 @@ impl HirFileId {
                             err,
                             macro_call_id.debug_dump(db)
                         );
-                        // returning an empty string looks fishy...
-                        return SourceFile::parse("");
-                    }
-                };
+                    })
+                    .ok()?;
                 match macro_file.macro_file_kind {
-                    MacroFileKind::Items => mbe::token_tree_to_ast_item_list(&tt),
+                    MacroFileKind::Items => {
+                        Some(mbe::token_tree_to_ast_item_list(&tt).syntax().to_owned())
+                    }
                 }
             }
         }

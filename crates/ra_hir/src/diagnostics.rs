@@ -1,6 +1,6 @@
 use std::{fmt, any::Any};
 
-use ra_syntax::{SyntaxNodePtr, TreeArc, AstPtr, TextRange, ast, SyntaxNode, AstNode};
+use ra_syntax::{SyntaxNodePtr, TreeArc, AstPtr, TextRange, ast, SyntaxNode};
 use relative_path::RelativePathBuf;
 
 use crate::{HirFileId, HirDatabase, Name};
@@ -29,8 +29,8 @@ pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
 
 impl dyn Diagnostic {
     pub fn syntax_node(&self, db: &impl HirDatabase) -> TreeArc<SyntaxNode> {
-        let source_file = db.hir_parse(self.file());
-        self.syntax_node_ptr().to_node(source_file.syntax()).to_owned()
+        let node = db.parse_or_expand(self.file()).unwrap();
+        self.syntax_node_ptr().to_node(&*node).to_owned()
     }
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {
         self.as_any().downcast_ref()
