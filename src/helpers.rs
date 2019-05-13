@@ -14,7 +14,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
         this.tcx
             .crates()
             .iter()
-            .find(|&&krate| this.tcx.original_crate_name(krate) == path[0])
+            .find(|&&krate| this.tcx.original_crate_name(krate).as_str() == path[0])
             .and_then(|krate| {
                 let krate = DefId {
                     krate: *krate,
@@ -25,7 +25,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
 
                 while let Some(segment) = path_it.next() {
                     for item in mem::replace(&mut items, Default::default()).iter() {
-                        if item.ident.name == *segment {
+                        if item.ident.name.as_str() == *segment {
                             if path_it.peek().is_none() {
                                 return Some(ty::Instance::mono(this.tcx.tcx, item.res.def_id()));
                             }

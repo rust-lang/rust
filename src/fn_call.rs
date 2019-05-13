@@ -3,6 +3,7 @@ use rustc::ty::layout::{Align, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use syntax::attr;
+use syntax::symbol::sym;
 
 use rand::RngCore;
 
@@ -141,7 +142,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a + 'mir>: crate::MiriEvalContextExt<'
     ) -> EvalResult<'tcx> {
         let this = self.eval_context_mut();
         let attrs = this.tcx.get_attrs(def_id);
-        let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
+        let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name.as_str(),
             None => this.tcx.item_name(def_id).as_str(),
         };

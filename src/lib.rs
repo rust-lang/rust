@@ -37,6 +37,7 @@ pub use rustc_mir::interpret::*;
 pub use rustc_mir::interpret::{self, AllocMap, PlaceTy};
 use syntax::attr;
 use syntax::source_map::DUMMY_SP;
+use syntax::symbol::sym;
 
 pub use crate::fn_call::EvalContextExt as MissingFnsEvalContextExt;
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
@@ -478,7 +479,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         memory_extra: &Self::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Tag, Self::AllocExtra>>> {
         let attrs = tcx.get_attrs(def_id);
-        let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
+        let link_name = match attr::first_attr_value_str_by_name(&attrs, sym::link_name) {
             Some(name) => name.as_str(),
             None => tcx.item_name(def_id).as_str(),
         };
