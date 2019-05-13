@@ -218,7 +218,7 @@ fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr, lit: &Expr, op
             }
         }
 
-        check_len(cx, span, method_path.ident.name, args, lit, op, compare_to)
+        check_len(cx, span, method_path.ident.name, args, &lit.node, op, compare_to)
     }
 }
 
@@ -227,15 +227,11 @@ fn check_len(
     span: Span,
     method_name: Name,
     args: &[Expr],
-    lit: &Lit,
+    lit: &LitKind,
     op: &str,
     compare_to: u32,
 ) {
-    if let Spanned {
-        node: LitKind::Int(lit, _),
-        ..
-    } = *lit
-    {
+    if let LitKind::Int(lit, _) = *lit {
         // check if length is compared to the specified number
         if lit != u128::from(compare_to) {
             return;

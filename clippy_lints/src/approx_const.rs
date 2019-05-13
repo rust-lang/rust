@@ -55,13 +55,13 @@ declare_lint_pass!(ApproxConstant => [APPROX_CONSTANT]);
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ApproxConstant {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         if let ExprKind::Lit(lit) = &e.node {
-            check_lit(cx, lit, e);
+            check_lit(cx, &lit.node, e);
         }
     }
 }
 
-fn check_lit(cx: &LateContext<'_, '_>, lit: &Lit, e: &Expr) {
-    match lit.node {
+fn check_lit(cx: &LateContext<'_, '_>, lit: &LitKind, e: &Expr) {
+    match *lit {
         LitKind::Float(s, FloatTy::F32) => check_known_consts(cx, e, s, "f32"),
         LitKind::Float(s, FloatTy::F64) => check_known_consts(cx, e, s, "f64"),
         LitKind::FloatUnsuffixed(s) => check_known_consts(cx, e, s, "f{32, 64}"),
