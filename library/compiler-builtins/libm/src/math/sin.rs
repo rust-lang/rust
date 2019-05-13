@@ -77,3 +77,10 @@ pub fn sin(x: f64) -> f64 {
         _ => -k_cos(y0, y1),
     }
 }
+
+#[test]
+fn test_near_pi() {
+    let x = f64::from_bits(0x400921fb000FD5DD); // 3.141592026217707
+    let sx = f64::from_bits(0x3ea50d15ced1a4a2); // 6.273720864039205e-7
+    assert_eq!(sin(x), sx);
+}
