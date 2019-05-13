@@ -173,10 +173,15 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     /// well as the second instance of `A: AutoTrait`) to supress
     /// caching.
     ///
-    /// This is a simple, targeted fix. The correct fix requires
+    /// This is a simple, targeted fix. A more-performant fix requires
     /// deeper changes, but would permit more caching: we could
     /// basically defer caching until we have fully evaluated the
-    /// tree, and then cache the entire tree at once.
+    /// tree, and then cache the entire tree at once. In any case, the
+    /// performance impact here shouldn't be so horrible: every time
+    /// this is hit, we do cache at least one trait, so we only
+    /// evaluate each member of a cycle up to N times, where N is the
+    /// length of the cycle. This means the performance impact is
+    /// bounded and we shouldn't have any terrible worst-cases.
     in_cycle: Cell<bool>,
 
     previous: TraitObligationStackList<'prev, 'tcx>,
