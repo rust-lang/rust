@@ -4,7 +4,8 @@ error[E0277]: `?` couldn't convert the error to `()`
 LL |     Err(5)?;
    |           ^ the trait `std::convert::From<{integer}>` is not implemented for `()`
    |
-   = note: required by `std::convert::From::from`
+   = note: required because of the requirements on the impl of `std::convert::Into<()>` for `{integer}`
+   = note: required by `std::convert::Into::into`
 
 error: aborting due to previous error
 

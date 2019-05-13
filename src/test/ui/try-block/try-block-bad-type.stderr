@@ -10,7 +10,8 @@ LL |         Err("")?;
              <i32 as std::convert::From<i8>>
              <i32 as std::convert::From<std::num::NonZeroI32>>
            and 2 others
-   = note: required by `std::convert::From::from`
+   = note: required because of the requirements on the impl of `std::convert::Into<i32>` for `&str`
+   = note: required by `std::convert::Into::into`
 
 error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == &str`
   --> $DIR/try-block-bad-type.rs:12:9
