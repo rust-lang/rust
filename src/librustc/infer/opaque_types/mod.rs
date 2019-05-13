@@ -284,18 +284,40 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         debug!("constrain_opaque_type: def_id={:?}", def_id);
         debug!("constrain_opaque_type: opaque_defn={:#?}", opaque_defn);
 
+        let tcx = self.tcx;
+
         let concrete_ty = self.resolve_type_vars_if_possible(&opaque_defn.concrete_ty);
 
         debug!("constrain_opaque_type: concrete_ty={:?}", concrete_ty);
 
-        let abstract_type_generics = self.tcx.generics_of(def_id);
+        let abstract_type_generics = tcx.generics_of(def_id);
 
-        let span = self.tcx.def_span(def_id);
+        let span = tcx.def_span(def_id);
 
-        // If there are required region bounds, we can just skip
-        // ahead.  There will already be a registered region
-        // obligation related `concrete_ty` to those regions.
+        // If there are required region bounds, we can use them.
         if opaque_defn.has_required_region_bounds {
+            let predicates_of = tcx.predicates_of(def_id);
+            debug!(
+                "constrain_opaque_type: predicates: {:#?}",
+                predicates_of,
+            );
+            let bounds = predicates_of.instantiate(tcx, opaque_defn.substs);
+            debug!("constrain_opaque_type: bounds={:#?}", bounds);
+            let opaque_type = tcx.mk_opaque(def_id, opaque_defn.substs);
+
+            let required_region_bounds = tcx.required_region_bounds(
+                opaque_type,
+                bounds.predicates.clone(),
+            );
+            debug_assert!(!required_region_bounds.is_empty());
+
+            for region in required_region_bounds {
+                concrete_ty.visit_with(&mut OpaqueTypeOutlivesVisitor {
+                    infcx: self,
+                    least_region: region,
+                    span,
+                });
+            }
             return;
         }
 
@@ -371,7 +393,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
 
-        let least_region = least_region.unwrap_or(self.tcx.lifetimes.re_static);
+        let least_region = least_region.unwrap_or(tcx.lifetimes.re_static);
         debug!("constrain_opaque_types: least_region={:?}", least_region);
 
         concrete_ty.visit_with(&mut OpaqueTypeOutlivesVisitor {
@@ -589,10 +611,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
             ty::ReLateBound(..) |
 
             // ignore `'static`, as that can appear anywhere
-            ty::ReStatic |
-
-            // ignore `ReScope`, which may appear in impl Trait in bindings.
-            ty::ReScope(..) => return r,
+            ty::ReStatic => return r,
 
             _ => { }
         }
@@ -681,6 +700,23 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for ReverseMapper<'cx, 'gcx, 'tcx> 
                 ));
 
                 self.tcx.mk_closure(def_id, ty::ClosureSubsts { substs })
+            }
+
+            ty::Generator(def_id, substs, movability) => {
+                let generics = self.tcx.generics_of(def_id);
+                let substs = self.tcx.mk_substs(substs.substs.iter().enumerate().map(
+                    |(index, &kind)| {
+                        if index < generics.parent_count {
+                            // Accommodate missing regions in the parent kinds...
+                            self.fold_kind_mapping_missing_regions_to_empty(kind)
+                        } else {
+                            // ...but not elsewhere.
+                            self.fold_kind_normally(kind)
+                        }
+                    },
+                ));
+
+                self.tcx.mk_generator(def_id, ty::GeneratorSubsts { substs }, movability)
             }
 
             _ => ty.super_fold_with(self),

@@ -1,6 +1,7 @@
 // run-pass
 
 #![allow(warnings)]
+#![feature(generators)]
 
 use std::fmt::Debug;
 
@@ -112,6 +113,11 @@ impl<'unnecessary_lifetime> MyVec {
     fn iter_doesnt_capture_unnecessary_lifetime<'s>(&'s self) -> impl Iterator<Item = &'s u8> {
         self.0.iter().flat_map(|inner_vec| inner_vec.iter())
     }
+
+    fn generator_doesnt_capture_unnecessary_lifetime<'s: 's>() -> impl Sized {
+        || yield
+    }
 }
+
 
 fn main() {}

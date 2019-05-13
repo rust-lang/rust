@@ -16,4 +16,8 @@ fn make_identity() -> impl Sized {
     |x: &'static i32| x
 }
 
+fn make_identity_static() -> impl Sized + 'static {
+    |x: &'static i32| x
+}
+
 fn main() {}
