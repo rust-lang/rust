@@ -310,9 +310,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             opt_place_desc,
                         }
                     } else {
+                        debug!("explain_why_borrow_contains_point: \
+                                Could not generate a region name");
                         BorrowExplanation::Unexplained
                     }
                 } else {
+                    debug!("explain_why_borrow_contains_point: \
+                            Could not generate an error region vid");
                     BorrowExplanation::Unexplained
                 }
             }
