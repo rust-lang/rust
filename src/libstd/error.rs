@@ -197,7 +197,10 @@ pub trait Error: Debug + Display {
     fn source(&self) -> Option<&(dyn Error + 'static)> { None }
 
     /// Gets the `TypeId` of `self`
-    #[stable(feature = "error_type_id", since = "1.34.0")]
+    #[doc(hidden)]
+    #[unstable(feature = "error_type_id",
+               reason = "this is memory unsafe to override in user code",
+               issue = "60784")]
     fn type_id(&self) -> TypeId where Self: 'static {
         TypeId::of::<Self>()
     }
