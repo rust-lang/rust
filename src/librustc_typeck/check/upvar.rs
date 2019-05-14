@@ -41,6 +41,7 @@ use rustc::hir::def_id::LocalDefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::infer::UpvarRegion;
 use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
+use rustc_data_structures::fx::FxIndexMap;
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -122,18 +123,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         if let Some(upvars) = self.tcx.upvars(closure_def_id) {
-            let mut upvar_list: Vec<ty::UpvarId> = Vec::with_capacity(upvars.len());
-            for upvar in upvars.iter() {
+            let mut upvar_list: FxIndexMap<hir::HirId, ty::UpvarId> =
+                FxIndexMap::with_capacity_and_hasher(upvars.len(), Default::default());
+            for (&var_hir_id, _) in upvars.iter() {
                 let upvar_id = ty::UpvarId {
                     var_path: ty::UpvarPath {
-                        hir_id: upvar.var_id,
+                        hir_id: var_hir_id,
                     },
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
                 // Adding the upvar Id to the list of Upvars, which will be added
                 // to the map for the closure at the end of the for loop.
-                upvar_list.push(upvar_id);
+                upvar_list.insert(var_hir_id, upvar_id);
 
                 let capture_kind = match capture_clause {
                     hir::CaptureByValue => ty::UpvarCapture::ByValue,
@@ -249,17 +251,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         tcx.upvars(closure_def_id).iter().flat_map(|upvars| {
             upvars
                 .iter()
-                .map(|upvar| {
-                    let upvar_ty = self.node_ty(upvar.var_id);
+                .map(|(&var_hir_id, _)| {
+                    let upvar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
-                        var_path: ty::UpvarPath { hir_id: upvar.var_id },
+                        var_path: ty::UpvarPath { hir_id: var_hir_id },
                         closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
 
                     debug!(
                         "var_id={:?} upvar_ty={:?} capture={:?}",
-                        upvar.var_id, upvar_ty, capture
+                        var_hir_id, upvar_ty, capture
                     );
 
                     match capture {

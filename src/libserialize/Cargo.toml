@@ -10,4 +10,5 @@ path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 
 [dependencies]
+indexmap = "1"
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }

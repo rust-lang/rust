@@ -51,6 +51,7 @@ use syntax::symbol::{kw, sym, Symbol, LocalInternedString, InternedString};
 use syntax_pos::Span;
 
 use smallvec;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
@@ -808,7 +809,7 @@ pub struct UpvarBorrow<'tcx> {
     pub region: ty::Region<'tcx>,
 }
 
-pub type UpvarListMap = FxHashMap<DefId, Vec<UpvarId>>;
+pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
 #[derive(Copy, Clone)]

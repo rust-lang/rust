@@ -54,6 +54,7 @@ use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
 use arena::SyncDroplessArena;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::sync::{Lrc, Lock, WorkerLocal};
 use std::any::Any;
@@ -1065,7 +1066,7 @@ pub struct GlobalCtxt<'tcx> {
     // Records the captured variables referenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
-    upvars: FxHashMap<DefId, Vec<hir::Upvar>>,
+    upvars: FxHashMap<DefId, FxIndexMap<hir::HirId, hir::Upvar>>,
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
@@ -1297,11 +1298,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }).collect();
                 (k, exports)
             }).collect(),
-            upvars: resolutions.upvars.into_iter().map(|(k, v)| {
-                let vars: Vec<_> = v.into_iter().map(|e| {
-                    e.map_id(|id| hir.node_to_hir_id(id))
+            upvars: resolutions.upvars.into_iter().map(|(k, upvars)| {
+                let upvars: FxIndexMap<_, _> = upvars.into_iter().map(|(var_id, upvar)| {
+                    (hir.node_to_hir_id(var_id), upvar)
                 }).collect();
-                (hir.local_def_id(k), vars)
+                (hir.local_def_id(k), upvars)
             }).collect(),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
@@ -3023,7 +3024,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         tcx.arena.alloc(middle::lang_items::collect(tcx))
     };
-    providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id).map(|v| &v[..]);
+    providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id);
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)
     };

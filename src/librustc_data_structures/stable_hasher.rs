@@ -323,6 +323,37 @@ impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
     }
 }
 
+impl<K, V, R, CTX> HashStable<CTX> for indexmap::IndexMap<K, V, R>
+    where K: HashStable<CTX> + Eq + Hash,
+          V: HashStable<CTX>,
+          R: BuildHasher,
+{
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        self.len().hash_stable(ctx, hasher);
+        for kv in self {
+            kv.hash_stable(ctx, hasher);
+        }
+    }
+}
+
+impl<K, R, CTX> HashStable<CTX> for indexmap::IndexSet<K, R>
+    where K: HashStable<CTX> + Eq + Hash,
+          R: BuildHasher,
+{
+    #[inline]
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          ctx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        self.len().hash_stable(ctx, hasher);
+        for key in self {
+            key.hash_stable(ctx, hasher);
+        }
+    }
+}
+
 impl<A, CTX> HashStable<CTX> for SmallVec<[A; 1]> where A: HashStable<CTX> {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,

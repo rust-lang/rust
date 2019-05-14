@@ -1669,7 +1669,6 @@ pub struct Resolver<'a> {
     label_res_map: NodeMap<NodeId>,
 
     pub upvars: UpvarMap,
-    upvars_seen: NodeMap<NodeSet>,
     pub export_map: ExportMap<NodeId>,
     pub trait_map: TraitMap,
 
@@ -2033,7 +2032,6 @@ impl<'a> Resolver<'a> {
             import_res_map: Default::default(),
             label_res_map: Default::default(),
             upvars: Default::default(),
-            upvars_seen: Default::default(),
             export_map: FxHashMap::default(),
             trait_map: Default::default(),
             module_map,
@@ -4055,26 +4053,18 @@ impl<'a> Resolver<'a> {
                                 Res::Upvar(..) => true,
                                 _ => false,
                             };
-
-                            let seen = self.upvars_seen
-                                           .entry(function_id)
-                                           .or_default();
-                            if seen.contains(&var_id) {
-                                res = Res::Upvar(var_id, function_id);
-                                continue;
-                            }
-                            let vec = self.upvars
-                                          .entry(function_id)
-                                          .or_default();
                             res = Res::Upvar(var_id, function_id);
 
-                            if record_used {
-                                vec.push(Upvar {
-                                    var_id,
-                                    has_parent,
-                                    span,
-                                });
-                                seen.insert(var_id);
+                            match self.upvars.entry(function_id).or_default().entry(var_id) {
+                                indexmap::map::Entry::Occupied(_) => continue,
+                                indexmap::map::Entry::Vacant(entry) => {
+                                    if record_used {
+                                        entry.insert(Upvar {
+                                            has_parent,
+                                            span,
+                                        });
+                                    }
+                                }
                             }
                         }
                         ItemRibKind | FnItemRibKind | AssocItemRibKind => {

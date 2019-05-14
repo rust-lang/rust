@@ -5,7 +5,6 @@
 use crate::hair::*;
 use crate::hair::util::UserAnnotatedTyHelpers;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::Node;
@@ -50,9 +49,6 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     /// See field with the same name on `mir::Body`.
     control_flow_destroyed: Vec<(Span, String)>,
-
-    /// Reverse map, from upvar variable `HirId`s to their indices.
-    upvar_indices: FxHashMap<hir::HirId, usize>,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -83,14 +79,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // Constants always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
 
-        // Compute reverse mapping, of uvpars to their indices.
-        let mut upvar_indices = FxHashMap::default();
-        if let Some(upvars) = tables.upvar_list.get(&src_def_id) {
-            upvar_indices.extend(
-                upvars.iter().enumerate().map(|(i, upvar_id)| (upvar_id.var_path.hir_id, i)),
-            );
-        }
-
         Cx {
             tcx,
             infcx,
@@ -104,7 +92,6 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             body_owner_kind,
             check_overflow,
             control_flow_destroyed: Vec::new(),
-            upvar_indices,
         }
     }
 

@@ -54,7 +54,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
         wbcx.visit_body(body);
         wbcx.visit_upvar_capture_map();
-        wbcx.visit_upvar_list_map();
         wbcx.visit_closures();
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
@@ -73,6 +72,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             item_def_id, used_trait_imports
         );
         wbcx.tables.used_trait_imports = used_trait_imports;
+
+        wbcx.tables.upvar_list = mem::replace(
+            &mut self.tables.borrow_mut().upvar_list,
+            Default::default(),
+        );
 
         wbcx.tables.tainted_by_errors = self.is_tainted_by_errors();
 
@@ -340,21 +344,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             self.tables
                 .upvar_capture_map
                 .insert(*upvar_id, new_upvar_capture);
-        }
-    }
-
-    /// Runs through the function context's upvar list map and adds the same to
-    /// the TypeckTables. upvarlist is a hashmap of the list of upvars referred
-    /// to in a closure..
-    fn visit_upvar_list_map(&mut self) {
-        for (closure_def_id, upvar_list) in self.fcx.tables.borrow().upvar_list.iter() {
-            debug!(
-                "UpvarIDs captured by closure {:?} are: {:?}",
-                closure_def_id, upvar_list
-            );
-            self.tables
-                .upvar_list
-                .insert(*closure_def_id, upvar_list.to_vec());
         }
     }
 

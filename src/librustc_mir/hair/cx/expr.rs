@@ -515,7 +515,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let upvars = cx.tcx.upvars(def_id).iter()
                 .flat_map(|upvars| upvars.iter())
                 .zip(substs.upvar_tys(def_id, cx.tcx))
-                .map(|(upvar, ty)| capture_upvar(cx, expr, upvar, ty))
+                .map(|((&var_hir_id, upvar), ty)| capture_upvar(cx, expr, var_hir_id, upvar, ty))
                 .collect();
             ExprKind::Closure {
                 closure_id: def_id,
@@ -964,7 +964,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         Res::Upvar(var_hir_id, closure_node_id) => {
             let closure_def_id = cx.tcx.hir().local_def_id(closure_node_id);
             assert_eq!(cx.body_owner, closure_def_id);
-            assert!(cx.upvar_indices.contains_key(&var_hir_id));
+            assert!(cx.tables().upvar_list[&cx.body_owner].contains_key(&var_hir_id));
 
             convert_var(cx, expr, var_hir_id)
         }
@@ -978,7 +978,8 @@ fn convert_var(
     expr: &'tcx hir::Expr,
     var_hir_id: hir::HirId,
 ) -> ExprKind<'tcx> {
-    let upvar_index = cx.upvar_indices.get(&var_hir_id).cloned();
+    let upvar_index = cx.tables().upvar_list.get(&cx.body_owner)
+        .and_then(|upvars| upvars.get_full(&var_hir_id).map(|(i, _, _)| i));
 
     debug!("convert_var({:?}): upvar_index={:?}, body_owner={:?}",
            var_hir_id, upvar_index, cx.body_owner);
@@ -1186,26 +1187,31 @@ fn overloaded_place<'a, 'gcx, 'tcx>(
 
 fn capture_upvar<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                    closure_expr: &'tcx hir::Expr,
+                                   var_hir_id: hir::HirId,
                                    upvar: &hir::Upvar,
                                    upvar_ty: Ty<'tcx>)
                                    -> ExprRef<'tcx> {
     let upvar_id = ty::UpvarId {
-        var_path: ty::UpvarPath { hir_id: upvar.var_id },
+        var_path: ty::UpvarPath { hir_id: var_hir_id },
         closure_expr_id: cx.tcx.hir().local_def_id_from_hir_id(closure_expr.hir_id).to_local(),
     };
     let upvar_capture = cx.tables().upvar_capture(upvar_id);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(closure_expr.hir_id.local_id);
-    let var_ty = cx.tables().node_type(upvar.var_id);
+    let var_ty = cx.tables().node_type(var_hir_id);
     if upvar.has_parent {
         let closure_def_id = upvar_id.closure_expr_id.to_def_id();
         assert_eq!(cx.body_owner, cx.tcx.parent(closure_def_id).unwrap());
     }
-    assert_eq!(upvar.has_parent, cx.upvar_indices.contains_key(&upvar.var_id));
+    assert_eq!(
+        upvar.has_parent,
+        cx.tables().upvar_list.get(&cx.body_owner)
+            .map_or(false, |upvars| upvars.contains_key(&var_hir_id)),
+    );
     let captured_var = Expr {
         temp_lifetime,
         ty: var_ty,
         span: closure_expr.span,
-        kind: convert_var(cx, closure_expr, upvar.var_id),
+        kind: convert_var(cx, closure_expr, var_hir_id),
     };
     match upvar_capture {
         ty::UpvarCapture::ByValue => captured_var.to_ref(),

@@ -30,6 +30,7 @@ use syntax::util::parser::ExprPrecedence;
 use crate::ty::AdtKind;
 use crate::ty::query::Providers;
 
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{par_for_each_in, Send, Sync};
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_macros::HashStable;
@@ -2493,10 +2494,7 @@ impl ForeignItemKind {
 
 /// A variable captured by a closure.
 #[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable, HashStable)]
-pub struct Upvar<Id = HirId> {
-    /// The variable being captured.
-    pub var_id: Id,
-
+pub struct Upvar {
     /// Whether this is not a direct capture (comes from parent closure).
     pub has_parent: bool,
 
@@ -2504,17 +2502,7 @@ pub struct Upvar<Id = HirId> {
     pub span: Span
 }
 
-impl<Id: fmt::Debug + Copy> Upvar<Id> {
-    pub fn map_id<R>(self, map: impl FnOnce(Id) -> R) -> Upvar<R> {
-        Upvar {
-            var_id: map(self.var_id),
-            has_parent: self.has_parent,
-            span: self.span,
-        }
-    }
-}
-
-pub type UpvarMap = NodeMap<Vec<Upvar<ast::NodeId>>>;
+pub type UpvarMap = NodeMap<FxIndexMap<ast::NodeId, Upvar>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;
 

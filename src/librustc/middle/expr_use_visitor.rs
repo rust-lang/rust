@@ -924,14 +924,15 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
         let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_expr.hir_id);
         if let Some(upvars) = self.tcx().upvars(closure_def_id) {
-            for upvar in upvars.iter() {
+            for (&var_id, upvar) in upvars.iter() {
                 let upvar_id = ty::UpvarId {
-                    var_path: ty::UpvarPath { hir_id: upvar.var_id },
+                    var_path: ty::UpvarPath { hir_id: var_id },
                     closure_expr_id: closure_def_id.to_local(),
                 };
                 let upvar_capture = self.mc.tables.upvar_capture(upvar_id);
                 let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.hir_id,
                                                                    fn_decl_span,
+                                                                   var_id,
                                                                    upvar));
                 match upvar_capture {
                     ty::UpvarCapture::ByValue => {
@@ -957,6 +958,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     fn cat_captured_var(&mut self,
                         closure_hir_id: hir::HirId,
                         closure_span: Span,
+                        var_id: hir::HirId,
                         upvar: &hir::Upvar)
                         -> mc::McResult<mc::cmt_<'tcx>> {
         // Create the cmt for the variable being borrowed, from the
@@ -965,11 +967,11 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
             let closure_def_id = self.tcx().hir().local_def_id_from_hir_id(closure_hir_id);
             let parent_def_id = self.tcx().parent(closure_def_id).unwrap();
             assert!(self.tcx().is_closure(parent_def_id));
-            let var_nid = self.tcx().hir().hir_to_node_id(upvar.var_id);
+            let var_nid = self.tcx().hir().hir_to_node_id(var_id);
             self.mc.cat_upvar(closure_hir_id, closure_span, var_nid, parent_def_id)
         } else {
-            let var_ty = self.mc.node_ty(upvar.var_id)?;
-            self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(upvar.var_id))
+            let var_ty = self.mc.node_ty(var_id)?;
+            self.mc.cat_res(closure_hir_id, closure_span, var_ty, Res::Local(var_id))
         }
     }
 }
