@@ -140,7 +140,7 @@ impl<'a> Conversion<'a> {
     }
 
     /// Try to construct a new conversion if the conversion type is valid
-    fn try_new<'b>(expr_to_cast: &'a Expr, from_type: Symbol, to_type: Symbol) -> Option<Conversion<'a>> {
+    fn try_new(expr_to_cast: &'a Expr, from_type: Symbol, to_type: Symbol) -> Option<Conversion<'a>> {
         ConversionType::try_new(from_type, to_type).map(|cvt| Conversion {
             cvt,
             expr_to_cast,
