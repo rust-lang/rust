@@ -85,6 +85,7 @@
   - [Debugging LLVM](./codegen/debugging.md)
 - [Emitting Diagnostics](./diag.md)
   - [JSON diagnostic format](./diag/json-format.md)
+- [Profile-guided Optimization](./profile-guided-optimization.md)
 
 ---
 
