@@ -439,10 +439,11 @@ fn downgrade_if_error(diag: &mut Diagnostic) {
         diag.warn(
             "this error has been downgraded to a warning for backwards \
             compatibility with previous releases",
-        );
-        diag.warn(
+        ).warn(
             "this represents potential undefined behavior in your code and \
             this warning will become a hard error in the future",
+        ).note(
+            "for more information, try `rustc --explain E0729`"
         );
     }
 }

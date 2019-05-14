@@ -297,6 +297,7 @@ LL | const fn no_dyn_trait_ret() -> &'static dyn std::fmt::Debug { &() }
    |
    = warning: this error has been downgraded to a warning for backwards compatibility with previous releases
    = warning: this represents potential undefined behavior in your code and this warning will become a hard error in the future
+   = note: for more information, try `rustc --explain E0729`
 
 error[E0723]: trait bounds other than `Sized` on const fn parameters are unstable
   --> $DIR/min_const_fn.rs:144:41
