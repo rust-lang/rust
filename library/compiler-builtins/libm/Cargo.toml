@@ -7,7 +7,7 @@ keywords = ["libm", "math"]
 license = "MIT OR Apache-2.0"
 name = "libm"
 repository = "https://github.com/rust-lang-nursery/libm"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2018"
 
 [features]
