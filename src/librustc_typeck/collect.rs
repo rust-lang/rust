@@ -27,7 +27,7 @@ use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::ty::util::Discr;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::UnpackedKind;
-use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
+use rustc::ty::{self, AdtKind, DefIdTree, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
@@ -1349,65 +1349,61 @@ pub fn checked_type_of<'a, 'tcx>(
 
                     match path {
                         QPath::Resolved(_, ref path) => {
-                            let mut arg_index = 0;
-                            let mut found_const = false;
-                            for seg in &path.segments {
-                                if let Some(generic_args) = &seg.args {
-                                    let args = &generic_args.args;
-                                    for arg in args {
-                                        if let GenericArg::Const(ct) = arg {
-                                            if ct.value.hir_id == hir_id {
-                                                found_const = true;
-                                                break;
-                                            }
-                                            arg_index += 1;
-                                        }
-                                    }
-                                }
-                            }
-                            // Sanity check to make sure everything is as expected.
-                            if !found_const {
-                                if !fail {
-                                    return None;
-                                }
-                                bug!("no arg matching AnonConst in path")
-                            }
-                            match path.res {
-                                // We've encountered an `AnonConst` in some path, so we need to
-                                // figure out which generic parameter it corresponds to and return
-                                // the relevant type.
-                                Res::Def(DefKind::Struct, def_id)
-                                | Res::Def(DefKind::Union, def_id)
-                                | Res::Def(DefKind::Enum, def_id)
-                                | Res::Def(DefKind::Fn, def_id) => {
-                                    let generics = tcx.generics_of(def_id);
-                                    let mut param_index = 0;
-                                    for param in &generics.params {
-                                        if let ty::GenericParamDefKind::Const = param.kind {
-                                            if param_index == arg_index {
-                                                return Some(tcx.type_of(param.def_id));
-                                            }
-                                            param_index += 1;
-                                        }
-                                    }
-                                    // This is no generic parameter associated with the arg. This is
-                                    // probably from an extra arg where one is not needed.
-                                    return Some(tcx.types.err);
-                                }
-                                Res::Err => tcx.types.err,
-                                x => {
+                            let arg_index = path.segments.iter()
+                                .filter_map(|seg| seg.args.as_ref())
+                                .map(|generic_args| generic_args.args.as_ref())
+                                .find_map(|args| {
+                                    args.iter()
+                                        .filter(|arg| arg.is_const())
+                                        .enumerate()
+                                        .filter(|(_, arg)| arg.id() == hir_id)
+                                        .map(|(index, _)| index)
+                                        .next()
+                                })
+                                .or_else(|| {
                                     if !fail {
-                                        return None;
+                                        None
+                                    } else {
+                                        bug!("no arg matching AnonConst in path")
                                     }
+                                })?;
+
+                            // We've encountered an `AnonConst` in some path, so we need to
+                            // figure out which generic parameter it corresponds to and return
+                            // the relevant type.
+                            let generics = match path.res {
+                                Res::Def(DefKind::Ctor(..), def_id) =>
+                                    tcx.generics_of(tcx.parent(def_id).unwrap()),
+                                Res::Def(_, def_id) =>
+                                    tcx.generics_of(def_id),
+                                Res::Err =>
+                                    return Some(tcx.types.err),
+                                _ if !fail =>
+                                    return None,
+                                x => {
                                     tcx.sess.delay_span_bug(
                                         DUMMY_SP,
                                         &format!(
                                             "unexpected const parent path def {:?}", x
                                         ),
                                     );
-                                    tcx.types.err
+                                    return Some(tcx.types.err);
                                 }
-                            }
+                            };
+
+                            generics.params.iter()
+                                .filter(|param| {
+                                    if let ty::GenericParamDefKind::Const = param.kind {
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                })
+                                .nth(arg_index)
+                                .map(|param| tcx.type_of(param.def_id))
+                                // This is no generic parameter associated with the arg. This is
+                                // probably from an extra arg where one is not needed.
+                                .unwrap_or(tcx.types.err)
                         }
                         x => {
                             if !fail {
