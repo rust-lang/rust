@@ -3,13 +3,13 @@ use core::ops;
 macro_rules! hty {
     ($ty:ty) => {
         <$ty as LargeInt>::HighHalf
-    }
+    };
 }
 
 macro_rules! os_ty {
     ($ty:ty) => {
         <$ty as Int>::OtherSign
-    }
+    };
 }
 
 pub mod addsub;
@@ -20,23 +20,23 @@ pub mod udiv;
 
 /// Trait for some basic operations on integers
 pub trait Int:
-    Copy +
-    PartialEq +
-    PartialOrd +
-    ops::AddAssign +
-    ops::BitAndAssign +
-    ops::BitOrAssign +
-    ops::ShlAssign<i32> +
-    ops::ShrAssign<u32> +
-    ops::Add<Output = Self> +
-    ops::Sub<Output = Self> +
-    ops::Div<Output = Self> +
-    ops::Shl<u32, Output = Self> +
-    ops::Shr<u32, Output = Self> +
-    ops::BitOr<Output = Self> +
-    ops::BitXor<Output = Self> +
-    ops::BitAnd<Output = Self> +
-    ops::Not<Output = Self> +
+    Copy
+    + PartialEq
+    + PartialOrd
+    + ops::AddAssign
+    + ops::BitAndAssign
+    + ops::BitOrAssign
+    + ops::ShlAssign<i32>
+    + ops::ShrAssign<u32>
+    + ops::Add<Output = Self>
+    + ops::Sub<Output = Self>
+    + ops::Div<Output = Self>
+    + ops::Shl<u32, Output = Self>
+    + ops::Shr<u32, Output = Self>
+    + ops::BitOr<Output = Self>
+    + ops::BitXor<Output = Self>
+    + ops::BitAnd<Output = Self>
+    + ops::Not<Output = Self>
 {
     /// Type with the same width but other signedness
     type OtherSign: Int;
@@ -182,7 +182,7 @@ macro_rules! int_impl {
 
             int_impl_common!($ity, $bits);
         }
-    }
+    };
 }
 
 int_impl!(i32, u32, 32);
@@ -223,7 +223,7 @@ macro_rules! large_int {
                 low as $ty | ((high as $ty) << $halfbits)
             }
         }
-    }
+    };
 }
 
 large_int!(u64, u32, u32, 32);
@@ -284,9 +284,9 @@ macro_rules! impl_wide_int {
                     let sticky = *low << ($bits - count);
                     *low = *self << ($bits - count) | *low >> count | sticky;
                     *self = *self >> count;
-                } else if count < 2*$bits {
-                    let sticky = *self << (2*$bits - count) | *low;
-                    *low = *self >> (count - $bits ) | sticky;
+                } else if count < 2 * $bits {
+                    let sticky = *self << (2 * $bits - count) | *low;
+                    *low = *self >> (count - $bits) | sticky;
                     *self = 0;
                 } else {
                     let sticky = *self | *low;
@@ -295,7 +295,7 @@ macro_rules! impl_wide_int {
                 }
             }
         }
-    }
+    };
 }
 
 impl_wide_int!(u32, u64, 32);

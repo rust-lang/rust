@@ -1,16 +1,24 @@
-use int::LargeInt;
 use int::Int;
+use int::LargeInt;
 
 trait UAddSub: LargeInt {
     fn uadd(self, other: Self) -> Self {
         let (low, carry) = self.low().overflowing_add(other.low());
         let high = self.high().wrapping_add(other.high());
-        let carry = if carry { Self::HighHalf::ONE } else { Self::HighHalf::ZERO };
+        let carry = if carry {
+            Self::HighHalf::ONE
+        } else {
+            Self::HighHalf::ZERO
+        };
         Self::from_parts(low, high.wrapping_add(carry))
     }
     fn uadd_one(self) -> Self {
         let (low, carry) = self.low().overflowing_add(Self::LowHalf::ONE);
-        let carry = if carry { Self::HighHalf::ONE } else { Self::HighHalf::ZERO };
+        let carry = if carry {
+            Self::HighHalf::ONE
+        } else {
+            Self::HighHalf::ZERO
+        };
         Self::from_parts(low, self.high().wrapping_add(carry))
     }
     fn usub(self, other: Self) -> Self {
@@ -22,7 +30,8 @@ trait UAddSub: LargeInt {
 impl UAddSub for u128 {}
 
 trait AddSub: Int
-    where <Self as Int>::UnsignedInt: UAddSub
+where
+    <Self as Int>::UnsignedInt: UAddSub,
 {
     fn add(self, other: Self) -> Self {
         Self::from_unsigned(self.unsigned().uadd(other.unsigned()))
@@ -36,7 +45,8 @@ impl AddSub for u128 {}
 impl AddSub for i128 {}
 
 trait Addo: AddSub
-    where <Self as Int>::UnsignedInt: UAddSub
+where
+    <Self as Int>::UnsignedInt: UAddSub,
 {
     fn addo(self, other: Self, overflow: &mut i32) -> Self {
         *overflow = 0;
@@ -58,7 +68,8 @@ impl Addo for i128 {}
 impl Addo for u128 {}
 
 trait Subo: AddSub
-    where <Self as Int>::UnsignedInt: UAddSub
+where
+    <Self as Int>::UnsignedInt: UAddSub,
 {
     fn subo(self, other: Self, overflow: &mut i32) -> Self {
         *overflow = 0;

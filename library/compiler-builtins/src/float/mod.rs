@@ -3,26 +3,26 @@ use core::ops;
 
 use super::int::Int;
 
-pub mod conv;
-pub mod cmp;
 pub mod add;
-pub mod pow;
-pub mod sub;
-pub mod mul;
+pub mod cmp;
+pub mod conv;
 pub mod div;
 pub mod extend;
+pub mod mul;
+pub mod pow;
+pub mod sub;
 
 /// Trait for some basic operations on floats
 pub trait Float:
-    Copy +
-    PartialEq +
-    PartialOrd +
-    ops::AddAssign +
-    ops::MulAssign +
-    ops::Add<Output = Self> +
-    ops::Sub<Output = Self> +
-    ops::Div<Output = Self> +
-    ops::Rem<Output = Self> +
+    Copy
+    + PartialEq
+    + PartialOrd
+    + ops::AddAssign
+    + ops::MulAssign
+    + ops::Add<Output = Self>
+    + ops::Sub<Output = Self>
+    + ops::Div<Output = Self>
+    + ops::Rem<Output = Self>
 {
     /// A uint of the same with as the float
     type Int: Int;
@@ -118,17 +118,23 @@ macro_rules! float_impl {
                 unsafe { mem::transmute(a) }
             }
             fn from_parts(sign: bool, exponent: Self::Int, significand: Self::Int) -> Self {
-                Self::from_repr(((sign as Self::Int) << (Self::BITS - 1)) |
-                    ((exponent << Self::SIGNIFICAND_BITS) & Self::EXPONENT_MASK) |
-                    (significand & Self::SIGNIFICAND_MASK))
+                Self::from_repr(
+                    ((sign as Self::Int) << (Self::BITS - 1))
+                        | ((exponent << Self::SIGNIFICAND_BITS) & Self::EXPONENT_MASK)
+                        | (significand & Self::SIGNIFICAND_MASK),
+                )
             }
             fn normalize(significand: Self::Int) -> (i32, Self::Int) {
-                let shift = significand.leading_zeros()
+                let shift = significand
+                    .leading_zeros()
                     .wrapping_sub((Self::Int::ONE << Self::SIGNIFICAND_BITS).leading_zeros());
-                (1i32.wrapping_sub(shift as i32), significand << shift as Self::Int)
+                (
+                    1i32.wrapping_sub(shift as i32),
+                    significand << shift as Self::Int,
+                )
             }
         }
-    }
+    };
 }
 
 float_impl!(f32, u32, i32, 32, 23);

@@ -1,5 +1,5 @@
-use int::Int;
 use float::Float;
+use int::Int;
 
 trait Pow: Float {
     /// Returns `a` raised to the power `b`

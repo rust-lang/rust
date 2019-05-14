@@ -4,11 +4,11 @@ use core::mem;
 // Kernel-provided user-mode helper functions:
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
 unsafe fn __kuser_cmpxchg(oldval: u32, newval: u32, ptr: *mut u32) -> bool {
-    let f: extern "C" fn (u32, u32, *mut u32) -> u32 = mem::transmute(0xffff0fc0u32);
+    let f: extern "C" fn(u32, u32, *mut u32) -> u32 = mem::transmute(0xffff0fc0u32);
     f(oldval, newval, ptr) == 0
 }
 unsafe fn __kuser_memory_barrier() {
-    let f: extern "C" fn () = mem::transmute(0xffff0fa0u32);
+    let f: extern "C" fn() = mem::transmute(0xffff0fa0u32);
     f();
 }
 
@@ -94,7 +94,7 @@ macro_rules! atomic_rmw {
         pub unsafe extern "C" fn $name(ptr: *mut $ty, val: $ty) -> $ty {
             atomic_rmw(ptr, |x| $op(x as $ty, val) as u32) as $ty
         }
-    }
+    };
 }
 macro_rules! atomic_cmpxchg {
     ($name:ident, $ty:ty) => {
@@ -102,16 +102,20 @@ macro_rules! atomic_cmpxchg {
         pub unsafe extern "C" fn $name(ptr: *mut $ty, oldval: $ty, newval: $ty) -> $ty {
             atomic_cmpxchg(ptr, oldval as u32, newval as u32) as $ty
         }
-    }
+    };
 }
 
 atomic_rmw!(__sync_fetch_and_add_1, u8, |a: u8, b: u8| a.wrapping_add(b));
-atomic_rmw!(__sync_fetch_and_add_2, u16, |a: u16, b: u16| a.wrapping_add(b));
-atomic_rmw!(__sync_fetch_and_add_4, u32, |a: u32, b: u32| a.wrapping_add(b));
+atomic_rmw!(__sync_fetch_and_add_2, u16, |a: u16, b: u16| a
+    .wrapping_add(b));
+atomic_rmw!(__sync_fetch_and_add_4, u32, |a: u32, b: u32| a
+    .wrapping_add(b));
 
 atomic_rmw!(__sync_fetch_and_sub_1, u8, |a: u8, b: u8| a.wrapping_sub(b));
-atomic_rmw!(__sync_fetch_and_sub_2, u16, |a: u16, b: u16| a.wrapping_sub(b));
-atomic_rmw!(__sync_fetch_and_sub_4, u32, |a: u32, b: u32| a.wrapping_sub(b));
+atomic_rmw!(__sync_fetch_and_sub_2, u16, |a: u16, b: u16| a
+    .wrapping_sub(b));
+atomic_rmw!(__sync_fetch_and_sub_4, u32, |a: u32, b: u32| a
+    .wrapping_sub(b));
 
 atomic_rmw!(__sync_fetch_and_and_1, u8, |a: u8, b: u8| a & b);
 atomic_rmw!(__sync_fetch_and_and_2, u16, |a: u16, b: u16| a & b);
@@ -129,21 +133,69 @@ atomic_rmw!(__sync_fetch_and_nand_1, u8, |a: u8, b: u8| !(a & b));
 atomic_rmw!(__sync_fetch_and_nand_2, u16, |a: u16, b: u16| !(a & b));
 atomic_rmw!(__sync_fetch_and_nand_4, u32, |a: u32, b: u32| !(a & b));
 
-atomic_rmw!(__sync_fetch_and_max_1, i8, |a: i8, b: i8| if a > b { a } else { b });
-atomic_rmw!(__sync_fetch_and_max_2, i16, |a: i16, b: i16| if a > b { a } else { b });
-atomic_rmw!(__sync_fetch_and_max_4, i32, |a: i32, b: i32| if a > b { a } else { b });
+atomic_rmw!(__sync_fetch_and_max_1, i8, |a: i8, b: i8| if a > b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_max_2, i16, |a: i16, b: i16| if a > b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_max_4, i32, |a: i32, b: i32| if a > b {
+    a
+} else {
+    b
+});
 
-atomic_rmw!(__sync_fetch_and_umax_1, u8, |a: u8, b: u8| if a > b { a } else { b });
-atomic_rmw!(__sync_fetch_and_umax_2, u16, |a: u16, b: u16| if a > b { a } else { b });
-atomic_rmw!(__sync_fetch_and_umax_4, u32, |a: u32, b: u32| if a > b { a } else { b });
+atomic_rmw!(__sync_fetch_and_umax_1, u8, |a: u8, b: u8| if a > b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_umax_2, u16, |a: u16, b: u16| if a > b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_umax_4, u32, |a: u32, b: u32| if a > b {
+    a
+} else {
+    b
+});
 
-atomic_rmw!(__sync_fetch_and_min_1, i8, |a: i8, b: i8| if a < b { a } else { b });
-atomic_rmw!(__sync_fetch_and_min_2, i16, |a: i16, b: i16| if a < b { a } else { b });
-atomic_rmw!(__sync_fetch_and_min_4, i32, |a: i32, b: i32| if a < b { a } else { b });
+atomic_rmw!(__sync_fetch_and_min_1, i8, |a: i8, b: i8| if a < b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_min_2, i16, |a: i16, b: i16| if a < b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_min_4, i32, |a: i32, b: i32| if a < b {
+    a
+} else {
+    b
+});
 
-atomic_rmw!(__sync_fetch_and_umin_1, u8, |a: u8, b: u8| if a < b { a } else { b });
-atomic_rmw!(__sync_fetch_and_umin_2, u16, |a: u16, b: u16| if a < b { a } else { b });
-atomic_rmw!(__sync_fetch_and_umin_4, u32, |a: u32, b: u32| if a < b { a } else { b });
+atomic_rmw!(__sync_fetch_and_umin_1, u8, |a: u8, b: u8| if a < b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_umin_2, u16, |a: u16, b: u16| if a < b {
+    a
+} else {
+    b
+});
+atomic_rmw!(__sync_fetch_and_umin_4, u32, |a: u32, b: u32| if a < b {
+    a
+} else {
+    b
+});
 
 atomic_rmw!(__sync_lock_test_and_set_1, u8, |_: u8, b: u8| b);
 atomic_rmw!(__sync_lock_test_and_set_2, u16, |_: u16, b: u16| b);

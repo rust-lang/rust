@@ -22,8 +22,9 @@ fn main() {
 
     // Forcibly enable memory intrinsics on wasm32 & SGX as we don't have a libc to
     // provide them.
-    if (target.contains("wasm32") && !target.contains("wasi")) ||
-        (target.contains("sgx") && target.contains("fortanix")) {
+    if (target.contains("wasm32") && !target.contains("wasi"))
+        || (target.contains("sgx") && target.contains("fortanix"))
+    {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
 
@@ -85,7 +86,9 @@ mod c {
 
     impl Sources {
         fn new() -> Sources {
-            Sources { map: BTreeMap::new() }
+            Sources {
+                map: BTreeMap::new(),
+            }
         }
 
         fn extend(&mut self, sources: &[&'static str]) {
@@ -151,163 +154,144 @@ mod c {
         }
 
         let mut sources = Sources::new();
-        sources.extend(
-            &[
-                "absvdi2.c",
-                "absvsi2.c",
-                "addvdi3.c",
-                "addvsi3.c",
-                "apple_versioning.c",
-                "clzdi2.c",
-                "clzsi2.c",
-                "cmpdi2.c",
-                "ctzdi2.c",
-                "ctzsi2.c",
-                "divdc3.c",
-                "divsc3.c",
-                "divxc3.c",
-                "extendhfsf2.c",
-                "int_util.c",
-                "muldc3.c",
-                "mulsc3.c",
-                "mulvdi3.c",
-                "mulvsi3.c",
-                "mulxc3.c",
-                "negdf2.c",
-                "negdi2.c",
-                "negsf2.c",
-                "negvdi2.c",
-                "negvsi2.c",
-                "paritydi2.c",
-                "paritysi2.c",
-                "popcountdi2.c",
-                "popcountsi2.c",
-                "powixf2.c",
-                "subvdi3.c",
-                "subvsi3.c",
-                "truncdfhf2.c",
-                "truncdfsf2.c",
-                "truncsfhf2.c",
-                "ucmpdi2.c",
-            ],
-        );
+        sources.extend(&[
+            "absvdi2.c",
+            "absvsi2.c",
+            "addvdi3.c",
+            "addvsi3.c",
+            "apple_versioning.c",
+            "clzdi2.c",
+            "clzsi2.c",
+            "cmpdi2.c",
+            "ctzdi2.c",
+            "ctzsi2.c",
+            "divdc3.c",
+            "divsc3.c",
+            "divxc3.c",
+            "extendhfsf2.c",
+            "int_util.c",
+            "muldc3.c",
+            "mulsc3.c",
+            "mulvdi3.c",
+            "mulvsi3.c",
+            "mulxc3.c",
+            "negdf2.c",
+            "negdi2.c",
+            "negsf2.c",
+            "negvdi2.c",
+            "negvsi2.c",
+            "paritydi2.c",
+            "paritysi2.c",
+            "popcountdi2.c",
+            "popcountsi2.c",
+            "powixf2.c",
+            "subvdi3.c",
+            "subvsi3.c",
+            "truncdfhf2.c",
+            "truncdfsf2.c",
+            "truncsfhf2.c",
+            "ucmpdi2.c",
+        ]);
 
         // When compiling in rustbuild (the rust-lang/rust repo) this library
         // also needs to satisfy intrinsics that jemalloc or C in general may
         // need, so include a few more that aren't typically needed by
         // LLVM/Rust.
         if cfg!(feature = "rustbuild") {
-            sources.extend(&[
-                "ffsdi2.c",
-            ]);
+            sources.extend(&["ffsdi2.c"]);
         }
 
         // On iOS and 32-bit OSX these are all just empty intrinsics, no need to
         // include them.
         if target_os != "ios" && (target_vendor != "apple" || target_arch != "x86") {
-            sources.extend(
-                &[
-                    "absvti2.c",
-                    "addvti3.c",
-                    "clzti2.c",
-                    "cmpti2.c",
-                    "ctzti2.c",
-                    "ffsti2.c",
-                    "mulvti3.c",
-                    "negti2.c",
-                    "negvti2.c",
-                    "parityti2.c",
-                    "popcountti2.c",
-                    "subvti3.c",
-                    "ucmpti2.c",
-                ],
-            );
+            sources.extend(&[
+                "absvti2.c",
+                "addvti3.c",
+                "clzti2.c",
+                "cmpti2.c",
+                "ctzti2.c",
+                "ffsti2.c",
+                "mulvti3.c",
+                "negti2.c",
+                "negvti2.c",
+                "parityti2.c",
+                "popcountti2.c",
+                "subvti3.c",
+                "ucmpti2.c",
+            ]);
         }
 
         if target_vendor == "apple" {
-            sources.extend(
-                &[
-                    "atomic_flag_clear.c",
-                    "atomic_flag_clear_explicit.c",
-                    "atomic_flag_test_and_set.c",
-                    "atomic_flag_test_and_set_explicit.c",
-                    "atomic_signal_fence.c",
-                    "atomic_thread_fence.c",
-                ],
-            );
+            sources.extend(&[
+                "atomic_flag_clear.c",
+                "atomic_flag_clear_explicit.c",
+                "atomic_flag_test_and_set.c",
+                "atomic_flag_test_and_set_explicit.c",
+                "atomic_signal_fence.c",
+                "atomic_thread_fence.c",
+            ]);
         }
 
         if target_env == "msvc" {
             if target_arch == "x86_64" {
-                sources.extend(
-                    &[
-                        "x86_64/floatdisf.c",
-                        "x86_64/floatdixf.c",
-                    ],
-                );
+                sources.extend(&["x86_64/floatdisf.c", "x86_64/floatdixf.c"]);
             }
         } else {
             // None of these seem to be used on x86_64 windows, and they've all
             // got the wrong ABI anyway, so we want to avoid them.
             if target_os != "windows" {
                 if target_arch == "x86_64" {
-                    sources.extend(
-                        &[
-                            "x86_64/floatdisf.c",
-                            "x86_64/floatdixf.c",
-                            "x86_64/floatundidf.S",
-                            "x86_64/floatundisf.S",
-                            "x86_64/floatundixf.S",
-                        ],
-                    );
+                    sources.extend(&[
+                        "x86_64/floatdisf.c",
+                        "x86_64/floatdixf.c",
+                        "x86_64/floatundidf.S",
+                        "x86_64/floatundisf.S",
+                        "x86_64/floatundixf.S",
+                    ]);
                 }
             }
 
             if target_arch == "x86" {
-                sources.extend(
-                    &[
-                        "i386/ashldi3.S",
-                        "i386/ashrdi3.S",
-                        "i386/divdi3.S",
-                        "i386/floatdidf.S",
-                        "i386/floatdisf.S",
-                        "i386/floatdixf.S",
-                        "i386/floatundidf.S",
-                        "i386/floatundisf.S",
-                        "i386/floatundixf.S",
-                        "i386/lshrdi3.S",
-                        "i386/moddi3.S",
-                        "i386/muldi3.S",
-                        "i386/udivdi3.S",
-                        "i386/umoddi3.S",
-                    ],
-                );
+                sources.extend(&[
+                    "i386/ashldi3.S",
+                    "i386/ashrdi3.S",
+                    "i386/divdi3.S",
+                    "i386/floatdidf.S",
+                    "i386/floatdisf.S",
+                    "i386/floatdixf.S",
+                    "i386/floatundidf.S",
+                    "i386/floatundisf.S",
+                    "i386/floatundixf.S",
+                    "i386/lshrdi3.S",
+                    "i386/moddi3.S",
+                    "i386/muldi3.S",
+                    "i386/udivdi3.S",
+                    "i386/umoddi3.S",
+                ]);
             }
         }
 
         if target_arch == "arm" && target_os != "ios" && target_env != "msvc" {
-            sources.extend(
-                &[
-                    "arm/aeabi_div0.c",
-                    "arm/aeabi_drsub.c",
-                    "arm/aeabi_frsub.c",
-                    "arm/bswapdi2.S",
-                    "arm/bswapsi2.S",
-                    "arm/clzdi2.S",
-                    "arm/clzsi2.S",
-                    "arm/divmodsi4.S",
-                    "arm/divsi3.S",
-                    "arm/modsi3.S",
-                    "arm/switch16.S",
-                    "arm/switch32.S",
-                    "arm/switch8.S",
-                    "arm/switchu8.S",
-                    "arm/sync_synchronize.S",
-                    "arm/udivmodsi4.S",
-                    "arm/udivsi3.S",
-                    "arm/umodsi3.S",
-                ],
-            );
+            sources.extend(&[
+                "arm/aeabi_div0.c",
+                "arm/aeabi_drsub.c",
+                "arm/aeabi_frsub.c",
+                "arm/bswapdi2.S",
+                "arm/bswapsi2.S",
+                "arm/clzdi2.S",
+                "arm/clzsi2.S",
+                "arm/divmodsi4.S",
+                "arm/divsi3.S",
+                "arm/modsi3.S",
+                "arm/switch16.S",
+                "arm/switch32.S",
+                "arm/switch8.S",
+                "arm/switchu8.S",
+                "arm/sync_synchronize.S",
+                "arm/udivmodsi4.S",
+                "arm/udivsi3.S",
+                "arm/umodsi3.S",
+            ]);
 
             if target_os == "freebsd" {
                 sources.extend(&["clear_cache.c"]);
@@ -316,100 +300,89 @@ mod c {
             // First of all aeabi_cdcmp and aeabi_cfcmp are never called by LLVM.
             // Second are little-endian only, so build fail on big-endian targets.
             // Temporally workaround: exclude these files for big-endian targets.
-            if !llvm_target[0].starts_with("thumbeb") &&
-               !llvm_target[0].starts_with("armeb") {
-                sources.extend(
-                    &[
-                        "arm/aeabi_cdcmp.S",
-                        "arm/aeabi_cdcmpeq_check_nan.c",
-                        "arm/aeabi_cfcmp.S",
-                        "arm/aeabi_cfcmpeq_check_nan.c",
-                    ],
-                );
+            if !llvm_target[0].starts_with("thumbeb") && !llvm_target[0].starts_with("armeb") {
+                sources.extend(&[
+                    "arm/aeabi_cdcmp.S",
+                    "arm/aeabi_cdcmpeq_check_nan.c",
+                    "arm/aeabi_cfcmp.S",
+                    "arm/aeabi_cfcmpeq_check_nan.c",
+                ]);
             }
         }
 
         if llvm_target[0] == "armv7" {
-            sources.extend(
-                &[
-                    "arm/sync_fetch_and_add_4.S",
-                    "arm/sync_fetch_and_add_8.S",
-                    "arm/sync_fetch_and_and_4.S",
-                    "arm/sync_fetch_and_and_8.S",
-                    "arm/sync_fetch_and_max_4.S",
-                    "arm/sync_fetch_and_max_8.S",
-                    "arm/sync_fetch_and_min_4.S",
-                    "arm/sync_fetch_and_min_8.S",
-                    "arm/sync_fetch_and_nand_4.S",
-                    "arm/sync_fetch_and_nand_8.S",
-                    "arm/sync_fetch_and_or_4.S",
-                    "arm/sync_fetch_and_or_8.S",
-                    "arm/sync_fetch_and_sub_4.S",
-                    "arm/sync_fetch_and_sub_8.S",
-                    "arm/sync_fetch_and_umax_4.S",
-                    "arm/sync_fetch_and_umax_8.S",
-                    "arm/sync_fetch_and_umin_4.S",
-                    "arm/sync_fetch_and_umin_8.S",
-                    "arm/sync_fetch_and_xor_4.S",
-                    "arm/sync_fetch_and_xor_8.S",
-                ],
-            );
+            sources.extend(&[
+                "arm/sync_fetch_and_add_4.S",
+                "arm/sync_fetch_and_add_8.S",
+                "arm/sync_fetch_and_and_4.S",
+                "arm/sync_fetch_and_and_8.S",
+                "arm/sync_fetch_and_max_4.S",
+                "arm/sync_fetch_and_max_8.S",
+                "arm/sync_fetch_and_min_4.S",
+                "arm/sync_fetch_and_min_8.S",
+                "arm/sync_fetch_and_nand_4.S",
+                "arm/sync_fetch_and_nand_8.S",
+                "arm/sync_fetch_and_or_4.S",
+                "arm/sync_fetch_and_or_8.S",
+                "arm/sync_fetch_and_sub_4.S",
+                "arm/sync_fetch_and_sub_8.S",
+                "arm/sync_fetch_and_umax_4.S",
+                "arm/sync_fetch_and_umax_8.S",
+                "arm/sync_fetch_and_umin_4.S",
+                "arm/sync_fetch_and_umin_8.S",
+                "arm/sync_fetch_and_xor_4.S",
+                "arm/sync_fetch_and_xor_8.S",
+            ]);
         }
 
         if llvm_target.last().unwrap().ends_with("eabihf") {
-            if !llvm_target[0].starts_with("thumbv7em") &&
-               !llvm_target[0].starts_with("thumbv8m.main") {
+            if !llvm_target[0].starts_with("thumbv7em")
+                && !llvm_target[0].starts_with("thumbv8m.main")
+            {
                 // The FPU option chosen for these architectures in cc-rs, ie:
                 //     -mfpu=fpv4-sp-d16 for thumbv7em
                 //     -mfpu=fpv5-sp-d16 for thumbv8m.main
                 // do not support double precision floating points conversions so the files
                 // that include such instructions are not included for these targets.
-                sources.extend(
-                    &[
-                        "arm/fixdfsivfp.S",
-                        "arm/fixunsdfsivfp.S",
-                        "arm/floatsidfvfp.S",
-                        "arm/floatunssidfvfp.S",
-                    ],
-                );
+                sources.extend(&[
+                    "arm/fixdfsivfp.S",
+                    "arm/fixunsdfsivfp.S",
+                    "arm/floatsidfvfp.S",
+                    "arm/floatunssidfvfp.S",
+                ]);
             }
 
-            sources.extend(
-                &[
-                    "arm/fixsfsivfp.S",
-                    "arm/fixunssfsivfp.S",
-                    "arm/floatsisfvfp.S",
-                    "arm/floatunssisfvfp.S",
-                    "arm/floatunssisfvfp.S",
-                    "arm/restore_vfp_d8_d15_regs.S",
-                    "arm/save_vfp_d8_d15_regs.S",
-                    "arm/negdf2vfp.S",
-                    "arm/negsf2vfp.S",
-                ]
-            );
-
+            sources.extend(&[
+                "arm/fixsfsivfp.S",
+                "arm/fixunssfsivfp.S",
+                "arm/floatsisfvfp.S",
+                "arm/floatunssisfvfp.S",
+                "arm/floatunssisfvfp.S",
+                "arm/restore_vfp_d8_d15_regs.S",
+                "arm/save_vfp_d8_d15_regs.S",
+                "arm/negdf2vfp.S",
+                "arm/negsf2vfp.S",
+            ]);
         }
 
         if target_arch == "aarch64" {
-            sources.extend(
-                &[
-                    "comparetf2.c",
-                    "extenddftf2.c",
-                    "extendsftf2.c",
-                    "fixtfdi.c",
-                    "fixtfsi.c",
-                    "fixtfti.c",
-                    "fixunstfdi.c",
-                    "fixunstfsi.c",
-                    "fixunstfti.c",
-                    "floatditf.c",
-                    "floatsitf.c",
-                    "floatunditf.c",
-                    "floatunsitf.c",
-                    "trunctfdf2.c",
-                    "trunctfsf2.c",
-                ],
-            );
+            sources.extend(&[
+                "comparetf2.c",
+                "extenddftf2.c",
+                "extendsftf2.c",
+                "fixtfdi.c",
+                "fixtfsi.c",
+                "fixtfti.c",
+                "fixunstfdi.c",
+                "fixunstfsi.c",
+                "fixunstfti.c",
+                "floatditf.c",
+                "floatsitf.c",
+                "floatunditf.c",
+                "floatunsitf.c",
+                "trunctfdf2.c",
+                "trunctfsf2.c",
+            ]);
 
             if target_os != "windows" {
                 sources.extend(&["multc3.c"]);
@@ -418,22 +391,20 @@ mod c {
 
         // Remove the assembly implementations that won't compile for the target
         if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
-            sources.remove(
-                &[
-                    "clzdi2",
-                    "clzsi2",
-                    "divmodsi4",
-                    "divsi3",
-                    "modsi3",
-                    "switch16",
-                    "switch32",
-                    "switch8",
-                    "switchu8",
-                    "udivmodsi4",
-                    "udivsi3",
-                    "umodsi3",
-                ],
-            );
+            sources.remove(&[
+                "clzdi2",
+                "clzsi2",
+                "divmodsi4",
+                "divsi3",
+                "modsi3",
+                "switch16",
+                "switch32",
+                "switch8",
+                "switchu8",
+                "udivmodsi4",
+                "udivsi3",
+                "umodsi3",
+            ]);
 
             // But use some generic implementations where possible
             sources.extend(&["clzdi2.c", "clzsi2.c"])

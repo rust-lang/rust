@@ -17,7 +17,7 @@ extern crate panic_handler;
 
 #[cfg(all(not(thumb), not(windows)))]
 #[link(name = "c")]
-extern {}
+extern "C" {}
 
 // Every function in this module maps will be lowered to an intrinsic by LLVM, if the platform
 // doesn't have native support for the operation used in the function. ARM has a naming convention
@@ -340,11 +340,13 @@ fn run() {
 
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 
-    extern {
+    extern "C" {
         fn rust_begin_unwind();
     }
     // if bb(false) {
-        unsafe { rust_begin_unwind(); }
+    unsafe {
+        rust_begin_unwind();
+    }
     // }
 }
 
@@ -377,7 +379,7 @@ pub fn _start() -> ! {
 #[cfg(windows)]
 #[link(name = "kernel32")]
 #[link(name = "msvcrt")]
-extern {}
+extern "C" {}
 
 // ARM targets need these symbols
 #[no_mangle]

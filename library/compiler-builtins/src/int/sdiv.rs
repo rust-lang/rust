@@ -43,7 +43,8 @@ impl Mod for i128 {}
 trait Divmod: Int {
     /// Returns `a / b` and sets `*rem = n % d`
     fn divmod<F>(self, other: Self, rem: &mut Self, div: F) -> Self
-        where F: Fn(Self, Self) -> Self,
+    where
+        F: Fn(Self, Self) -> Self,
     {
         let r = div(self, other);
         // NOTE won't overflow because it's using the result from the

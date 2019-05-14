@@ -1,6 +1,6 @@
-use float::Float;
-use float::add::__addsf3;
 use float::add::__adddf3;
+use float::add::__addsf3;
+use float::Float;
 
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_fsub]

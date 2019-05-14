@@ -1,8 +1,9 @@
-use int::{CastInto, Int};
 use float::Float;
+use int::{CastInto, Int};
 
 /// Generic conversion from a narrower to a wider IEEE-754 floating-point type
-fn extend<F: Float, R: Float>(a: F) -> R where
+fn extend<F: Float, R: Float>(a: F) -> R
+where
     F::Int: CastInto<u64>,
     u64: CastInto<F::Int>,
     u32: CastInto<R::Int>,

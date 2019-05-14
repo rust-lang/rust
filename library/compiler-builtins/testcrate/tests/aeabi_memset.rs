@@ -1,7 +1,9 @@
-#![cfg(all(target_arch = "arm",
-           not(any(target_env = "gnu", target_env = "musl")),
-           target_os = "linux",
-           feature = "mem"))]
+#![cfg(all(
+    target_arch = "arm",
+    not(any(target_env = "gnu", target_env = "musl")),
+    target_os = "linux",
+    feature = "mem"
+))]
 #![feature(compiler_builtins_lib)]
 #![feature(lang_items)]
 #![no_std]
@@ -48,9 +50,7 @@ fn zero() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), 0, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), 0, c) }
 
     assert_eq!(*xs, [0; 8]);
 
@@ -59,9 +59,7 @@ fn zero() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), 0, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), 0, c) }
 
     assert_eq!(*xs, [1; 8]);
 }
@@ -74,9 +72,7 @@ fn one() {
     let n = 1;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0, 0, 0, 0, 0, 0, 0]);
 
@@ -85,9 +81,7 @@ fn one() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 1, 1, 1, 1, 1, 1, 1]);
 }
@@ -100,9 +94,7 @@ fn two() {
     let n = 2;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0, 0, 0, 0, 0, 0]);
 
@@ -111,9 +103,7 @@ fn two() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 1, 1, 1, 1, 1, 1]);
 }
@@ -126,9 +116,7 @@ fn three() {
     let n = 3;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0, 0, 0, 0, 0]);
 
@@ -137,9 +125,7 @@ fn three() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 1, 1, 1, 1, 1]);
 }
@@ -152,9 +138,7 @@ fn four() {
     let n = 4;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0, 0, 0, 0]);
 
@@ -163,9 +147,7 @@ fn four() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 1, 1, 1, 1]);
 }
@@ -178,9 +160,7 @@ fn five() {
     let n = 5;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0, 0, 0]);
 
@@ -189,9 +169,7 @@ fn five() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 1, 1, 1]);
 }
@@ -204,9 +182,7 @@ fn six() {
     let n = 6;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0, 0]);
 
@@ -215,9 +191,7 @@ fn six() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 1, 1]);
 }
@@ -230,9 +204,7 @@ fn seven() {
     let n = 7;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0]);
 
@@ -241,9 +213,7 @@ fn seven() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 1]);
 }
@@ -256,9 +226,7 @@ fn eight() {
     let n = 8;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef]);
 
@@ -267,9 +235,7 @@ fn eight() {
     let xs = &mut aligned.array;
     let c = 0xdeadbeef;
 
-    unsafe {
-        __aeabi_memset4(xs.as_mut_ptr(), n, c)
-    }
+    unsafe { __aeabi_memset4(xs.as_mut_ptr(), n, c) }
 
     assert_eq!(*xs, [0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef, 0xef]);
 }

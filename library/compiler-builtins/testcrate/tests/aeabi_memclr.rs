@@ -1,7 +1,9 @@
-#![cfg(all(target_arch = "arm",
-           not(any(target_env = "gnu", target_env = "musl")),
-           target_os = "linux",
-           feature = "mem"))]
+#![cfg(all(
+    target_arch = "arm",
+    not(any(target_env = "gnu", target_env = "musl")),
+    target_os = "linux",
+    feature = "mem"
+))]
 #![feature(compiler_builtins_lib)]
 #![feature(lang_items)]
 #![no_std]

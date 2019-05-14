@@ -261,7 +261,7 @@ macro_rules! intrinsics {
 
 // Hack for LLVM expectations for ABI on windows. This is used by the
 // `#[win64_128bit_abi_hack]` attribute recognized above
-#[cfg(all(windows, target_pointer_width="64"))]
+#[cfg(all(windows, target_pointer_width = "64"))]
 pub mod win64_128bit_abi_hack {
     #[repr(simd)]
     pub struct U64x2(u64, u64);

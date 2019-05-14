@@ -6,10 +6,7 @@ type c_int = i16;
 type c_int = i32;
 
 #[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-pub unsafe extern "C" fn memcpy(dest: *mut u8,
-                                src: *const u8,
-                                n: usize)
-                                -> *mut u8 {
+pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     let mut i = 0;
     while i < n {
         *dest.offset(i as isize) = *src.offset(i as isize);
@@ -19,10 +16,7 @@ pub unsafe extern "C" fn memcpy(dest: *mut u8,
 }
 
 #[cfg_attr(all(feature = "mem", not(feature = "mangled-names")), no_mangle)]
-pub unsafe extern "C" fn memmove(dest: *mut u8,
-                                 src: *const u8,
-                                 n: usize)
-                                 -> *mut u8 {
+pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     if src < dest as *const u8 {
         // copy from end
         let mut i = n;

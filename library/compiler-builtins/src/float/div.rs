@@ -1,7 +1,5 @@
-use int::{CastInto, Int, WideInt};
 use float::Float;
-
-
+use int::{CastInto, Int, WideInt};
 
 fn div32<F: Float>(a: F, b: F) -> F
 where
@@ -398,7 +396,6 @@ where
     // operation in C, so we need to be a little bit fussy.
     let (mut quotient, _) = <F::Int as WideInt>::wide_mul(a_significand << 2, reciprocal.cast());
 
-
     // Two cases: quotient is in [0.5, 1.0) or quotient is in [1.0, 2.0).
     // In either case, we are going to compute a residual of the form
     //
@@ -441,7 +438,6 @@ where
         return F::from_repr(abs_result | quotient_sign);
     }
 }
-
 
 intrinsics! {
     #[arm_aeabi_alias = __aeabi_fdiv]

@@ -1,8 +1,9 @@
-use int::{Int, CastInto};
 use float::Float;
+use int::{CastInto, Int};
 
 /// Returns `a + b`
-fn add<F: Float>(a: F, b: F) -> F where
+fn add<F: Float>(a: F, b: F) -> F
+where
     u32: CastInto<F::Int>,
     F::Int: CastInto<u32>,
     i32: CastInto<F::Int>,
@@ -11,18 +12,18 @@ fn add<F: Float>(a: F, b: F) -> F where
     let one = F::Int::ONE;
     let zero = F::Int::ZERO;
 
-    let bits =             F::BITS.cast();
+    let bits = F::BITS.cast();
     let significand_bits = F::SIGNIFICAND_BITS;
-    let max_exponent =     F::EXPONENT_MAX;
+    let max_exponent = F::EXPONENT_MAX;
 
-    let implicit_bit =     F::IMPLICIT_BIT;
+    let implicit_bit = F::IMPLICIT_BIT;
     let significand_mask = F::SIGNIFICAND_MASK;
-    let sign_bit =         F::SIGN_MASK as F::Int;
-    let abs_mask =         sign_bit - one;
-    let exponent_mask =    F::EXPONENT_MASK;
-    let inf_rep =          exponent_mask;
-    let quiet_bit =        implicit_bit >> 1;
-    let qnan_rep =         exponent_mask | quiet_bit;
+    let sign_bit = F::SIGN_MASK as F::Int;
+    let abs_mask = sign_bit - one;
+    let exponent_mask = F::EXPONENT_MASK;
+    let inf_rep = exponent_mask;
+    let quiet_bit = implicit_bit >> 1;
+    let qnan_rep = exponent_mask | quiet_bit;
 
     let mut a_rep = a.repr();
     let mut b_rep = b.repr();
@@ -30,8 +31,7 @@ fn add<F: Float>(a: F, b: F) -> F where
     let b_abs = b_rep & abs_mask;
 
     // Detect if a or b is zero, infinity, or NaN.
-    if a_abs.wrapping_sub(one) >= inf_rep - one ||
-        b_abs.wrapping_sub(one) >= inf_rep - one {
+    if a_abs.wrapping_sub(one) >= inf_rep - one || b_abs.wrapping_sub(one) >= inf_rep - one {
         // NaN + anything = qNaN
         if a_abs > inf_rep {
             return F::from_repr(a_abs | quiet_bit);
@@ -68,7 +68,7 @@ fn add<F: Float>(a: F, b: F) -> F where
 
         // anything + zero = anything
         if b_abs == Int::ZERO {
-             return a;
+            return a;
         }
     }
 
@@ -115,7 +115,8 @@ fn add<F: Float>(a: F, b: F) -> F where
     let align = a_exponent.wrapping_sub(b_exponent).cast();
     if align != Int::ZERO {
         if align < bits {
-            let sticky = F::Int::from_bool(b_significand << bits.wrapping_sub(align).cast() != Int::ZERO);
+            let sticky =
+                F::Int::from_bool(b_significand << bits.wrapping_sub(align).cast() != Int::ZERO);
             b_significand = (b_significand >> align.cast()) | sticky;
         } else {
             b_significand = one; // sticky; b is known to be non-zero.
@@ -131,12 +132,14 @@ fn add<F: Float>(a: F, b: F) -> F where
         // If partial cancellation occured, we need to left-shift the result
         // and adjust the exponent:
         if a_significand < implicit_bit << 3 {
-            let shift = a_significand.leading_zeros() as i32
-                - (implicit_bit << 3).leading_zeros() as i32;
+            let shift =
+                a_significand.leading_zeros() as i32 - (implicit_bit << 3).leading_zeros() as i32;
             a_significand <<= shift;
             a_exponent -= shift;
         }
-    } else /* addition */ {
+    } else
+    /* addition */
+    {
         a_significand += b_significand;
 
         // If the addition carried up, we need to right-shift the result and
@@ -157,7 +160,8 @@ fn add<F: Float>(a: F, b: F) -> F where
         // Result is denormal before rounding; the exponent is zero and we
         // need to shift the significand.
         let shift = (1 - a_exponent).cast();
-        let sticky = F::Int::from_bool((a_significand << bits.wrapping_sub(shift).cast()) != Int::ZERO);
+        let sticky =
+            F::Int::from_bool((a_significand << bits.wrapping_sub(shift).cast()) != Int::ZERO);
         a_significand = a_significand >> shift.cast() | sticky;
         a_exponent = 0;
     }
@@ -175,8 +179,12 @@ fn add<F: Float>(a: F, b: F) -> F where
 
     // Final rounding.  The result may overflow to infinity, but that is the
     // correct result in that case.
-    if round_guard_sticky > 0x4 { result += one; }
-    if round_guard_sticky == 0x4 { result += result & one; }
+    if round_guard_sticky > 0x4 {
+        result += one;
+    }
+    if round_guard_sticky == 0x4 {
+        result += result & one;
+    }
 
     F::from_repr(result)
 }

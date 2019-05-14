@@ -3,11 +3,13 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
 #![crate_name = "compiler_builtins"]
 #![crate_type = "rlib"]
-#![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
-       html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
-       html_root_url = "https://doc.rust-lang.org/nightly/",
-       html_playground_url = "https://play.rust-lang.org/",
-       test(attr(deny(warnings))))]
+#![doc(
+    html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk.png",
+    html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
+    html_root_url = "https://doc.rust-lang.org/nightly/",
+    html_playground_url = "https://play.rust-lang.org/",
+    test(attr(deny(warnings)))
+)]
 #![feature(asm)]
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
@@ -19,10 +21,14 @@
 #![allow(unused_features)]
 #![no_builtins]
 #![cfg_attr(feature = "compiler-builtins", feature(staged_api))]
-#![cfg_attr(feature = "compiler-builtins",
-            unstable(feature = "compiler_builtins_lib",
-                     reason = "Compiler builtins. Will never become stable.",
-                     issue = "0"))]
+#![cfg_attr(
+    feature = "compiler-builtins",
+    unstable(
+        feature = "compiler_builtins_lib",
+        reason = "Compiler builtins. Will never become stable.",
+        issue = "0"
+    )
+)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.
@@ -44,12 +50,14 @@ fn abort() -> ! {
 #[macro_use]
 mod macros;
 
-pub mod int;
 pub mod float;
+pub mod int;
 
-#[cfg(any(all(target_arch = "wasm32", target_os = "unknown"),
-          all(target_arch = "arm", target_os = "none"),
-          all(target_vendor = "fortanix", target_env = "sgx")))]
+#[cfg(any(
+    all(target_arch = "wasm32", target_os = "unknown"),
+    all(target_arch = "arm", target_os = "none"),
+    all(target_vendor = "fortanix", target_env = "sgx")
+))]
 pub mod math;
 pub mod mem;
 

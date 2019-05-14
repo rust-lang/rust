@@ -2,15 +2,15 @@ extern crate cast;
 extern crate rand;
 
 use std::collections::HashMap;
+use std::fmt;
 use std::fmt::Write as FmtWrite;
 use std::fs::{self, OpenOptions};
-use std::io::Write;
 use std::hash::{Hash, Hasher};
+use std::io::Write;
 use std::path::PathBuf;
 use std::{env, mem};
-use std::fmt;
 
-use self::cast::{f32, f64, u32, u64, u128, i32, i64, i128};
+use self::cast::{f32, f64, i128, i32, i64, u128, u32, u64};
 use self::rand::Rng;
 
 const NTESTS: usize = 1_000;
@@ -21,16 +21,15 @@ fn main() {
     drop(fs::remove_file(&out_file));
 
     let target = env::var("TARGET").unwrap();
-    let target_arch_arm =
-        target.contains("arm") ||
-        target.contains("thumb");
+    let target_arch_arm = target.contains("arm") || target.contains("thumb");
     let target_arch_mips = target.contains("mips");
 
     // TODO accept NaNs. We don't do that right now because we can't check
     // for NaN-ness on the thumb targets (due to missing intrinsics)
 
     // float/add.rs
-    gen(|(a, b): (MyF64, MyF64)| {
+    gen(
+        |(a, b): (MyF64, MyF64)| {
             let c = a.0 + b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                 None
@@ -38,8 +37,10 @@ fn main() {
                 Some(c)
             }
         },
-        "builtins::float::add::__adddf3(a, b)");
-    gen(|(a, b): (MyF32, MyF32)| {
+        "builtins::float::add::__adddf3(a, b)",
+    );
+    gen(
+        |(a, b): (MyF32, MyF32)| {
             let c = a.0 + b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                 None
@@ -47,10 +48,12 @@ fn main() {
                 Some(c)
             }
         },
-        "builtins::float::add::__addsf3(a, b)");
+        "builtins::float::add::__addsf3(a, b)",
+    );
 
     if target_arch_arm {
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 let c = a.0 + b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                     None
@@ -58,8 +61,10 @@ fn main() {
                     Some(c)
                 }
             },
-            "builtins::float::add::__adddf3vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::add::__adddf3vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 let c = a.0 + b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                     None
@@ -67,12 +72,13 @@ fn main() {
                     Some(c)
                 }
             },
-            "builtins::float::add::__addsf3vfp(a, b)");
+            "builtins::float::add::__addsf3vfp(a, b)",
+        );
     }
 
-
     // float/cmp.rs
-    gen(|(a, b): (MyF64, MyF64)| {
+    gen(
+        |(a, b): (MyF64, MyF64)| {
             let (a, b) = (a.0, b.0);
             if a.is_nan() || b.is_nan() {
                 return None;
@@ -88,8 +94,10 @@ fn main() {
                 Some(0)
             }
         },
-        "builtins::float::cmp::__gedf2(a, b)");
-    gen(|(a, b): (MyF32, MyF32)| {
+        "builtins::float::cmp::__gedf2(a, b)",
+    );
+    gen(
+        |(a, b): (MyF32, MyF32)| {
             let (a, b) = (a.0, b.0);
             if a.is_nan() || b.is_nan() {
                 return None;
@@ -105,8 +113,10 @@ fn main() {
                 Some(0)
             }
         },
-        "builtins::float::cmp::__gesf2(a, b)");
-    gen(|(a, b): (MyF64, MyF64)| {
+        "builtins::float::cmp::__gesf2(a, b)",
+    );
+    gen(
+        |(a, b): (MyF64, MyF64)| {
             let (a, b) = (a.0, b.0);
             if a.is_nan() || b.is_nan() {
                 return None;
@@ -122,8 +132,10 @@ fn main() {
                 Some(0)
             }
         },
-        "builtins::float::cmp::__ledf2(a, b)");
-    gen(|(a, b): (MyF32, MyF32)| {
+        "builtins::float::cmp::__ledf2(a, b)",
+    );
+    gen(
+        |(a, b): (MyF32, MyF32)| {
             let (a, b) = (a.0, b.0);
             if a.is_nan() || b.is_nan() {
                 return None;
@@ -139,285 +151,387 @@ fn main() {
                 Some(0)
             }
         },
-        "builtins::float::cmp::__lesf2(a, b)");
+        "builtins::float::cmp::__lesf2(a, b)",
+    );
 
-    gen(|(a, b): (MyF32, MyF32)| {
+    gen(
+        |(a, b): (MyF32, MyF32)| {
             let c = a.0.is_nan() || b.0.is_nan();
             Some(c as i32)
         },
-        "builtins::float::cmp::__unordsf2(a, b)");
+        "builtins::float::cmp::__unordsf2(a, b)",
+    );
 
-    gen(|(a, b): (MyF64, MyF64)| {
+    gen(
+        |(a, b): (MyF64, MyF64)| {
             let c = a.0.is_nan() || b.0.is_nan();
             Some(c as i32)
         },
-        "builtins::float::cmp::__unorddf2(a, b)");
+        "builtins::float::cmp::__unorddf2(a, b)",
+    );
 
     if target_arch_arm {
-        gen(|(a, b): (MyF32, MyF32)| {
+        gen(
+            |(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 <= b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_fcmple(a, b)");
+            "builtins::float::cmp::__aeabi_fcmple(a, b)",
+        );
 
-        gen(|(a, b): (MyF32, MyF32)| {
+        gen(
+            |(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 >= b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_fcmpge(a, b)");
+            "builtins::float::cmp::__aeabi_fcmpge(a, b)",
+        );
 
-        gen(|(a, b): (MyF32, MyF32)| {
+        gen(
+            |(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 == b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_fcmpeq(a, b)");
+            "builtins::float::cmp::__aeabi_fcmpeq(a, b)",
+        );
 
-        gen(|(a, b): (MyF32, MyF32)| {
+        gen(
+            |(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 < b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_fcmplt(a, b)");
+            "builtins::float::cmp::__aeabi_fcmplt(a, b)",
+        );
 
-        gen(|(a, b): (MyF32, MyF32)| {
+        gen(
+            |(a, b): (MyF32, MyF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 > b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_fcmpgt(a, b)");
+            "builtins::float::cmp::__aeabi_fcmpgt(a, b)",
+        );
 
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 <= b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_dcmple(a, b)");
+            "builtins::float::cmp::__aeabi_dcmple(a, b)",
+        );
 
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 >= b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_dcmpge(a, b)");
+            "builtins::float::cmp::__aeabi_dcmpge(a, b)",
+        );
 
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 == b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_dcmpeq(a, b)");
+            "builtins::float::cmp::__aeabi_dcmpeq(a, b)",
+        );
 
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 < b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_dcmplt(a, b)");
+            "builtins::float::cmp::__aeabi_dcmplt(a, b)",
+        );
 
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 let c = (a.0 > b.0) as i32;
                 Some(c)
             },
-            "builtins::float::cmp::__aeabi_dcmpgt(a, b)");
+            "builtins::float::cmp::__aeabi_dcmpgt(a, b)",
+        );
 
-        gen(|(a, b): (LargeF32, LargeF32)| {
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 >= b.0) as i32)
             },
-            "builtins::float::cmp::__gesf2vfp(a, b)");
-        gen(|(a, b): (MyF64, MyF64)| {
+            "builtins::float::cmp::__gesf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 >= b.0) as i32)
             },
-            "builtins::float::cmp::__gedf2vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::cmp::__gedf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 > b.0) as i32)
             },
-            "builtins::float::cmp::__gtsf2vfp(a, b)");
-        gen(|(a, b): (MyF64, MyF64)| {
+            "builtins::float::cmp::__gtsf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 > b.0) as i32)
             },
-            "builtins::float::cmp::__gtdf2vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::cmp::__gtdf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 < b.0) as i32)
             },
-            "builtins::float::cmp::__ltsf2vfp(a, b)");
-        gen(|(a, b): (MyF64, MyF64)| {
+            "builtins::float::cmp::__ltsf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 < b.0) as i32)
             },
-            "builtins::float::cmp::__ltdf2vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::cmp::__ltdf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 <= b.0) as i32)
             },
-            "builtins::float::cmp::__lesf2vfp(a, b)");
-        gen(|(a, b): (MyF64, MyF64)| {
+            "builtins::float::cmp::__lesf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 <= b.0) as i32)
             },
-            "builtins::float::cmp::__ledf2vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::cmp::__ledf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 != b.0) as i32)
             },
-            "builtins::float::cmp::__nesf2vfp(a, b)");
-        gen(|(a, b): (MyF64, MyF64)| {
+            "builtins::float::cmp::__nesf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 != b.0) as i32)
             },
-            "builtins::float::cmp::__nedf2vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::cmp::__nedf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 == b.0) as i32)
             },
-            "builtins::float::cmp::__eqsf2vfp(a, b)");
-        gen(|(a, b): (MyF64, MyF64)| {
+            "builtins::float::cmp::__eqsf2vfp(a, b)",
+        );
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if a.0.is_nan() || b.0.is_nan() {
                     return None;
                 }
                 Some((a.0 == b.0) as i32)
             },
-            "builtins::float::cmp::__eqdf2vfp(a, b)");
+            "builtins::float::cmp::__eqdf2vfp(a, b)",
+        );
     }
 
     // float/extend.rs
-    gen(|a: MyF32| {
+    gen(
+        |a: MyF32| {
             if a.0.is_nan() {
                 return None;
             }
             Some(f64(a.0))
         },
-        "builtins::float::extend::__extendsfdf2(a)");
+        "builtins::float::extend::__extendsfdf2(a)",
+    );
     if target_arch_arm {
-        gen(|a: LargeF32| {
-            if a.0.is_nan() {
-                return None;
-            }
-            Some(f64(a.0))
-        },
-        "builtins::float::extend::__extendsfdf2vfp(a)");
+        gen(
+            |a: LargeF32| {
+                if a.0.is_nan() {
+                    return None;
+                }
+                Some(f64(a.0))
+            },
+            "builtins::float::extend::__extendsfdf2vfp(a)",
+        );
     }
 
     // float/conv.rs
-    gen(|a: MyF64| i64(a.0).ok(),
-        "builtins::float::conv::__fixdfdi(a)");
-    gen(|a: MyF64| i32(a.0).ok(),
-        "builtins::float::conv::__fixdfsi(a)");
-    gen(|a: MyF32| i64(a.0).ok(),
-        "builtins::float::conv::__fixsfdi(a)");
-    gen(|a: MyF32| i32(a.0).ok(),
-        "builtins::float::conv::__fixsfsi(a)");
-    gen(|a: MyF32| i128(a.0).ok(),
-        "builtins::float::conv::__fixsfti(a)");
-    gen(|a: MyF64| i128(a.0).ok(),
-        "builtins::float::conv::__fixdfti(a)");
-    gen(|a: MyF64| u64(a.0).ok(),
-        "builtins::float::conv::__fixunsdfdi(a)");
-    gen(|a: MyF64| u32(a.0).ok(),
-        "builtins::float::conv::__fixunsdfsi(a)");
-    gen(|a: MyF32| u64(a.0).ok(),
-        "builtins::float::conv::__fixunssfdi(a)");
-    gen(|a: MyF32| u32(a.0).ok(),
-        "builtins::float::conv::__fixunssfsi(a)");
-    gen(|a: MyF32| u128(a.0).ok(),
-        "builtins::float::conv::__fixunssfti(a)");
-    gen(|a: MyF64| u128(a.0).ok(),
-        "builtins::float::conv::__fixunsdfti(a)");
-    gen(|a: MyI64| Some(f64(a.0)),
-        "builtins::float::conv::__floatdidf(a)");
-    gen(|a: MyI32| Some(f64(a.0)),
-        "builtins::float::conv::__floatsidf(a)");
-    gen(|a: MyI32| Some(f32(a.0)),
-        "builtins::float::conv::__floatsisf(a)");
-    gen(|a: MyU64| Some(f64(a.0)),
-        "builtins::float::conv::__floatundidf(a)");
-    gen(|a: MyU32| Some(f64(a.0)),
-        "builtins::float::conv::__floatunsidf(a)");
-    gen(|a: MyU32| Some(f32(a.0)),
-        "builtins::float::conv::__floatunsisf(a)");
-    gen(|a: MyU128| f32(a.0).ok(),
-        "builtins::float::conv::__floatuntisf(a)");
+    gen(
+        |a: MyF64| i64(a.0).ok(),
+        "builtins::float::conv::__fixdfdi(a)",
+    );
+    gen(
+        |a: MyF64| i32(a.0).ok(),
+        "builtins::float::conv::__fixdfsi(a)",
+    );
+    gen(
+        |a: MyF32| i64(a.0).ok(),
+        "builtins::float::conv::__fixsfdi(a)",
+    );
+    gen(
+        |a: MyF32| i32(a.0).ok(),
+        "builtins::float::conv::__fixsfsi(a)",
+    );
+    gen(
+        |a: MyF32| i128(a.0).ok(),
+        "builtins::float::conv::__fixsfti(a)",
+    );
+    gen(
+        |a: MyF64| i128(a.0).ok(),
+        "builtins::float::conv::__fixdfti(a)",
+    );
+    gen(
+        |a: MyF64| u64(a.0).ok(),
+        "builtins::float::conv::__fixunsdfdi(a)",
+    );
+    gen(
+        |a: MyF64| u32(a.0).ok(),
+        "builtins::float::conv::__fixunsdfsi(a)",
+    );
+    gen(
+        |a: MyF32| u64(a.0).ok(),
+        "builtins::float::conv::__fixunssfdi(a)",
+    );
+    gen(
+        |a: MyF32| u32(a.0).ok(),
+        "builtins::float::conv::__fixunssfsi(a)",
+    );
+    gen(
+        |a: MyF32| u128(a.0).ok(),
+        "builtins::float::conv::__fixunssfti(a)",
+    );
+    gen(
+        |a: MyF64| u128(a.0).ok(),
+        "builtins::float::conv::__fixunsdfti(a)",
+    );
+    gen(
+        |a: MyI64| Some(f64(a.0)),
+        "builtins::float::conv::__floatdidf(a)",
+    );
+    gen(
+        |a: MyI32| Some(f64(a.0)),
+        "builtins::float::conv::__floatsidf(a)",
+    );
+    gen(
+        |a: MyI32| Some(f32(a.0)),
+        "builtins::float::conv::__floatsisf(a)",
+    );
+    gen(
+        |a: MyU64| Some(f64(a.0)),
+        "builtins::float::conv::__floatundidf(a)",
+    );
+    gen(
+        |a: MyU32| Some(f64(a.0)),
+        "builtins::float::conv::__floatunsidf(a)",
+    );
+    gen(
+        |a: MyU32| Some(f32(a.0)),
+        "builtins::float::conv::__floatunsisf(a)",
+    );
+    gen(
+        |a: MyU128| f32(a.0).ok(),
+        "builtins::float::conv::__floatuntisf(a)",
+    );
     if !target_arch_mips {
-        gen(|a: MyI128| Some(f32(a.0)),
-            "builtins::float::conv::__floattisf(a)");
-        gen(|a: MyI128| Some(f64(a.0)),
-            "builtins::float::conv::__floattidf(a)");
-        gen(|a: MyU128| Some(f64(a.0)),
-            "builtins::float::conv::__floatuntidf(a)");
+        gen(
+            |a: MyI128| Some(f32(a.0)),
+            "builtins::float::conv::__floattisf(a)",
+        );
+        gen(
+            |a: MyI128| Some(f64(a.0)),
+            "builtins::float::conv::__floattidf(a)",
+        );
+        gen(
+            |a: MyU128| Some(f64(a.0)),
+            "builtins::float::conv::__floatuntidf(a)",
+        );
     }
 
     // float/pow.rs
-    gen(|(a, b): (MyF64, MyI32)| {
-			let c = a.0.powi(b.0);
-			if a.0.is_nan() || c.is_nan() {
-				None
-			} else {
+    gen(
+        |(a, b): (MyF64, MyI32)| {
+            let c = a.0.powi(b.0);
+            if a.0.is_nan() || c.is_nan() {
+                None
+            } else {
                 Some(c)
             }
         },
-        "builtins::float::pow::__powidf2(a, b)");
-    gen(|(a, b): (MyF32, MyI32)| {
-			let c = a.0.powi(b.0);
-			if a.0.is_nan() || c.is_nan() {
-				None
-			} else {
+        "builtins::float::pow::__powidf2(a, b)",
+    );
+    gen(
+        |(a, b): (MyF32, MyI32)| {
+            let c = a.0.powi(b.0);
+            if a.0.is_nan() || c.is_nan() {
+                None
+            } else {
                 Some(c)
             }
         },
-        "builtins::float::pow::__powisf2(a, b)");
+        "builtins::float::pow::__powisf2(a, b)",
+    );
 
     // float/sub.rs
-    gen(|(a, b): (MyF64, MyF64)| {
+    gen(
+        |(a, b): (MyF64, MyF64)| {
             let c = a.0 - b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                 None
@@ -425,8 +539,10 @@ fn main() {
                 Some(c)
             }
         },
-        "builtins::float::sub::__subdf3(a, b)");
-    gen(|(a, b): (MyF32, MyF32)| {
+        "builtins::float::sub::__subdf3(a, b)",
+    );
+    gen(
+        |(a, b): (MyF32, MyF32)| {
             let c = a.0 - b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                 None
@@ -434,10 +550,12 @@ fn main() {
                 Some(c)
             }
         },
-        "builtins::float::sub::__subsf3(a, b)");
+        "builtins::float::sub::__subsf3(a, b)",
+    );
 
     if target_arch_arm {
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 let c = a.0 - b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                     None
@@ -445,8 +563,10 @@ fn main() {
                     Some(c)
                 }
             },
-            "builtins::float::sub::__subdf3vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::sub::__subdf3vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 let c = a.0 - b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                     None
@@ -454,11 +574,13 @@ fn main() {
                     Some(c)
                 }
             },
-            "builtins::float::sub::__subsf3vfp(a, b)");
+            "builtins::float::sub::__subsf3vfp(a, b)",
+        );
     }
 
     // float/mul.rs
-    gen(|(a, b): (MyF64, MyF64)| {
+    gen(
+        |(a, b): (MyF64, MyF64)| {
             let c = a.0 * b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                 None
@@ -466,8 +588,10 @@ fn main() {
                 Some(c)
             }
         },
-        "builtins::float::mul::__muldf3(a, b)");
-    gen(|(a, b): (LargeF32, LargeF32)| {
+        "builtins::float::mul::__muldf3(a, b)",
+    );
+    gen(
+        |(a, b): (LargeF32, LargeF32)| {
             let c = a.0 * b.0;
             if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                 None
@@ -475,10 +599,12 @@ fn main() {
                 Some(c)
             }
         },
-        "builtins::float::mul::__mulsf3(a, b)");
+        "builtins::float::mul::__mulsf3(a, b)",
+    );
 
     if target_arch_arm {
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 let c = a.0 * b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                     None
@@ -486,8 +612,10 @@ fn main() {
                     Some(c)
                 }
             },
-            "builtins::float::mul::__muldf3vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::mul::__muldf3vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 let c = a.0 * b.0;
                 if a.0.is_nan() || b.0.is_nan() || c.is_nan() {
                     None
@@ -495,122 +623,168 @@ fn main() {
                     Some(c)
                 }
             },
-            "builtins::float::mul::__mulsf3vfp(a, b)");
+            "builtins::float::mul::__mulsf3vfp(a, b)",
+        );
     }
 
     // float/div.rs
-    gen(|(a, b): (MyF64, MyF64)| {
+    gen(
+        |(a, b): (MyF64, MyF64)| {
             if b.0 == 0.0 {
-                return None
+                return None;
             }
             let c = a.0 / b.0;
-            if a.0.is_nan() || b.0.is_nan() || c.is_nan() ||
-                c.abs() <= unsafe { mem::transmute(4503599627370495u64) }
+            if a.0.is_nan()
+                || b.0.is_nan()
+                || c.is_nan()
+                || c.abs() <= unsafe { mem::transmute(4503599627370495u64) }
             {
                 None
             } else {
                 Some(c)
             }
         },
-        "builtins::float::div::__divdf3(a, b)");
-    gen(|(a, b): (LargeF32, LargeF32)| {
+        "builtins::float::div::__divdf3(a, b)",
+    );
+    gen(
+        |(a, b): (LargeF32, LargeF32)| {
             if b.0 == 0.0 {
-                return None
+                return None;
             }
             let c = a.0 / b.0;
-            if a.0.is_nan() || b.0.is_nan() || c.is_nan() ||
-                c.abs() <= unsafe { mem::transmute(16777215u32) }
+            if a.0.is_nan()
+                || b.0.is_nan()
+                || c.is_nan()
+                || c.abs() <= unsafe { mem::transmute(16777215u32) }
             {
                 None
             } else {
                 Some(c)
             }
         },
-        "builtins::float::div::__divsf3(a, b)");
+        "builtins::float::div::__divsf3(a, b)",
+    );
 
     if target_arch_arm {
-        gen(|(a, b): (MyF64, MyF64)| {
+        gen(
+            |(a, b): (MyF64, MyF64)| {
                 if b.0 == 0.0 {
-                    return None
+                    return None;
                 }
                 let c = a.0 / b.0;
-                if a.0.is_nan() || b.0.is_nan() || c.is_nan() ||
-                    c.abs() <= unsafe { mem::transmute(4503599627370495u64) }
+                if a.0.is_nan()
+                    || b.0.is_nan()
+                    || c.is_nan()
+                    || c.abs() <= unsafe { mem::transmute(4503599627370495u64) }
                 {
                     None
                 } else {
                     Some(c)
                 }
             },
-            "builtins::float::div::__divdf3vfp(a, b)");
-        gen(|(a, b): (LargeF32, LargeF32)| {
+            "builtins::float::div::__divdf3vfp(a, b)",
+        );
+        gen(
+            |(a, b): (LargeF32, LargeF32)| {
                 if b.0 == 0.0 {
-                    return None
+                    return None;
                 }
                 let c = a.0 / b.0;
-                if a.0.is_nan() || b.0.is_nan() || c.is_nan() ||
-                    c.abs() <= unsafe { mem::transmute(16777215u32) }
+                if a.0.is_nan()
+                    || b.0.is_nan()
+                    || c.is_nan()
+                    || c.abs() <= unsafe { mem::transmute(16777215u32) }
                 {
                     None
                 } else {
                     Some(c)
                 }
             },
-            "builtins::float::div::__divsf3vfp(a, b)");
+            "builtins::float::div::__divsf3vfp(a, b)",
+        );
     }
 
     // int/addsub.rs
-    gen(|(a, b): (MyU128, MyU128)| Some(a.0.wrapping_add(b.0)),
-        "builtins::int::addsub::rust_u128_add(a, b)");
-    gen(|(a, b): (MyI128, MyI128)| Some(a.0.wrapping_add(b.0)),
-        "builtins::int::addsub::rust_i128_add(a, b)");
-    gen(|(a, b): (MyU128, MyU128)| Some(a.0.overflowing_add(b.0)),
-        "builtins::int::addsub::rust_u128_addo(a, b)");
-    gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_add(b.0)),
-        "builtins::int::addsub::rust_i128_addo(a, b)");
-    gen(|(a, b): (MyU128, MyU128)| Some(a.0.wrapping_sub(b.0)),
-        "builtins::int::addsub::rust_u128_sub(a, b)");
-    gen(|(a, b): (MyI128, MyI128)| Some(a.0.wrapping_sub(b.0)),
-        "builtins::int::addsub::rust_i128_sub(a, b)");
-    gen(|(a, b): (MyU128, MyU128)| Some(a.0.overflowing_sub(b.0)),
-        "builtins::int::addsub::rust_u128_subo(a, b)");
-    gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_sub(b.0)),
-        "builtins::int::addsub::rust_i128_subo(a, b)");
+    gen(
+        |(a, b): (MyU128, MyU128)| Some(a.0.wrapping_add(b.0)),
+        "builtins::int::addsub::rust_u128_add(a, b)",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| Some(a.0.wrapping_add(b.0)),
+        "builtins::int::addsub::rust_i128_add(a, b)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU128)| Some(a.0.overflowing_add(b.0)),
+        "builtins::int::addsub::rust_u128_addo(a, b)",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| Some(a.0.overflowing_add(b.0)),
+        "builtins::int::addsub::rust_i128_addo(a, b)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU128)| Some(a.0.wrapping_sub(b.0)),
+        "builtins::int::addsub::rust_u128_sub(a, b)",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| Some(a.0.wrapping_sub(b.0)),
+        "builtins::int::addsub::rust_i128_sub(a, b)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU128)| Some(a.0.overflowing_sub(b.0)),
+        "builtins::int::addsub::rust_u128_subo(a, b)",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| Some(a.0.overflowing_sub(b.0)),
+        "builtins::int::addsub::rust_i128_subo(a, b)",
+    );
 
     // int/mul.rs
-    gen(|(a, b): (MyU64, MyU64)| Some(a.0.wrapping_mul(b.0)),
-        "builtins::int::mul::__muldi3(a, b)");
-    gen(|(a, b): (MyI64, MyI64)| Some(a.0.overflowing_mul(b.0)),
+    gen(
+        |(a, b): (MyU64, MyU64)| Some(a.0.wrapping_mul(b.0)),
+        "builtins::int::mul::__muldi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyI64, MyI64)| Some(a.0.overflowing_mul(b.0)),
         "{
             let mut o = 2;
             let c = builtins::int::mul::__mulodi4(a, b, &mut o);
             (c, match o { 0 => false, 1 => true, _ => panic!() })
-        }");
-    gen(|(a, b): (MyI32, MyI32)| Some(a.0.overflowing_mul(b.0)),
+        }",
+    );
+    gen(
+        |(a, b): (MyI32, MyI32)| Some(a.0.overflowing_mul(b.0)),
         "{
             let mut o = 2;
             let c = builtins::int::mul::__mulosi4(a, b, &mut o);
             (c, match o { 0 => false, 1 => true, _ => panic!() })
-        }");
-    gen(|(a, b): (MyI128, MyI128)| Some(a.0.wrapping_mul(b.0)),
-        "builtins::int::mul::__multi3(a, b)");
-    gen(|(a, b): (MyI128, MyI128)| Some(a.0.overflowing_mul(b.0)),
+        }",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| Some(a.0.wrapping_mul(b.0)),
+        "builtins::int::mul::__multi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| Some(a.0.overflowing_mul(b.0)),
         "{
             let mut o = 2;
             let c = builtins::int::mul::__muloti4(a, b, &mut o);
             (c, match o { 0 => false, 1 => true, _ => panic!() })
-        }");
+        }",
+    );
 
     // int/sdiv.rs
-    gen(|(a, b): (MyI64, MyI64)| {
+    gen(
+        |(a, b): (MyI64, MyI64)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 / b.0)
             }
         },
-        "builtins::int::sdiv::__divdi3(a, b)");
-    gen(|(a, b): (MyI64, MyI64)| {
+        "builtins::int::sdiv::__divdi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyI64, MyI64)| {
             if b.0 == 0 {
                 None
             } else {
@@ -620,8 +794,10 @@ fn main() {
         "{
             let mut r = 0;
             (builtins::int::sdiv::__divmoddi4(a, b, &mut r), r)
-        }");
-    gen(|(a, b): (MyI32, MyI32)| {
+        }",
+    );
+    gen(
+        |(a, b): (MyI32, MyI32)| {
             if b.0 == 0 {
                 None
             } else {
@@ -631,72 +807,98 @@ fn main() {
         "{
             let mut r = 0;
             (builtins::int::sdiv::__divmodsi4(a, b, &mut r), r)
-        }");
-    gen(|(a, b): (MyI32, MyI32)| {
+        }",
+    );
+    gen(
+        |(a, b): (MyI32, MyI32)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 / b.0)
             }
         },
-        "builtins::int::sdiv::__divsi3(a, b)");
-    gen(|(a, b): (MyI32, MyI32)| {
+        "builtins::int::sdiv::__divsi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyI32, MyI32)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 % b.0)
             }
         },
-        "builtins::int::sdiv::__modsi3(a, b)");
-    gen(|(a, b): (MyI64, MyI64)| {
+        "builtins::int::sdiv::__modsi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyI64, MyI64)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 % b.0)
             }
         },
-        "builtins::int::sdiv::__moddi3(a, b)");
-    gen(|(a, b): (MyI128, MyI128)| {
+        "builtins::int::sdiv::__moddi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 / b.0)
             }
         },
-        "builtins::int::sdiv::__divti3(a, b)");
-    gen(|(a, b): (MyI128, MyI128)| {
+        "builtins::int::sdiv::__divti3(a, b)",
+    );
+    gen(
+        |(a, b): (MyI128, MyI128)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 % b.0)
             }
         },
-        "builtins::int::sdiv::__modti3(a, b)");
+        "builtins::int::sdiv::__modti3(a, b)",
+    );
 
     // int/shift.rs
-    gen(|(a, b): (MyU64, MyU32)| Some(a.0 << (b.0 % 64)),
-        "builtins::int::shift::__ashldi3(a, b % 64)");
-    gen(|(a, b): (MyU128, MyU32)| Some(a.0 << (b.0 % 128)),
-        "builtins::int::shift::__ashlti3(a, b % 128)");
-    gen(|(a, b): (MyI64, MyU32)| Some(a.0 >> (b.0 % 64)),
-        "builtins::int::shift::__ashrdi3(a, b % 64)");
-    gen(|(a, b): (MyI128, MyU32)| Some(a.0 >> (b.0 % 128)),
-        "builtins::int::shift::__ashrti3(a, b % 128)");
-    gen(|(a, b): (MyU64, MyU32)| Some(a.0 >> (b.0 % 64)),
-        "builtins::int::shift::__lshrdi3(a, b % 64)");
-    gen(|(a, b): (MyU128, MyU32)| Some(a.0 >> (b.0 % 128)),
-        "builtins::int::shift::__lshrti3(a, b % 128)");
+    gen(
+        |(a, b): (MyU64, MyU32)| Some(a.0 << (b.0 % 64)),
+        "builtins::int::shift::__ashldi3(a, b % 64)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU32)| Some(a.0 << (b.0 % 128)),
+        "builtins::int::shift::__ashlti3(a, b % 128)",
+    );
+    gen(
+        |(a, b): (MyI64, MyU32)| Some(a.0 >> (b.0 % 64)),
+        "builtins::int::shift::__ashrdi3(a, b % 64)",
+    );
+    gen(
+        |(a, b): (MyI128, MyU32)| Some(a.0 >> (b.0 % 128)),
+        "builtins::int::shift::__ashrti3(a, b % 128)",
+    );
+    gen(
+        |(a, b): (MyU64, MyU32)| Some(a.0 >> (b.0 % 64)),
+        "builtins::int::shift::__lshrdi3(a, b % 64)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU32)| Some(a.0 >> (b.0 % 128)),
+        "builtins::int::shift::__lshrti3(a, b % 128)",
+    );
 
     // int/udiv.rs
-    gen(|(a, b): (MyU64, MyU64)| {
+    gen(
+        |(a, b): (MyU64, MyU64)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 / b.0)
             }
         },
-        "builtins::int::udiv::__udivdi3(a, b)");
-    gen(|(a, b): (MyU64, MyU64)| {
+        "builtins::int::udiv::__udivdi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyU64, MyU64)| {
             if b.0 == 0 {
                 None
             } else {
@@ -706,8 +908,10 @@ fn main() {
         "{
             let mut r = 0;
             (builtins::int::udiv::__udivmoddi4(a, b, Some(&mut r)), r)
-        }");
-    gen(|(a, b): (MyU32, MyU32)| {
+        }",
+    );
+    gen(
+        |(a, b): (MyU32, MyU32)| {
             if b.0 == 0 {
                 None
             } else {
@@ -717,48 +921,60 @@ fn main() {
         "{
             let mut r = 0;
             (builtins::int::udiv::__udivmodsi4(a, b, Some(&mut r)), r)
-        }");
-    gen(|(a, b): (MyU32, MyU32)| {
+        }",
+    );
+    gen(
+        |(a, b): (MyU32, MyU32)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 / b.0)
             }
         },
-        "builtins::int::udiv::__udivsi3(a, b)");
-    gen(|(a, b): (MyU32, MyU32)| {
+        "builtins::int::udiv::__udivsi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyU32, MyU32)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 % b.0)
             }
         },
-        "builtins::int::udiv::__umodsi3(a, b)");
-    gen(|(a, b): (MyU64, MyU64)| {
+        "builtins::int::udiv::__umodsi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyU64, MyU64)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 % b.0)
             }
         },
-        "builtins::int::udiv::__umoddi3(a, b)");
-    gen(|(a, b): (MyU128, MyU128)| {
+        "builtins::int::udiv::__umoddi3(a, b)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU128)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 / b.0)
             }
         },
-        "builtins::int::udiv::__udivti3(a, b)");
-    gen(|(a, b): (MyU128, MyU128)| {
+        "builtins::int::udiv::__udivti3(a, b)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU128)| {
             if b.0 == 0 {
                 None
             } else {
                 Some(a.0 % b.0)
             }
         },
-        "builtins::int::udiv::__umodti3(a, b)");
-    gen(|(a, b): (MyU128, MyU128)| {
+        "builtins::int::udiv::__umodti3(a, b)",
+    );
+    gen(
+        |(a, b): (MyU128, MyU128)| {
             if b.0 == 0 {
                 None
             } else {
@@ -768,7 +984,8 @@ fn main() {
         "{
             let mut r = 0;
             (builtins::int::udiv::__udivmodti4(a, b, Some(&mut r)), r)
-        }");
+        }",
+    );
 }
 
 macro_rules! gen_float {
@@ -790,24 +1007,27 @@ macro_rules! gen_float {
 
             fn mk_f32(sign: bool, exponent: $uty, significand: $uty) -> $fty {
                 unsafe {
-                    mem::transmute(((sign as $uty) << (BITS - 1)) |
-                                   ((exponent & EXPONENT_MASK) <<
-                                    SIGNIFICAND_BITS) |
-                                   (significand & SIGNIFICAND_MASK))
+                    mem::transmute(
+                        ((sign as $uty) << (BITS - 1))
+                            | ((exponent & EXPONENT_MASK) << SIGNIFICAND_BITS)
+                            | (significand & SIGNIFICAND_MASK),
+                    )
                 }
             }
 
             if rng.gen_weighted_bool(10) {
                 // Special values
-                *rng.choose(&[-0.0,
-                              0.0,
-                              ::std::$fty::MIN,
-                              ::std::$fty::MIN_POSITIVE,
-                              ::std::$fty::MAX,
-                              ::std::$fty::NAN,
-                              ::std::$fty::INFINITY,
-                              -::std::$fty::INFINITY])
-                    .unwrap()
+                *rng.choose(&[
+                    -0.0,
+                    0.0,
+                    ::std::$fty::MIN,
+                    ::std::$fty::MIN_POSITIVE,
+                    ::std::$fty::MAX,
+                    ::std::$fty::NAN,
+                    ::std::$fty::INFINITY,
+                    -::std::$fty::INFINITY,
+                ])
+                .unwrap()
             } else if rng.gen_weighted_bool(10) {
                 // NaN patterns
                 mk_f32(rng.gen(), rng.gen(), 0)
@@ -819,7 +1039,7 @@ macro_rules! gen_float {
                 mk_f32(rng.gen(), rng.gen(), rng.gen())
             }
         }
-    }
+    };
 }
 
 gen_float!(gen_f32, f32, u32, 32, 23);
@@ -844,24 +1064,27 @@ macro_rules! gen_large_float {
 
             fn mk_f32(sign: bool, exponent: $uty, significand: $uty) -> $fty {
                 unsafe {
-                    mem::transmute(((sign as $uty) << (BITS - 1)) |
-                                   ((exponent & EXPONENT_MASK) <<
-                                    SIGNIFICAND_BITS) |
-                                   (significand & SIGNIFICAND_MASK))
+                    mem::transmute(
+                        ((sign as $uty) << (BITS - 1))
+                            | ((exponent & EXPONENT_MASK) << SIGNIFICAND_BITS)
+                            | (significand & SIGNIFICAND_MASK),
+                    )
                 }
             }
 
             if rng.gen_weighted_bool(10) {
                 // Special values
-                *rng.choose(&[-0.0,
-                              0.0,
-                              ::std::$fty::MIN,
-                              ::std::$fty::MIN_POSITIVE,
-                              ::std::$fty::MAX,
-                              ::std::$fty::NAN,
-                              ::std::$fty::INFINITY,
-                              -::std::$fty::INFINITY])
-                    .unwrap()
+                *rng.choose(&[
+                    -0.0,
+                    0.0,
+                    ::std::$fty::MIN,
+                    ::std::$fty::MIN_POSITIVE,
+                    ::std::$fty::MAX,
+                    ::std::$fty::NAN,
+                    ::std::$fty::INFINITY,
+                    -::std::$fty::INFINITY,
+                ])
+                .unwrap()
             } else if rng.gen_weighted_bool(10) {
                 // NaN patterns
                 mk_f32(rng.gen(), rng.gen(), 0)
@@ -873,7 +1096,7 @@ macro_rules! gen_large_float {
                 rng.gen::<$fty>()
             }
         }
-    }
+    };
 }
 
 gen_large_float!(gen_large_f32, f32, u32, 32, 23);
@@ -892,17 +1115,13 @@ trait TestOutput {
 }
 
 fn gen<F, A, R>(mut generate: F, test: &str)
-    where F: FnMut(A) -> Option<R>,
-          A: TestInput + Copy,
-          R: TestOutput,
+where
+    F: FnMut(A) -> Option<R>,
+    A: TestInput + Copy,
+    R: TestOutput,
 {
     let rng = &mut rand::thread_rng();
-    let testname = test.split("::")
-        .last()
-        .unwrap()
-        .split("(")
-        .next()
-        .unwrap();
+    let testname = test.split("::").last().unwrap().split("(").next().unwrap();
     let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
     let out_file = out_dir.join("generated.rs");
 
@@ -911,7 +1130,7 @@ fn gen<F, A, R>(mut generate: F, test: &str)
     while n > 0 {
         let input: A = rng.gen();
         if testcases.contains_key(&input) {
-            continue
+            continue;
         }
         let output = match generate(input) {
             Some(o) => o,
@@ -925,10 +1144,12 @@ fn gen<F, A, R>(mut generate: F, test: &str)
     contents.push_str(&format!("mod {} {{\nuse super::*;\n", testname));
     contents.push_str("#[test]\n");
     contents.push_str("fn test() {\n");
-    contents.push_str(&format!("static TESTS: [({}, {}); {}] = [\n",
-                      A::ty_name(),
-                      R::ty_name(),
-                      NTESTS));
+    contents.push_str(&format!(
+        "static TESTS: [({}, {}); {}] = [\n",
+        A::ty_name(),
+        R::ty_name(),
+        NTESTS
+    ));
     for (input, output) in testcases {
         contents.push_str("    (");
         input.generate_static(&mut contents);
@@ -938,7 +1159,8 @@ fn gen<F, A, R>(mut generate: F, test: &str)
     }
     contents.push_str("];\n");
 
-    contents.push_str(&format!(r#"
+    contents.push_str(&format!(
+        r#"
         for &(inputs, output) in TESTS.iter() {{
             {}
             assert_eq!({}, {}, "inputs {{:?}}", inputs)
@@ -1070,17 +1292,20 @@ my_integer! {
 }
 
 impl<A, B> TestInput for (A, B)
-    where A: TestInput,
-          B: TestInput,
+where
+    A: TestInput,
+    B: TestInput,
 {
     fn ty_name() -> String {
         format!("({}, {})", A::ty_name(), B::ty_name())
     }
 
     fn generate_lets(container: &str, cnt: &mut u8) -> String {
-        format!("{}{}",
-                A::generate_lets(&format!("{}.0", container), cnt),
-                B::generate_lets(&format!("{}.1", container), cnt))
+        format!(
+            "{}{}",
+            A::generate_lets(&format!("{}.0", container), cnt),
+            B::generate_lets(&format!("{}.1", container), cnt)
+        )
     }
 
     fn generate_static(&self, dst: &mut String) {
@@ -1141,8 +1366,9 @@ macro_rules! plain_test_output {
 plain_test_output!(i32 i64 i128 u32 u64 u128 bool);
 
 impl<A, B> TestOutput for (A, B)
-    where A: TestOutput,
-          B: TestOutput,
+where
+    A: TestOutput,
+    B: TestOutput,
 {
     fn ty_name() -> String {
         format!("({}, {})", A::ty_name(), B::ty_name())
