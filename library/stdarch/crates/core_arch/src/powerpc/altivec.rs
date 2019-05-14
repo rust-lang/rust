@@ -337,6 +337,44 @@ mod sealed {
         }
     }
 
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(all(test, not(target_feature = "vsx")), assert_instr(vandc))]
+    #[cfg_attr(all(test, target_feature = "vsx"), assert_instr(xxlandc))]
+    unsafe fn andc(a: u8x16, b: u8x16) -> u8x16 {
+        simd_and(simd_xor(u8x16::splat(0xff), b), a)
+    }
+
+    pub trait VectorAndc<Other> {
+        type Result;
+        unsafe fn vec_andc(self, b: Other) -> Self::Result;
+    }
+
+    macro_rules! impl_vec_andc {
+        (($a:ty, $b:ty) -> $r:ty) => {
+            impl VectorAndc<$b> for $a {
+                type Result = $r;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_andc(self, b: $b) -> Self::Result {
+                    transmute(andc(transmute(self), transmute(b)))
+                }
+            }
+        };
+        (($a:ty, ~$b:ty) -> $r:ty) => {
+            impl_vec_andc! { ($a, $a) -> $r }
+            impl_vec_andc! { ($a, $b) -> $r }
+            impl_vec_andc! { ($b, $a) -> $r }
+        };
+    }
+
+    impl_vec_andc! { (vector_unsigned_char, ~vector_bool_char) -> vector_unsigned_char }
+    impl_vec_andc! { (vector_signed_char, ~vector_bool_char) -> vector_signed_char }
+    impl_vec_andc! { (vector_unsigned_short, ~vector_bool_short) -> vector_unsigned_short }
+    impl_vec_andc! { (vector_signed_short, ~vector_bool_short) -> vector_signed_short }
+    impl_vec_andc! { (vector_unsigned_int, ~vector_bool_int) -> vector_unsigned_int }
+    impl_vec_andc! { (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
+
     test_impl! { vec_vand(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ simd_and, vand / xxland ] }
 
     pub trait VectorAnd<Other> {
@@ -1202,6 +1240,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector andc.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_andc<T, U>(a: T, b: U) -> <T as sealed::VectorAndc<U>>::Result
+where
+    T: sealed::VectorAndc<U>,
+{
+    a.vec_andc(b)
+}
+
 /// Vector and.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1515,6 +1563,11 @@ mod tests {
             }
          }
     }
+
+    test_vec_2! { test_vec_andc, vec_andc, i32x4,
+    [0b11001100, 0b11001100, 0b11001100, 0b11001100],
+    [0b00110011, 0b11110011, 0b00001100, 0b10000000],
+    [0b11001100, 0b00001100, 0b11000000, 0b01001100] }
 
     test_vec_2! { test_vec_and, vec_and, i32x4,
     [0b11001100, 0b11001100, 0b11001100, 0b11001100],
