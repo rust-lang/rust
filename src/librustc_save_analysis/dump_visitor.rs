@@ -463,10 +463,12 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         }
 
         // walk type and init value
-        self.visit_ty(typ);
-        if let Some(expr) = expr {
-            self.visit_expr(expr);
-        }
+        self.nest_tables(id, |v| {
+            v.visit_ty(typ);
+            if let Some(expr) = expr {
+                v.visit_expr(expr);
+            }
+        });
     }
 
     // FIXME tuple structs should generate tuple-specific data.
