@@ -4155,15 +4155,32 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
 
     #[inline]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        let (end, overflow) = self.v.len().overflowing_sub(n * self.chunk_size);
+        let remainder = match self.v.len().checked_rem(self.chunk_size) {
+            Some(res) => res,
+            None => 0,
+        };
+
+        let sub_chunk_size = if remainder != 0 { remainder } else { self.chunk_size };
+
+        let safe_sub = match n.checked_mul(sub_chunk_size) {
+            Some(res) => res,
+            None => 0,
+        };
+
+        let (end, overflow) = self.v.len().overflowing_sub(safe_sub);
         if overflow {
-            self.v = &mut [];
+            self.v=  &[];
             None
         } else {
-            let start = match end.checked_sub(self.chunk_size) {
-                Some(res) => cmp::min(self.v.len(), res),
-                None => 0,
+            let start = if n == 0 {
+                self.v.len() - sub_chunk_size
+            } else {
+                match end.checked_sub(self.chunk_size) {
+                    Some(res) => res,
+                    None => 0,
+                }
             };
+
             let nth_back = &self.v[start..end];
             self.v = &self.v[..start];
             Some(nth_back)
