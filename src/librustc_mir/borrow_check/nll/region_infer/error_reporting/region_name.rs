@@ -60,8 +60,8 @@ impl RegionName {
     }
 
     #[allow(dead_code)]
-    crate fn name(&self) -> &InternedString {
-        &self.name
+    crate fn name(&self) -> InternedString {
+        self.name
     }
 
     crate fn highlight_region_name(
@@ -206,7 +206,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match error_region {
             ty::ReEarlyBound(ebr) => {
                 if ebr.has_name() {
-                    let span = self.get_named_span(tcx, error_region, &ebr.name);
+                    let span = self.get_named_span(tcx, error_region, ebr.name);
                     Some(RegionName {
                         name: ebr.name,
                         source: RegionNameSource::NamedEarlyBoundRegion(span)
@@ -223,7 +223,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             ty::ReFree(free_region) => match free_region.bound_region {
                 ty::BoundRegion::BrNamed(_, name) => {
-                    let span = self.get_named_span(tcx, error_region, &name);
+                    let span = self.get_named_span(tcx, error_region, name);
                     Some(RegionName {
                         name,
                         source: RegionNameSource::NamedFreeRegion(span),
@@ -306,7 +306,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         error_region: &RegionKind,
-        name: &InternedString,
+        name: InternedString,
     ) -> Span {
         let scope = error_region.free_region_binding_scope(tcx);
         let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);

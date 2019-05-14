@@ -1136,7 +1136,7 @@ impl<'a, 'gcx, 'tcx> ParamTy {
         // FIXME(#50125): Ignoring `Self` with `index != 0` might lead to weird behavior elsewhere,
         // but this should only be possible when using `-Z continue-parse-after-error` like
         // `compile-fail/issue-36638.rs`.
-        self.name == keywords::SelfUpper.name().as_str() && self.index == 0
+        self.name.as_symbol() == keywords::SelfUpper.name() && self.index == 0
     }
 }
 

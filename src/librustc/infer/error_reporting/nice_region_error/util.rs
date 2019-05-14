@@ -43,7 +43,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ) -> Option<AnonymousArgInfo<'_>> {
         let (id, bound_region) = match *anon_region {
             ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
-            ty::ReEarlyBound(ref ebr) => (
+            ty::ReEarlyBound(ebr) => (
                 self.tcx().parent(ebr.def_id).unwrap(),
                 ty::BoundRegion::BrNamed(ebr.def_id, ebr.name),
             ),
