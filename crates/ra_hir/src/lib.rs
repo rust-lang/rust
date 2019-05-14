@@ -53,6 +53,7 @@ use crate::{
     name::{AsName, KnownName},
     source_id::{FileAstId, AstId},
     resolve::Resolver,
+    ids::MacroFileKind,
 };
 
 pub use self::{

@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use ra_syntax::{SyntaxNode, TreeArc, SourceFile, SmolStr, ast};
+use ra_syntax::{SyntaxNode, TreeArc, SmolStr, ast};
 use ra_db::{SourceDatabase, salsa};
 
 use crate::{
@@ -54,8 +54,8 @@ pub trait DefDatabase: SourceDatabase {
     #[salsa::invoke(crate::ids::macro_expand_query)]
     fn macro_expand(&self, macro_call: ids::MacroCallId) -> Result<Arc<tt::Subtree>, String>;
 
-    #[salsa::invoke(crate::ids::HirFileId::hir_parse_query)]
-    fn hir_parse(&self, file_id: HirFileId) -> TreeArc<SourceFile>;
+    #[salsa::invoke(crate::ids::HirFileId::parse_or_expand_query)]
+    fn parse_or_expand(&self, file_id: HirFileId) -> Option<TreeArc<SyntaxNode>>;
 
     #[salsa::invoke(crate::adt::StructData::struct_data_query)]
     fn struct_data(&self, s: Struct) -> Arc<StructData>;
