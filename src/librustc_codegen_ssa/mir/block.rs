@@ -15,7 +15,7 @@ use crate::traits::*;
 
 use std::borrow::Cow;
 
-use syntax::symbol::Symbol;
+use syntax::symbol::LocalInternedString;
 use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
@@ -401,7 +401,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Get the location information.
         let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-        let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
+        let filename = LocalInternedString::intern(&loc.file.name.to_string());
         let line = bx.const_u32(loc.line as u32);
         let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
 
@@ -423,7 +423,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             _ => {
                 let str = msg.description();
-                let msg_str = Symbol::intern(str).as_str();
+                let msg_str = LocalInternedString::intern(str);
                 let msg_file_line_col = bx.static_panic_msg(
                     Some(msg_str),
                     filename,
@@ -535,7 +535,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             let layout = bx.layout_of(ty);
             if layout.abi.is_uninhabited() {
                 let loc = bx.sess().source_map().lookup_char_pos(span.lo());
-                let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
+                let filename = LocalInternedString::intern(&loc.file.name.to_string());
                 let line = bx.const_u32(loc.line as u32);
                 let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
 
@@ -543,7 +543,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     "Attempted to instantiate uninhabited type {}",
                     ty
                 );
-                let msg_str = Symbol::intern(&str).as_str();
+                let msg_str = LocalInternedString::intern(&str);
                 let msg_file_line_col = bx.static_panic_msg(
                     Some(msg_str),
                     filename,

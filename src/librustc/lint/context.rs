@@ -828,8 +828,8 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
 
                 // This shouldn't ever be needed, but just in case:
                 Ok(vec![match trait_ref {
-                    Some(trait_ref) => Symbol::intern(&format!("{:?}", trait_ref)).as_str(),
-                    None => Symbol::intern(&format!("<{}>", self_ty)).as_str(),
+                    Some(trait_ref) => LocalInternedString::intern(&format!("{:?}", trait_ref)),
+                    None => LocalInternedString::intern(&format!("<{}>", self_ty)),
                 }])
             }
 
@@ -845,9 +845,10 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 // This shouldn't ever be needed, but just in case:
                 path.push(match trait_ref {
                     Some(trait_ref) => {
-                        Symbol::intern(&format!("<impl {} for {}>", trait_ref, self_ty)).as_str()
+                        LocalInternedString::intern(&format!("<impl {} for {}>", trait_ref,
+                                                    self_ty))
                     },
-                    None => Symbol::intern(&format!("<impl {}>", self_ty)).as_str(),
+                    None => LocalInternedString::intern(&format!("<impl {}>", self_ty)),
                 });
 
                 Ok(path)
