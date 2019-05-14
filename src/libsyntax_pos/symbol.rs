@@ -1134,6 +1134,13 @@ pub struct InternedString {
 }
 
 impl InternedString {
+    /// Maps a string to its interned representation.
+    pub fn intern(string: &str) -> Self {
+        InternedString {
+            symbol: Symbol::intern(string)
+        }
+    }
+
     pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
         let str = with_interner(|interner| {
             interner.get(self.symbol) as *const str
@@ -1236,7 +1243,7 @@ impl fmt::Display for InternedString {
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(Symbol::intern(&d.read_str()?).as_interned_str())
+        Ok(InternedString::intern(&d.read_str()?))
     }
 }
 

@@ -18,7 +18,8 @@ use crate::ty::{self, Ty, TyCtxt, TypeFoldable, Predicate, ToPredicate};
 use crate::ty::subst::{Subst, InternalSubsts};
 use std::borrow::Cow;
 use std::iter::{self};
-use syntax::ast::{self, Name};
+use syntax::ast::{self};
+use syntax::symbol::InternedString;
 use syntax_pos::Span;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -539,7 +540,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         // are implemented
         let unsized_self_ty: Ty<'tcx> = self.mk_ty_param(
             ::std::u32::MAX,
-            Name::intern("RustaceansAreAwesome").as_interned_str(),
+            InternedString::intern("RustaceansAreAwesome"),
         );
 
         // `Receiver[Self => U]`

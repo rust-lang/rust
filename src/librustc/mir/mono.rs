@@ -1,6 +1,6 @@
 use crate::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use crate::hir::HirId;
-use syntax::symbol::{Symbol, InternedString};
+use syntax::symbol::InternedString;
 use crate::ty::{Instance, TyCtxt};
 use crate::util::nodemap::FxHashMap;
 use rustc_data_structures::base_n;
@@ -280,7 +280,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
             cgu_name
         } else {
             let cgu_name = &cgu_name.as_str()[..];
-            Symbol::intern(&CodegenUnit::mangle_name(cgu_name)).as_interned_str()
+            InternedString::intern(&CodegenUnit::mangle_name(cgu_name))
         }
     }
 
@@ -336,6 +336,6 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
             write!(cgu_name, ".{}", special_suffix).unwrap();
         }
 
-        Symbol::intern(&cgu_name[..]).as_interned_str()
+        InternedString::intern(&cgu_name[..])
     }
 }

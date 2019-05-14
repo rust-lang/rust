@@ -12,7 +12,6 @@ use rustc::ty::subst::{SubstsRef, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
 use rustc::ty::print::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
-use syntax::ast::Name;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
@@ -791,6 +790,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let c = *counter;
         *counter += 1;
 
-        Name::intern(&format!("'{:?}", c)).as_interned_str()
+        InternedString::intern(&format!("'{:?}", c))
     }
 }
