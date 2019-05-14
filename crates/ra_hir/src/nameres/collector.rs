@@ -352,9 +352,12 @@ where
             false
         });
 
+        self.unexpanded_macros = macros;
+
         for (module_id, macro_call_id, macro_def_id) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, macro_def_id);
         }
+
         res
     }
 
