@@ -49,8 +49,8 @@
 // lldbg-check:[...]$4 = 5
 // lldbr-check:(i32) *t0 = 5
 // lldb-command:print *t1
-// lldbg-check:[...]$5 = Struct { a: 6, b: 7.5 }
-// lldbr-check:(generic_function::Struct) *t1 = Struct { a: 6, b: 7.5 }
+// lldbg-check:[...]$5 = { a = 6 b = 7.5 }
+// lldbr-check:(generic_function::Struct) *t1 = { a = 6 b = 7.5 }
 // lldb-command:continue
 
 #![feature(omit_gdb_pretty_printer_section)]

@@ -43,8 +43,8 @@
 // lldb-command:run
 
 // lldb-command:print arg
-// lldbg-check:[...]$0 = Struct<i32> { b: -1, b1: 0 }
-// lldbr-check:(associated_types::Struct<i32>) arg = Struct<i32> { b: -1, b1: 0 }
+// lldbg-check:[...]$0 = { b = -1, b1 = 0 }
+// lldbr-check:(associated_types::Struct<i32>) arg = { b = -1, b1 = 0 }
 // lldb-command:continue
 
 // lldb-command:print inferred
