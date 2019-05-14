@@ -4,9 +4,9 @@ use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_errors::Applicability;
 use syntax::ast::LitKind;
-
-use crate::utils::{span_lint, SpanlessEq};
+use crate::utils::{span_lint_and_sugg, snippet_with_applicability, SpanlessEq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for explicit bounds checking when casting.
@@ -54,16 +54,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CheckedConversions {
             }
         };
 
-        if let Some(cv) = result {
-            span_lint(
-                cx,
-                CHECKED_CONVERSIONS,
-                item.span,
-                &format!(
-                    "Checked cast can be simplified: `{}::try_from`",
-                    cv.to_type.unwrap_or_else(|| "IntegerType".to_string()),
-                ),
-            );
+        if_chain! {
+            if let Some(cv) = result;
+            if let Some(to_type) = cv.to_type;
+
+            then {
+                let mut applicability = Applicability::MachineApplicable;
+                let snippet = snippet_with_applicability(cx, cv.expr_to_cast.span, "_", &mut
+                                applicability);
+                span_lint_and_sugg(
+                    cx,
+                    CHECKED_CONVERSIONS,
+                    item.span,
+                    "Checked cast can be simplified.",
+                    "try",
+                    format!("{}::try_from({}).is_ok()",
+                            to_type,
+                            snippet),
+                    applicability
+                );
+            }
         }
     }
 }
