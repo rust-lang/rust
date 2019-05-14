@@ -458,8 +458,7 @@ struct FormatLines<'a> {
     errors: Vec<FormattingError>,
     issue_seeker: BadIssueSeeker,
     line_buffer: String,
-    // `true` if the current line contains a string literal.
-    is_string: bool,
+    current_line_contains_string_literal: bool,
     format_line: bool,
     allow_issue_seek: bool,
     config: &'a Config,
@@ -483,7 +482,7 @@ impl<'a> FormatLines<'a> {
             allow_issue_seek: !issue_seeker.is_disabled(),
             issue_seeker,
             line_buffer: String::with_capacity(config.max_width() * 2),
-            is_string: false,
+            current_line_contains_string_literal: false,
             format_line: config.file_lines().contains_line(name, 1),
             config,
         }
@@ -547,7 +546,7 @@ impl<'a> FormatLines<'a> {
                 && !self.is_skipped_line()
                 && self.should_report_error(kind, &error_kind)
             {
-                let is_string = self.is_string;
+                let is_string = self.current_line_contains_string_literal;
                 self.push_err(error_kind, kind.is_comment(), is_string);
             }
         }
@@ -561,7 +560,7 @@ impl<'a> FormatLines<'a> {
         self.newline_count += 1;
         self.last_was_space = false;
         self.line_buffer.clear();
-        self.is_string = false;
+        self.current_line_contains_string_literal = false;
     }
 
     fn char(&mut self, c: char, kind: FullCodeCharKind) {
@@ -574,7 +573,7 @@ impl<'a> FormatLines<'a> {
         self.last_was_space = c.is_whitespace();
         self.line_buffer.push(c);
         if kind.is_string() {
-            self.is_string = true;
+            self.current_line_contains_string_literal = true;
         }
     }
 
@@ -589,12 +588,14 @@ impl<'a> FormatLines<'a> {
     }
 
     fn should_report_error(&self, char_kind: FullCodeCharKind, error_kind: &ErrorKind) -> bool {
-        let allow_error_report =
-            if char_kind.is_comment() || self.is_string || error_kind.is_comment() {
-                self.config.error_on_unformatted()
-            } else {
-                true
-            };
+        let allow_error_report = if char_kind.is_comment()
+            || self.current_line_contains_string_literal
+            || error_kind.is_comment()
+        {
+            self.config.error_on_unformatted()
+        } else {
+            true
+        };
 
         match error_kind {
             ErrorKind::LineOverflow(..) => {
