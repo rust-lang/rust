@@ -34,6 +34,7 @@ crate enum RegionNameSource {
     MatchedAdtAndSegment(Span),
     AnonRegionFromUpvar(Span, String),
     AnonRegionFromOutput(Span, String, String),
+    AnonRegionFromYieldTy(Span, String),
 }
 
 impl RegionName {
@@ -48,7 +49,8 @@ impl RegionName {
             RegionNameSource::MatchedHirTy(..) |
             RegionNameSource::MatchedAdtAndSegment(..) |
             RegionNameSource::AnonRegionFromUpvar(..) |
-            RegionNameSource::AnonRegionFromOutput(..) => false,
+            RegionNameSource::AnonRegionFromOutput(..) |
+            RegionNameSource::AnonRegionFromYieldTy(..) => false,
         }
     }
 
@@ -105,6 +107,12 @@ impl RegionName {
                     format!("return type{} is {}", mir_description, type_name),
                 );
             },
+            RegionNameSource::AnonRegionFromYieldTy(span, type_name) => {
+                diag.span_label(
+                    *span,
+                    format!("yield type is {}", type_name),
+                );
+            }
             RegionNameSource::Static => {},
         }
     }
@@ -168,6 +176,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .or_else(|| {
                 self.give_name_if_anonymous_region_appears_in_output(
+                    infcx, mir, mir_def_id, fr, counter,
+                )
+            })
+            .or_else(|| {
+                self.give_name_if_anonymous_region_appears_in_yield_ty(
                     infcx, mir, mir_def_id, fr, counter,
                 )
             });
@@ -676,10 +689,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             "give_name_if_anonymous_region_appears_in_output: return_ty = {:?}",
             return_ty
         );
-        if !infcx
-            .tcx
-            .any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr)
-        {
+        if !tcx.any_free_region_meets(&return_ty, |r| r.to_region_vid() == fr) {
             return None;
         }
 
@@ -721,6 +731,57 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 mir_description.to_string(),
                 type_name
             ),
+        })
+    }
+
+    fn give_name_if_anonymous_region_appears_in_yield_ty(
+        &self,
+        infcx: &InferCtxt<'_, '_, 'tcx>,
+        mir: &Mir<'tcx>,
+        mir_def_id: DefId,
+        fr: RegionVid,
+        counter: &mut usize,
+    ) -> Option<RegionName> {
+        // Note: generators from `async fn` yield `()`, so we don't have to
+        // worry about them here.
+        let yield_ty = self.universal_regions.yield_ty?;
+        debug!(
+            "give_name_if_anonymous_region_appears_in_yield_ty: yield_ty = {:?}",
+            yield_ty,
+        );
+
+        let tcx = infcx.tcx;
+
+        if !tcx.any_free_region_meets(&yield_ty, |r| r.to_region_vid() == fr) {
+            return None;
+        }
+
+        let mut highlight = RegionHighlightMode::default();
+        highlight.highlighting_region_vid(fr, *counter);
+        let type_name = infcx.extract_type_name(&yield_ty, Some(highlight));
+
+        let mir_node_id = tcx.hir().as_local_node_id(mir_def_id).expect("non-local mir");
+
+        let yield_span = match tcx.hir().get(mir_node_id) {
+            hir::Node::Expr(hir::Expr {
+                node: hir::ExprKind::Closure(_, _, _, span, _),
+                ..
+            }) => (
+                tcx.sess.source_map().end_point(*span)
+            ),
+            _ => mir.span,
+        };
+
+        debug!(
+            "give_name_if_anonymous_region_appears_in_yield_ty: \
+             type_name = {:?}, yield_span = {:?}",
+            yield_span,
+            type_name,
+        );
+
+        Some(RegionName {
+            name: self.synthesize_region_name(counter),
+            source: RegionNameSource::AnonRegionFromYieldTy(yield_span, type_name),
         })
     }
 

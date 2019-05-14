@@ -563,6 +563,7 @@ declare_features! (
 // unanticipated results, such as compiler crashes. We warn the user about these
 // to alert them.
 const INCOMPLETE_FEATURES: &[Symbol] = &[
+    sym::impl_trait_in_bindings,
     sym::generic_associated_types,
     sym::const_generics
 ];

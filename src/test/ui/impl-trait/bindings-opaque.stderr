@@ -1,17 +1,23 @@
+warning: the feature `impl_trait_in_bindings` is incomplete and may cause the compiler to crash
+  --> $DIR/bindings-opaque.rs:1:12
+   |
+LL | #![feature(impl_trait_in_bindings)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0599]: no method named `count_ones` found for type `impl std::marker::Copy` in the current scope
-  --> $DIR/bindings-opaque.rs:10:17
+  --> $DIR/bindings-opaque.rs:11:17
    |
 LL |     let _ = FOO.count_ones();
    |                 ^^^^^^^^^^
 
 error[E0599]: no method named `count_ones` found for type `impl std::marker::Copy` in the current scope
-  --> $DIR/bindings-opaque.rs:12:17
+  --> $DIR/bindings-opaque.rs:13:17
    |
 LL |     let _ = BAR.count_ones();
    |                 ^^^^^^^^^^
 
 error[E0599]: no method named `count_ones` found for type `impl std::marker::Copy` in the current scope
-  --> $DIR/bindings-opaque.rs:14:17
+  --> $DIR/bindings-opaque.rs:15:17
    |
 LL |     let _ = foo.count_ones();
    |                 ^^^^^^^^^^

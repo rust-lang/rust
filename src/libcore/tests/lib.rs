@@ -31,7 +31,7 @@
 #![feature(slice_partition_dedup)]
 #![feature(copy_within)]
 #![feature(int_error_matching)]
-#![deny(rust_2018_idioms)]
+#![warn(rust_2018_idioms)]
 
 extern crate test;
 

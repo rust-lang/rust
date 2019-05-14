@@ -634,6 +634,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
     fn cannot_return_reference_to_local(
         self,
         span: Span,
+        return_kind: &str,
         reference_desc: &str,
         path_desc: &str,
         o: Origin,
@@ -642,7 +643,8 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             self,
             span,
             E0515,
-            "cannot return {REFERENCE} {LOCAL}{OGN}",
+            "cannot {RETURN} {REFERENCE} {LOCAL}{OGN}",
+            RETURN=return_kind,
             REFERENCE=reference_desc,
             LOCAL=path_desc,
             OGN = o
@@ -650,7 +652,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
 
         err.span_label(
             span,
-            format!("returns a {} data owned by the current function", reference_desc),
+            format!("{}s a {} data owned by the current function", return_kind, reference_desc),
         );
 
         self.cancel_if_wrong_origin(err, o)
