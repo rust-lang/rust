@@ -181,6 +181,10 @@ impl Step for Llvm {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
         }
 
+        if target.contains("pc-windows") {
+            cfg.define("LLVM_BUILD_LLVM_C_DYLIB", "ON");
+        }
+
         // For distribution we want the LLVM tools to be *statically* linked to libstdc++
         if builder.config.llvm_tools_enabled || want_lldb {
             if !target.contains("windows") {

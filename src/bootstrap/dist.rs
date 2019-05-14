@@ -18,7 +18,7 @@ use build_helper::{output, t};
 
 use crate::{Compiler, Mode, LLVM_TOOLS};
 use crate::channel;
-use crate::util::{is_dylib, exe};
+use crate::util::{is_dylib, exe, libdir};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::compile;
 use crate::tool::{self, Tool};
@@ -2047,12 +2047,23 @@ pub fn maybe_install_llvm_dylib(builder: &Builder<'_>,
                                 sysroot: &Path) {
     let src_libdir = builder
         .llvm_out(target)
-        .join("lib");
-    let dst_libdir = sysroot.join("lib/rustlib").join(&*target).join("lib");
+        .join(libdir(&target));
+    let dst_libdir = sysroot.join("lib").join("rustlib").join(&*target).join("lib");
     t!(fs::create_dir_all(&dst_libdir));
 
     if target.contains("apple-darwin") {
         let llvm_dylib_path = src_libdir.join("libLLVM.dylib");
+        if llvm_dylib_path.exists() {
+            builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
+        }
+        return
+    }
+
+    // Install the LLVM-C library for Windows as LLVM does not support
+    // creating a C++ shared library there.
+    // This is done because rust-ptx-linker requires LLVM.
+    if target.contains("pc-windows") {
+        let llvm_dylib_path = src_libdir.join("LLVM-C.dll");
         if llvm_dylib_path.exists() {
             builder.install(&llvm_dylib_path, &dst_libdir, 0o644);
         }
