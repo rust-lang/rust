@@ -65,4 +65,9 @@ fn patterns() {
     }
 }
 
+#[allow(clippy::many_single_char_names)]
+fn issue_3198_allow_works() {
+    let (a, b, c, d, e) = (0, 0, 0, 0, 0);
+}
+
 fn main() {}
