@@ -411,9 +411,6 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_name(i.ident.name);
                 }
             },
-            ExprKind::Yield(ref e) => {
-                self.hash_expr(e);
-            },
             ExprKind::Assign(ref l, ref r) => {
                 self.hash_expr(l);
                 self.hash_expr(r);
@@ -439,14 +436,14 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(&*j);
                 }
             },
-            ExprKind::Box(ref e) => {
+            ExprKind::Box(ref e) | ExprKind::DropTemps(ref e) | ExprKind::Yield(ref e) => {
                 self.hash_expr(e);
             },
             ExprKind::Call(ref fun, ref args) => {
                 self.hash_expr(fun);
                 self.hash_exprs(args);
             },
-            ExprKind::Cast(ref e, ref _ty) => {
+            ExprKind::Cast(ref e, ref _ty) | ExprKind::Type(ref e, ref _ty) => {
                 self.hash_expr(e);
                 // TODO: _ty
             },
@@ -466,7 +463,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(a);
                 self.hash_expr(i);
             },
-            ExprKind::InlineAsm(..) => {},
+            ExprKind::InlineAsm(..) | ExprKind::Err => {},
             ExprKind::Lit(ref l) => {
                 l.hash(&mut self.s);
             },
@@ -520,19 +517,12 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprKind::Tup(ref tup) => {
-                self.hash_exprs(tup);
-            },
-            ExprKind::Type(ref e, ref _ty) => {
-                self.hash_expr(e);
-                // TODO: _ty
+            ExprKind::Tup(ref v) | ExprKind::Array(ref v) => {
+                self.hash_exprs(v);
             },
             ExprKind::Unary(lop, ref le) => {
                 lop.hash(&mut self.s);
                 self.hash_expr(le);
-            },
-            ExprKind::Array(ref v) => {
-                self.hash_exprs(v);
             },
             ExprKind::While(ref cond, ref b, l) => {
                 self.hash_expr(cond);
@@ -540,10 +530,6 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 if let Some(l) = l {
                     self.hash_name(l.ident.name);
                 }
-            },
-            ExprKind::Err => {},
-            ExprKind::DropTemps(ref e) => {
-                self.hash_expr(e);
             },
         }
     }
@@ -580,17 +566,14 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     pub fn hash_stmt(&mut self, b: &Stmt) {
         std::mem::discriminant(&b.node).hash(&mut self.s);
 
-        match b.node {
-            StmtKind::Local(ref local) => {
+        match &b.node {
+            StmtKind::Local(local) => {
                 if let Some(ref init) = local.init {
                     self.hash_expr(init);
                 }
             },
             StmtKind::Item(..) => {},
-            StmtKind::Expr(ref expr) => {
-                self.hash_expr(expr);
-            },
-            StmtKind::Semi(ref expr) => {
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
                 self.hash_expr(expr);
             },
         }
