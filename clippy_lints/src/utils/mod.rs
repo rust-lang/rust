@@ -1028,7 +1028,7 @@ pub fn has_iter_method(cx: &LateContext<'_, '_>, probably_ref_ty: Ty<'_>) -> Opt
         _ => return None,
     };
 
-    for path in into_iter_collections.iter() {
+    for path in &into_iter_collections {
         if match_def_path(cx, def_id, path) {
             return Some(*path.last().unwrap());
         }

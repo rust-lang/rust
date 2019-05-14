@@ -1,5 +1,4 @@
 use crate::utils::{match_type, match_def_path, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
-use crate::utils::sym;
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
@@ -8,9 +7,8 @@ use rustc::hir::*;
 use rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use syntax::ast::{Crate as AstCrate, ItemKind, Name};
+use syntax::ast::{Crate as AstCrate, Name};
 use syntax::source_map::Span;
-use syntax::symbol::LocalInternedString;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for various things we like to keep tidy in clippy.
@@ -76,7 +74,9 @@ declare_clippy_lint! {
 declare_lint_pass!(ClippyLintsInternal => [CLIPPY_LINTS_INTERNAL]);
 
 impl EarlyLintPass for ClippyLintsInternal {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
+    fn check_crate(&mut self, _cx: &EarlyContext<'_>, _krate: &AstCrate) {
+        /*
+        FIXME: turn back on when we get rid of all the lazy_statics
         if let Some(utils) = krate.module.items.iter().find(|item| item.ident.name == *sym::utils) {
             if let ItemKind::Mod(ref utils_mod) = utils.node {
                 if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name == *sym::paths) {
@@ -101,6 +101,7 @@ impl EarlyLintPass for ClippyLintsInternal {
                 }
             }
         }
+        */
     }
 }
 

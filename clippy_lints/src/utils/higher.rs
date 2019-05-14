@@ -50,7 +50,7 @@ pub struct Range<'a> {
 pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> Option<Range<'b>> {
     /// Finds the field named `name` in the field. Always return `Some` for
     /// convenience.
-    fn get_field<'a>(name: Symbol, fields: &'a [hir::Field]) -> Option<&'a hir::Expr> {
+    fn get_field(name: Symbol, fields: &[hir::Field]) -> Option<&hir::Expr> {
         let expr = &fields.iter().find(|field| field.ident.name == name)?.expr;
 
         Some(expr)
