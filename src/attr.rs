@@ -53,12 +53,11 @@ fn is_derive(attr: &ast::Attribute) -> bool {
 }
 
 /// Returns the arguments of `#[derive(...)]`.
-fn get_derive_spans(attr: &ast::Attribute) -> Option<Vec<Span>> {
+fn get_derive_spans<'a>(attr: &'a ast::Attribute) -> Option<impl Iterator<Item = Span> + 'a> {
     attr.meta_item_list().map(|meta_item_list| {
         meta_item_list
-            .iter()
+            .into_iter()
             .map(|nested_meta_item| nested_meta_item.span)
-            .collect()
     })
 }
 
@@ -411,10 +410,11 @@ impl<'a> Rewrite for [ast::Attribute] {
             // Handle derives if we will merge them.
             if context.config.merge_derives() && is_derive(&attrs[0]) {
                 let derives = take_while_with_pred(context, attrs, is_derive);
-                let mut derive_spans = vec![];
-                for derive in derives {
-                    derive_spans.append(&mut get_derive_spans(derive)?);
-                }
+                let derive_spans: Vec<_> = derives
+                    .iter()
+                    .filter_map(get_derive_spans)
+                    .flatten()
+                    .collect();
                 let derive_str =
                     format_derive(&derive_spans, attr_prefix(&attrs[0]), shape, context)?;
                 result.push_str(&derive_str);
