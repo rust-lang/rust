@@ -10,6 +10,7 @@ use lazy_static::lazy_static;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
+use rustc::hir::intravisit::{self, Visitor};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, Lint, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Predicate, Ty};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -1046,7 +1047,51 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
 
 /// Checks for the `OR_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
-fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Span, name: &str, args: &[hir::Expr]) {
+fn lint_or_fun_call<'a, 'tcx: 'a>(
+    cx: &LateContext<'a, 'tcx>,
+    expr: &hir::Expr,
+    method_span: Span,
+    name: &str,
+    args: &'tcx [hir::Expr],
+) {
+    // Searches an expression for method calls or function calls that aren't ctors
+    struct FunCallFinder<'a, 'tcx: 'a> {
+        cx: &'a LateContext<'a, 'tcx>,
+        found: bool,
+    }
+
+    impl<'a, 'tcx> intravisit::Visitor<'tcx> for FunCallFinder<'a, 'tcx> {
+        fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+            let call_found = match &expr.node {
+                // ignore enum and struct constructors
+                hir::ExprKind::Call(..) => !is_ctor_function(self.cx, expr),
+                hir::ExprKind::MethodCall(..) => true,
+                _ => false,
+            };
+
+            if call_found {
+                // don't lint for constant values
+                let owner_def = self.cx.tcx.hir().get_parent_did_by_hir_id(expr.hir_id);
+                let promotable = self
+                    .cx
+                    .tcx
+                    .rvalue_promotable_map(owner_def)
+                    .contains(&expr.hir_id.local_id);
+                if !promotable {
+                    self.found |= true;
+                }
+            }
+
+            if !self.found {
+                intravisit::walk_expr(self, expr);
+            }
+        }
+
+        fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
+            intravisit::NestedVisitorMap::None
+        }
+    }
+
     /// Checks for `unwrap_or(T::new())` or `unwrap_or(T::default())`.
     fn check_unwrap_or_default(
         cx: &LateContext<'_, '_>,
@@ -1099,13 +1144,13 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
 
     /// Checks for `*or(foo())`.
     #[allow(clippy::too_many_arguments)]
-    fn check_general_case(
-        cx: &LateContext<'_, '_>,
+    fn check_general_case<'a, 'tcx: 'a>(
+        cx: &LateContext<'a, 'tcx>,
         name: &str,
         method_span: Span,
         fun_span: Span,
         self_expr: &hir::Expr,
-        arg: &hir::Expr,
+        arg: &'tcx hir::Expr,
         or_has_args: bool,
         span: Span,
     ) {
@@ -1122,15 +1167,9 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
             return;
         }
 
-        // ignore enum and struct constructors
-        if is_ctor_function(cx, &arg) {
-            return;
-        }
-
-        // don't lint for constant values
-        let owner_def = cx.tcx.hir().get_parent_did_by_hir_id(arg.hir_id);
-        let promotable = cx.tcx.rvalue_promotable_map(owner_def).contains(&arg.hir_id.local_id);
-        if promotable {
+        let mut finder = FunCallFinder { cx: &cx, found: false };
+        finder.visit_expr(&arg);
+        if !finder.found {
             return;
         }
 
