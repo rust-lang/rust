@@ -9,14 +9,13 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
 ) {
     let tcx = cx.tcx;
 
-    // Step 1. Get mir
     let mir = tcx.instance_mir(instance.def);
 
-    // Step 2. Check fn sig for u128 and i128 and replace those functions with a trap.
+    // Check fn sig for u128 and i128 and replace those functions with a trap.
     {
         // FIXME implement u128 and i128 support
 
-        // Step 2a. Check sig for u128 and i128
+        // Check sig for u128 and i128
         let fn_sig = tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &instance.fn_sig(tcx));
 
         struct UI128Visitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>, bool);
@@ -35,12 +34,12 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         let mut visitor = UI128Visitor(tcx, false);
         fn_sig.visit_with(&mut visitor);
 
-        // Step 2b. If found replace function with a trap.
+        //If found replace function with a trap.
         if visitor.1 {
             tcx.sess.warn("u128 and i128 are not yet supported. \
             Functions using these as args will be replaced with a trap.");
 
-            // Step 2b1. Declare function with fake signature
+            // Declare function with fake signature
             let sig = Signature {
                 params: vec![AbiParam::new(types::INVALID)],
                 returns: vec![],
@@ -49,7 +48,7 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
             let name = tcx.symbol_name(instance).as_str();
             let func_id = cx.module.declare_function(&*name, linkage, &sig).unwrap();
 
-            // Step 2b2. Create trapping function
+            // Create trapping function
             let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
@@ -79,7 +78,7 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
             fx.bcx.seal_all_blocks();
             fx.bcx.finalize();
 
-            // Step 2b3. Define function
+            // Define function
             cx.caches.context.func = func;
             cx.module
                 .define_function(func_id, &mut cx.caches.context)
@@ -89,7 +88,7 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         }
     }
 
-    // Step 3. Declare function
+    // Declare function
     let (name, sig) = get_function_name_and_sig(tcx, instance, false);
     let func_id = cx.module.declare_function(&name, linkage, &sig).unwrap();
     let mut debug_context = cx
@@ -97,19 +96,19 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         .as_mut()
         .map(|debug_context| FunctionDebugContext::new(tcx, debug_context, mir, &name, &sig));
 
-    // Step 4. Make FunctionBuilder
+    // Make FunctionBuilder
     let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
     let mut func_ctx = FunctionBuilderContext::new();
     let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
-    // Step 5. Predefine ebb's
+    // Predefine ebb's
     let start_ebb = bcx.create_ebb();
     let mut ebb_map: HashMap<BasicBlock, Ebb> = HashMap::new();
     for (bb, _bb_data) in mir.basic_blocks().iter_enumerated() {
         ebb_map.insert(bb, bcx.create_ebb());
     }
 
-    // Step 6. Make FunctionCx
+    // Make FunctionCx
     let pointer_type = cx.module.target_config().pointer_type();
     let clif_comments = crate::pretty_clif::CommentWriter::new(tcx, instance);
 
@@ -131,38 +130,46 @@ pub fn trans_fn<'a, 'clif, 'tcx: 'a, B: Backend + 'static>(
         source_info_set: indexmap::IndexSet::new(),
     };
 
-    // Step 7. Codegen function
     with_unimpl_span(fx.mir.span, || {
         crate::abi::codegen_fn_prelude(&mut fx, start_ebb);
         codegen_fn_content(&mut fx);
     });
-    let source_info_set = fx.source_info_set.clone();
 
-    // Step 8. Write function to file for debugging
+    // Recover all necessary data from fx, before accessing func will prevent future access to it.
+    let instance = fx.instance;
+    let clif_comments = fx.clif_comments;
+    let source_info_set = fx.source_info_set;
+
     #[cfg(debug_assertions)]
-    fx.write_clif_file();
+    crate::pretty_clif::write_clif_file(cx.tcx, "unopt", instance, &func, &clif_comments, None);
 
-    // Step 9. Verify function
-    verify_func(tcx, fx.clif_comments, &func);
+    // Verify function
+    verify_func(tcx, &clif_comments, &func);
 
-    // Step 10. Define function
-    cx.caches.context.func = func;
+    // Define function
+    let context = &mut cx.caches.context;
+    context.func = func;
     cx.module
-        .define_function(func_id, &mut cx.caches.context)
+        .define_function(func_id, context)
         .unwrap();
 
-    // Step 11. Define debuginfo for function
-    let context = &cx.caches.context;
+    let value_ranges = context.build_value_labels_ranges(cx.module.isa()).expect("value location ranges");
+
+    // Write optimized function to file for debugging
+    #[cfg(debug_assertions)]
+    crate::pretty_clif::write_clif_file(cx.tcx, "opt", instance, &context.func, &clif_comments, Some(&value_ranges));
+
+    // Define debuginfo for function
     let isa = cx.module.isa();
     debug_context
         .as_mut()
         .map(|x| x.define(tcx, context, isa, &source_info_set));
 
-    // Step 12. Clear context to make it usable for the next function
-    cx.caches.context.clear();
+    // Clear context to make it usable for the next function
+    context.clear();
 }
 
-fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Function) {
+fn verify_func(tcx: TyCtxt, writer: &crate::pretty_clif::CommentWriter, func: &Function) {
     let flags = settings::Flags::new(settings::builder());
     match ::cranelift::codegen::verify_function(&func, &flags) {
         Ok(_) => {}
@@ -171,7 +178,7 @@ fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Fu
             let pretty_error = ::cranelift::codegen::print_errors::pretty_verifier_error(
                 &func,
                 None,
-                Some(Box::new(&writer)),
+                Some(Box::new(writer)),
                 err,
             );
             tcx.sess

@@ -2,9 +2,16 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt;
 
-use cranelift::codegen::entity::SecondaryMap;
-use cranelift::codegen::ir::entities::AnyEntity;
-use cranelift::codegen::write::{FuncWriter, PlainWriter};
+use cranelift::codegen::{
+    entity::SecondaryMap,
+    ir::{
+        self,
+        entities::AnyEntity,
+        function::DisplayFunctionAnnotations,
+    },
+    write::{FuncWriter, PlainWriter},
+    ValueLabelsRanges,
+};
 
 use crate::prelude::*;
 
@@ -184,42 +191,72 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             }
         }
     }
+}
 
-    pub fn write_clif_file(&mut self) {
-        use std::io::Write;
+pub fn write_clif_file<'a, 'tcx: 'a>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    postfix: &str,
+    instance: Instance<'tcx>,
+    func: &ir::Function,
+    mut clif_comments: &CommentWriter,
+    value_ranges: Option<&ValueLabelsRanges>,
+) {
+    use std::io::Write;
 
-        let symbol_name = self.tcx.symbol_name(self.instance).as_str();
-        let clif_file_name = format!(
-            "{}/{}__{}.clif",
-            concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif"),
-            self.tcx.crate_name(LOCAL_CRATE),
-            symbol_name,
-        );
+    let symbol_name = tcx.symbol_name(instance).as_str();
+    let clif_file_name = format!(
+        "{}/{}__{}.{}.clif",
+        concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/clif"),
+        tcx.crate_name(LOCAL_CRATE),
+        symbol_name,
+        postfix,
+    );
+
+    let mut clif = String::new();
+    cranelift::codegen::write::decorate_function(
+        &mut clif_comments,
+        &mut clif,
+        &func,
+        &DisplayFunctionAnnotations {
+            isa: Some(&*crate::build_isa(tcx.sess)),
+            value_ranges,
+        },
+    )
+    .unwrap();
+
+    match ::std::fs::File::create(clif_file_name) {
+        Ok(mut file) => {
+            let target_triple: ::target_lexicon::Triple =
+                tcx.sess.target.target.llvm_target.parse().unwrap();
+            writeln!(file, "test compile").unwrap();
+            writeln!(file, "set is_pic").unwrap();
+            writeln!(file, "target {}", target_triple).unwrap();
+            writeln!(file, "").unwrap();
+            file.write(clif.as_bytes()).unwrap();
+        }
+        Err(e) => {
+            tcx.sess.warn(&format!("err opening clif file: {:?}", e));
+        }
+    }
+}
+
+impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{:?}", self.instance.substs)?;
+        writeln!(f, "{:?}", self.local_map)?;
 
         let mut clif = String::new();
         ::cranelift::codegen::write::decorate_function(
             &mut &self.clif_comments,
             &mut clif,
             &self.bcx.func,
-            None,
+            // FIXME use DisplayFunctionAnnotations::default() instead
+            &DisplayFunctionAnnotations {
+                isa: None,
+                value_ranges: None,
+            },
         )
         .unwrap();
-
-        match ::std::fs::File::create(clif_file_name) {
-            Ok(mut file) => {
-                let target_triple: ::target_lexicon::Triple =
-                    self.tcx.sess.target.target.llvm_target.parse().unwrap();
-                writeln!(file, "test compile").unwrap();
-                writeln!(file, "set is_pic").unwrap();
-                writeln!(file, "target {}", target_triple).unwrap();
-                writeln!(file, "").unwrap();
-                file.write(clif.as_bytes()).unwrap();
-            }
-            Err(e) => {
-                self.tcx
-                    .sess
-                    .warn(&format!("err opening clif file: {:?}", e));
-            }
-        }
+        writeln!(f, "\n{}", clif)
     }
 }

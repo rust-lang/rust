@@ -1,5 +1,3 @@
-use std::fmt;
-
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::Module;
@@ -581,23 +579,6 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
     pub constants: &'a mut crate::constant::ConstantCx,
     pub caches: &'a mut Caches<'tcx>,
     pub source_info_set: indexmap::IndexSet<SourceInfo>,
-}
-
-impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:?}", self.instance.substs)?;
-        writeln!(f, "{:?}", self.local_map)?;
-
-        let mut clif = String::new();
-        ::cranelift::codegen::write::decorate_function(
-            &mut &self.clif_comments,
-            &mut clif,
-            &self.bcx.func,
-            None,
-        )
-        .unwrap();
-        writeln!(f, "\n{}", clif)
-    }
 }
 
 impl<'a, 'tcx: 'a, B: Backend> LayoutOf for FunctionCx<'a, 'tcx, B> {
