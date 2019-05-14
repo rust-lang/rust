@@ -3789,6 +3789,14 @@ const ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
     "non_exhaustive"
 ];
 
+// The `top` parameter is used when generating the item declaration to ensure it doesn't have a
+// left padding. For example:
+//
+// #[foo] <----- "top" attribute
+// struct Foo {
+//     #[bar] <---- not "top" attribute
+//     bar: usize,
+// }
 fn render_attributes(w: &mut dyn fmt::Write, it: &clean::Item, top: bool) -> fmt::Result {
     let mut attrs = String::new();
 
