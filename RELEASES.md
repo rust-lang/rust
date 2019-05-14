@@ -99,9 +99,10 @@ Version 1.34.2 (2019-05-14)
 ===========================
 
 * [Destabilize the `Error::type_id` function due to a security
-   vulnerability][60785]
+   vulnerability][60785] ([CVE-2019-12083])
 
 [60785]: https://github.com/rust-lang/rust/pull/60785
+[CVE-2019-12083]: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-12083
 
 Version 1.34.1 (2019-04-25)
 ===========================
