@@ -331,8 +331,20 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $sh (vector_signed_short, ~vector_bool_short) -> vector_signed_short }
             impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int, ~vector_bool_int) -> vector_unsigned_int }
             impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
+        };
+        ([$Trait:ident $m:ident] ~($fn:ident)) => {
+            impl_vec_trait!{ [$Trait $m] ~($fn, $fn, $fn, $fn, $fn, $fn) }
         }
     }
+
+    test_impl! { vec_vand(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ simd_and, vand / xxland ] }
+
+    pub trait VectorAnd<Other> {
+        type Result;
+        unsafe fn vec_and(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorAnd vec_and] ~(simd_and) }
 
     test_impl! { vec_vaddsbs(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vaddsbs, vaddsbs ] }
     test_impl! { vec_vaddshs(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vaddshs, vaddshs ] }
@@ -1190,6 +1202,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector and.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_and<T, U>(a: T, b: U) -> <T as sealed::VectorAnd<U>>::Result
+where
+    T: sealed::VectorAnd<U>,
+{
+    a.vec_and(b)
+}
+
 /// Vector adds.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1493,6 +1515,11 @@ mod tests {
             }
          }
     }
+
+    test_vec_2! { test_vec_and, vec_and, i32x4,
+    [0b11001100, 0b11001100, 0b11001100, 0b11001100],
+    [0b00110011, 0b11110011, 0b00001100, 0b00000000],
+    [0b00000000, 0b11000000, 0b00001100, 0b00000000] }
 
     macro_rules! test_vec_adds {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
