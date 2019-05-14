@@ -12,8 +12,8 @@ use rustc_target::abi::call::ArgType;
 use rustc_codegen_ssa::traits::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf};
-use rustc::ty::{self, Ty, Instance};
-use rustc::ty::layout::{self, FnTypeExt};
+use rustc::ty::{Ty};
+use rustc::ty::layout::{self};
 
 use libc::c_uint;
 
@@ -468,22 +468,6 @@ impl<'tcx> FnTypeLlvmExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         if cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, cconv);
         }
-    }
-}
-
-impl AbiMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-    fn new_fn_type(&self, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> FnType<'tcx, Ty<'tcx>> {
-        FnType::new(self, sig, extra_args)
-    }
-    fn new_vtable(
-        &self,
-        sig: ty::FnSig<'tcx>,
-        extra_args: &[Ty<'tcx>]
-    ) -> FnType<'tcx, Ty<'tcx>> {
-        FnType::new_vtable(self, sig, extra_args)
-    }
-    fn fn_type_of_instance(&self, instance: &Instance<'tcx>) -> FnType<'tcx, Ty<'tcx>> {
-        FnType::of_instance(self, instance)
     }
 }
 
