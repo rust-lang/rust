@@ -37,8 +37,15 @@ fn main() {
     // build anything and we rely on the upstream implementation of compiler-rt
     // functions
     if !cfg!(feature = "mangled-names") && cfg!(feature = "c") {
-        // Don't use C compiler for bitcode-only wasm and nvptx
-        if !target.contains("wasm32") && !target.contains("nvptx") {
+        // Don't use a C compiler for these targets:
+        //
+        // * wasm32 - clang 8 for wasm is somewhat hard to come by and it's
+        //   unlikely that the C is really that much better than our own Rust.
+        // * nvptx - everything is bitcode, not compatible with mixed C/Rust
+        // * riscv - the rust-lang/rust distribution container doesn't have a C
+        //   compiler nor is cc-rs ready for compilation to riscv (at this
+        //   time). This can probably be removed in the future
+        if !target.contains("wasm32") && !target.contains("nvptx") && !target.starts_with("riscv") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target);
             println!("cargo:rustc-cfg=use_c");
