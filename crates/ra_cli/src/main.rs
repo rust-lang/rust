@@ -18,7 +18,7 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("symbols"))
         .subcommand(
             SubCommand::with_name("analysis-stats")
-                .arg(Arg::with_name("verbose").short("v"))
+                .arg(Arg::with_name("verbose").short("v").long("verbose"))
                 .arg(Arg::with_name("only").short("o").takes_value(true))
                 .arg(Arg::with_name("path")),
         )
