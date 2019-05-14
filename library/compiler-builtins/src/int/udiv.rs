@@ -154,7 +154,7 @@ macro_rules! udivmod_inner {
 intrinsics! {
     #[use_c_shim_if(all(target_arch = "arm",
                         not(target_os = "ios"),
-                        not(thumbv6m)))]
+                        not(thumb_1)))]
     #[arm_aeabi_alias = __aeabi_uidiv]
     /// Returns `n / d`
     pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {

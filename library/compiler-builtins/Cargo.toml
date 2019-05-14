@@ -62,7 +62,7 @@ rustc-dep-of-std = ['c', 'compiler-builtins', 'core']
 
 [[example]]
 name = "intrinsics"
-required-features = ["c", "compiler-builtins"]
+required-features = ["compiler-builtins"]
 
 [workspace]
 members = ["testcrate"]

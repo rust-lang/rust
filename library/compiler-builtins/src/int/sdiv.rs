@@ -57,7 +57,7 @@ impl Divmod for i32 {}
 impl Divmod for i64 {}
 
 intrinsics! {
-    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios"), not(thumbv6m)))]
+    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios"), not(thumb_1)))]
     #[arm_aeabi_alias = __aeabi_idiv]
     pub extern "C" fn __divsi3(a: i32, b: i32) -> i32 {
         a.div(b)
