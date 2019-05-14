@@ -307,6 +307,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         break
                     }
     
+                    // Expansion of `get_meta!`
                     let mut feature = None;
                     let mut reason = None;
                     let mut issue = None;
@@ -341,29 +342,31 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         }
                     }
     
-                    // `feature` is required, `reason` and `issue` are optional
+                    // Parse the optional symbol to an optional integer.
+                    let issue: Option<u32> = if let Some(issue_sym) = issue {
+                        if let Ok(issue_num) = issue_sym.as_str().parse() {
+                            if issue_num == 0 {
+                                //TODO How do I choose an error number?
+                                struct_span_warn!(diagnostic, attr.span, E0545,
+                                    "Issue #0 should not be used"
+                                    ).help("Consider omitting the `issue` attribute")
+                                    .emit();
+                            }
+                            Some(issue_num)
+                        } else {
+                            span_err!(diagnostic, attr.span, E0545, "incorrect 'issue'");
+                            continue
+                        }
+                    } else {
+                        None
+                    };
+                    
+                    // `feature` is required, `reason` and `issue` are optional.
                     if let Some(feature) = feature {
                         stab = Some(Stability {
                             level: Unstable {
                                 reason,
-                                issue: {
-                                    if let Some(issue_sym) = issue {
-                                        if let Ok(issue_num) = issue_sym.as_str().parse() {
-                                            if issue_num == 0 {
-                                                span_err!(diagnostic, attr.span, E0545,
-                                                           "Issue #0 should not be used. The issue item can be omited");
-                                                //TODO how to add a NOTE ?
-                                            }
-                                            Some(issue_num)
-                                        } else {
-                                            span_err!(diagnostic, attr.span, E0545,
-                                                      "incorrect 'issue'");
-                                            continue
-                                        }
-                                    } else {
-                                        None
-                                    }
-                                }
+                                issue,
                             },
                             feature,
                             rustc_depr: None,
