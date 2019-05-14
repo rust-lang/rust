@@ -7,8 +7,8 @@ use syntax::source_map::Span;
 use syntax::visit::FnKind;
 use syntax_pos::BytePos;
 
-use crate::utils::{in_macro_or_desugar, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 use crate::utils::sym;
+use crate::utils::{in_macro_or_desugar, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for return statements at the end of a block.

@@ -3,8 +3,8 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use crate::utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node};
 use crate::utils::sym;
+use crate::utils::{is_expn_of, match_def_path, match_qpath, paths, resolve_node};
 use if_chain::if_chain;
 use rustc::lint::LateContext;
 use rustc::{hir, ty};
@@ -102,7 +102,8 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
         },
         hir::ExprKind::Call(ref path, ref args) => {
             if let hir::ExprKind::Path(ref path) = path.node {
-                if match_qpath(path, &*paths::RANGE_INCLUSIVE_STD_NEW) || match_qpath(path, &*paths::RANGE_INCLUSIVE_NEW)
+                if match_qpath(path, &*paths::RANGE_INCLUSIVE_STD_NEW)
+                    || match_qpath(path, &*paths::RANGE_INCLUSIVE_NEW)
                 {
                     Some(Range {
                         start: Some(&args[0]),
@@ -129,7 +130,8 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
                     end: Some(get_field(*sym::end, fields)?),
                     limits: ast::RangeLimits::HalfOpen,
                 })
-            } else if match_qpath(path, &*paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &*paths::RANGE_TO_INCLUSIVE)
+            } else if match_qpath(path, &*paths::RANGE_TO_INCLUSIVE_STD)
+                || match_qpath(path, &*paths::RANGE_TO_INCLUSIVE)
             {
                 Some(Range {
                     start: None,

@@ -4,8 +4,8 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::source_map::Spanned;
 
-use crate::utils::SpanlessEq;
 use crate::utils::sym;
+use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
 declare_clippy_lint! {

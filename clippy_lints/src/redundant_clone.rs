@@ -1,6 +1,6 @@
 use crate::utils::{
-    has_drop, in_macro_or_desugar, is_copy, match_type, paths, snippet_opt, span_lint_hir, span_lint_hir_and_then,
-    walk_ptrs_ty_depth, match_def_path,
+    has_drop, in_macro_or_desugar, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_hir,
+    span_lint_hir_and_then, walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -96,7 +96,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 
             let from_borrow = match_def_path(cx, fn_def_id, &*paths::CLONE_TRAIT_METHOD)
                 || match_def_path(cx, fn_def_id, &*paths::TO_OWNED_METHOD)
-                || (match_def_path(cx, fn_def_id, &*paths::TO_STRING_METHOD) && match_type(cx, arg_ty, &*paths::STRING));
+                || (match_def_path(cx, fn_def_id, &*paths::TO_STRING_METHOD)
+                    && match_type(cx, arg_ty, &*paths::STRING));
 
             let from_deref = !from_borrow
                 && (match_def_path(cx, fn_def_id, &*paths::PATH_TO_PATH_BUF)

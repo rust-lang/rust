@@ -1,4 +1,4 @@
-use crate::utils::{paths, snippet, span_lint_and_then, walk_ptrs_ty_depth, match_def_path};
+use crate::utils::{match_def_path, paths, snippet, span_lint_and_then, walk_ptrs_ty_depth};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

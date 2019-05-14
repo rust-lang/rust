@@ -1,5 +1,5 @@
 use crate::consts::{constant_context, Constant};
-use crate::utils::{paths, match_qpath, span_lint};
+use crate::utils::{match_qpath, paths, span_lint};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};

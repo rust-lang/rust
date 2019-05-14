@@ -1,13 +1,13 @@
-use crate::utils::{span_lint_and_sugg, match_def_path};
 use crate::utils::sym;
+use crate::utils::{match_def_path, span_lint_and_sugg};
 use if_chain::if_chain;
+use lazy_static::lazy_static;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 use syntax::symbol::Symbol;
-use lazy_static::lazy_static;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and

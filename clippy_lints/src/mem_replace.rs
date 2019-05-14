@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, paths, snippet_with_applicability, span_lint_and_sugg, match_def_path};
+use crate::utils::{match_def_path, match_qpath, paths, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind, MutMutable, QPath};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

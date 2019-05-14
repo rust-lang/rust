@@ -1,5 +1,5 @@
-use crate::utils::SpanlessEq;
 use crate::utils::sym;
+use crate::utils::SpanlessEq;
 use crate::utils::{get_item_name, higher, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

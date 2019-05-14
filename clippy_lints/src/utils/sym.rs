@@ -1,7 +1,7 @@
 #![allow(default_hash_types, non_upper_case_globals)]
 
-use syntax::symbol::Symbol;
 use lazy_static::lazy_static;
+use syntax::symbol::Symbol;
 
 macro_rules! symbols_simple {
     ($($ident:ident,)*) => {
@@ -26,17 +26,17 @@ macro_rules! symbols_init {
 // exists because concat_idents is flaky
 pub mod assign {
     pub(crate) use super::AddAssign as Add;
-    pub(crate) use super::SubAssign as Sub;
-    pub(crate) use super::MulAssign as Mul;
-    pub(crate) use super::DivAssign as Div;
-    pub(crate) use super::RemAssign as Rem;
     pub(crate) use super::AndAssign as And;
-    pub(crate) use super::OrAssign as Or;
     pub(crate) use super::BitAndAssign as BitAnd;
     pub(crate) use super::BitOrAssign as BitOr;
     pub(crate) use super::BitXorAssign as BitXor;
-    pub(crate) use super::ShrAssign as Shr;
+    pub(crate) use super::DivAssign as Div;
+    pub(crate) use super::MulAssign as Mul;
+    pub(crate) use super::OrAssign as Or;
+    pub(crate) use super::RemAssign as Rem;
     pub(crate) use super::ShlAssign as Shl;
+    pub(crate) use super::ShrAssign as Shr;
+    pub(crate) use super::SubAssign as Sub;
 }
 
 symbols_simple! {
@@ -386,7 +386,6 @@ symbols_simple! {
     zeroed,
     zip,
 }
-
 
 symbols_init! {
     impl_slice_t: "<impl [T]>",

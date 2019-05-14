@@ -10,9 +10,9 @@ use rustc::middle::region;
 use rustc::{declare_lint_pass, declare_tool_lint};
 // use rustc::middle::region::CodeExtent;
 use crate::consts::{constant, Constant};
+use crate::utils::sym;
 use crate::utils::usage::mutated_variables;
 use crate::utils::{in_macro_or_desugar, sext, sugg};
-use crate::utils::sym;
 use rustc::middle::expr_use_visitor::*;
 use rustc::middle::mem_categorization::cmt_;
 use rustc::middle::mem_categorization::Categorization;
@@ -594,7 +594,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Loops {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtKind::Semi(ref expr) = stmt.node {
             if let ExprKind::MethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.ident.name == *sym::collect && match_trait_method(cx, expr, &*paths::ITERATOR) {
+                if args.len() == 1
+                    && method.ident.name == *sym::collect
+                    && match_trait_method(cx, expr, &*paths::ITERATOR)
+                {
                     span_lint(
                         cx,
                         UNUSED_COLLECT,

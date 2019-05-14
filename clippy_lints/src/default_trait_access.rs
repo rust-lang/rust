@@ -5,7 +5,7 @@ use rustc::ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
-use crate::utils::{any_parent_is_automatically_derived, paths, span_lint_and_sugg, match_def_path};
+use crate::utils::{any_parent_is_automatically_derived, match_def_path, paths, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for literal calls to `Default::default()`.

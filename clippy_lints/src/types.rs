@@ -22,12 +22,12 @@ use syntax::symbol::Symbol;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
+use crate::utils::sym;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro_or_desugar, int_bits, last_path_segment,
-    match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability, span_help_and_lint,
-    span_lint, span_lint_and_sugg, span_lint_and_then, unsext, match_def_path,
+    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
-use crate::utils::sym;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.

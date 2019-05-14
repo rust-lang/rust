@@ -1,7 +1,7 @@
+use crate::utils::sym;
 use crate::utils::{
     get_item_name, in_macro_or_desugar, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty,
 };
-use crate::utils::sym;
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -141,7 +141,8 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
         }
     }
 
-    if cx.access_levels.is_exported(visited_trait.hir_id) && trait_items.iter().any(|i| is_named_self(cx, i, *sym::len)) {
+    if cx.access_levels.is_exported(visited_trait.hir_id) && trait_items.iter().any(|i| is_named_self(cx, i, *sym::len))
+    {
         let mut current_and_super_traits = FxHashSet::default();
         let visited_trait_def_id = cx.tcx.hir().local_def_id_from_hir_id(visited_trait.hir_id);
         fill_trait_set(visited_trait_def_id, &mut current_and_super_traits, cx);

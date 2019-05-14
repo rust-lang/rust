@@ -5,8 +5,8 @@
 // [`missing_doc`]: https://github.com/rust-lang/rust/blob/d6d05904697d89099b55da3331155392f1db9c00/src/librustc_lint/builtin.rs#L246
 //
 
-use crate::utils::{in_macro_or_desugar, span_lint};
 use crate::utils::sym;
+use crate::utils::{in_macro_or_desugar, span_lint};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};

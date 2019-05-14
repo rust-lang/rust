@@ -1,5 +1,5 @@
 use crate::consts::{constant_simple, Constant};
-use crate::utils::{paths, span_lint, match_def_path};
+use crate::utils::{match_def_path, paths, span_lint};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};

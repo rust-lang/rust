@@ -1,5 +1,5 @@
-use crate::utils::{span_lint, span_lint_and_then};
 use crate::utils::sym;
+use crate::utils::{span_lint, span_lint_and_then};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_tool_lint, impl_lint_pass};
 use syntax::ast::*;

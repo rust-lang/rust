@@ -1,6 +1,6 @@
 use crate::utils::paths;
-use crate::utils::sym;
 use crate::utils::sugg::DiagnosticBuilderExt;
+use crate::utils::sym;
 use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_hir_and_then};
 use if_chain::if_chain;
 use rustc::hir;

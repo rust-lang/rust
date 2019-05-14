@@ -1,5 +1,5 @@
-use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
 use crate::utils::sym;
+use crate::utils::{get_trait_def_id, span_lint, trait_ref_of_method};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

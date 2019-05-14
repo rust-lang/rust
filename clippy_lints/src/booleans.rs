@@ -1,8 +1,9 @@
+use crate::utils::sym;
 use crate::utils::{
     get_trait_def_id, implements_trait, in_macro, in_macro_or_desugar, match_type, paths, snippet_opt,
     span_lint_and_then, SpanlessEq,
 };
-use crate::utils::sym;
+use lazy_static::lazy_static;
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -12,7 +13,6 @@ use rustc_errors::Applicability;
 use syntax::ast::LitKind;
 use syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
 use syntax::symbol::Symbol;
-use lazy_static::lazy_static;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for boolean expressions that can be written more

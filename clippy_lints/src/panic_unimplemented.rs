@@ -1,5 +1,5 @@
-use crate::utils::{is_direct_expn_of, is_expn_of, paths, resolve_node, span_lint, match_def_path};
 use crate::utils::sym;
+use crate::utils::{is_direct_expn_of, is_expn_of, match_def_path, paths, resolve_node, span_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

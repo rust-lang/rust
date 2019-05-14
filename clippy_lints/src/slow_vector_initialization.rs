@@ -1,6 +1,6 @@
 use crate::utils::sugg::Sugg;
-use crate::utils::{get_enclosing_block, match_qpath, span_lint_and_then, SpanlessEq};
 use crate::utils::sym;
+use crate::utils::{get_enclosing_block, match_qpath, span_lint_and_then, SpanlessEq};
 use if_chain::if_chain;
 use rustc::hir::intravisit::{walk_block, walk_expr, walk_stmt, NestedVisitorMap, Visitor};
 use rustc::hir::*;

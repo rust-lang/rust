@@ -1,4 +1,4 @@
-use crate::utils::{last_path_segment, paths, snippet, span_lint, span_lint_and_then, sugg, match_def_path};
+use crate::utils::{last_path_segment, match_def_path, paths, snippet, span_lint, span_lint_and_then, sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

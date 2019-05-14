@@ -2,8 +2,8 @@
 //!
 //! This lint is **warn** by default
 
-use crate::utils::{in_macro_or_desugar, snippet_opt, span_lint_and_then};
 use crate::utils::sym;
+use crate::utils::{in_macro_or_desugar, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 use rustc::hir::{BindingAnnotation, Expr, ExprKind, HirId, Item, MutImmutable, Pat, PatKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

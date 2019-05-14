@@ -1,7 +1,7 @@
 use std::cmp;
 
-use crate::utils::{in_macro_or_desugar, is_copy, is_self_ty, snippet, span_lint_and_sugg};
 use crate::utils::sym;
+use crate::utils::{in_macro_or_desugar, is_copy, is_self_ty, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use matches::matches;
 use rustc::hir;

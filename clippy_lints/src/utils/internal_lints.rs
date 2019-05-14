@@ -1,4 +1,4 @@
-use crate::utils::{match_type, match_def_path, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
+use crate::utils::{match_def_path, match_type, paths, span_help_and_lint, span_lint, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};

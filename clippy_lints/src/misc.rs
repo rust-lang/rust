@@ -505,7 +505,8 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
         },
         ExprKind::Call(ref path, ref v) if v.len() == 1 => {
             if let ExprKind::Path(ref path) = path.node {
-                if match_qpath(path, &[*sym::String, *sym::from_str]) || match_qpath(path, &[*sym::String, *sym::from]) {
+                if match_qpath(path, &[*sym::String, *sym::from_str]) || match_qpath(path, &[*sym::String, *sym::from])
+                {
                     (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
                 } else {
                     return;

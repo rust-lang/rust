@@ -2,10 +2,10 @@ use if_chain::if_chain;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 
+use crate::utils::sym;
 use crate::utils::{
     higher::if_block, in_macro_or_desugar, match_type, paths, span_lint_and_then, usage::is_potentially_mutated,
 };
-use crate::utils::sym;
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use syntax::source_map::Span;

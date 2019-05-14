@@ -1,7 +1,7 @@
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::sym;
 use crate::utils::sugg::Sugg;
+use crate::utils::sym;
 use crate::utils::{
     expr_block, in_macro_or_desugar, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg, remove_blocks,
     snippet, snippet_with_applicability, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty,

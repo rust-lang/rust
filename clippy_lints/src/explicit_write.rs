@@ -1,5 +1,5 @@
-use crate::utils::{is_expn_of, resolve_node, span_lint, span_lint_and_sugg, match_def_path};
 use crate::utils::sym;
+use crate::utils::{is_expn_of, match_def_path, paths, resolve_node, span_lint, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -42,11 +42,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitWrite {
             if write_args.len() > 0;
             if let ExprKind::Call(ref dest_fun, _) = write_args[0].node;
             if let ExprKind::Path(ref qpath) = dest_fun.node;
-            if let Some(dest_fun_id) =
-                resolve_node(cx, qpath, dest_fun.hir_id).opt_def_id();
-            if let Some(dest_name) = if match_def_path(cx, dest_fun_id, &[*sym::std, *sym::io, *sym::stdio, *sym::stdout]) {
+            if let Some(dest_fun_id) = resolve_node(cx, qpath, dest_fun.hir_id).opt_def_id();
+            if let Some(dest_name) = if match_def_path(cx, dest_fun_id, &*paths::STDOUT) {
                 Some("stdout")
-            } else if match_def_path(cx, dest_fun_id, &[*sym::std, *sym::io, *sym::stdio, *sym::stderr]) {
+            } else if match_def_path(cx, dest_fun_id, &*paths::STDERR) {
                 Some("stderr")
             } else {
                 None

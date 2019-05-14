@@ -1,5 +1,5 @@
-use crate::utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};
 use crate::utils::sym;
+use crate::utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

@@ -1,5 +1,5 @@
-use crate::utils::{is_automatically_derived, span_lint_hir};
 use crate::utils::sym;
+use crate::utils::{is_automatically_derived, span_lint_hir};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

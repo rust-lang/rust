@@ -1,6 +1,6 @@
 use crate::consts::{constant, Constant};
-use crate::utils::{is_expn_of, match_type, paths, span_help_and_lint, span_lint, match_def_path};
 use crate::utils::sym;
+use crate::utils::{is_expn_of, match_def_path, match_type, paths, span_help_and_lint, span_lint};
 use if_chain::if_chain;
 use regex_syntax;
 use rustc::hir::*;

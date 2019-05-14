@@ -1,8 +1,8 @@
+use crate::utils::sym;
 use crate::utils::{
     contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability,
     span_lint_and_sugg, walk_ptrs_ty,
 };
-use crate::utils::sym;
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

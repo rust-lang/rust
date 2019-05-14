@@ -6,6 +6,7 @@ use std::fmt;
 use std::iter;
 
 use if_chain::if_chain;
+use lazy_static::lazy_static;
 use matches::matches;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
@@ -16,18 +17,16 @@ use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::source_map::{BytePos, Span};
 use syntax::symbol::{LocalInternedString, Symbol};
-use lazy_static::lazy_static;
 
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::sym;
 use crate::utils::{
     get_arg_name, get_parent_expr, get_trait_def_id, has_iter_method, implements_trait, in_macro, is_copy,
-    is_ctor_function, is_expn_of, is_self, is_self_ty, iter_input_pats, last_path_segment, match_path, match_qpath,
-    match_trait_method, match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys,
-    single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
+    is_ctor_function, is_expn_of, is_self, is_self_ty, iter_input_pats, last_path_segment, match_def_path, match_path,
+    match_qpath, match_trait_method, match_type, match_var, method_calls, method_chain_args, remove_blocks, return_ty,
+    same_tys, single_segment_path, snippet, snippet_with_applicability, snippet_with_macro_callsite, span_lint,
     span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
-    match_def_path,
 };
 
 declare_clippy_lint! {
@@ -1068,7 +1067,8 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tables.expr_ty(arg);
-                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &*paths::DEFAULT_TRAIT) {
+                    let default_trait_id = if let Some(default_trait_id) = get_trait_def_id(cx, &*paths::DEFAULT_TRAIT)
+                    {
                         default_trait_id
                     } else {
                         return false;
@@ -2216,15 +2216,33 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
 
 /// Checks for the `CHARS_NEXT_CMP` lint with `unwrap()`.
 fn lint_chars_next_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    lint_chars_cmp_with_unwrap(cx, info, &[*sym::chars, *sym::next, *sym::unwrap], CHARS_NEXT_CMP, "starts_with")
+    lint_chars_cmp_with_unwrap(
+        cx,
+        info,
+        &[*sym::chars, *sym::next, *sym::unwrap],
+        CHARS_NEXT_CMP,
+        "starts_with",
+    )
 }
 
 /// Checks for the `CHARS_LAST_CMP` lint with `unwrap()`.
 fn lint_chars_last_cmp_with_unwrap<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp_with_unwrap(cx, info, &[*sym::chars, *sym::last, *sym::unwrap], CHARS_LAST_CMP, "ends_with") {
+    if lint_chars_cmp_with_unwrap(
+        cx,
+        info,
+        &[*sym::chars, *sym::last, *sym::unwrap],
+        CHARS_LAST_CMP,
+        "ends_with",
+    ) {
         true
     } else {
-        lint_chars_cmp_with_unwrap(cx, info, &[*sym::chars, *sym::next_back, *sym::unwrap], CHARS_LAST_CMP, "ends_with")
+        lint_chars_cmp_with_unwrap(
+            cx,
+            info,
+            &[*sym::chars, *sym::next_back, *sym::unwrap],
+            CHARS_LAST_CMP,
+            "ends_with",
+        )
     }
 }
 
@@ -2288,10 +2306,7 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
     }
 }
 
-fn ty_has_iter_method(
-    cx: &LateContext<'_, '_>,
-    self_ref_ty: Ty<'_>,
-) -> Option<(&'static Lint, Symbol, &'static str)> {
+fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: Ty<'_>) -> Option<(&'static Lint, Symbol, &'static str)> {
     if let Some(ty_name) = has_iter_method(cx, self_ref_ty) {
         let lint = if ty_name == *sym::array || ty_name == *sym::PathBuf {
             INTO_ITER_ON_ARRAY

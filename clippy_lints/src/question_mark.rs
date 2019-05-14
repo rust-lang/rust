@@ -7,9 +7,9 @@ use rustc_errors::Applicability;
 use syntax::ptr::P;
 
 use crate::utils::paths::*;
-use crate::utils::sym;
 use crate::utils::sugg::Sugg;
-use crate::utils::{higher, match_type, span_lint_and_then, SpanlessEq, match_def_path};
+use crate::utils::sym;
+use crate::utils::{higher, match_def_path, match_type, span_lint_and_then, SpanlessEq};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for expressions that could be replaced by the question mark operator.

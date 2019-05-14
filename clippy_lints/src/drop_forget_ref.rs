@@ -1,4 +1,4 @@
-use crate::utils::{is_copy, paths, span_note_and_lint, match_def_path};
+use crate::utils::{is_copy, match_def_path, paths, span_note_and_lint};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

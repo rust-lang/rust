@@ -5,8 +5,8 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax_pos::Span;
 
 use crate::consts::{constant, Constant};
-use crate::utils::{in_macro_or_desugar, is_direct_expn_of, span_help_and_lint};
 use crate::utils::sym;
+use crate::utils::{in_macro_or_desugar, is_direct_expn_of, span_help_and_lint};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `assert!(true)` and `assert!(false)` calls.

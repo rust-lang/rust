@@ -2,8 +2,8 @@
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use lazy_static::lazy_static;
 use crate::utils::sym;
+use lazy_static::lazy_static;
 use std::default::Default;
 use std::io::Read;
 use std::sync::Mutex;

@@ -1,5 +1,5 @@
-use crate::utils::{get_pat_name, match_var, snippet};
 use crate::utils::sym;
+use crate::utils::{get_pat_name, match_var, snippet};
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
 use rustc::lint::LateContext;

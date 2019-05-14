@@ -1,8 +1,8 @@
 use crate::utils::paths;
 use crate::utils::sym;
 use crate::utils::{
-    in_macro_or_desugar, is_expn_of, last_path_segment, match_type, resolve_node, snippet, span_lint_and_then,
-    walk_ptrs_ty, match_def_path,
+    in_macro_or_desugar, is_expn_of, last_path_segment, match_def_path, match_type, resolve_node, snippet,
+    span_lint_and_then, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use rustc::hir::*;

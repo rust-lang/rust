@@ -1,5 +1,5 @@
-use crate::utils::{snippet_opt, span_help_and_lint, span_lint_and_sugg};
 use crate::utils::sym;
+use crate::utils::{snippet_opt, span_help_and_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;

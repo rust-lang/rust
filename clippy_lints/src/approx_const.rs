@@ -1,5 +1,6 @@
 use crate::utils::span_lint;
 use crate::utils::sym;
+use lazy_static::lazy_static;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -7,7 +8,6 @@ use std::f64::consts as f64;
 use syntax::ast::{FloatTy, LitKind};
 use syntax::symbol;
 use syntax::symbol::Symbol;
-use lazy_static::lazy_static;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for floating point literals that approximate

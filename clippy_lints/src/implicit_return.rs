@@ -1,5 +1,5 @@
-use crate::utils::{in_macro_or_desugar, is_expn_of, snippet_opt, span_lint_and_then};
 use crate::utils::sym;
+use crate::utils::{in_macro_or_desugar, is_expn_of, snippet_opt, span_lint_and_then};
 use rustc::hir::{intravisit::FnKind, Body, ExprKind, FnDecl, HirId, MatchSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};

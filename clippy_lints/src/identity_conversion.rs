@@ -1,6 +1,6 @@
 use crate::utils::{
-    in_macro_or_desugar, match_trait_method, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then,
-    match_def_path,
+    in_macro_or_desugar, match_def_path, match_trait_method, same_tys, snippet, snippet_with_macro_callsite,
+    span_lint_and_then,
 };
 use crate::utils::{paths, resolve_node};
 use rustc::hir::*;

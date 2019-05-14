@@ -1,11 +1,11 @@
 //! checks for attributes
 
 use crate::reexport::*;
-use crate::utils::{
-    in_macro_or_desugar, is_present_in_source, last_line_of_span, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, without_block_comments, match_def_path
-};
 use crate::utils::sym;
+use crate::utils::{
+    in_macro_or_desugar, is_present_in_source, last_line_of_span, match_def_path, paths, snippet_opt, span_lint,
+    span_lint_and_sugg, span_lint_and_then, without_block_comments,
+};
 use if_chain::if_chain;
 use rustc::hir::*;
 use rustc::lint::{
@@ -245,7 +245,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Attributes {
                                     for lint in lint_list {
                                         match item.node {
                                             ItemKind::Use(..) => {
-                                                if is_word(lint, *sym::unused_imports) || is_word(lint, *sym::deprecated) {
+                                                if is_word(lint, *sym::unused_imports)
+                                                    || is_word(lint, *sym::deprecated)
+                                                {
                                                     return;
                                                 }
                                             },
