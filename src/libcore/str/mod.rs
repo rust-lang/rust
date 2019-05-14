@@ -2198,7 +2198,11 @@ impl str {
     /// [`u8`]. This pointer will be pointing to the first byte of the string
     /// slice.
     ///
+    /// The caller must ensure that the returned pointer is never written to.
+    /// If you need to mutate the contents of the string slice, use [`as_mut_ptr`].
+    ///
     /// [`u8`]: primitive.u8.html
+    /// [`as_mut_ptr`]: #method.as_mut_ptr
     ///
     /// # Examples
     ///
