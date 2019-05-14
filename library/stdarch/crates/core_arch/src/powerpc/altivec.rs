@@ -178,6 +178,20 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.vaddcuw"]
     fn vaddcuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.ppc.altivec.vaddsbs"]
+    fn vaddsbs(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.vaddshs"]
+    fn vaddshs(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vaddsws"]
+    fn vaddsws(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vaddubs"]
+    fn vaddubs(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.ppc.altivec.vadduhs"]
+    fn vadduhs(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.ppc.altivec.vadduws"]
+    fn vadduws(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
 macro_rules! s_t_l {
@@ -319,6 +333,20 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
         }
     }
+
+    test_impl! { vec_vaddsbs(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vaddsbs, vaddsbs ] }
+    test_impl! { vec_vaddshs(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vaddshs, vaddshs ] }
+    test_impl! { vec_vaddsws(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [ vaddsws, vaddsws ] }
+    test_impl! { vec_vaddubs(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [ vaddubs, vaddubs ] }
+    test_impl! { vec_vadduhs(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [ vadduhs, vadduhs ] }
+    test_impl! { vec_vadduws(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [ vadduws, vadduws ] }
+
+    pub trait VectorAdds<Other> {
+        type Result;
+        unsafe fn vec_adds(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorAdds vec_adds] ~(vaddubs, vaddsbs, vadduhs, vaddshs, vadduws, vaddsws) }
 
     test_impl! { vec_vaddcuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vaddcuw, vaddcuw] }
 
@@ -1162,6 +1190,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector adds.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_adds<T, U>(a: T, b: U) -> <T as sealed::VectorAdds<U>>::Result
+where
+    T: sealed::VectorAdds<U>,
+{
+    a.vec_adds(b)
+}
+
 /// Vector addc.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1455,6 +1493,42 @@ mod tests {
             }
          }
     }
+
+    macro_rules! test_vec_adds {
+        { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            test_vec_2! {$name, vec_adds, $ty, [$($a),+], [$($b),+], [$($d),+] }
+        }
+    }
+
+    test_vec_adds! { test_vec_adds_i32x4, i32x4,
+    [i32::min_value(), i32::max_value(), 1, -1],
+    [-1, 1, 1, -1],
+    [i32::min_value(), i32::max_value(), 2, -2] }
+
+    test_vec_adds! { test_vec_adds_u32x4, u32x4,
+    [u32::max_value(), 0, 1, 2],
+    [2, 1, 0, 0],
+    [u32::max_value(), 1, 1, 2] }
+
+    test_vec_adds! { test_vec_adds_i16x8, i16x8,
+    [i16::min_value(), i16::max_value(), 1, -1, 0, 0, 0, 0],
+    [-1, 1, 1, -1, 0, 0, 0, 0],
+    [i16::min_value(), i16::max_value(), 2, -2, 0, 0, 0, 0] }
+
+    test_vec_adds! { test_vec_adds_u16x8, u16x8,
+    [u16::max_value(), 0, 1, 2, 0, 0, 0, 0],
+    [2, 1, 0, 0, 0, 0, 0, 0],
+    [u16::max_value(), 1, 1, 2, 0, 0, 0, 0] }
+
+    test_vec_adds! { test_vec_adds_i8x16, i8x16,
+    [i8::min_value(), i8::max_value(), 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-1, 1, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [i8::min_value(), i8::max_value(), 2, -2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+
+    test_vec_adds! { test_vec_adds_u8x16, u8x16,
+    [u8::max_value(), 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [u8::max_value(), 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
     test_vec_2! { test_vec_addc, vec_addc, u32x4, [u32::max_value(), 0, 0, 0], [1, 1, 1, 1], [1, 0, 0, 0] }
 
