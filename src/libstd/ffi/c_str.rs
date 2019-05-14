@@ -43,7 +43,9 @@ use crate::sys;
 /// `CString` implements a [`as_ptr`] method through the [`Deref`]
 /// trait. This method will give you a `*const c_char` which you can
 /// feed directly to extern functions that expect a nul-terminated
-/// string, like C's `strdup()`.
+/// string, like C's `strdup()`. Notice that [`as_ptr`] returns a
+/// read-only pointer; if the C code writes to it, that causes
+/// undefined behavior.
 ///
 /// # Extracting a slice of the whole C string
 ///
@@ -61,7 +63,7 @@ use crate::sys;
 ///
 /// Once you have the kind of slice you need (with or without a nul
 /// terminator), you can call the slice's own
-/// [`as_ptr`][slice.as_ptr] method to get a raw pointer to pass to
+/// [`as_ptr`][slice.as_ptr] method to get a read-only raw pointer to pass to
 /// extern functions. See the documentation for that function for a
 /// discussion on ensuring the lifetime of the raw pointer.
 ///
@@ -1042,6 +1044,9 @@ impl CStr {
     /// the end of the string.
     ///
     /// **WARNING**
+    ///
+    /// The returned pointer is read-only; writing to it (including passing it
+    /// to C code that writes to it) causes undefined behavior.
     ///
     /// It is your responsibility to make sure that the underlying memory is not
     /// freed too early. For example, the following code will cause undefined

@@ -23,7 +23,7 @@ use crate::task::{Context, Poll};
 /// When using a future, you generally won't call `poll` directly, but instead
 /// `await!` the value.
 #[doc(spotlight)]
-#[must_use = "futures do nothing unless polled"]
+#[must_use = "futures do nothing unless you `.await` or poll them"]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub trait Future {
     /// The type of value produced on completion.
