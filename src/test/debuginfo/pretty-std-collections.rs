@@ -15,21 +15,29 @@
 // gdb-command: run
 
 // gdb-command: print btree_set
-// gdb-check:$1 = BTreeSet<i32>(len: 15) = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
+// gdb-check:$1 = BTreeSet(size=15) = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14}
 
 // gdb-command: print btree_map
-// gdb-check:$2 = BTreeMap<i32, i32>(len: 15) = {[0] = 0, [1] = 1, [2] = 2, [3] = 3, [4] = 4, [5] = 5, [6] = 6, [7] = 7, [8] = 8, [9] = 9, [10] = 10, [11] = 11, [12] = 12, [13] = 13, [14] = 14}
+// gdb-check:$2 = BTreeMap(size=15) = {[0] = 0, [1] = 1, [2] = 2, [3] = 3, [4] = 4, [5] = 5, [6] = 6, [7] = 7, [8] = 8, [9] = 9, [10] = 10, [11] = 11, [12] = 12, [13] = 13, [14] = 14}
 
 // gdb-command: print vec_deque
-// gdb-check:$3 = VecDeque<i32>(len: 3, cap: 8) = {5, 3, 7}
+// gdb-check:$3 = VecDeque(size=3) = {5, 3, 7}
 
 // gdb-command: print vec_deque2
-// gdb-check:$4 = VecDeque<i32>(len: 7, cap: 8) = {2, 3, 4, 5, 6, 7, 8}
+// gdb-check:$4 = VecDeque(size=7) = {2, 3, 4, 5, 6, 7, 8}
+
+// gdb-command: print hash_map
+// gdb-check:$5 = HashMap(size=4) = {[...][1] = 10[...]}
+
+// gdb-command: print hash_set
+// gdb-check:$6 = HashSet(size=4) = {[...]10[...]}
 
 #![allow(unused_variables)]
 use std::collections::BTreeSet;
 use std::collections::BTreeMap;
 use std::collections::VecDeque;
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 
 fn main() {
@@ -59,6 +67,18 @@ fn main() {
     }
     vec_deque2.pop_front();
     vec_deque2.push_back(8);
+
+    // HashMap
+    let mut hash_map = HashMap::new();
+    for i in 1..5 {
+        hash_map.insert(i, i * 10);
+    }
+
+    // HashSet
+    let mut hash_set = HashSet::new();
+    for i in 1..5 {
+        hash_set.insert(i * 10);
+    }
 
     zzz(); // #break
 }

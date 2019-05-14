@@ -10,7 +10,7 @@
 // gdb-command: run
 
 // gdb-command: print vec
-// gdb-check:$1 = Vec<i32>(len: [...], cap: [...])[...]
+// gdb-check:$1 = Vec(size=0)[...]
 
 
 #![allow(unused_variables)]

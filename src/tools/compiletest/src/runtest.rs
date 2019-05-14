@@ -1055,15 +1055,16 @@ impl<'test> TestCx<'test> {
         // Switch LLDB into "Rust mode"
         let rust_src_root =
             self.config.find_rust_src_root().expect("Could not find Rust source root");
-        let rust_pp_module_rel_path = Path::new("./src/etc/lldb_rust_formatters.py");
+        let rust_pp_module_rel_path = Path::new("./src/etc/lldb_lookup.py");
         let rust_pp_module_abs_path =
             rust_src_root.join(rust_pp_module_rel_path).to_str().unwrap().to_owned();
 
         script_str
             .push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[..]);
-        script_str.push_str("type summary add --no-value ");
-        script_str.push_str("--python-function lldb_rust_formatters.print_val ");
-        script_str.push_str("-x \".*\" --category Rust\n");
+        script_str.push_str("type synthetic add -l lldb_lookup.synthetic_lookup -x '.*' ");
+        script_str.push_str("--category Rust\n");
+        script_str.push_str("type summary add -l lldb_lookup.summary_lookup -x '.*' ");
+        script_str.push_str("--category Rust\n");
         script_str.push_str("type category enable Rust\n");
 
         // Set breakpoints on every line that contains the string "#break"

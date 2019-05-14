@@ -1,3 +1,3 @@
 import gdb
-import gdb_rust_pretty_printing
-gdb_rust_pretty_printing.register_printers(gdb.current_objfile())
+import gdb_lookup
+gdb_lookup.register_printers(gdb.current_objfile())

@@ -8,8 +8,8 @@
 // gdb-command: run
 
 // gdb-command: print regular_struct
-// gdbg-check:$1 = RegularStruct = {the_first_field = 101, the_second_field = 102.5, the_third_field = false}
-// gdbr-check:$1 = gdb_pretty_struct_and_enums::RegularStruct {the_first_field: 101, the_second_field: 102.5, the_third_field: false}
+// gdbg-check:$1 = {the_first_field = 101, the_second_field = 102.5, the_third_field = false}
+// gdbr-check:$1 = gdb_pretty_struct_and_enums::RegularStruct = {the_first_field = 101, the_second_field = 102.5, the_third_field = false}
 
 // gdb-command: print empty_struct
 // gdbg-check:$2 = EmptyStruct
