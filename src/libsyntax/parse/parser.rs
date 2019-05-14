@@ -2628,7 +2628,8 @@ impl<'a> Parser<'a> {
                     db.span_label(self.span, "expected expression");
                     db.note("variable declaration using `let` is a statement");
                     return Err(db);
-                } else if self.span.rust_2018() && self.eat_keyword(keywords::Await) {
+                } else if self.span.rust_2018() && self.eat_keyword(keywords::Await)
+                          && self.check(&token::Not) {
                     // FIXME: remove this branch when `await!` is no longer supported
                     // https://github.com/rust-lang/rust/issues/60610
                     self.expect(&token::Not)?;

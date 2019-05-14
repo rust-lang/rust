@@ -23,5 +23,5 @@ macro_rules! await {
 }
 
 fn main() {
-    match await { await => () } //~ ERROR expected `!`, found `{`
+    match await { await => () } //~ ERROR expected expression, found `{`
 }
