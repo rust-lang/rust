@@ -27,7 +27,14 @@ extern {}
 mod intrinsics {
     // trunccdfsf2
     pub fn aeabi_d2f(x: f64) -> f32 {
-        x as f32
+        // This is only implemented in C currently, so only test it there.
+        #[cfg(feature = "c")]
+        return x as f32;
+        #[cfg(not(feature = "c"))]
+        {
+            drop(x);
+            0.0
+        }
     }
 
     // fixdfsi
@@ -263,6 +270,10 @@ mod intrinsics {
     pub fn modti3(a: i128, b: i128) -> i128 {
         a % b
     }
+
+    pub fn udivsi3(a: u32, b: u32) -> u32 {
+        a / b
+    }
 }
 
 fn run() {
@@ -325,6 +336,7 @@ fn run() {
     bb(umodti3(bb(2), bb(2)));
     bb(divti3(bb(2), bb(2)));
     bb(modti3(bb(2), bb(2)));
+    bb(udivsi3(bb(2), bb(2)));
 
     something_with_a_dtor(&|| assert_eq!(bb(1), 1));
 

@@ -33,18 +33,14 @@ jobs:
           TARGET: powerpc64-unknown-linux-gnu
         powerpc64le:
           TARGET: powerpc64le-unknown-linux-gnu
-        # thumbv6m:
-        #   TARGET: thumbv6m-linux-eabi
-        #   XARGO: 1
-        # thumbv7em:
-        #   TARGET: thumbv7em-linux-eabi
-        #   XARGO: 1
-        # thumbv7emhf:
-        #   TARGET: thumbv7em-linux-eabihf
-        #   XARGO: 1
-        # thumbv7m:
-        #   TARGET: thumbv7m-linux-eabi
-        #   XARGO: 1
+        thumbv6m:
+          TARGET: thumbv6m-none-eabi
+        thumbv7em:
+          TARGET: thumbv7em-none-eabi
+        thumbv7emhf:
+          TARGET: thumbv7em-none-eabihf
+        thumbv7m:
+          TARGET: thumbv7m-none-eabi
         wasm32:
           TARGET: wasm32-unknown-unknown
           ONLY_BUILD: 1
