@@ -1,3 +1,11 @@
+Version 1.34.2 (2019-05-14)
+===========================
+
+* [Destabilize the `Error::type_id` function due to a security
+   vulnerability][60785]
+
+[60785]: https://github.com/rust-lang/rust/pull/60785
+
 Version 1.34.1 (2019-04-25)
 ===========================
 
