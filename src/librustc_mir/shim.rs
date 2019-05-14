@@ -10,7 +10,7 @@ use rustc::ty::query::Providers;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use rustc_target::spec::abi::Abi;
-use syntax_pos::Span;
+use syntax_pos::{Span, sym};
 
 use std::fmt;
 use std::iter;
@@ -100,9 +100,9 @@ fn make_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
         ty::InstanceDef::CloneShim(def_id, ty) => {
             let name = tcx.item_name(def_id);
-            if name == "clone" {
+            if name == sym::clone {
                 build_clone_shim(tcx, def_id, ty)
-            } else if name == "clone_from" {
+            } else if name == sym::clone_from {
                 debug!("make_shim({:?}: using default trait implementation", instance);
                 return tcx.optimized_mir(def_id);
             } else {

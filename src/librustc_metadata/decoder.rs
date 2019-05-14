@@ -29,7 +29,7 @@ use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::source_map;
-use syntax::symbol::{InternedString, sym};
+use syntax::symbol::{Symbol, sym};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::hygiene::Mark;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
@@ -497,12 +497,13 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn item_name(&self, item_index: DefIndex) -> InternedString {
+    pub fn item_name(&self, item_index: DefIndex) -> Symbol {
         self.def_key(item_index)
             .disambiguated_data
             .data
             .get_opt_name()
             .expect("no name in item_name")
+            .as_symbol()
     }
 
     pub fn def_kind(&self, index: DefIndex) -> Option<DefKind> {
@@ -568,7 +569,7 @@ impl<'a, 'tcx> CrateMetadata {
 
         ty::VariantDef::new(
             tcx,
-            Ident::from_interned_str(self.item_name(index)),
+            Ident::with_empty_ctxt(self.item_name(index)),
             variant_did,
             ctor_did,
             data.discr,
@@ -576,7 +577,7 @@ impl<'a, 'tcx> CrateMetadata {
                 let f = self.entry(index);
                 ty::FieldDef {
                     did: self.local_def_id(index),
-                    ident: Ident::from_interned_str(self.item_name(index)),
+                    ident: Ident::with_empty_ctxt(self.item_name(index)),
                     vis: f.visibility.decode(self)
                 }
             }).collect(),
@@ -787,7 +788,7 @@ impl<'a, 'tcx> CrateMetadata {
                             if let Some(kind) = self.def_kind(child_index) {
                                 callback(def::Export {
                                     res: Res::Def(kind, self.local_def_id(child_index)),
-                                    ident: Ident::from_interned_str(self.item_name(child_index)),
+                                    ident: Ident::with_empty_ctxt(self.item_name(child_index)),
                                     vis: self.get_visibility(child_index),
                                     span: self.entry(child_index).span.decode((self, sess)),
                                 });
@@ -982,7 +983,7 @@ impl<'a, 'tcx> CrateMetadata {
         self.entry(id)
             .children
             .decode(self)
-            .map(|index| self.item_name(index).as_symbol())
+            .map(|index| self.item_name(index))
             .collect()
     }
 

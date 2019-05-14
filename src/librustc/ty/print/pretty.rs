@@ -1140,14 +1140,16 @@ impl<F: fmt::Write> PrettyPrinter<'gcx, 'tcx> for FmtPrinter<'_, 'gcx, 'tcx, F> 
 
         match *region {
             ty::ReEarlyBound(ref data) => {
-                data.name != "" && data.name != "'_"
+                data.name.as_symbol() != keywords::Invalid.name() &&
+                data.name.as_symbol() != keywords::UnderscoreLifetime.name()
             }
 
             ty::ReLateBound(_, br) |
             ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
             ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
-                    if name != "" && name != "'_" {
+                    if name.as_symbol() != keywords::Invalid.name() &&
+                       name.as_symbol() != keywords::UnderscoreLifetime.name() {
                         return true;
                     }
                 }
@@ -1203,7 +1205,7 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, '_, F> {
         // `explain_region()` or `note_and_explain_region()`.
         match *region {
             ty::ReEarlyBound(ref data) => {
-                if data.name != "" {
+                if data.name.as_symbol() != keywords::Invalid.name() {
                     p!(write("{}", data.name));
                     return Ok(self);
                 }
@@ -1212,7 +1214,8 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, '_, F> {
             ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
             ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
                 if let ty::BrNamed(_, name) = br {
-                    if name != "" && name != "'_" {
+                    if name.as_symbol() != keywords::Invalid.name() &&
+                       name.as_symbol() != keywords::UnderscoreLifetime.name() {
                         p!(write("{}", name));
                         return Ok(self);
                     }

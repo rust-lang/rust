@@ -223,7 +223,7 @@ fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 if let ty::FnDef(def_id, _) = func.ty.sty {
                     let abi = tcx.fn_sig(def_id).abi();
                     let name = tcx.item_name(def_id);
-                    if abi == Abi::RustIntrinsic &&  name == "rustc_peek" {
+                    if abi == Abi::RustIntrinsic && name == sym::rustc_peek {
                         return Some((args, source_info.span));
                     }
                 }
