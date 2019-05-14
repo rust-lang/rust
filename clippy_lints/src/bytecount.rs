@@ -1,3 +1,4 @@
+use crate::utils::sym;
 use crate::utils::{
     contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability,
     span_lint_and_sugg, walk_ptrs_ty,
@@ -37,10 +38,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
     fn check_expr(&mut self, cx: &LateContext<'_, '_>, expr: &Expr) {
         if_chain! {
             if let ExprKind::MethodCall(ref count, _, ref count_args) = expr.node;
-            if count.ident.name == "count";
+            if count.ident.name == *sym::count;
             if count_args.len() == 1;
             if let ExprKind::MethodCall(ref filter, _, ref filter_args) = count_args[0].node;
-            if filter.ident.name == "filter";
+            if filter.ident.name == *sym::filter;
             if filter_args.len() == 2;
             if let ExprKind::Closure(_, _, body_id, _, _) = filter_args[1].node;
             then {
@@ -52,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                     if op.node == BinOpKind::Eq;
                     if match_type(cx,
                                walk_ptrs_ty(cx.tables.expr_ty(&filter_args[0])),
-                               &paths::SLICE_ITER);
+                               &*paths::SLICE_ITER);
                     then {
                         let needle = match get_path_name(l) {
                             Some(name) if check_arg(name, argname, r) => r,
@@ -67,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                         let haystack = if let ExprKind::MethodCall(ref path, _, ref args) =
                                 filter_args[0].node {
                             let p = path.ident.name;
-                            if (p == "iter" || p == "iter_mut") && args.len() == 1 {
+                            if (p == *sym::iter || p == *sym::iter_mut) && args.len() == 1 {
                                 &args[0]
                             } else {
                                 &filter_args[0]

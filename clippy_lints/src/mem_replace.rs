@@ -1,4 +1,4 @@
-use crate::utils::{match_qpath, paths, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{match_def_path, match_qpath, paths, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::hir::{Expr, ExprKind, MutMutable, QPath};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -42,11 +42,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
             if func_args.len() == 2;
             if let ExprKind::Path(ref func_qpath) = func.node;
             if let Some(def_id) = cx.tables.qpath_res(func_qpath, func.hir_id).opt_def_id();
-            if cx.match_def_path(def_id, &paths::MEM_REPLACE);
+            if match_def_path(cx, def_id, &*paths::MEM_REPLACE);
 
             // Check that second argument is `Option::None`
             if let ExprKind::Path(ref replacement_qpath) = func_args[1].node;
-            if match_qpath(replacement_qpath, &paths::OPTION_NONE);
+            if match_qpath(replacement_qpath, &*paths::OPTION_NONE);
 
             then {
                 // Since this is a late pass (already type-checked),

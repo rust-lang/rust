@@ -1,5 +1,6 @@
 use std::cmp;
 
+use crate::utils::sym;
 use crate::utils::{in_macro_or_desugar, is_copy, is_self_ty, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use matches::matches;
@@ -168,7 +169,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
                     return;
                 }
                 for a in attrs {
-                    if a.meta_item_list().is_some() && a.check_name("proc_macro_derive") {
+                    if a.meta_item_list().is_some() && a.check_name(*sym::proc_macro_derive) {
                         return;
                     }
                 }

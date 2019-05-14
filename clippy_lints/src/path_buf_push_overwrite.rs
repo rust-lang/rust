@@ -1,3 +1,4 @@
+use crate::utils::sym;
 use crate::utils::{match_type, paths, span_lint_and_sugg, walk_ptrs_ty};
 use if_chain::if_chain;
 use rustc::hir::*;
@@ -44,9 +45,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PathBufPushOverwrite {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if_chain! {
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
-            if path.ident.name == "push";
+            if path.ident.name == *sym::push;
             if args.len() == 2;
-            if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(&args[0])), &paths::PATH_BUF);
+            if match_type(cx, walk_ptrs_ty(cx.tables.expr_ty(&args[0])), &*paths::PATH_BUF);
             if let Some(get_index_arg) = args.get(1);
             if let ExprKind::Lit(ref lit) = get_index_arg.node;
             if let LitKind::Str(ref path_lit, _) = lit.node;

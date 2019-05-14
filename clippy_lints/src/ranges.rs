@@ -7,6 +7,7 @@ use syntax::ast::RangeLimits;
 use syntax::source_map::Spanned;
 
 use crate::utils::sugg::Sugg;
+use crate::utils::sym;
 use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
 use crate::utils::{is_integer_literal, paths, snippet, snippet_opt, span_lint, span_lint_and_then};
 
@@ -115,13 +116,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Ranges {
                 if_chain! {
                     // `.iter()` call
                     if let ExprKind::MethodCall(ref iter_path, _, ref iter_args ) = *iter;
-                    if iter_path.ident.name == "iter";
+                    if iter_path.ident.name == *sym::iter;
                     // range expression in `.zip()` call: `0..x.len()`
                     if let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(cx, zip_arg);
                     if is_integer_literal(start, 0);
                     // `.len()` call
                     if let ExprKind::MethodCall(ref len_path, _, ref len_args) = end.node;
-                    if len_path.ident.name == "len" && len_args.len() == 1;
+                    if len_path.ident.name == *sym::len && len_args.len() == 1;
                     // `.iter()` and `.len()` called on same `Path`
                     if let ExprKind::Path(QPath::Resolved(_, ref iter_path)) = iter_args[0].node;
                     if let ExprKind::Path(QPath::Resolved(_, ref len_path)) = len_args[0].node;
@@ -212,7 +213,8 @@ fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
     // can't be called on a borrowed range.
     let ty = cx.tables.expr_ty_adjusted(expr);
 
-    get_trait_def_id(cx, &paths::ITERATOR).map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
+    get_trait_def_id(cx, &*paths::ITERATOR)
+        .map_or(false, |iterator_trait| implements_trait(cx, ty, iterator_trait, &[]))
 }
 
 fn y_plus_one(expr: &Expr) -> Option<&Expr> {

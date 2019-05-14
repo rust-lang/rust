@@ -1,4 +1,4 @@
-use crate::utils::{paths, span_lint};
+use crate::utils::{match_def_path, paths, span_lint};
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -28,7 +28,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemForget {
         if let ExprKind::Call(ref path_expr, ref args) = e.node {
             if let ExprKind::Path(ref qpath) = path_expr.node {
                 if let Some(def_id) = cx.tables.qpath_res(qpath, path_expr.hir_id).opt_def_id() {
-                    if cx.match_def_path(def_id, &paths::MEM_FORGET) {
+                    if match_def_path(cx, def_id, &*paths::MEM_FORGET) {
                         let forgot_ty = cx.tables.expr_ty(&args[0]);
 
                         if forgot_ty.ty_adt_def().map_or(false, |def| def.has_dtor(cx.tcx)) {

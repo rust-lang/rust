@@ -18,13 +18,15 @@ use rustc_typeck::hir_ty_to_ty;
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::errors::DiagnosticBuilder;
 use syntax::source_map::Span;
+use syntax::symbol::Symbol;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
+use crate::utils::sym;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro_or_desugar, int_bits, last_path_segment,
-    match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability, span_help_and_lint,
-    span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+    match_def_path, match_path, multispan_sugg, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -206,7 +208,7 @@ fn check_fn_decl(cx: &LateContext<'_, '_>, decl: &FnDecl) {
 }
 
 /// Checks if `qpath` has last segment with type parameter matching `path`
-fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) -> bool {
+fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[Symbol]) -> bool {
     let last = last_path_segment(qpath);
     if_chain! {
         if let Some(ref params) = last.args;
@@ -217,7 +219,7 @@ fn match_type_parameter(cx: &LateContext<'_, '_>, qpath: &QPath, path: &[&str]) 
         });
         if let TyKind::Path(ref qpath) = ty.node;
         if let Some(did) = cx.tables.qpath_res(qpath, ty.hir_id).opt_def_id();
-        if cx.match_def_path(did, path);
+        if match_def_path(cx, did, path);
         then {
             return true;
         }
@@ -241,7 +243,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
             let res = cx.tables.qpath_res(qpath, hir_id);
             if let Some(def_id) = res.opt_def_id() {
                 if Some(def_id) == cx.tcx.lang_items().owned_box() {
-                    if match_type_parameter(cx, qpath, &paths::VEC) {
+                    if match_type_parameter(cx, qpath, &*paths::VEC) {
                         span_help_and_lint(
                             cx,
                             BOX_VEC,
@@ -251,7 +253,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         );
                         return; // don't recurse into the type
                     }
-                } else if cx.match_def_path(def_id, &paths::VEC) {
+                } else if match_def_path(cx, def_id, &*paths::VEC) {
                     if_chain! {
                         // Get the _ part of Vec<_>
                         if let Some(ref last) = last_path_segment(qpath).args;
@@ -286,8 +288,8 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                             }
                         }
                     }
-                } else if cx.match_def_path(def_id, &paths::OPTION) {
-                    if match_type_parameter(cx, qpath, &paths::OPTION) {
+                } else if match_def_path(cx, def_id, &*paths::OPTION) {
+                    if match_type_parameter(cx, qpath, &*paths::OPTION) {
                         span_lint(
                             cx,
                             OPTION_OPTION,
@@ -297,7 +299,7 @@ fn check_ty(cx: &LateContext<'_, '_>, hir_ty: &hir::Ty, is_local: bool) {
                         );
                         return; // don't recurse into the type
                     }
-                } else if cx.match_def_path(def_id, &paths::LINKED_LIST) {
+                } else if match_def_path(cx, def_id, &*paths::LINKED_LIST) {
                     span_help_and_lint(
                         cx,
                         LINKEDLIST,
@@ -426,7 +428,7 @@ fn is_any_trait(t: &hir::Ty) -> bool {
         if traits.len() >= 1;
         // Only Send/Sync can be used as additional traits, so it is enough to
         // check only the first trait.
-        if match_path(&traits[0].trait_ref.path, &paths::ANY_TRAIT);
+        if match_path(&traits[0].trait_ref.path, &*paths::ANY_TRAIT);
         then {
             return true;
         }
@@ -2087,14 +2089,14 @@ impl<'tcx> ImplicitHasherType<'tcx> {
 
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
 
-            if match_path(path, &paths::HASHMAP) && params_len == 2 {
+            if match_path(path, &*paths::HASHMAP) && params_len == 2 {
                 Some(ImplicitHasherType::HashMap(
                     hir_ty.span,
                     ty,
                     snippet(cx, params[0].span, "K"),
                     snippet(cx, params[1].span, "V"),
                 ))
-            } else if match_path(path, &paths::HASHSET) && params_len == 1 {
+            } else if match_path(path, &*paths::HASHSET) && params_len == 1 {
                 Some(ImplicitHasherType::HashSet(
                     hir_ty.span,
                     ty,
@@ -2197,11 +2199,11 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
                     return;
                 }
 
-                if match_path(ty_path, &paths::HASHMAP) {
-                    if method.ident.name == "new" {
+                if match_path(ty_path, &*paths::HASHMAP) {
+                    if method.ident.name == *sym::new {
                         self.suggestions
                             .insert(e.span, "HashMap::default()".to_string());
-                    } else if method.ident.name == "with_capacity" {
+                    } else if method.ident.name == *sym::with_capacity {
                         self.suggestions.insert(
                             e.span,
                             format!(
@@ -2210,11 +2212,11 @@ impl<'a, 'b, 'tcx: 'a + 'b> Visitor<'tcx> for ImplicitHasherConstructorVisitor<'
                             ),
                         );
                     }
-                } else if match_path(ty_path, &paths::HASHSET) {
-                    if method.ident.name == "new" {
+                } else if match_path(ty_path, &*paths::HASHSET) {
+                    if method.ident.name == *sym::new {
                         self.suggestions
                             .insert(e.span, "HashSet::default()".to_string());
-                    } else if method.ident.name == "with_capacity" {
+                    } else if method.ident.name == *sym::with_capacity {
                         self.suggestions.insert(
                             e.span,
                             format!(

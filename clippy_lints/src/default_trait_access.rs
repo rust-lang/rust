@@ -5,7 +5,7 @@ use rustc::ty;
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
 
-use crate::utils::{any_parent_is_automatically_derived, paths, span_lint_and_sugg};
+use crate::utils::{any_parent_is_automatically_derived, match_def_path, paths, span_lint_and_sugg};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for literal calls to `Default::default()`.
@@ -37,7 +37,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
             if !any_parent_is_automatically_derived(cx.tcx, expr.hir_id);
             if let ExprKind::Path(ref qpath) = path.node;
             if let Some(def_id) = cx.tables.qpath_res(qpath, path.hir_id).opt_def_id();
-            if cx.match_def_path(def_id, &paths::DEFAULT_TRAIT_METHOD);
+            if match_def_path(cx, def_id, &*paths::DEFAULT_TRAIT_METHOD);
             then {
                 match qpath {
                     QPath::Resolved(..) => {

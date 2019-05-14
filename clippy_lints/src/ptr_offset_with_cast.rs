@@ -1,4 +1,5 @@
 use crate::utils;
+use crate::utils::sym;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -92,10 +93,10 @@ fn expr_as_ptr_offset_call<'a, 'tcx>(
 ) -> Option<(&'tcx Expr, &'tcx Expr, Method)> {
     if let ExprKind::MethodCall(ref path_segment, _, ref args) = expr.node {
         if is_expr_ty_raw_ptr(cx, &args[0]) {
-            if path_segment.ident.name == "offset" {
+            if path_segment.ident.name == *sym::offset {
                 return Some((&args[0], &args[1], Method::Offset));
             }
-            if path_segment.ident.name == "wrapping_offset" {
+            if path_segment.ident.name == *sym::wrapping_offset {
                 return Some((&args[0], &args[1], Method::WrappingOffset));
             }
         }

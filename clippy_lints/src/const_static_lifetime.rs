@@ -47,7 +47,7 @@ impl StaticConst {
                 if let Some(lifetime) = *optional_lifetime {
                     match borrow_type.ty.node {
                         TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) | TyKind::Tup(..) => {
-                            if lifetime.ident.name == "'static" {
+                            if lifetime.ident.name == syntax::symbol::keywords::StaticLifetime.name() {
                                 let snip = snippet(cx, borrow_type.ty.span, "<type>");
                                 let sugg = format!("&{}", snip);
                                 span_lint_and_then(

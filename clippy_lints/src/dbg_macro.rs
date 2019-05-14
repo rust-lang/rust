@@ -1,3 +1,4 @@
+use crate::utils::sym;
 use crate::utils::{snippet_opt, span_help_and_lint, span_lint_and_sugg};
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -31,7 +32,7 @@ declare_lint_pass!(DbgMacro => [DBG_MACRO]);
 
 impl EarlyLintPass for DbgMacro {
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
-        if mac.node.path == "dbg" {
+        if mac.node.path == *sym::dbg {
             if let Some(sugg) = tts_span(mac.node.tts.clone()).and_then(|span| snippet_opt(cx, span)) {
                 span_lint_and_sugg(
                     cx,
