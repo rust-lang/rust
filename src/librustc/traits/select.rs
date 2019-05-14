@@ -43,6 +43,7 @@ use crate::hir;
 use rustc_data_structures::bit_set::GrowableBitSet;
 use rustc_data_structures::sync::Lock;
 use rustc_target::spec::abi::Abi;
+use std::cell::Cell;
 use std::cmp;
 use std::fmt::{self, Display};
 use std::iter;
@@ -152,6 +153,36 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     /// Trait ref from `obligation` but "freshened" with the
     /// selection-context's freshener. Used to check for recursion.
     fresh_trait_ref: ty::PolyTraitRef<'tcx>,
+
+    /// Starts out as false -- if, during evaluation, we encounter a
+    /// cycle, then we will set this flag to true for all participants
+    /// in the cycle (apart from the "head" node). These participants
+    /// will then forego caching their results. This is not the most
+    /// efficient solution, but it addresses #60010. The problem we
+    /// are trying to prevent:
+    ///
+    /// - If you have `A: AutoTrait` requires `B: AutoTrait` and `C: NonAutoTrait`
+    /// - `B: AutoTrait` requires `A: AutoTrait` (coinductive cycle, ok)
+    /// - `C: NonAutoTrait` requires `A: AutoTrait` (non-coinductive cycle, not ok)
+    ///
+    /// you don't want to cache that `B: AutoTrait` or `A: AutoTrait`
+    /// is `EvaluatedToOk`; this is because they were only considered
+    /// ok on the premise that if `A: AutoTrait` held, but we indeed
+    /// encountered a problem (later on) with `A: AutoTrait. So we
+    /// currently set a flag on the stack node for `B: AutoTrait` (as
+    /// well as the second instance of `A: AutoTrait`) to supress
+    /// caching.
+    ///
+    /// This is a simple, targeted fix. A more-performant fix requires
+    /// deeper changes, but would permit more caching: we could
+    /// basically defer caching until we have fully evaluated the
+    /// tree, and then cache the entire tree at once. In any case, the
+    /// performance impact here shouldn't be so horrible: every time
+    /// this is hit, we do cache at least one trait, so we only
+    /// evaluate each member of a cycle up to N times, where N is the
+    /// length of the cycle. This means the performance impact is
+    /// bounded and we shouldn't have any terrible worst-cases.
+    in_cycle: Cell<bool>,
 
     previous: TraitObligationStackList<'prev, 'tcx>,
 }
@@ -840,8 +871,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let (result, dep_node) = self.in_task(|this| this.evaluate_stack(&stack));
         let result = result?;
 
-        debug!("CACHE MISS: EVAL({:?})={:?}", fresh_trait_ref, result);
-        self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
+        if !stack.in_cycle.get() {
+            debug!("CACHE MISS: EVAL({:?})={:?}", fresh_trait_ref, result);
+            self.insert_evaluation_cache(obligation.param_env, fresh_trait_ref, dep_node, result);
+        } else {
+            debug!(
+                "evaluate_trait_predicate_recursively: skipping cache because {:?} \
+                 is a cycle participant",
+                fresh_trait_ref,
+            );
+        }
 
         Ok(result)
     }
@@ -947,6 +986,17 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                   stack.fresh_trait_ref == prev.fresh_trait_ref)
         {
             debug!("evaluate_stack({:?}) --> recursive", stack.fresh_trait_ref);
+
+            // If we have a stack like `A B C D E A`, where the top of
+            // the stack is the final `A`, then this will iterate over
+            // `A, E, D, C, B` -- i.e., all the participants apart
+            // from the cycle head. We mark them as participating in a
+            // cycle. This suppresses caching for those nodes. See
+            // `in_cycle` field for more details.
+            for item in stack.iter().take(rec_index + 1) {
+                debug!("evaluate_stack: marking {:?} as cycle participant", item.fresh_trait_ref);
+                item.in_cycle.set(true);
+            }
 
             // Subtle: when checking for a coinductive cycle, we do
             // not compare using the "freshened trait refs" (which
@@ -3690,6 +3740,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         TraitObligationStack {
             obligation,
             fresh_trait_ref,
+            in_cycle: Cell::new(false),
             previous: previous_stack,
         }
     }
