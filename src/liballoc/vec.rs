@@ -2395,6 +2395,11 @@ impl<T> Iterator for IntoIter<T> {
     fn count(self) -> usize {
         self.len()
     }
+
+    #[inline]
+    fn last(mut self) -> Option<T> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2514,6 +2519,11 @@ impl<T> Iterator for Drain<'_, T> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
+    #[inline]
+    fn last(mut self) -> Option<T> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
@@ -2582,6 +2592,10 @@ impl<I: Iterator> Iterator for Splice<'_, I> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.drain.size_hint()
+    }
+
+    fn last(mut self) -> Option<Self::Item> {
+        self.next_back()
     }
 }
 

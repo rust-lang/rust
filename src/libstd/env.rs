@@ -746,6 +746,10 @@ impl Iterator for Args {
         self.inner.next().map(|s| s.into_string().unwrap())
     }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    #[inline]
+    fn last(mut self) -> Option<String> {
+        self.next_back()
+    }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -781,6 +785,8 @@ impl Iterator for ArgsOs {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.inner.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+    #[inline]
+    fn last(mut self) -> Option<OsString> { self.next_back() }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
