@@ -578,6 +578,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_stmt(&mut self, b: &Stmt) {
+        std::mem::discriminant(&b.node).hash(&mut self.s);
+
         match b.node {
             StmtKind::Local(ref local) => {
                 if let Some(ref init) = local.init {
