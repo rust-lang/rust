@@ -13,7 +13,6 @@ pub fn hashmap_random_keys() -> (u64, u64) {
 
 #[cfg(all(unix,
           not(target_os = "ios"),
-          not(all(target_os = "macos", miri)),
           not(target_os = "openbsd"),
           not(target_os = "freebsd"),
           not(target_os = "fuchsia")))]
@@ -107,9 +106,7 @@ mod imp {
 // once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
 // only used on iOS where direct access to `/dev/urandom` is blocked by the
 // sandbox.
-// HACK: However, we do use this when running in Miri on macOS; intercepting this is much
-// easier than intercepting accesses to /dev/urandom.
-#[cfg(any(target_os = "ios", all(target_os = "macos", miri)))]
+#[cfg(target_os = "ios")]
 mod imp {
     use crate::io;
     use crate::ptr;
