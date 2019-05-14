@@ -1,4 +1,4 @@
-use std::{collections::HashSet, time::Instant};
+use std::{collections::HashSet, time::Instant, fmt::Write};
 
 use ra_db::SourceDatabase;
 use ra_batch::BatchDatabase;
@@ -52,19 +52,24 @@ pub fn run(verbose: bool, path: &str, only: Option<&str>) -> Result<()> {
     println!("Total declarations: {}", num_decls);
     println!("Total functions: {}", funcs.len());
     let bar = indicatif::ProgressBar::new(funcs.len() as u64);
+    bar.set_style(
+        indicatif::ProgressStyle::default_bar().template("{wide_bar} {pos}/{len}\n{msg}"),
+    );
     bar.tick();
     let mut num_exprs = 0;
     let mut num_exprs_unknown = 0;
     let mut num_exprs_partially_unknown = 0;
     for f in funcs {
         let name = f.name(&db);
+        let mut msg = format!("processing: {}", name);
         if verbose {
             let (file_id, source) = f.source(&db);
             let original_file = file_id.original_file(&db);
             let path = db.file_relative_path(original_file);
             let syntax_range = source.syntax().range();
-            println!("{} ({:?} {})", name, path, syntax_range);
+            write!(msg, " ({:?} {})", path, syntax_range).unwrap();
         }
+        bar.set_message(&msg);
         if let Some(only_name) = only {
             if name.to_string() != only_name {
                 continue;
