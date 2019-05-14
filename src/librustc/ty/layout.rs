@@ -19,9 +19,9 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
 pub use rustc_target::abi::*;
-use rustc_target::spec::HasTargetSpec;
+use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
 use rustc_target::abi::call::{
-    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode
+    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode, Reg, RegKind
 };
 
 
@@ -2266,53 +2266,35 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for LayoutError<'gcx>
     }
 }
 
-pub trait FnTypeExt<'tcx, C> {
-    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>;
-    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>;
-    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>;
+pub trait FnTypeExt<'tcx, C>
+where
+    C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+        + HasDataLayout
+        + HasTargetSpec
+        + HasTyCtxt<'tcx>
+        + HasParamEnv<'tcx>,
+{
+    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self;
+    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
     fn new_internal(
         cx: &C,
         sig: ty::FnSig<'tcx>,
         extra_args: &[Ty<'tcx>],
         mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
-    ) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>;
+    ) -> Self;
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
 }
 
-
-impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>> {
-    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>,
-    {
+impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>>
+where
+    C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+        + HasDataLayout
+        + HasTargetSpec
+        + HasTyCtxt<'tcx>
+        + HasParamEnv<'tcx>,
+{
+    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self {
         let sig = instance.fn_sig(cx.tcx());
         let sig = cx
             .tcx()
@@ -2320,27 +2302,12 @@ impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>> {
         call::FnType::new(cx, sig, &[])
     }
 
-    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>,
-    {
+    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
         call::FnType::new_internal(cx, sig, extra_args, |ty, _| ArgType::new(cx.layout_of(ty)))
     }
 
-
-    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>,
-    {
-        FnType::new_internal(cx, sig, extra_args, |ty, arg_idx| {
+    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+        FnTypeExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
@@ -2395,19 +2362,11 @@ impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>> {
     }
 
     fn new_internal(
-    cx: &C,
-    sig: ty::FnSig<'tcx>,
-    extra_args: &[Ty<'tcx>],
-    mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
-    ) -> Self
-    where
-        C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-            + HasDataLayout
-            + HasTargetSpec
-            + HasTargetSpec
-            + HasTyCtxt<'tcx>
-            + HasParamEnv<'tcx>,
-    {
+        cx: &C,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
+    ) -> Self {
         debug!("FnType::new_internal({:?}, {:?})", sig, extra_args);
 
         use rustc_target::spec::abi::Abi::*;
@@ -2591,7 +2550,7 @@ impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>> {
             arg
         };
 
-        let fn_ty = FnType {
+        let mut fn_ty = FnType {
             ret: arg_of(sig.output(), None),
             args: inputs
                 .iter()
@@ -2603,8 +2562,83 @@ impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>> {
             c_variadic: sig.c_variadic,
             conv,
         };
-        // FIXME: uncomment this after figuring out wwhere should adjust_for_abi reside.
-        //fn_ty.adjust_for_abi(cx, sig.abi);
+        fn_ty.adjust_for_abi(cx, sig.abi);
         fn_ty
+    }
+
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) {
+        if abi == SpecAbi::Unadjusted {
+            return;
+        }
+
+        if abi == SpecAbi::Rust
+            || abi == SpecAbi::RustCall
+            || abi == SpecAbi::RustIntrinsic
+            || abi == SpecAbi::PlatformIntrinsic
+        {
+            let fixup = |arg: &mut ArgType<'tcx, Ty<'tcx>>| {
+                if arg.is_ignore() {
+                    return;
+                }
+
+                match arg.layout.abi {
+                    Abi::Aggregate { .. } => {}
+
+                    // This is a fun case! The gist of what this is doing is
+                    // that we want callers and callees to always agree on the
+                    // ABI of how they pass SIMD arguments. If we were to *not*
+                    // make these arguments indirect then they'd be immediates
+                    // in LLVM, which means that they'd used whatever the
+                    // appropriate ABI is for the callee and the caller. That
+                    // means, for example, if the caller doesn't have AVX
+                    // enabled but the callee does, then passing an AVX argument
+                    // across this boundary would cause corrupt data to show up.
+                    //
+                    // This problem is fixed by unconditionally passing SIMD
+                    // arguments through memory between callers and callees
+                    // which should get them all to agree on ABI regardless of
+                    // target feature sets. Some more information about this
+                    // issue can be found in #44367.
+                    //
+                    // Note that the platform intrinsic ABI is exempt here as
+                    // that's how we connect up to LLVM and it's unstable
+                    // anyway, we control all calls to it in libstd.
+                    Abi::Vector { .. }
+                        if abi != SpecAbi::PlatformIntrinsic
+                            && cx.tcx().sess.target.target.options.simd_types_indirect =>
+                    {
+                        arg.make_indirect();
+                        return;
+                    }
+
+                    _ => return,
+                }
+
+                let size = arg.layout.size;
+                if arg.layout.is_unsized() || size > Pointer.size(cx) {
+                    arg.make_indirect();
+                } else {
+                    // We want to pass small aggregates as immediates, but using
+                    // a LLVM aggregate type for this leads to bad optimizations,
+                    // so we pick an appropriately sized integer type instead.
+                    arg.cast_to(Reg {
+                        kind: RegKind::Integer,
+                        size,
+                    });
+                }
+            };
+            fixup(&mut self.ret);
+            for arg in &mut self.args {
+                fixup(arg);
+            }
+            if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
+                attrs.set(ArgAttribute::StructRet);
+            }
+            return;
+        }
+
+        if let Err(msg) = self.adjust_for_cabi(cx, abi) {
+            cx.tcx().sess.fatal(&msg);
+        }
     }
 }
