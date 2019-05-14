@@ -175,6 +175,9 @@ extern "C" {
     fn vsubuhs(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.ppc.altivec.vsubuws"]
     fn vsubuws(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.ppc.altivec.vaddcuw"]
+    fn vaddcuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
 macro_rules! s_t_l {
@@ -247,7 +250,7 @@ mod sealed {
             #[inline]
             #[target_feature(enable = "altivec")]
             #[cfg_attr(test, assert_instr($instr))]
-            unsafe fn $fun ($($v : $ty),*) -> $r {
+            pub unsafe fn $fun ($($v : $ty),*) -> $r {
                 $call ($($v),*)
             }
         };
@@ -316,6 +319,8 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, ~vector_bool_int) -> vector_signed_int }
         }
     }
+
+    test_impl! { vec_vaddcuw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [vaddcuw, vaddcuw] }
 
     test_impl! { vec_vsubsbs(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vsubsbs, vsubsbs ] }
     test_impl! { vec_vsubshs(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vsubshs, vsubshs ] }
@@ -1157,6 +1162,13 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector addc.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_addc(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int {
+    sealed::vec_vaddcuw(a, b)
+}
+
 /// Vector abs.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1443,6 +1455,8 @@ mod tests {
             }
          }
     }
+
+    test_vec_2! { test_vec_addc, vec_addc, u32x4, [u32::max_value(), 0, 0, 0], [1, 1, 1, 1], [1, 0, 0, 0] }
 
     macro_rules! test_vec_abs {
         { $name: ident, $ty: ident, $a: expr, $d: expr } => {
