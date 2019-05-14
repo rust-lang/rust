@@ -198,7 +198,7 @@ pub fn test_unwrap_or_default() {
 #[test]
 fn test_try() {
     fn try_result_some() -> Option<u8> {
-        let val = Ok(1)?;
+        let val = Ok::<_, NoneError>(1)?;
         Some(val)
     }
     assert_eq!(try_result_some(), Some(1));
