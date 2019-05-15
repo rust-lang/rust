@@ -214,51 +214,21 @@ impl Permission {
     }
 
     /// This defines for a given permission, which other permissions it can tolerate "above" itself
-    /// for which kinds of accesses.
-    /// If true, then `other` is allowed to remain on top of `self` when `access` happens.
-    fn compatible_with(self, access: AccessKind, other: Permission) -> bool {
-        use self::Permission::*;
-
-        match (self, access, other) {
-            // Some cases are impossible.
-            (SharedReadOnly, _, SharedReadWrite) |
-            (SharedReadOnly, _, Unique) =>
-                bug!("There can never be a SharedReadWrite or a Unique on top of a SharedReadOnly"),
-            // When `other` is `SharedReadOnly`, that is NEVER compatible with
-            // write accesses.
-            // This makes sure read-only pointers become invalid on write accesses (ensures F2a).
-            (_, AccessKind::Write, SharedReadOnly) =>
-                false,
-            // When `other` is `Unique`, that is compatible with nothing.
-            // This makes sure unique pointers become invalid on incompatible accesses (ensures U2).
-            (_, _, Unique) =>
-                false,
-            // When we are unique and this is a write/dealloc, we tolerate nothing.
-            // This makes sure we re-assert uniqueness ("being on top") on write accesses.
-            // (This is particularily important such that when a new mutable ref gets created, it gets
-            // pushed onto the right item -- this behaves like a write and we assert uniqueness of the
-            // pointer from which this comes, *if* it was a unique pointer.)
-            (Unique, AccessKind::Write, _) =>
-                false,
-            // `SharedReadWrite` items can tolerate any other akin items for any kind of access.
-            (SharedReadWrite, _, SharedReadWrite) =>
-                true,
-            // Any item can tolerate read accesses for shared items.
-            // This includes unique items!  Reads from unique pointers do not invalidate
-            // other pointers.
-            (_, AccessKind::Read, SharedReadWrite) |
-            (_, AccessKind::Read, SharedReadOnly) =>
-                true,
-            // That's it.
-        }
+    /// when it is written to.
+    /// If true, then `other` is allowed to remain on top of `self` when a write access happens.
+    fn write_compatible_with(self, other: Permission) -> bool {
+        // Only writes to SharedRW can tolerate any other items above them, and they only
+        // tolerate other SharedRW.  So, basically, searching the first write-incompatible item above X treats
+        // consecutive SharedRW as one "group", and skips to the first item outside X's group.
+        return self == Permission::SharedReadWrite && other == Permission::SharedReadWrite;
     }
 }
 
 /// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
-    /// Find the item granting the given kind of access to the given tag, and where
-    /// *the first incompatible item above it* is on the stack.
-    fn find_granting(&self, access: AccessKind, tag: Tag) -> Option<(Permission, usize)> {
+    /// Find the item granting the given kind of access to the given tag, and return where
+    /// *the first write-incompatible item above it* is on the stack.
+    fn check_granting(&self, access: AccessKind, tag: Tag) -> Option<usize> {
         let (perm, idx) = self.borrows.iter()
             .enumerate() // we also need to know *where* in the stack
             .rev() // search top-to-bottom
@@ -274,7 +244,7 @@ impl<'tcx> Stack {
 
         let mut first_incompatible_idx = idx+1;
         while let Some(item) = self.borrows.get(first_incompatible_idx) {
-            if perm.compatible_with(access, item.perm) {
+            if perm.write_compatible_with(item.perm) {
                 // Keep this, check next.
                 first_incompatible_idx += 1;
             } else {
@@ -282,7 +252,7 @@ impl<'tcx> Stack {
                 break;
             }
         }
-        return Some((perm, first_incompatible_idx));
+        return Some(first_incompatible_idx);
     }
 
     /// Test if a memory `access` using pointer tagged `tag` is granted.
@@ -293,20 +263,26 @@ impl<'tcx> Stack {
         tag: Tag,
         global: &GlobalState,
     ) -> EvalResult<'tcx> {
-        // Two main steps: Find granting item, remove all incompatible items above.
+        // Two main steps: Find granting item, remove incompatible items above.
 
         // Step 1: Find granting item.
-        let (granting_perm, first_incompatible_idx) = self.find_granting(access, tag)
+        let first_incompatible_idx = self.check_granting(access, tag)
             .ok_or_else(|| InterpError::MachineError(format!(
                 "no item granting {} access to tag {} found in borrow stack",
                 access, tag,
             )))?;
 
-        // Step 2: Remove everything incompatible above them.  Make sure we do not remove protected
-        // items.
-        // For writes, this is a simple stack. For reads, however, it is not:
-        // in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement would pop the `Unique`
-        // from the reborrow of the first statement, and subsequently also pop the `SharedReadWrite` for `raw`.
+        // Step 2: Remove incompatible items above them.  Make sure we do not remove protected
+        // items.  Behavior differs for reads and writes.
+        //
+        // For writes, this is a simple stack, where everything starting with the first incompatible item
+        // gets removed. This makes sure read-only and unique pointers become invalid on write accesses
+        // (ensures F2a, and ensures U2 for write accesses).
+        //
+        // For reads, however, we just filter away the Unique items, which is sufficient to ensure U2 for read
+        // accesses. The reason is that in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement
+        // would pop the `Unique` from the reborrow of the first statement, and subsequently also pop the
+        // `SharedReadWrite` for `raw`.
         // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
         // reference and use that.
         {
@@ -314,8 +290,8 @@ impl<'tcx> Stack {
             // API for this.
             let mut cur = first_incompatible_idx;
             while let Some(item) = self.borrows.get(cur) {
-                // If this is a read, we double-check if we really want to kill this.
-                if access == AccessKind::Read && granting_perm.compatible_with(access, item.perm) {
+                // If this is a read, only remove Unique items!
+                if access == AccessKind::Read && item.perm != Permission::Unique {
                     // Keep this, check next.
                     cur += 1;
                 } else {
@@ -346,7 +322,7 @@ impl<'tcx> Stack {
         global: &GlobalState,
     ) -> EvalResult<'tcx> {
         // Step 1: Find granting item.
-        self.find_granting(AccessKind::Write, tag)
+        self.check_granting(AccessKind::Write, tag)
             .ok_or_else(|| InterpError::MachineError(format!(
                 "no item granting write access for deallocation to tag {} found in borrow stack",
                 tag,
@@ -403,7 +379,7 @@ impl<'tcx> Stack {
         };
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
-        let (_, first_incompatible_idx) = self.find_granting(access, derived_from)
+        let first_incompatible_idx = self.check_granting(access, derived_from)
             .ok_or_else(|| InterpError::MachineError(format!(
                 "no item to reborrow for {:?} from tag {} found in borrow stack", new.perm, derived_from,
             )))?;
