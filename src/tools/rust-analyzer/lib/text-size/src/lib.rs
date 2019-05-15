@@ -1,8 +1,7 @@
 #[cfg(feature = "serde")]
 extern crate serde;
 
-use std::{fmt, ops, iter};
-
+use std::{fmt, iter, ops};
 
 /// An offset into text.
 /// Offset is represented as `u32` storing number of utf8-bytes,
@@ -37,7 +36,8 @@ impl TextUnit {
 
     #[inline(always)]
     pub fn from_usize(size: usize) -> TextUnit {
-        #[cfg(debug_assertions)] {
+        #[cfg(debug_assertions)]
+        {
             if size > u32::max_value() as usize {
                 panic!("overflow when converting to TextUnit: {}", size)
             }
@@ -198,13 +198,13 @@ range_ops_impls!(Add, add, +, AddAssign, add_assign);
 range_ops_impls!(Sub, sub, -, SubAssign, sub_assign);
 
 impl<'a> iter::Sum<&'a TextUnit> for TextUnit {
-    fn sum<I: Iterator<Item=&'a TextUnit>>(iter: I) -> TextUnit {
+    fn sum<I: Iterator<Item = &'a TextUnit>>(iter: I) -> TextUnit {
         iter.fold(TextUnit::from(0), ops::Add::add)
     }
 }
 
 impl iter::Sum<TextUnit> for TextUnit {
-    fn sum<I: Iterator<Item=TextUnit>>(iter: I) -> TextUnit {
+    fn sum<I: Iterator<Item = TextUnit>>(iter: I) -> TextUnit {
         iter.fold(TextUnit::from(0), ops::Add::add)
     }
 }
@@ -223,10 +223,7 @@ pub struct TextRange {
 impl TextRange {
     #[inline(always)]
     pub fn checked_sub(self, other: TextUnit) -> Option<TextRange> {
-        let res = TextRange::offset_len(
-            self.start().checked_sub(other)?,
-            self.len()
-        );
+        let res = TextRange::offset_len(self.start().checked_sub(other)?, self.len());
         Some(res)
     }
 }
@@ -287,8 +284,28 @@ impl TextRange {
 
     #[inline(always)]
     pub fn is_subrange(&self, other: &TextRange) -> bool {
-        other.start() <= self.start()
-            && self.end() <= other.end()
+        other.start() <= self.start() && self.end() <= other.end()
+    }
+
+    #[inline(always)]
+    pub fn intersection(&self, other: &TextRange) -> Option<TextRange> {
+        let start = self.start.max(other.start());
+        let end = self.end.min(other.end());
+        if start <= end {
+            Some(TextRange::from_to(start, end))
+        } else {
+            None
+        }
+    }
+
+    #[inline(always)]
+    pub fn contains(&self, offset: TextUnit) -> bool {
+        self.start() <= offset && offset < self.end()
+    }
+
+    #[inline(always)]
+    pub fn contains_inclusive(&self, offset: TextUnit) -> bool {
+        self.start() <= offset && offset <= self.end()
     }
 }
 
@@ -310,8 +327,8 @@ impl ops::Index<TextRange> for String {
 
 #[cfg(feature = "serde")]
 mod serde_impls {
-    use serde::{Serialize, Serializer, Deserialize, Deserializer};
-    use {TextUnit, TextRange};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use {TextRange, TextUnit};
 
     impl Serialize for TextUnit {
         fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
@@ -344,6 +361,10 @@ mod serde_impls {
 mod tests {
     use super::*;
 
+    fn r(from: u32, to: u32) -> TextRange {
+        TextRange::from_to(from.into(), to.into())
+    }
+
     #[test]
     fn test_sum() {
         let xs: Vec<TextUnit> = vec![0.into(), 1.into(), 2.into()];
@@ -353,16 +374,10 @@ mod tests {
 
     #[test]
     fn test_ops() {
-        let r = TextRange::from_to(10.into(), 20.into());
+        let range = r(10, 20);
         let u: TextUnit = 5.into();
-        assert_eq!(
-            r + u,
-            TextRange::from_to(15.into(), 25.into()),
-        );
-        assert_eq!(
-            r - u,
-            TextRange::from_to(5.into(), 15.into()),
-        );
+        assert_eq!(range + u, r(15, 25));
+        assert_eq!(range - u, r(5, 15));
     }
 
     #[test]
@@ -371,17 +386,38 @@ mod tests {
         assert_eq!(x.checked_sub(1.into()), Some(0.into()));
         assert_eq!(x.checked_sub(2.into()), None);
 
-        let r = TextRange::from_to(1.into(), 2.into());
-        assert_eq!(r.checked_sub(1.into()), Some(TextRange::from_to(0.into(), 1.into())));
+        assert_eq!(r(1, 2).checked_sub(1.into()), Some(r(0, 1)));
         assert_eq!(x.checked_sub(2.into()), None);
     }
 
     #[test]
     fn test_subrange() {
-        let r1 = TextRange::from_to(2.into(), 4.into());
-        let r2 = TextRange::from_to(2.into(), 3.into());
-        let r3 = TextRange::from_to(1.into(), 3.into());
+        let r1 = r(2, 4);
+        let r2 = r(2, 3);
+        let r3 = r(1, 3);
         assert!(r2.is_subrange(&r1));
         assert!(!r3.is_subrange(&r1));
+    }
+
+    #[test]
+    fn check_intersection() {
+        assert_eq!(r(1, 2).intersection(&r(2, 3)), Some(r(2, 2)));
+        assert_eq!(r(1, 5).intersection(&r(2, 3)), Some(r(2, 3)));
+        assert_eq!(r(1, 2).intersection(&r(3, 4)), None);
+    }
+
+    #[test]
+    fn check_contains() {
+        assert!(!r(1, 3).contains(0.into()));
+        assert!(r(1, 3).contains(1.into()));
+        assert!(r(1, 3).contains(2.into()));
+        assert!(!r(1, 3).contains(3.into()));
+        assert!(!r(1, 3).contains(4.into()));
+
+        assert!(!r(1, 3).contains_inclusive(0.into()));
+        assert!(r(1, 3).contains_inclusive(1.into()));
+        assert!(r(1, 3).contains_inclusive(2.into()));
+        assert!(r(1, 3).contains_inclusive(3.into()));
+        assert!(!r(1, 3).contains_inclusive(4.into()));
     }
 }
