@@ -1,7 +1,6 @@
 #![unstable(feature = "humans",
             reason = "who ever let humans program computers,
-            we're apparently really bad at it",
-            issue = "0")]
+            we're apparently really bad at it")]
 
 #![feature(rustc_const_unstable, const_fn, foo, foo2)]
 #![feature(staged_api)]
