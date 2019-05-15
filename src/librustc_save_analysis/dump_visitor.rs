@@ -1580,17 +1580,9 @@ impl<'l, 'tcx, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tcx, '
                 self.visit_expr(subexpression);
                 visit::walk_block(self, block);
             }
-            ast::ExprKind::WhileLet(ref pats, ref subexpression, ref block, _) => {
+            ast::ExprKind::Let(ref pats, ref scrutinee) => {
                 self.process_var_decl_multi(pats);
-                debug!("for loop, walk sub-expr: {:?}", subexpression.node);
-                self.visit_expr(subexpression);
-                visit::walk_block(self, block);
-            }
-            ast::ExprKind::IfLet(ref pats, ref subexpression, ref block, ref opt_else) => {
-                self.process_var_decl_multi(pats);
-                self.visit_expr(subexpression);
-                visit::walk_block(self, block);
-                opt_else.as_ref().map(|el| self.visit_expr(el));
+                self.visit_expr(scrutinee);
             }
             ast::ExprKind::Repeat(ref element, ref count) => {
                 self.visit_expr(element);
