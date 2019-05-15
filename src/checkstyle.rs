@@ -10,9 +10,9 @@ use crate::rustfmt_diff::{DiffLine, Mismatch};
 /// future version of Rustfmt.
 pub(crate) fn header() -> String {
     let mut xml_heading = String::new();
-    xml_heading.push_str("<?xml version=\"1.0\" encoding=\"utf-8\"?>");
+    xml_heading.push_str(r#"<?xml version="1.0" encoding="utf-8"?>"#);
     xml_heading.push_str("\n");
-    xml_heading.push_str("<checkstyle version=\"4.3\">");
+    xml_heading.push_str(r#"<checkstyle version="4.3">"#);
     xml_heading
 }
 
@@ -32,16 +32,16 @@ pub(crate) fn output_checkstyle_file<T>(
 where
     T: Write,
 {
-    write!(writer, "<file name=\"{}\">", filename.display())?;
+    write!(writer, r#"<file name="{}">"#, filename.display())?;
     for mismatch in diff {
         for line in mismatch.lines {
             // Do nothing with `DiffLine::Context` and `DiffLine::Resulting`.
             if let DiffLine::Expected(message) = line {
                 write!(
                     writer,
-                    "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
-                     />",
-                    mismatch.line_number, XmlEscaped(&message)
+                    r#"<error line="{}" severity="warning" message="Should be `{}`" />"#,
+                    mismatch.line_number,
+                    XmlEscaped(&message)
                 )?;
             }
         }
