@@ -30,8 +30,8 @@
 ///
 /// A quick overview of attributes supported right now are:
 ///
-/// * `use_c_shim_if` - takes a #[cfg] directive and falls back to the
-///   C-compiled version if `use_c` is specified.
+/// * `maybe_use_optimized_c_shim` - indicates that the Rust implementation is
+///   ignored if an optimized C version was compiled.
 /// * `aapcs_on_arm` - forces the ABI of the function to be `"aapcs"` on ARM and
 ///   the specified ABI everywhere else.
 /// * `unadjusted_on_win64` - like `aapcs_on_arm` this switches to the
@@ -51,15 +51,14 @@ macro_rules! intrinsics {
     // to the architecture-specific versions which should be more optimized. The
     // purpose of this macro is to easily allow specifying this.
     //
-    // The argument to `use_c_shim_if` is a `#[cfg]` directive which, when true,
-    // will cause this crate's exported version of `$name` to just redirect to
-    // the C implementation. No symbol named `$name` will be in the object file
-    // for this crate itself.
-    //
-    // When the `#[cfg]` directive is false, or when the `c` feature is
-    // disabled, the provided implementation is used instead.
+    // The `#[maybe_use_optimized_c_shim]` attribute indicates that this
+    // intrinsic may have an optimized C version. In these situations the build
+    // script, if the C code is enabled and compiled, will emit a cfg directive
+    // to get passed to rustc for our compilation. If that cfg is set we skip
+    // the Rust implementation, but if the attribute is not enabled then we
+    // compile in the Rust implementation.
     (
-        #[use_c_shim_if($($cfg_clause:tt)*)]
+        #[maybe_use_optimized_c_shim]
         $(#[$($attr:tt)*])*
         pub extern $abi:tt fn $name:ident( $($argname:ident:  $ty:ty),* ) -> $ret:ty {
             $($body:tt)*
@@ -68,7 +67,7 @@ macro_rules! intrinsics {
         $($rest:tt)*
     ) => (
 
-        #[cfg(all(use_c, $($cfg_clause)*))]
+        #[cfg($name = "optimized-c")]
         pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {
             extern $abi {
                 fn $name($($argname: $ty),*) -> $ret;
@@ -78,7 +77,7 @@ macro_rules! intrinsics {
             }
         }
 
-        #[cfg(not(all(use_c, $($cfg_clause)*)))]
+        #[cfg(not($name = "optimized-c"))]
         intrinsics! {
             $(#[$($attr)*])*
             pub extern $abi fn $name( $($argname: $ty),* ) -> $ret {

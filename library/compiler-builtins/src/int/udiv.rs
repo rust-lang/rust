@@ -152,9 +152,7 @@ macro_rules! udivmod_inner {
 }
 
 intrinsics! {
-    #[use_c_shim_if(all(target_arch = "arm",
-                        not(target_os = "ios"),
-                        not(thumb_1)))]
+    #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_uidiv]
     /// Returns `n / d`
     pub extern "C" fn __udivsi3(n: u32, d: u32) -> u32 {
@@ -212,20 +210,14 @@ intrinsics! {
         (q << 1) | carry
     }
 
-    #[use_c_shim_if(all(target_arch = "arm",
-                        not(target_os = "ios"),
-                        not(target_env = "msvc"),
-                        not(thumb_1)))]
+    #[maybe_use_optimized_c_shim]
     /// Returns `n % d`
     pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
         let q = __udivsi3(n, d);
         n - q * d
     }
 
-    #[use_c_shim_if(all(target_arch = "arm",
-                        not(target_os = "ios"),
-                        not(target_env = "msvc"),
-                        not(thumb_1)))]
+    #[maybe_use_optimized_c_shim]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
         let q = __udivsi3(n, d);
@@ -235,13 +227,13 @@ intrinsics! {
         q
     }
 
-    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
+    #[maybe_use_optimized_c_shim]
     /// Returns `n / d`
     pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
         __udivmoddi4(n, d, None)
     }
 
-    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
+    #[maybe_use_optimized_c_shim]
     /// Returns `n % d`
     pub extern "C" fn __umoddi3(n: u64, d: u64) -> u64 {
         let mut rem = 0;
