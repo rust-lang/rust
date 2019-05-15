@@ -27,7 +27,7 @@ struct MiriCompilerCalls {
 impl rustc_driver::Callbacks for MiriCompilerCalls {
     fn after_parsing(&mut self, compiler: &interface::Compiler) -> bool {
         let attr = (
-            String::from("miri"),
+            syntax::symbol::Symbol::intern("miri"),
             syntax::feature_gate::AttributeType::Whitelisted,
         );
         compiler.session().plugin_attributes.borrow_mut().push(attr);
@@ -66,26 +66,26 @@ fn init_early_loggers() {
     // If it is not set, we avoid initializing now so that we can initialize
     // later with our custom settings, and *not* log anything for what happens before
     // `miri` gets started.
-    if env::var("RUST_LOG").is_ok() {
+    if env::var("RUSTC_LOG").is_ok() {
         rustc_driver::init_rustc_env_logger();
     }
 }
 
 fn init_late_loggers() {
-    // We initialize loggers right before we start evaluation. We overwrite the `RUST_LOG`
+    // We initialize loggers right before we start evaluation. We overwrite the `RUSTC_LOG`
     // env var if it is not set, control it based on `MIRI_LOG`.
     if let Ok(var) = env::var("MIRI_LOG") {
-        if env::var("RUST_LOG").is_err() {
+        if env::var("RUSTC_LOG").is_err() {
             // We try to be a bit clever here: if `MIRI_LOG` is just a single level
             // used for everything, we only apply it to the parts of rustc that are
-            // CTFE-related. Otherwise, we use it verbatim for `RUST_LOG`.
+            // CTFE-related. Otherwise, we use it verbatim for `RUSTC_LOG`.
             // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
             // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_mir::interpret=debug`.
             if log::Level::from_str(&var).is_ok() {
-                env::set_var("RUST_LOG",
+                env::set_var("RUSTC_LOG",
                     &format!("rustc::mir::interpret={0},rustc_mir::interpret={0}", var));
             } else {
-                env::set_var("RUST_LOG", &var);
+                env::set_var("RUSTC_LOG", &var);
             }
             rustc_driver::init_rustc_env_logger();
         }

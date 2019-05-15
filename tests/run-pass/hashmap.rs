@@ -24,12 +24,10 @@ fn test_map<S: BuildHasher>(mut map: HashMap<i32, i32, S>) {
 }
 
 fn main() {
-    if cfg!(target_os = "macos") { // TODO: Implement random number generation on OS X.
+    if cfg!(target_os = "macos") { // TODO: Implement libstd HashMap seeding for macOS (https://github.com/rust-lang/miri/issues/686).
         // Until then, use a deterministic map.
-        let map : HashMap<i32, i32, BuildHasherDefault<collections::hash_map::DefaultHasher>> = HashMap::default();
-        test_map(map);
+        test_map::<BuildHasherDefault<collections::hash_map::DefaultHasher>>(HashMap::default());
     } else {
-        let map: HashMap<i32, i32> = HashMap::default();
-        test_map(map);
+        test_map(HashMap::new());
     }
 }
