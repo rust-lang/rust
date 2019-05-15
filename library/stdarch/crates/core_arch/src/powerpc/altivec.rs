@@ -206,6 +206,9 @@ extern "C" {
     fn vavguh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.ppc.altivec.vavguw"]
     fn vavguw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.ceil.v4f32"]
+    fn vceil(a: vector_float) -> vector_float;
 }
 
 macro_rules! s_t_l {
@@ -287,7 +290,7 @@ mod sealed {
             #[target_feature(enable = "altivec")]
             #[cfg_attr(all(test, not(target_feature="vsx")), assert_instr($instr_altivec))]
             #[cfg_attr(all(test, target_feature="vsx"), assert_instr($instr_vsx))]
-            unsafe fn $fun ($($v : $ty),*) -> $r {
+            pub unsafe fn $fun ($($v : $ty),*) -> $r {
                 $call ($($v),*)
             }
         }
@@ -361,6 +364,8 @@ mod sealed {
             impl_vec_trait!{ [$Trait $m] ($fn, $fn, $fn, $fn, $fn, $fn) }
         }
     }
+
+    test_impl! { vec_vceil(a: vector_float) -> vector_float [vceil, vrfip / xvrspip ] }
 
     test_impl! { vec_vavgsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vavgsb, vavgsb ] }
     test_impl! { vec_vavgsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vavgsh, vavgsh ] }
@@ -1279,6 +1284,13 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector ceil.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_ceil(a: vector_float) -> vector_float {
+    sealed::vec_vceil(a)
+}
+
 /// Vector avg.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1611,6 +1623,14 @@ mod tests {
                 assert_eq!(d, r);
             }
          }
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_ceil() {
+        let a: vector_float = transmute(f32x4::new(0.1, 0.5, 0.6, 0.9));
+        let d = f32x4::new(1.0, 1.0, 1.0, 1.0);
+
+        assert_eq!(d, transmute(vec_ceil(a)));
     }
 
     test_vec_2! { test_vec_andc, vec_andc, i32x4,
