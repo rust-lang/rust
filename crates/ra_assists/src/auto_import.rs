@@ -2,8 +2,9 @@ use ra_text_edit::TextEditBuilder;
 use hir::{ self, db::HirDatabase};
 
 use ra_syntax::{
+    T,
     ast::{ self, NameOwner }, AstNode, SyntaxNode, Direction, TextRange, SmolStr,
-    SyntaxKind::{ PATH, PATH_SEGMENT, COLONCOLON, COMMA }
+    SyntaxKind::{ PATH, PATH_SEGMENT }
 };
 use crate::{
     AssistId,
@@ -23,7 +24,7 @@ fn collect_path_segments_raw<'a>(
             children.next().map(|n| (n, n.kind())),
         );
         match (first, second, third) {
-            (Some((subpath, PATH)), Some((_, COLONCOLON)), Some((segment, PATH_SEGMENT))) => {
+            (Some((subpath, PATH)), Some((_, T![::])), Some((segment, PATH_SEGMENT))) => {
                 path = ast::Path::cast(subpath.as_node()?)?;
                 segments.push(ast::PathSegment::cast(segment.as_node()?)?);
             }
@@ -421,7 +422,7 @@ fn make_assist_add_in_tree_list(
     let last = tree_list.use_trees().last();
     if let Some(last) = last {
         let mut buf = String::new();
-        let comma = last.syntax().siblings(Direction::Next).find(|n| n.kind() == COMMA);
+        let comma = last.syntax().siblings(Direction::Next).find(|n| n.kind() == T![,]);
         let offset = if let Some(comma) = comma {
             comma.range().end()
         } else {

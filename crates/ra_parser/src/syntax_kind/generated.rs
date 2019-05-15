@@ -245,8 +245,8 @@ use self::SyntaxKind::*;
 macro_rules! T {
     (;) => { $crate::SyntaxKind::SEMI };
     (,) => { $crate::SyntaxKind::COMMA };
-    (() => { $crate::SyntaxKind::L_PAREN };
-    ()) => { $crate::SyntaxKind::R_PAREN };
+    ('(') => { $crate::SyntaxKind::L_PAREN };
+    (')') => { $crate::SyntaxKind::R_PAREN };
     ('{') => { $crate::SyntaxKind::L_CURLY };
     ('}') => { $crate::SyntaxKind::R_CURLY };
     ('[') => { $crate::SyntaxKind::L_BRACK };

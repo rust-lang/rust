@@ -3,7 +3,8 @@
 use crate::{
     SyntaxToken, SyntaxElement, SmolStr,
     ast::{self, AstNode, AstChildren, children, child_opt},
-    SyntaxKind::*
+    SyntaxKind::*,
+    T
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,7 +35,7 @@ impl ast::IfExpr {
 
 impl ast::RefExpr {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
     }
 }
 
@@ -51,9 +52,9 @@ pub enum PrefixOp {
 impl ast::PrefixExpr {
     pub fn op_kind(&self) -> Option<PrefixOp> {
         match self.op_token()?.kind() {
-            STAR => Some(PrefixOp::Deref),
-            EXCL => Some(PrefixOp::Not),
-            MINUS => Some(PrefixOp::Neg),
+            T![*] => Some(PrefixOp::Deref),
+            T![!] => Some(PrefixOp::Not),
+            T![-] => Some(PrefixOp::Neg),
             _ => None,
         }
     }
@@ -133,37 +134,37 @@ impl ast::BinExpr {
     fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
         self.syntax().children_with_tokens().filter_map(|it| it.as_token()).find_map(|c| {
             match c.kind() {
-                PIPEPIPE => Some((c, BinOp::BooleanOr)),
-                AMPAMP => Some((c, BinOp::BooleanAnd)),
-                EQEQ => Some((c, BinOp::EqualityTest)),
-                NEQ => Some((c, BinOp::NegatedEqualityTest)),
-                LTEQ => Some((c, BinOp::LesserEqualTest)),
-                GTEQ => Some((c, BinOp::GreaterEqualTest)),
-                L_ANGLE => Some((c, BinOp::LesserTest)),
-                R_ANGLE => Some((c, BinOp::GreaterTest)),
-                PLUS => Some((c, BinOp::Addition)),
-                STAR => Some((c, BinOp::Multiplication)),
-                MINUS => Some((c, BinOp::Subtraction)),
-                SLASH => Some((c, BinOp::Division)),
-                PERCENT => Some((c, BinOp::Remainder)),
-                SHL => Some((c, BinOp::LeftShift)),
-                SHR => Some((c, BinOp::RightShift)),
-                CARET => Some((c, BinOp::BitwiseXor)),
-                PIPE => Some((c, BinOp::BitwiseOr)),
-                AMP => Some((c, BinOp::BitwiseAnd)),
-                DOTDOT => Some((c, BinOp::RangeRightOpen)),
-                DOTDOTEQ => Some((c, BinOp::RangeRightClosed)),
-                EQ => Some((c, BinOp::Assignment)),
-                PLUSEQ => Some((c, BinOp::AddAssign)),
-                SLASHEQ => Some((c, BinOp::DivAssign)),
-                STAREQ => Some((c, BinOp::MulAssign)),
-                PERCENTEQ => Some((c, BinOp::RemAssign)),
-                SHREQ => Some((c, BinOp::ShrAssign)),
-                SHLEQ => Some((c, BinOp::ShlAssign)),
-                MINUSEQ => Some((c, BinOp::SubAssign)),
-                PIPEEQ => Some((c, BinOp::BitOrAssign)),
-                AMPEQ => Some((c, BinOp::BitAndAssign)),
-                CARETEQ => Some((c, BinOp::BitXorAssign)),
+                T![||] => Some((c, BinOp::BooleanOr)),
+                T![&&] => Some((c, BinOp::BooleanAnd)),
+                T![==] => Some((c, BinOp::EqualityTest)),
+                T![!=] => Some((c, BinOp::NegatedEqualityTest)),
+                T![<=] => Some((c, BinOp::LesserEqualTest)),
+                T![>=] => Some((c, BinOp::GreaterEqualTest)),
+                T![<] => Some((c, BinOp::LesserTest)),
+                T![>] => Some((c, BinOp::GreaterTest)),
+                T![+] => Some((c, BinOp::Addition)),
+                T![*] => Some((c, BinOp::Multiplication)),
+                T![-] => Some((c, BinOp::Subtraction)),
+                T![/] => Some((c, BinOp::Division)),
+                T![%] => Some((c, BinOp::Remainder)),
+                T![<<] => Some((c, BinOp::LeftShift)),
+                T![>>] => Some((c, BinOp::RightShift)),
+                T![^] => Some((c, BinOp::BitwiseXor)),
+                T![|] => Some((c, BinOp::BitwiseOr)),
+                T![&] => Some((c, BinOp::BitwiseAnd)),
+                T![..] => Some((c, BinOp::RangeRightOpen)),
+                T![..=] => Some((c, BinOp::RangeRightClosed)),
+                T![=] => Some((c, BinOp::Assignment)),
+                T![+=] => Some((c, BinOp::AddAssign)),
+                T![/=] => Some((c, BinOp::DivAssign)),
+                T![*=] => Some((c, BinOp::MulAssign)),
+                T![%=] => Some((c, BinOp::RemAssign)),
+                T![>>=] => Some((c, BinOp::ShrAssign)),
+                T![<<=] => Some((c, BinOp::ShlAssign)),
+                T![-=] => Some((c, BinOp::SubAssign)),
+                T![|=] => Some((c, BinOp::BitOrAssign)),
+                T![&=] => Some((c, BinOp::BitAndAssign)),
+                T![^=] => Some((c, BinOp::BitXorAssign)),
                 _ => None,
             }
         })
@@ -211,7 +212,7 @@ impl ast::ArrayExpr {
     }
 
     fn is_repeat(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == SEMI)
+        self.syntax().children_with_tokens().any(|it| it.kind() == T![;])
     }
 }
 
@@ -258,7 +259,7 @@ impl ast::Literal {
                 LiteralKind::FloatNumber { suffix: suffix }
             }
             STRING | RAW_STRING => LiteralKind::String,
-            TRUE_KW | FALSE_KW => LiteralKind::Bool,
+            T![true] | T![false] => LiteralKind::Bool,
             BYTE_STRING | RAW_BYTE_STRING => LiteralKind::ByteString,
             CHAR => LiteralKind::Char,
             BYTE => LiteralKind::Byte,

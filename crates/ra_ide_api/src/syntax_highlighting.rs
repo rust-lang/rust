@@ -1,6 +1,6 @@
 use rustc_hash::FxHashSet;
 
-use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind::*, SyntaxElement};
+use ra_syntax::{ast, AstNode, TextRange, Direction, SyntaxKind::*, SyntaxElement, T};
 use ra_db::SourceDatabase;
 
 use crate::{FileId, db::RootDatabase};
@@ -40,7 +40,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
                                 let mut range_end = name_ref.syntax().range().end();
                                 for sibling in path.syntax().siblings_with_tokens(Direction::Next) {
                                     match sibling.kind() {
-                                        EXCL | IDENT => range_end = sibling.range().end(),
+                                        T![!] | IDENT => range_end = sibling.range().end(),
                                         _ => (),
                                     }
                                 }

@@ -3,7 +3,7 @@
 use std::iter::successors;
 use itertools::Itertools;
 use ra_syntax::{
-    SyntaxNode, SyntaxKind::*, SyntaxToken, SyntaxKind,
+    SyntaxNode, SyntaxKind::*, SyntaxToken, SyntaxKind, T,
     ast::{self, AstNode, AstToken},
 };
 
@@ -38,7 +38,7 @@ pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
         return None;
     }
     let non_trivial_children = block.syntax().children().filter(|it| match it.kind() {
-        WHITESPACE | L_CURLY | R_CURLY => false,
+        WHITESPACE | T!['{'] | T!['}'] => false,
         _ => it != &expr.syntax(),
     });
     if non_trivial_children.count() > 0 {
@@ -49,8 +49,8 @@ pub fn extract_trivial_expression(block: &ast::Block) -> Option<&ast::Expr> {
 
 pub fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
     match left {
-        L_PAREN | L_BRACK => return "",
-        L_CURLY => {
+        T!['('] | T!['['] => return "",
+        T!['{'] => {
             if let USE_TREE = right {
                 return "";
             }
@@ -58,13 +58,13 @@ pub fn compute_ws(left: SyntaxKind, right: SyntaxKind) -> &'static str {
         _ => (),
     }
     match right {
-        R_PAREN | R_BRACK => return "",
-        R_CURLY => {
+        T![')'] | T![']'] => return "",
+        T!['}'] => {
             if let USE_TREE = left {
                 return "";
             }
         }
-        DOT => return "",
+        T![.] => return "",
         _ => (),
     }
     " "

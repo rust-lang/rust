@@ -2,7 +2,7 @@ use std::{iter, ops::RangeInclusive};
 
 use arrayvec::ArrayVec;
 use ra_text_edit::TextEditBuilder;
-use ra_syntax::{AstNode, TreeArc, ast, SyntaxKind::*, SyntaxElement, SourceFile, InsertPosition, Direction};
+use ra_syntax::{AstNode, TreeArc, ast, SyntaxKind::*, SyntaxElement, SourceFile, InsertPosition, Direction, T};
 use ra_fmt::leading_indent;
 use hir::Name;
 
@@ -49,7 +49,7 @@ impl<N: AstNode> AstEditor<N> {
 
     fn do_make_multiline(&mut self) {
         let l_curly =
-            match self.ast().syntax().children_with_tokens().find(|it| it.kind() == L_CURLY) {
+            match self.ast().syntax().children_with_tokens().find(|it| it.kind() == T!['{']) {
                 Some(it) => it,
                 None => return,
             };
@@ -124,7 +124,7 @@ impl AstEditor<ast::NamedFieldList> {
                 if let Some(comma) = $anchor
                     .syntax()
                     .siblings_with_tokens(Direction::Next)
-                    .find(|it| it.kind() == COMMA)
+                    .find(|it| it.kind() == T![,])
                 {
                     InsertPosition::After(comma)
                 } else {
@@ -154,7 +154,7 @@ impl AstEditor<ast::NamedFieldList> {
     }
 
     fn l_curly(&self) -> Option<SyntaxElement> {
-        self.ast().syntax().children_with_tokens().find(|it| it.kind() == L_CURLY)
+        self.ast().syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
     }
 }
 
@@ -188,7 +188,7 @@ impl AstEditor<ast::ItemList> {
     }
 
     fn l_curly(&self) -> Option<SyntaxElement> {
-        self.ast().syntax().children_with_tokens().find(|it| it.kind() == L_CURLY)
+        self.ast().syntax().children_with_tokens().find(|it| it.kind() == T!['{'])
     }
 }
 
@@ -290,7 +290,7 @@ fn ast_node_from_file_text<N: AstNode>(text: &str) -> TreeArc<N> {
 
 mod tokens {
     use once_cell::sync::Lazy;
-    use ra_syntax::{AstNode, SourceFile, TreeArc, SyntaxToken, SyntaxKind::*};
+    use ra_syntax::{AstNode, SourceFile, TreeArc, SyntaxToken, SyntaxKind::*, T};
 
     static SOURCE_FILE: Lazy<TreeArc<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;"));
 
@@ -299,7 +299,7 @@ mod tokens {
             .syntax()
             .descendants_with_tokens()
             .filter_map(|it| it.as_token())
-            .find(|it| it.kind() == COMMA)
+            .find(|it| it.kind() == T![,])
             .unwrap()
     }
 

@@ -59,7 +59,7 @@ pub(crate) fn macro_stmts(p: &mut Parser) {
     let m = p.start();
 
     while !p.at(EOF) {
-        if p.current() == SEMI {
+        if p.current() == T![;] {
             p.bump();
             continue;
         }
@@ -103,7 +103,7 @@ pub(crate) fn block(p: &mut Parser) {
 pub(crate) fn meta_item(p: &mut Parser) {
     fn is_delimiter(p: &mut Parser) -> bool {
         match p.current() {
-            L_CURLY | L_PAREN | L_BRACK => true,
+            T!['{'] | T!['('] | T!['['] => true,
             _ => false,
         }
     }
@@ -123,12 +123,12 @@ pub(crate) fn meta_item(p: &mut Parser) {
             // https://doc.rust-lang.org/reference/paths.html#simple-paths
             // The start of an meta must be a simple path
             match p.current() {
-                IDENT | COLONCOLON | SUPER_KW | SELF_KW | CRATE_KW => p.bump(),
-                EQ => {
+                IDENT | T![::] | T![super] | T![self] | T![crate] => p.bump(),
+                T![=] => {
                     p.bump();
                     match p.current() {
                         c if c.is_literal() => p.bump(),
-                        TRUE_KW | FALSE_KW => p.bump(),
+                        T![true] | T![false] => p.bump(),
                         _ => {}
                     }
                     break;
@@ -158,7 +158,7 @@ pub(crate) fn reparser(
         MATCH_ARM_LIST => items::match_arm_list,
         USE_TREE_LIST => items::use_tree_list,
         EXTERN_ITEM_LIST => items::extern_item_list,
-        TOKEN_TREE if first_child? == L_CURLY => items::token_tree,
+        TOKEN_TREE if first_child? == T!['{'] => items::token_tree,
         ITEM_LIST => match parent? {
             IMPL_BLOCK => items::impl_item_list,
             TRAIT_DEF => items::trait_item_list,
@@ -184,26 +184,26 @@ impl BlockLike {
 
 pub(crate) fn opt_visibility(p: &mut Parser) -> bool {
     match p.current() {
-        PUB_KW => {
+        T![pub] => {
             let m = p.start();
             p.bump();
-            if p.at(L_PAREN) {
+            if p.at(T!['(']) {
                 match p.nth(1) {
                     // test crate_visibility
                     // pub(crate) struct S;
                     // pub(self) struct S;
                     // pub(self) struct S;
                     // pub(self) struct S;
-                    CRATE_KW | SELF_KW | SUPER_KW => {
+                    T![crate] | T![self] | T![super] => {
                         p.bump();
                         p.bump();
-                        p.expect(R_PAREN);
+                        p.expect(T![')']);
                     }
-                    IN_KW => {
+                    T![in] => {
                         p.bump();
                         p.bump();
                         paths::use_path(p);
-                        p.expect(R_PAREN);
+                        p.expect(T![')']);
                     }
                     _ => (),
                 }
@@ -217,7 +217,7 @@ pub(crate) fn opt_visibility(p: &mut Parser) -> bool {
         //
         // test crate_keyword_path
         // fn foo() { crate::foo(); }
-        CRATE_KW if p.nth(1) != COLONCOLON => {
+        T![crate] if p.nth(1) != T![::] => {
             let m = p.start();
             p.bump();
             m.complete(p, VISIBILITY);
@@ -228,10 +228,10 @@ pub(crate) fn opt_visibility(p: &mut Parser) -> bool {
 }
 
 fn opt_alias(p: &mut Parser) {
-    if p.at(AS_KW) {
+    if p.at(T![as]) {
         let m = p.start();
         p.bump();
-        if !p.eat(UNDERSCORE) {
+        if !p.eat(T![_]) {
             name(p);
         }
         m.complete(p, ALIAS);
@@ -239,7 +239,7 @@ fn opt_alias(p: &mut Parser) {
 }
 
 fn abi(p: &mut Parser) {
-    assert!(p.at(EXTERN_KW));
+    assert!(p.at(T![extern]));
     let abi = p.start();
     p.bump();
     match p.current() {
@@ -250,7 +250,7 @@ fn abi(p: &mut Parser) {
 }
 
 fn opt_fn_ret_type(p: &mut Parser) -> bool {
-    if p.at(THIN_ARROW) {
+    if p.at(T![->]) {
         let m = p.start();
         p.bump();
         types::type_(p);
@@ -280,21 +280,21 @@ fn name_ref(p: &mut Parser) {
         let m = p.start();
         p.bump();
         m.complete(p, NAME_REF);
-    } else if p.at(SELF_KW) {
+    } else if p.at(T![self]) {
         let m = p.start();
         p.bump();
-        m.complete(p, SELF_KW);
+        m.complete(p, T![self]);
     } else {
         p.err_and_bump("expected identifier");
     }
 }
 
 fn error_block(p: &mut Parser, message: &str) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.error(message);
     p.bump();
     expressions::expr_block_contents(p);
-    p.eat(R_CURLY);
+    p.eat(T!['}']);
     m.complete(p, ERROR);
 }

@@ -19,7 +19,7 @@ use super::*;
 // struct S;
 pub(super) fn mod_contents(p: &mut Parser, stop_on_r_curly: bool) {
     attributes::inner_attributes(p);
-    while !p.at(EOF) && !(stop_on_r_curly && p.at(R_CURLY)) {
+    while !p.at(EOF) && !(stop_on_r_curly && p.at(T!['}'])) {
         item_or_macro(p, stop_on_r_curly, ItemFlavor::Mod)
     }
 }
@@ -45,20 +45,20 @@ pub(super) fn item_or_macro(p: &mut Parser, stop_on_r_curly: bool, flavor: ItemF
         match macro_call(p) {
             BlockLike::Block => (),
             BlockLike::NotBlock => {
-                p.expect(SEMI);
+                p.expect(T![;]);
             }
         }
         m.complete(p, MACRO_CALL);
     } else {
         m.abandon(p);
-        if p.at(L_CURLY) {
+        if p.at(T!['{']) {
             error_block(p, "expected an item");
-        } else if p.at(R_CURLY) && !stop_on_r_curly {
+        } else if p.at(T!['}']) && !stop_on_r_curly {
             let e = p.start();
             p.error("unmatched `}`");
             p.bump();
             e.complete(p, ERROR);
-        } else if !p.at(EOF) && !p.at(R_CURLY) {
+        } else if !p.at(EOF) && !p.at(T!['}']) {
             p.err_and_bump("expected an item");
         } else {
             p.error("expected an item");
@@ -79,32 +79,32 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
     let mut has_mods = false;
 
     // modifiers
-    has_mods |= p.eat(CONST_KW);
+    has_mods |= p.eat(T![const]);
 
     // test_err unsafe_block_in_mod
     // fn foo(){} unsafe { } fn bar(){}
-    if p.at(UNSAFE_KW) && p.nth(1) != L_CURLY {
-        p.eat(UNSAFE_KW);
+    if p.at(T![unsafe]) && p.nth(1) != T!['{'] {
+        p.eat(T![unsafe]);
         has_mods = true;
     }
 
     // test_err async_without_semicolon
     // fn foo() { let _ = async {} }
-    if p.at(ASYNC_KW) && p.nth(1) != L_CURLY && p.nth(1) != MOVE_KW && p.nth(1) != PIPE {
-        p.eat(ASYNC_KW);
+    if p.at(T![async]) && p.nth(1) != T!['{'] && p.nth(1) != T![move] && p.nth(1) != T![|] {
+        p.eat(T![async]);
         has_mods = true;
     }
 
-    if p.at(EXTERN_KW) {
+    if p.at(T![extern]) {
         has_mods = true;
         abi(p);
     }
-    if p.at(IDENT) && p.at_contextual_kw("auto") && p.nth(1) == TRAIT_KW {
-        p.bump_remap(AUTO_KW);
+    if p.at(IDENT) && p.at_contextual_kw("auto") && p.nth(1) == T![trait] {
+        p.bump_remap(T![auto]);
         has_mods = true;
     }
-    if p.at(IDENT) && p.at_contextual_kw("default") && p.nth(1) == IMPL_KW {
-        p.bump_remap(DEFAULT_KW);
+    if p.at(IDENT) && p.at_contextual_kw("default") && p.nth(1) == T![impl ] {
+        p.bump_remap(T![default]);
         has_mods = true;
     }
 
@@ -135,7 +135,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
         // test_err wrong_order_fns
         // async unsafe fn foo() {}
         // unsafe const fn bar() {}
-        FN_KW => {
+        T![fn] => {
             fn_def(p, flavor);
             m.complete(p, FN_DEF);
         }
@@ -148,7 +148,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
 
         // test unsafe_auto_trait
         // unsafe auto trait T {}
-        TRAIT_KW => {
+        T![trait] => {
             traits::trait_def(p);
             m.complete(p, TRAIT_DEF);
         }
@@ -161,7 +161,7 @@ pub(super) fn maybe_item(p: &mut Parser, m: Marker, flavor: ItemFlavor) -> Resul
 
         // test unsafe_default_impl
         // unsafe default impl Foo {}
-        IMPL_KW => {
+        T![impl ] => {
             traits::impl_block(p);
             m.complete(p, IMPL_BLOCK);
         }
@@ -186,10 +186,10 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
     match p.current() {
         // test extern_crate
         // extern crate foo;
-        EXTERN_KW if la == CRATE_KW => extern_crate_item(p, m),
-        TYPE_KW => type_def(p, m),
-        MOD_KW => mod_item(p, m),
-        STRUCT_KW => {
+        T![extern] if la == T![crate] => extern_crate_item(p, m),
+        T![type] => type_def(p, m),
+        T![mod] => mod_item(p, m),
+        T![struct] => {
             // test struct_items
             // struct Foo;
             // struct Foo {}
@@ -199,7 +199,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             //     a: i32,
             //     b: f32,
             // }
-            nominal::struct_def(p, m, STRUCT_KW);
+            nominal::struct_def(p, m, T![struct]);
         }
         IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
@@ -208,16 +208,16 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             //     a: i32,
             //     b: f32,
             // }
-            nominal::struct_def(p, m, UNION_KW);
+            nominal::struct_def(p, m, T![union]);
         }
-        ENUM_KW => nominal::enum_def(p, m),
-        USE_KW => use_item::use_item(p, m),
-        CONST_KW if (la == IDENT || la == MUT_KW) => consts::const_def(p, m),
-        STATIC_KW => consts::static_def(p, m),
+        T![enum] => nominal::enum_def(p, m),
+        T![use] => use_item::use_item(p, m),
+        T![const] if (la == IDENT || la == T![mut]) => consts::const_def(p, m),
+        T![static] => consts::static_def(p, m),
         // test extern_block
         // extern {}
-        EXTERN_KW
-            if la == L_CURLY || ((la == STRING || la == RAW_STRING) && p.nth(2) == L_CURLY) =>
+        T![extern]
+            if la == T!['{'] || ((la == STRING || la == RAW_STRING) && p.nth(2) == T!['{']) =>
         {
             abi(p);
             extern_item_list(p);
@@ -225,7 +225,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
         }
         _ => return Err(m),
     };
-    if p.at(SEMI) {
+    if p.at(T![;]) {
         p.err_and_bump(
             "expected item, found `;`\n\
              consider removing this semicolon",
@@ -235,27 +235,27 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
 }
 
 fn extern_crate_item(p: &mut Parser, m: Marker) {
-    assert!(p.at(EXTERN_KW));
+    assert!(p.at(T![extern]));
     p.bump();
-    assert!(p.at(CRATE_KW));
+    assert!(p.at(T![crate]));
     p.bump();
     name_ref(p);
     opt_alias(p);
-    p.expect(SEMI);
+    p.expect(T![;]);
     m.complete(p, EXTERN_CRATE_ITEM);
 }
 
 pub(crate) fn extern_item_list(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
     mod_contents(p, true);
-    p.expect(R_CURLY);
+    p.expect(T!['}']);
     m.complete(p, EXTERN_ITEM_LIST);
 }
 
 fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
-    assert!(p.at(FN_KW));
+    assert!(p.at(T![fn]));
     p.bump();
 
     name_r(p, ITEM_RECOVERY_SET);
@@ -263,7 +263,7 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
     // fn foo<T: Clone + Copy>(){}
     type_params::opt_type_param_list(p);
 
-    if p.at(L_PAREN) {
+    if p.at(T!['(']) {
         match flavor {
             ItemFlavor::Mod => params::param_list(p),
             ItemFlavor::Trait => params::param_list_opt_patterns(p),
@@ -282,7 +282,7 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
 
     // test fn_decl
     // trait T { fn foo(); }
-    if p.at(SEMI) {
+    if p.at(T![;]) {
         p.bump();
     } else {
         expressions::block(p)
@@ -292,7 +292,7 @@ fn fn_def(p: &mut Parser, flavor: ItemFlavor) {
 // test type_item
 // type Foo = Bar;
 fn type_def(p: &mut Parser, m: Marker) {
-    assert!(p.at(TYPE_KW));
+    assert!(p.at(T![type]));
     p.bump();
 
     name(p);
@@ -301,7 +301,7 @@ fn type_def(p: &mut Parser, m: Marker) {
     // type Result<T> = ();
     type_params::opt_type_param_list(p);
 
-    if p.at(COLON) {
+    if p.at(T![:]) {
         type_params::bounds(p);
     }
 
@@ -309,32 +309,32 @@ fn type_def(p: &mut Parser, m: Marker) {
     // type Foo where Foo: Copy = ();
     type_params::opt_where_clause(p);
 
-    if p.eat(EQ) {
+    if p.eat(T![=]) {
         types::type_(p);
     }
-    p.expect(SEMI);
+    p.expect(T![;]);
     m.complete(p, TYPE_ALIAS_DEF);
 }
 
 pub(crate) fn mod_item(p: &mut Parser, m: Marker) {
-    assert!(p.at(MOD_KW));
+    assert!(p.at(T![mod]));
     p.bump();
 
     name(p);
-    if p.at(L_CURLY) {
+    if p.at(T!['{']) {
         mod_item_list(p);
-    } else if !p.eat(SEMI) {
+    } else if !p.eat(T![;]) {
         p.error("expected `;` or `{`");
     }
     m.complete(p, MODULE);
 }
 
 pub(crate) fn mod_item_list(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
     mod_contents(p, true);
-    p.expect(R_CURLY);
+    p.expect(T!['}']);
     m.complete(p, ITEM_LIST);
 }
 
@@ -345,16 +345,16 @@ fn macro_call(p: &mut Parser) -> BlockLike {
 }
 
 pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
-    p.expect(EXCL);
+    p.expect(T![!]);
     if p.at(IDENT) {
         name(p);
     }
     match p.current() {
-        L_CURLY => {
+        T!['{'] => {
             token_tree(p);
             BlockLike::Block
         }
-        L_PAREN | L_BRACK => {
+        T!['('] | T!['['] => {
             token_tree(p);
             BlockLike::NotBlock
         }
@@ -367,22 +367,22 @@ pub(super) fn macro_call_after_excl(p: &mut Parser) -> BlockLike {
 
 pub(crate) fn token_tree(p: &mut Parser) {
     let closing_paren_kind = match p.current() {
-        L_CURLY => R_CURLY,
-        L_PAREN => R_PAREN,
-        L_BRACK => R_BRACK,
+        T!['{'] => T!['}'],
+        T!['('] => T![')'],
+        T!['['] => T![']'],
         _ => unreachable!(),
     };
     let m = p.start();
     p.bump();
     while !p.at(EOF) && !p.at(closing_paren_kind) {
         match p.current() {
-            L_CURLY | L_PAREN | L_BRACK => token_tree(p),
-            R_CURLY => {
+            T!['{'] | T!['('] | T!['['] => token_tree(p),
+            T!['}'] => {
                 p.error("unmatched `}`");
                 m.complete(p, TOKEN_TREE);
                 return;
             }
-            R_PAREN | R_BRACK => p.err_and_bump("unmatched brace"),
+            T![')'] | T![']'] => p.err_and_bump("unmatched brace"),
             _ => p.bump_raw(),
         }
     }

@@ -3,7 +3,7 @@ use hir::{
     db::HirDatabase,
 };
 use ra_syntax::{
-    SyntaxKind,
+    T,
     ast::{LetStmt, PatKind, NameOwner, AstNode}
 };
 
@@ -24,7 +24,7 @@ pub(crate) fn add_explicit_type(mut ctx: AssistCtx<impl HirDatabase>) -> Option<
     let name = pat.name()?;
     let name_range = name.syntax().range();
     // Assist not applicable if the type has already been specified
-    if stmt.syntax().children_with_tokens().any(|child| child.kind() == SyntaxKind::COLON) {
+    if stmt.syntax().children_with_tokens().any(|child| child.kind() == T![:]) {
         return None;
     }
     // Infer type

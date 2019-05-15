@@ -2,9 +2,7 @@ use hir::db::HirDatabase;
 use ra_syntax::{
     ast::{self, AstNode},
     TextUnit,
-    SyntaxKind::{
-        L_PAREN, R_PAREN, L_CURLY, R_CURLY, L_BRACK, R_BRACK, EXCL
-    },
+    T
 };
 use crate::{AssistCtx, Assist, AssistId};
 
@@ -64,7 +62,7 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
     // Make sure it is actually a dbg-macro call, dbg followed by !
     let excl = path.syntax().next_sibling_or_token()?;
 
-    if name_ref.text() != macro_name || excl.kind() != EXCL {
+    if name_ref.text() != macro_name || excl.kind() != T![!] {
         return None;
     }
 
@@ -73,7 +71,7 @@ fn is_valid_macrocall(macro_call: &ast::MacroCall, macro_name: &str) -> Option<b
     let last_child = node.last_child_or_token()?;
 
     match (first_child.kind(), last_child.kind()) {
-        (L_PAREN, R_PAREN) | (L_BRACK, R_BRACK) | (L_CURLY, R_CURLY) => Some(true),
+        (T!['('], T![')']) | (T!['['], T![']']) | (T!['{'], T!['}']) => Some(true),
         _ => Some(false),
     }
 }

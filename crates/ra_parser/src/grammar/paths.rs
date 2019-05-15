@@ -5,7 +5,7 @@ pub(super) const PATH_FIRST: TokenSet =
 
 pub(super) fn is_path_start(p: &Parser) -> bool {
     match p.current() {
-        IDENT | SELF_KW | SUPER_KW | CRATE_KW | COLONCOLON => true,
+        IDENT | T![self] | T![super] | T![crate] | T![::] => true,
         _ => false,
     }
 }
@@ -35,10 +35,10 @@ fn path(p: &mut Parser, mode: Mode) {
     let mut qual = path.complete(p, PATH);
     loop {
         let use_tree = match p.nth(1) {
-            STAR | L_CURLY => true,
+            T![*] | T!['{'] => true,
             _ => false,
         };
-        if p.at(COLONCOLON) && !use_tree {
+        if p.at(T![::]) && !use_tree {
             let path = qual.precede(p);
             p.bump();
             path_segment(p, mode, false);
@@ -55,19 +55,19 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
     // test qual_paths
     // type X = <A as B>::Output;
     // fn foo() { <usize as Default>::default(); }
-    if first && p.eat(L_ANGLE) {
+    if first && p.eat(T![<]) {
         types::type_(p);
-        if p.eat(AS_KW) {
+        if p.eat(T![as]) {
             if is_path_start(p) {
                 types::path_type(p);
             } else {
                 p.error("expected a trait");
             }
         }
-        p.expect(R_ANGLE);
+        p.expect(T![>]);
     } else {
         if first {
-            p.eat(COLONCOLON);
+            p.eat(T![::]);
         }
         match p.current() {
             IDENT => {
@@ -76,7 +76,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
             }
             // test crate_path
             // use crate::foo;
-            SELF_KW | SUPER_KW | CRATE_KW => p.bump(),
+            T![self] | T![super] | T![crate] => p.bump(),
             _ => {
                 p.err_recover("expected identifier", items::ITEM_RECOVERY_SET);
             }
@@ -91,7 +91,7 @@ fn opt_path_type_args(p: &mut Parser, mode: Mode) {
         Mode::Type => {
             // test path_fn_trait_args
             // type F = Box<Fn(x: i32) -> ()>;
-            if p.at(L_PAREN) {
+            if p.at(T!['(']) {
                 params::param_list_opt_patterns(p);
                 opt_fn_ret_type(p);
             } else {

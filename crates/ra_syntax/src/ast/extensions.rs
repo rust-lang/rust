@@ -3,7 +3,7 @@
 
 use itertools::Itertools;
 
-use crate::{SmolStr, SyntaxToken, ast::{self, AstNode, children, child_opt}, SyntaxKind::*, SyntaxElement};
+use crate::{SmolStr, SyntaxToken, ast::{self, AstNode, children, child_opt}, SyntaxKind::*, SyntaxElement, T};
 use ra_parser::SyntaxKind;
 
 impl ast::Name {
@@ -32,7 +32,7 @@ impl ast::Attr {
             Some(prev) => prev,
         };
 
-        prev.kind() == EXCL
+        prev.kind() == T![!]
     }
 
     pub fn as_atom(&self) -> Option<SmolStr> {
@@ -102,9 +102,9 @@ impl ast::PathSegment {
             PathSegmentKind::Name(name_ref)
         } else {
             match self.syntax().first_child_or_token()?.kind() {
-                SELF_KW => PathSegmentKind::SelfKw,
-                SUPER_KW => PathSegmentKind::SuperKw,
-                CRATE_KW => PathSegmentKind::CrateKw,
+                T![self] => PathSegmentKind::SelfKw,
+                T![super] => PathSegmentKind::SuperKw,
+                T![crate] => PathSegmentKind::CrateKw,
                 _ => return None,
             }
         };
@@ -113,7 +113,7 @@ impl ast::PathSegment {
 
     pub fn has_colon_colon(&self) -> bool {
         match self.syntax.first_child_or_token().map(|s| s.kind()) {
-            Some(COLONCOLON) => true,
+            Some(T![::]) => true,
             _ => false,
         }
     }
@@ -129,14 +129,14 @@ impl ast::Module {
     pub fn has_semi(&self) -> bool {
         match self.syntax().last_child_or_token() {
             None => false,
-            Some(node) => node.kind() == SEMI,
+            Some(node) => node.kind() == T![;],
         }
     }
 }
 
 impl ast::UseTree {
     pub fn has_star(&self) -> bool {
-        self.syntax().children_with_tokens().any(|it| it.kind() == STAR)
+        self.syntax().children_with_tokens().any(|it| it.kind() == T![*])
     }
 }
 
@@ -172,7 +172,7 @@ impl ast::ImplBlock {
     }
 
     pub fn is_negative(&self) -> bool {
-        self.syntax().children_with_tokens().any(|t| t.kind() == EXCL)
+        self.syntax().children_with_tokens().any(|t| t.kind() == T![!])
     }
 }
 
@@ -219,7 +219,7 @@ impl ast::FnDef {
         self.syntax()
             .last_child_or_token()
             .and_then(|it| it.as_token())
-            .filter(|it| it.kind() == SEMI)
+            .filter(|it| it.kind() == T![;])
     }
 }
 
@@ -227,7 +227,7 @@ impl ast::LetStmt {
     pub fn has_semi(&self) -> bool {
         match self.syntax().last_child_or_token() {
             None => false,
-            Some(node) => node.kind() == SEMI,
+            Some(node) => node.kind() == T![;],
         }
     }
 }
@@ -236,7 +236,7 @@ impl ast::ExprStmt {
     pub fn has_semi(&self) -> bool {
         match self.syntax().last_child_or_token() {
             None => false,
-            Some(node) => node.kind() == SEMI,
+            Some(node) => node.kind() == T![;],
         }
     }
 }
@@ -270,29 +270,29 @@ impl ast::FieldExpr {
 
 impl ast::RefPat {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
     }
 }
 
 impl ast::BindPat {
     pub fn is_mutable(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
     }
 
     pub fn is_ref(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == REF_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == T![ref])
     }
 }
 
 impl ast::PointerType {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
     }
 }
 
 impl ast::ReferenceType {
     pub fn is_mut(&self) -> bool {
-        self.syntax().children_with_tokens().any(|n| n.kind() == MUT_KW)
+        self.syntax().children_with_tokens().any(|n| n.kind() == T![mut])
     }
 }
 
@@ -311,19 +311,19 @@ impl ast::SelfParam {
         self.syntax()
             .children_with_tokens()
             .filter_map(|it| it.as_token())
-            .find(|it| it.kind() == SELF_KW)
+            .find(|it| it.kind() == T![self])
             .expect("invalid tree: self param must have self")
     }
 
     pub fn kind(&self) -> SelfParamKind {
-        let borrowed = self.syntax().children_with_tokens().any(|n| n.kind() == AMP);
+        let borrowed = self.syntax().children_with_tokens().any(|n| n.kind() == T![&]);
         if borrowed {
             // check for a `mut` coming after the & -- `mut &self` != `&mut self`
             if self
                 .syntax()
                 .children_with_tokens()
-                .skip_while(|n| n.kind() != AMP)
-                .any(|n| n.kind() == MUT_KW)
+                .skip_while(|n| n.kind() != T![&])
+                .any(|n| n.kind() == T![mut])
             {
                 SelfParamKind::MutRef
             } else {
@@ -355,6 +355,6 @@ impl ast::WherePred {
 
 impl ast::TraitDef {
     pub fn is_auto(&self) -> bool {
-        self.syntax().children_with_tokens().any(|t| t.kind() == AUTO_KW)
+        self.syntax().children_with_tokens().any(|t| t.kind() == T![auto])
     }
 }
