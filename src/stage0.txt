@@ -34,4 +34,4 @@ cargo: 0.35.0
 # looking at a beta source tarball and it's uncommented we'll shortly comment it
 # out.
 
-dev: 1
+#dev: 1
