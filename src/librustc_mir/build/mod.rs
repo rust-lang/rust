@@ -343,6 +343,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     fn_span: Span,
     arg_count: usize,
+    is_generator: bool,
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
@@ -689,7 +690,8 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         return_ty,
         return_ty_span,
         upvar_debuginfo,
-        upvar_mutbls);
+        upvar_mutbls,
+        body.is_generator);
 
     let call_site_scope = region::Scope {
         id: body.value.hir_id.local_id,
@@ -759,6 +761,7 @@ fn construct_const<'a, 'gcx, 'tcx>(
         const_ty_span,
         vec![],
         vec![],
+        false,
     );
 
     let mut block = START_BLOCK;
@@ -788,7 +791,7 @@ fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let owner_id = hir.tcx().hir().body_owner(body_id);
     let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![], vec![]);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, vec![], vec![], false);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     builder.finish(None)
@@ -802,7 +805,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
            return_ty: Ty<'tcx>,
            return_span: Span,
            __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
-           upvar_mutbls: Vec<Mutability>)
+           upvar_mutbls: Vec<Mutability>,
+           is_generator: bool)
            -> Builder<'a, 'gcx, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
@@ -810,6 +814,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count,
+            is_generator,
             scopes: vec![],
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
