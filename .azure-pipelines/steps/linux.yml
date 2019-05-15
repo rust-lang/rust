@@ -17,7 +17,6 @@ steps:
     mkdir -p $HOME/rustsrc
   displayName:  Prep
 
-# FIXME: using the job display name feels brittle. Is there a better variable that represents the current matrix key?
 - bash: |
     export RUN_SCRIPT="$BUILD_SOURCESDIRECTORY/src/ci/init_repo.sh . $HOME/rustsrc && src/ci/docker/run.sh $IMAGE"
     echo "##vso[task.setvariable variable=IMAGE]$IMAGE"
