@@ -1032,10 +1032,9 @@ impl Expr {
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
+            ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,
-            ExprKind::IfLet(..) => ExprPrecedence::IfLet,
             ExprKind::While(..) => ExprPrecedence::While,
-            ExprKind::WhileLet(..) => ExprPrecedence::WhileLet,
             ExprKind::ForLoop(..) => ExprPrecedence::ForLoop,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
             ExprKind::Match(..) => ExprPrecedence::Match,
@@ -1116,26 +1115,17 @@ pub enum ExprKind {
     Cast(P<Expr>, P<Ty>),
     /// A type ascription (e.g., `42: usize`).
     Type(P<Expr>, P<Ty>),
+    /// A `let pat = expr` pseudo-expression that only occurs in the scrutinee
+    /// of `if` / `while` expressions. (e.g., `if let 0 = x { .. }`).
+    Let(Vec<P<Pat>>, P<Expr>),
     /// An `if` block, with an optional `else` block.
     ///
     /// `if expr { block } else { expr }`
     If(P<Expr>, P<Block>, Option<P<Expr>>),
-    /// An `if let` expression with an optional else block
-    ///
-    /// `if let pat = expr { block } else { expr }`
-    ///
-    /// This is desugared to a `match` expression.
-    IfLet(Vec<P<Pat>>, P<Expr>, P<Block>, Option<P<Expr>>),
-    /// A while loop, with an optional label
+    /// A while loop, with an optional label.
     ///
     /// `'label: while expr { block }`
     While(P<Expr>, P<Block>, Option<Label>),
-    /// A `while let` loop, with an optional label.
-    ///
-    /// `'label: while let pat = expr { block }`
-    ///
-    /// This is desugared to a combination of `loop` and `match` expressions.
-    WhileLet(Vec<P<Pat>>, P<Expr>, P<Block>, Option<Label>),
     /// A `for` loop, with an optional label.
     ///
     /// `'label: for pat in expr { block }`
