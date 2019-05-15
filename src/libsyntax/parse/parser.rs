@@ -2215,13 +2215,8 @@ impl<'a> Parser<'a> {
                     } else {
                         ex = ExprKind::Yield(None);
                     }
-                } else if self.token.is_keyword(kw::Let) {
-                    // Catch this syntax error here, instead of in `parse_ident`, so
-                    // that we can explicitly mention that let is not to be used as an expression
-                    let mut db = self.fatal("expected expression, found statement (`let`)");
-                    db.span_label(self.token.span, "expected expression");
-                    db.note("variable declaration using `let` is a statement");
-                    return Err(db);
+                } else if self.eat_keyword(kw::Let) {
+                    return self.parse_let_expr(attrs);
                 } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
                     let (await_hi, e_kind) = self.parse_await_macro_or_alt(lo, self.prev_span)?;
                     hi = await_hi;
@@ -2483,15 +2478,13 @@ impl<'a> Parser<'a> {
                 attrs.extend::<Vec<_>>(expr.attrs.into());
                 expr.attrs = attrs;
                 match expr.node {
-                    ExprKind::If(..) | ExprKind::IfLet(..) => {
-                        if !expr.attrs.is_empty() {
-                            // Just point to the first attribute in there...
-                            let span = expr.attrs[0].span;
+                    ExprKind::If(..) if !expr.attrs.is_empty() => {
+                        // Just point to the first attribute in there...
+                        let span = expr.attrs[0].span;
 
-                            self.span_err(span,
-                                "attributes are not yet allowed on `if` \
-                                expressions");
-                        }
+                        self.span_err(span,
+                            "attributes are not yet allowed on `if` \
+                            expressions");
                     }
                     _ => {}
                 }
@@ -3163,9 +3156,6 @@ impl<'a> Parser<'a> {
 
     /// Parses an `if` or `if let` expression (`if` token already eaten).
     fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
-        if self.check_keyword(kw::Let) {
-            return self.parse_if_let_expr(attrs);
-        }
         let lo = self.prev_span;
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
 
@@ -3197,22 +3187,18 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(lo.to(hi), ExprKind::If(cond, thn, els), attrs))
     }
 
-    /// Parses an `if let` expression (`if` token already eaten).
-    fn parse_if_let_expr(&mut self, attrs: ThinVec<Attribute>)
-                             -> PResult<'a, P<Expr>> {
+    /// Parses a `let $pats = $expr` pseudo-expression.
+    /// The `let` token has already been eaten.
+    fn parse_let_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
-        self.expect_keyword(kw::Let)?;
         let pats = self.parse_pats()?;
         self.expect(&token::Eq)?;
-        let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-        let thn = self.parse_block()?;
-        let (hi, els) = if self.eat_keyword(kw::Else) {
-            let expr = self.parse_else_expr()?;
-            (expr.span, Some(expr))
-        } else {
-            (thn.span, None)
-        };
-        Ok(self.mk_expr(lo.to(hi), ExprKind::IfLet(pats, expr, thn, els), attrs))
+
+        let expr = self.with_res(
+            Restrictions::NO_STRUCT_LITERAL,
+            |this| this.parse_assoc_expr_with(1 + AssocOp::LAnd.precedence(), None.into())
+        )?;
+        Ok(self.mk_expr(lo.to(expr.span), ExprKind::Let(pats, expr), attrs))
     }
 
     /// Parses `move |args| expr`.
@@ -3299,28 +3285,11 @@ impl<'a> Parser<'a> {
     fn parse_while_expr(&mut self, opt_label: Option<Label>,
                             span_lo: Span,
                             mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
-        if self.token.is_keyword(kw::Let) {
-            return self.parse_while_let_expr(opt_label, span_lo, attrs);
-        }
         let cond = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         let span = span_lo.to(body.span);
         return Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs));
-    }
-
-    /// Parses a `while let` expression (`while` token already eaten).
-    fn parse_while_let_expr(&mut self, opt_label: Option<Label>,
-                                span_lo: Span,
-                                mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
-        self.expect_keyword(kw::Let)?;
-        let pats = self.parse_pats()?;
-        self.expect(&token::Eq)?;
-        let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
-        let (iattrs, body) = self.parse_inner_attrs_and_block()?;
-        attrs.extend(iattrs);
-        let span = span_lo.to(body.span);
-        return Ok(self.mk_expr(span, ExprKind::WhileLet(pats, expr, body, opt_label), attrs));
     }
 
     // parse `loop {...}`, `loop` token already eaten
