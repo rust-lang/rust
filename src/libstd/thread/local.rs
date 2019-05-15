@@ -323,7 +323,6 @@ mod lazy {
 #[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
 pub mod statik {
     use super::lazy::LazyKeyInner;
-    use crate::cell::UnsafeCell;
     use crate::fmt;
 
     pub struct Key<T> {
