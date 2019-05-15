@@ -30,7 +30,6 @@ symbols! {
 
         // Keywords that are used in stable Rust.
         As:                 "as",
-        Box:                "box",
         Break:              "break",
         Const:              "const",
         Continue:           "continue",
@@ -69,6 +68,7 @@ symbols! {
         // Keywords that are used in unstable Rust or reserved for future use.
         Abstract:           "abstract",
         Become:             "become",
+        Box:                "box",
         Do:                 "do",
         Final:              "final",
         Macro:              "macro",
