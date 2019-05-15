@@ -256,20 +256,33 @@ impl Permission {
 
 /// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
-    /// Find the item granting the given kind of access to the given tag, and where that item is in the stack.
-    fn find_granting(&self, access: AccessKind, tag: Tag) -> Option<(usize, Permission)> {
-        self.borrows.iter()
+    /// Find the item granting the given kind of access to the given tag, and where
+    /// *the first incompatible item above it* is on the stack.
+    fn find_granting(&self, access: AccessKind, tag: Tag) -> Option<(Permission, usize)> {
+        let (perm, idx) = self.borrows.iter()
             .enumerate() // we also need to know *where* in the stack
             .rev() // search top-to-bottom
             // Return permission of first item that grants access.
             // We require a permission with the right tag, ensuring U3 and F3.
             .find_map(|(idx, item)|
                 if item.perm.grants(access) && tag == item.tag {
-                    Some((idx, item.perm))
+                    Some((item.perm, idx))
                 } else {
                     None
                 }
-            )
+            )?;
+
+        let mut first_incompatible_idx = idx+1;
+        while let Some(item) = self.borrows.get(first_incompatible_idx) {
+            if perm.compatible_with(access, item.perm) {
+                // Keep this, check next.
+                first_incompatible_idx += 1;
+            } else {
+                // Found it!
+                break;
+            }
+        }
+        return Some((perm, first_incompatible_idx));
     }
 
     /// Test if a memory `access` using pointer tagged `tag` is granted.
@@ -279,11 +292,11 @@ impl<'tcx> Stack {
         access: AccessKind,
         tag: Tag,
         global: &GlobalState,
-    ) -> EvalResult<'tcx, usize> {
+    ) -> EvalResult<'tcx> {
         // Two main steps: Find granting item, remove all incompatible items above.
 
         // Step 1: Find granting item.
-        let (granting_idx, granting_perm) = self.find_granting(access, tag)
+        let (granting_perm, first_incompatible_idx) = self.find_granting(access, tag)
             .ok_or_else(|| InterpError::MachineError(format!(
                 "no item granting {} access to tag {} found in borrow stack",
                 access, tag,
@@ -291,9 +304,7 @@ impl<'tcx> Stack {
 
         // Step 2: Remove everything incompatible above them.  Make sure we do not remove protected
         // items.
-        // We do *not* maintain a stack discipline here.  We could, in principle, decide to only
-        // keep the items immediately above `granting_idx` that are compatible, and then pop the rest.
-        // However, that kills off entire "branches" of pointer derivation too easily:
+        // For writes, this is a simple stack. For reads, however, it is not:
         // in `let raw = &mut *x as *mut _; let _val = *x;`, the second statement would pop the `Unique`
         // from the reborrow of the first statement, and subsequently also pop the `SharedReadWrite` for `raw`.
         // This pattern occurs a lot in the standard library: create a raw pointer, then also create a shared
@@ -301,9 +312,10 @@ impl<'tcx> Stack {
         {
             // Implemented with indices because there does not seem to be a nice iterator and range-based
             // API for this.
-            let mut cur = granting_idx + 1;
+            let mut cur = first_incompatible_idx;
             while let Some(item) = self.borrows.get(cur) {
-                if granting_perm.compatible_with(access, item.perm) {
+                // If this is a read, we double-check if we really want to kill this.
+                if access == AccessKind::Read && granting_perm.compatible_with(access, item.perm) {
                     // Keep this, check next.
                     cur += 1;
                 } else {
@@ -323,7 +335,7 @@ impl<'tcx> Stack {
         }
 
         // Done.
-        return Ok(granting_idx);
+        Ok(())
     }
 
     /// Deallocate a location: Like a write access, but also there must be no
@@ -391,7 +403,7 @@ impl<'tcx> Stack {
         };
         // Now we figure out which item grants our parent (`derived_from`) this kind of access.
         // We use that to determine where to put the new item.
-        let (derived_from_idx, _) = self.find_granting(access, derived_from)
+        let (_, first_incompatible_idx) = self.find_granting(access, derived_from)
             .ok_or_else(|| InterpError::MachineError(format!(
                 "no item to reborrow for {:?} from tag {} found in borrow stack", new.perm, derived_from,
             )))?;
@@ -412,14 +424,17 @@ impl<'tcx> Stack {
             // and we'd allow write access without invalidating frozen shared references!
             // This ensures F2b for `SharedReadWrite` by adding the new item below any
             // potentially existing `SharedReadOnly`.
-            derived_from_idx + 1
+            first_incompatible_idx
         } else {
             // A "safe" reborrow for a pointer that actually expects some aliasing guarantees.
             // Here, creating a reference actually counts as an access, and pops incompatible
             // stuff off the stack.
             // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
-            let check_idx = self.access(access, derived_from, global)?;
-            assert_eq!(check_idx, derived_from_idx, "somehow we saw different items??");
+            self.access(access, derived_from, global)?;
+            if access == AccessKind::Write {
+                // For write accesses, the position is the same as what it would have been weakly!
+                assert_eq!(first_incompatible_idx, self.borrows.len());
+            }
 
             // We insert "as far up as possible": We know only compatible items are remaining
             // on top of `derived_from`, and we want the new item at the top so that we
