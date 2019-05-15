@@ -1,13 +1,14 @@
 use ra_syntax::{
     SourceFile, TextUnit,
     algo::find_token_at_offset,
-    SyntaxKind::{self, *},
+    SyntaxKind::{self},
     ast::AstNode,
+    T
 };
 
 pub fn matching_brace(file: &SourceFile, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] =
-        &[L_CURLY, R_CURLY, L_BRACK, R_BRACK, L_PAREN, R_PAREN, L_ANGLE, R_ANGLE];
+        &[T!['{'], T!['}'], T!['['], T![']'], T!['('], T![')'], T![<], T![>]];
     let (brace_node, brace_idx) = find_token_at_offset(file.syntax(), offset)
         .filter_map(|node| {
             let idx = BRACES.iter().position(|&brace| brace == node.kind())?;

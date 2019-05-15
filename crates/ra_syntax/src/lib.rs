@@ -179,10 +179,7 @@ fn api_walkthrough() {
 
     // There's a bunch of traversal methods on `SyntaxNode`:
     assert_eq!(expr_syntax.parent(), Some(block.syntax()));
-    assert_eq!(
-        block.syntax().first_child_or_token().map(|it| it.kind()),
-        Some(SyntaxKind::L_CURLY)
-    );
+    assert_eq!(block.syntax().first_child_or_token().map(|it| it.kind()), Some(T!['{']));
     assert_eq!(
         expr_syntax.next_sibling_or_token().map(|it| it.kind()),
         Some(SyntaxKind::WHITESPACE)
@@ -191,9 +188,7 @@ fn api_walkthrough() {
     // As well as some iterator helpers:
     let f = expr_syntax.ancestors().find_map(ast::FnDef::cast);
     assert_eq!(f, Some(&*func));
-    assert!(expr_syntax
-        .siblings_with_tokens(Direction::Next)
-        .any(|it| it.kind() == SyntaxKind::R_CURLY));
+    assert!(expr_syntax.siblings_with_tokens(Direction::Next).any(|it| it.kind() == T!['}']));
     assert_eq!(
         expr_syntax.descendants_with_tokens().count(),
         8, // 5 tokens `1`, ` `, `+`, ` `, `!`

@@ -17,7 +17,8 @@ use crate::{
         text_token_source::TextTokenSource,
         text_tree_sink::TextTreeSink,
         lexer::{tokenize, Token},
-    }
+    },
+    T,
 };
 
 pub(crate) fn incremental_reparse(
@@ -122,16 +123,16 @@ fn find_reparsable_node(node: &SyntaxNode, range: TextRange) -> Option<(&SyntaxN
 
 fn is_balanced(tokens: &[Token]) -> bool {
     if tokens.is_empty()
-        || tokens.first().unwrap().kind != L_CURLY
-        || tokens.last().unwrap().kind != R_CURLY
+        || tokens.first().unwrap().kind != T!['{']
+        || tokens.last().unwrap().kind != T!['}']
     {
         return false;
     }
     let mut balance = 0usize;
     for t in &tokens[1..tokens.len() - 1] {
         match t.kind {
-            L_CURLY => balance += 1,
-            R_CURLY => {
+            T!['{'] => balance += 1,
+            T!['}'] => {
                 balance = match balance.checked_sub(1) {
                     Some(b) => b,
                     None => return false,

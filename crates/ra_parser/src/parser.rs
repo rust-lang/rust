@@ -6,6 +6,7 @@ use crate::{
     SyntaxKind::{self, ERROR, EOF, TOMBSTONE},
     TokenSource, ParseError, TokenSet,
     event::Event,
+    T
 };
 
 /// `Parser` struct provides the low-level API for
@@ -155,10 +156,10 @@ impl<'t> Parser<'t> {
 
         // Handle parser composites
         match kind {
-            DOTDOTDOT | DOTDOTEQ => {
+            T![...] | T![..=] => {
                 self.bump_compound(kind, 3);
             }
-            DOTDOT | COLONCOLON | EQEQ | FAT_ARROW | NEQ | THIN_ARROW => {
+            T![..] | T![::] | T![==] | T![=>] | T![!=] | T![->] => {
                 self.bump_compound(kind, 2);
             }
             _ => {
@@ -223,7 +224,7 @@ impl<'t> Parser<'t> {
 
     /// Create an error node and consume the next token.
     pub(crate) fn err_recover(&mut self, message: &str, recovery: TokenSet) {
-        if self.at(SyntaxKind::L_CURLY) || self.at(SyntaxKind::R_CURLY) || self.at_ts(recovery) {
+        if self.at(T!['{']) || self.at(T!['}']) || self.at_ts(recovery) {
             self.error(message);
         } else {
             let m = self.start();
@@ -253,19 +254,17 @@ impl<'t> Parser<'t> {
         let jn2 = self.token_source.is_token_joint_to_next(self.token_pos + n + 1);
         let la3 = self.token_source.token_kind(self.token_pos + n + 2);
 
-        use SyntaxKind::*;
-
         match kind {
-            DOT if jn1 && la2 == DOT && jn2 && la3 == DOT => Some((DOTDOTDOT, 3)),
-            DOT if jn1 && la2 == DOT && la3 == EQ => Some((DOTDOTEQ, 3)),
-            DOT if jn1 && la2 == DOT => Some((DOTDOT, 2)),
+            T![.] if jn1 && la2 == T![.] && jn2 && la3 == T![.] => Some((T![...], 3)),
+            T![.] if jn1 && la2 == T![.] && la3 == T![=] => Some((T![..=], 3)),
+            T![.] if jn1 && la2 == T![.] => Some((T![..], 2)),
 
-            COLON if jn1 && la2 == COLON => Some((COLONCOLON, 2)),
-            EQ if jn1 && la2 == EQ => Some((EQEQ, 2)),
-            EQ if jn1 && la2 == R_ANGLE => Some((FAT_ARROW, 2)),
+            T![:] if jn1 && la2 == T![:] => Some((T![::], 2)),
+            T![=] if jn1 && la2 == T![=] => Some((T![==], 2)),
+            T![=] if jn1 && la2 == T![>] => Some((T![=>], 2)),
 
-            EXCL if la2 == EQ => Some((NEQ, 2)),
-            MINUS if la2 == R_ANGLE => Some((THIN_ARROW, 2)),
+            T![!] if la2 == T![=] => Some((T![!=], 2)),
+            T![-] if la2 == T![>] => Some((T![->], 2)),
             _ => None,
         }
     }

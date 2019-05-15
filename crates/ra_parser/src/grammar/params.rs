@@ -36,27 +36,27 @@ impl Flavor {
 }
 
 fn list_(p: &mut Parser, flavor: Flavor) {
-    let (bra, ket) = if flavor.type_required() { (L_PAREN, R_PAREN) } else { (PIPE, PIPE) };
+    let (bra, ket) = if flavor.type_required() { (T!['('], T![')']) } else { (T![|], T![|]) };
     assert!(p.at(bra));
     let m = p.start();
     p.bump();
     if flavor.type_required() {
         opt_self_param(p);
     }
-    while !p.at(EOF) && !p.at(ket) && !(flavor.type_required() && p.at(DOTDOTDOT)) {
+    while !p.at(EOF) && !p.at(ket) && !(flavor.type_required() && p.at(T![...])) {
         if !p.at_ts(VALUE_PARAMETER_FIRST) {
             p.error("expected value parameter");
             break;
         }
         value_parameter(p, flavor);
         if !p.at(ket) {
-            p.expect(COMMA);
+            p.expect(T![,]);
         }
     }
     // test param_list_vararg
     // extern "C" { fn printf(format: *const i8, ...) -> i32; }
     if flavor.type_required() {
-        p.eat(DOTDOTDOT);
+        p.eat(T![...]);
     }
     p.expect(ket);
     m.complete(p, PARAM_LIST);
@@ -69,7 +69,7 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
     match flavor {
         Flavor::OptionalType | Flavor::Normal => {
             patterns::pattern(p);
-            if p.at(COLON) || flavor.type_required() {
+            if p.at(T![:]) || flavor.type_required() {
                 types::ascription(p)
             }
         }
@@ -85,10 +85,10 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
             // trait Foo {
             //     fn bar(_: u64, mut x: i32);
             // }
-            if (la0 == IDENT || la0 == UNDERSCORE) && la1 == COLON
-                || la0 == MUT_KW && la1 == IDENT && la2 == COLON
-                || la0 == AMP && la1 == IDENT && la2 == COLON
-                || la0 == AMP && la1 == MUT_KW && la2 == IDENT && la3 == COLON
+            if (la0 == IDENT || la0 == T![_]) && la1 == T![:]
+                || la0 == T![mut] && la1 == IDENT && la2 == T![:]
+                || la0 == T![&] && la1 == IDENT && la2 == T![:]
+                || la0 == T![&] && la1 == T![mut] && la2 == IDENT && la3 == T![:]
             {
                 patterns::pattern(p);
                 types::ascription(p);
@@ -110,16 +110,16 @@ fn value_parameter(p: &mut Parser, flavor: Flavor) {
 // }
 fn opt_self_param(p: &mut Parser) {
     let m;
-    if p.at(SELF_KW) || p.at(MUT_KW) && p.nth(1) == SELF_KW {
+    if p.at(T![self]) || p.at(T![mut]) && p.nth(1) == T![self] {
         m = p.start();
-        p.eat(MUT_KW);
-        p.eat(SELF_KW);
+        p.eat(T![mut]);
+        p.eat(T![self]);
         // test arb_self_types
         // impl S {
         //     fn a(self: &Self) {}
         //     fn b(mut self: Box<Self>) {}
         // }
-        if p.at(COLON) {
+        if p.at(T![:]) {
             types::ascription(p);
         }
     } else {
@@ -127,10 +127,10 @@ fn opt_self_param(p: &mut Parser) {
         let la2 = p.nth(2);
         let la3 = p.nth(3);
         let n_toks = match (p.current(), la1, la2, la3) {
-            (AMP, SELF_KW, _, _) => 2,
-            (AMP, MUT_KW, SELF_KW, _) => 3,
-            (AMP, LIFETIME, SELF_KW, _) => 3,
-            (AMP, LIFETIME, MUT_KW, SELF_KW) => 4,
+            (T![&], T![self], _, _) => 2,
+            (T![&], T![mut], T![self], _) => 3,
+            (T![&], LIFETIME, T![self], _) => 3,
+            (T![&], LIFETIME, T![mut], T![self]) => 4,
             _ => return,
         };
         m = p.start();
@@ -139,7 +139,7 @@ fn opt_self_param(p: &mut Parser) {
         }
     }
     m.complete(p, SELF_PARAM);
-    if !p.at(R_PAREN) {
-        p.expect(COMMA);
+    if !p.at(T![')']) {
+        p.expect(T![,]);
     }
 }

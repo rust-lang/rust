@@ -3,26 +3,26 @@ use super::*;
 pub(super) fn opt_type_arg_list(p: &mut Parser, colon_colon_required: bool) {
     let m;
     match (colon_colon_required, p.nth(0), p.nth(1)) {
-        (_, COLONCOLON, L_ANGLE) => {
+        (_, T![::], T![<]) => {
             m = p.start();
             p.bump();
             p.bump();
         }
-        (false, L_ANGLE, EQ) => return,
-        (false, L_ANGLE, _) => {
+        (false, T![<], T![=]) => return,
+        (false, T![<], _) => {
             m = p.start();
             p.bump();
         }
         _ => return,
     };
 
-    while !p.at(EOF) && !p.at(R_ANGLE) {
+    while !p.at(EOF) && !p.at(T![>]) {
         type_arg(p);
-        if !p.at(R_ANGLE) && !p.expect(COMMA) {
+        if !p.at(T![>]) && !p.expect(T![,]) {
             break;
         }
     }
-    p.expect(R_ANGLE);
+    p.expect(T![>]);
     m.complete(p, TYPE_ARG_LIST);
 }
 
@@ -35,7 +35,7 @@ fn type_arg(p: &mut Parser) {
             p.bump();
             m.complete(p, LIFETIME_ARG);
         }
-        IDENT if p.nth(1) == EQ => {
+        IDENT if p.nth(1) == T![=] => {
             name_ref(p);
             p.bump();
             types::type_(p);

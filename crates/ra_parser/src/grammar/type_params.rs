@@ -1,18 +1,18 @@
 use super::*;
 
 pub(super) fn opt_type_param_list(p: &mut Parser) {
-    if !p.at(L_ANGLE) {
+    if !p.at(T![<]) {
         return;
     }
     type_param_list(p);
 }
 
 fn type_param_list(p: &mut Parser) {
-    assert!(p.at(L_ANGLE));
+    assert!(p.at(T![<]));
     let m = p.start();
     p.bump();
 
-    while !p.at(EOF) && !p.at(R_ANGLE) {
+    while !p.at(EOF) && !p.at(T![>]) {
         let m = p.start();
 
         // test generic_lifetime_type_attribute
@@ -28,18 +28,18 @@ fn type_param_list(p: &mut Parser) {
                 p.err_and_bump("expected type parameter")
             }
         }
-        if !p.at(R_ANGLE) && !p.expect(COMMA) {
+        if !p.at(T![>]) && !p.expect(T![,]) {
             break;
         }
     }
-    p.expect(R_ANGLE);
+    p.expect(T![>]);
     m.complete(p, TYPE_PARAM_LIST);
 }
 
 fn lifetime_param(p: &mut Parser, m: Marker) {
     assert!(p.at(LIFETIME));
     p.bump();
-    if p.at(COLON) {
+    if p.at(T![:]) {
         lifetime_bounds(p);
     }
     m.complete(p, LIFETIME_PARAM);
@@ -48,12 +48,12 @@ fn lifetime_param(p: &mut Parser, m: Marker) {
 fn type_param(p: &mut Parser, m: Marker) {
     assert!(p.at(IDENT));
     name(p);
-    if p.at(COLON) {
+    if p.at(T![:]) {
         bounds(p);
     }
     // test type_param_default
     // struct S<T = i32>;
-    if p.at(EQ) {
+    if p.at(T![=]) {
         p.bump();
         types::type_(p)
     }
@@ -63,17 +63,17 @@ fn type_param(p: &mut Parser, m: Marker) {
 // test type_param_bounds
 // struct S<T: 'a + ?Sized + (Copy)>;
 pub(super) fn bounds(p: &mut Parser) {
-    assert!(p.at(COLON));
+    assert!(p.at(T![:]));
     p.bump();
     bounds_without_colon(p);
 }
 
 fn lifetime_bounds(p: &mut Parser) {
-    assert!(p.at(COLON));
+    assert!(p.at(T![:]));
     p.bump();
     while p.at(LIFETIME) {
         p.bump();
-        if !p.eat(PLUS) {
+        if !p.eat(T![+]) {
             break;
         }
     }
@@ -81,7 +81,7 @@ fn lifetime_bounds(p: &mut Parser) {
 
 pub(super) fn bounds_without_colon_m(p: &mut Parser, marker: Marker) -> CompletedMarker {
     while type_bound(p) {
-        if !p.eat(PLUS) {
+        if !p.eat(T![+]) {
             break;
         }
     }
@@ -96,11 +96,11 @@ pub(super) fn bounds_without_colon(p: &mut Parser) {
 
 fn type_bound(p: &mut Parser) -> bool {
     let m = p.start();
-    let has_paren = p.eat(L_PAREN);
-    p.eat(QUESTION);
+    let has_paren = p.eat(T!['(']);
+    p.eat(T![?]);
     match p.current() {
         LIFETIME => p.bump(),
-        FOR_KW => types::for_type(p),
+        T![for] => types::for_type(p),
         _ if paths::is_path_start(p) => types::path_type_(p, false),
         _ => {
             m.abandon(p);
@@ -108,7 +108,7 @@ fn type_bound(p: &mut Parser) -> bool {
         }
     }
     if has_paren {
-        p.expect(R_PAREN);
+        p.expect(T![')']);
     }
     m.complete(p, TYPE_BOUND);
 
@@ -124,7 +124,7 @@ fn type_bound(p: &mut Parser) -> bool {
 //    <T as Iterator>::Item: 'a
 // {}
 pub(super) fn opt_where_clause(p: &mut Parser) {
-    if !p.at(WHERE_KW) {
+    if !p.at(T![where]) {
         return;
     }
     let m = p.start();
@@ -133,7 +133,7 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
     while is_where_predicate(p) {
         where_predicate(p);
 
-        let comma = p.eat(COMMA);
+        let comma = p.eat(T![,]);
 
         if is_where_clause_end(p) {
             break;
@@ -150,13 +150,13 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
 fn is_where_predicate(p: &mut Parser) -> bool {
     match p.current() {
         LIFETIME => true,
-        IMPL_KW => false,
+        T![impl ] => false,
         token => types::TYPE_FIRST.contains(token),
     }
 }
 
 fn is_where_clause_end(p: &mut Parser) -> bool {
-    p.current() == L_CURLY || p.current() == SEMI || p.current() == EQ
+    p.current() == T!['{'] || p.current() == T![;] || p.current() == T![=]
 }
 
 fn where_predicate(p: &mut Parser) {
@@ -164,13 +164,13 @@ fn where_predicate(p: &mut Parser) {
     match p.current() {
         LIFETIME => {
             p.bump();
-            if p.at(COLON) {
+            if p.at(T![:]) {
                 bounds(p);
             } else {
                 p.error("expected colon");
             }
         }
-        IMPL_KW => {
+        T![impl ] => {
             p.error("expected lifetime or type");
         }
         _ => {
@@ -181,7 +181,7 @@ fn where_predicate(p: &mut Parser) {
             // { }
             types::type_(p);
 
-            if p.at(COLON) {
+            if p.at(T![:]) {
                 bounds(p);
             } else {
                 p.error("expected colon");

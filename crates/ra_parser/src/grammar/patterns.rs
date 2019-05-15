@@ -16,10 +16,10 @@ pub(super) fn pattern_list(p: &mut Parser) {
 /// Parses a pattern list separated by pipes `|`
 /// using the given `recovery_set`
 pub(super) fn pattern_list_r(p: &mut Parser, recovery_set: TokenSet) {
-    p.eat(PIPE);
+    p.eat(T![|]);
     pattern_r(p, recovery_set);
 
-    while p.eat(PIPE) {
+    while p.eat(T![|]) {
         pattern_r(p, recovery_set);
     }
 }
@@ -34,7 +34,7 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
         //         200 .. 301=> (),
         //     }
         // }
-        if p.at(DOTDOTDOT) || p.at(DOTDOTEQ) || p.at(DOTDOT) {
+        if p.at(T![...]) || p.at(T![..=]) || p.at(T![..]) {
             let m = lhs.precede(p);
             p.bump();
             atom_pat(p, recovery_set);
@@ -44,7 +44,7 @@ pub(super) fn pattern_r(p: &mut Parser, recovery_set: TokenSet) {
         // fn main() {
         //     let m!(x) = 0;
         // }
-        else if lhs.kind() == PATH_PAT && p.at(EXCL) {
+        else if lhs.kind() == PATH_PAT && p.at(T![!]) {
             let m = lhs.precede(p);
             items::macro_call_after_excl(p);
             m.complete(p, MACRO_CALL);
@@ -58,9 +58,9 @@ const PAT_RECOVERY_SET: TokenSet =
 fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     let la0 = p.nth(0);
     let la1 = p.nth(1);
-    if la0 == REF_KW
-        || la0 == MUT_KW
-        || (la0 == IDENT && !(la1 == COLONCOLON || la1 == L_PAREN || la1 == L_CURLY || la1 == EXCL))
+    if la0 == T![ref]
+        || la0 == T![mut]
+        || (la0 == IDENT && !(la1 == T![::] || la1 == T!['('] || la1 == T!['{'] || la1 == T![!]))
     {
         return Some(bind_pat(p, true));
     }
@@ -73,10 +73,10 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     }
 
     let m = match la0 {
-        UNDERSCORE => placeholder_pat(p),
-        AMP => ref_pat(p),
-        L_PAREN => tuple_pat(p),
-        L_BRACK => slice_pat(p),
+        T![_] => placeholder_pat(p),
+        T![&] => ref_pat(p),
+        T!['('] => tuple_pat(p),
+        T!['['] => slice_pat(p),
         _ => {
             p.err_recover("expected pattern", recovery_set);
             return None;
@@ -86,7 +86,7 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
 }
 
 fn is_literal_pat_start(p: &mut Parser) -> bool {
-    p.at(MINUS) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER)
+    p.at(T![-]) && (p.nth(1) == INT_NUMBER || p.nth(1) == FLOAT_NUMBER)
         || p.at_ts(expressions::LITERAL_FIRST)
 }
 
@@ -102,7 +102,7 @@ fn is_literal_pat_start(p: &mut Parser) -> bool {
 fn literal_pat(p: &mut Parser) -> CompletedMarker {
     assert!(is_literal_pat_start(p));
     let m = p.start();
-    if p.at(MINUS) {
+    if p.at(T![-]) {
         p.bump();
     }
     expressions::literal(p);
@@ -121,11 +121,11 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
     let m = p.start();
     paths::expr_path(p);
     let kind = match p.current() {
-        L_PAREN => {
+        T!['('] => {
             tuple_pat_fields(p);
             TUPLE_STRUCT_PAT
         }
-        L_CURLY => {
+        T!['{'] => {
             field_pat_list(p);
             STRUCT_PAT
         }
@@ -142,10 +142,10 @@ fn path_pat(p: &mut Parser) -> CompletedMarker {
 //     let S(_, .. , x) = ();
 // }
 fn tuple_pat_fields(p: &mut Parser) {
-    assert!(p.at(L_PAREN));
+    assert!(p.at(T!['(']));
     p.bump();
-    pat_list(p, R_PAREN);
-    p.expect(R_PAREN);
+    pat_list(p, T![')']);
+    p.expect(T![')']);
 }
 
 // test field_pat_list
@@ -156,29 +156,29 @@ fn tuple_pat_fields(p: &mut Parser) {
 //     let S { h: _, } = ();
 // }
 fn field_pat_list(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
-    while !p.at(EOF) && !p.at(R_CURLY) {
+    while !p.at(EOF) && !p.at(T!['}']) {
         match p.current() {
-            DOTDOT => p.bump(),
-            IDENT if p.nth(1) == COLON => field_pat(p),
-            L_CURLY => error_block(p, "expected ident"),
+            T![..] => p.bump(),
+            IDENT if p.nth(1) == T![:] => field_pat(p),
+            T!['{'] => error_block(p, "expected ident"),
             _ => {
                 bind_pat(p, false);
             }
         }
-        if !p.at(R_CURLY) {
-            p.expect(COMMA);
+        if !p.at(T!['}']) {
+            p.expect(T![,]);
         }
     }
-    p.expect(R_CURLY);
+    p.expect(T!['}']);
     m.complete(p, FIELD_PAT_LIST);
 }
 
 fn field_pat(p: &mut Parser) {
     assert!(p.at(IDENT));
-    assert!(p.nth(1) == COLON);
+    assert!(p.nth(1) == T![:]);
 
     let m = p.start();
     name(p);
@@ -190,7 +190,7 @@ fn field_pat(p: &mut Parser) {
 // test placeholder_pat
 // fn main() { let _ = (); }
 fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(UNDERSCORE));
+    assert!(p.at(T![_]));
     let m = p.start();
     p.bump();
     m.complete(p, PLACEHOLDER_PAT)
@@ -202,10 +202,10 @@ fn placeholder_pat(p: &mut Parser) -> CompletedMarker {
 //     let &mut b = ();
 // }
 fn ref_pat(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(AMP));
+    assert!(p.at(T![&]));
     let m = p.start();
     p.bump();
-    p.eat(MUT_KW);
+    p.eat(T![mut]);
     pattern(p);
     m.complete(p, REF_PAT)
 }
@@ -215,7 +215,7 @@ fn ref_pat(p: &mut Parser) -> CompletedMarker {
 //     let (a, b, ..) = ();
 // }
 fn tuple_pat(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(L_PAREN));
+    assert!(p.at(T!['(']));
     let m = p.start();
     tuple_pat_fields(p);
     m.complete(p, TUPLE_PAT)
@@ -226,18 +226,18 @@ fn tuple_pat(p: &mut Parser) -> CompletedMarker {
 //     let [a, b, ..] = [];
 // }
 fn slice_pat(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(L_BRACK));
+    assert!(p.at(T!['[']));
     let m = p.start();
     p.bump();
-    pat_list(p, R_BRACK);
-    p.expect(R_BRACK);
+    pat_list(p, T![']']);
+    p.expect(T![']']);
     m.complete(p, SLICE_PAT)
 }
 
 fn pat_list(p: &mut Parser, ket: SyntaxKind) {
     while !p.at(EOF) && !p.at(ket) {
         match p.current() {
-            DOTDOT => p.bump(),
+            T![..] => p.bump(),
             _ => {
                 if !p.at_ts(PATTERN_FIRST) {
                     p.error("expected a pattern");
@@ -247,7 +247,7 @@ fn pat_list(p: &mut Parser, ket: SyntaxKind) {
             }
         }
         if !p.at(ket) {
-            p.expect(COMMA);
+            p.expect(T![,]);
         }
     }
 }
@@ -263,10 +263,10 @@ fn pat_list(p: &mut Parser, ket: SyntaxKind) {
 // }
 fn bind_pat(p: &mut Parser, with_at: bool) -> CompletedMarker {
     let m = p.start();
-    p.eat(REF_KW);
-    p.eat(MUT_KW);
+    p.eat(T![ref]);
+    p.eat(T![mut]);
     name(p);
-    if with_at && p.eat(AT) {
+    if with_at && p.eat(T![@]) {
         pattern(p);
     }
     m.complete(p, BIND_PAT)

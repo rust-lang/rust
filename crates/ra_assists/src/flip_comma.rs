@@ -1,14 +1,14 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
+    T,
     Direction,
-    SyntaxKind::COMMA,
     algo::non_trivia_sibling,
 };
 
 use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn flip_comma(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let comma = ctx.token_at_offset().find(|leaf| leaf.kind() == COMMA)?;
+    let comma = ctx.token_at_offset().find(|leaf| leaf.kind() == T![,])?;
     let prev = non_trivia_sibling(comma.into(), Direction::Prev)?;
     let next = non_trivia_sibling(comma.into(), Direction::Next)?;
     ctx.add_action(AssistId("flip_comma"), "flip comma", |edit| {

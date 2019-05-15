@@ -1,8 +1,9 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
+    T,
     AstNode, SyntaxNode, TextUnit,
     ast::{self, VisibilityOwner, NameOwner},
-    SyntaxKind::{VISIBILITY, FN_KW, MOD_KW, STRUCT_KW, ENUM_KW, TRAIT_KW, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF, IDENT, WHITESPACE, COMMENT, ATTR},
+    SyntaxKind::{VISIBILITY, FN_DEF, MODULE, STRUCT_DEF, ENUM_DEF, TRAIT_DEF, IDENT, WHITESPACE, COMMENT, ATTR},
 };
 
 use crate::{AssistCtx, Assist, AssistId};
@@ -16,7 +17,7 @@ pub(crate) fn change_visibility(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
 
 fn add_vis(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let item_keyword = ctx.token_at_offset().find(|leaf| match leaf.kind() {
-        FN_KW | MOD_KW | STRUCT_KW | ENUM_KW | TRAIT_KW => true,
+        T![fn] | T![mod] | T![struct] | T![enum] | T![trait] => true,
         _ => false,
     });
 

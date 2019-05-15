@@ -4,15 +4,15 @@ use super::*;
 // trait T<U>: Hash + Clone where U: Copy {}
 // trait X<U: Debug + Display>: Hash + Clone where U: Copy {}
 pub(super) fn trait_def(p: &mut Parser) {
-    assert!(p.at(TRAIT_KW));
+    assert!(p.at(T![trait]));
     p.bump();
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
-    if p.at(COLON) {
+    if p.at(T![:]) {
         type_params::bounds(p);
     }
     type_params::opt_where_clause(p);
-    if p.at(L_CURLY) {
+    if p.at(T!['{']) {
         trait_item_list(p);
     } else {
         p.error("expected `{`");
@@ -27,24 +27,24 @@ pub(super) fn trait_def(p: &mut Parser) {
 //     fn bar(&self);
 // }
 pub(crate) fn trait_item_list(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
-    while !p.at(EOF) && !p.at(R_CURLY) {
-        if p.at(L_CURLY) {
+    while !p.at(EOF) && !p.at(T!['}']) {
+        if p.at(T!['{']) {
             error_block(p, "expected an item");
             continue;
         }
         item_or_macro(p, true, ItemFlavor::Trait);
     }
-    p.expect(R_CURLY);
+    p.expect(T!['}']);
     m.complete(p, ITEM_LIST);
 }
 
 // test impl_block
 // impl Foo {}
 pub(super) fn impl_block(p: &mut Parser) {
-    assert!(p.at(IMPL_KW));
+    assert!(p.at(T![impl ]));
     p.bump();
     if choose_type_params_over_qpath(p) {
         type_params::opt_type_param_list(p);
@@ -55,13 +55,13 @@ pub(super) fn impl_block(p: &mut Parser) {
 
     // test impl_block_neg
     // impl !Send for X {}
-    p.eat(EXCL);
+    p.eat(T![!]);
     impl_type(p);
-    if p.eat(FOR_KW) {
+    if p.eat(T![for]) {
         impl_type(p);
     }
     type_params::opt_where_clause(p);
-    if p.at(L_CURLY) {
+    if p.at(T!['{']) {
         impl_item_list(p);
     } else {
         p.error("expected `{`");
@@ -76,7 +76,7 @@ pub(super) fn impl_block(p: &mut Parser) {
 //     fn bar(&self) {}
 // }
 pub(crate) fn impl_item_list(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
     // test impl_inner_attributes
@@ -87,14 +87,14 @@ pub(crate) fn impl_item_list(p: &mut Parser) {
     // }
     attributes::inner_attributes(p);
 
-    while !p.at(EOF) && !p.at(R_CURLY) {
-        if p.at(L_CURLY) {
+    while !p.at(EOF) && !p.at(T!['}']) {
+        if p.at(T!['{']) {
             error_block(p, "expected an item");
             continue;
         }
         item_or_macro(p, true, ItemFlavor::Mod);
     }
-    p.expect(R_CURLY);
+    p.expect(T!['}']);
     m.complete(p, ITEM_LIST);
 }
 
@@ -114,14 +114,14 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
     // we disambiguate it in favor of generics (`impl<T> ::absolute::Path<T> { ... }`)
     // because this is what almost always expected in practice, qualified paths in impls
     // (`impl <Type>::AssocTy { ... }`) aren't even allowed by type checker at the moment.
-    if !p.at(L_ANGLE) {
+    if !p.at(T![<]) {
         return false;
     }
-    if p.nth(1) == POUND || p.nth(1) == R_ANGLE {
+    if p.nth(1) == T![#] || p.nth(1) == T![>] {
         return true;
     }
     (p.nth(1) == LIFETIME || p.nth(1) == IDENT)
-        && (p.nth(2) == R_ANGLE || p.nth(2) == COMMA || p.nth(2) == COLON || p.nth(2) == EQ)
+        && (p.nth(2) == T![>] || p.nth(2) == T![,] || p.nth(2) == T![:] || p.nth(2) == T![=])
 }
 
 // test_err impl_type
@@ -130,7 +130,7 @@ fn choose_type_params_over_qpath(p: &Parser) -> bool {
 // impl impl NotType {}
 // impl Trait2 for impl NotType {}
 pub(crate) fn impl_type(p: &mut Parser) {
-    if p.at(IMPL_KW) {
+    if p.at(T![impl ]) {
         p.error("expected trait or type");
         return;
     }

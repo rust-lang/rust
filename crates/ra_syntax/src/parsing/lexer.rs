@@ -7,6 +7,7 @@ mod strings;
 use crate::{
     SyntaxKind::{self, *},
     TextUnit,
+    T,
 };
 
 use self::{
@@ -90,16 +91,16 @@ fn next_token_inner(c: char, ptr: &mut Ptr) -> SyntaxKind {
     match c {
         // Possiblily multi-byte tokens,
         // but we only produce single byte token now
-        // DOTDOTDOT, DOTDOT, DOTDOTEQ, DOT
-        '.' => return DOT,
-        // COLONCOLON COLON
-        ':' => return COLON,
-        // EQEQ FATARROW EQ
-        '=' => return EQ,
-        // NEQ EXCL
-        '!' => return EXCL,
-        // THIN_ARROW MINUS
-        '-' => return MINUS,
+        // T![...], T![..], T![..=], T![.]
+        '.' => return T![.],
+        // T![::] T![:]
+        ':' => return T![:],
+        // T![==] FATARROW T![=]
+        '=' => return T![=],
+        // T![!=] T![!]
+        '!' => return T![!],
+        // T![->] T![-]
+        '-' => return T![-],
 
         // If the character is an ident start not followed by another single
         // quote, then this is a lifetime name:
@@ -148,8 +149,8 @@ fn scan_ident(c: char, ptr: &mut Ptr) -> SyntaxKind {
             ptr.bump();
             true
         }
-        ('_', None) => return UNDERSCORE,
-        ('_', Some(c)) if !is_ident_continue(c) => return UNDERSCORE,
+        ('_', None) => return T![_],
+        ('_', Some(c)) if !is_ident_continue(c) => return T![_],
         _ => false,
     };
     ptr.bump_while(is_ident_continue);

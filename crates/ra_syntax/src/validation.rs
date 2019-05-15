@@ -5,9 +5,10 @@ mod field_expr;
 
 use crate::{
     SourceFile, SyntaxError, AstNode, SyntaxNode, TextUnit,
-    SyntaxKind::{L_CURLY, R_CURLY, BYTE, BYTE_STRING, STRING, CHAR},
+    SyntaxKind::{BYTE, BYTE_STRING, STRING, CHAR},
     ast,
     algo::visit::{visitor_ctx, VisitorCtx},
+    T,
 };
 
 pub(crate) use unescape::EscapeError;
@@ -83,8 +84,8 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
     let mut stack = Vec::new();
     for node in root.descendants() {
         match node.kind() {
-            L_CURLY => stack.push(node),
-            R_CURLY => {
+            T!['{'] => stack.push(node),
+            T!['}'] => {
                 if let Some(pair) = stack.pop() {
                     assert_eq!(
                         node.parent(),

@@ -157,7 +157,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             })
             .next()
             .and_then(|it| it.as_token())
-            .filter(|node| node.kind() == COMMA)
+            .filter(|node| node.kind() == T![,])
     }
 
     if let Some(comma_node) = nearby_comma(node, Direction::Prev) {

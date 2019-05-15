@@ -1,7 +1,7 @@
 use ra_parser::{TreeSink, ParseError};
 use ra_syntax::{
     AstNode, SyntaxNode, TextRange, SyntaxKind, SmolStr, SyntaxTreeBuilder, TreeArc, SyntaxElement,
-    ast, SyntaxKind::*, TextUnit
+    ast, SyntaxKind::*, TextUnit, T
 };
 
 use crate::subtree_source::{SubtreeTokenSource, Querier};
@@ -211,9 +211,9 @@ fn convert_tt(
     let first_child = tt.first_child_or_token()?;
     let last_child = tt.last_child_or_token()?;
     let (delimiter, skip_first) = match (first_child.kind(), last_child.kind()) {
-        (L_PAREN, R_PAREN) => (tt::Delimiter::Parenthesis, true),
-        (L_CURLY, R_CURLY) => (tt::Delimiter::Brace, true),
-        (L_BRACK, R_BRACK) => (tt::Delimiter::Bracket, true),
+        (T!['('], T![')']) => (tt::Delimiter::Parenthesis, true),
+        (T!['{'], T!['}']) => (tt::Delimiter::Brace, true),
+        (T!['['], T![']']) => (tt::Delimiter::Bracket, true),
         _ => (tt::Delimiter::None, false),
     };
 
@@ -248,23 +248,22 @@ fn convert_tt(
 
                     token_trees.push(tt::Leaf::from(tt::Punct { char, spacing }).into());
                 } else {
-                    let child: tt::TokenTree = if token.kind() == SyntaxKind::TRUE_KW
-                        || token.kind() == SyntaxKind::FALSE_KW
-                    {
-                        tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
-                    } else if token.kind().is_keyword()
-                        || token.kind() == IDENT
-                        || token.kind() == LIFETIME
-                    {
-                        let relative_range = token.range() - global_offset;
-                        let id = token_map.alloc(relative_range);
-                        let text = token.text().clone();
-                        tt::Leaf::from(tt::Ident { text, id }).into()
-                    } else if token.kind().is_literal() {
-                        tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
-                    } else {
-                        return None;
-                    };
+                    let child: tt::TokenTree =
+                        if token.kind() == T![true] || token.kind() == T![false] {
+                            tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
+                        } else if token.kind().is_keyword()
+                            || token.kind() == IDENT
+                            || token.kind() == LIFETIME
+                        {
+                            let relative_range = token.range() - global_offset;
+                            let id = token_map.alloc(relative_range);
+                            let text = token.text().clone();
+                            tt::Leaf::from(tt::Ident { text, id }).into()
+                        } else if token.kind().is_literal() {
+                            tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
+                        } else {
+                            return None;
+                        };
                     token_trees.push(child);
                 }
             }
@@ -305,10 +304,8 @@ impl<'a, Q: Querier> TtTreeSink<'a, Q> {
 }
 
 fn is_delimiter(kind: SyntaxKind) -> bool {
-    use SyntaxKind::*;
-
     match kind {
-        L_PAREN | L_BRACK | L_CURLY | R_PAREN | R_BRACK | R_CURLY => true,
+        T!['('] | T!['['] | T!['{'] | T![')'] | T![']'] | T!['}'] => true,
         _ => false,
     }
 }

@@ -38,7 +38,7 @@ pub(crate) enum Event {
     /// The events for it would look like this:
     ///
     ///
-    /// START(PATH) IDENT('foo') FINISH START(PATH) COLONCOLON IDENT('bar') FINISH
+    /// START(PATH) IDENT('foo') FINISH START(PATH) T![::] IDENT('bar') FINISH
     ///       |                          /\
     ///       |                          |
     ///       +------forward-parent------+

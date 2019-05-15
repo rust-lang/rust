@@ -1,10 +1,10 @@
 use super::*;
 
 pub(super) fn use_item(p: &mut Parser, m: Marker) {
-    assert!(p.at(USE_KW));
+    assert!(p.at(T![use]));
     p.bump();
     use_tree(p);
-    p.expect(SEMI);
+    p.expect(T![;]);
     m.complete(p, USE_ITEM);
 }
 
@@ -28,8 +28,8 @@ fn use_tree(p: &mut Parser) {
         // use ::*;
         // use some::path::{*};
         // use some::path::{::*};
-        (STAR, _) => p.bump(),
-        (COLONCOLON, STAR) => {
+        (T![*], _) => p.bump(),
+        (T![::], T![*]) => {
             // Parse `use ::*;`, which imports all from the crate root in Rust 2015
             // This is invalid inside a use_tree_list, (e.g. `use some::path::{::*}`)
             // but still parses and errors later: ('crate root in paths can only be used in start position')
@@ -47,8 +47,8 @@ fn use_tree(p: &mut Parser) {
         // use {path::from::root}; // Rust 2015
         // use ::{some::arbritrary::path}; // Rust 2015
         // use ::{{{crate::export}}}; // Nonsensical but perfectly legal nestnig
-        (L_CURLY, _) | (COLONCOLON, L_CURLY) => {
-            if p.at(COLONCOLON) {
+        (T!['{'], _) | (T![::], T!['{']) => {
+            if p.at(T![::]) {
                 p.bump();
             }
             use_tree_list(p);
@@ -68,7 +68,7 @@ fn use_tree(p: &mut Parser) {
         _ if paths::is_path_start(p) => {
             paths::use_path(p);
             match p.current() {
-                AS_KW => {
+                T![as] => {
                     // test use_alias
                     // use some::path as some_name;
                     // use some::{
@@ -80,16 +80,16 @@ fn use_tree(p: &mut Parser) {
                     // use Trait as _;
                     opt_alias(p);
                 }
-                COLONCOLON => {
+                T![::] => {
                     p.bump();
                     match p.current() {
-                        STAR => {
+                        T![*] => {
                             p.bump();
                         }
                         // test use_tree_list_after_path
                         // use crate::{Item};
                         // use self::{Item};
-                        L_CURLY => use_tree_list(p),
+                        T!['{'] => use_tree_list(p),
                         _ => {
                             // is this unreachable?
                             p.error("expected `{` or `*`");
@@ -109,15 +109,15 @@ fn use_tree(p: &mut Parser) {
 }
 
 pub(crate) fn use_tree_list(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
     p.bump();
-    while !p.at(EOF) && !p.at(R_CURLY) {
+    while !p.at(EOF) && !p.at(T!['}']) {
         use_tree(p);
-        if !p.at(R_CURLY) {
-            p.expect(COMMA);
+        if !p.at(T!['}']) {
+            p.expect(T![,]);
         }
     }
-    p.expect(R_CURLY);
+    p.expect(T!['}']);
     m.complete(p, USE_TREE_LIST);
 }

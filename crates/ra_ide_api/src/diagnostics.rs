@@ -4,7 +4,7 @@ use itertools::Itertools;
 use hir::{source_binder, diagnostics::{Diagnostic as _, DiagnosticSink}};
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    Location, SourceFile, SyntaxKind, TextRange, SyntaxNode,
+    T, Location, SourceFile, TextRange, SyntaxNode,
     ast::{self, AstNode, NamedFieldList, NamedField},
 };
 use ra_assists::ast_editor::{AstEditor, AstBuilder};
@@ -130,9 +130,7 @@ fn text_edit_for_remove_unnecessary_braces_with_self_in_use_statement(
     single_use_tree: &ast::UseTree,
 ) -> Option<TextEdit> {
     let use_tree_list_node = single_use_tree.syntax().parent()?;
-    if single_use_tree.path()?.segment()?.syntax().first_child_or_token()?.kind()
-        == SyntaxKind::SELF_KW
-    {
+    if single_use_tree.path()?.segment()?.syntax().first_child_or_token()?.kind() == T![self] {
         let start = use_tree_list_node.prev_sibling_or_token()?.range().start();
         let end = use_tree_list_node.range().end();
         let range = TextRange::from_to(start, end);

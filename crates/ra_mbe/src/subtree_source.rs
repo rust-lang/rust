@@ -1,5 +1,5 @@
 use ra_parser::{TokenSource};
-use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*};
+use ra_syntax::{classify_literal, SmolStr, SyntaxKind, SyntaxKind::*, T};
 use std::cell::{RefCell};
 
 // A Sequece of Token,
@@ -284,9 +284,9 @@ impl<'a> TokenSource for SubtreeTokenSource<'a> {
 
 fn convert_delim(d: tt::Delimiter, closing: bool) -> TtToken {
     let (kinds, texts) = match d {
-        tt::Delimiter::Parenthesis => ([L_PAREN, R_PAREN], "()"),
-        tt::Delimiter::Brace => ([L_CURLY, R_CURLY], "{}"),
-        tt::Delimiter::Bracket => ([L_BRACK, R_BRACK], "[]"),
+        tt::Delimiter::Parenthesis => ([T!['('], T![')']], "()"),
+        tt::Delimiter::Brace => ([T!['{'], T!['}']], "{}"),
+        tt::Delimiter::Bracket => ([T!['['], T![']']], "[]"),
         tt::Delimiter::None => ([L_DOLLAR, R_DOLLAR], ""),
     };
 
@@ -299,8 +299,8 @@ fn convert_delim(d: tt::Delimiter, closing: bool) -> TtToken {
 fn convert_literal(l: &tt::Literal) -> TtToken {
     let kind =
         classify_literal(&l.text).map(|tkn| tkn.kind).unwrap_or_else(|| match l.text.as_ref() {
-            "true" => SyntaxKind::TRUE_KW,
-            "false" => SyntaxKind::FALSE_KW,
+            "true" => T![true],
+            "false" => T![false],
             _ => panic!("Fail to convert given literal {:#?}", &l),
         });
 
@@ -320,11 +320,11 @@ fn convert_ident(ident: &tt::Ident) -> TtToken {
 fn convert_punct(p: &tt::Punct) -> TtToken {
     let kind = match p.char {
         // lexer may produce compound tokens for these ones
-        '.' => DOT,
-        ':' => COLON,
-        '=' => EQ,
-        '!' => EXCL,
-        '-' => MINUS,
+        '.' => T![.],
+        ':' => T![:],
+        '=' => T![=],
+        '!' => T![!],
+        '-' => T![-],
         c => SyntaxKind::from_char(c).unwrap(),
     };
     let text = {

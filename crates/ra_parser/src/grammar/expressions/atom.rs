@@ -60,29 +60,29 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
     if let Some(m) = literal(p) {
         return Some((m, BlockLike::NotBlock));
     }
-    if paths::is_path_start(p) || p.at(L_ANGLE) {
+    if paths::is_path_start(p) || p.at(T![<]) {
         return Some(path_expr(p, r));
     }
     let la = p.nth(1);
     let done = match p.current() {
-        L_PAREN => tuple_expr(p),
-        L_BRACK => array_expr(p),
-        PIPE => lambda_expr(p),
-        MOVE_KW if la == PIPE => lambda_expr(p),
-        ASYNC_KW if la == PIPE || (la == MOVE_KW && p.nth(2) == PIPE) => lambda_expr(p),
-        IF_KW => if_expr(p),
+        T!['('] => tuple_expr(p),
+        T!['['] => array_expr(p),
+        T![|] => lambda_expr(p),
+        T![move] if la == T![|] => lambda_expr(p),
+        T![async] if la == T![|] || (la == T![move] && p.nth(2) == T![|]) => lambda_expr(p),
+        T![if] => if_expr(p),
 
-        LOOP_KW => loop_expr(p, None),
-        FOR_KW => for_expr(p, None),
-        WHILE_KW => while_expr(p, None),
-        LIFETIME if la == COLON => {
+        T![loop] => loop_expr(p, None),
+        T![for] => for_expr(p, None),
+        T![while] => while_expr(p, None),
+        LIFETIME if la == T![:] => {
             let m = p.start();
             label(p);
             match p.current() {
-                LOOP_KW => loop_expr(p, Some(m)),
-                FOR_KW => for_expr(p, Some(m)),
-                WHILE_KW => while_expr(p, Some(m)),
-                L_CURLY => block_expr(p, Some(m)),
+                T![loop] => loop_expr(p, Some(m)),
+                T![for] => for_expr(p, Some(m)),
+                T![while] => while_expr(p, Some(m)),
+                T!['{'] => block_expr(p, Some(m)),
                 _ => {
                     // test_err misplaced_label_err
                     // fn main() {
@@ -94,22 +94,22 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
                 }
             }
         }
-        ASYNC_KW if la == L_CURLY || (la == MOVE_KW && p.nth(2) == L_CURLY) => {
+        T![async] if la == T!['{'] || (la == T![move] && p.nth(2) == T!['{']) => {
             let m = p.start();
             p.bump();
-            p.eat(MOVE_KW);
+            p.eat(T![move]);
             block_expr(p, Some(m))
         }
-        MATCH_KW => match_expr(p),
-        UNSAFE_KW if la == L_CURLY => {
+        T![match] => match_expr(p),
+        T![unsafe] if la == T!['{'] => {
             let m = p.start();
             p.bump();
             block_expr(p, Some(m))
         }
-        L_CURLY => block_expr(p, None),
-        RETURN_KW => return_expr(p),
-        CONTINUE_KW => continue_expr(p),
-        BREAK_KW => break_expr(p, r),
+        T!['{'] => block_expr(p, None),
+        T![return] => return_expr(p),
+        T![continue] => continue_expr(p),
+        T![break] => break_expr(p, r),
         _ => {
             p.err_recover("expected expression", EXPR_RECOVERY_SET);
             return None;
@@ -129,25 +129,25 @@ pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<(CompletedMar
 //     (1,);
 // }
 fn tuple_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(L_PAREN));
+    assert!(p.at(T!['(']));
     let m = p.start();
-    p.expect(L_PAREN);
+    p.expect(T!['(']);
 
     let mut saw_comma = false;
     let mut saw_expr = false;
-    while !p.at(EOF) && !p.at(R_PAREN) {
+    while !p.at(EOF) && !p.at(T![')']) {
         saw_expr = true;
         if !p.at_ts(EXPR_FIRST) {
             p.error("expected expression");
             break;
         }
         expr(p);
-        if !p.at(R_PAREN) {
+        if !p.at(T![')']) {
             saw_comma = true;
-            p.expect(COMMA);
+            p.expect(T![,]);
         }
     }
-    p.expect(R_PAREN);
+    p.expect(T![')']);
     m.complete(p, if saw_expr && !saw_comma { PAREN_EXPR } else { TUPLE_EXPR })
 }
 
@@ -159,21 +159,21 @@ fn tuple_expr(p: &mut Parser) -> CompletedMarker {
 //     [1; 2];
 // }
 fn array_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(L_BRACK));
+    assert!(p.at(T!['[']));
     let m = p.start();
     p.bump();
-    if p.eat(R_BRACK) {
+    if p.eat(T![']']) {
         return m.complete(p, ARRAY_EXPR);
     }
     expr(p);
-    if p.eat(SEMI) {
+    if p.eat(T![;]) {
         expr(p);
-        p.expect(R_BRACK);
+        p.expect(T![']']);
         return m.complete(p, ARRAY_EXPR);
     }
-    while !p.at(EOF) && !p.at(R_BRACK) {
-        p.expect(COMMA);
-        if p.at(R_BRACK) {
+    while !p.at(EOF) && !p.at(T![']']) {
+        p.expect(T![,]);
+        if p.at(T![']']) {
             break;
         }
         if !p.at_ts(EXPR_FIRST) {
@@ -182,7 +182,7 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
         }
         expr(p);
     }
-    p.expect(R_BRACK);
+    p.expect(T![']']);
     m.complete(p, ARRAY_EXPR)
 }
 
@@ -198,17 +198,17 @@ fn array_expr(p: &mut Parser) -> CompletedMarker {
 // }
 fn lambda_expr(p: &mut Parser) -> CompletedMarker {
     assert!(
-        p.at(PIPE)
-            || (p.at(MOVE_KW) && p.nth(1) == PIPE)
-            || (p.at(ASYNC_KW) && p.nth(1) == PIPE)
-            || (p.at(ASYNC_KW) && p.nth(1) == MOVE_KW && p.nth(2) == PIPE)
+        p.at(T![|])
+            || (p.at(T![move]) && p.nth(1) == T![|])
+            || (p.at(T![async]) && p.nth(1) == T![|])
+            || (p.at(T![async]) && p.nth(1) == T![move] && p.nth(2) == T![|])
     );
     let m = p.start();
-    p.eat(ASYNC_KW);
-    p.eat(MOVE_KW);
+    p.eat(T![async]);
+    p.eat(T![move]);
     params::param_list_opt_types(p);
     if opt_fn_ret_type(p) {
-        if !p.at(L_CURLY) {
+        if !p.at(T!['{']) {
             p.error("expected `{`");
         }
     }
@@ -224,14 +224,14 @@ fn lambda_expr(p: &mut Parser) -> CompletedMarker {
 //     if S {};
 // }
 fn if_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(IF_KW));
+    assert!(p.at(T![if]));
     let m = p.start();
     p.bump();
     cond(p);
     block(p);
-    if p.at(ELSE_KW) {
+    if p.at(T![else]) {
         p.bump();
-        if p.at(IF_KW) {
+        if p.at(T![if]) {
             if_expr(p);
         } else {
             block(p);
@@ -247,7 +247,7 @@ fn if_expr(p: &mut Parser) -> CompletedMarker {
 //     'c: for x in () {}
 // }
 fn label(p: &mut Parser) {
-    assert!(p.at(LIFETIME) && p.nth(1) == COLON);
+    assert!(p.at(LIFETIME) && p.nth(1) == T![:]);
     let m = p.start();
     p.bump();
     p.bump();
@@ -259,7 +259,7 @@ fn label(p: &mut Parser) {
 //     loop {};
 // }
 fn loop_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
-    assert!(p.at(LOOP_KW));
+    assert!(p.at(T![loop]));
     let m = m.unwrap_or_else(|| p.start());
     p.bump();
     block(p);
@@ -272,7 +272,7 @@ fn loop_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 //     while let Some(x) = it.next() {};
 // }
 fn while_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
-    assert!(p.at(WHILE_KW));
+    assert!(p.at(T![while]));
     let m = m.unwrap_or_else(|| p.start());
     p.bump();
     cond(p);
@@ -285,11 +285,11 @@ fn while_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 //     for x in [] {};
 // }
 fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
-    assert!(p.at(FOR_KW));
+    assert!(p.at(T![for]));
     let m = m.unwrap_or_else(|| p.start());
     p.bump();
     patterns::pattern(p);
-    p.expect(IN_KW);
+    p.expect(T![in]);
     expr_no_struct(p);
     block(p);
     m.complete(p, FOR_EXPR)
@@ -305,9 +305,9 @@ fn for_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 // }
 fn cond(p: &mut Parser) {
     let m = p.start();
-    if p.eat(LET_KW) {
+    if p.eat(T![let]) {
         patterns::pattern_list(p);
-        p.expect(EQ);
+        p.expect(T![=]);
     }
     expr_no_struct(p);
     m.complete(p, CONDITION);
@@ -319,11 +319,11 @@ fn cond(p: &mut Parser) {
 //     match S {};
 // }
 fn match_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(MATCH_KW));
+    assert!(p.at(T![match]));
     let m = p.start();
     p.bump();
     expr_no_struct(p);
-    if p.at(L_CURLY) {
+    if p.at(T!['{']) {
         match_arm_list(p);
     } else {
         p.error("expected `{`")
@@ -332,9 +332,9 @@ fn match_expr(p: &mut Parser) -> CompletedMarker {
 }
 
 pub(crate) fn match_arm_list(p: &mut Parser) {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = p.start();
-    p.eat(L_CURLY);
+    p.eat(T!['{']);
 
     // test match_arms_inner_attribute
     // fn foo() {
@@ -347,8 +347,8 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
     // }
     attributes::inner_attributes(p);
 
-    while !p.at(EOF) && !p.at(R_CURLY) {
-        if p.at(L_CURLY) {
+    while !p.at(EOF) && !p.at(T!['}']) {
+        if p.at(T!['{']) {
             error_block(p, "expected match arm");
             continue;
         }
@@ -362,12 +362,12 @@ pub(crate) fn match_arm_list(p: &mut Parser) {
         //     }
         // }
         if match_arm(p).is_block() {
-            p.eat(COMMA);
-        } else if !p.at(R_CURLY) {
-            p.expect(COMMA);
+            p.eat(T![,]);
+        } else if !p.at(T!['}']) {
+            p.expect(T![,]);
         }
     }
-    p.expect(R_CURLY);
+    p.expect(T!['}']);
     m.complete(p, MATCH_ARM_LIST);
 }
 
@@ -399,10 +399,10 @@ fn match_arm(p: &mut Parser) -> BlockLike {
     attributes::outer_attributes(p);
 
     patterns::pattern_list_r(p, TokenSet::empty());
-    if p.at(IF_KW) {
+    if p.at(T![if]) {
         match_guard(p);
     }
-    p.expect(FAT_ARROW);
+    p.expect(T![=>]);
     let blocklike = expr_stmt(p).1;
     m.complete(p, MATCH_ARM);
     blocklike
@@ -415,7 +415,7 @@ fn match_arm(p: &mut Parser) -> BlockLike {
 //     }
 // }
 fn match_guard(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(IF_KW));
+    assert!(p.at(T![if]));
     let m = p.start();
     p.bump();
     expr(p);
@@ -429,7 +429,7 @@ fn match_guard(p: &mut Parser) -> CompletedMarker {
 //     'label: {};
 // }
 fn block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
-    assert!(p.at(L_CURLY));
+    assert!(p.at(T!['{']));
     let m = m.unwrap_or_else(|| p.start());
     block(p);
     m.complete(p, BLOCK_EXPR)
@@ -441,7 +441,7 @@ fn block_expr(p: &mut Parser, m: Option<Marker>) -> CompletedMarker {
 //     return 92;
 // }
 fn return_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(RETURN_KW));
+    assert!(p.at(T![return]));
     let m = p.start();
     p.bump();
     if p.at_ts(EXPR_FIRST) {
@@ -458,7 +458,7 @@ fn return_expr(p: &mut Parser) -> CompletedMarker {
 //     }
 // }
 fn continue_expr(p: &mut Parser) -> CompletedMarker {
-    assert!(p.at(CONTINUE_KW));
+    assert!(p.at(T![continue]));
     let m = p.start();
     p.bump();
     p.eat(LIFETIME);
@@ -475,7 +475,7 @@ fn continue_expr(p: &mut Parser) -> CompletedMarker {
 //     }
 // }
 fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
-    assert!(p.at(BREAK_KW));
+    assert!(p.at(T![break]));
     let m = p.start();
     p.bump();
     p.eat(LIFETIME);
@@ -486,7 +486,7 @@ fn break_expr(p: &mut Parser, r: Restrictions) -> CompletedMarker {
     //     for i in break {}
     //     match break {}
     // }
-    if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(L_CURLY)) {
+    if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{'])) {
         expr(p);
     }
     m.complete(p, BREAK_EXPR)

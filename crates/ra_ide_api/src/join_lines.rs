@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use ra_syntax::{
+    T,
     SourceFile, TextRange, TextUnit, SyntaxNode, SyntaxElement, SyntaxToken,
-    SyntaxKind::{self, WHITESPACE, COMMA, R_CURLY, R_PAREN, R_BRACK},
+    SyntaxKind::{self, WHITESPACE},
     algo::{find_covering_element, non_trivia_sibling},
     ast::{self, AstNode, AstToken},
     Direction,
@@ -89,7 +90,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: SyntaxToken, offset: TextUn
     if is_trailing_comma(prev.kind(), next.kind()) {
         // Removes: trailing comma, newline (incl. surrounding whitespace)
         edit.delete(TextRange::from_to(prev.range().start(), token.range().end()));
-    } else if prev.kind() == COMMA && next.kind() == R_CURLY {
+    } else if prev.kind() == T![,] && next.kind() == T!['}'] {
         // Removes: comma, newline (incl. surrounding whitespace)
         let space = if let Some(left) = prev.prev_sibling_or_token() {
             compute_ws(left.kind(), next.kind())
@@ -116,7 +117,7 @@ fn remove_newline(edit: &mut TextEditBuilder, token: SyntaxToken, offset: TextUn
 
 fn has_comma_after(node: &SyntaxNode) -> bool {
     match non_trivia_sibling(node.into(), Direction::Next) {
-        Some(n) => n.kind() == COMMA,
+        Some(n) => n.kind() == T![,],
         _ => false,
     }
 }
@@ -150,7 +151,7 @@ fn join_single_use_tree(edit: &mut TextEditBuilder, token: SyntaxToken) -> Optio
 
 fn is_trailing_comma(left: SyntaxKind, right: SyntaxKind) -> bool {
     match (left, right) {
-        (COMMA, R_PAREN) | (COMMA, R_BRACK) => true,
+        (T![,], T![')']) | (T![,], T![']']) => true,
         _ => false,
     }
 }

@@ -2,14 +2,15 @@ use std::iter::successors;
 
 use hir::db::HirDatabase;
 use ra_syntax::{
-    TextUnit, AstNode, SyntaxKind::COLONCOLON,
+    T,
+    TextUnit, AstNode,
     ast,
 };
 
 use crate::{AssistCtx, Assist, AssistId};
 
 pub(crate) fn split_import(mut ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let colon_colon = ctx.token_at_offset().find(|leaf| leaf.kind() == COLONCOLON)?;
+    let colon_colon = ctx.token_at_offset().find(|leaf| leaf.kind() == T![::])?;
     let path = ast::Path::cast(colon_colon.parent())?;
     let top_path = successors(Some(path), |it| it.parent_path()).last()?;
 
