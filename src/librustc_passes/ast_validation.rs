@@ -17,13 +17,11 @@ use syntax::attr;
 use syntax::feature_gate::is_builtin_attr;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
-use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
 use syntax_ext::proc_macro_decls::is_proc_macro_attr;
 use syntax_pos::{Span, MultiSpan};
 use errors::{Applicability, FatalError};
-use log::debug;
 
 #[derive(Copy, Clone, Debug)]
 struct OuterImplTrait {
@@ -76,20 +74,34 @@ struct AstValidator<'a> {
     /// these booleans.
     warning_period_57979_didnt_record_next_impl_trait: bool,
     warning_period_57979_impl_trait_in_proj: bool,
+
+    /// Used to ban `let` expressions in inappropriate places.
+    is_let_allowed: bool,
+}
+
+/// With the `new` value in `store`,
+/// runs and returns the `scoped` computation,
+/// resetting the old value of `store` after,
+/// and returning the result of `scoped`.
+fn with<C, T, S>(
+    this: &mut C,
+    new: S,
+    store: impl Fn(&mut C) -> &mut S,
+    scoped: impl FnOnce(&mut C) -> T
+) -> T {
+    let old = mem::replace(store(this), new);
+    let ret = scoped(this);
+    *store(this) = old;
+    ret
 }
 
 impl<'a> AstValidator<'a> {
     fn with_impl_trait_in_proj_warning<T>(&mut self, v: bool, f: impl FnOnce(&mut Self) -> T) -> T {
-        let old = mem::replace(&mut self.warning_period_57979_impl_trait_in_proj, v);
-        let ret = f(self);
-        self.warning_period_57979_impl_trait_in_proj = old;
-        ret
+        with(self, v, |this| &mut this.warning_period_57979_impl_trait_in_proj, f)
     }
 
     fn with_banned_impl_trait(&mut self, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.is_impl_trait_banned, true);
-        f(self);
-        self.is_impl_trait_banned = old;
+        with(self, true, |this| &mut this.is_impl_trait_banned, f)
     }
 
     fn with_banned_assoc_ty_bound(&mut self, f: impl FnOnce(&mut Self)) {
@@ -99,9 +111,11 @@ impl<'a> AstValidator<'a> {
     }
 
     fn with_impl_trait(&mut self, outer: Option<OuterImplTrait>, f: impl FnOnce(&mut Self)) {
-        let old = mem::replace(&mut self.outer_impl_trait, outer);
-        f(self);
-        self.outer_impl_trait = old;
+        with(self, outer, |this| &mut this.outer_impl_trait, f)
+    }
+
+    fn with_let_allowed(&mut self, v: bool, f: impl FnOnce(&mut Self)) {
+        with(self, v, |this| &mut this.is_let_allowed, f)
     }
 
     fn visit_assoc_ty_constraint_from_generic_args(&mut self, constraint: &'a AssocTyConstraint) {
@@ -319,52 +333,36 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// With eRFC 2497, we need to check whether an expression is ambiguous and warn or error
-    /// depending on the edition, this function handles that.
-    fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
-        if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
-            let mut err = self.err_handler().struct_span_err(
-                span, &format!("ambiguous use of `{}`", op_kind.to_string())
-            );
-
-            err.note(
-                "this will be a error until the `let_chains` feature is stabilized"
-            );
-            err.note(
-                "see rust-lang/rust#53668 for more information"
-            );
-
-            if let Ok(snippet) = self.session.source_map().span_to_snippet(span) {
-                err.span_suggestion(
-                    span, "consider adding parentheses", format!("({})", snippet),
-                    Applicability::MachineApplicable,
-                );
-            }
-
-            err.emit();
-        }
-    }
-
-    /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
-    /// `&&` and `||` in a if-let statement be unambiguous. This function returns a span and
-    /// a `BinOpKind` (either `&&` or `||` depending on what was ambiguous) if it is determined
-    /// that the current expression parsed is ambiguous and will break in future.
-    fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
-        debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
+    /// Visits the `expr` and adjusts whether `let $pat = $expr` is allowed in decendants.
+    /// Returns whether we walked into `expr` or not.
+    /// If we did, walking should not happen again.
+    fn visit_expr_with_let_maybe_allowed(&mut self, expr: &'a Expr) -> bool {
         match &expr.node {
-            ExprKind::Binary(op, _, _) if op.node == BinOpKind::And || op.node == BinOpKind::Or => {
-                Some((expr.span, op.node))
-            },
-            ExprKind::Range(ref lhs, ref rhs, _) => {
-                let lhs_ambiguous = lhs.as_ref()
-                    .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
-                let rhs_ambiguous = rhs.as_ref()
-                    .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
-
-                lhs_ambiguous.or(rhs_ambiguous)
+            // Assuming the context permits, `($expr)` does not impose additional constraints.
+            ExprKind::Paren(_) => visit::walk_expr(self, expr),
+            // Assuming the context permits,
+            // l && r` allows decendants in `l` and `r` to be `let` expressions.
+            ExprKind::Binary(op, ..) if op.node == BinOpKind::And => visit::walk_expr(self, expr),
+            // However, we do allow it in the condition of the `if` expression.
+            // We do not allow `let` in `then` and `opt_else` directly.
+            ExprKind::If(ref cond, ref then, ref opt_else) => {
+                self.with_let_allowed(false, |this| {
+                    this.visit_block(then);
+                    walk_list!(this, visit_expr, opt_else);
+                });
+                self.with_let_allowed(true, |this| this.visit_expr(cond));
             }
-            _ => None,
+            // The same logic applies to `While`.
+            ExprKind::While(ref cond, ref then, ref opt_label) => {
+                walk_list!(self, visit_label, opt_label);
+                self.with_let_allowed(false, |this| this.visit_block(then));
+                self.with_let_allowed(true, |this| this.visit_expr(cond));
+            }
+            // Don't walk into `expr` and defer further checks to the caller.
+            _ => return false,
         }
+
+        true
     }
 
     fn check_fn_decl(&self, fn_decl: &FnDecl) {
@@ -494,18 +492,27 @@ fn validate_generics_order<'a>(
 impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         match expr.node {
+            ExprKind::Let(_, _) if !self.is_let_allowed => {
+                self.err_handler()
+                    .struct_span_err(expr.span, "`let` expressions are not supported here")
+                    .note("only supported directly in conditions of `if`- and `while`-expressions")
+                    .note("as well as when nested within `&&` and parenthesis in those conditions")
+                    .emit();
+            }
+            _ if self.visit_expr_with_let_maybe_allowed(&expr) => {
+                // Prevent `walk_expr` to happen since we've already done that.
+                return;
+            }
             ExprKind::Closure(_, _, _, ref fn_decl, _, _) => {
                 self.check_fn_decl(fn_decl);
             }
-            ExprKind::IfLet(_, ref expr, _, _) | ExprKind::WhileLet(_, ref expr, _, _) =>
-                self.while_if_let_ambiguity(&expr),
             ExprKind::InlineAsm(..) if !self.session.target.target.options.allow_asm => {
                 span_err!(self.session, expr.span, E0472, "asm! is unsupported on this target");
             }
             _ => {}
         }
 
-        visit::walk_expr(self, expr)
+        self.with_let_allowed(false, |this| visit::walk_expr(this, expr));
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
@@ -917,6 +924,7 @@ pub fn check_crate(session: &Session, krate: &Crate) -> (bool, bool) {
         is_assoc_ty_bound_banned: false,
         warning_period_57979_didnt_record_next_impl_trait: false,
         warning_period_57979_impl_trait_in_proj: false,
+        is_let_allowed: false,
     };
     visit::walk_crate(&mut validator, krate);
 
