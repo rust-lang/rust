@@ -192,6 +192,20 @@ extern "C" {
     fn vadduhs(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.ppc.altivec.vadduws"]
     fn vadduws(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.ppc.altivec.vavgsb"]
+    fn vavgsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.ppc.altivec.vavgsh"]
+    fn vavgsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.ppc.altivec.vavgsw"]
+    fn vavgsw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.ppc.altivec.vavgub"]
+    fn vavgub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.ppc.altivec.vavguh"]
+    fn vavguh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.ppc.altivec.vavguw"]
+    fn vavguw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 }
 
 macro_rules! s_t_l {
@@ -300,7 +314,7 @@ mod sealed {
                 }
             }
         };
-        ([$Trait:ident $m:ident] ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident, $sf: ident)) => {
+        ([$Trait:ident $m:ident] 1 ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident, $sf: ident)) => {
             impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char) -> vector_unsigned_char }
             impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char) -> vector_signed_char }
             impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short) -> vector_unsigned_short }
@@ -334,8 +348,33 @@ mod sealed {
         };
         ([$Trait:ident $m:ident] ~($fn:ident)) => {
             impl_vec_trait!{ [$Trait $m] ~($fn, $fn, $fn, $fn, $fn, $fn) }
+        };
+        ([$Trait:ident $m:ident] 2 ($ub:ident, $sb:ident, $uh:ident, $sh:ident, $uw:ident, $sw:ident)) => {
+            impl_vec_trait!{ [$Trait $m] $ub (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m] $sb (vector_signed_char, vector_signed_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m] $uh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m] $sh (vector_signed_short, vector_signed_short) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m] $uw (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m] $sw (vector_signed_int, vector_signed_int) -> vector_signed_int }
+        };
+        ([$Trait:ident $m:ident] 2 ($fn:ident)) => {
+            impl_vec_trait!{ [$Trait $m] ($fn, $fn, $fn, $fn, $fn, $fn) }
         }
     }
+
+    test_impl! { vec_vavgsb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vavgsb, vavgsb ] }
+    test_impl! { vec_vavgsh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vavgsh, vavgsh ] }
+    test_impl! { vec_vavgsw(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [ vavgsw, vavgsw ] }
+    test_impl! { vec_vavgub(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [ vavgub, vavgub ] }
+    test_impl! { vec_vavguh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [ vavguh, vavguh ] }
+    test_impl! { vec_vavguw(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [ vavguw, vavguw ] }
+
+    pub trait VectorAvg<Other> {
+        type Result;
+        unsafe fn vec_avg(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_trait! { [VectorAvg vec_avg] 2 (vec_vavgub, vec_vavgsb, vec_vavguh, vec_vavgsh, vec_vavguw, vec_vavgsw) }
 
     #[inline]
     #[target_feature(enable = "altivec")]
@@ -1240,6 +1279,16 @@ mod sealed {
     vector_mladd! { vector_signed_short, vector_signed_short, vector_signed_short }
 }
 
+/// Vector avg.
+#[inline]
+#[target_feature(enable = "altivec")]
+pub unsafe fn vec_avg<T, U>(a: T, b: U) -> <T as sealed::VectorAvg<U>>::Result
+where
+    T: sealed::VectorAvg<U>,
+{
+    a.vec_avg(b)
+}
+
 /// Vector andc.
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -1573,6 +1622,42 @@ mod tests {
     [0b11001100, 0b11001100, 0b11001100, 0b11001100],
     [0b00110011, 0b11110011, 0b00001100, 0b00000000],
     [0b00000000, 0b11000000, 0b00001100, 0b00000000] }
+
+    macro_rules! test_vec_avg {
+        { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
+            test_vec_2! {$name, vec_avg, $ty, [$($a),+], [$($b),+], [$($d),+] }
+        }
+    }
+
+    test_vec_avg! { test_vec_avg_i32x4, i32x4,
+    [i32::min_value(), i32::max_value(), 1, -1],
+    [-1, 1, 1, -1],
+    [-1073741824, 1073741824, 1, -1] }
+
+    test_vec_avg! { test_vec_avg_u32x4, u32x4,
+    [u32::max_value(), 0, 1, 2],
+    [2, 1, 0, 0],
+    [2147483649, 1, 1, 1] }
+
+    test_vec_avg! { test_vec_avg_i16x8, i16x8,
+    [i16::min_value(), i16::max_value(), 1, -1, 0, 0, 0, 0],
+    [-1, 1, 1, -1, 0, 0, 0, 0],
+    [-16384, 16384, 1, -1, 0, 0, 0, 0] }
+
+    test_vec_avg! { test_vec_avg_u16x8, u16x8,
+    [u16::max_value(), 0, 1, 2, 0, 0, 0, 0],
+    [2, 1, 0, 0, 0, 0, 0, 0],
+    [32769, 1, 1, 1, 0, 0, 0, 0] }
+
+    test_vec_avg! { test_vec_avg_i8x16, i8x16,
+    [i8::min_value(), i8::max_value(), 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-1, 1, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [-64, 64, 1, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+
+    test_vec_avg! { test_vec_avg_u8x16, u8x16,
+    [u8::max_value(), 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [2, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [129, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
 
     macro_rules! test_vec_adds {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
