@@ -412,7 +412,6 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                         };
                         if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
                             let substs = tcx.lift_to_global(&substs).unwrap();
-                            let evaluated = tcx.mk_const(evaluated);
                             let evaluated = evaluated.subst(tcx, substs);
                             return evaluated;
                         }
@@ -426,7 +425,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for AssociatedTypeNormalizer<'a,
                                 promoted: None
                             };
                             if let Ok(evaluated) = tcx.const_eval(param_env.and(cid)) {
-                                return tcx.mk_const(evaluated);
+                                return evaluated;
                             }
                         }
                     }

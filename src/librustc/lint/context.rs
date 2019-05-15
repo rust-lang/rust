@@ -791,6 +791,7 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             type Region = ();
             type Type = ();
             type DynExistential = ();
+            type Const = ();
 
             fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
                 self.tcx
@@ -807,7 +808,14 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
             fn print_dyn_existential(
                 self,
                 _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
-                ) -> Result<Self::DynExistential, Self::Error> {
+            ) -> Result<Self::DynExistential, Self::Error> {
+                Ok(())
+            }
+
+            fn print_const(
+                self,
+                _ct: &'tcx ty::Const<'tcx>,
+            ) -> Result<Self::Const, Self::Error> {
                 Ok(())
             }
 

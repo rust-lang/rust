@@ -462,6 +462,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             type Region = !;
             type Type = !;
             type DynExistential = !;
+            type Const = !;
 
             fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx> {
                 self.tcx
@@ -485,6 +486,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self,
                 _predicates: &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
             ) -> Result<Self::DynExistential, Self::Error> {
+                Err(NonTrivialPath)
+            }
+
+            fn print_const(
+                self,
+                _ct: &'tcx ty::Const<'tcx>,
+            ) -> Result<Self::Const, Self::Error> {
                 Err(NonTrivialPath)
             }
 

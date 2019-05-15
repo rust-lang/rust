@@ -1,4 +1,4 @@
-thread 'rustc' panicked at 'assertion failed: rows.iter().all(|r| r.len() == v.len())', src/librustc_mir/hair/pattern/_match.rs:1083:5
+thread 'rustc' panicked at 'assertion failed: rows.iter().all(|r| r.len() == v.len())', src/librustc_mir/hair/pattern/_match.rs:1085:5
 note: Run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 error: internal compiler error: unexpected panic
