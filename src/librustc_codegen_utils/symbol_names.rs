@@ -96,6 +96,7 @@ use rustc::ty::print::{PrettyPrinter, Printer, Print};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, SubstsRef, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::mir::interpret::{ConstValue, Scalar};
 use rustc::util::common::record_time;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_mir::monomorphize::item::{InstantiationMode, MonoItem, MonoItemExt};
@@ -391,6 +392,7 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
     type Region = Self;
     type Type = Self;
     type DynExistential = Self;
+    type Const = Self;
 
     fn tcx(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
@@ -433,6 +435,20 @@ impl Printer<'tcx, 'tcx> for SymbolPrinter<'_, 'tcx> {
             first = false;
             self = p.print(self)?;
         }
+        Ok(self)
+    }
+
+    fn print_const(
+        mut self,
+        ct: &'tcx ty::Const<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        // only print integers
+        if let ConstValue::Scalar(Scalar::Bits { .. }) = ct.val {
+            if ct.ty.is_integral() {
+                return self.pretty_print_const(ct);
+            }
+        }
+        self.write_str("_")?;
         Ok(self)
     }
 

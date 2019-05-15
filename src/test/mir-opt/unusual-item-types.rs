@@ -1,5 +1,6 @@
 // Test that we don't ICE when trying to dump MIR for unusual item types and
 // that we don't create filenames containing `<` and `>`
+// ignore-tidy-linelength
 
 struct A;
 
@@ -68,7 +69,7 @@ fn main() {
 // }
 // bb7: {
 //     _2 = &mut (*_1);
-//     _3 = const std::ops::Drop::drop(move _2) -> [return: bb6, unwind: bb5];
+//     _3 = const <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb6, unwind: bb5];
 // }
 // END rustc.ptr-real_drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
 

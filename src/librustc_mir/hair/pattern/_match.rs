@@ -172,7 +172,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Const};
 use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
-use rustc::mir::interpret::{ConstValue, Scalar, truncate};
+use rustc::mir::interpret::{ConstValue, Scalar, truncate, AllocId, Pointer};
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -186,6 +186,7 @@ use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::RangeInclusive;
 use std::u128;
+use std::convert::TryInto;
 
 pub fn expand_pattern<'a, 'tcx>(cx: &MatchCheckCtxt<'a, 'tcx>, pat: Pattern<'tcx>)
                                 -> &'a Pattern<'tcx>
@@ -221,16 +222,17 @@ impl<'a, 'tcx> LiteralExpander<'a, 'tcx> {
             // unsize array to slice if pattern is array but match value or other patterns are slice
             (ConstValue::Scalar(Scalar::Ptr(p)), ty::Array(t, n), ty::Slice(u)) => {
                 assert_eq!(t, u);
-                ConstValue::Slice(
-                    Scalar::Ptr(p),
-                    n.val.try_to_scalar()
-                        .unwrap()
-                        .to_usize(&self.tcx)
-                        .unwrap(),
-                )
+                ConstValue::Slice {
+                    data: self.tcx.alloc_map.lock().unwrap_memory(p.alloc_id),
+                    start: p.offset.bytes().try_into().unwrap(),
+                    end: n.unwrap_usize(self.tcx).try_into().unwrap(),
+                }
             },
             // fat pointers stay the same
-            (ConstValue::Slice(..), _, _) => val,
+            | (ConstValue::Slice { .. }, _, _)
+            | (_, ty::Slice(_), ty::Slice(_))
+            | (_, ty::Str, ty::Str)
+            => val,
             // FIXME(oli-obk): this is reachable for `const FOO: &&&u32 = &&&42;` being used
             _ => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
         }
@@ -255,10 +257,10 @@ impl<'a, 'tcx> PatternFolder<'tcx> for LiteralExpander<'a, 'tcx> {
                         subpattern: Pattern {
                             ty: rty,
                             span: pat.span,
-                            kind: box PatternKind::Constant { value: Const {
-                                val: self.fold_const_value_deref(val, rty, crty),
+                            kind: box PatternKind::Constant { value: self.tcx.mk_const(Const {
+                                val: self.fold_const_value_deref(*val, rty, crty),
                                 ty: rty,
-                            } },
+                            }) },
                         }
                     }
                 }
@@ -423,7 +425,7 @@ enum Constructor<'tcx> {
     /// Enum variants.
     Variant(DefId),
     /// Literal values.
-    ConstantValue(ty::Const<'tcx>),
+    ConstantValue(&'tcx ty::Const<'tcx>),
     /// Ranges of literal values (`2...5` and `2..5`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd),
     /// Array patterns of length n.
@@ -786,9 +788,9 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
                         max_fixed_len,
                         n.unwrap_usize(cx.tcx),
                     ),
-                    (ConstValue::Slice(_, n), ty::Slice(_)) => max_fixed_len = cmp::max(
+                    (ConstValue::Slice{ start, end, .. }, ty::Slice(_)) => max_fixed_len = cmp::max(
                         max_fixed_len,
-                        n,
+                        (end - start) as u64,
                     ),
                     _ => {},
                 }
@@ -1424,49 +1426,24 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 fn slice_pat_covered_by_const<'tcx>(
     tcx: TyCtxt<'_, 'tcx, '_>,
     _span: Span,
-    const_val: ty::Const<'tcx>,
+    const_val: &'tcx ty::Const<'tcx>,
     prefix: &[Pattern<'tcx>],
     slice: &Option<Pattern<'tcx>>,
     suffix: &[Pattern<'tcx>]
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match (const_val.val, &const_val.ty.sty) {
         (ConstValue::ByRef(ptr, alloc), ty::Array(t, n)) => {
-            if *t != tcx.types.u8 {
-                // FIXME(oli-obk): can't mix const patterns with slice patterns and get
-                // any sort of exhaustiveness/unreachable check yet
-                // This solely means that we don't lint about unreachable patterns, even if some
-                // are definitely unreachable.
-                return Ok(false);
-            }
+            assert_eq!(*t, tcx.types.u8);
             let n = n.assert_usize(tcx).unwrap();
             alloc.get_bytes(&tcx, ptr, Size::from_bytes(n)).unwrap()
         },
-        // a slice fat pointer to a zero length slice
-        (ConstValue::Slice(Scalar::Bits { .. }, 0), ty::Slice(t)) => {
-            if *t != tcx.types.u8 {
-                // FIXME(oli-obk): can't mix const patterns with slice patterns and get
-                // any sort of exhaustiveness/unreachable check yet
-                // This solely means that we don't lint about unreachable patterns, even if some
-                // are definitely unreachable.
-                return Ok(false);
-            }
-            &[]
+        (ConstValue::Slice { data, start, end }, ty::Slice(t)) => {
+            assert_eq!(*t, tcx.types.u8);
+            let ptr = Pointer::new(AllocId(0), Size::from_bytes(start as u64));
+            data.get_bytes(&tcx, ptr, Size::from_bytes((end - start) as u64)).unwrap()
         },
-        //
-        (ConstValue::Slice(Scalar::Ptr(ptr), n), ty::Slice(t)) => {
-            if *t != tcx.types.u8 {
-                // FIXME(oli-obk): can't mix const patterns with slice patterns and get
-                // any sort of exhaustiveness/unreachable check yet
-                // This solely means that we don't lint about unreachable patterns, even if some
-                // are definitely unreachable.
-                return Ok(false);
-            }
-            tcx.alloc_map
-                .lock()
-                .unwrap_memory(ptr.alloc_id)
-                .get_bytes(&tcx, ptr, Size::from_bytes(n))
-                .unwrap()
-        },
+        // FIXME(oli-obk): create a way to extract fat pointers from ByRef
+        (_, ty::Slice(_)) => return Ok(false),
         _ => bug!(
             "slice_pat_covered_by_const: {:#?}, {:#?}, {:#?}, {:#?}",
             const_val, prefix, slice, suffix,
@@ -1774,11 +1751,12 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     // necessarily point to memory, they are usually just integers. The only time
                     // they should be pointing to memory is when they are subslices of nonzero
                     // slices
-                    let (opt_ptr, n, ty) = match value.ty.sty {
+                    let (alloc, offset, n, ty) = match value.ty.sty {
                         ty::Array(t, n) => {
                             match value.val {
                                 ConstValue::ByRef(ptr, alloc) => (
-                                    Some((ptr, alloc)),
+                                    alloc,
+                                    ptr.offset,
                                     n.unwrap_usize(cx.tcx),
                                     t,
                                 ),
@@ -1790,14 +1768,16 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                         },
                         ty::Slice(t) => {
                             match value.val {
-                                ConstValue::Slice(ptr, n) => (
-                                    ptr.to_ptr().ok().map(|ptr| (
-                                        ptr,
-                                        cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
-                                    )),
-                                    n,
+                                ConstValue::Slice { data, start, end } => (
+                                    data,
+                                    Size::from_bytes(start as u64),
+                                    (end - start) as u64,
                                     t,
                                 ),
+                                ConstValue::ByRef(..) => {
+                                    // FIXME(oli-obk): implement `deref` for `ConstValue`
+                                    return None;
+                                },
                                 _ => span_bug!(
                                     pat.span,
                                     "slice pattern constant must be scalar pair but is {:?}",
@@ -1814,31 +1794,22 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     };
                     if wild_patterns.len() as u64 == n {
                         // convert a constant slice/array pattern to a list of patterns.
-                        match (n, opt_ptr) {
-                            (0, _) => Some(SmallVec::new()),
-                            (_, Some((ptr, alloc))) => {
-                                let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
-                                (0..n).map(|i| {
-                                    let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
-                                    let scalar = alloc.read_scalar(
-                                        &cx.tcx, ptr, layout.size,
-                                    ).ok()?;
-                                    let scalar = scalar.not_undef().ok()?;
-                                    let value = ty::Const::from_scalar(scalar, ty);
-                                    let pattern = Pattern {
-                                        ty,
-                                        span: pat.span,
-                                        kind: box PatternKind::Constant { value },
-                                    };
-                                    Some(&*cx.pattern_arena.alloc(pattern))
-                                }).collect()
-                            },
-                            (_, None) => span_bug!(
-                                pat.span,
-                                "non zero length slice with const-val {:?}",
-                                value,
-                            ),
-                        }
+                        let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
+                        let ptr = Pointer::new(AllocId(0), offset);
+                        (0..n).map(|i| {
+                            let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
+                            let scalar = alloc.read_scalar(
+                                &cx.tcx, ptr, layout.size,
+                            ).ok()?;
+                            let scalar = scalar.not_undef().ok()?;
+                            let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                            let pattern = Pattern {
+                                ty,
+                                span: pat.span,
+                                kind: box PatternKind::Constant { value },
+                            };
+                            Some(&*cx.pattern_arena.alloc(pattern))
+                        }).collect()
                     } else {
                         None
                     }
