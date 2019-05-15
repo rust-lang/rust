@@ -969,7 +969,6 @@ impl<T: ?Sized> RefCell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(borrow_state)]
     /// use std::cell::RefCell;
     ///
     /// let c = RefCell::new(5);
@@ -984,7 +983,7 @@ impl<T: ?Sized> RefCell<T> {
     ///     assert!(unsafe { c.try_borrow_unguarded() }.is_ok());
     /// }
     /// ```
-    #[unstable(feature = "borrow_state", issue = "27733")]
+    #[stable(feature = "borrow_state", since = "1.37.0")]
     #[inline]
     pub unsafe fn try_borrow_unguarded(&self) -> Result<&T, BorrowError> {
         if !is_writing(self.borrow.get()) {
