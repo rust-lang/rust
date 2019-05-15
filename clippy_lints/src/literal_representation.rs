@@ -1,7 +1,7 @@
 //! Lints concerned with the grouping of digits with underscores in integral or
 //! floating-point literal expressions.
 
-use crate::utils::{snippet_opt, span_lint_and_sugg};
+use crate::utils::{in_macro, snippet_opt, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
@@ -355,6 +355,7 @@ impl EarlyLintPass for LiteralDigitGrouping {
 
 impl LiteralDigitGrouping {
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
+        let in_macro = in_macro(lit.span);
         match lit.node {
             LitKind::Int(..) => {
                 // Lint integral literals.
@@ -364,7 +365,7 @@ impl LiteralDigitGrouping {
                     if char::to_digit(firstch, 10).is_some();
                     then {
                         let digit_info = DigitInfo::new(&src, false);
-                        let _ = Self::do_lint(digit_info.digits, digit_info.suffix).map_err(|warning_type| {
+                        let _ = Self::do_lint(digit_info.digits, digit_info.suffix, in_macro).map_err(|warning_type| {
                             warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
                         });
                     }
@@ -386,12 +387,12 @@ impl LiteralDigitGrouping {
 
                         // Lint integral and fractional parts separately, and then check consistency of digit
                         // groups if both pass.
-                        let _ = Self::do_lint(parts[0], digit_info.suffix)
+                        let _ = Self::do_lint(parts[0], digit_info.suffix, in_macro)
                             .map(|integral_group_size| {
                                 if parts.len() > 1 {
                                     // Lint the fractional part of literal just like integral part, but reversed.
                                     let fractional_part = &parts[1].chars().rev().collect::<String>();
-                                    let _ = Self::do_lint(fractional_part, None)
+                                    let _ = Self::do_lint(fractional_part, None, in_macro)
                                         .map(|fractional_group_size| {
                                             let consistent = Self::parts_consistent(integral_group_size,
                                                                                     fractional_group_size,
@@ -436,7 +437,7 @@ impl LiteralDigitGrouping {
 
     /// Performs lint on `digits` (no decimal point) and returns the group
     /// size on success or `WarningType` when emitting a warning.
-    fn do_lint(digits: &str, suffix: Option<&str>) -> Result<usize, WarningType> {
+    fn do_lint(digits: &str, suffix: Option<&str>, in_macro: bool) -> Result<usize, WarningType> {
         if let Some(suffix) = suffix {
             if is_mistyped_suffix(suffix) {
                 return Err(WarningType::MistypedLiteralSuffix);
@@ -452,7 +453,7 @@ impl LiteralDigitGrouping {
 
         if underscore_positions.is_empty() {
             // Check if literal needs underscores.
-            if digits.len() > 5 {
+            if !in_macro && digits.len() > 5 {
                 Err(WarningType::UnreadableLiteral)
             } else {
                 Ok(0)

@@ -1,5 +1,13 @@
 // run-rustfix
 
+struct Foo(u64);
+
+macro_rules! foo {
+    () => {
+        Foo(123123123123)
+    };
+}
+
 #[warn(clippy::unreadable_literal)]
 #[allow(unused_variables)]
 fn main() {
@@ -22,4 +30,6 @@ fn main() {
     let fail10: u32 = 0xBAFEBAFE;
     let fail11 = 0xabcdeff;
     let fail12: i128 = 0xabcabcabcabcabcabc;
+
+    let _ = foo!();
 }

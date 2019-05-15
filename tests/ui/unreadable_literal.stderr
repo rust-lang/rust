@@ -1,5 +1,5 @@
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:17:16
+  --> $DIR/unreadable_literal.rs:25:16
    |
 LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                ^^^^^^^^^^^^ help: consider: `0b11_0110_i64`
@@ -7,49 +7,49 @@ LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32)
    = note: `-D clippy::unreadable-literal` implied by `-D warnings`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:17:30
+  --> $DIR/unreadable_literal.rs:25:30
    |
 LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                              ^^^^^^^^^^^^^^^^^^^ help: consider: `0x0123_4567_8901_usize`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:17:51
+  --> $DIR/unreadable_literal.rs:25:51
    |
 LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                                                   ^^^^^^^^^^ help: consider: `123_456_f32`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:17:63
+  --> $DIR/unreadable_literal.rs:25:63
    |
 LL |     let bad = (0b110110_i64, 0x12345678901_usize, 123456_f32, 1.234567_f32);
    |                                                               ^^^^^^^^^^^^ help: consider: `1.234_567_f32`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:19:19
+  --> $DIR/unreadable_literal.rs:27:19
    |
 LL |     let bad_sci = 1.123456e1;
    |                   ^^^^^^^^^^ help: consider: `1.123_456e1`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:21:17
+  --> $DIR/unreadable_literal.rs:29:17
    |
 LL |     let fail9 = 0xabcdef;
    |                 ^^^^^^^^ help: consider: `0x00ab_cdef`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:22:23
+  --> $DIR/unreadable_literal.rs:30:23
    |
 LL |     let fail10: u32 = 0xBAFEBAFE;
    |                       ^^^^^^^^^^ help: consider: `0xBAFE_BAFE`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:23:18
+  --> $DIR/unreadable_literal.rs:31:18
    |
 LL |     let fail11 = 0xabcdeff;
    |                  ^^^^^^^^^ help: consider: `0x0abc_deff`
 
 error: long literal lacking separators
-  --> $DIR/unreadable_literal.rs:24:24
+  --> $DIR/unreadable_literal.rs:32:24
    |
 LL |     let fail12: i128 = 0xabcabcabcabcabcabc;
    |                        ^^^^^^^^^^^^^^^^^^^^ help: consider: `0x00ab_cabc_abca_bcab_cabc`
