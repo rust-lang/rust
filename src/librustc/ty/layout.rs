@@ -19,6 +19,12 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
 pub use rustc_target::abi::*;
+use rustc_target::spec::{HasTargetSpec, abi::Abi as SpecAbi};
+use rustc_target::abi::call::{
+    ArgAttribute, ArgAttributes, ArgType, Conv, FnType, IgnoreMode, PassMode, Reg, RegKind
+};
+
+
 
 pub trait IntegerExt {
     fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx>;
@@ -2256,6 +2262,383 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for LayoutError<'gcx>
         match *self {
             Unknown(t) |
             SizeOverflow(t) => t.hash_stable(hcx, hasher)
+        }
+    }
+}
+
+pub trait FnTypeExt<'tcx, C>
+where
+    C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+        + HasDataLayout
+        + HasTargetSpec
+        + HasTyCtxt<'tcx>
+        + HasParamEnv<'tcx>,
+{
+    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self;
+    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self;
+    fn new_internal(
+        cx: &C,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
+    ) -> Self;
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi);
+}
+
+impl<'tcx, C> FnTypeExt<'tcx, C> for call::FnType<'tcx, Ty<'tcx>>
+where
+    C: LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
+        + HasDataLayout
+        + HasTargetSpec
+        + HasTyCtxt<'tcx>
+        + HasParamEnv<'tcx>,
+{
+    fn of_instance(cx: &C, instance: &ty::Instance<'tcx>) -> Self {
+        let sig = instance.fn_sig(cx.tcx());
+        let sig = cx
+            .tcx()
+            .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
+        call::FnType::new(cx, sig, &[])
+    }
+
+    fn new(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+        call::FnType::new_internal(cx, sig, extra_args, |ty, _| ArgType::new(cx.layout_of(ty)))
+    }
+
+    fn new_vtable(cx: &C, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> Self {
+        FnTypeExt::new_internal(cx, sig, extra_args, |ty, arg_idx| {
+            let mut layout = cx.layout_of(ty);
+            // Don't pass the vtable, it's not an argument of the virtual fn.
+            // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
+            // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
+            if arg_idx == Some(0) {
+                let fat_pointer_ty = if layout.is_unsized() {
+                    // unsized `self` is passed as a pointer to `self`
+                    // FIXME (mikeyhew) change this to use &own if it is ever added to the language
+                    cx.tcx().mk_mut_ptr(layout.ty)
+                } else {
+                    match layout.abi {
+                        Abi::ScalarPair(..) => (),
+                        _ => bug!("receiver type has unsupported layout: {:?}", layout),
+                    }
+
+                    // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
+                    // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
+                    // elsewhere in the compiler as a method on a `dyn Trait`.
+                    // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
+                    // get a built-in pointer type
+                    let mut fat_pointer_layout = layout;
+                    'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
+                        && !fat_pointer_layout.ty.is_region_ptr()
+                    {
+                        'iter_fields: for i in 0..fat_pointer_layout.fields.count() {
+                            let field_layout = fat_pointer_layout.field(cx, i);
+
+                            if !field_layout.is_zst() {
+                                fat_pointer_layout = field_layout;
+                                continue 'descend_newtypes;
+                            }
+                        }
+
+                        bug!(
+                            "receiver has no non-zero-sized fields {:?}",
+                            fat_pointer_layout
+                        );
+                    }
+
+                    fat_pointer_layout.ty
+                };
+
+                // we now have a type like `*mut RcBox<dyn Trait>`
+                // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
+                // this is understood as a special case elsewhere in the compiler
+                let unit_pointer_ty = cx.tcx().mk_mut_ptr(cx.tcx().mk_unit());
+                layout = cx.layout_of(unit_pointer_ty);
+                layout.ty = fat_pointer_ty;
+            }
+            ArgType::new(layout)
+        })
+    }
+
+    fn new_internal(
+        cx: &C,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>],
+        mk_arg_type: impl Fn(Ty<'tcx>, Option<usize>) -> ArgType<'tcx, Ty<'tcx>>,
+    ) -> Self {
+        debug!("FnType::new_internal({:?}, {:?})", sig, extra_args);
+
+        use rustc_target::spec::abi::Abi::*;
+        let conv = match cx.tcx().sess.target.target.adjust_abi(sig.abi) {
+            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::C,
+
+            // It's the ABI's job to select this, not ours.
+            System => bug!("system abi should be selected elsewhere"),
+
+            Stdcall => Conv::X86Stdcall,
+            Fastcall => Conv::X86Fastcall,
+            Vectorcall => Conv::X86VectorCall,
+            Thiscall => Conv::X86ThisCall,
+            C => Conv::C,
+            Unadjusted => Conv::C,
+            Win64 => Conv::X86_64Win64,
+            SysV64 => Conv::X86_64SysV,
+            Aapcs => Conv::ArmAapcs,
+            PtxKernel => Conv::PtxKernel,
+            Msp430Interrupt => Conv::Msp430Intr,
+            X86Interrupt => Conv::X86Intr,
+            AmdGpuKernel => Conv::AmdGpuKernel,
+
+            // These API constants ought to be more specific...
+            Cdecl => Conv::C,
+        };
+
+        let mut inputs = sig.inputs();
+        let extra_args = if sig.abi == RustCall {
+            assert!(!sig.c_variadic && extra_args.is_empty());
+
+            match sig.inputs().last().unwrap().sty {
+                ty::Tuple(tupled_arguments) => {
+                    inputs = &sig.inputs()[0..sig.inputs().len() - 1];
+                    tupled_arguments.iter().map(|k| k.expect_ty()).collect()
+                }
+                _ => {
+                    bug!(
+                        "argument to function with \"rust-call\" ABI \
+                         is not a tuple"
+                    );
+                }
+            }
+        } else {
+            assert!(sig.c_variadic || extra_args.is_empty());
+            extra_args.to_vec()
+        };
+
+        let target = &cx.tcx().sess.target.target;
+        let win_x64_gnu =
+            target.target_os == "windows" && target.arch == "x86_64" && target.target_env == "gnu";
+        let linux_s390x =
+            target.target_os == "linux" && target.arch == "s390x" && target.target_env == "gnu";
+        let linux_sparc64 =
+            target.target_os == "linux" && target.arch == "sparc64" && target.target_env == "gnu";
+        let rust_abi = match sig.abi {
+            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
+            _ => false,
+        };
+
+        // Handle safe Rust thin and fat pointers.
+        let adjust_for_rust_scalar = |attrs: &mut ArgAttributes,
+                                      scalar: &Scalar,
+                                      layout: TyLayout<'tcx>,
+                                      offset: Size,
+                                      is_return: bool| {
+            // Booleans are always an i1 that needs to be zero-extended.
+            if scalar.is_bool() {
+                attrs.set(ArgAttribute::ZExt);
+                return;
+            }
+
+            // Only pointer types handled below.
+            if scalar.value != Pointer {
+                return;
+            }
+
+            if scalar.valid_range.start() < scalar.valid_range.end() {
+                if *scalar.valid_range.start() > 0 {
+                    attrs.set(ArgAttribute::NonNull);
+                }
+            }
+
+            if let Some(pointee) = layout.pointee_info_at(cx, offset) {
+                if let Some(kind) = pointee.safe {
+                    attrs.pointee_size = pointee.size;
+                    attrs.pointee_align = Some(pointee.align);
+
+                    // `Box` pointer parameters never alias because ownership is transferred
+                    // `&mut` pointer parameters never alias other parameters,
+                    // or mutable global data
+                    //
+                    // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
+                    // and can be marked as both `readonly` and `noalias`, as
+                    // LLVM's definition of `noalias` is based solely on memory
+                    // dependencies rather than pointer equality
+                    let no_alias = match kind {
+                        PointerKind::Shared => false,
+                        PointerKind::UniqueOwned => true,
+                        PointerKind::Frozen | PointerKind::UniqueBorrowed => !is_return,
+                    };
+                    if no_alias {
+                        attrs.set(ArgAttribute::NoAlias);
+                    }
+
+                    if kind == PointerKind::Frozen && !is_return {
+                        attrs.set(ArgAttribute::ReadOnly);
+                    }
+                }
+            }
+        };
+
+        // Store the index of the last argument. This is useful for working with
+        // C-compatible variadic arguments.
+        let last_arg_idx = if sig.inputs().is_empty() {
+            None
+        } else {
+            Some(sig.inputs().len() - 1)
+        };
+
+        let arg_of = |ty: Ty<'tcx>, arg_idx: Option<usize>| {
+            let is_return = arg_idx.is_none();
+            let mut arg = mk_arg_type(ty, arg_idx);
+            if arg.layout.is_zst() {
+                // For some forsaken reason, x86_64-pc-windows-gnu
+                // doesn't ignore zero-sized struct arguments.
+                // The same is true for s390x-unknown-linux-gnu
+                // and sparc64-unknown-linux-gnu.
+                if is_return || rust_abi || (!win_x64_gnu && !linux_s390x && !linux_sparc64) {
+                    arg.mode = PassMode::Ignore(IgnoreMode::Zst);
+                }
+            }
+
+            // If this is a C-variadic function, this is not the return value,
+            // and there is one or more fixed arguments; ensure that the `VaList`
+            // is ignored as an argument.
+            if sig.c_variadic {
+                match (last_arg_idx, arg_idx) {
+                    (Some(last_idx), Some(cur_idx)) if last_idx == cur_idx => {
+                        let va_list_did = match cx.tcx().lang_items().va_list() {
+                            Some(did) => did,
+                            None => bug!("`va_list` lang item required for C-variadic functions"),
+                        };
+                        match ty.sty {
+                            ty::Adt(def, _) if def.did == va_list_did => {
+                                // This is the "spoofed" `VaList`. Set the arguments mode
+                                // so that it will be ignored.
+                                arg.mode = PassMode::Ignore(IgnoreMode::CVarArgs);
+                            }
+                            _ => (),
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // FIXME(eddyb) other ABIs don't have logic for scalar pairs.
+            if !is_return && rust_abi {
+                if let Abi::ScalarPair(ref a, ref b) = arg.layout.abi {
+                    let mut a_attrs = ArgAttributes::new();
+                    let mut b_attrs = ArgAttributes::new();
+                    adjust_for_rust_scalar(&mut a_attrs, a, arg.layout, Size::ZERO, false);
+                    adjust_for_rust_scalar(
+                        &mut b_attrs,
+                        b,
+                        arg.layout,
+                        a.value.size(cx).align_to(b.value.align(cx).abi),
+                        false,
+                    );
+                    arg.mode = PassMode::Pair(a_attrs, b_attrs);
+                    return arg;
+                }
+            }
+
+            if let Abi::Scalar(ref scalar) = arg.layout.abi {
+                if let PassMode::Direct(ref mut attrs) = arg.mode {
+                    adjust_for_rust_scalar(attrs, scalar, arg.layout, Size::ZERO, is_return);
+                }
+            }
+
+            arg
+        };
+
+        let mut fn_ty = FnType {
+            ret: arg_of(sig.output(), None),
+            args: inputs
+                .iter()
+                .cloned()
+                .chain(extra_args)
+                .enumerate()
+                .map(|(i, ty)| arg_of(ty, Some(i)))
+                .collect(),
+            c_variadic: sig.c_variadic,
+            conv,
+        };
+        fn_ty.adjust_for_abi(cx, sig.abi);
+        fn_ty
+    }
+
+    fn adjust_for_abi(&mut self, cx: &C, abi: SpecAbi) {
+        if abi == SpecAbi::Unadjusted {
+            return;
+        }
+
+        if abi == SpecAbi::Rust
+            || abi == SpecAbi::RustCall
+            || abi == SpecAbi::RustIntrinsic
+            || abi == SpecAbi::PlatformIntrinsic
+        {
+            let fixup = |arg: &mut ArgType<'tcx, Ty<'tcx>>| {
+                if arg.is_ignore() {
+                    return;
+                }
+
+                match arg.layout.abi {
+                    Abi::Aggregate { .. } => {}
+
+                    // This is a fun case! The gist of what this is doing is
+                    // that we want callers and callees to always agree on the
+                    // ABI of how they pass SIMD arguments. If we were to *not*
+                    // make these arguments indirect then they'd be immediates
+                    // in LLVM, which means that they'd used whatever the
+                    // appropriate ABI is for the callee and the caller. That
+                    // means, for example, if the caller doesn't have AVX
+                    // enabled but the callee does, then passing an AVX argument
+                    // across this boundary would cause corrupt data to show up.
+                    //
+                    // This problem is fixed by unconditionally passing SIMD
+                    // arguments through memory between callers and callees
+                    // which should get them all to agree on ABI regardless of
+                    // target feature sets. Some more information about this
+                    // issue can be found in #44367.
+                    //
+                    // Note that the platform intrinsic ABI is exempt here as
+                    // that's how we connect up to LLVM and it's unstable
+                    // anyway, we control all calls to it in libstd.
+                    Abi::Vector { .. }
+                        if abi != SpecAbi::PlatformIntrinsic
+                            && cx.tcx().sess.target.target.options.simd_types_indirect =>
+                    {
+                        arg.make_indirect();
+                        return;
+                    }
+
+                    _ => return,
+                }
+
+                let size = arg.layout.size;
+                if arg.layout.is_unsized() || size > Pointer.size(cx) {
+                    arg.make_indirect();
+                } else {
+                    // We want to pass small aggregates as immediates, but using
+                    // a LLVM aggregate type for this leads to bad optimizations,
+                    // so we pick an appropriately sized integer type instead.
+                    arg.cast_to(Reg {
+                        kind: RegKind::Integer,
+                        size,
+                    });
+                }
+            };
+            fixup(&mut self.ret);
+            for arg in &mut self.args {
+                fixup(arg);
+            }
+            if let PassMode::Indirect(ref mut attrs, _) = self.ret.mode {
+                attrs.set(ArgAttribute::StructRet);
+            }
+            return;
+        }
+
+        if let Err(msg) = self.adjust_for_cabi(cx, abi) {
+            cx.tcx().sess.fatal(&msg);
         }
     }
 }

@@ -11,6 +11,7 @@ use crate::mir::place::PlaceRef;
 use crate::MemFlags;
 use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size, HasParamEnv};
+use rustc_target::spec::{HasTargetSpec};
 use std::ops::Range;
 use std::iter::TrustedLen;
 
@@ -30,6 +31,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods<'tcx>
     + HasParamEnv<'tcx>
+    + HasTargetSpec
 
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;

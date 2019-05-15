@@ -1,6 +1,6 @@
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Place, PlaceBase, Static, StaticKind};
 use rustc::mir::interpret::InterpError;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
@@ -334,14 +334,14 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     ty::ParamEnv::reveal_all(),
                     &sig,
                 );
-                let fn_ty = bx.new_vtable(sig, &[]);
+                let fn_ty = FnType::new_vtable(&bx, sig, &[]);
                 let vtable = args[1];
                 args = &args[..1];
                 (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty), fn_ty)
             }
             _ => {
                 (bx.get_fn(drop_fn),
-                 bx.fn_type_of_instance(&drop_fn))
+                 FnType::of_instance(&bx, &drop_fn))
             }
         };
         helper.do_call(self, &mut bx, fn_ty, drop_fn, args,
@@ -439,7 +439,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Obtain the panic entry point.
         let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
         let instance = ty::Instance::mono(bx.tcx(), def_id);
-        let fn_ty = bx.fn_type_of_instance(&instance);
+        let fn_ty = FnType::of_instance(&bx, &instance);
         let llfn = bx.get_fn(instance);
 
         // Codegen the actual panic invoke/call.
@@ -518,7 +518,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_ty = match def {
             Some(ty::InstanceDef::Virtual(..)) => {
-                bx.new_vtable(sig, &extra_args)
+                FnType::new_vtable(&bx, sig, &extra_args)
             }
             Some(ty::InstanceDef::DropGlue(_, None)) => {
                 // Empty drop glue; a no-op.
@@ -526,7 +526,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 helper.funclet_br(self, &mut bx, target);
                 return;
             }
-            _ => bx.new_fn_type(sig, &extra_args)
+            _ => FnType::new(&bx, sig, &extra_args)
         };
 
         // Emit a panic or a no-op for `panic_if_uninhabited`.
@@ -556,7 +556,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let def_id =
                     common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_ty = bx.fn_type_of_instance(&instance);
+                let fn_ty = FnType::of_instance(&bx, &instance);
                 let llfn = bx.get_fn(instance);
 
                 // Codegen the actual panic invoke/call.
