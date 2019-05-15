@@ -12,6 +12,7 @@ use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
 use rustc::hir::HirId;
 use rustc::mir::*;
+use rustc::middle::region;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::bit_set::BitSet;
@@ -251,37 +252,39 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // Step 5. Create everything else: the guards and the arms.
 
-        let outer_source_info = self.source_info(span);
         let arm_end_blocks: Vec<_> = arm_candidates.into_iter().map(|(arm, candidates)| {
-            let mut arm_block = self.cfg.start_new_block();
+            let arm_source_info = self.source_info(arm.span);
+            let region_scope = (arm.scope, arm_source_info);
+            self.in_scope(region_scope, arm.lint_level, |this| {
+                let arm_block = this.cfg.start_new_block();
 
-            let body = self.hir.mirror(arm.body.clone());
-            let scope = self.declare_bindings(
-                None,
-                body.span,
-                LintLevel::Inherited,
-                &arm.patterns[0],
-                ArmHasGuard(arm.guard.is_some()),
-                Some((Some(&scrutinee_place), scrutinee_span)),
-            );
-
-            for candidate in candidates {
-                self.bind_and_guard_matched_candidate(
-                    candidate,
-                    arm.guard.clone(),
-                    arm_block,
-                    &fake_borrow_temps,
-                    scrutinee_span,
+                let body = this.hir.mirror(arm.body.clone());
+                let scope = this.declare_bindings(
+                    None,
+                    arm.span,
+                    &arm.patterns[0],
+                    ArmHasGuard(arm.guard.is_some()),
+                    Some((Some(&scrutinee_place), scrutinee_span)),
                 );
-            }
 
-            if let Some(source_scope) = scope {
-                self.source_scope = source_scope;
-            }
+                if let Some(source_scope) = scope {
+                    this.source_scope = source_scope;
+                }
 
-            unpack!(arm_block = self.into(destination, arm_block, body));
+                for candidate in candidates {
+                    this.clear_top_scope(arm.scope);
+                    this.bind_and_guard_matched_candidate(
+                        candidate,
+                        arm.guard.clone(),
+                        arm_block,
+                        &fake_borrow_temps,
+                        scrutinee_span,
+                        region_scope,
+                    );
+                }
 
-            arm_block
+                this.into(destination, arm_block, body)
+            })
         }).collect();
 
         // all the arm blocks will rejoin here
@@ -289,7 +292,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         for arm_block in arm_end_blocks {
             self.cfg.terminate(
-                arm_block,
+                unpack!(arm_block),
                 outer_source_info,
                 TerminatorKind::Goto { target: end_block },
             );
@@ -489,33 +492,20 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         &mut self,
         mut visibility_scope: Option<SourceScope>,
         scope_span: Span,
-        lint_level: LintLevel,
         pattern: &Pattern<'tcx>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<&Place<'tcx>>, Span)>,
     ) -> Option<SourceScope> {
-        assert!(
-            !(visibility_scope.is_some() && lint_level.is_explicit()),
-            "can't have both a visibility and a lint scope at the same time"
-        );
-        let mut scope = self.source_scope;
         debug!("declare_bindings: pattern={:?}", pattern);
         self.visit_bindings(
             &pattern,
             UserTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
-                    // If we have lints, create a new source scope
-                    // that marks the lints for the locals. See the comment
-                    // on the `source_info` field for why this is needed.
-                    if lint_level.is_explicit() {
-                        scope = this.new_source_scope(scope_span, lint_level, None);
-                    }
-                visibility_scope = Some(this.new_source_scope(scope_span,
-                                                           LintLevel::Inherited,
-                                                           None));
+                    visibility_scope =
+                        Some(this.new_source_scope(scope_span, LintLevel::Inherited, None));
                 }
-                let source_info = SourceInfo { span, scope };
+                let source_info = SourceInfo { span, scope: this.source_scope };
                 let visibility_scope = visibility_scope.unwrap();
                 this.declare_binding(
                     source_info,
@@ -880,7 +870,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             span,
             untested_candidates,
             join_block,
-            &mut None,
+            fake_borrows,
         )
     }
 
@@ -1328,6 +1318,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         arm_block: BasicBlock,
         fake_borrows: &Vec<(&Place<'tcx>, Local)>,
         scrutinee_span: Span,
+        region_scope: (region::Scope, SourceInfo),
     ) {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -1510,16 +1501,39 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             //
             // and that is clearly not correct.
             let post_guard_block = self.cfg.start_new_block();
+            let otherwise_post_guard_block = self.cfg.start_new_block();
             self.cfg.terminate(
                 block,
                 source_info,
                 TerminatorKind::if_(
                     self.hir.tcx(),
-                    cond,
+                    cond.clone(),
                     post_guard_block,
-                    candidate.otherwise_block.unwrap()
+                    otherwise_post_guard_block,
                 ),
             );
+
+            self.exit_scope(
+                source_info.span,
+                region_scope,
+                otherwise_post_guard_block,
+                candidate.otherwise_block.unwrap(),
+            );
+
+            if let Operand::Copy(cond_place) | Operand::Move(cond_place) = cond {
+                if let Place::Base(PlaceBase::Local(cond_temp)) = cond_place {
+                    // We will call `clear_top_scope` if there's another guard. So
+                    // we have to drop this variable now or it will be "storage
+                    // leaked".
+                    self.pop_variable(
+                        post_guard_block,
+                        region_scope.0,
+                        cond_temp
+                    );
+                } else {
+                    bug!("Expected as_local_operand to produce a temporary");
+                }
+            }
 
             let by_value_bindings = candidate.bindings.iter().filter(|binding| {
                 if let BindingMode::ByValue = binding.binding_mode { true } else { false }

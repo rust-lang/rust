@@ -430,6 +430,16 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_arm(&mut self, arm: &'hir Arm) {
+        let node = Node::Arm(arm);
+
+        self.insert(arm.span, arm.hir_id, node);
+
+        self.with_parent(arm.hir_id, |this| {
+            intravisit::walk_arm(this, arm);
+        });
+    }
+
     fn visit_anon_const(&mut self, constant: &'hir AnonConst) {
         self.insert(DUMMY_SP, constant.hir_id, Node::AnonConst(constant));
 

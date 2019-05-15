@@ -540,7 +540,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         err.help(&format!("did you mean `{}: &{}`?", snippet, expected));
                     }
                 }
-                hir::Node::Expr(hir::Expr { node: hir::ExprKind::Match(..), .. }) |
+                hir::Node::Arm(_) |
                 hir::Node::Pat(_) => {
                     // rely on match ergonomics or it might be nested `&&pat`
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(inner.span) {
@@ -781,14 +781,17 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
     fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, span: Span) -> Option<(Span, String)> {
         use hir::Node::{Block, Item, Local};
 
-        let node = self.tcx.hir().get_by_hir_id(self.tcx.hir().get_parent_node_by_hir_id(
-            self.tcx.hir().get_parent_node_by_hir_id(hir_id),
-        ));
+        let hir = self.tcx.hir();
+        let arm_id = hir.get_parent_node_by_hir_id(hir_id);
+        let match_id = hir.get_parent_node_by_hir_id(arm_id);
+        let containing_id = hir.get_parent_node_by_hir_id(match_id);
+
+        let node = hir.get_by_hir_id(containing_id);
         if let Block(block) = node {
             // check that the body's parent is an fn
-            let parent = self.tcx.hir().get_by_hir_id(
-                self.tcx.hir().get_parent_node_by_hir_id(
-                    self.tcx.hir().get_parent_node_by_hir_id(block.hir_id),
+            let parent = hir.get_by_hir_id(
+                hir.get_parent_node_by_hir_id(
+                    hir.get_parent_node_by_hir_id(block.hir_id),
                 ),
             );
             if let (Some(expr), Item(hir::Item {

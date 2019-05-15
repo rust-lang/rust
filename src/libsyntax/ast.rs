@@ -912,6 +912,7 @@ pub struct Arm {
     pub pats: Vec<P<Pat>>,
     pub guard: Option<Guard>,
     pub body: P<Expr>,
+    pub span: Span,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

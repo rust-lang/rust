@@ -105,6 +105,14 @@ fn main() {
       _ => {}
     }
 
+    // Attribute should be respected on match arms
+    match 0 {
+        #[allow(unused_mut)]
+        mut x => {
+            let mut y = 1;
+        },
+    }
+
     let x = |mut y: isize| y = 32;
     fn nothing(mut foo: isize) { foo = 37; }
 

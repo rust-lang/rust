@@ -1862,7 +1862,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Pat(pat))
     }
 
-    fn print_arm(&mut self, arm: &hir::Arm) -> io::Result<()> {
+    pub fn print_arm(&mut self, arm: &hir::Arm) -> io::Result<()> {
         // I have no idea why this check is necessary, but here it
         // is :(
         if arm.attrs.is_empty() {
