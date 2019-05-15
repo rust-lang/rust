@@ -1,3 +1,4 @@
+use std::fmt::{self, Display};
 use std::io::{self, Write};
 use std::path::Path;
 
@@ -35,13 +36,12 @@ where
     for mismatch in diff {
         for line in mismatch.lines {
             // Do nothing with `DiffLine::Context` and `DiffLine::Resulting`.
-            if let DiffLine::Expected(ref str) = line {
-                let message = xml_escape_str(str);
+            if let DiffLine::Expected(message) = line {
                 write!(
                     writer,
                     "<error line=\"{}\" severity=\"warning\" message=\"Should be `{}`\" \
                      />",
-                    mismatch.line_number, message
+                    mismatch.line_number, XmlEscaped(&message)
                 )?;
             }
         }
@@ -50,19 +50,53 @@ where
     Ok(())
 }
 
-// Convert special characters into XML entities.
-// This is needed for checkstyle output.
-fn xml_escape_str(string: &str) -> String {
-    let mut out = String::new();
-    for c in string.chars() {
-        match c {
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            '&' => out.push_str("&amp;"),
-            _ => out.push(c),
+/// Convert special characters into XML entities.
+/// This is needed for checkstyle output.
+struct XmlEscaped<'a>(&'a str);
+
+impl<'a> Display for XmlEscaped<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for char in self.0.chars() {
+            match char {
+                '<' => write!(formatter, "&lt;"),
+                '>' => write!(formatter, "&gt;"),
+                '"' => write!(formatter, "&quot;"),
+                '\'' => write!(formatter, "&apos;"),
+                '&' => write!(formatter, "&amp;"),
+                _ => write!(formatter, "{}", char),
+            }?;
         }
+
+        Ok(())
     }
-    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn special_characters_are_escaped() {
+        assert_eq!(
+            "&lt;&gt;&quot;&apos;&amp;",
+            format!("{}", XmlEscaped(r#"<>"'&"#)),
+        );
+    }
+
+    #[test]
+    fn special_characters_are_escaped_in_string_with_other_characters() {
+        assert_eq!(
+            "The quick brown &quot;🦊&quot; jumps &lt;over&gt; the lazy 🐶",
+            format!(
+                "{}",
+                XmlEscaped(r#"The quick brown "🦊" jumps <over> the lazy 🐶"#)
+            ),
+        );
+    }
+
+    #[test]
+    fn other_characters_are_not_escaped() {
+        let string = "The quick brown 🦊 jumps over the lazy 🐶";
+        assert_eq!(string, format!("{}", XmlEscaped(string)),);
+    }
 }
