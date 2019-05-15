@@ -81,6 +81,7 @@ impl Hash for Constant {
     where
         H: Hasher,
     {
+        std::mem::discriminant(self).hash(state);
         match *self {
             Constant::Str(ref s) => {
                 s.hash(state);

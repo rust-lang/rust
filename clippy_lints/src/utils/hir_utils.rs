@@ -389,57 +389,46 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
 
     #[allow(clippy::many_single_char_names, clippy::too_many_lines)]
     pub fn hash_expr(&mut self, e: &Expr) {
-        if let Some(e) = constant_simple(self.cx, self.tables, e) {
+        let simple_const = constant_simple(self.cx, self.tables, e);
+
+        // const hashing may result in the same hash as some unrelated node, so add a sort of
+        // discriminant depending on which path we're choosing next
+        simple_const.is_some().hash(&mut self.s);
+
+        if let Some(e) = simple_const {
             return e.hash(&mut self.s);
         }
 
+        std::mem::discriminant(&e.node).hash(&mut self.s);
+
         match e.node {
             ExprKind::AddrOf(m, ref e) => {
-                let c: fn(_, _) -> _ = ExprKind::AddrOf;
-                c.hash(&mut self.s);
                 m.hash(&mut self.s);
                 self.hash_expr(e);
             },
             ExprKind::Continue(i) => {
-                let c: fn(_) -> _ = ExprKind::Continue;
-                c.hash(&mut self.s);
                 if let Some(i) = i.label {
                     self.hash_name(i.ident.name);
                 }
             },
-            ExprKind::Yield(ref e) => {
-                let c: fn(_) -> _ = ExprKind::Yield;
-                c.hash(&mut self.s);
-                self.hash_expr(e);
-            },
             ExprKind::Assign(ref l, ref r) => {
-                let c: fn(_, _) -> _ = ExprKind::Assign;
-                c.hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
             ExprKind::AssignOp(ref o, ref l, ref r) => {
-                let c: fn(_, _, _) -> _ = ExprKind::AssignOp;
-                c.hash(&mut self.s);
                 o.hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
             ExprKind::Block(ref b, _) => {
-                let c: fn(_, _) -> _ = ExprKind::Block;
-                c.hash(&mut self.s);
                 self.hash_block(b);
             },
             ExprKind::Binary(op, ref l, ref r) => {
-                let c: fn(_, _, _) -> _ = ExprKind::Binary;
-                c.hash(&mut self.s);
                 op.node.hash(&mut self.s);
                 self.hash_expr(l);
                 self.hash_expr(r);
             },
             ExprKind::Break(i, ref j) => {
-                let c: fn(_, _) -> _ = ExprKind::Break;
-                c.hash(&mut self.s);
                 if let Some(i) = i.label {
                     self.hash_name(i.ident.name);
                 }
@@ -447,26 +436,18 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(&*j);
                 }
             },
-            ExprKind::Box(ref e) => {
-                let c: fn(_) -> _ = ExprKind::Box;
-                c.hash(&mut self.s);
+            ExprKind::Box(ref e) | ExprKind::DropTemps(ref e) | ExprKind::Yield(ref e) => {
                 self.hash_expr(e);
             },
             ExprKind::Call(ref fun, ref args) => {
-                let c: fn(_, _) -> _ = ExprKind::Call;
-                c.hash(&mut self.s);
                 self.hash_expr(fun);
                 self.hash_exprs(args);
             },
-            ExprKind::Cast(ref e, ref _ty) => {
-                let c: fn(_, _) -> _ = ExprKind::Cast;
-                c.hash(&mut self.s);
+            ExprKind::Cast(ref e, ref _ty) | ExprKind::Type(ref e, ref _ty) => {
                 self.hash_expr(e);
                 // TODO: _ty
             },
             ExprKind::Closure(cap, _, eid, _, _) => {
-                let c: fn(_, _, _, _, _) -> _ = ExprKind::Closure;
-                c.hash(&mut self.s);
                 match cap {
                     CaptureClause::CaptureByValue => 0,
                     CaptureClause::CaptureByRef => 1,
@@ -475,37 +456,24 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.hash_expr(&self.cx.tcx.hir().body(eid).value);
             },
             ExprKind::Field(ref e, ref f) => {
-                let c: fn(_, _) -> _ = ExprKind::Field;
-                c.hash(&mut self.s);
                 self.hash_expr(e);
                 self.hash_name(f.name);
             },
             ExprKind::Index(ref a, ref i) => {
-                let c: fn(_, _) -> _ = ExprKind::Index;
-                c.hash(&mut self.s);
                 self.hash_expr(a);
                 self.hash_expr(i);
             },
-            ExprKind::InlineAsm(..) => {
-                let c: fn(_, _, _) -> _ = ExprKind::InlineAsm;
-                c.hash(&mut self.s);
-            },
+            ExprKind::InlineAsm(..) | ExprKind::Err => {},
             ExprKind::Lit(ref l) => {
-                let c: fn(_) -> _ = ExprKind::Lit;
-                c.hash(&mut self.s);
                 l.hash(&mut self.s);
             },
             ExprKind::Loop(ref b, ref i, _) => {
-                let c: fn(_, _, _) -> _ = ExprKind::Loop;
-                c.hash(&mut self.s);
                 self.hash_block(b);
                 if let Some(i) = *i {
                     self.hash_name(i.ident.name);
                 }
             },
             ExprKind::Match(ref e, ref arms, ref s) => {
-                let c: fn(_, _, _) -> _ = ExprKind::Match;
-                c.hash(&mut self.s);
                 self.hash_expr(e);
 
                 for arm in arms {
@@ -519,14 +487,10 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 s.hash(&mut self.s);
             },
             ExprKind::MethodCall(ref path, ref _tys, ref args) => {
-                let c: fn(_, _, _) -> _ = ExprKind::MethodCall;
-                c.hash(&mut self.s);
                 self.hash_name(path.ident.name);
                 self.hash_exprs(args);
             },
             ExprKind::Repeat(ref e, ref l_id) => {
-                let c: fn(_, _) -> _ = ExprKind::Repeat;
-                c.hash(&mut self.s);
                 self.hash_expr(e);
                 let full_table = self.tables;
                 self.tables = self.cx.tcx.body_tables(l_id.body);
@@ -534,21 +498,14 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 self.tables = full_table;
             },
             ExprKind::Ret(ref e) => {
-                let c: fn(_) -> _ = ExprKind::Ret;
-                c.hash(&mut self.s);
                 if let Some(ref e) = *e {
                     self.hash_expr(e);
                 }
             },
             ExprKind::Path(ref qpath) => {
-                let c: fn(_) -> _ = ExprKind::Path;
-                c.hash(&mut self.s);
                 self.hash_qpath(qpath);
             },
             ExprKind::Struct(ref path, ref fields, ref expr) => {
-                let c: fn(_, _, _) -> _ = ExprKind::Struct;
-                c.hash(&mut self.s);
-
                 self.hash_qpath(path);
 
                 for f in fields {
@@ -560,45 +517,19 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                     self.hash_expr(e);
                 }
             },
-            ExprKind::Tup(ref tup) => {
-                let c: fn(_) -> _ = ExprKind::Tup;
-                c.hash(&mut self.s);
-                self.hash_exprs(tup);
-            },
-            ExprKind::Type(ref e, ref _ty) => {
-                let c: fn(_, _) -> _ = ExprKind::Type;
-                c.hash(&mut self.s);
-                self.hash_expr(e);
-                // TODO: _ty
+            ExprKind::Tup(ref v) | ExprKind::Array(ref v) => {
+                self.hash_exprs(v);
             },
             ExprKind::Unary(lop, ref le) => {
-                let c: fn(_, _) -> _ = ExprKind::Unary;
-                c.hash(&mut self.s);
-
                 lop.hash(&mut self.s);
                 self.hash_expr(le);
             },
-            ExprKind::Array(ref v) => {
-                let c: fn(_) -> _ = ExprKind::Array;
-                c.hash(&mut self.s);
-
-                self.hash_exprs(v);
-            },
             ExprKind::While(ref cond, ref b, l) => {
-                let c: fn(_, _, _) -> _ = ExprKind::While;
-                c.hash(&mut self.s);
-
                 self.hash_expr(cond);
                 self.hash_block(b);
                 if let Some(l) = l {
                     self.hash_name(l.ident.name);
                 }
-            },
-            ExprKind::Err => {},
-            ExprKind::DropTemps(ref e) => {
-                let c: fn(_) -> _ = ExprKind::DropTemps;
-                c.hash(&mut self.s);
-                self.hash_expr(e);
             },
         }
     }
@@ -633,26 +564,16 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     }
 
     pub fn hash_stmt(&mut self, b: &Stmt) {
-        match b.node {
-            StmtKind::Local(ref local) => {
-                let c: fn(_) -> _ = StmtKind::Local;
-                c.hash(&mut self.s);
+        std::mem::discriminant(&b.node).hash(&mut self.s);
+
+        match &b.node {
+            StmtKind::Local(local) => {
                 if let Some(ref init) = local.init {
                     self.hash_expr(init);
                 }
             },
-            StmtKind::Item(..) => {
-                let c: fn(_) -> _ = StmtKind::Item;
-                c.hash(&mut self.s);
-            },
-            StmtKind::Expr(ref expr) => {
-                let c: fn(_) -> _ = StmtKind::Expr;
-                c.hash(&mut self.s);
-                self.hash_expr(expr);
-            },
-            StmtKind::Semi(ref expr) => {
-                let c: fn(_) -> _ = StmtKind::Semi;
-                c.hash(&mut self.s);
+            StmtKind::Item(..) => {},
+            StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
                 self.hash_expr(expr);
             },
         }
@@ -661,8 +582,6 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
     pub fn hash_guard(&mut self, g: &Guard) {
         match g {
             Guard::If(ref expr) => {
-                let c: fn(_) -> _ = Guard::If;
-                c.hash(&mut self.s);
                 self.hash_expr(expr);
             },
         }
