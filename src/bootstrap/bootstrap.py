@@ -177,7 +177,6 @@ def default_build_triple():
     # The goal here is to come up with the same triple as LLVM would,
     # at least for the subset of platforms we're willing to target.
     ostype_mapper = {
-        'Bitrig': 'unknown-bitrig',
         'Darwin': 'apple-darwin',
         'DragonFly': 'unknown-dragonfly',
         'FreeBSD': 'unknown-freebsd',

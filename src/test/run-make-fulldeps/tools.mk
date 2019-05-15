@@ -88,10 +88,6 @@ else
 ifeq ($(UNAME),FreeBSD)
 	EXTRACFLAGS := -lm -lpthread -lgcc_s
 else
-ifeq ($(UNAME),Bitrig)
-	EXTRACFLAGS := -lm -lpthread
-	EXTRACXXFLAGS := -lc++ -lc++abi
-else
 ifeq ($(UNAME),SunOS)
 	EXTRACFLAGS := -lm -lpthread -lposix4 -lsocket -lresolv
 else
@@ -101,7 +97,6 @@ ifeq ($(UNAME),OpenBSD)
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
 	EXTRACXXFLAGS := -lstdc++
-endif
 endif
 endif
 endif

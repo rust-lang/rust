@@ -2217,9 +2217,7 @@ impl<'test> TestCx<'test> {
 
     fn charset() -> &'static str {
         // FreeBSD 10.1 defaults to GDB 6.1.1 which doesn't support "auto" charset
-        if cfg!(target_os = "bitrig") {
-            "auto"
-        } else if cfg!(target_os = "freebsd") {
+        if cfg!(target_os = "freebsd") {
             "ISO-8859-1"
         } else {
             "UTF-8"
@@ -2670,8 +2668,7 @@ impl<'test> TestCx<'test> {
         create_dir_all(&tmpdir).unwrap();
 
         let host = &self.config.host;
-        let make = if host.contains("bitrig")
-            || host.contains("dragonfly")
+        let make = if host.contains("dragonfly")
             || host.contains("freebsd")
             || host.contains("netbsd")
             || host.contains("openbsd")

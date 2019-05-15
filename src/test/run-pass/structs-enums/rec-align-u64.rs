@@ -55,15 +55,6 @@ mod m {
     }
 }
 
-#[cfg(target_os = "bitrig")]
-mod m {
-    #[cfg(target_arch = "x86_64")]
-    pub mod m {
-        pub fn align() -> usize { 8 }
-        pub fn size() -> usize { 16 }
-    }
-}
-
 #[cfg(target_os = "windows")]
 mod m {
     #[cfg(target_arch = "x86")]

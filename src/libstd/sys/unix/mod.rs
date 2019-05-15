@@ -5,7 +5,6 @@ use crate::io::ErrorKind;
 #[cfg(any(rustdoc, target_os = "linux"))] pub use crate::os::linux as platform;
 
 #[cfg(all(not(rustdoc), target_os = "android"))]   pub use crate::os::android as platform;
-#[cfg(all(not(rustdoc), target_os = "bitrig"))]    pub use crate::os::bitrig as platform;
 #[cfg(all(not(rustdoc), target_os = "dragonfly"))] pub use crate::os::dragonfly as platform;
 #[cfg(all(not(rustdoc), target_os = "freebsd"))]   pub use crate::os::freebsd as platform;
 #[cfg(all(not(rustdoc), target_os = "haiku"))]     pub use crate::os::haiku as platform;

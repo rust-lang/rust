@@ -23,7 +23,6 @@ pub fn main() {
 }
 
 #[cfg(any(target_os = "android",
-          target_os = "bitrig",
           target_os = "cloudabi",
           target_os = "dragonfly",
           target_os = "emscripten",

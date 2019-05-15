@@ -32,7 +32,6 @@ macro_rules! dump_and_die {
                     all(target_os = "linux", target_arch = "arm"),
                     target_os = "freebsd",
                     target_os = "dragonfly",
-                    target_os = "bitrig",
                     target_os = "openbsd")) {
             // skip these platforms as this support isn't implemented yet.
         } else {
