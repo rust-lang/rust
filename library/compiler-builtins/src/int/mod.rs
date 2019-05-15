@@ -302,7 +302,7 @@ impl_wide_int!(u32, u64, 32);
 impl_wide_int!(u64, u128, 64);
 
 intrinsics! {
-    #[use_c_shim_if(/* always if C compilation is enabled */)]
+    #[maybe_use_optimized_c_shim]
     #[cfg(any(
         target_pointer_width = "16",
         target_pointer_width = "32",

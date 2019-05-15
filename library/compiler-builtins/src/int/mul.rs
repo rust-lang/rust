@@ -84,7 +84,7 @@ trait UMulo: Int {
 impl UMulo for u128 {}
 
 intrinsics! {
-    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
+    #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_lmul]
     pub extern "C" fn __muldi3(a: u64, b: u64) -> u64 {
         a.mul(b)

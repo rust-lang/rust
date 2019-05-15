@@ -58,13 +58,13 @@ impl Divmod for i32 {}
 impl Divmod for i64 {}
 
 intrinsics! {
-    #[use_c_shim_if(all(target_arch = "arm", not(target_os = "ios"), not(thumb_1)))]
+    #[maybe_use_optimized_c_shim]
     #[arm_aeabi_alias = __aeabi_idiv]
     pub extern "C" fn __divsi3(a: i32, b: i32) -> i32 {
         a.div(b)
     }
 
-    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
+    #[maybe_use_optimized_c_shim]
     pub extern "C" fn __divdi3(a: i64, b: i64) -> i64 {
         a.div(b)
     }
@@ -74,15 +74,12 @@ intrinsics! {
         a.div(b)
     }
 
-    #[use_c_shim_if(all(target_arch = "arm",
-                    not(target_os = "ios"),
-                    not(target_env = "msvc"),
-                    not(thumb_1)))]
+    #[maybe_use_optimized_c_shim]
     pub extern "C" fn __modsi3(a: i32, b: i32) -> i32 {
         a.mod_(b)
     }
 
-    #[use_c_shim_if(all(target_arch = "x86", not(target_env = "msvc")))]
+    #[maybe_use_optimized_c_shim]
     pub extern "C" fn __moddi3(a: i64, b: i64) -> i64 {
         a.mod_(b)
     }
@@ -92,8 +89,7 @@ intrinsics! {
         a.mod_(b)
     }
 
-    #[use_c_shim_if(all(target_arch = "arm", not(target_env = "msvc"),
-                    not(target_os = "ios"), not(thumb_1)))]
+    #[maybe_use_optimized_c_shim]
     pub extern "C" fn __divmodsi4(a: i32, b: i32, rem: &mut i32) -> i32 {
         a.divmod(b, rem, |a, b| __divsi3(a, b))
     }
