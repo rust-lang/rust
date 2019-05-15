@@ -1,4 +1,4 @@
-use std::{fmt, ops};
+use std::{fmt, ops::{self, Bound}};
 
 use crate::{SyntaxNode, TextRange, TextUnit, SyntaxElement};
 
@@ -54,10 +54,31 @@ impl<'a> SyntaxText<'a> {
         self.range.len()
     }
 
-    pub fn slice(&self, range: impl SyntaxTextSlice) -> SyntaxText<'a> {
-        let range = range.restrict(self.range).unwrap_or_else(|| {
-            panic!("invalid slice, range: {:?}, slice: {:?}", self.range, range)
-        });
+    /// NB, the offsets here are absolute, and this probably doesn't make sense!
+    pub fn slice(&self, range: impl ops::RangeBounds<TextUnit>) -> SyntaxText<'a> {
+        let start = match range.start_bound() {
+            Bound::Included(b) => *b,
+            Bound::Excluded(b) => *b + TextUnit::from(1u32),
+            Bound::Unbounded => self.range.start(),
+        };
+        let end = match range.end_bound() {
+            Bound::Included(b) => *b + TextUnit::from(1u32),
+            Bound::Excluded(b) => *b,
+            Bound::Unbounded => self.range.end(),
+        };
+        assert!(
+            start <= end,
+            "invalid slice, range: {:?}, slice: {:?}",
+            self.range,
+            (range.start_bound(), range.end_bound()),
+        );
+        let range = TextRange::from_to(start, end);
+        assert!(
+            range.is_subrange(&self.range),
+            "invalid slice, range: {:?}, slice: {:?}",
+            self.range,
+            range,
+        );
         SyntaxText { node: self.node, range }
     }
 
@@ -85,40 +106,6 @@ impl<'a> fmt::Debug for SyntaxText<'a> {
 impl<'a> fmt::Display for SyntaxText<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&self.to_string(), f)
-    }
-}
-
-pub trait SyntaxTextSlice: fmt::Debug {
-    fn restrict(&self, range: TextRange) -> Option<TextRange>;
-}
-
-impl SyntaxTextSlice for TextRange {
-    fn restrict(&self, range: TextRange) -> Option<TextRange> {
-        self.intersection(&range)
-    }
-}
-
-impl SyntaxTextSlice for ops::RangeTo<TextUnit> {
-    fn restrict(&self, range: TextRange) -> Option<TextRange> {
-        if !range.contains_inclusive(self.end) {
-            return None;
-        }
-        Some(TextRange::from_to(range.start(), self.end))
-    }
-}
-
-impl SyntaxTextSlice for ops::RangeFrom<TextUnit> {
-    fn restrict(&self, range: TextRange) -> Option<TextRange> {
-        if !range.contains_inclusive(self.start) {
-            return None;
-        }
-        Some(TextRange::from_to(self.start, range.end()))
-    }
-}
-
-impl SyntaxTextSlice for ops::Range<TextUnit> {
-    fn restrict(&self, range: TextRange) -> Option<TextRange> {
-        TextRange::from_to(self.start, self.end).restrict(range)
     }
 }
 
