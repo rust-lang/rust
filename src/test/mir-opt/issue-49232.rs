@@ -18,14 +18,12 @@ fn main() {
 // fn main() -> (){
 //     let mut _0: ();
 //     let mut _1: ();
+//     let _2: i32;
 //     let mut _3: bool;
 //     let mut _4: !;
 //     let mut _5: ();
 //     let mut _6: &i32;
 //     scope 1 {
-//         let _2: i32;
-//     }
-//     scope 2 {
 //     }
 //     bb0: {
 //         goto -> bb1;
@@ -88,7 +86,6 @@ fn main() {
 //         unreachable;
 //     }
 //     bb17: {
-//         StorageDead(_4);
 //         goto -> bb18;
 //     }
 //     bb18: {

@@ -23,8 +23,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             safety_mode
         } =
             self.hir.mirror(ast_block);
-        self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), block, move |this| {
-            this.in_scope((region_scope, source_info), LintLevel::Inherited, block, move |this| {
+        self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), move |this| {
+            this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
                     // This is a `break`-able block
                     let exit_block = this.cfg.start_new_block();
@@ -83,9 +83,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
                     unpack!(block = this.in_opt_scope(
-                        opt_destruction_scope.map(|de|(de, source_info)), block, |this| {
+                        opt_destruction_scope.map(|de|(de, source_info)), |this| {
                             let si = (scope, source_info);
-                            this.in_scope(si, LintLevel::Inherited, block, |this| {
+                            this.in_scope(si, LintLevel::Inherited, |this| {
                                 let expr = this.hir.mirror(expr);
                                 this.stmt_expr(block, expr, Some(stmt_span))
                             })
@@ -113,31 +113,39 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let remainder_span = remainder_scope.span(this.hir.tcx(),
                                                               &this.hir.region_scope_tree);
 
-                    let scope;
+                    let visibility_scope =
+                        Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
 
                     // Evaluate the initializer, if present.
                     if let Some(init) = initializer {
                         let initializer_span = init.span();
 
-                        scope = this.declare_bindings(
-                            None,
-                            remainder_span,
-                            lint_level,
-                            &pattern,
-                            ArmHasGuard(false),
-                            Some((None, initializer_span)),
-                        );
                         unpack!(block = this.in_opt_scope(
-                            opt_destruction_scope.map(|de|(de, source_info)), block, |this| {
+                            opt_destruction_scope.map(|de|(de, source_info)), |this| {
                                 let scope = (init_scope, source_info);
-                                this.in_scope(scope, lint_level, block, |this| {
+                                this.in_scope(scope, lint_level, |this| {
+                                    this.declare_bindings(
+                                        visibility_scope,
+                                        remainder_span,
+                                        &pattern,
+                                        ArmHasGuard(false),
+                                        Some((None, initializer_span)),
+                                    );
                                     this.expr_into_pattern(block, pattern, init)
                                 })
                             }));
                     } else {
-                        scope = this.declare_bindings(
-                            None, remainder_span, lint_level, &pattern,
-                            ArmHasGuard(false), None);
+                        let scope = (init_scope, source_info);
+                        unpack!(this.in_scope(scope, lint_level, |this| {
+                            this.declare_bindings(
+                                visibility_scope,
+                                remainder_span,
+                                &pattern,
+                                ArmHasGuard(false),
+                                None,
+                            );
+                            block.unit()
+                        }));
 
                         debug!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_bindings(
@@ -149,8 +157,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             })
                     }
 
-                    // Enter the source scope, after evaluating the initializer.
-                    if let Some(source_scope) = scope {
+                    // Enter the visibility scope, after evaluating the initializer.
+                    if let Some(source_scope) = visibility_scope {
                         this.source_scope = source_scope;
                     }
                 }

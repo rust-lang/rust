@@ -57,7 +57,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         {
             let source_info = this.source_info(expr.span);
             let region_scope = (region_scope, source_info);
-            return this.in_scope(region_scope, lint_level, block, |this| {
+            return this.in_scope(region_scope, lint_level, |this| {
                 this.as_operand(block, scope, value)
             });
         }

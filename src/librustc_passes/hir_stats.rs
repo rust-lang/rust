@@ -149,7 +149,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_arm(&mut self, a: &'v hir::Arm) {
-        self.record("Arm", Id::None, a);
+        self.record("Arm", Id::Node(a.hir_id), a);
         hir_visit::walk_arm(self, a)
     }
 
