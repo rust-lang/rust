@@ -282,7 +282,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
             for (i, frame) in ecx.stack().iter().enumerate() {
                 trace!("-------------------");
                 trace!("Frame {}", i);
-                trace!("    return: {:#?}", frame.return_place);
+                trace!("    return: {:?}", frame.return_place.map(|p| *p));
                 for (i, local) in frame.locals.iter().enumerate() {
                     trace!("    local {}: {:?}", i, local.value);
                 }
