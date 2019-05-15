@@ -2,7 +2,7 @@ error[E0658]: `await!(<expr>)` macro syntax is unstable, and will soon be remove
   --> $DIR/await-macro.rs:9:5
    |
 LL |     await!(bar());
-   |     ^^^^^
+   |     ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/50547
    = help: add #![feature(await_macro)] to the crate attributes to enable
