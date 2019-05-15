@@ -6,9 +6,6 @@ trigger: none
 pr:
 - master # FIXME: really just want any branch, but want an explicit "pr" property set so it's clear
 
-variables:
-- group: caching-pr
-
 jobs:
 - job: Linux
   timeoutInMinutes: 180

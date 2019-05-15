@@ -7,7 +7,7 @@ trigger:
 - try
 
 variables:
-- group: caching
+- group: prod-credentials
 
 jobs:
 - job: Linux
