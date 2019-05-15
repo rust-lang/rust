@@ -306,7 +306,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                         handle_errors(sess, attr.span, AttrError::MultipleStabilityLevels);
                         break
                     }
-    
+
                     // Expansion of `get_meta!`
                     let mut feature = None;
                     let mut reason = None;
@@ -341,17 +341,28 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                             continue 'outer
                         }
                     }
-    
+
                     // Parse the optional symbol to an optional integer.
                     let issue: Option<u32> = if let Some(issue_sym) = issue {
                         if let Ok(issue_num) = issue_sym.as_str().parse() {
-                            if issue_num == 0 {
+                            //TODO Some ui tests fail because they directly use `thread_local!`
+                            // internals ($SRC_DIR/libstd/thread/local.rs). That emits this warning.
+                            // Removing the `issue = "0"` there isn't possible in libstd because the
+                            // stage 0 compiler gives a syntax error for the missing issue.
+                            //
+                            // How can I fix this?
+                            // + Don't include the warning is this PR and wait for the next
+                            //   master to beta promotion, because then I could remove the
+                            //   `issue = "0"`s in libstd and libcore
+                            // + With a #[cfg(not(stage0))] somehow?
+                            // + Just --bless the warnings?
+                            /*if issue_num == 0 {
                                 //TODO How do I choose an error number?
-                                struct_span_warn!(diagnostic, attr.span, E0545,
+                                struct_span_warn!(diagnostic, attr.span, E0547,
                                     "Issue #0 should not be used"
                                     ).help("Consider omitting the `issue` attribute")
                                     .emit();
-                            }
+                            }*/
                             Some(issue_num)
                         } else {
                             span_err!(diagnostic, attr.span, E0545, "incorrect 'issue'");
@@ -360,7 +371,7 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
                     } else {
                         None
                     };
-                    
+
                     // `feature` is required, `reason` and `issue` are optional.
                     if let Some(feature) = feature {
                         stab = Some(Stability {
