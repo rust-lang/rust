@@ -6,7 +6,7 @@ X_PY="$1"
 TOOLSTATE_FILE="$(realpath $2)"
 OS="$3"
 COMMIT="$(git rev-parse HEAD)"
-CHANGED_FILES="$(git diff --name-status HEAD HEAD^ || echo)"
+CHANGED_FILES="$(git diff --name-status HEAD HEAD^)"
 SIX_WEEK_CYCLE="$(( ($(date +%s) / 86400 - 20) % 42 ))"
 # ^ Number of days after the last promotion of beta.
 #   Its value is 41 on the Tuesday where "Promote master to beta (T-2)" happens.
