@@ -290,22 +290,22 @@ pub fn source_file_to_stream(
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
-/// parsing the token tream.
+/// parsing the token stream.
 pub fn maybe_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> Result<(TokenStream, Vec<lexer::UnmatchedBrace>), Vec<Diagnostic>> {
-    let mut srdr = lexer::StringReader::new_or_buffered_errs(sess, source_file, override_span)?;
-    srdr.real_token();
+    let srdr = lexer::StringReader::new_or_buffered_errs(sess, source_file, override_span)?;
+    let (token_trees, unmatched_braces) = srdr.into_token_trees();
 
-    match srdr.parse_all_token_trees() {
-        Ok(stream) => Ok((stream, srdr.unmatched_braces)),
+    match token_trees {
+        Ok(stream) => Ok((stream, unmatched_braces)),
         Err(err) => {
             let mut buffer = Vec::with_capacity(1);
             err.buffer(&mut buffer);
             // Not using `emit_unclosed_delims` to use `db.buffer`
-            for unmatched in srdr.unmatched_braces {
+            for unmatched in unmatched_braces {
                 let mut db = sess.span_diagnostic.struct_span_err(unmatched.found_span, &format!(
                     "incorrect close delimiter: `{}`",
                     token_to_string(&token::Token::CloseDelim(unmatched.found_delim)),

@@ -1,13 +1,46 @@
+use syntax_pos::Span;
+
 use crate::print::pprust::token_to_string;
 use crate::parse::lexer::{StringReader, UnmatchedBrace};
 use crate::parse::{token, PResult};
 use crate::tokenstream::{DelimSpan, IsJoint::*, TokenStream, TokenTree, TreeAndJoint};
 
 impl<'a> StringReader<'a> {
+    crate fn into_token_trees(self) -> (PResult<'a, TokenStream>, Vec<UnmatchedBrace>) {
+        let mut tt_reader = TokenTreesReader {
+            string_reader: self,
+            token: token::Eof,
+            span: syntax_pos::DUMMY_SP,
+            open_braces: Vec::new(),
+            unmatched_braces: Vec::new(),
+            matching_delim_spans: Vec::new(),
+            last_unclosed_found_span: None,
+        };
+        let res = tt_reader.parse_all_token_trees();
+        (res, tt_reader.unmatched_braces)
+    }
+}
+
+struct TokenTreesReader<'a> {
+    string_reader: StringReader<'a>,
+    token: token::Token,
+    span: Span,
+    /// Stack of open delimiters and their spans. Used for error message.
+    open_braces: Vec<(token::DelimToken, Span)>,
+    unmatched_braces: Vec<UnmatchedBrace>,
+    /// The type and spans for all braces
+    ///
+    /// Used only for error recovery when arriving to EOF with mismatched braces.
+    matching_delim_spans: Vec<(token::DelimToken, Span, Span)>,
+    last_unclosed_found_span: Option<Span>,
+}
+
+impl<'a> TokenTreesReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
-    crate fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
+    fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
         let mut tts = Vec::new();
 
+        self.real_token();
         while self.token != token::Eof {
             tts.push(self.parse_token_tree()?);
         }
@@ -34,11 +67,12 @@ impl<'a> StringReader<'a> {
     }
 
     fn parse_token_tree(&mut self) -> PResult<'a, TreeAndJoint> {
-        let sm = self.sess.source_map();
+        let sm = self.string_reader.sess.source_map();
         match self.token {
             token::Eof => {
                 let msg = "this file contains an un-closed delimiter";
-                let mut err = self.sess.span_diagnostic.struct_span_err(self.span, msg);
+                let mut err = self.string_reader.sess.span_diagnostic
+                    .struct_span_err(self.span, msg);
                 for &(_, sp) in &self.open_braces {
                     err.span_label(sp, "un-closed delimiter");
                 }
@@ -46,13 +80,12 @@ impl<'a> StringReader<'a> {
                 if let Some((delim, _)) = self.open_braces.last() {
                     if let Some((_, open_sp, close_sp)) = self.matching_delim_spans.iter()
                         .filter(|(d, open_sp, close_sp)| {
-
-                        if let Some(close_padding) = sm.span_to_margin(*close_sp) {
-                            if let Some(open_padding) = sm.span_to_margin(*open_sp) {
-                                return delim == d && close_padding != open_padding;
+                            if let Some(close_padding) = sm.span_to_margin(*close_sp) {
+                                if let Some(open_padding) = sm.span_to_margin(*open_sp) {
+                                    return delim == d && close_padding != open_padding;
+                                }
                             }
-                        }
-                        false
+                            false
                         }).next()  // these are in reverse order as they get inserted on close, but
                     {              // we want the last open/first close
                         err.span_label(
@@ -164,7 +197,8 @@ impl<'a> StringReader<'a> {
                 // matching opening delimiter).
                 let token_str = token_to_string(&self.token);
                 let msg = format!("unexpected close delimiter: `{}`", token_str);
-                let mut err = self.sess.span_diagnostic.struct_span_err(self.span, &msg);
+                let mut err = self.string_reader.sess.span_diagnostic
+                    .struct_span_err(self.span, &msg);
                 err.span_label(self.span, "unexpected close delimiter");
                 Err(err)
             },
@@ -173,11 +207,20 @@ impl<'a> StringReader<'a> {
                 // Note that testing for joint-ness here is done via the raw
                 // source span as the joint-ness is a property of the raw source
                 // rather than wanting to take `override_span` into account.
-                let raw = self.span_src_raw;
+                // Additionally, we actually check if the *next* pair of tokens
+                // is joint, but this is equivalent to checking the current pair.
+                let raw = self.string_reader.peek_span_src_raw;
                 self.real_token();
-                let is_joint = raw.hi() == self.span_src_raw.lo() && token::is_op(&self.token);
+                let is_joint = raw.hi() == self.string_reader.peek_span_src_raw.lo()
+                    && token::is_op(&self.token);
                 Ok((tt, if is_joint { Joint } else { NonJoint }))
             }
         }
+    }
+
+    fn real_token(&mut self) {
+        let t = self.string_reader.real_token();
+        self.token = t.tok;
+        self.span = t.sp;
     }
 }
