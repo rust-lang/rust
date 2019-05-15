@@ -97,6 +97,6 @@ mod tests {
     #[test]
     fn other_characters_are_not_escaped() {
         let string = "The quick brown 🦊 jumps over the lazy 🐶";
-        assert_eq!(string, format!("{}", XmlEscaped(string)),);
+        assert_eq!(string, format!("{}", XmlEscaped(string)));
     }
 }
