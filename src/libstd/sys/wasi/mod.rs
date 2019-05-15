@@ -21,8 +21,6 @@ use crate::os::raw::c_char;
 
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 #[path = "../wasm/cmath.rs"]
 pub mod cmath;
 #[path = "../wasm/condvar.rs"]

@@ -23,8 +23,6 @@ use crate::time::Duration;
 
 pub mod alloc;
 pub mod args;
-#[cfg(feature = "backtrace")]
-pub mod backtrace;
 pub mod cmath;
 pub mod env;
 pub mod fs;

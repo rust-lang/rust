@@ -38,6 +38,7 @@ features = [
   "objbase",
   "profileapi",
   "processenv",
+  "processthreadsapi",
   "psapi",
   "schannel",
   "securitybaseapi",

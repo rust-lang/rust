@@ -61,6 +61,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libstd/net/test.rs",
     "src/libstd/sys_common/mod.rs",
     "src/libstd/sys_common/net.rs",
+    "src/libstd/sys_common/backtrace.rs",
     "src/libterm", // Not sure how to make this crate portable, but test crate needs it.
     "src/libtest", // Probably should defer to unstable `std::sys` APIs.
     "src/libstd/sync/mpsc", // some tests are only run on non-emscripten
