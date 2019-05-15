@@ -414,46 +414,42 @@ pub mod fast {
         }
 
         // `try_initialize` is only called once per fast thread local variable,
-        // except in corner cases where it is being recursively initialized.
+        // except in corner cases where thread_local dtors reference other
+        // thread_local's, or it is being recursively initialized.
+        //
+        // Macos: Inlining this function can cause two `tlv_get_addr` calls to
+        // be performed for every call to `Key::get`. The #[cold] hint makes
+        // that less likely.
+        // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
         #[cold]
         unsafe fn try_initialize<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
-            if mem::needs_drop::<T>() {
-                self.try_initialize_drop(init)
-            } else {
+            if !mem::needs_drop::<T>() || self.try_register_dtor() {
                 Some(self.inner.initialize(init))
+            } else {
+                None
             }
         }
 
-        // `try_initialize_drop` is only called once per fast thread local
+        // `try_register_dtor` is only called once per fast thread local
         // variable, except in corner cases where thread_local dtors reference
         // other thread_local's, or it is being recursively initialized.
-        //
-        // Macos: Inlining this function causes two `tlv_get_addr` calls to be
-        // performed for every call to `Key::get`.
-        // LLVM issue: https://bugs.llvm.org/show_bug.cgi?id=41722
-        #[inline(never)]
-        #[cold]
-        unsafe fn try_initialize_drop<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
-            // We don't put a `needs_drop` check around this and call it a day
-            // because this function is not inlined. Unwrapping code gets
-            // generated for callers of `LocalKey::with` even if we always
-            // return `Some` here.
+        unsafe fn try_register_dtor(&self) -> bool {
             match self.dtor_state.get() {
                 DtorState::Unregistered => {
                     // dtor registration happens before initialization.
                     register_dtor(self as *const _ as *mut u8,
                                 destroy_value::<T>);
                     self.dtor_state.set(DtorState::Registered);
+                    true
                 }
                 DtorState::Registered => {
                     // recursively initialized
+                    true
                 }
                 DtorState::RunningOrHasRun => {
-                    return None
+                    false
                 }
             }
-
-            Some(self.inner.initialize(init))
         }
     }
 
