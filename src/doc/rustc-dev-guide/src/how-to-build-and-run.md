@@ -297,6 +297,10 @@ in other sections:
   more details):
   - `./x.py test --stage 1 src/libstd` – runs the `#[test]` tests from libstd
   - `./x.py test --stage 1 src/test/run-pass` – runs the `run-pass` test suite
+  - `./x.py test --stage 1 src/test/ui/const-generics` - runs all the tests in
+  the `const-generics/` subdirectory of the `ui` test suite
+  - `./x.py test --stage 1 src/test/ui/const-generics/const-types.rs` - runs
+  the single test `const-types.rs` from the `ui` test suite
 
 ### ctags
 

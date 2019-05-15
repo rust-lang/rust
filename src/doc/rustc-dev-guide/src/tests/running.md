@@ -47,6 +47,19 @@ the debuginfo test suite:
 > ./x.py test --stage 1 src/test/debuginfo
 ```
 
+If you only need to test a specific subdirectory of tests for any
+given test suite, you can pass that directory to `x.py test`:
+
+```bash
+> ./x.py test --stage 1 src/test/ui/const-generics
+```
+
+Likewise, you can test a single file by passing its path:
+
+```bash
+> ./x.py test --stage 1 src/test/ui/const-generics/const-test.rs
+```
+
 ### Run only the tidy script
 
 ```bash
@@ -82,8 +95,9 @@ work well with procedural macros or custom derive tests.
 ## Running an individual test
 
 Another common thing that people want to do is to run an **individual
-test**, often the test they are trying to fix. One way to do this is
-to invoke `x.py` with the `--test-args` option:
+test**, often the test they are trying to fix. As mentioned earlier,
+you may pass the full file path to achieve this, or alternatively one
+may invoke `x.py` with the `--test-args` option:
 
 ```bash
 > ./x.py test --stage 1 src/test/ui --test-args issue-1234
@@ -91,7 +105,8 @@ to invoke `x.py` with the `--test-args` option:
 
 Under the hood, the test runner invokes the standard rust test runner
 (the same one you get with `#[test]`), so this command would wind up
-filtering for tests that include "issue-1234" in the name.
+filtering for tests that include "issue-1234" in the name. (Thus
+`--test-args` is a good way to run a collection of related tests.)
 
 ## Using incremental compilation
 
