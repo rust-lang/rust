@@ -25,6 +25,15 @@ First make sure you've installed all dependencies for building, as specified in
 the main Rust repository [here](https://github.com/rust-lang/rust/#building-from-source).
 Then use the following commands:
 
+### Notes for macOS
+
+The conventional install directory for macOS is `/usr/local/avr-rust` rather than the Linux default `/opt/avr-rust`, so before the steps below, you must:
+
+1. Edit `build/config.toml` to set `prefix = '/usr/local/avr-rust'`.
+2. Ensure `/usr/local/avr-rust` exists and has the correct permissions: `sudo mkdir /usr/local/avr-rust && sudo chown $USER:admin /usr/local/avr-rust`
+
+Finally, `realpath` isn't included by default on macOS but is included in GNU Coreutils, so you can either `brew install coreutils` so the `rustup toolchain...` step works properly, or just use the explicit path (`rustup toolchain link avr-toolchain /usr/local/avr-rust`).
+
 ``` bash
 # Grab the avr-rust sources
 git clone https://github.com/avr-rust/rust.git
