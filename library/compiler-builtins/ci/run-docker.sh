@@ -18,6 +18,7 @@ run() {
            --user $(id -u):$(id -g) \
            -e CARGO_HOME=/cargo \
            -e CARGO_TARGET_DIR=/target \
+           -e RUST_COMPILER_RT_ROOT \
            -v $HOME/.cargo:/cargo \
            -v `pwd`/target:/target \
            -v `pwd`:/checkout:ro \

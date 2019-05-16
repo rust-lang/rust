@@ -1,6 +1,3 @@
-[submodule "compiler-rt"]
-	path = compiler-rt
-	url = https://github.com/rust-lang/compiler-rt
 [submodule "libm"]
 	path = libm
 	url = https://github.com/rust-lang-nursery/libm

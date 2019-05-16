@@ -4,13 +4,15 @@ steps:
 
   - template: azure-install-rust.yml
 
-  - script: rustup component add rust-src
-    displayName: Install Rust sources
-    condition: eq( variables['XARGO'], '1' )
-
   - bash: rustup target add $TARGET
     displayName: Install Rust target
-    condition: ne( variables['XARGO'], '1' )
+
+  - bash: |
+      set -e
+      curl -L https://github.com/rust-lang/llvm-project/archive/rustc/8.0-2019-03-18.tar.gz | \
+        tar xzf - --strip-components 1 llvm-project-rustc-8.0-2019-03-18/compiler-rt
+      echo '##vso[task.setvariable variable=RUST_COMPILER_RT_ROOT]./compiler-rt'
+    displayName: "Download compiler-rt reference sources"
 
   - bash: ./ci/run.sh $TARGET
     condition: ne( variables['Agent.OS'], 'Linux' )

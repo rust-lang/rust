@@ -76,7 +76,7 @@ mod c {
 
     use std::collections::BTreeMap;
     use std::env;
-    use std::path::Path;
+    use std::path::PathBuf;
 
     struct Sources {
         // SYMBOL -> PATH TO SOURCE
@@ -411,15 +411,19 @@ mod c {
             sources.remove(&["__aeabi_cdcmp", "__aeabi_cfcmp"]);
         }
 
-        // When compiling in rustbuild (the rust-lang/rust repo) this build
-        // script runs from a directory other than this root directory.
-        let root = if cfg!(feature = "rustbuild") {
-            Path::new("../../libcompiler_builtins")
-        } else {
-            Path::new(".")
+        // When compiling the C code we require the user to tell us where the
+        // source code is, and this is largely done so when we're compiling as
+        // part of rust-lang/rust we can use the same llvm-project repository as
+        // rust-lang/rust.
+        let root = match env::var_os("RUST_COMPILER_RT_ROOT") {
+            Some(s) => PathBuf::from(s),
+            None => panic!("RUST_COMPILER_RT_ROOT is not set"),
         };
+        if !root.exists() {
+            panic!("RUST_COMPILER_RT_ROOT={} does not exist", root.display());
+        }
 
-        let src_dir = root.join("compiler-rt/lib/builtins");
+        let src_dir = root.join("lib/builtins");
         for (sym, src) in sources.map.iter() {
             let src = src_dir.join(src);
             cfg.file(&src);
