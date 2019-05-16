@@ -36,7 +36,7 @@ Finally, `realpath` isn't included by default on macOS but is included in GNU Co
 
 ``` bash
 # Grab the avr-rust sources
-git clone https://github.com/avr-rust/rust.git
+git clone https://github.com/avr-rust/rust.git --recursive
 
 # Create a directory to place built files in
 mkdir build && cd build
