@@ -46,12 +46,12 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// Some('a').map(char::to_uppercase);
     /// ```
-    pub REDUNDANT_CLOSURES_FOR_METHOD_CALLS,
+    pub REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
     pedantic,
     "redundant closures for method calls"
 }
 
-declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURES_FOR_METHOD_CALLS]);
+declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_METHOD_CALLS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
@@ -123,7 +123,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             if let Some(name) = get_ufcs_type_name(cx, method_def_id, &args[0]);
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURES_FOR_METHOD_CALLS, expr.span, "redundant closure found", |db| {
+                span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure found", |db| {
                     db.span_suggestion(
                         expr.span,
                         "remove closure as shown",
