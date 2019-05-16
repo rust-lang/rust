@@ -4,3 +4,5 @@ allow-unauthenticated = [
     # I-* without I-nominated
     "I-compilemem", "I-compiletime", "I-crash", "I-hang", "I-ICE", "I-slow",
 ]
+
+[assign]
