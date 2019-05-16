@@ -248,6 +248,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub tm_factory: TargetMachineFactory<B>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
+    pub target_arch: String,
     pub debuginfo: config::DebugInfo,
 
     // Number of cgus excluding the allocator/metadata modules
@@ -1103,6 +1104,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),
+        target_arch: tcx.sess.target.target.arch.clone(),
         debuginfo: tcx.sess.opts.debuginfo,
         assembler_cmd,
     };
