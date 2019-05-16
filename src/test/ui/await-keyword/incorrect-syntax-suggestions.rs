@@ -104,4 +104,8 @@ fn foo25() -> Result<(), ()> {
     foo()
 }
 
-fn main() {}
+fn main() {
+    match await { await => () }
+    //~^ ERROR expected expression, found `=>`
+    //~| ERROR incorrect use of `await`
+} //~ ERROR expected one of `.`, `?`, `{`, or an operator, found `}`

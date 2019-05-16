@@ -88,6 +88,31 @@ error: incorrect use of `await`
 LL |     let _ = bar().await()?;
    |                        ^^ help: `await` is not a method call, remove the parentheses
 
+error: expected expression, found `=>`
+  --> $DIR/incorrect-syntax-suggestions.rs:108:25
+   |
+LL |     match await { await => () }
+   |                   ----- ^^ expected expression
+   |                   |
+   |                   while parsing this incorrect await statement
+
+error: incorrect use of `await`
+  --> $DIR/incorrect-syntax-suggestions.rs:108:11
+   |
+LL |     match await { await => () }
+   |           ^^^^^^^^^^^^^^^^^^^^^ help: `await` is not a statement: `{ await => () }.await`
+
+error: expected one of `.`, `?`, `{`, or an operator, found `}`
+  --> $DIR/incorrect-syntax-suggestions.rs:111:1
+   |
+LL |     match await { await => () }
+   |     -----                      - expected one of `.`, `?`, `{`, or an operator here
+   |     |
+   |     while parsing this match expression
+...
+LL | }
+   | ^ unexpected token
+
 error[E0728]: `await` is only allowed inside `async` functions and blocks
   --> $DIR/incorrect-syntax-suggestions.rs:55:13
    |
@@ -177,6 +202,6 @@ LL |     let _ = await bar()?;
    = help: the trait `std::ops::Try` is not implemented for `impl std::future::Future`
    = note: required by `std::ops::Try::into_result`
 
-error: aborting due to 26 previous errors
+error: aborting due to 29 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
