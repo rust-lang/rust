@@ -9,7 +9,11 @@
     clippy::option_map_unit_fn,
     clippy::trivially_copy_pass_by_ref
 )]
-#![warn(clippy::redundant_closure, clippy::needless_borrow)]
+#![warn(
+    clippy::redundant_closure,
+    clippy::redundant_closure_for_method_calls,
+    clippy::needless_borrow
+)]
 
 use std::path::PathBuf;
 

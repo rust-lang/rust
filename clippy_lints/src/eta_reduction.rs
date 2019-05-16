@@ -32,7 +32,30 @@ declare_clippy_lint! {
     "redundant closures, i.e., `|a| foo(a)` (which can be written as just `foo`)"
 }
 
-declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE]);
+declare_clippy_lint! {
+    /// **What it does:** Checks for closures which only invoke a method on the closure
+    /// argument and can be replaced by referencing the method directly.
+    ///
+    /// **Why is this bad?** It's unnecessary to create the closure.
+    ///
+    /// **Known problems:** rust-lang/rust-clippy#3071, rust-lang/rust-clippy#4002,
+    /// rust-lang/rust-clippy#3942
+    ///
+    ///
+    /// **Example:**
+    /// ```rust,ignore
+    /// Some('a').map(|s| s.to_uppercase());
+    /// ```
+    /// may be rewritten as
+    /// ```rust,ignore
+    /// Some('a').map(char::to_uppercase);
+    /// ```
+    pub REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
+    pedantic,
+    "redundant closures for method calls"
+}
+
+declare_lint_pass!(EtaReduction => [REDUNDANT_CLOSURE, REDUNDANT_CLOSURE_FOR_METHOD_CALLS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaReduction {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
@@ -104,7 +127,7 @@ fn check_closure(cx: &LateContext<'_, '_>, expr: &Expr) {
             if let Some(name) = get_ufcs_type_name(cx, method_def_id, &args[0]);
 
             then {
-                span_lint_and_then(cx, REDUNDANT_CLOSURE, expr.span, "redundant closure found", |db| {
+                span_lint_and_then(cx, REDUNDANT_CLOSURE_FOR_METHOD_CALLS, expr.span, "redundant closure found", |db| {
                     db.span_suggestion(
                         expr.span,
                         "remove closure as shown",
