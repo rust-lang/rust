@@ -637,6 +637,8 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[unstable(feature = "hash_set_entry", issue = "60896")]
     pub fn get_or_insert(&mut self, value: T) -> &T {
+        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
+        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
         self.map.raw_entry_mut().from_key(&value).or_insert(value, ()).0
     }
 
@@ -667,6 +669,8 @@ impl<T, S> HashSet<T, S>
               Q: Hash + Eq,
               F: FnOnce(&Q) -> T
     {
+        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
+        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
         self.map.raw_entry_mut().from_key(value).or_insert_with(|| (f(value), ())).0
     }
 
