@@ -2,43 +2,43 @@ error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:10:13
    |
 LL |     let _ = await bar();
-   |             ^^^^^^^^^^^ help: `await` is not a statement: `bar().await`
+   |             ^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:14:13
    |
 LL |     let _ = await? bar();
-   |             ^^^^^^^^^^^^ help: `await` is not a statement: `bar().await?`
+   |             ^^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await?`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:18:13
    |
 LL |     let _ = await bar()?;
-   |             ^^^^^^^^^^^^ help: `await` is not a statement: `bar()?.await`
+   |             ^^^^^^^^^^^^ help: `await` is a postfix operation: `bar()?.await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:23:13
    |
 LL |     let _ = await { bar() };
-   |             ^^^^^^^^^^^^^^^ help: `await` is not a statement: `{ bar() }.await`
+   |             ^^^^^^^^^^^^^^^ help: `await` is a postfix operation: `{ bar() }.await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:27:13
    |
 LL |     let _ = await(bar());
-   |             ^^^^^^^^^^^^ help: `await` is not a statement: `(bar()).await`
+   |             ^^^^^^^^^^^^ help: `await` is a postfix operation: `(bar()).await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:31:13
    |
 LL |     let _ = await { bar() }?;
-   |             ^^^^^^^^^^^^^^^ help: `await` is not a statement: `{ bar() }.await`
+   |             ^^^^^^^^^^^^^^^ help: `await` is a postfix operation: `{ bar() }.await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:35:14
    |
 LL |     let _ = (await bar())?;
-   |              ^^^^^^^^^^^ help: `await` is not a statement: `bar().await`
+   |              ^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:39:24
@@ -56,25 +56,25 @@ error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:55:13
    |
 LL |     let _ = await bar();
-   |             ^^^^^^^^^^^ help: `await` is not a statement: `bar().await`
+   |             ^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:60:13
    |
 LL |     let _ = await? bar();
-   |             ^^^^^^^^^^^^ help: `await` is not a statement: `bar().await?`
+   |             ^^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await?`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:65:13
    |
 LL |     let _ = await bar()?;
-   |             ^^^^^^^^^^^^ help: `await` is not a statement: `bar()?.await`
+   |             ^^^^^^^^^^^^ help: `await` is a postfix operation: `bar()?.await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:70:14
    |
 LL |     let _ = (await bar())?;
-   |              ^^^^^^^^^^^ help: `await` is not a statement: `bar().await`
+   |              ^^^^^^^^^^^ help: `await` is a postfix operation: `bar().await`
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:75:24
@@ -94,13 +94,13 @@ error: expected expression, found `=>`
 LL |     match await { await => () }
    |                   ----- ^^ expected expression
    |                   |
-   |                   while parsing this incorrect await statement
+   |                   while parsing this incorrect await expression
 
 error: incorrect use of `await`
   --> $DIR/incorrect-syntax-suggestions.rs:108:11
    |
 LL |     match await { await => () }
-   |           ^^^^^^^^^^^^^^^^^^^^^ help: `await` is not a statement: `{ await => () }.await`
+   |           ^^^^^^^^^^^^^^^^^^^^^ help: `await` is a postfix operation: `{ await => () }.await`
 
 error: expected one of `.`, `?`, `{`, or an operator, found `}`
   --> $DIR/incorrect-syntax-suggestions.rs:111:1

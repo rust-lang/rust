@@ -1,5 +1,5 @@
 use crate::ast;
-use crate::ast::{Expr, ExprKind, Item, ItemKind, Pat, PatKind, QSelf, Ty, TyKind};
+use crate::ast::{BlockCheckMode, Expr, ExprKind, Item, ItemKind, Pat, PatKind, QSelf, Ty, TyKind};
 use crate::parse::parser::PathStyle;
 use crate::parse::token;
 use crate::parse::PResult;
@@ -222,5 +222,43 @@ impl<'a> Parser<'a> {
         } else {
             false
         }
+    }
+
+    /// Consume alternative await syntaxes like `await <expr>`, `await? <expr>`, `await(<expr>)`
+    /// and `await { <expr> }`.
+    crate fn parse_incorrect_await_syntax(
+        &mut self,
+        lo: Span,
+        await_sp: Span,
+    ) -> PResult<'a, (Span, ExprKind)> {
+        let is_question = self.eat(&token::Question); // Handle `await? <expr>`.
+        let expr = if self.token == token::OpenDelim(token::Brace) {
+            // Handle `await { <expr> }`.
+            // This needs to be handled separatedly from the next arm to avoid
+            // interpreting `await { <expr> }?` as `<expr>?.await`.
+            self.parse_block_expr(
+                None,
+                self.span,
+                BlockCheckMode::Default,
+                ThinVec::new(),
+            )
+        } else {
+            self.parse_expr()
+        }.map_err(|mut err| {
+            err.span_label(await_sp, "while parsing this incorrect await expression");
+            err
+        })?;
+        let expr_str = self.sess.source_map().span_to_snippet(expr.span)
+            .unwrap_or_else(|_| pprust::expr_to_string(&expr));
+        let suggestion = format!("{}.await{}", expr_str, if is_question { "?" } else { "" });
+        let sp = lo.to(expr.span);
+        let app = match expr.node {
+            ExprKind::Try(_) => Applicability::MaybeIncorrect, // `await <expr>?`
+            _ => Applicability::MachineApplicable,
+        };
+        self.struct_span_err(sp, "incorrect use of `await`")
+            .span_suggestion(sp, "`await` is a postfix operation", suggestion, app)
+            .emit();
+        Ok((sp, ExprKind::Await(ast::AwaitOrigin::FieldLike, expr)))
     }
 }
