@@ -3,15 +3,17 @@
 
 use rustc::hir::def::DefKind;
 use rustc::mir::{
-    Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local,
+    AggregateKind, Constant, Location, Place, PlaceBase, Mir, Operand, Rvalue, Local,
     NullOp, UnOp, StatementKind, Statement, LocalKind, Static, StaticKind,
     TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo, BinOp, ProjectionElem,
     SourceScope, SourceScopeLocalData, LocalDecl, Promoted,
 };
-use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
+use rustc::mir::visit::{
+    Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
+};
 use rustc::mir::interpret::{InterpError, Scalar, GlobalId, EvalResult};
 use rustc::ty::{self, Instance, ParamEnv, Ty, TyCtxt};
-use syntax::source_map::DUMMY_SP;
+use syntax_pos::{Span, DUMMY_SP};
 use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::ty::layout::{
@@ -19,7 +21,7 @@ use rustc::ty::layout::{
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
-use crate::interpret::{InterpretCx, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind};
+use crate::interpret::{self, InterpretCx, ScalarMaybeUndef, Immediate, OpTy, ImmTy, MemoryKind};
 use crate::const_eval::{
     CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_eval_cx,
 };
@@ -497,6 +499,53 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             },
         }
     }
+
+    fn operand_from_scalar(&self, scalar: Scalar, ty: Ty<'tcx>, span: Span) -> Operand<'tcx> {
+        Operand::Constant(Box::new(
+            Constant {
+                span,
+                ty,
+                user_ty: None,
+                literal: self.tcx.mk_const(ty::Const::from_scalar(
+                    scalar,
+                    ty,
+                ))
+            }
+        ))
+    }
+
+    fn replace_with_const(&self, rval: &mut Rvalue<'tcx>, value: Const<'tcx>, span: Span) {
+        self.ecx.validate_operand(
+            value,
+            vec![],
+            None,
+            true,
+        ).expect("value should already be a valid const");
+
+        if let interpret::Operand::Immediate(im) = *value {
+            match im {
+                interpret::Immediate::Scalar(ScalarMaybeUndef::Scalar(scalar)) => {
+                    *rval = Rvalue::Use(self.operand_from_scalar(scalar, value.layout.ty, span));
+                },
+                Immediate::ScalarPair(
+                    ScalarMaybeUndef::Scalar(one),
+                    ScalarMaybeUndef::Scalar(two)
+                ) => {
+                    let ty = &value.layout.ty.sty;
+                    if let ty::Tuple(substs) = ty {
+                        *rval = Rvalue::Aggregate(
+                            Box::new(AggregateKind::Tuple),
+                            vec![
+                                self.operand_from_scalar(one, substs[0].expect_ty(), span),
+                                self.operand_from_scalar(two, substs[1].expect_ty(), span),
+                            ],
+                        );
+                    }
+                },
+                _ => { }
+            }
+        }
+    }
 }
 
 fn type_size_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -560,10 +609,10 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
     }
 }
 
-impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
+impl<'b, 'a, 'tcx> MutVisitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
     fn visit_constant(
         &mut self,
-        constant: &Constant<'tcx>,
+        constant: &mut Constant<'tcx>,
         location: Location,
     ) {
         trace!("visit_constant: {:?}", constant);
@@ -573,11 +622,11 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
 
     fn visit_statement(
         &mut self,
-        statement: &Statement<'tcx>,
+        statement: &mut Statement<'tcx>,
         location: Location,
     ) {
         trace!("visit_statement: {:?}", statement);
-        if let StatementKind::Assign(ref place, ref rval) = statement.kind {
+        if let StatementKind::Assign(ref place, ref mut rval) = statement.kind {
             let place_ty: Ty<'tcx> = place
                 .ty(&self.local_decls, self.tcx)
                 .ty;
@@ -589,6 +638,10 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             trace!("storing {:?} to {:?}", value, local);
                             assert!(self.places[local].is_none());
                             self.places[local] = Some(value);
+
+                            if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+                                self.replace_with_const(rval, value, statement.source_info.span);
+                            }
                         }
                     }
                 }
@@ -599,7 +652,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
 
     fn visit_terminator(
         &mut self,
-        terminator: &Terminator<'tcx>,
+        terminator: &mut Terminator<'tcx>,
         location: Location,
     ) {
         self.super_terminator(terminator, location);
