@@ -12,7 +12,7 @@ __pycache__/
 .project
 .settings/
 .valgrindrc
-.vscode/
+.vscode
 .favorites.json
 /*-*-*-*/
 /*-*-*/
