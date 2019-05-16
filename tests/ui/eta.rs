@@ -11,7 +11,7 @@
 )]
 #![warn(
     clippy::redundant_closure,
-    clippy::redundant_closures_for_method_calls,
+    clippy::redundant_closure_for_method_calls,
     clippy::needless_borrow
 )]
 

@@ -38,7 +38,7 @@ error: redundant closure found
 LL |     let e = Some(TestStruct { some_ref: &i }).map(|a| a.foo());
    |                                                   ^^^^^^^^^^^ help: remove closure as shown: `TestStruct::foo`
    |
-   = note: `-D clippy::redundant-closures-for-method-calls` implied by `-D warnings`
+   = note: `-D clippy::redundant-closure-for-method-calls` implied by `-D warnings`
 
 error: redundant closure found
   --> $DIR/eta.rs:77:51
