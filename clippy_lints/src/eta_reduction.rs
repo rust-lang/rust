@@ -38,6 +38,10 @@ declare_clippy_lint! {
     ///
     /// **Why is this bad?** It's unnecessary to create the closure.
     ///
+    /// **Known problems:** rust-lang/rust-clippy#3071, rust-lang/rust-clippy#4002,
+    /// rust-lang/rust-clippy#3942
+    ///
+    ///
     /// **Example:**
     /// ```rust,ignore
     /// Some('a').map(|s| s.to_uppercase());
