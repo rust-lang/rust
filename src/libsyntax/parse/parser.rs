@@ -2715,7 +2715,7 @@ impl<'a> Parser<'a> {
                 err
             })?;
             self.expect(&token::CloseDelim(token::Paren))?;
-            Ok((expr.span, ExprKind::Await(ast::AwaitOrigin::MacroLike, expr)))
+            Ok((self.prev_span, ExprKind::Await(ast::AwaitOrigin::MacroLike, expr)))
         } else { // Handle `await <expr>`.
             self.parse_incorrect_await_syntax(lo, await_sp)
         }
