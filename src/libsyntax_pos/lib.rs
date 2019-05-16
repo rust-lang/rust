@@ -55,9 +55,11 @@ pub struct Globals {
 }
 
 impl Globals {
-    pub fn new() -> Globals {
+    /// Takes a list of symbols to be preinterned additionally to the ones from
+    /// `symbol.rs`. The default rustc driver will simply pass an empty list here.
+    pub fn new(driver_symbols: &[&str]) -> Globals {
         Globals {
-            symbol_interner: Lock::new(symbol::Interner::fresh()),
+            symbol_interner: Lock::new(symbol::Interner::fresh(driver_symbols)),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             hygiene_data: Lock::new(hygiene::HygieneData::new()),
         }

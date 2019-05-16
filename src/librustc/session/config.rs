@@ -1852,8 +1852,11 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
-pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
-    syntax::with_globals(move || {
+pub fn parse_cfgspecs(
+    driver_symbols: &[&str],
+    cfgspecs: Vec<String>,
+) -> FxHashSet<(String, Option<String>)> {
+    syntax::with_globals(driver_symbols, move || {
         let cfg = cfgspecs.into_iter().map(|s| {
             let sess = parse::ParseSess::new(FilePathMapping::empty());
             let filename = FileName::cfg_spec_source_code(&s);
@@ -1918,6 +1921,7 @@ pub fn get_cmd_lint_options(matches: &getopts::Matches,
 }
 
 pub fn build_session_options_and_crate_config(
+    driver_symbols: &[&str],
     matches: &getopts::Matches,
 ) -> (Options, FxHashSet<(String, Option<String>)>) {
     let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
@@ -2296,7 +2300,7 @@ pub fn build_session_options_and_crate_config(
         })
         .collect();
 
-    let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
+    let cfg = parse_cfgspecs(driver_symbols, matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
 
     let is_unstable_enabled = nightly_options::is_unstable_enabled(matches);

@@ -82,21 +82,23 @@ pub struct Globals {
 }
 
 impl Globals {
-    fn new() -> Globals {
+    /// See documentation on `syntax_pos::Globals` for information on the slice.
+    /// It is solely forwareded to `syntax_pos::Globals::new`
+    fn new(driver_symbols: &[&str]) -> Globals {
         Globals {
             // We have no idea how many attributes their will be, so just
             // initiate the vectors with 0 bits. We'll grow them as necessary.
             used_attrs: Lock::new(GrowableBitSet::new_empty()),
             known_attrs: Lock::new(GrowableBitSet::new_empty()),
-            syntax_pos_globals: syntax_pos::Globals::new(),
+            syntax_pos_globals: syntax_pos::Globals::new(driver_symbols),
         }
     }
 }
 
-pub fn with_globals<F, R>(f: F) -> R
+pub fn with_globals<F, R>(driver_symbols: &[&str], f: F) -> R
     where F: FnOnce() -> R
 {
-    let globals = Globals::new();
+    let globals = Globals::new(driver_symbols);
     GLOBALS.set(&globals, || {
         syntax_pos::GLOBALS.set(&globals.syntax_pos_globals, f)
     })

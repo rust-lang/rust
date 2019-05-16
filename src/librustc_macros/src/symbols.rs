@@ -166,10 +166,14 @@ pub fn symbols(input: TokenStream) -> TokenStream {
         }
 
         impl Interner {
-            pub fn fresh() -> Self {
-                Interner::prefill(&[
-                    #prefill_stream
-                ])
+            /// If your driver adds more symbols, this is the first index you may use.
+            /// Do not leave holes in the indexing scheme and add all symbols to the `Interner`
+            /// created in the closure argument to `Interner::fresh`.
+            pub const FIRST_DRIVER_INDEX: u32 = #counter;
+            /// It is the driver's responsibility to not preeintern any symbols that are already
+            /// in the list given to the closure.
+            pub fn fresh(driver_symbols: &[&str]) -> Self {
+                Interner::prefill(&[#prefill_stream], driver_symbols)
             }
         }
     });

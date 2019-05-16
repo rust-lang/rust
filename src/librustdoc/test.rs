@@ -61,7 +61,8 @@ pub fn run(options: Options) -> i32 {
 
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: config::parse_cfgspecs(options.cfgs.clone()),
+        crate_cfg: config::parse_cfgspecs(&[], options.cfgs.clone()),
+        driver_symbols: &[],
         input,
         input_path: None,
         output_file: None,
@@ -279,7 +280,8 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
 
     let config = interface::Config {
         opts: sessopts,
-        crate_cfg: config::parse_cfgspecs(cfgs),
+        crate_cfg: config::parse_cfgspecs(&[], cfgs),
+        driver_symbols: &[],
         input,
         input_path: None,
         output_file: Some(output_file.clone()),
@@ -385,7 +387,9 @@ pub fn make_test(s: &str,
 
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
-    let (already_has_main, already_has_extern_crate, found_macro) = crate::syntax::with_globals(|| {
+    let (
+        already_has_main, already_has_extern_crate, found_macro,
+    ) = crate::syntax::with_globals(&[],|| {
         use crate::syntax::{parse::{self, ParseSess}, source_map::FilePathMapping};
         use errors::emitter::EmitterWriter;
         use errors::Handler;

@@ -122,6 +122,7 @@ impl Callbacks for DefaultCallbacks {}
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler(
     args: &[String],
+    driver_symbols: &'static [&'static str],
     callbacks: &mut (dyn Callbacks + Send),
     file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     emitter: Option<Box<dyn Write + Send>>
@@ -135,7 +136,7 @@ pub fn run_compiler(
 
     install_panic_hook();
 
-    let (sopts, cfg) = config::build_session_options_and_crate_config(&matches);
+    let (sopts, cfg) = config::build_session_options_and_crate_config(driver_symbols, &matches);
 
     let mut dummy_config = |sopts, cfg, diagnostic_output| {
         let mut config = interface::Config {
@@ -149,6 +150,7 @@ pub fn run_compiler(
             diagnostic_output,
             stderr: None,
             crate_name: None,
+            driver_symbols,
             lint_caps: Default::default(),
         };
         callbacks.config(&mut config);
@@ -222,6 +224,7 @@ pub fn run_compiler(
         diagnostic_output,
         stderr: None,
         crate_name: None,
+        driver_symbols,
         lint_caps: Default::default(),
     };
 
@@ -1176,7 +1179,7 @@ pub fn main() {
                             &format!("Argument {} is not valid Unicode: {:?}", i, arg))
             }))
             .collect::<Vec<_>>();
-        run_compiler(&args, &mut DefaultCallbacks, None, None)
+        run_compiler(&args, &[], &mut DefaultCallbacks, None, None)
     }).and_then(|result| result);
     process::exit(match result {
         Ok(_) => EXIT_SUCCESS,

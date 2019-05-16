@@ -76,6 +76,8 @@ pub struct Config {
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
     pub diagnostic_output: DiagnosticOutput,
 
+    pub driver_symbols: &'static [&'static str],
+
     /// Set to capture stderr output during compiler execution
     pub stderr: Option<Arc<Mutex<Vec<u8>>>>,
 
@@ -136,15 +138,16 @@ where
     let stderr = config.stderr.take();
     util::spawn_thread_pool(
         config.opts.debugging_opts.threads,
+        config.driver_symbols,
         &stderr,
         || run_compiler_in_existing_thread_pool(config, f),
     )
 }
 
-pub fn default_thread_pool<F, R>(f: F) -> R
+pub fn default_thread_pool<F, R>(driver_symbols: &[&str], f: F) -> R
 where
     F: FnOnce() -> R + Send,
     R: Send,
 {
-    util::spawn_thread_pool(None, &None, f)
+    util::spawn_thread_pool(None, driver_symbols, &None, f)
 }

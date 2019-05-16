@@ -94,7 +94,7 @@ pub fn main() {
     rustc_driver::set_sigpipe_handler();
     env_logger::init();
     let res = std::thread::Builder::new().stack_size(thread_stack_size).spawn(move || {
-        rustc_interface::interface::default_thread_pool(move || {
+        rustc_interface::interface::default_thread_pool(&[], move || {
             get_args().map(|args| main_args(&args)).unwrap_or(1)
         })
     }).unwrap().join().unwrap_or(rustc_driver::EXIT_FAILURE);

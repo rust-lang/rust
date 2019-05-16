@@ -822,10 +822,10 @@ impl Decodable for Symbol {
     }
 }
 
-// The `&'static str`s in this type actually point into the arena.
-//
-// Note that normal symbols are indexed upward from 0, and gensyms are indexed
-// downward from SymbolIndex::MAX_AS_U32.
+/// The `&'static str`s in this type actually point into the arena.
+///
+/// Note that normal symbols are indexed upward from 0, and gensyms are indexed
+/// downward from SymbolIndex::MAX_AS_U32.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
@@ -835,17 +835,17 @@ pub struct Interner {
 }
 
 impl Interner {
-    fn prefill(init: &[&str]) -> Self {
+    fn prefill(init: &[&str], driver_symbols: &[&str]) -> Self {
         let mut this = Interner::default();
-        this.names.reserve(init.len());
-        this.strings.reserve(init.len());
+        this.names.reserve(init.len() + driver_symbols.len());
+        this.strings.reserve(init.len() + driver_symbols.len());
 
         // We can't allocate empty strings in the arena, so handle this here.
         assert!(keywords::Invalid.name().as_u32() == 0 && init[0].is_empty());
         this.names.insert("", keywords::Invalid.name());
         this.strings.push("");
 
-        for string in &init[1..] {
+        for string in init[1..].iter().chain(driver_symbols) {
             this.intern(string);
         }
         this
