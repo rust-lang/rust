@@ -185,44 +185,48 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
         };
 
         let indexed_arms: Vec<(usize, &Arm)> = arms.iter().enumerate().collect();
-        if let Some((&(_, i), &(_, j))) = search_same(&indexed_arms, hash, eq) {
-            span_lint_and_then(
-                cx,
-                MATCH_SAME_ARMS,
-                j.body.span,
-                "this `match` has identical arm bodies",
-                |db| {
-                    db.span_note(i.body.span, "same as this");
+        search_same_list(&indexed_arms, hash, eq).map(|item| {
+            for match_expr in item {
+                let (&(_, i), &(_, j)) = match_expr;
 
-                    // Note: this does not use `span_suggestion` on purpose:
-                    // there is no clean way
-                    // to remove the other arm. Building a span and suggest to replace it to ""
-                    // makes an even more confusing error message. Also in order not to make up a
-                    // span for the whole pattern, the suggestion is only shown when there is only
-                    // one pattern. The user should know about `|` if they are already using it…
+                span_lint_and_then(
+                    cx,
+                    MATCH_SAME_ARMS,
+                    j.body.span,
+                    "this `match` has identical arm bodies",
+                    |db| {
+                        db.span_note(i.body.span, "same as this");
 
-                    if i.pats.len() == 1 && j.pats.len() == 1 {
-                        let lhs = snippet(cx, i.pats[0].span, "<pat1>");
-                        let rhs = snippet(cx, j.pats[0].span, "<pat2>");
+                        // Note: this does not use `span_suggestion` on purpose:
+                        // there is no clean way
+                        // to remove the other arm. Building a span and suggest to replace it to ""
+                        // makes an even more confusing error message. Also in order not to make up a
+                        // span for the whole pattern, the suggestion is only shown when there is only
+                        // one pattern. The user should know about `|` if they are already using it…
 
-                        if let PatKind::Wild = j.pats[0].node {
-                            // if the last arm is _, then i could be integrated into _
-                            // note that i.pats[0] cannot be _, because that would mean that we're
-                            // hiding all the subsequent arms, and rust won't compile
-                            db.span_note(
-                                i.body.span,
-                                &format!(
-                                    "`{}` has the same arm body as the `_` wildcard, consider removing it`",
-                                    lhs
-                                ),
-                            );
-                        } else {
-                            db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                        if i.pats.len() == 1 && j.pats.len() == 1 {
+                            let lhs = snippet(cx, i.pats[0].span, "<pat1>");
+                            let rhs = snippet(cx, j.pats[0].span, "<pat2>");
+
+                            if let PatKind::Wild = j.pats[0].node {
+                                // if the last arm is _, then i could be integrated into _
+                                // note that i.pats[0] cannot be _, because that would mean that we're
+                                // hiding all the subsequent arms, and rust won't compile
+                                db.span_note(
+                                    i.body.span,
+                                    &format!(
+                                        "`{}` has the same arm body as the `_` wildcard, consider removing it`",
+                                        lhs
+                                    ),
+                                );
+                            } else {
+                                db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
+                            }
                         }
-                    }
-                },
-            );
-        }
+                    },
+                );
+            }
+        });
     }
 }
 
@@ -359,4 +363,37 @@ where
     }
 
     None
+}
+
+fn search_same_list<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<Vec<(&T, &T)>>
+where
+    Hash: Fn(&T) -> u64,
+    Eq: Fn(&T, &T) -> bool,
+{
+    let mut match_expr_list: Vec<(&T, &T)> = Vec::new();
+
+    let mut map: FxHashMap<_, Vec<&_>> =
+        FxHashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
+
+    for expr in exprs {
+        match map.entry(hash(expr)) {
+            Entry::Occupied(mut o) => {
+                for o in o.get() {
+                    if eq(o, expr) {
+                        match_expr_list.push((o, expr));
+                    }
+                }
+                o.get_mut().push(expr);
+            },
+            Entry::Vacant(v) => {
+                v.insert(vec![expr]);
+            },
+        }
+    }
+
+    if match_expr_list.is_empty() {
+        None
+    } else {
+        Some(match_expr_list)
+    }
 }
