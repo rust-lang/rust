@@ -2,6 +2,7 @@
 
 ## [Unreleased]
 
+- Change option `format_doc_comment` to `format_code_in_doc_comment`.
 - `use_small_heuristics` changed to be an enum and stabilised. Configuration
   options are now ready for 1.0.
 

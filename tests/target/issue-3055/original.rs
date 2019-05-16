@@ -1,4 +1,5 @@
 // rustfmt-wrap_comments: true
+// rustfmt-format_code_in_doc_comments: true
 
 /// Vestibulum elit nibh, rhoncus non, euismod sit amet, pretium eu, enim. Nunc
 /// commodo ultricies dui.
