@@ -684,6 +684,11 @@ impl Ident {
         if self.name == keywords::Underscore.name() { self.gensym() } else { self }
     }
 
+    // WARNING: this function is deprecated and will be removed in the future.
+    pub fn is_gensymed(self) -> bool {
+        with_interner(|interner| interner.is_gensymed(self.name))
+    }
+
     pub fn as_str(self) -> LocalInternedString {
         self.name.as_str()
     }
@@ -784,11 +789,6 @@ impl Symbol {
 
     pub fn gensymed(self) -> Self {
         with_interner(|interner| interner.gensymed(self))
-    }
-
-    // WARNING: this function is deprecated and will be removed in the future.
-    pub fn is_gensymed(self) -> bool {
-        with_interner(|interner| interner.is_gensymed(self))
     }
 
     pub fn as_str(self) -> LocalInternedString {

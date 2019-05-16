@@ -72,11 +72,7 @@ pub struct Path {
 impl PartialEq<Symbol> for Path {
     fn eq(&self, symbol: &Symbol) -> bool {
         self.segments.len() == 1 && {
-            let name = self.segments[0].ident.name;
-            // Make sure these symbols are pure strings
-            debug_assert!(!symbol.is_gensymed());
-            debug_assert!(!name.is_gensymed());
-            name == *symbol
+            self.segments[0].ident.name == *symbol
         }
     }
 }
