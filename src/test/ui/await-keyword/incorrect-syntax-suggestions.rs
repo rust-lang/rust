@@ -89,5 +89,19 @@ fn foo16() -> Result<(), ()> {
     let _ = bar().await?; //~ ERROR `await` is only allowed inside `async` functions and blocks
     Ok(())
 }
+fn foo24() -> Result<(), ()> {
+    fn foo() -> Result<(), ()> {
+        let _ = bar().await?; //~ ERROR `await` is only allowed inside `async` functions and blocks
+        Ok(())
+    }
+    foo()
+}
+fn foo25() -> Result<(), ()> {
+    let foo = || {
+        let _ = bar().await?; //~ ERROR `await` is only allowed inside `async` functions and blocks
+        Ok(())
+    };
+    foo()
+}
 
 fn main() {}
