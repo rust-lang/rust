@@ -251,10 +251,10 @@ LL |     while let Range { start: _, end: _ } = (true..true) && false {}
    = help: add #![feature(let_chains)] to the crate attributes to enable
 
 error[E0658]: `let` expressions in this position are experimental
-  --> $DIR/feature-gate.rs:94:15
+  --> $DIR/feature-gate.rs:94:16
    |
-LL |     use_expr!(let 0 = 1 && 0 == 0);
-   |               ^^^^^^^^^
+LL |     use_expr!((let 0 = 1 && 0 == 0));
+   |                ^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/53667
    = help: add #![feature(let_chains)] to the crate attributes to enable

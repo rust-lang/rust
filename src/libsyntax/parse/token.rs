@@ -134,8 +134,9 @@ pub(crate) fn ident_can_begin_expr(name: ast::Name, span: Span, is_raw: bool) ->
         kw::Continue,
         kw::False,
         kw::For,
-        kw::Let,
         kw::If,
+        // FIXME(53667): Consider whether `Let` can be added here.
+        // kw::Let,
         kw::Loop,
         kw::Match,
         kw::Move,

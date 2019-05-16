@@ -91,11 +91,12 @@ fn _macros() {
             while $e {}
         }
     }
-    use_expr!(let 0 = 1 && 0 == 0);
+    use_expr!((let 0 = 1 && 0 == 0));
     //~^ ERROR `let` expressions in this position are experimental [E0658]
     use_expr!((let 0 = 1));
     //~^ ERROR `let` expressions in this position are experimental [E0658]
-    use_expr!(let 0 = 1);
+    // use_expr!(let 0 = 1);
+    // ^--- FIXME(53667): Consider whether `Let` can be added to `ident_can_begin_expr`.
 }
 
 fn main() {}
