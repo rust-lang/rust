@@ -75,4 +75,4 @@ if [ "${tests_need_reformatting}" == "true" ] ; then
 fi
 
 # switch back to master
-rustup override set master
+# rustup override set master

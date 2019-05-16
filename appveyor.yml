@@ -16,14 +16,8 @@ branches:
 
 install:
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
-    - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
+    - rustup-init.exe -y --default-host %TARGET% --default-toolchain beta
     - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
-    - git ls-remote https://github.com/rust-lang/rust.git master | awk '{print $1}' >rustc-hash.txt
-    - set /p RUSTC_HASH=<rustc-hash.txt
-    - del rust-toolchain
-    - cargo install rustup-toolchain-install-master --debug || echo "rustup-toolchain-install-master already installed"
-    - rustup-toolchain-install-master %RUSTC_HASH% -f -n master
-    - rustup default master
     - set PATH=%PATH%;C:\Users\appveyor\.rustup\toolchains\master\bin
     - rustc -V
     - cargo -V
@@ -32,6 +26,7 @@ build: false
 
 test_script:
     - set RUST_BACKTRACE=1
+    - set RUSTC_BOOTSTRAP=1
     - cargo build --features debugging
     - cargo test --features debugging
 

@@ -611,6 +611,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         enum_glob_use::ENUM_GLOB_USE,
         enum_variants::MODULE_NAME_REPETITIONS,
         enum_variants::PUB_ENUM_VARIANT_NAMES,
+        eta_reduction::REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
         functions::TOO_MANY_LINES,
         if_not_else::IF_NOT_ELSE,
         infinite_iter::MAYBE_INFINITE_ITER,

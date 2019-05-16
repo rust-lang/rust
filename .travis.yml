@@ -1,6 +1,6 @@
 language: rust
 
-rust: nightly
+rust: beta
 
 os:
   - linux
@@ -17,6 +17,7 @@ branches:
 env:
  global:
    - RUST_BACKTRACE=1
+   - RUSTC_BOOTSTRAP=1
 
 install:
   - |
@@ -90,7 +91,7 @@ matrix:
 script:
   - |
       rm rust-toolchain
-      ./setup-toolchain.sh
+      rustup override set beta
       export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib
   - |
     if [ -z ${INTEGRATION} ]; then
