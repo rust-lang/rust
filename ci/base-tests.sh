@@ -23,6 +23,7 @@ export CARGO_TARGET_DIR=`pwd`/target/
 
 # Perform various checks for lint registration
 ./util/dev update_lints --check
+./util/dev --limit-stderr-length
 cargo +nightly fmt --all -- --check
 
 # Check running clippy-driver without cargo

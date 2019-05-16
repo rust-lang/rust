@@ -2,8 +2,9 @@ extern crate clap;
 extern crate clippy_dev;
 extern crate regex;
 
-use clap::{App, AppSettings, Arg, SubCommand};
+use clap::{App, Arg, SubCommand};
 use clippy_dev::*;
+mod stderr_length_check;
 
 #[derive(PartialEq)]
 enum UpdateMode {
@@ -13,7 +14,6 @@ enum UpdateMode {
 
 fn main() {
     let matches = App::new("Clippy developer tooling")
-        .setting(AppSettings::SubcommandRequiredElseHelp)
         .subcommand(
             SubCommand::with_name("update_lints")
                 .about("Updates lint registration and information from the source code")
@@ -36,8 +36,16 @@ fn main() {
                         .help("Checks that util/dev update_lints has been run. Used on CI."),
                 ),
         )
+        .arg(
+            Arg::with_name("limit-stderr-length")
+                .long("limit-stderr-length")
+                .help("Ensures that stderr files do not grow longer than a certain amount of lines."),
+        )
         .get_matches();
 
+    if matches.is_present("limit-stderr-length") {
+        stderr_length_check::check();
+    }
     if let Some(matches) = matches.subcommand_matches("update_lints") {
         if matches.is_present("print-only") {
             print_lints();
