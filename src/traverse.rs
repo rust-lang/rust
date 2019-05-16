@@ -19,13 +19,13 @@ use crate::{
 use log::{debug, info};
 use rustc::{
     hir::{
-        def::{CtorKind, CtorOf, Def, Export},
+        def::{CtorKind, CtorOf, DefKind, Export, Res, Res::Def},
         def_id::DefId,
         HirId,
     },
     ty::{
         subst::{InternalSubsts, Subst},
-        AssociatedItem, DefIdTree, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
+        AssociatedItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt,
         Visibility,
         Visibility::Public,
     },
@@ -85,7 +85,7 @@ fn diff_structure<'a, 'tcx>(
     old: DefId,
     new: DefId,
 ) {
-    use rustc::hir::def::Def::*;
+    use rustc::hir::def::DefKind::*;
 
     // Get the visibility of the inner item, given the outer item's visibility.
     fn get_vis(outer_vis: Visibility, def: Export<HirId>) -> Visibility {
@@ -120,7 +120,7 @@ fn diff_structure<'a, 'tcx>(
             match items {
                 // an item pair is found
                 (Some(o), Some(n)) => {
-                    if let (Mod(o_def_id), Mod(n_def_id)) = (o.def, n.def) {
+                    if let (Def(Mod, o_def_id), Def(Mod, n_def_id)) = (o.res, n.res) {
                         if visited.insert((o_def_id, n_def_id)) {
                             let o_vis = get_vis(old_vis, o);
                             let n_vis = get_vis(new_vis, n);
@@ -146,16 +146,16 @@ fn diff_structure<'a, 'tcx>(
 
                             mod_queue.push_back((o_def_id, n_def_id, o_vis, n_vis));
                         }
-                    } else if id_mapping.add_export(o.def, n.def) {
+                    } else if id_mapping.add_export(o.res, n.res) {
                         // struct constructors are weird/hard - let's go shopping!
-                        if let (Ctor(_, CtorOf::Struct, _), Ctor(_, CtorOf::Struct, _)) =
-                            (o.def, n.def)
+                        if let (Def(Ctor(CtorOf::Struct, _), _), Def(Ctor(CtorOf::Struct, _), _)) =
+                            (o.res, n.res)
                         {
                             continue;
                         }
 
-                        let o_def_id = o.def.def_id();
-                        let n_def_id = n.def.def_id();
+                        let o_def_id = o.res.def_id();
+                        let n_def_id = n.res.def_id();
                         let o_vis = get_vis(old_vis, o);
                         let n_vis = get_vis(new_vis, n);
 
@@ -175,31 +175,43 @@ fn diff_structure<'a, 'tcx>(
                             changes.add_change(ChangeType::ItemMadePublic, o_def_id, None);
                         }
 
-                        match (o.def, n.def) {
+                        let (o_kind, n_kind) = match (o.res, n.res) {
+                            (Res::Def(o_kind, _), Res::Def(n_kind, _)) => {
+                                (o_kind, n_kind)
+                            },
+                            _ => {
+                                // a non-matching item pair (seriously broken though) -
+                                // register the change and abort further analysis of it
+                                // changes.add_change(ChangeType::KindDifference, o_def_id, None);
+                                continue;
+                            },
+                        };
+
+                        match (o_kind, n_kind) {
+                            // TODO: update comment
                             // matching items we don't care about because they are either
                             // impossible to encounter at this stage (Mod, AssociatedTy, PrimTy,
-                            // TyParam, SelfTy, StructCtor, VariantCtor, AssociatedConst, Local,
-                            // Upvar, Label, Variant, Method, Err), whose analysis is out scope
-                            // for us (GlobalAsm, Macro), or which don't requite further analysis
-                            // at this stage (Const)
-                            (Mod(_), Mod(_))
-                            | (AssociatedTy(_), AssociatedTy(_))
-                            | (PrimTy(_), PrimTy(_))
-                            | (TyParam(_), TyParam(_))
-                            | (SelfTy(_, _), SelfTy(_, _))
-                            | (Ctor(_, CtorOf::Struct, _), Ctor(_, CtorOf::Struct, _))
-                            | (Ctor(_, CtorOf::Variant, _), Ctor(_, CtorOf::Variant, _))
-                            | (AssociatedConst(_), AssociatedConst(_))
-                            | (Local(_), Local(_))
-                            | (Upvar(_, _, _), Upvar(_, _, _))
-                            | (Label(_), Label(_))
-                            | (Macro(_, _), Macro(_, _))
-                            | (Variant(_), Variant(_))
-                            | (Const(_), Const(_))
-                            | (Method(_), Method(_))
-                            | (Err, Err) => {}
+                            // TyParam, SelfTy, Ctor, AssociatedConst, Local, Upvar,
+                            // Variant, Method, Err), whose analysis is out scope
+                            // for us (GlobalAsm), or which don't requite further
+                            // analysis at this stage (Const).
+                            (Mod, Mod)
+                            | (AssociatedTy, AssociatedTy)
+                            | (TyParam, TyParam)
+                            | (Ctor(CtorOf::Struct, _), Ctor(CtorOf::Struct, _))
+                            | (Ctor(CtorOf::Variant, _), Ctor(CtorOf::Variant, _))
+                            | (AssociatedConst, AssociatedConst)
+                            | (Variant, Variant)
+                            | (Const, Const)
+                            | (Method, Method)
+                            | (Macro(_), Macro(_))
+                            | (TraitAlias, TraitAlias)
+                            | (ForeignTy, ForeignTy)
+                            | (ConstParam, ConstParam)
+                            | (AssociatedExistential, AssociatedExistential)
+                            | (Existential, Existential) => {}
                             // statics are subject to mutability comparison
-                            (Static(_), Static(_)) => {
+                            (Static, Static) => {
                                 let old_mut = tcx.is_mutable_static(o_def_id);
                                 let new_mut = tcx.is_mutable_static(n_def_id);
                                 if old_mut != new_mut {
@@ -211,25 +223,25 @@ fn diff_structure<'a, 'tcx>(
                             }
                             // functions can declare generics and have structural properties
                             // that need to be compared
-                            (Fn(_), Fn(_)) => {
+                            (Fn, Fn) => {
                                 diff_generics(changes, id_mapping, tcx, true, o_def_id, n_def_id);
-                                diff_fn(changes, tcx, o.def, n.def);
+                                diff_fn(changes, tcx, o.res, n.res);
                             }
                             // type aliases can declare generics, too
-                            (TyAlias(_), TyAlias(_)) => {
+                            (TyAlias, TyAlias) => {
                                 diff_generics(changes, id_mapping, tcx, false, o_def_id, n_def_id);
                             }
                             // ADTs can declare generics and have lots of structural properties
                             // to check, most notably the number and name of variants and/or
                             // fields
-                            (Struct(_), Struct(_)) | (Union(_), Union(_)) | (Enum(_), Enum(_)) => {
+                            (Struct, Struct) | (Union, Union) | (Enum, Enum) => {
                                 diff_generics(changes, id_mapping, tcx, false, o_def_id, n_def_id);
-                                diff_adts(changes, id_mapping, tcx, o.def, n.def);
+                                diff_adts(changes, id_mapping, tcx, o.res, n.res);
                             }
                             // trait definitions can declare generics and require us to check
                             // for trait item addition and removal, as well as changes to their
                             // kinds and defaultness
-                            (Trait(_), Trait(_)) => {
+                            (Trait, Trait) => {
                                 if o_vis != Public {
                                     debug!("private trait: {:?}", o_def_id);
                                     id_mapping.add_private_trait(o_def_id);
@@ -242,12 +254,6 @@ fn diff_structure<'a, 'tcx>(
 
                                 diff_generics(changes, id_mapping, tcx, false, o_def_id, n_def_id);
                                 traits.push((o_def_id, n_def_id, output));
-                                /* diff_traits(changes,
-                                id_mapping,
-                                tcx,
-                                o_def_id,
-                                n_def_id,
-                                output); */
                             }
                             // a non-matching item pair - register the change and abort further
                             // analysis of it
@@ -260,7 +266,7 @@ fn diff_structure<'a, 'tcx>(
                 // only an old item is found
                 (Some(o), None) => {
                     // struct constructors are weird/hard - let's go shopping!
-                    if let Ctor(_, CtorOf::Struct, _) = o.def {
+                    if let Def(Ctor(CtorOf::Struct, _), _) = o.res {
                         continue;
                     }
 
@@ -272,7 +278,7 @@ fn diff_structure<'a, 'tcx>(
                 // only a new item is found
                 (None, Some(n)) => {
                     // struct constructors are weird/hard - let's go shopping!
-                    if let Ctor(_, CtorOf::Struct, _) = n.def {
+                    if let Def(Ctor(CtorOf::Struct, _), _) = n.res {
                         continue;
                     }
 
@@ -289,7 +295,7 @@ fn diff_structure<'a, 'tcx>(
 
     // finally, process item additions and removals
     for n in additions {
-        let n_def_id = n.def.def_id();
+        let n_def_id = n.res.def_id();
 
         if !id_mapping.contains_new_id(n_def_id) {
             id_mapping.add_non_mapped(n_def_id);
@@ -300,7 +306,7 @@ fn diff_structure<'a, 'tcx>(
     }
 
     for o in removals {
-        let o_def_id = o.def.def_id();
+        let o_def_id = o.res.def_id();
 
         // reuse an already existing path change entry, if possible
         if id_mapping.contains_old_id(o_def_id) {
@@ -320,7 +326,10 @@ fn diff_structure<'a, 'tcx>(
 }
 
 /// Given two fn items, perform structural checks.
-fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: Def, new: Def) {
+fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet,
+                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     old: Res,
+                     new: Res) {
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
@@ -367,8 +376,8 @@ fn diff_method<'a, 'tcx>(
     diff_fn(
         changes,
         tcx,
-        Def::Method(old.def_id),
-        Def::Method(new.def_id),
+        Def(DefKind::Method, old.def_id),
+        Def(DefKind::Method, new.def_id),
     );
 }
 
@@ -376,14 +385,19 @@ fn diff_method<'a, 'tcx>(
 ///
 /// This establishes the needed correspondence between non-toplevel items such as enum variants,
 /// struct- and enum fields etc.
-fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, old: Def, new: Def) {
-    use rustc::hir::def::Def::*;
+fn diff_adts(changes: &mut ChangeSet,
+             id_mapping: &mut IdMapping,
+             tcx: TyCtxt,
+             old: Res,
+             new: Res) {
+    use rustc::hir::def::DefKind::*;
 
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
 
+
     let (old_def, new_def) = match (old, new) {
-        (Struct(_), Struct(_)) | (Union(_), Union(_)) | (Enum(_), Enum(_)) => {
+        (Def(Struct, _), Def(Struct, _)) | (Def(Union, _), Def(Union, _)) | (Def(Enum, _), Def(Enum, _)) => {
             (tcx.adt_def(old_def_id), tcx.adt_def(new_def_id))
         }
         _ => return,
@@ -559,7 +573,7 @@ fn diff_traits<'a, 'tcx>(
 
             if id_mapping.is_private_trait(trait_ref.def_id) && trait_ref.substs.len() == 1 {
                 if let Type(&TyS {
-                    sty: TyKind::Param(ParamTy { idx: 0, .. }),
+                    sty: TyKind::Param(ParamTy { index: 0, .. }),
                     ..
                 }) = trait_ref.substs[0].unpack()
                 {
@@ -573,23 +587,25 @@ fn diff_traits<'a, 'tcx>(
 
     for old_def_id in tcx.associated_item_def_ids(old).iter() {
         let item = tcx.associated_item(*old_def_id);
-        items.entry(item.ident.name).or_insert((None, None)).0 =
-            tcx.describe_def(*old_def_id).map(|d| (d, item));
+        items.entry(item.ident.name).or_insert((None, None)).0 = Some(item);
+            // tcx.describe_def(*old_def_id).map(|d| (d, item));
     }
 
     for new_def_id in tcx.associated_item_def_ids(new).iter() {
         let item = tcx.associated_item(*new_def_id);
-        items.entry(item.ident.name).or_insert((None, None)).1 =
-            tcx.describe_def(*new_def_id).map(|d| (d, item));
+        items.entry(item.ident.name).or_insert((None, None)).1 = Some(item);
+            // tcx.describe_def(*new_def_id).map(|d| (d, item));
     }
 
     for (name, item_pair) in &items {
         match *item_pair {
-            (Some((old_def, old_item)), Some((new_def, new_item))) => {
-                let old_def_id = old_def.def_id();
-                let new_def_id = new_def.def_id();
+            (Some(old_item), Some(new_item)) => {
+                let old_def_id = old_item.def_id;
+                let new_def_id = new_item.def_id;
+                let old_res = Res::Def(old_item.def_kind(), old_def_id);
+                let new_res = Res::Def(new_item.def_kind(), new_def_id);
 
-                id_mapping.add_trait_item(old_def, new_def, old);
+                id_mapping.add_trait_item(old_res, new_res, old);
                 changes.new_change(
                     old_def_id,
                     new_def_id,
@@ -602,14 +618,14 @@ fn diff_traits<'a, 'tcx>(
                 diff_generics(changes, id_mapping, tcx, true, old_def_id, new_def_id);
                 diff_method(changes, tcx, old_item, new_item);
             }
-            (Some((_, old_item)), None) => {
+            (Some(old_item), None) => {
                 let change_type = ChangeType::TraitItemRemoved {
                     defaulted: old_item.defaultness.has_value(),
                 };
                 changes.add_change(change_type, old, Some(tcx.def_span(old_item.def_id)));
                 id_mapping.add_non_mapped(old_item.def_id);
             }
-            (None, Some((_, new_item))) => {
+            (None, Some(new_item)) => {
                 let change_type = ChangeType::TraitItemAdded {
                     defaulted: new_item.defaultness.has_value(),
                     sealed_trait: old_sealed,
@@ -793,10 +809,10 @@ fn diff_types<'a, 'tcx>(
     changes: &mut ChangeSet<'tcx>,
     id_mapping: &IdMapping,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    old: Def,
-    new: Def,
+    old: Res,
+    new: Res,
 ) {
-    use rustc::hir::def::Def::*;
+    use rustc::hir::def::DefKind::*;
 
     let old_def_id = old.def_id();
     let new_def_id = new.def_id();
@@ -812,7 +828,7 @@ fn diff_types<'a, 'tcx>(
 
     match old {
         // type aliases, consts and statics just need their type to be checked
-        TyAlias(_) | Const(_) | Static(_) => {
+        Def(TyAlias, _) | Def(Const, _) | Def(Static, _) => {
             cmp_types(
                 changes,
                 id_mapping,
@@ -824,7 +840,7 @@ fn diff_types<'a, 'tcx>(
             );
         }
         // functions and methods require us to compare their signatures, not types
-        Fn(_) | Method(_) => {
+        Def(Fn, _) | Def(Method, _) => {
             let old_fn_sig = tcx.type_of(old_def_id).fn_sig(tcx);
             let new_fn_sig = tcx.type_of(new_def_id).fn_sig(tcx);
 
@@ -839,7 +855,7 @@ fn diff_types<'a, 'tcx>(
             );
         }
         // ADTs' types are compared field-wise
-        Struct(_) | Enum(_) | Union(_) => {
+        Def(Struct, _) | Def(Enum, _) | Def(Union, _) => {
             if let Some(children) = id_mapping.children_of(old_def_id) {
                 for (o_def_id, n_def_id) in children {
                     let o_ty = tcx.type_of(o_def_id);
@@ -850,7 +866,7 @@ fn diff_types<'a, 'tcx>(
             }
         }
         // a trait definition has no type, so only it's trait bounds are compared
-        Trait(_) => {
+        Def(Trait, _) => {
             cmp_bounds(changes, id_mapping, tcx, old_def_id, new_def_id);
         }
         _ => (),
@@ -1028,6 +1044,8 @@ fn diff_trait_impls<'a, 'tcx>(
     id_mapping: &IdMapping,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ) {
+    // use rustc::ty::TyKind;
+
     debug!("diffing trait impls");
 
     let to_new = TranslationContext::target_new(tcx, id_mapping, false);
@@ -1037,17 +1055,11 @@ fn diff_trait_impls<'a, 'tcx>(
         .all_trait_implementations(id_mapping.get_old_crate())
         .iter()
     {
+
         let old_trait_def_id = tcx.impl_trait_ref(*old_impl_def_id).unwrap().def_id;
-
-        let old_impl_parent_def = tcx
-            .parent(*old_impl_def_id)
-            .and_then(|did| tcx.describe_def(did));
-        let old_impl_parent_is_fn = match old_impl_parent_def {
-            Some(Def::Fn(_)) | Some(Def::Method(_)) => true,
-            _ => false,
-        };
-
-        if !to_new.can_translate(old_trait_def_id) || old_impl_parent_is_fn {
+        if !to_new.can_translate(old_trait_def_id)
+            || tcx.visibility(*old_impl_def_id) != Public
+        {
             continue;
         }
 
@@ -1067,15 +1079,9 @@ fn diff_trait_impls<'a, 'tcx>(
     {
         let new_trait_def_id = tcx.impl_trait_ref(*new_impl_def_id).unwrap().def_id;
 
-        let new_impl_parent_def = tcx
-            .parent(*new_impl_def_id)
-            .and_then(|did| tcx.describe_def(did));
-        let new_impl_parent_is_fn = match new_impl_parent_def {
-            Some(Def::Fn(_)) | Some(Def::Method(_)) => true,
-            _ => false,
-        };
-
-        if !to_old.can_translate(new_trait_def_id) || new_impl_parent_is_fn {
+        if !to_old.can_translate(new_trait_def_id)
+            || tcx.visibility(*new_impl_def_id) != Public
+        {
             continue;
         }
 

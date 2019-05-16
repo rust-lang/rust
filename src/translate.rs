@@ -170,7 +170,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
 
         orig.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
-            fldop: |ty| {
+            ty_op: |ty| {
                 match ty.sty {
                     TyKind::Adt(&AdtDef { ref did, .. }, substs)
                         if self.needs_translation(*did) =>
@@ -289,9 +289,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     }
                     TyKind::Param(param) => {
                         // FIXME: we should check `has_self` if this gets used again!
-                        if param.idx != 0 && self.translate_params {
+                        if param.index != 0 && self.translate_params {
                             // `Self` is special
-                            let orig_def_id = index_map[&param.idx];
+                            let orig_def_id = index_map[&param.index];
                             if self.needs_translation(orig_def_id) {
                                 use rustc::ty::subst::UnpackedKind;
 
@@ -313,7 +313,8 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                     _ => ty,
                 }
             },
-            reg_op: |region| self.translate_region(region),
+            lt_op: |region| self.translate_region(region),
+            ct_op: |konst| konst, // TODO: translate consts
         })
     }
 
@@ -546,7 +547,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceCleanupFolder<'a, 'gcx,
                 let ty_and_mut = TypeAndMut { ty, mutbl };
                 self.infcx
                     .tcx
-                    .mk_ref(self.infcx.tcx.types.re_erased, ty_and_mut)
+                    .mk_ref(self.infcx.tcx.lifetimes.re_erased, ty_and_mut)
             }
             TyKind::Infer(_) => self.infcx.tcx.mk_ty(TyKind::Error),
             _ => t1,
@@ -556,7 +557,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for InferenceCleanupFolder<'a, 'gcx,
     fn fold_region(&mut self, r: Region<'tcx>) -> Region<'tcx> {
         let r1 = r.super_fold_with(self);
         if r1.needs_infer() {
-            self.infcx.tcx.types.re_erased
+            self.infcx.tcx.lifetimes.re_erased
         } else {
             r1
         }

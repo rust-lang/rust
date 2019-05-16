@@ -5,7 +5,7 @@
 
 use rustc::{
     hir::{
-        def::{Def, Export},
+        def::{Export, Res},
         def_id::{CrateNum, DefId},
         HirId,
     },
@@ -39,13 +39,13 @@ pub struct IdMapping {
     old_crate: CrateNum,
     /// The new crate.
     new_crate: CrateNum,
-    /// Toplevel items' old `DefId` mapped to old and new `Def`.
-    toplevel_mapping: HashMap<DefId, (Def, Def)>,
+    /// Toplevel items' old `DefId` mapped to old and new `Res`.
+    toplevel_mapping: HashMap<DefId, (Res, Res)>,
     /// The set of items that have been removed or added and thus have no corresponding item in
     /// the other crate.
     non_mapped_items: HashSet<DefId>,
-    /// Trait items' old `DefId` mapped to old and new `Def`, and the enclosing trait's `DefId`.
-    trait_item_mapping: HashMap<DefId, (Def, Def, DefId)>,
+    /// Trait items' old `DefId` mapped to old and new `Res`, and the enclosing trait's `DefId`.
+    trait_item_mapping: HashMap<DefId, (Res, Res, DefId)>,
     /// The set of private traits in both crates.
     private_traits: HashSet<DefId>,
     /// Other items' old `DefId` mapped to new `DefId`.
@@ -79,7 +79,7 @@ impl IdMapping {
     }
 
     /// Register two exports representing the same item across versions.
-    pub fn add_export(&mut self, old: Def, new: Def) -> bool {
+    pub fn add_export(&mut self, old: Res, new: Res) -> bool {
         let old_def_id = old.def_id();
 
         if !self.in_old_crate(old_def_id) || self.toplevel_mapping.contains_key(&old_def_id) {
@@ -98,7 +98,7 @@ impl IdMapping {
     }
 
     /// Add any trait item's old and new `DefId`s.
-    pub fn add_trait_item(&mut self, old: Def, new: Def, old_trait: DefId) {
+    pub fn add_trait_item(&mut self, old: Res, new: Res, old_trait: DefId) {
         let old_def_id = old.def_id();
 
         assert!(self.in_old_crate(old_def_id));
@@ -244,15 +244,15 @@ impl IdMapping {
     }
 
     /// Construct a queue of toplevel item pairs' `DefId`s.
-    pub fn toplevel_queue(&self) -> VecDeque<(DefId, DefId)> {
+    pub fn toplevel_queue(&self) -> VecDeque<(Res, Res)> {
         self.toplevel_mapping
             .values()
-            .map(|&(old, new)| (old.def_id(), new.def_id()))
+            .map(|t| *t)
             .collect()
     }
 
     /// Iterate over the toplevel and trait item pairs.
-    pub fn items<'a>(&'a self) -> impl Iterator<Item = (Def, Def)> + 'a {
+    pub fn items<'a>(&'a self) -> impl Iterator<Item = (Res, Res)> + 'a {
         self.toplevel_mapping
             .values()
             .cloned()
@@ -315,39 +315,36 @@ pub struct NameMapping {
 impl NameMapping {
     /// Insert a single export in the appropriate map, at the appropriate position.
     fn insert(&mut self, item: Export<HirId>, old: bool) {
-        use rustc::hir::def::Def::*;
+        use rustc::hir::def::Res::*;
+        use rustc::hir::def::DefKind::*;
 
-        let map = match item.def {
-            Mod(_) |
-            Struct(_) |
-            Union(_) |
-            Enum(_) |
-            Variant(_) |
-            Trait(_) |
-            Existential(_) |
-            TyAlias(_) |
-            ForeignTy(_) |
-            TraitAlias(_) | // TODO: will need some handling later on.
-            AssociatedTy(_) |
-            AssociatedExistential(_) |
-            PrimTy(_) |
-            TyParam(_) |
-            SelfTy(_, _) |
-            ToolMod => Some(&mut self.type_map),
-            Fn(_) |
-            Const(_) |
-            ConstParam(_) |
-            Static(_) |
-            Ctor(_, _, _) |
-            SelfCtor(_) |
-            Method(_) |
-            AssociatedConst(_) |
-            Local(_) |
-            Upvar(_, _, _) |
-            Label(_) => Some(&mut self.value_map),
-            Macro(_, _) => Some(&mut self.macro_map),
-            NonMacroAttr(_) |
-            Err => None,
+        let map = match item.res {
+            Def(kind, _) => match kind {
+                Mod |
+                Struct |
+                Union |
+                Enum |
+                Variant |
+                Trait |
+                Existential |
+                TyAlias |
+                ForeignTy |
+                TraitAlias | // TODO: will need some handling later on
+                AssociatedTy |
+                AssociatedExistential |
+                TyParam => Some(&mut self.type_map),
+                Fn |
+                Const |
+                ConstParam |
+                Static |
+                Ctor(_, _) |
+                Method |
+                AssociatedConst => Some(&mut self.value_map),
+                Macro(_) => Some(&mut self.macro_map),
+            },
+            PrimTy(_) | SelfTy(_, _) => Some(&mut self.type_map),
+            SelfCtor(_) | Local(_) | Upvar(_, _, _) => Some(&mut self.value_map),
+            _ => None,
         };
 
         if let Some(map) = map {
