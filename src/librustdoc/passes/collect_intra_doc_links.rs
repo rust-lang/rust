@@ -321,7 +321,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         if let Ok(res) = self.resolve(path_str, ns, &current_item, parent_node) {
                             res
                         } else {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             // This could just be a normal link or a broken link
                             // we could potentially check if something is
                             // "intra-doc-link-like" and warn in that case.
@@ -332,7 +332,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         if let Ok(res) = self.resolve(path_str, ns, &current_item, parent_node) {
                             res
                         } else {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             // This could just be a normal link.
                             continue;
                         }
@@ -357,7 +357,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         };
 
                         if candidates.is_empty() {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             // this could just be a normal link
                             continue;
                         }
@@ -368,7 +368,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         } else {
                             ambiguity_error(
                                 cx,
-                                &item.attrs,
+                                &item,
                                 path_str,
                                 &dox,
                                 link_range,
@@ -381,7 +381,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         if let Some(res) = macro_resolve(cx, path_str) {
                             (res, None)
                         } else {
-                            resolution_failure(cx, &item.attrs, path_str, &dox, link_range);
+                            resolution_failure(cx, &item, path_str, &dox, link_range);
                             continue
                         }
                     }
@@ -452,16 +452,24 @@ fn macro_resolve(cx: &DocContext<'_>, path_str: &str) -> Option<Res> {
 /// line containing the failure as a note as well.
 fn resolution_failure(
     cx: &DocContext<'_>,
-    attrs: &Attributes,
+    item: &Item,
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
 ) {
+    let hir_id = match cx.as_local_hir_id(item.def_id) {
+        Some(hir_id) => hir_id,
+        None => {
+            // If non-local, no need to check anything.
+            return;
+        }
+    };
+    let attrs = &item.attrs;
     let sp = span_of_attrs(attrs);
 
     let mut diag = cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        hir::CRATE_HIR_ID,
+        hir_id,
         sp,
         &format!("`[{}]` cannot be resolved, ignoring it...", path_str),
     );
@@ -495,12 +503,20 @@ fn resolution_failure(
 
 fn ambiguity_error(
     cx: &DocContext<'_>,
-    attrs: &Attributes,
+    item: &Item,
     path_str: &str,
     dox: &str,
     link_range: Option<Range<usize>>,
     candidates: PerNS<Option<Res>>,
 ) {
+    let hir_id = match cx.as_local_hir_id(item.def_id) {
+        Some(hir_id) => hir_id,
+        None => {
+            // If non-local, no need to check anything.
+            return;
+        }
+    };
+    let attrs = &item.attrs;
     let sp = span_of_attrs(attrs);
 
     let mut msg = format!("`{}` is ", path_str);
@@ -532,7 +548,7 @@ fn ambiguity_error(
 
     let mut diag = cx.tcx.struct_span_lint_hir(
         lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-        hir::CRATE_HIR_ID,
+        hir_id,
         sp,
         &msg,
     );
