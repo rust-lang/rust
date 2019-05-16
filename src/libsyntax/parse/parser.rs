@@ -2738,7 +2738,7 @@ impl<'a> Parser<'a> {
                     ThinVec::new(),
                 );
                 let mut err = self.struct_span_err(
-                    await_sp,
+                    sp,
                     "incorrect use of `await`",
                 );
                 err.span_suggestion(
@@ -2775,7 +2775,7 @@ impl<'a> Parser<'a> {
                     .unwrap_or_else(|_| pprust::expr_to_string(&expr));
                 let sp = lo.to(expr.span);
                 let mut err = self.struct_span_err(
-                    await_sp,
+                    sp,
                     "incorrect use of `await`",
                 );
                 err.span_suggestion(
@@ -3010,7 +3010,7 @@ impl<'a> Parser<'a> {
                 self.bump(); // (
                 let sp = lo.to(self.span);
                 self.bump(); // )
-                let mut err = self.struct_span_err(span, "incorrect use of `await`");
+                let mut err = self.struct_span_err(sp, "incorrect use of `await`");
                 err.span_suggestion(
                     sp,
                     "`await` is not a method call, remove the parentheses",
