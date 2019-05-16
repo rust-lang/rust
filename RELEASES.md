@@ -1,10 +1,108 @@
+Version 1.35.0 (2019-05-23)
+==========================
+
+Language
+--------
+- [`FnOnce`, `FnMut`, and the `Fn` traits are now implemented for `Box<FnOnce>`,
+  `Box<FnMut>`, and `Box<Fn>` respectively.][59500]
+- [You can now coerce closures into unsafe function pointers.][59580] e.g.
+  ```rust
+  unsafe fn call_unsafe(func: unsafe fn()) {
+      func()
+  }
+
+  pub fn main() {
+      unsafe { call_unsafe(|| {}); }
+  }
+  ```
+
+
+Compiler
+--------
+- [Added the `armv6-unknown-freebsd-gnueabihf` and
+  `armv7-unknown-freebsd-gnueabihf` targets.][58080]
+- [Added the `wasm32-unknown-wasi` target.][59464]
+
+
+Libraries
+---------
+- [`Thread` will now show its ID in `Debug` output.][59460]
+- [`StdinLock`, `StdoutLock`, and `StderrLock` now implement `AsRawFd`.][59512]
+- [`alloc::System` now implements `Default`.][59451]
+- [Expanded `Debug` output (`{:#?}`) for structs now has a trailing comma on the
+  last field.][59076]
+- [`char::{ToLowercase, ToUppercase}` now
+  implement `ExactSizeIterator`.][58778]
+- [All `NonZero` numeric types now implement `FromStr`.][58717]
+- [Removed the `Read` trait bounds
+  on the `BufReader::{get_ref, get_mut, into_inner}` methods.][58423]
+- [You can now call the `dbg!` macro without any parameters to print the file
+  and line where it is called.][57847]
+- [In place ASCII case conversions are now up to 4× faster.][59283]
+  e.g. `str::make_ascii_lowercase`
+- [`hash_map::{OccupiedEntry, VacantEntry}` now implement `Sync`
+  and `Send`.][58369]
+
+Stabilized APIs
+---------------
+- [`f32::copysign`]
+- [`f64::copysign`]
+- [`RefCell::replace_with`]
+- [`RefCell::map_split`]
+- [`ptr::hash`]
+- [`Range::contains`]
+- [`RangeFrom::contains`]
+- [`RangeTo::contains`]
+- [`RangeInclusive::contains`]
+- [`RangeToInclusive::contains`]
+- [`Option::copied`]
+
+Cargo
+-----
+- [You can now set `cargo:rustc-cdylib-link-arg` at build time to pass custom
+  linker arguments when building a `cdylib`.][cargo/6298] Its usage is highly
+  platform specific.
+  
+Misc
+----
+- [The Rust toolchain is now available natively for musl based distros.][58575]
+
+[59460]: https://github.com/rust-lang/rust/pull/59460/
+[59464]: https://github.com/rust-lang/rust/pull/59464/
+[59500]: https://github.com/rust-lang/rust/pull/59500/
+[59512]: https://github.com/rust-lang/rust/pull/59512/
+[59580]: https://github.com/rust-lang/rust/pull/59580/
+[59283]: https://github.com/rust-lang/rust/pull/59283/
+[59451]: https://github.com/rust-lang/rust/pull/59451/
+[59076]: https://github.com/rust-lang/rust/pull/59076/
+[58778]: https://github.com/rust-lang/rust/pull/58778/
+[58717]: https://github.com/rust-lang/rust/pull/58717/
+[58369]: https://github.com/rust-lang/rust/pull/58369/
+[58423]: https://github.com/rust-lang/rust/pull/58423/
+[58080]: https://github.com/rust-lang/rust/pull/58080/
+[57847]: https://github.com/rust-lang/rust/pull/57847/
+[58575]: https://github.com/rust-lang/rust/pull/58575
+[cargo/6298]: https://github.com/rust-lang/cargo/pull/6298/
+[`f32::copysign`]: https://doc.rust-lang.org/stable/std/primitive.f32.html#method.copysign
+[`f64::copysign`]: https://doc.rust-lang.org/stable/std/primitive.f64.html#method.copysign
+[`RefCell::replace_with`]: https://doc.rust-lang.org/stable/std/cell/struct.RefCell.html#method.replace_with
+[`RefCell::map_split`]: https://doc.rust-lang.org/stable/std/cell/struct.RefCell.html#method.map_split
+[`ptr::hash`]: https://doc.rust-lang.org/stable/std/ptr/fn.hash.html
+[`Range::contains`]: https://doc.rust-lang.org/std/ops/struct.Range.html#method.contains
+[`RangeFrom::contains`]: https://doc.rust-lang.org/std/ops/struct.RangeFrom.html#method.contains
+[`RangeTo::contains`]: https://doc.rust-lang.org/std/ops/struct.RangeTo.html#method.contains
+[`RangeInclusive::contains`]: https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html#method.contains
+[`RangeToInclusive::contains`]: https://doc.rust-lang.org/std/ops/struct.RangeToInclusive.html#method.contains
+[`Option::copied`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.copied
+
 Version 1.34.2 (2019-05-14)
 ===========================
 
 * [Destabilize the `Error::type_id` function due to a security
-   vulnerability][60785]
+   vulnerability][60785] ([CVE-2019-12083])
 
 [60785]: https://github.com/rust-lang/rust/pull/60785
+[CVE-2019-12083]: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-12083
 
 Version 1.34.1 (2019-04-25)
 ===========================

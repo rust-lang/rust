@@ -92,6 +92,21 @@ the tracking issue.
 #![doc(issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 ```
 
+### `html_root_url`
+
+The `#[doc(html_root_url = "…")]` attribute value indicates the URL for
+generating links to external crates. When rustdoc needs to generate a link to
+an item in an external crate, it will first check if the extern crate has been
+documented locally on-disk, and if so link directly to it. Failing that, it
+will use the URL given by the `--extern-html-root-url` command-line flag if
+available. If that is not available, then it will use the `html_root_url`
+value in the extern crate if it is available. If that is not available, then
+the extern items will not be linked.
+
+```rust,ignore
+#![doc(html_root_url = "https://docs.rs/serde/1.0")]
+```
+
 ### `html_no_source`
 
 By default, `rustdoc` will include the source code of your program, with links
