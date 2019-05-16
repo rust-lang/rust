@@ -2635,6 +2635,7 @@ impl<'a> Parser<'a> {
                     self.expect(&token::OpenDelim(token::Paren))?;
                     let expr = self.parse_expr()?;
                     self.expect(&token::CloseDelim(token::Paren))?;
+                    hi = self.prev_span;
                     ex = ExprKind::Await(ast::AwaitOrigin::MacroLike, expr);
                 } else if self.token.is_path_start() {
                     let path = self.parse_path(PathStyle::Expr)?;
