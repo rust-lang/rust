@@ -2630,93 +2630,9 @@ impl<'a> Parser<'a> {
                     return Err(db);
                 } else if self.span.rust_2018() && self.eat_keyword(keywords::Await) {
                     let await_sp = self.prev_span;
-                    match self.token {
-                        token::Not => {
-                            // FIXME: make this an error when `await!` is no longer supported
-                            // https://github.com/rust-lang/rust/issues/60610
-                            self.expect(&token::Not)?;
-                            self.expect(&token::OpenDelim(token::Paren))?;
-                            let expr = self.parse_expr().map_err(|mut err| {
-                                err.span_label(
-                                    await_sp,
-                                    "while parsing this await macro call",
-                                );
-                                err
-                            })?;
-                            self.expect(&token::CloseDelim(token::Paren))?;
-                            ex = ExprKind::Await(ast::AwaitOrigin::MacroLike, expr);
-                        }
-                        token::Question => {
-                            // Handle `await? <expr>`
-                            self.bump(); // `?`
-                            let expr = self.parse_expr().map_err(|mut err| {
-                                err.span_label(
-                                    await_sp,
-                                    "while parsing this incorrect await statement",
-                                );
-                                err
-                            })?;
-                            let sp = lo.to(expr.span);
-                            let expr_str = self.sess.source_map().span_to_snippet(expr.span)
-                                .unwrap_or_else(|_| pprust::expr_to_string(&expr));
-                            let expr = self.mk_expr(
-                                sp,
-                                ExprKind::Await(ast::AwaitOrigin::FieldLike, expr),
-                                ThinVec::new(),
-                            );
-                            hi = sp;
-                            ex = ExprKind::Try(expr);
-                            let mut err = self.struct_span_err(
-                                await_sp,
-                                "incorrect use of `await`",
-                            );
-                            err.span_suggestion(
-                                sp,
-                                "`await` is not a statement",
-                                format!("{}.await?", expr_str),
-                                Applicability::MachineApplicable,
-                            );
-                            err.emit();
-                        }
-                        ref t => {
-                            // Handle `await <expr>`
-                            let expr = if t == &token::OpenDelim(token::Brace) {
-                                // Handle `await { <expr> }`
-                                // this needs to be handled separatedly from the next arm to avoid
-                                // interpreting `await { <expr> }?` as `<expr>?.await`
-                                self.parse_block_expr(
-                                    None,
-                                    self.span,
-                                    BlockCheckMode::Default,
-                                    ThinVec::new(),
-                                )
-                            } else {
-                                self.parse_expr()
-                            }.map_err(|mut err| {
-                                err.span_label(
-                                    await_sp,
-                                    "while parsing this incorrect await statement",
-                                );
-                                err
-                            })?;
-                            let expr_str = self.sess.source_map().span_to_snippet(expr.span)
-                                .unwrap_or_else(|_| pprust::expr_to_string(&expr));
-                            let sp = lo.to(expr.span);
-                            hi = sp;
-                            ex = ExprKind::Await(ast::AwaitOrigin::FieldLike, expr);
-                            let mut err = self.struct_span_err(
-                                await_sp,
-                                "incorrect use of `await`",
-                            );
-                            err.span_suggestion(
-                                sp,
-                                "`await` is not a statement",
-                                format!("{}.await", expr_str),
-                                Applicability::MachineApplicable,
-                            );
-                            err.emit();
-                        }
-                    }
+                    let e = self.parse_async_macro_or_stmt(lo, await_sp)?;
+                    hi = e.0;
+                    ex = e.1;
                 } else if self.token.is_path_start() {
                     let path = self.parse_path(PathStyle::Expr)?;
 
@@ -2779,6 +2695,99 @@ impl<'a> Parser<'a> {
 
         let expr = self.mk_expr(lo.to(hi), ex, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn parse_async_macro_or_stmt(
+        &mut self,
+        lo: Span,
+        await_sp: Span,
+    ) -> PResult<'a, (Span, ExprKind)> {
+        Ok(match self.token {
+            token::Not => {
+                // Handle correct `await!(<expr>)`
+                // FIXME: make this an error when `await!` is no longer supported
+                // https://github.com/rust-lang/rust/issues/60610
+                self.expect(&token::Not)?;
+                self.expect(&token::OpenDelim(token::Paren))?;
+                let expr = self.parse_expr().map_err(|mut err| {
+                    err.span_label(
+                        await_sp,
+                        "while parsing this await macro call",
+                    );
+                    err
+                })?;
+                self.expect(&token::CloseDelim(token::Paren))?;
+                (expr.span, ExprKind::Await(ast::AwaitOrigin::MacroLike, expr))
+            }
+            token::Question => {
+                // Handle `await? <expr>`
+                self.bump(); // `?`
+                let expr = self.parse_expr().map_err(|mut err| {
+                    err.span_label(
+                        await_sp,
+                        "while parsing this incorrect await statement",
+                    );
+                    err
+                })?;
+                let sp = lo.to(expr.span);
+                let expr_str = self.sess.source_map().span_to_snippet(expr.span)
+                    .unwrap_or_else(|_| pprust::expr_to_string(&expr));
+                let expr = self.mk_expr(
+                    sp,
+                    ExprKind::Await(ast::AwaitOrigin::FieldLike, expr),
+                    ThinVec::new(),
+                );
+                let mut err = self.struct_span_err(
+                    await_sp,
+                    "incorrect use of `await`",
+                );
+                err.span_suggestion(
+                    sp,
+                    "`await` is not a statement",
+                    format!("{}.await?", expr_str),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+                (sp, ExprKind::Try(expr))
+            }
+            ref t => {
+                // Handle `await <expr>`
+                let expr = if t == &token::OpenDelim(token::Brace) {
+                    // Handle `await { <expr> }`
+                    // this needs to be handled separatedly from the next arm to avoid
+                    // interpreting `await { <expr> }?` as `<expr>?.await`
+                    self.parse_block_expr(
+                        None,
+                        self.span,
+                        BlockCheckMode::Default,
+                        ThinVec::new(),
+                    )
+                } else {
+                    self.parse_expr()
+                }.map_err(|mut err| {
+                    err.span_label(
+                        await_sp,
+                        "while parsing this incorrect await statement",
+                    );
+                    err
+                })?;
+                let expr_str = self.sess.source_map().span_to_snippet(expr.span)
+                    .unwrap_or_else(|_| pprust::expr_to_string(&expr));
+                let sp = lo.to(expr.span);
+                let mut err = self.struct_span_err(
+                    await_sp,
+                    "incorrect use of `await`",
+                );
+                err.span_suggestion(
+                    sp,
+                    "`await` is not a statement",
+                    format!("{}.await", expr_str),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+                (sp, ExprKind::Await(ast::AwaitOrigin::FieldLike, expr))
+            }
+        })
     }
 
     fn maybe_parse_struct_expr(
