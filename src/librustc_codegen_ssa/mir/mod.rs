@@ -1,5 +1,5 @@
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
-use rustc::ty::layout::{TyLayout, HasTyCtxt};
+use rustc::ty::layout::{TyLayout, HasTyCtxt, FnTypeExt};
 use rustc::mir::{self, Mir};
 use rustc::session::config::DebugInfo;
 use rustc_mir::monomorphize::Instance;
@@ -202,7 +202,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 ) {
     assert!(!instance.substs.needs_infer());
 
-    let fn_ty = cx.new_fn_type(sig, &[]);
+    let fn_ty = FnType::new(cx, sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
     let mut debug_context =
         cx.create_function_debug_context(instance, sig, llfn, mir);
