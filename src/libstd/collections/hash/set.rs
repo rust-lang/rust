@@ -635,7 +635,7 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(set.len(), 4); // 100 was inserted
     /// ```
     #[inline]
-    #[unstable(feature = "hash_set_entry", issue = "0")]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
     pub fn get_or_insert(&mut self, value: T) -> &T {
         self.map.raw_entry_mut().from_key(&value).or_insert(value, ()).0
     }
@@ -661,7 +661,7 @@ impl<T, S> HashSet<T, S>
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
     #[inline]
-    #[unstable(feature = "hash_set_entry", issue = "0")]
+    #[unstable(feature = "hash_set_entry", issue = "60896")]
     pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
         where T: Borrow<Q>,
               Q: Hash + Eq,
