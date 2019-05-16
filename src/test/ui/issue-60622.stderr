@@ -1,0 +1,27 @@
+error: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/issue-60622.rs:12:11
+   |
+LL |     fn a(&self) {}
+   |          - the late bound lifetime parameter is introduced here
+...
+LL |     b.a::<'_, T>();
+   |           ^^
+   |
+note: lint level defined here
+  --> $DIR/issue-60622.rs:3:9
+   |
+LL | #![deny(warnings)]
+   |         ^^^^^^^^
+   = note: #[deny(late_bound_lifetime_arguments)] implied by #[deny(warnings)]
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #42868 <https://github.com/rust-lang/rust/issues/42868>
+
+error[E0107]: wrong number of type arguments: expected 0, found 1
+  --> $DIR/issue-60622.rs:12:15
+   |
+LL |     b.a::<'_, T>();
+   |               ^ unexpected type argument
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0107`.
