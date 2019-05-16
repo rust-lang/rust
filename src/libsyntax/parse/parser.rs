@@ -104,14 +104,14 @@ pub enum PathStyle {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum SemiColonMode {
+crate enum SemiColonMode {
     Break,
     Ignore,
     Comma,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-enum BlockMode {
+crate enum BlockMode {
     Break,
     Ignore,
 }
@@ -389,7 +389,7 @@ crate enum TokenType {
 }
 
 impl TokenType {
-    fn to_string(&self) -> String {
+    crate fn to_string(&self) -> String {
         match *self {
             TokenType::Token(ref t) => format!("`{}`", pprust::token_to_string(t)),
             TokenType::Keyword(kw) => format!("`{}`", kw.name()),
@@ -670,56 +670,6 @@ impl<'a> Parser<'a> {
             }
         } else {
             self.expect_one_of(slice::from_ref(t), &[])
-        }
-    }
-
-    fn recover_closing_delimiter(
-        &mut self,
-        tokens: &[token::Token],
-        mut err: DiagnosticBuilder<'a>,
-    ) -> PResult<'a, bool> {
-        let mut pos = None;
-        // we want to use the last closing delim that would apply
-        for (i, unmatched) in self.unclosed_delims.iter().enumerate().rev() {
-            if tokens.contains(&token::CloseDelim(unmatched.expected_delim))
-                && Some(self.span) > unmatched.unclosed_span
-            {
-                pos = Some(i);
-            }
-        }
-        match pos {
-            Some(pos) => {
-                // Recover and assume that the detected unclosed delimiter was meant for
-                // this location. Emit the diagnostic and act as if the delimiter was
-                // present for the parser's sake.
-
-                 // Don't attempt to recover from this unclosed delimiter more than once.
-                let unmatched = self.unclosed_delims.remove(pos);
-                let delim = TokenType::Token(token::CloseDelim(unmatched.expected_delim));
-
-                 // We want to suggest the inclusion of the closing delimiter where it makes
-                // the most sense, which is immediately after the last token:
-                //
-                //  {foo(bar {}}
-                //      -      ^
-                //      |      |
-                //      |      help: `)` may belong here (FIXME: #58270)
-                //      |
-                //      unclosed delimiter
-                if let Some(sp) = unmatched.unclosed_span {
-                    err.span_label(sp, "unclosed delimiter");
-                }
-                err.span_suggestion_short(
-                    self.sess.source_map().next_point(self.prev_span),
-                    &format!("{} may belong here", delim.to_string()),
-                    delim.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-                err.emit();
-                self.expected_tokens.clear();  // reduce errors
-                Ok(true)
-            }
-            _ => Err(err),
         }
     }
 
@@ -2343,7 +2293,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn mk_expr(&self, span: Span, node: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
+    crate fn mk_expr(&self, span: Span, node: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
         P(Expr { node, span, attrs, id: ast::DUMMY_NODE_ID })
     }
 
@@ -2936,23 +2886,7 @@ impl<'a> Parser<'a> {
                 ExprKind::Await(ast::AwaitOrigin::FieldLike, self_arg),
                 ThinVec::new(),
             );
-            if self.token == token::OpenDelim(token::Paren) &&
-                self.look_ahead(1, |t| t == &token::CloseDelim(token::Paren))
-            {
-                // future.await()
-                let lo = self.span;
-                self.bump(); // (
-                let sp = lo.to(self.span);
-                self.bump(); // )
-                let mut err = self.struct_span_err(sp, "incorrect use of `await`");
-                err.span_suggestion(
-                    sp,
-                    "`await` is not a method call, remove the parentheses",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                );
-                err.emit()
-            }
+            self.recover_from_await_method_call();
             return Ok(await_expr);
         }
         let segment = self.parse_path_segment(PathStyle::Expr)?;
@@ -3189,23 +3123,6 @@ impl<'a> Parser<'a> {
             }
         }
         return Ok(e);
-    }
-
-    fn recover_seq_parse_error(
-        &mut self,
-        delim: token::DelimToken,
-        lo: Span,
-        result: PResult<'a, P<Expr>>,
-    ) -> P<Expr> {
-        match result {
-            Ok(x) => x,
-            Err(mut err) => {
-                err.emit();
-                // recover from parse error
-                self.consume_block(delim);
-                self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
-            }
-        }
     }
 
     crate fn process_potential_macro_variable(&mut self) {
@@ -3608,58 +3525,6 @@ impl<'a> Parser<'a> {
             if let Fixity::None = fixity { break }
         }
         Ok(lhs)
-    }
-
-    fn could_ascription_be_path(&self, node: &ast::ExprKind) -> bool {
-        self.token.is_ident() &&
-            if let ast::ExprKind::Path(..) = node { true } else { false } &&
-            !self.token.is_reserved_ident() &&           // v `foo:bar(baz)`
-            self.look_ahead(1, |t| t == &token::OpenDelim(token::Paren)) ||
-            self.look_ahead(1, |t| t == &token::Lt) &&     // `foo:bar<baz`
-            self.look_ahead(2, |t| t.is_ident()) ||
-            self.look_ahead(1, |t| t == &token::Colon) &&  // `foo:bar:baz`
-            self.look_ahead(2, |t| t.is_ident()) ||
-            self.look_ahead(1, |t| t == &token::ModSep) &&  // `foo:bar::baz`
-            self.look_ahead(2, |t| t.is_ident())
-    }
-
-    fn bad_type_ascription(
-        &self,
-        err: &mut DiagnosticBuilder<'a>,
-        lhs_span: Span,
-        cur_op_span: Span,
-        next_sp: Span,
-        maybe_path: bool,
-    ) {
-        err.span_label(self.span, "expecting a type here because of type ascription");
-        let cm = self.sess.source_map();
-        let next_pos = cm.lookup_char_pos(next_sp.lo());
-        let op_pos = cm.lookup_char_pos(cur_op_span.hi());
-        if op_pos.line != next_pos.line {
-            err.span_suggestion(
-                cur_op_span,
-                "try using a semicolon",
-                ";".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        } else {
-            if maybe_path {
-                err.span_suggestion(
-                    cur_op_span,
-                    "maybe you meant to write a path separator here",
-                    "::".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            } else {
-                err.note("type ascription is a nightly-only feature that lets \
-                          you annotate an expression with a type: `<expr>: <type>`");
-                err.span_note(
-                    lhs_span,
-                    "this expression expects an ascribed type after the colon",
-                );
-                err.help("this might be indicative of a syntax error elsewhere");
-            }
-        }
     }
 
     fn parse_assoc_op_cast(&mut self, lhs: P<Expr>, lhs_span: Span,
@@ -4941,92 +4806,6 @@ impl<'a> Parser<'a> {
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
         Ok(self.parse_stmt_(true))
-    }
-
-    // Eat tokens until we can be relatively sure we reached the end of the
-    // statement. This is something of a best-effort heuristic.
-    //
-    // We terminate when we find an unmatched `}` (without consuming it).
-    fn recover_stmt(&mut self) {
-        self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore)
-    }
-
-    // If `break_on_semi` is `Break`, then we will stop consuming tokens after
-    // finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
-    // approximate - it can mean we break too early due to macros, but that
-    // should only lead to sub-optimal recovery, not inaccurate parsing).
-    //
-    // If `break_on_block` is `Break`, then we will stop consuming tokens
-    // after finding (and consuming) a brace-delimited block.
-    fn recover_stmt_(&mut self, break_on_semi: SemiColonMode, break_on_block: BlockMode) {
-        let mut brace_depth = 0;
-        let mut bracket_depth = 0;
-        let mut in_block = false;
-        debug!("recover_stmt_ enter loop (semi={:?}, block={:?})",
-               break_on_semi, break_on_block);
-        loop {
-            debug!("recover_stmt_ loop {:?}", self.token);
-            match self.token {
-                token::OpenDelim(token::DelimToken::Brace) => {
-                    brace_depth += 1;
-                    self.bump();
-                    if break_on_block == BlockMode::Break &&
-                       brace_depth == 1 &&
-                       bracket_depth == 0 {
-                        in_block = true;
-                    }
-                }
-                token::OpenDelim(token::DelimToken::Bracket) => {
-                    bracket_depth += 1;
-                    self.bump();
-                }
-                token::CloseDelim(token::DelimToken::Brace) => {
-                    if brace_depth == 0 {
-                        debug!("recover_stmt_ return - close delim {:?}", self.token);
-                        break;
-                    }
-                    brace_depth -= 1;
-                    self.bump();
-                    if in_block && bracket_depth == 0 && brace_depth == 0 {
-                        debug!("recover_stmt_ return - block end {:?}", self.token);
-                        break;
-                    }
-                }
-                token::CloseDelim(token::DelimToken::Bracket) => {
-                    bracket_depth -= 1;
-                    if bracket_depth < 0 {
-                        bracket_depth = 0;
-                    }
-                    self.bump();
-                }
-                token::Eof => {
-                    debug!("recover_stmt_ return - Eof");
-                    break;
-                }
-                token::Semi => {
-                    self.bump();
-                    if break_on_semi == SemiColonMode::Break &&
-                       brace_depth == 0 &&
-                       bracket_depth == 0 {
-                        debug!("recover_stmt_ return - Semi");
-                        break;
-                    }
-                }
-                token::Comma => {
-                    if break_on_semi == SemiColonMode::Comma &&
-                       brace_depth == 0 &&
-                       bracket_depth == 0 {
-                        debug!("recover_stmt_ return - Semi");
-                        break;
-                    } else {
-                        self.bump();
-                    }
-                }
-                _ => {
-                    self.bump()
-                }
-            }
-        }
     }
 
     fn parse_stmt_(&mut self, macro_legacy_warnings: bool) -> Option<Stmt> {
@@ -6932,26 +6711,6 @@ impl<'a> Parser<'a> {
         Ok((class_name, ItemKind::Union(vdata, generics), None))
     }
 
-    fn consume_block(&mut self, delim: token::DelimToken) {
-        let mut brace_depth = 0;
-        loop {
-            if self.eat(&token::OpenDelim(delim)) {
-                brace_depth += 1;
-            } else if self.eat(&token::CloseDelim(delim)) {
-                if brace_depth == 0 {
-                    return;
-                } else {
-                    brace_depth -= 1;
-                    continue;
-                }
-            } else if self.token == token::Eof || self.eat(&token::CloseDelim(token::NoDelim)) {
-                return;
-            } else {
-                self.bump();
-            }
-        }
-    }
-
     fn parse_record_struct_body(
         &mut self,
     ) -> PResult<'a, (Vec<StructField>, /* recovered */ bool)> {
@@ -8647,21 +8406,6 @@ impl<'a> Parser<'a> {
             ';'.to_string(),
             Applicability::MaybeIncorrect,
         ).emit();
-    }
-
-    /// Recover from `pub` keyword in places where it seems _reasonable_ but isn't valid.
-    fn eat_bad_pub(&mut self) {
-        if self.token.is_keyword(keywords::Pub) {
-            match self.parse_visibility(false) {
-                Ok(vis) => {
-                    let mut err = self.diagnostic()
-                        .struct_span_err(vis.span, "unnecessary visibility qualifier");
-                    err.span_label(vis.span, "`pub` not permitted here");
-                    err.emit();
-                }
-                Err(mut err) => err.emit(),
-            }
-        }
     }
 
     /// When lowering a `async fn` to the HIR, we need to move all of the arguments of the function
