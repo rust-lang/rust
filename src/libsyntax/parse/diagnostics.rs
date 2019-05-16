@@ -274,14 +274,13 @@ impl<'a> Parser<'a> {
             self.bump(); // (
             let sp = lo.to(self.span);
             self.bump(); // )
-            let mut err = self.struct_span_err(sp, "incorrect use of `await`");
-            err.span_suggestion(
-                sp,
-                "`await` is not a method call, remove the parentheses",
-                String::new(),
-                Applicability::MachineApplicable,
-            );
-            err.emit()
+            self.struct_span_err(sp, "incorrect use of `await`")
+                .span_suggestion(
+                    sp,
+                    "`await` is not a method call, remove the parentheses",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                ).emit()
         }
     }
 
@@ -327,12 +326,12 @@ impl<'a> Parser<'a> {
                 );
             } else {
                 err.note("type ascription is a nightly-only feature that lets \
-                          you annotate an expression with a type: `<expr>: <type>`");
-                err.span_note(
-                    lhs_span,
-                    "this expression expects an ascribed type after the colon",
-                );
-                err.help("this might be indicative of a syntax error elsewhere");
+                          you annotate an expression with a type: `<expr>: <type>`")
+                    .span_note(
+                        lhs_span,
+                        "this expression expects an ascribed type after the colon",
+                    )
+                    .help("this might be indicative of a syntax error elsewhere");
             }
         }
     }
@@ -409,10 +408,10 @@ impl<'a> Parser<'a> {
         if self.token.is_keyword(keywords::Pub) {
             match self.parse_visibility(false) {
                 Ok(vis) => {
-                    let mut err = self.diagnostic()
-                        .struct_span_err(vis.span, "unnecessary visibility qualifier");
-                    err.span_label(vis.span, "`pub` not permitted here");
-                    err.emit();
+                    self.diagnostic()
+                        .struct_span_err(vis.span, "unnecessary visibility qualifier")
+                        .span_label(vis.span, "`pub` not permitted here")
+                        .emit();
                 }
                 Err(mut err) => err.emit(),
             }
@@ -488,15 +487,12 @@ impl<'a> Parser<'a> {
                         break;
                     }
                 }
-                token::Comma => {
-                    if break_on_semi == SemiColonMode::Comma &&
+                token::Comma if break_on_semi == SemiColonMode::Comma &&
                        brace_depth == 0 &&
-                       bracket_depth == 0 {
-                        debug!("recover_stmt_ return - Semi");
-                        break;
-                    } else {
-                        self.bump();
-                    }
+                       bracket_depth == 0 =>
+                {
+                    debug!("recover_stmt_ return - Semi");
+                    break;
                 }
                 _ => {
                     self.bump()
