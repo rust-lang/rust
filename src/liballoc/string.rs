@@ -2189,6 +2189,14 @@ impl From<&str> for String {
     }
 }
 
+#[stable(feature = "from_ref_string", since = "1.35.0")]
+impl From<&String> for String {
+    #[inline]
+    fn from(s: &String) -> String {
+        s.clone()
+    }
+}
+
 // note: test pulls in libstd, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
