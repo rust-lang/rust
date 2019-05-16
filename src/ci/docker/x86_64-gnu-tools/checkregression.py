@@ -21,7 +21,12 @@ if __name__ == '__main__':
         state = cur[os_name]
         new_state = toolstate.get(tool, '')
         if verb == 'regressed':
-            updated = new_state < state
+            if tool == 'rls':
+                # Temporary override until
+                # https://github.com/rust-lang/rust/issues/60848 is fixed.
+                updated = False
+            else:
+                updated = new_state < state
         elif verb == 'changed':
             updated = new_state != state
         else:
