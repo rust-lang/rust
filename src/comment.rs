@@ -880,12 +880,6 @@ pub(crate) fn recover_missing_comment_in_span(
         Some(String::new())
     } else {
         let missing_snippet = context.snippet(span);
-        let trimmed_missing_snippet = missing_snippet.trim();
-        if !trimmed_missing_snippet.starts_with("//") && !trimmed_missing_snippet.starts_with("/*")
-        {
-            return None;
-        };
-
         let pos = missing_snippet.find('/').unwrap_or(0);
         // 1 = ` `
         let total_width = missing_comment.len() + used_width + 1;
