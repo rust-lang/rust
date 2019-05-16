@@ -1,6 +1,5 @@
 set -ex
 
-export CARGO_INCREMENTAL=0
 cargo=cargo
 
 # Test our implementation
