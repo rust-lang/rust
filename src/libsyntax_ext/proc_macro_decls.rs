@@ -362,11 +362,11 @@ fn mk_decls(
     });
     let span = DUMMY_SP.apply_mark(mark);
 
-    let hidden = cx.meta_list_item_word(span, Symbol::intern("hidden"));
-    let doc = cx.meta_list(span, Symbol::intern("doc"), vec![hidden]);
+    let hidden = cx.meta_list_item_word(span, sym::hidden);
+    let doc = cx.meta_list(span, sym::doc, vec![hidden]);
     let doc_hidden = cx.attribute(span, doc);
 
-    let proc_macro = Ident::from_str("proc_macro");
+    let proc_macro = Ident::with_empty_ctxt(sym::proc_macro);
     let krate = cx.item(span,
                         proc_macro,
                         Vec::new(),

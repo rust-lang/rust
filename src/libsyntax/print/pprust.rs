@@ -13,7 +13,7 @@ use crate::print::pp::{self, Breaks};
 use crate::print::pp::Breaks::{Consistent, Inconsistent};
 use crate::ptr::P;
 use crate::std_inject;
-use crate::symbol::keywords;
+use crate::symbol::{keywords, sym};
 use crate::tokenstream::{self, TokenStream, TokenTree};
 
 use rustc_target::spec::abi::{self, Abi};
@@ -89,13 +89,14 @@ pub fn print_crate<'a>(cm: &'a SourceMap,
         // of the feature gate, so we fake them up here.
 
         // #![feature(prelude_import)]
-        let pi_nested = attr::mk_nested_word_item(ast::Ident::from_str("prelude_import"));
-        let list = attr::mk_list_item(DUMMY_SP, ast::Ident::from_str("feature"), vec![pi_nested]);
+        let pi_nested = attr::mk_nested_word_item(ast::Ident::with_empty_ctxt(sym::prelude_import));
+        let list = attr::mk_list_item(
+            DUMMY_SP, ast::Ident::with_empty_ctxt(sym::feature), vec![pi_nested]);
         let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), list);
         s.print_attribute(&fake_attr)?;
 
         // #![no_std]
-        let no_std_meta = attr::mk_word_item(ast::Ident::from_str("no_std"));
+        let no_std_meta = attr::mk_word_item(ast::Ident::with_empty_ctxt(sym::no_std));
         let fake_attr = attr::mk_attr_inner(DUMMY_SP, attr::mk_attr_id(), no_std_meta);
         s.print_attribute(&fake_attr)?;
     }

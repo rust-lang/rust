@@ -929,8 +929,9 @@ impl Attributes {
         for attr in attrs.lists(sym::target_feature) {
             if attr.check_name(sym::enable) {
                 if let Some(feat) = attr.value_str() {
-                    let meta = attr::mk_name_value_item_str(Ident::from_str("target_feature"),
-                                                            dummy_spanned(feat));
+                    let meta = attr::mk_name_value_item_str(
+                        Ident::with_empty_ctxt(sym::target_feature),
+                        dummy_spanned(feat));
                     if let Ok(feat_cfg) = Cfg::parse(&meta) {
                         cfg &= feat_cfg;
                     }

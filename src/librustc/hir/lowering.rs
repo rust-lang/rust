@@ -4801,7 +4801,7 @@ impl<'a> LoweringContext<'a> {
                 let attr = {
                     // `allow(unreachable_code)`
                     let allow = {
-                        let allow_ident = Ident::from_str("allow").with_span_pos(e.span);
+                        let allow_ident = Ident::with_empty_ctxt(sym::allow).with_span_pos(e.span);
                         let uc_ident = Ident::from_str("unreachable_code").with_span_pos(e.span);
                         let uc_nested = attr::mk_nested_word_item(uc_ident);
                         attr::mk_list_item(e.span, allow_ident, vec![uc_nested])

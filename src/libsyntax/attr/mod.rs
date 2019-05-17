@@ -22,7 +22,7 @@ use crate::parse::parser::Parser;
 use crate::parse::{self, ParseSess, PResult};
 use crate::parse::token::{self, Token};
 use crate::ptr::P;
-use crate::symbol::{keywords, Symbol};
+use crate::symbol::{keywords, Symbol, sym};
 use crate::ThinVec;
 use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use crate::GLOBALS;
@@ -323,7 +323,7 @@ impl Attribute {
         if self.is_sugared_doc {
             let comment = self.value_str().unwrap();
             let meta = mk_name_value_item_str(
-                Ident::from_str("doc"),
+                Ident::with_empty_ctxt(sym::doc),
                 dummy_spanned(Symbol::intern(&strip_doc_comment_decoration(&comment.as_str()))));
             let mut attr = if self.style == ast::AttrStyle::Outer {
                 mk_attr_outer(self.span, self.id, meta)
@@ -414,7 +414,7 @@ pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     Attribute {
         id,
         style,
-        path: Path::from_ident(Ident::from_str("doc").with_span_pos(span)),
+        path: Path::from_ident(Ident::with_empty_ctxt(sym::doc).with_span_pos(span)),
         tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
         span,
