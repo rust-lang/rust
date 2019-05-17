@@ -11,10 +11,10 @@ const LIMIT: usize = 320;
 
 pub fn check() {
     let stderr_files = stderr_files();
-    let exceeding_files = exceeding_stderr_files(stderr_files);
+    let exceeding_files = exceeding_stderr_files(stderr_files).collect::<Vec<String>>();
 
     if !exceeding_files.is_empty() {
-        println!("Error: stderr files exceeding limit of {} lines:", LIMIT);
+        eprintln!("Error: stderr files exceeding limit of {} lines:", LIMIT);
         for path in exceeding_files {
             println!("{}", path);
         }
@@ -22,7 +22,7 @@ pub fn check() {
     }
 }
 
-fn exceeding_stderr_files(files: impl Iterator<Item = walkdir::DirEntry>) -> Vec<String> {
+fn exceeding_stderr_files(files: impl Iterator<Item = walkdir::DirEntry>) -> impl Iterator<Item = String> {
     files
         .filter_map(|file| {
             let path = file.path().to_str().expect("Could not convert path to str").to_string();
@@ -33,7 +33,6 @@ fn exceeding_stderr_files(files: impl Iterator<Item = walkdir::DirEntry>) -> Vec
                 None
             }
         })
-        .collect()
 }
 
 fn stderr_files() -> impl Iterator<Item = walkdir::DirEntry> {
