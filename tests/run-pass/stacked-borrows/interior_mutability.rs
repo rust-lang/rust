@@ -1,12 +1,12 @@
 #![feature(maybe_uninit, maybe_uninit_ref)]
 use std::mem::MaybeUninit;
-use std::cell::Cell;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell, UnsafeCell};
 
 fn main() {
     aliasing_mut_and_shr();
     aliasing_frz_and_shr();
     into_interior_mutability();
+    unsafe_cell_2phase();
 }
 
 fn aliasing_mut_and_shr() {
@@ -57,3 +57,12 @@ fn into_interior_mutability() {
     let ptr = unsafe { x.get_ref() };
     assert_eq!(ptr.1, 1);
 }
+
+// Two-phase borrows of the pointer returned by UnsafeCell::get() should not
+// invalidate aliases.
+fn unsafe_cell_2phase() { unsafe {
+    let x = &UnsafeCell::new(vec![]);
+    let x2 = &*x;
+    (*x.get()).push(0);
+    let _val = (*x2.get()).get(0);
+} }

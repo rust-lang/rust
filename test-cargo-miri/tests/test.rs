@@ -1,5 +1,7 @@
-use rand::{SeedableRng, FromEntropy, Rng, rngs::SmallRng};
+use rand::{FromEntropy, Rng, rngs::SmallRng};
 
+// Having more than 1 test does seem to make a difference
+// (i.e., this calls ptr::swap which having just one test does not).
 #[test]
 fn simple() {
     assert_eq!(4, 4);
@@ -7,14 +9,6 @@ fn simple() {
 
 // Having more than 1 test does seem to make a difference
 // (i.e., this calls ptr::swap which having just one test does not).
-#[test]
-fn fixed_rng() {
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0xdeadcafe);
-    let x: u32 = rng.gen();
-    let y: u32 = rng.gen();
-    assert_ne!(x, y);
-}
-
 #[test]
 fn entropy_rng() {
     // Use this opportunity to test querying the RNG (needs an external crate, hence tested here and not in the compiletest suite)
